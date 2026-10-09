@@ -332,6 +332,8 @@ a.social:hover{border-color:var(--gold)}
 .scene .label{z-index:3000;position:absolute;left:14px;top:12px;font:700 12px var(--display);letter-spacing:.16em;color:var(--gold-hi);text-shadow:0 1px 4px #000;background:rgba(0,0,0,.45);padding:5px 10px;border-radius:999px;border:1px solid rgba(212,168,67,.35)}
 .scene .count{z-index:3000;position:absolute;right:14px;top:12px;font:600 12px var(--body);color:#fff;background:rgba(0,0,0,.45);padding:5px 10px;border-radius:999px}
 .scene .count::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+.scene.is3d{cursor:default;background:#000}
+.scene.is3d>.prop,.scene.is3d>.toon,.scene.is3d>.vig,.scene.is3d>.label,.scene.is3d>.count,.scene.is3d>.ripple{display:none!important}
 .scene .vig{position:absolute;inset:0;pointer-events:none;z-index:2500;background:radial-gradient(ellipse at 50% 55%,transparent 55%,rgba(0,0,0,.55))}
 .scene svg .flick{animation:flick 3.2s ease-in-out infinite}
 .scene svg .tw{animation:tw 2.6s ease-in-out infinite}
@@ -995,8 +997,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <section class="view" id="v-world" hidden>
   <div class="wrap">
     <div class="section-head">
-      <div><p class="eyebrow">Meechie's World 3D-lite</p><h2>Virtual World</h2></div>
-      <p class="muted">Dress up your character, pick a room, tap the floor to walk, and talk. Everyone in the room sees you move and speak.</p>
+      <div><p class="eyebrow">Meechie's World 3D</p><h2>Virtual World</h2></div>
+      <p class="muted">Dress up your character, pick a room, tap the floor to walk, drag to look around, and talk. Tap ⛶ to go full screen. Everyone in the room sees you move and speak.</p>
     </div>
     <div class="world">
       <div class="card builder">
@@ -1363,7 +1365,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <div class="pb-right"><span class="pb-time" id="pb-time">0:00</span><div class="pb-progress" id="pb-progress"><i id="pb-fill"></i></div><input type="range" id="pb-vol" min="0" max="1" step="0.05" value="0.9" aria-label="Volume"></div>
   </div>
 </div>
-<video id="audio" playsinline preload="none" hidden></video>
+<audio id="audio" playsinline preload="none" hidden></audio>
 <dialog id="pw-dialog">
   <form id="pw-form" method="dialog">
     <h3 style="font-size:22px">Set a new password</h3>
@@ -1727,10 +1729,24 @@ const SCENES={
   ${[...Array(10)].map((_,i)=>{const x=40+i*8;return `<ellipse cx="${x}" cy="${70+(i%3)*5}" rx="3.6" ry="1.1" fill="${["#ff3d7f","#f0cf78","#7b5cff","#3de0ff"][i%4]}" opacity=".5" class="led" style="animation-delay:${i*.17}s"/>`}).join("")}
   ${[18,134].map(x=>`<rect x="${x}" y="${FY-14}" width="10" height="24" fill="#0a0a0a" stroke="#333" stroke-width=".4"/><circle cx="${x+5}" cy="${FY-8}" r="3" fill="#161616" stroke="${GL}" stroke-width=".4"/><circle cx="${x+5}" cy="${FY+3}" r="3.6" fill="#161616" stroke="${GL}" stroke-width=".4"/>`).join("")}`
 };
+let w3d=false;
+function mount3D(){
+  if(w3d || !window.World3D || !World3D.supported()) return; w3d="loading";
+  const sc=$("#scene");
+  World3D.mount(sc,{
+    onWalk:(x,y)=>setMine({x:clampX(x),y:clampY(y),pose:mine.pose==="sit"?"stand":mine.pose}),
+    onPose:p=>{ setMine({pose:p,poseAt:Date.now()}); if(p==="wave") setTimeout(drawPeople,4100); },
+    onSay:t=>{ t=String(t||"").trim().slice(0,120); if(!t) return; setMine({say:t,sayAt:Date.now()}); setTimeout(drawPeople,8100); }
+  }).then(()=>{ w3d=true; sc.classList.add("is3d"); $("#emotes").hidden=true; $("#say-form").hidden=true; World3D.setRoom(roomName); drawPeople(); })
+    .catch(err=>{ console.warn("3D world unavailable, using 2D",err); w3d="off"; });
+}
+new MutationObserver(()=>{ if(!$("#v-world").hidden) mount3D(); }).observe($("#v-world"),{attributes:true,attributeFilter:["hidden"]});
+setTimeout(()=>{ if(!$("#v-world").hidden) mount3D(); },0);
+addEventListener("load",()=>{ if(!$("#v-world").hidden) mount3D(); });
 let wroom=null, roomName="lounge", peersNow=[], heard={}, logLines=[];
 let mine={look:{...look},x:.5,y:.82,pose:"stand",uid:null,say:"",sayAt:0};
 function setMine(patch){ Object.assign(mine,patch); if(wroom) wroom.presence(patch).catch(()=>{}); drawPeople(); }
-function paintRoom(){ $("#room-label").textContent=ROOMS[roomName].name;
+function paintRoom(){ $("#room-label").textContent=ROOMS[roomName].name; if(w3d===true) World3D.setRoom(roomName);
   $("#props").innerHTML=`<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block">${SCENES[roomName]}</svg>`; }
 const clampX=x=>Math.min(.95,Math.max(.05,+x||.5)), clampY=y=>Math.min(.97,Math.max(.64,+y||.85));
 const toons=new Map();
@@ -1758,6 +1774,8 @@ function drawPeople(){
   });
   for(const [k,t] of toons) if(!seen.has(k)){ t.remove(); toons.delete(k); }
   $("#room-count").textContent=people.length+" here";
+  if(w3d===true) World3D.update(people.map(p=>{ const P=p.isMe&&!wroom?mine:(p.sameTab?{...p.presence,...mine}:p.presence)||{}; const uid=p.by||P.uid, L2=cleanLook({...look,...(P.look||{})});
+    return {key:p.peer,isMe:!!p.isMe,name:nameFor(p),look:L2,x:clampX(P.x),y:clampY(P.y),pose:P.pose||"stand",poseAt:P.poseAt||0,say:P.say?String(P.say).slice(0,120):"",sayAt:P.sayAt||0,faceUrl:L2.photo?cleanFace(p.isMe?myFace:(members[uid]?.face||"")):""}; }));
 }
 function renderLog(){ const el=$("#roomlog"); if(!logLines.length) return; el.innerHTML=logLines.map(l=>`<div><b>${esc(l.n)}</b>${esc(l.t)}</div>`).join(""); el.scrollTop=el.scrollHeight; }
 async function enterWorld(){
@@ -1776,7 +1794,7 @@ function switchRoom(lobby,name){
 }
 // standalone room switching before sign-in
 $("#rooms").addEventListener("click",e=>{ if(wroom) return; const b=e.target.closest("[data-room]"); if(!b) return; $$("#rooms .chip").forEach(x=>x.setAttribute("aria-pressed",x===b)); roomName=b.dataset.room; paintRoom(); drawPeople(); });
-$("#scene").addEventListener("click",e=>{ const r=e.currentTarget.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+$("#scene").addEventListener("click",e=>{ if(w3d) return; const r=e.currentTarget.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
   const rp=document.createElement("div"); rp.className="ripple"; rp.style.left=(x*100)+"%"; rp.style.top=(clampY(y)*100)+"%"; e.currentTarget.appendChild(rp); setTimeout(()=>rp.remove(),750);
   setMine({x:clampX(x),y:clampY(y),pose:mine.pose==="sit"?"stand":mine.pose}); });
 $("#emotes").addEventListener("click",e=>{ const b=e.target.closest("[data-pose]"); if(!b) return; setMine({pose:b.dataset.pose,poseAt:Date.now()}); if(b.dataset.pose==="wave") setTimeout(drawPeople,4100); });
@@ -1817,7 +1835,7 @@ function renderTracks(){
     <span class="ops">${isOwner?`<button class="act" data-onair="${i}">Play on air</button><button class="act" data-tdel="${t.id}">Delete</button>`:""}</span></div>`).join("");
   paintAir();
 }
-function showBar(t,sub){ $("#player-bar").hidden=false; document.body.classList.add("has-player"); $("#pb-title").textContent=t.title; $("#pb-sub").textContent=sub; const c=$("#pb-cover"); c.style.backgroundImage=""; c.innerHTML=$("#air-cover").innerHTML||c.innerHTML; setCover(c,t); }
+function showBar(t,sub){ lockScreen(t,sub); $("#player-bar").hidden=false; document.body.classList.add("has-player"); $("#pb-title").textContent=t.title; $("#pb-sub").textContent=sub; const c=$("#pb-cover"); c.style.backgroundImage=""; c.innerHTML=$("#air-cover").innerHTML||c.innerHTML; setCover(c,t); }
 function load(t,offset){ return new Promise(res=>{ media.src=trackUrl(t); media.currentTime=0;
   media.onloadedmetadata=()=>{ if(offset) try{media.currentTime=Math.min(offset,(media.duration||offset)-0.5);}catch(e){} res(); };
   media.onerror=()=>{ toast("This track couldn't load."); res(); }; media.load(); }); }
@@ -1835,6 +1853,16 @@ async function playLib(i){
 function updIcons(){ $("#pb-icon").innerHTML = media.paused?ICON_PLAY:ICON_PAUSE; $("#pb-play").setAttribute("aria-label",media.paused?"Play":"Pause");
   $("#tune-in").textContent = mode==="radio"&&!media.paused ? "❚❚ Pause radio" : "▶ Tune in"; renderTracks(); }
 media.addEventListener("play",updIcons); media.addEventListener("pause",updIcons);
+/* Lock screen / notification controls, so the music keeps going when the phone locks */
+function lockScreen(t,sub){ if(!("mediaSession" in navigator)||!t) return;
+  try{ const art=/^https:\/\//.test(t.cover||"")?[{src:t.cover,sizes:"512x512"}]:[{src:location.origin+"/img/icon-512.png",sizes:"512x512",type:"image/png"}];
+    navigator.mediaSession.metadata=new MediaMetadata({title:t.title||"Meechie's World Radio",artist:t.artist||"Meechie",album:sub||"Meechie's World Radio",artwork:art}); }catch(_){} }
+if("mediaSession" in navigator){ const ms=navigator.mediaSession, H=(a,f)=>{ try{ ms.setActionHandler(a,f); }catch(_){} };
+  H("play",()=>{ if(mode==="radio"&&media.paused) tuneIn(); else media.play().catch(()=>{}); });
+  H("pause",()=>media.pause());
+  H("nexttrack",()=>{ if(mode==="library") playLib(curIdx+1); });
+  H("previoustrack",()=>{ if(mode==="library") playLib(Math.max(0,curIdx-1)); });
+  media.addEventListener("play",()=>{ try{ ms.playbackState="playing"; }catch(_){} }); media.addEventListener("pause",()=>{ try{ ms.playbackState="paused"; }catch(_){} }); }
 media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(); else if(mode==="library") playLib(curIdx+1); });
 media.addEventListener("timeupdate",()=>{ const d=media.duration||tracks[curIdx]?.duration||0; $("#pb-fill").style.width=(d?media.currentTime/d*100:0)+"%"; $("#pb-time").textContent=fmt(media.currentTime)+" / "+fmt(d); });
 $("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
@@ -2345,6 +2373,7 @@ boot();
 <script src="js/owner.js"></script>
 <script src="js/messages.js"></script>
 <script src="js/videos.js"></script>
+<script src="js/world3d.js"></script>
 <script src="js/ai-widget.js"></script>
 </body>
 </html>
