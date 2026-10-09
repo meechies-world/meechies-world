@@ -987,7 +987,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <section class="view" id="v-clips" hidden>
   <div class="clips-wrap">
     <div class="clips" id="clips" aria-label="Clips. Swipe up for the next video."><div class="clip-empty"><h3>No clips yet</h3><p>Be the first. Tap + to post a video.</p></div></div>
-    <button class="clip-add" type="button" id="clip-add" aria-label="Post a clip">+<input type="file" id="clip-file" accept="video/*" aria-label="Choose a video to post"></button>
+    <label class="clip-add" id="clip-add" aria-label="Post a clip">+<input type="file" id="clip-file" accept="video/*" aria-label="Choose a video to post"></label>
     <div class="clip-up" id="clip-up" hidden><b>Posting your clip</b><input type="text" id="clip-cap" maxlength="300" placeholder="Add a caption (optional)" aria-label="Caption"><div class="vid-bar"><i id="clip-bar"></i></div><small id="clip-st"></small><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost sm" type="button" id="clip-cancel">Cancel</button><button class="btn sm" type="button" id="clip-go">Post</button></div></div>
   </div>
 </section>
@@ -1437,6 +1437,13 @@ function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)re
 /* ---------- Tabs ---------- */
 const VIEWS=["home","services","shop","community","radio","clips","videos","world","games","creators","chat","messages","ads","promote","contact"];
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return; if(!VIEWS.includes(v)) v="home";
+  const prevView=VIEWS.find(x=>!$("#v-"+x).hidden);
+  if(prevView && prevView!==v){ // stop videos that would keep playing on a hidden page
+    $$("#v-"+prevView+" .htt.playing").forEach(x=>{ x.classList.remove("playing"); x.querySelector("iframe")?.remove(); });
+    $$("#v-"+prevView+" .htt-grid").forEach(g=>g._auto=false);
+    if(prevView==="videos"){ const f=$("#yt-frame"); if(f && f.querySelector("iframe")){ f.innerHTML='<div class="yt-empty"><span>Tap a video or channel to play.</span></div>'; $$("#v-videos .tv-ch.on").forEach(b=>b.classList.remove("on")); } }
+    $$("#v-"+prevView+" video").forEach(x=>{ try{ x.pause(); }catch(_){} });
+  }
   VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
   $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   if(location.hash.slice(1)!==v) history.replaceState(null,"","#"+v);
@@ -1867,21 +1874,22 @@ function showBar(t,sub){ lockScreen(t,sub); $("#player-bar").hidden=false; docum
 // Start playing right away (play() in the same moment the last song ends), then jump to the right spot.
 // Waiting for the file to load first fails when the phone screen is off, because phones hold back loading for hidden pages.
 function load(t,offset,autoplay){ return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
-  media.preload="auto"; media.src=trackUrl(t);
+  media.onloadedmetadata=media.onerror=null; media.preload="auto"; media.src=trackUrl(t);
   media.onloadedmetadata=()=>{ if(offset) try{media.currentTime=Math.min(offset,(media.duration||offset)-0.5);}catch(e){} fin(); };
   media.onerror=()=>{ if(!document.hidden) toast("This track couldn't load."); fin(); };
   if(autoplay){ media.play().catch(()=>{}); setTimeout(fin,4000); } else media.load(); }); }
-async function tuneIn(afterEnd){
+let playTok=0;
+async function tuneIn(afterEnd){ const tok=++playTok;
   let a=airNow(); if(a && afterEnd===true && a.i===curIdx) a={i:(curIdx+1)%tracks.length,offset:0}; // song file shorter than listed: move on instead of replaying
   if(!a){ toast("The station starts when the first track is added."); return; }
-  mode="radio"; curIdx=a.i; await load(tracks[a.i], afterEnd===true? a.offset : airNow().offset, true);
+  mode="radio"; curIdx=a.i; await load(tracks[a.i], afterEnd===true? a.offset : airNow().offset, true); if(tok!==playTok) return;
   media.play().catch(()=>{ if(!document.hidden) toast("Tap play to start the audio."); }); showBar(tracks[a.i],"Meechie's World Radio · LIVE");
   room?.presence({radio:true}); renderTracks(); updIcons();
 }
 async function playLib(i){
   if(mode==="library" && curIdx===i){ media.paused?media.play():media.pause(); return; }
-  mode="library"; curIdx=(i+tracks.length)%tracks.length; const t=tracks[curIdx];
-  await load(t,0,true); media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
+  const tok=++playTok; mode="library"; curIdx=(i+tracks.length)%tracks.length; const t=tracks[curIdx];
+  await load(t,0,true); if(tok!==playTok) return; media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
 }
 function updIcons(){ $("#pb-icon").innerHTML = media.paused?ICON_PLAY:ICON_PAUSE; $("#pb-play").setAttribute("aria-label",media.paused?"Play":"Pause");
   $("#tune-in").textContent = mode==="radio"&&!media.paused ? "❚❚ Pause radio" : "▶ Tune in"; renderTracks(); }
@@ -1891,17 +1899,17 @@ function lockScreen(t,sub){ if(!("mediaSession" in navigator)||!t) return;
   try{ const art=/^https:\/\//.test(t.cover||"")?[{src:t.cover,sizes:"512x512"}]:[{src:location.origin+"/img/icon-512.png",sizes:"512x512",type:"image/png"}];
     navigator.mediaSession.metadata=new MediaMetadata({title:t.title||"Meechie's World Radio",artist:t.artist||"Meechie",album:sub||"Meechie's World Radio",artwork:art}); }catch(_){} }
 if("mediaSession" in navigator){ const ms=navigator.mediaSession, H=(a,f)=>{ try{ ms.setActionHandler(a,f); }catch(_){} };
-  H("play",()=>{ if(mode==="radio"&&media.paused) tuneIn(); else media.play().catch(()=>{}); });
-  H("pause",()=>media.pause());
+  H("play",()=>{ if(mode==="dj"){ window.MW_DJ?.start(); return; } if(mode==="radio"&&media.paused) tuneIn(); else media.play().catch(()=>{}); });
+  H("pause",()=>{ if(mode==="dj"){ window.MW_DJ?.stop(); return; } media.pause(); });
   H("nexttrack",()=>{ if(mode==="library") playLib(curIdx+1); });
-  H("previoustrack",()=>{ if(mode==="library") playLib(Math.max(0,curIdx-1)); });
+  H("previoustrack",()=>{ if(mode==="library"){ if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); } });
   media.addEventListener("play",()=>{ try{ ms.playbackState="playing"; }catch(_){} }); media.addEventListener("pause",()=>{ try{ ms.playbackState="paused"; }catch(_){} }); }
 media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(true); else if(mode==="library") playLib(curIdx+1); });
-media.addEventListener("timeupdate",()=>{ const d=media.duration||tracks[curIdx]?.duration||0; $("#pb-fill").style.width=(d?media.currentTime/d*100:0)+"%"; $("#pb-time").textContent=fmt(media.currentTime)+" / "+fmt(d); });
+media.addEventListener("timeupdate",()=>{ const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0); $("#pb-fill").style.width=(mode==="live"?100:(d?media.currentTime/d*100:0))+"%"; $("#pb-time").textContent=mode==="live"?"● LIVE":fmt(media.currentTime)+" / "+fmt(d); });
 $("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
-$("#pb-play").addEventListener("click",()=>{ if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
-$("#pb-next").addEventListener("click",()=>{ if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
-$("#pb-prev").addEventListener("click",()=>{ if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
+$("#pb-play").addEventListener("click",()=>{ if(mode==="dj"){ document.getElementById("dj-listen")?.click(); return; } if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
+$("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
+$("#pb-prev").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
 $("#pb-progress").addEventListener("click",e=>{ if(mode!=="library"||!media.duration) return; const r=e.currentTarget.getBoundingClientRect(); media.currentTime=(e.clientX-r.left)/r.width*media.duration; });
 $("#pb-vol").addEventListener("input",e=>media.volume=+e.target.value);
 $("#tracks").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
@@ -1926,7 +1934,7 @@ function showRadioNote(){
 }
 async function autoRadio(){
   if(autoTried || !tracks.length || radioSnoozed() || (window.MW_SITE && window.MW_SITE.autoplay===false)) return;
-  if(mode==="radio" && !media.paused) return;
+  if(mode && !media.paused) return;
   autoTried=true;
   const a=airNow(); if(!a) return;
   mode="radio"; curIdx=a.i; await load(tracks[a.i], airNow().offset);
@@ -1934,9 +1942,9 @@ async function autoRadio(){
   catch(_){
     showRadioNote();
     const go=e=>{
-      if(e.target.closest && e.target.closest("#radio-note button,#player-bar,#tune-in,#mw-bar,#ai-panel,input,textarea,select")) return;
+      if(e.target.closest && e.target.closest("#radio-note button,#player-bar,#tune-in,#mw-bar,#ai-panel,input,textarea,select,#dj-root,#world-radio,#v-videos,.htt-grid,#v-clips,#tracks,iframe,video,a[href],.lv-card,#scene")) return;
       document.removeEventListener("pointerdown",go,true); document.removeEventListener("keydown",go,true); hideRadioNote();
-      if(radioSnoozed() || (mode==="radio" && !media.paused)) return;
+      if(radioSnoozed() || (mode && mode!=="radio") || (mode==="radio" && !media.paused)) return;
       const n=airNow(); if(!n) return;
       if(n.i===curIdx){ try{ media.currentTime=n.offset; }catch(_){} media.play().then(()=>{ showBar(tracks[n.i],"Meechie's World Radio · LIVE"); room?.presence({radio:true}); renderTracks(); updIcons(); }).catch(()=>{}); }
       else tuneIn();
@@ -2229,11 +2237,12 @@ function renderFeed(){
     if(!el){ el=document.createElement("article"); el.innerHTML='<div class="post-body"></div><div class="post-actions"></div><div class="replies" hidden></div>'; el.querySelector(".replies").dataset.rbox=p.id; postEls.set(p.id,el); }
     el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
     // Only rebuild the top part (text, photo, video) when it really changed, so a playing video keeps playing.
-    const bodySig=JSON.stringify([p.text,p.photo,p.video,p.announce,p.sponsored,p.createdAt>Date.now()-36e5?Math.floor(Date.now()/6e4):0,handleOf(p.authorId),(members[p.authorId]||{}).photo,shop&&shop[1],me]);
+    const bodySig=JSON.stringify([p.text,p.photo,p.video,p.announce,p.sponsored,handleOf(p.authorId),(members[p.authorId]||{}).photo,shop&&shop[1],me]);
     if(el._sig!==bodySig){ el._sig=bodySig; el.querySelector(".post-body").innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${esc(p.authorId)}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(safeUrl(shop[1]))}" target="_blank" rel="noopener">Shop</a>`:""}</div>
       ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
       ${/^data:image\//.test(p.photo||"")||/^https:\/\//.test(p.photo||"")?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}" loading="lazy">`:""}
       ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}`; }
+    const ws=el.querySelector(".who small"); if(ws) ws.textContent=ago(p.createdAt);
     el.querySelector(".post-actions").innerHTML=`
         <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">♥ ${(p.likes||[]).length||""} Like</button>
         <button class="act" data-replies="${esc(p.id)}">💬 ${p.replyCount||""} Comment</button>

@@ -25,7 +25,9 @@
       if (d.src === src) return res(true);
       d.src = src; d.cors = true; d.el.crossOrigin = "anonymous"; d.el.src = src;
       const ok = () => { clean(); wire(); res(true); };
-      const bad = () => { clean(); if (d.cors) { d.cors = false; d.el.removeAttribute("crossorigin"); d.el.src = src; d.el.addEventListener("loadedmetadata", () => res(true), { once: true }); d.el.addEventListener("error", () => res(false), { once: true }); } else res(false); };
+      const bad = () => { clean(); if (d.cors) { d.cors = false;
+          if (d.gain) { const old = d.el; old.pause(); d.el = new Audio(); d.el.preload = "auto"; d.el.playsInline = true; d.gain = null; d.onswap && d.onswap(old); }
+          d.el.removeAttribute("crossorigin"); d.el.src = src; d.el.addEventListener("loadedmetadata", () => res(true), { once: true }); d.el.addEventListener("error", () => res(false), { once: true }); } else res(false); };
       const clean = () => { d.el.removeEventListener("loadedmetadata", ok); d.el.removeEventListener("error", bad); };
       d.el.addEventListener("loadedmetadata", ok); d.el.addEventListener("error", bad);
     });
@@ -69,7 +71,7 @@
 .talk{width:96px;height:96px;border-radius:50%;border:3px solid #e5484d;background:#2a0f10;color:#fff;font:800 14px var(--body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .talk.on{background:#e5484d;box-shadow:0 0 0 8px rgba(229,72,77,.25),0 0 30px #e5484d}
 .dj-src{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-.dj-src .card{display:grid;gap:10px;min-width:0}
+.dj-src .card{display:grid;gap:10px;min-width:0;grid-template-columns:minmax(0,1fr)}
 .dj-list{display:grid;gap:6px;max-height:260px;overflow:auto}
 .dj-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px}
 .dj-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -117,13 +119,17 @@
     if (!okUrl(s.src)) { d.stop(); return; }
     await d.set(s.src);
     const want = posOf(k);
-    if (s.playing) { if (Math.abs(d.el.currentTime - want) > 1.5) { try { d.el.currentTime = want; } catch (_) {} } if (d.el.paused) d.el.play().catch(() => {}); }
+    if (s.playing) {
+      if (d.el.duration && want >= d.el.duration - 0.3) { d.el.pause(); levels(); return; } // song is over; don't loop the last second
+      if (!d.el.seeking && d.el.readyState >= 3 && Math.abs(d.el.currentTime - want) > 4) { try { d.el.currentTime = want; } catch (_) {} }
+      if (d.el.paused) d.el.play().catch(() => {});
+    }
     else { d.el.pause(); if (Math.abs(d.el.currentTime - want) > 0.5) { try { d.el.currentTime = want; } catch (_) {} } }
     levels();
   }
   function playVoice() {
     const v = S.voice; if (!v || !okUrl(v.url) || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
-    heardVoice = v.id; if (OWNER() && !listening) return; // the owner already heard himself
+    heardVoice = v.id; if (!listening) return; // only people listening to the live set hear it (the owner already heard himself)
     voiceEl = new Audio(v.url); voiceEl.playsInline = true; levels();
     voiceEl.addEventListener("ended", levels); voiceEl.addEventListener("error", levels); voiceEl.play().catch(levels);
   }
@@ -141,14 +147,23 @@
   setInterval(() => { ["A", "B"].forEach((k) => { const el = $("#tm-" + k); if (el && decks[k]) el.textContent = fmt(decks[k].el.currentTime) + (decks[k].el.duration ? " / " + fmt(decks[k].el.duration) : ""); }); if (listening) { follow("A"); follow("B"); } }, 1000);
 
   /* ---------- listeners ---------- */
-  function isLive() { return S.live && Date.now() - (S.updatedAt || 0) < 6 * 3600e3; }
+  function isLive() { return S.live && Date.now() - (S.updatedAt || 0) < 3 * 60e3; }
+  setInterval(() => { if (OWNER() && S.live) save(true); }, 60000); // heartbeat so listeners know the set is still on
+  setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } }, 30000);
   function startListening() {
     listening = true; actx();
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
     $("#dj-listen").textContent = "⏹ Stop listening"; follow("A"); follow("B");
+    try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
+    try { navigator.mediaSession.playbackState = "playing"; } catch (_) {}
     try { if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } catch (_) {}
   }
-  function stopListening() { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); $("#dj-listen").textContent = "🎧 Listen live"; }
+  function stopListening() { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  let autoMoved = false;
+  function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
+  window.MW_DJ = { start: () => { if (isLive()) startListening(); }, stop: stopListening };
+  // anything else starting on the main player ends DJ listening
+  if (typeof media !== "undefined") media.addEventListener("play", () => { if (listening) { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; } });
   $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : startListening()));
 
   let ownerLoaded = false;
@@ -161,9 +176,9 @@
     S.A = Object.assign(blank(), S.A || {}); S.B = Object.assign(blank(), S.B || {});
     const live = isLive();
     $("#dj-banner").hidden = !live || OWNER();
-    if (!live && listening) stopListening();
+    if (!live && listening) endSet();
     // people already listening to the station move over to the live set automatically
-    if (live && !was && !OWNER() && typeof mode !== "undefined" && mode === "radio" && typeof media !== "undefined" && !media.paused) startListening();
+    if (live && !was && !OWNER() && typeof mode !== "undefined" && mode === "radio" && typeof media !== "undefined" && !media.paused) { autoMoved = true; startListening(); }
     if (listening) { follow("A"); follow("B"); }
     playVoice();
   }

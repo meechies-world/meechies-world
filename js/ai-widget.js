@@ -29,7 +29,7 @@ body.has-player #ai-panel{height:min(520px,calc(100vh - 180px))}
 #ai-form2{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line,#3a3223)}
 #ai-form2 input{flex:1;min-width:0;background:var(--ink,#0b0a08);border:1px solid var(--line,#3a3223);border-radius:999px;padding:10px 14px;color:var(--text,#f3ecdc);font:inherit}
 #ai-form2 button{background:var(--gold,#d4a843);color:#0b0a08;border:0;border-radius:999px;padding:0 16px;font-weight:800;cursor:pointer}
-#ai-form2 .ai-tool{position:relative;background:none;border:1px solid var(--line,#3a3223);color:var(--text,#f3ecdc);width:40px;padding:0;font-size:17px;flex:none;overflow:hidden}
+#ai-form2 .ai-tool{display:grid;place-items:center;border-radius:999px;cursor:pointer;position:relative;background:none;border:1px solid var(--line,#3a3223);color:var(--text,#f3ecdc);width:40px;padding:0;font-size:17px;flex:none;overflow:hidden}
 #ai-form2 .ai-tool.on{background:#e5484d;border-color:#e5484d;color:#fff}
 #ai-form2 .ai-tool input{position:absolute;inset:0;opacity:0;cursor:pointer}
 #ai-attach{display:flex;align-items:center;gap:8px;padding:6px 12px 0;font-size:12px;color:var(--muted,#a99f8b)}#ai-attach img{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--line,#3a3223)}
@@ -47,7 +47,7 @@ body.mw-editing #ai-fab{display:none!important}`;
   panel.innerHTML = `<header><svg class="sqc-ico" aria-hidden="true" style="width:30px;height:30px"><use href="#sqc"/></svg><div><b>Meechie's AI</b><small>Answers 24/7 · talk, type, or send a photo</small></div><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
 <div id="ai-log2" aria-live="polite"></div><div class="ai-chips" id="ai-chips"></div>
 <div id="ai-attach" hidden></div>
-<form id="ai-form2"><button type="button" class="ai-tool" id="ai-pic" aria-label="Send a photo">📷<input type="file" accept="image/*" id="ai-file" aria-label="Choose a photo"></button><button type="button" class="ai-tool" id="ai-mic" aria-label="Talk to the AI">🎙️</button><input id="ai-in2" aria-label="Ask Meechie's AI" maxlength="1500" autocomplete="off" placeholder="Ask me anything"><button type="submit">Send</button></form>`;
+<form id="ai-form2"><label class="ai-tool" id="ai-pic" aria-label="Send a photo">📷<input type="file" accept="image/*" id="ai-file" aria-label="Choose a photo"></label><button type="button" class="ai-tool" id="ai-mic" aria-label="Talk to the AI">🎙️</button><input id="ai-in2" aria-label="Ask Meechie's AI" maxlength="1500" autocomplete="off" placeholder="Ask me anything"><button type="submit">Send</button></form>`;
   document.body.append(fab, panel);
   const log = panel.querySelector("#ai-log2"), chips = panel.querySelector("#ai-chips"), inp = panel.querySelector("#ai-in2");
 
@@ -79,7 +79,8 @@ body.mw-editing #ai-fab{display:none!important}`;
   let talkBack = false; try { talkBack = localStorage.getItem("mw_ai_voice") === "1"; } catch (_) {}
   const spk = panel.querySelector("#ai-spk"); const paintSpk = () => { spk.textContent = talkBack ? "🔊" : "🔈"; spk.title = talkBack ? "Reading answers out loud (tap to stop)" : "Read answers out loud"; };
   paintSpk();
-  spk.addEventListener("click", () => { talkBack = !talkBack; try { localStorage.setItem("mw_ai_voice", talkBack ? "1" : "0"); } catch (_) {} if (!talkBack) speechSynthesis?.cancel(); paintSpk(); });
+  spk.addEventListener("click", () => { talkBack = !talkBack; try { localStorage.setItem("mw_ai_voice", talkBack ? "1" : "0"); } catch (_) {} if (!talkBack) window.speechSynthesis?.cancel(); else unlockSpeech(); paintSpk(); });
+  function unlockSpeech() { try { if (window.speechSynthesis && !unlockSpeech.done) { unlockSpeech.done = true; speechSynthesis.speak(new SpeechSynthesisUtterance("")); } } catch (_) {} }
   function speak(t) {
     if (!talkBack || !("speechSynthesis" in window)) return;
     const clean = String(t).split("\n\nSources:")[0].replace(/\[\d+\]/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*#_`]/g, "");
@@ -99,7 +100,7 @@ body.mw-editing #ai-fab{display:none!important}`;
     recog.onresult = (e) => { let t = ""; for (const r of e.results) { t += r[0].transcript; if (r.isFinal) finalText = t; } inp.value = t; };
     recog.onend = () => { mic.classList.remove("on"); inp.placeholder = "Ask me anything"; recog = null; const q = (finalText || inp.value).trim(); if (q) { inp.value = ""; if (!talkBack) { talkBack = true; paintSpk(); } ask(q); } };
     recog.onerror = () => { mic.classList.remove("on"); recog = null; inp.placeholder = "Ask me anything"; };
-    try { speechSynthesis?.cancel(); recog.start(); } catch (_) { mic.classList.remove("on"); recog = null; }
+    try { unlockSpeech(); window.speechSynthesis?.cancel(); recog.start(); } catch (_) { mic.classList.remove("on"); recog = null; }
   });
   /* send a photo */
   const attach = panel.querySelector("#ai-attach"); let pending = "";

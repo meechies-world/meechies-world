@@ -26,11 +26,13 @@
 #v-clips .snd{position:absolute;top:14px;right:14px;border:0;border-radius:999px;background:rgba(0,0,0,.5);color:#fff;padding:8px 12px;font:700 13px system-ui,sans-serif;cursor:pointer}
 #v-clips .paused-ic{position:absolute;font-size:64px;color:rgba(255,255,255,.85);pointer-events:none;text-shadow:0 2px 12px #000}
 #v-clips .clip-empty{height:100%;display:grid;place-content:center;text-align:center;color:var(--muted);padding:24px}
-#v-clips .clip-add{position:absolute;left:50%;transform:translateX(-50%);bottom:14px;width:58px;height:40px;border-radius:12px;border:0;background:linear-gradient(90deg,#25f4ee 0 12%,#fff 12% 88%,#fe2c55 88%);color:#000;font:800 26px/1 system-ui,sans-serif;cursor:pointer;overflow:hidden}
+#v-clips .clip-add{display:grid;place-items:center;position:absolute;left:50%;transform:translateX(-50%);bottom:14px;width:58px;height:40px;border-radius:12px;border:0;background:linear-gradient(90deg,#25f4ee 0 12%,#fff 12% 88%,#fe2c55 88%);color:#000;font:800 26px/1 system-ui,sans-serif;cursor:pointer;overflow:hidden}
 #v-clips .clip-add input{position:absolute;inset:0;opacity:0;cursor:pointer}
 #v-clips .clip-up{position:absolute;left:12px;right:12px;bottom:66px;background:var(--panel);border:1px solid var(--gold);border-radius:14px;padding:14px;display:grid;gap:10px;z-index:5}
 #v-clips .clip-up input[type=text]{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px system-ui,sans-serif}
-@media (max-width:640px){#v-clips .clips{height:calc(100dvh - 120px);border-radius:0;border:0}#v-clips .clips-wrap{margin:0 -16px}}`;
+@media (max-width:640px){#v-clips .clips{height:calc(100dvh - 120px);border-radius:0;border:0}}
+body.has-player #v-clips .clips{height:calc(100dvh - 230px - env(safe-area-inset-bottom,0px))}
+body.has-player #v-clips .rail{bottom:70px}`;
   document.head.appendChild(css);
 
   const P = () => (typeof posts !== "undefined" ? posts : []);

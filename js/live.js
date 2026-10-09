@@ -6,7 +6,7 @@
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
   const css = document.createElement("style");
   css.textContent = `
-.lv-card{margin-top:40px;border:1px solid var(--line);border-radius:18px;padding:18px;background:linear-gradient(180deg,#17130c,#0f0d09);display:grid;gap:12px}
+.lv-card{grid-template-columns:minmax(0,1fr);margin-top:40px;border:1px solid var(--line);border-radius:18px;padding:18px;background:linear-gradient(180deg,#17130c,#0f0d09);display:grid;gap:12px}
 .lv-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
 .lv-head h3{margin:4px 0 0;font-size:26px}
 .lv-chips{display:flex;gap:8px;flex-wrap:wrap}
@@ -56,10 +56,10 @@
       const b = e.target.closest("[data-st]"); if (!b) return;
       const s = stations[+b.dataset.st]; if (!s) return;
       if (typeof media === "undefined") return;
-      if (cur && cur.stationuuid === s.stationuuid && !media.paused) { media.pause(); return; }
+      if (typeof mode !== "undefined" && mode === "live" && cur && cur.stationuuid === s.stationuuid && !media.paused) { media.pause(); return; }
       cur = s; box.querySelectorAll(".lv-st").forEach((x) => x.classList.toggle("on", x === b));
-      try { mode = "live"; curIdx = -1; } catch (_) {}
-      media.src = s.url_resolved; media.play().catch(() => say("That station isn't answering. Try another one."));
+      try { mode = "live"; curIdx = -1; playTok++; room?.presence({ radio: null }); } catch (_) {}
+      media.onloadedmetadata = media.onerror = null; media.src = s.url_resolved; media.play().catch(() => say("That station isn't answering. Try another one."));
       const t = { title: s.name.trim(), artist: [s.state, s.country].filter(Boolean).join(", ") || "Live radio", cover: /^https:\/\//.test(s.favicon || "") ? s.favicon : "" };
       try { showBar(t, "LIVE RADIO · " + (s.countrycode || "")); renderTracks && renderTracks(); } catch (_) {}
       try { fetch(API[0] + "/json/url/" + s.stationuuid).catch(() => {}); } catch (_) {}

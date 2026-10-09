@@ -70,40 +70,53 @@
   function renderHome() { grids.forEach(renderGrid); }
   function renderGrid(hgrid) {
     const mine = vids.filter((v) => v.tt && (v.ttUser || "").toLowerCase() === "meechiesworldinc").sort((a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || (b.ttTime || b.createdAt) - (a.ttTime || a.createdAt)).slice(0, 40);
-    if (hgrid.querySelector(".htt.playing")) return; // don't interrupt a video that's playing
+    const sig = mine.map((v) => v.id + (v.featured ? "*" : "")).join(","); if (hgrid._sig === sig) return; hgrid._sig = sig;
+    const playing = hgrid.querySelector(".htt.playing");
     hgrid.innerHTML = mine.length ? mine.map((v) => `<button type="button" class="htt" data-htt="${E(v.id)}" aria-label="Play ${E(v.title)}">${fresh[v.tt] || v.thumb ? `<img src="${E(fresh[v.tt] || v.thumb)}" alt="" loading="lazy" data-ttid="${E(v.tt)}">` : ""}<span class="pl">▶</span><span class="cap">${E(v.title)}</span></button>`).join("")
       : `<a class="btn" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener">Watch Meechie on TikTok</a>`;
+    if (playing) { const same = hgrid.querySelector(`[data-htt="${playing.dataset.htt}"]`); if (same) same.replaceWith(playing); } // keep the video that's playing
     // TikTok cover links expire after a while; quietly fetch fresh ones when an image fails
     hgrid.querySelectorAll("img[data-ttid]").forEach((im) => im.addEventListener("error", async () => {
       const id = im.dataset.ttid; if (fresh[id] === "") { im.remove(); return; } fresh[id] = "";
       const r = await fetch("/api/tiktok?url=" + encodeURIComponent("https://www.tiktok.com/@meechiesworldinc/video/" + id)).then((x) => x.json()).catch(() => null);
       if (r && r.thumb) { fresh[id] = r.thumb; im.src = r.thumb; } else im.remove();
     }));
-    // arrows for computers; phones just swipe
     const wrap = hgrid.parentElement;
     if (mine.length > 1 && wrap && !wrap.querySelector(".htt-nav")) {
       wrap.insertAdjacentHTML("beforeend", '<button class="htt-nav l" type="button" aria-label="Previous">‹</button><button class="htt-nav r" type="button" aria-label="Next">›</button>');
       wrap.querySelector(".l").onclick = () => hgrid.scrollBy({ left: -hgrid.clientWidth * 0.8, behavior: "smooth" });
       wrap.querySelector(".r").onclick = () => hgrid.scrollBy({ left: hgrid.clientWidth * 0.8, behavior: "smooth" });
     }
-    // swiping while a video plays moves playback to the next video you land on
-    if (!hgrid._io) {
-      hgrid._io = new IntersectionObserver((ents) => ents.forEach((en) => {
-        if (en.isIntersecting && en.intersectionRatio > 0.85 && hgrid._auto && !en.target.classList.contains("playing")) playCard(hgrid, en.target);
-      }), { root: hgrid, threshold: [0.85] });
+    if (!hgrid._wired) {
+      hgrid._wired = true;
+      // start playing (muted, like TikTok and Instagram) as soon as the row scrolls into view
+      new IntersectionObserver((ents) => ents.forEach((en) => {
+        const pageShown = !hgrid.closest(".view")?.hidden;
+        if (en.isIntersecting && en.intersectionRatio >= 0.5 && pageShown && !hgrid.querySelector(".htt.playing") && !hgrid._stopped) { const c = centered(hgrid); if (c) playCard(hgrid, c, true); }
+        if (!en.isIntersecting) stopGrid(hgrid);
+      }), { threshold: [0, 0.5] }).observe(hgrid);
+      // swiping moves playback to the video you land on
+      let t = null;
+      hgrid.addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(() => { if (!hgrid._auto) return; const c = centered(hgrid); if (c && !c.classList.contains("playing")) playCard(hgrid, c, true); }, 220); }, { passive: true });
     }
-    hgrid.querySelectorAll(".htt").forEach((c) => hgrid._io.observe(c));
   }
-  function playCard(hgrid, b) {
+  function centered(hgrid) { // the card most fully on screen (leftmost wins a tie)
+    const gr = hgrid.getBoundingClientRect(); let best = null, bv = 0;
+    hgrid.querySelectorAll(".htt").forEach((c) => { const r = c.getBoundingClientRect(); const vis = Math.min(r.right, gr.right) - Math.max(r.left, gr.left); if (vis > bv + 4) { bv = vis; best = c; } });
+    return best;
+  }
+  function stopGrid(hgrid) { hgrid.querySelectorAll(".htt.playing").forEach((x) => { x.classList.remove("playing"); x.querySelector("iframe")?.remove(); }); }
+  function playCard(hgrid, b, auto) {
     const v = vids.find((x) => x.id === b.dataset.htt); if (!v) return;
-    grids.forEach((g) => g.querySelectorAll(".htt.playing").forEach((x) => { x.classList.remove("playing"); x.querySelector("iframe")?.remove(); }));
-    try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
+    grids.forEach(stopGrid);
+    // a tap means they want sound: pause the radio. Auto-play stays muted and leaves the radio alone.
+    if (!auto) { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} }
     b.classList.add("playing"); hgrid._auto = true;
-    b.insertAdjacentHTML("beforeend", `<iframe src="https://www.tiktok.com/player/v1/${v.tt}?autoplay=1&rel=0&music_info=1&description=1" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen title="${E(v.title)}"></iframe>`);
+    b.insertAdjacentHTML("beforeend", `<iframe src="https://www.tiktok.com/player/v1/${v.tt}?autoplay=1&loop=1&rel=0&music_info=1&description=1${auto ? "&mute=1&muted=1" : ""}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen title="${E(v.title)}"></iframe>`);
   }
   grids.forEach((hgrid) => hgrid.addEventListener("click", (e) => {
     const b = e.target.closest("[data-htt]"); if (!b || b.classList.contains("playing")) return;
-    playCard(hgrid, b); b.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    hgrid._stopped = false; playCard(hgrid, b, false); b.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }));
 
   view.addEventListener("click", async (e) => {
