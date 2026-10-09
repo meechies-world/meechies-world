@@ -1439,8 +1439,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791565724"></script>
-<script src="js/platform.js?v=1791565724"></script>
+<script src="js/config.js?v=1791565803"></script>
+<script src="js/platform.js?v=1791565803"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1864,6 +1864,20 @@ const DEFAULT_EPOCH=Date.UTC(2026,0,1);
 let tracks=[], radioEpoch=DEFAULT_EPOCH, assets=null, mode=null, curIdx=-1;
 window.MW_TRACKS=()=>tracks;
 const media=$("#audio");
+media.crossOrigin="anonymous"; // our songs allow this, and it lets the booster below work
+/* Volume booster: plays the radio and library about twice as loud, with a limiter so it doesn't crackle.
+   (Skipped on iPhone/iPad, where it would stop the music when the screen locks.) */
+const IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+let boostCtx=null, boostGain=null;
+function setupBoost(){ if(boostCtx||IOS) return;
+  try{ const C=window.AudioContext||window.webkitAudioContext; boostCtx=new C();
+    const src=boostCtx.createMediaElementSource(media); boostGain=boostCtx.createGain(); boostGain.gain.value=+(window.MW_SITE?.boost||2);
+    const lim=boostCtx.createDynamicsCompressor(); lim.threshold.value=-4; lim.knee.value=4; lim.ratio.value=20; lim.attack.value=0.002; lim.release.value=0.15;
+    src.connect(boostGain); boostGain.connect(lim); lim.connect(boostCtx.destination);
+  }catch(_){ boostCtx=null; } }
+const wakeBoost=()=>{ setupBoost(); if(boostCtx && boostCtx.state!=="running") boostCtx.resume().catch(()=>{}); };
+document.addEventListener("pointerdown",wakeBoost,{capture:true}); document.addEventListener("keydown",wakeBoost,{capture:true});
+media.addEventListener("play",()=>{ if(boostCtx && boostCtx.state!=="running") boostCtx.resume().catch(()=>{}); });
 const fmt=s=>{s=Math.max(0,Math.floor(s||0));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
 const trackUrl=t=>(window.MW?.assetUrl? MW.assetUrl(t.assetId) : "/_blob/"+t.assetId);
 const ICON_PLAY='<path d="M7 4v16l13-8z"/>', ICON_PAUSE='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
@@ -1913,23 +1927,24 @@ async function playLib(i){
   const tok=++playTok; mode="library"; curIdx=(i+tracks.length)%tracks.length; const t=tracks[curIdx];
   await load(t,0,true); if(tok!==playTok) return; media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
 }
-function updIcons(){ $("#pb-icon").innerHTML = media.paused?ICON_PLAY:ICON_PAUSE; $("#pb-play").setAttribute("aria-label",media.paused?"Play":"Pause");
+function updIcons(){ const el=(mode==="live"&&window.MW_LIVE)?MW_LIVE:media; $("#pb-icon").innerHTML = el.paused?ICON_PLAY:ICON_PAUSE; $("#pb-play").setAttribute("aria-label",el.paused?"Play":"Pause");
   $("#tune-in").textContent = mode==="radio"&&!media.paused ? "❚❚ Pause radio" : "▶ Tune in"; renderTracks(); }
 media.addEventListener("play",updIcons); media.addEventListener("pause",updIcons);
+media.addEventListener("play",()=>{ if(window.MW_LIVE && !MW_LIVE.paused) MW_LIVE.pause(); });
 /* Lock screen / notification controls, so the music keeps going when the phone locks */
 function lockScreen(t,sub){ if(!("mediaSession" in navigator)||!t) return;
   try{ const art=/^https:\/\//.test(t.cover||"")?[{src:t.cover,sizes:"512x512"}]:[{src:location.origin+"/img/icon-512.png",sizes:"512x512",type:"image/png"}];
     navigator.mediaSession.metadata=new MediaMetadata({title:t.title||"Meechie's World Radio",artist:t.artist||"Meechie",album:sub||"Meechie's World Radio",artwork:art}); }catch(_){} }
 if("mediaSession" in navigator){ const ms=navigator.mediaSession, H=(a,f)=>{ try{ ms.setActionHandler(a,f); }catch(_){} };
-  H("play",()=>{ if(mode==="dj"){ window.MW_DJ?.start(); return; } if(mode==="radio"&&media.paused) tuneIn(); else media.play().catch(()=>{}); });
-  H("pause",()=>{ if(mode==="dj"){ window.MW_DJ?.stop(); return; } media.pause(); });
+  H("play",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.play().catch(()=>{}); return; } if(mode==="dj"){ window.MW_DJ?.start(); return; } if(mode==="radio"&&media.paused) tuneIn(); else media.play().catch(()=>{}); });
+  H("pause",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.pause(); return; } if(mode==="dj"){ window.MW_DJ?.stop(); return; } media.pause(); });
   H("nexttrack",()=>{ if(mode==="library") playLib(curIdx+1); });
   H("previoustrack",()=>{ if(mode==="library"){ if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); } });
   media.addEventListener("play",()=>{ try{ ms.playbackState="playing"; }catch(_){} }); media.addEventListener("pause",()=>{ try{ ms.playbackState="paused"; }catch(_){} }); }
 media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(true); else if(mode==="library") playLib(curIdx+1); });
 media.addEventListener("timeupdate",()=>{ const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0); $("#pb-fill").style.width=(mode==="live"?100:(d?media.currentTime/d*100:0))+"%"; $("#pb-time").textContent=mode==="live"?"● LIVE":fmt(media.currentTime)+" / "+fmt(d); });
 $("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
-$("#pb-play").addEventListener("click",()=>{ if(mode==="dj"){ document.getElementById("dj-listen")?.click(); return; } if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
+$("#pb-play").addEventListener("click",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.paused?MW_LIVE.play().catch(()=>{}):MW_LIVE.pause(); return; } if(mode==="dj"){ document.getElementById("dj-listen")?.click(); return; } if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
 $("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
 $("#pb-prev").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
 $("#pb-progress").addEventListener("click",e=>{ if(mode!=="library"||!media.duration) return; const r=e.currentTarget.getBoundingClientRect(); media.currentTime=(e.clientX-r.left)/r.width*media.duration; });
@@ -2434,18 +2449,18 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791565724"></script>
-<script src="js/studio.js?v=1791565724"></script>
-<script src="js/owner.js?v=1791565724"></script>
-<script src="js/messages.js?v=1791565724"></script>
-<script src="js/videos.js?v=1791565724"></script>
-<script src="js/world3d.js?v=1791565724"></script>
-<script src="js/clips.js?v=1791565724"></script>
-<script src="js/dj.js?v=1791565724"></script>
-<script src="js/live.js?v=1791565724"></script>
-<script src="js/beatlab.js?v=1791565724"></script>
-<script src="js/friends.js?v=1791565724"></script>
-<script src="js/dating.js?v=1791565724"></script>
-<script src="js/ai-widget.js?v=1791565724"></script>
+<script src="js/appnav.js?v=1791565803"></script>
+<script src="js/studio.js?v=1791565803"></script>
+<script src="js/owner.js?v=1791565803"></script>
+<script src="js/messages.js?v=1791565803"></script>
+<script src="js/videos.js?v=1791565803"></script>
+<script src="js/world3d.js?v=1791565803"></script>
+<script src="js/clips.js?v=1791565803"></script>
+<script src="js/dj.js?v=1791565803"></script>
+<script src="js/live.js?v=1791565803"></script>
+<script src="js/beatlab.js?v=1791565803"></script>
+<script src="js/friends.js?v=1791565803"></script>
+<script src="js/dating.js?v=1791565803"></script>
+<script src="js/ai-widget.js?v=1791565803"></script>
 </body>
 </html>

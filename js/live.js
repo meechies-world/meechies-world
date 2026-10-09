@@ -36,6 +36,11 @@
     lib.after(box);
     const API = ["https://de1.api.radio-browser.info", "https://nl1.api.radio-browser.info", "https://at1.api.radio-browser.info"];
     let stations = [], cur = null;
+    // live stations get their own player (other stations' servers don't allow the volume booster)
+    const liveEl = window.MW_LIVE = new Audio(); liveEl.preload = "none"; liveEl.playsInline = true;
+    liveEl.addEventListener("play", () => { try { updIcons(); navigator.mediaSession.playbackState = "playing"; } catch (_) {} });
+    liveEl.addEventListener("pause", () => { try { updIcons(); navigator.mediaSession.playbackState = "paused"; } catch (_) {} });
+    liveEl.addEventListener("error", () => { if (cur) say("That station isn't answering. Try another one."); });
     async function find(params) {
       const qs = new URLSearchParams({ limit: "40", hidebroken: "true", order: "clickcount", reverse: "true", ...params }).toString();
       for (const base of API) {
@@ -56,12 +61,13 @@
       const b = e.target.closest("[data-st]"); if (!b) return;
       const s = stations[+b.dataset.st]; if (!s) return;
       if (typeof media === "undefined") return;
-      if (typeof mode !== "undefined" && mode === "live" && cur && cur.stationuuid === s.stationuuid && !media.paused) { media.pause(); return; }
+      if (typeof mode !== "undefined" && mode === "live" && cur && cur.stationuuid === s.stationuuid && !liveEl.paused) { liveEl.pause(); return; }
       cur = s; box.querySelectorAll(".lv-st").forEach((x) => x.classList.toggle("on", x === b));
       try { mode = "live"; curIdx = -1; playTok++; room?.presence({ radio: null }); } catch (_) {}
-      media.onloadedmetadata = media.onerror = null; media.src = s.url_resolved; media.play().catch(() => say("That station isn't answering. Try another one."));
+      try { media.pause(); } catch (_) {}
+      liveEl.src = s.url_resolved; liveEl.play().catch(() => say("That station isn't answering. Try another one."));
       const t = { title: s.name.trim(), artist: [s.state, s.country].filter(Boolean).join(", ") || "Live radio", cover: /^https:\/\//.test(s.favicon || "") ? s.favicon : "" };
-      try { showBar(t, "LIVE RADIO · " + (s.countrycode || "")); renderTracks && renderTracks(); } catch (_) {}
+      try { showBar(t, "LIVE RADIO · " + (s.countrycode || "")); renderTracks && renderTracks(); document.getElementById("pb-time").textContent = "● LIVE"; document.getElementById("pb-fill").style.width = "100%"; } catch (_) {}
       try { fetch(API[0] + "/json/url/" + s.stationuuid).catch(() => {}); } catch (_) {}
     });
     box.querySelector("#lv-form").addEventListener("submit", (e) => { e.preventDefault(); const q = box.querySelector("#lv-q").value.trim(); if (!q) return; box.querySelectorAll("[data-tag]").forEach((x) => x.setAttribute("aria-pressed", "false")); show({ name: q }); });
