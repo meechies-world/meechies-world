@@ -633,7 +633,9 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .tt-box{margin:0 auto 28px;max-width:960px;display:grid;gap:14px}
 .tt-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
 .tt-box .tiktok-embed{background:transparent;border:0}
-.htt-wrap{position:relative}
+.tt-box{grid-template-columns:minmax(0,1fr)}
+.htt-wrap{position:relative;min-width:0;max-width:100%}
+.htt-grid{max-width:100%;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
 .htt-grid{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(190px,240px);gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:none;overscroll-behavior-x:contain}
 .htt-grid::-webkit-scrollbar{display:none}
 .htt-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:42px;height:42px;border-radius:50%;border:1px solid var(--gold);background:rgba(11,10,8,.85);color:var(--gold-hi);font-size:20px;cursor:pointer}
