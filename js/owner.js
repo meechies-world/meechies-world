@@ -192,6 +192,8 @@
     const css = document.createElement("style");
     css.textContent = `
 #mw-fab{position:fixed;left:16px;bottom:16px;z-index:9998;border:1px solid #f0cf78;background:#d4a843;color:#0b0a08;font:700 14px system-ui,sans-serif;padding:11px 18px;border-radius:999px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+body.has-player #mw-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+@media(max-width:600px){#mw-fab{padding:9px 14px;font-size:13px}}
 #mw-bar{position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#100e0a;border-top:2px solid #d4a843;color:#f3ecdc;font:14px system-ui,sans-serif;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:grid;gap:10px;box-shadow:0 -12px 30px rgba(0,0,0,.6);max-height:55vh;overflow:auto}
 #mw-bar[hidden],#mw-fab[hidden],#mw-linkrow[hidden]{display:none!important}
 #mw-bar .r{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
