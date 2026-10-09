@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Post a video · Meechie's World</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0a08">
+<link rel="icon" href="/img/icon-192.png">
+<style>
+:root{--ink:#0b0a08;--panel:#15130f;--line:#3a3223;--gold:#d4a843;--gold-hi:#f0cf78;--text:#f3ecdc;--muted:#a99f8b;--ok:#8fd6a8;--bad:#ff9b8a}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--ink);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+header img{width:44px;height:44px;border-radius:10px}
+h1{font:800 24px Georgia,serif;color:var(--gold-hi);margin:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:14px}
+label{font-size:14px;color:var(--muted)}
+input[type=text]{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text);font:inherit}
+.pick{position:relative;display:grid;place-items:center;gap:6px;border:2px dashed var(--gold);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:rgba(212,168,67,.06)}
+.pick b{color:var(--gold-hi);font-size:18px}
+.pick input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.btn{display:block;width:100%;border:0;border-radius:999px;padding:14px;background:var(--gold);color:#0b0a08;font:800 16px system-ui,sans-serif;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.list{display:grid;gap:10px}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
+.item .row{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.item .name{overflow-wrap:anywhere}
+.bar{height:8px;background:#2a2418;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.muted{color:var(--muted)}
+a{color:var(--gold-hi)}
+.note{font-size:13px;color:var(--muted)}
+textarea,select{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text);font:inherit}
+textarea{min-height:90px}
+.tabs{display:flex;gap:8px}.tabs button{flex:1;border:1px solid var(--line);background:transparent;color:var(--text);border-radius:999px;padding:10px;font:700 14px system-ui,sans-serif;cursor:pointer}.tabs button[aria-pressed=true]{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
+video{width:100%;max-height:260px;border-radius:12px;background:#000}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="/img/icon-192.png" alt=""><div><h1>Post a video</h1><div class="muted" style="font-size:14px">Meechie's World</div></div></header>
+  <div id="gate" class="card"><span class="muted">Checking your account...</span></div>
+  <form id="app" class="card" hidden>
+    <div class="tabs" id="where"><button type="button" data-w="post" aria-pressed="true">Community feed</button><button type="button" data-w="ad" aria-pressed="false">Ad Board</button></div>
+    <label class="pick" id="pick"><b id="pick-t">Tap to choose a video</b><span class="note">MP4, MOV or WebM · up to 50 MB</span><input type="file" id="file" accept="video/*"></label>
+    <video id="prev" controls playsinline muted hidden></video>
+    <div id="f-post"><label for="text">Say something (optional)</label><textarea id="text" maxlength="2000" placeholder="What's going on?"></textarea></div>
+    <div id="f-ad" hidden style="display:grid;gap:10px">
+      <div><label for="title">Headline</label><input type="text" id="title" maxlength="70"></div>
+      <div><label for="cat">Category</label><select id="cat"><option>Business</option><option>Event</option><option>Service</option><option>For Sale</option><option>Hiring</option></select></div>
+      <div><label for="desc">Details</label><textarea id="desc" maxlength="600"></textarea></div>
+      <div><label for="contact">How people reach you</label><input type="text" id="contact" maxlength="120"></div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div id="st" class="note"></div>
+    <button class="btn" id="go" type="submit" disabled>Post video</button>
+    <p class="note" style="margin:0"><a href="/#community">Back to Meechie's World</a></p>
+  </form>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/platform.js"></script>
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  let file=null, where="post", db=null;
+  $("#where").addEventListener("click",e=>{ const b=e.target.closest("[data-w]"); if(!b) return; where=b.dataset.w;
+    document.querySelectorAll("#where button").forEach(x=>x.setAttribute("aria-pressed",x===b)); $("#f-post").hidden=where!=="post"; $("#f-ad").hidden=where!=="ad"; });
+  $("#file").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value="";
+    if(!f){ $("#st").innerHTML='<span class="bad">No video was picked. Try again.</span>'; return; }
+    if(f.size>MW.VIDEO_MAX){ $("#st").innerHTML='<span class="bad">That video is over 50 MB. Trim it or record a shorter clip.</span>'; return; }
+    file=f; $("#pick-t").textContent=f.name+" ("+(f.size/1048576).toFixed(1)+" MB)"; const v=$("#prev"); v.src=URL.createObjectURL(f); v.hidden=false; $("#st").textContent=""; $("#go").disabled=false; });
+  $("#app").addEventListener("submit",async e=>{ e.preventDefault(); if(!file) return;
+    if(where==="ad" && (!$("#title").value.trim()||!$("#desc").value.trim()||!$("#contact").value.trim())){ $("#st").innerHTML='<span class="bad">Fill in the headline, details and how people reach you.</span>'; return; }
+    const b=$("#go"); b.disabled=true; let vid=null;
+    try{
+      vid=await MW.uploadVideo(file,f=>{ const n=Math.round(f*100); $("#bar").style.width=n+"%"; b.textContent="Uploading "+n+"%"; });
+      b.textContent="Posting...";
+      const me=MW.session().user.id, now=Date.now();
+      if(where==="post") await db.collection("posts").add({authorId:me,text:$("#text").value.trim(),photo:"",video:vid.url,videoPath:vid.path,likes:[],replyCount:0,sponsored:false,announce:false,createdAt:now});
+      else await db.collection("ads").add({authorId:me,title:$("#title").value.trim(),cat:$("#cat").value,desc:$("#desc").value.trim(),contact:$("#contact").value.trim(),photo:"",video:vid.url,videoPath:vid.path,sponsored:false,createdAt:now});
+      $("#st").innerHTML='<span class="ok">Posted ✓</span> <a href="/#'+(where==="post"?"community":"ads")+'">See it</a>'; b.textContent="Posted ✓";
+    }catch(err){ if(vid) MW.deleteVideo(vid.path); $("#st").innerHTML='<span class="bad"></span>'; $("#st .bad").textContent=err.message||"Couldn't post."; b.disabled=false; b.textContent="Try again"; }
+  });
+  (async()=>{
+    await MW.sessionReady;
+    if(!MW.session()){ $("#gate").innerHTML='<span>Sign in on the main site first, then come back here.</span><a class="btn" style="text-align:center;text-decoration:none" href="/#community">Go sign in</a>'; return; }
+    db=await claude.use("db");
+    const m=await db.doc("members/"+MW.session().user.id).get().catch(()=>null);
+    if(!m||!m.exists){ $("#gate").innerHTML='<span>Join the community first (pick a handle), then come back.</span><a class="btn" style="text-align:center;text-decoration:none" href="/#community">Join free</a>'; return; }
+    if(location.hash==="#ad") $("#where [data-w=ad]").click();
+    $("#gate").hidden=true; $("#app").hidden=false;
+  })();
+})();
+</script>
+</body>
+</html>

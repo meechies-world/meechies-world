@@ -199,6 +199,35 @@
   function assetUrl(id) { return sb ? sb.storage.from("assets").getPublicUrl(id).data.publicUrl : ""; }
   window.MW.assetUrl = assetUrl;
 
+  /* ---------- member videos (bucket "media", each member's own folder) ---------- */
+  const VTYPES = { mp4: "video/mp4", m4v: "video/x-m4v", mov: "video/quicktime", webm: "video/webm", "3gp": "video/3gpp", mkv: "video/x-matroska" };
+  window.MW.VIDEO_MAX = 50 * 1024 * 1024;
+  window.MW.uploadVideo = (file, onProg) => new Promise((res, rej) => {
+    if (!session) return rej(new Error("Sign in first."));
+    if (file.size > window.MW.VIDEO_MAX) return rej(new Error("That video is over 50 MB. Trim it or record a shorter clip."));
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    let type = file.type || VTYPES[ext] || "video/mp4";
+    if (!/^video\//.test(type)) return rej(new Error("Pick a video file (MP4, MOV or WebM)."));
+    const path = session.user.id + "/" + newId() + "." + (VTYPES[ext] ? ext : "mp4");
+    const x = new XMLHttpRequest();
+    x.open("POST", cfg.SUPABASE_URL + "/storage/v1/object/media/" + path);
+    x.setRequestHeader("authorization", "Bearer " + session.access_token);
+    x.setRequestHeader("apikey", cfg.SUPABASE_ANON_KEY);
+    x.setRequestHeader("content-type", type);
+    x.setRequestHeader("x-upsert", "false");
+    x.upload.onprogress = (e) => { if (e.lengthComputable && onProg) onProg(e.loaded / e.total); };
+    x.onload = () => {
+      if (x.status >= 200 && x.status < 300) return res({ path, url: sb.storage.from("media").getPublicUrl(path).data.publicUrl });
+      let m = "Upload failed (" + x.status + ")"; try { const j = JSON.parse(x.responseText); m = j.message || j.error || m; } catch (_) {}
+      if (/mime|type/i.test(m)) m = "That video type isn't supported. Use MP4, MOV or WebM.";
+      if (/size|large|exceed/i.test(m)) m = "That video is over 50 MB. Trim it or record a shorter clip.";
+      rej(new Error(m));
+    };
+    x.onerror = () => rej(new Error("Network problem. Check your connection and try again."));
+    x.send(file);
+  });
+  window.MW.deleteVideo = (path) => (sb && path ? sb.storage.from("media").remove([path]).catch(() => {}) : Promise.resolve());
+
   /* ---------- the claude.use() shim ---------- */
   window.claude = {
     async use(name) {

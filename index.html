@@ -182,6 +182,10 @@ aside.side{display:grid;gap:18px;position:sticky;top:calc(env(safe-area-inset-to
 .ad{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
 .ad.sponsored{border-color:var(--gold)}
 .ad img{width:100%;aspect-ratio:16/10;object-fit:cover}
+.ad video{width:100%;aspect-ratio:16/10;background:#000;display:block}
+.post video.vid{width:100%;max-height:600px;border-radius:var(--r);background:#000;display:block}
+.vid-pick{display:grid;gap:6px}.vid-pick video{max-height:220px;border-radius:var(--r);border:1px solid var(--line);background:#000}
+.vid-bar{height:6px;background:#2a2418;border-radius:99px;overflow:hidden}.vid-bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s}
 .ad .body{padding:16px;display:grid;gap:8px;flex:1;align-content:start}
 .ad h3{font-family:var(--body);font-size:18px;font-weight:700}
 .ad .cat{font:500 11px var(--mono);color:var(--gold);letter-spacing:.12em;text-transform:uppercase}
@@ -867,11 +871,13 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
         <div class="card composer" id="composer" hidden>
           <div class="field"><label for="p-text">Share something with the community</label><textarea id="p-text" maxlength="2000" placeholder="What's going on?"></textarea></div>
           <img id="p-preview" class="preview-img" alt="Photo to post" hidden>
+          <div class="vid-pick" id="p-vwrap" hidden><video id="p-vprev" controls playsinline muted></video><small class="muted" id="p-vinfo"></small><div class="vid-bar"><i id="p-vbar"></i></div><button class="act" type="button" id="p-vclear" style="justify-self:start">Remove video</button></div>
           <label id="announce-opt" hidden style="display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;color:var(--gold-hi)"><input type="checkbox" id="p-announce"> Send to everybody as an announcement (banner on every page)</label>
           <div class="row">
-            <span class="btn ghost sm file-btn">Add photo<input type="file" id="p-photo" accept="image/*" aria-label="Add photo"></span>
+            <span style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn ghost sm file-btn">Add photo<input type="file" id="p-photo" accept="image/*" aria-label="Add photo"></span><span class="btn ghost sm file-btn">Add video<input type="file" id="p-video" accept="video/*" aria-label="Add video"></span></span>
             <button class="btn" id="p-post" type="button">Post</button>
           </div>
+          <small class="muted">Video not attaching on your phone? <a href="/post-video.html">Use the simple video poster</a>.</small>
         </div>
         <div class="empty" id="signed-out" hidden>
           <h3>Join the community</h3>
@@ -1307,6 +1313,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <div class="field"><label for="a-desc">Details</label><textarea id="a-desc" maxlength="600" required></textarea></div>
     <div class="field"><label for="a-contact">How people reach you</label><input type="text" id="a-contact" maxlength="120" required></div>
     <div class="field"><label for="a-photo">Photo (optional)</label><input type="file" id="a-photo" accept="image/*"></div>
+    <div class="field"><label for="a-video">Video (optional, up to 50 MB)</label><input type="file" id="a-video" accept="video/*"><small class="muted">Phone trouble? <a href="/post-video.html#ad">Use the simple video poster</a>.</small><div class="vid-pick" id="a-vwrap" hidden><small class="muted" id="a-vinfo"></small><div class="vid-bar"><i id="a-vbar"></i></div></div></div>
     <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" type="button" id="ad-cancel">Cancel</button><button class="btn" type="submit">Post ad</button></div>
   </form>
 </dialog>
@@ -2104,17 +2111,23 @@ $("#join-form").addEventListener("submit",async e=>{
 /* Feed */
 let posts=[], openReplies=new Set(), replyCache={}, replySubs={};
 function subFeed(){ db.collection("posts").orderBy("createdAt","desc").limit(100).onSnapshot(s=>{posts=s.docs.map(d=>({id:d.id,...d.data()}));renderFeed();renderAnnouncement();}, e=>console.warn(e)); }
-let pendingPhoto=null;
+let pendingPhoto=null, pendingVideo=null;
+function pickVideo(f,info,wrap){ if(!f) return null; if(f.size>MW.VIDEO_MAX){ toast("That video is over 50 MB. Trim it or record a shorter clip."); return null; } $(info).textContent=f.name+" · "+(f.size/1048576).toFixed(1)+" MB"; $(wrap).hidden=false; return f; }
+$("#p-video").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; pendingVideo=pickVideo(f,"#p-vinfo","#p-vwrap"); if(pendingVideo){ const v=$("#p-vprev"); try{ URL.revokeObjectURL(v.src); }catch(_){} v.src=URL.createObjectURL(pendingVideo); $("#p-vbar").style.width="0"; } });
+$("#p-vclear").addEventListener("click",()=>{ pendingVideo=null; const v=$("#p-vprev"); try{ URL.revokeObjectURL(v.src); }catch(_){} v.removeAttribute("src"); $("#p-vwrap").hidden=true; });
 $("#p-photo").addEventListener("change",async e=>{const f=e.target.files[0]; if(!f) return; try{pendingPhoto=await compress(f); $("#p-preview").src=pendingPhoto; $("#p-preview").hidden=false;}catch(err){toast(err.message);} });
 $("#p-post").addEventListener("click",async()=>{
   if(!needMember()) return;
-  const text=$("#p-text").value.trim(); if(!text && !pendingPhoto){toast("Write something or add a photo.");return;}
+  const text=$("#p-text").value.trim(); if(!text && !pendingPhoto && !pendingVideo){toast("Write something or add a photo or video.");return;}
   const b=$("#p-post"); b.disabled=true;
   const announce = isOwner && $("#p-announce").checked;
-  try{ await db.collection("posts").add({authorId:me,text,photo:pendingPhoto||"",likes:[],replyCount:0,sponsored:announce,announce,createdAt:Date.now()});
-    $("#p-text").value=""; $("#p-announce").checked=false; try{localStorage.removeItem("mw-dismissed");}catch(e){} pendingPhoto=null; $("#p-preview").hidden=true; $("#p-photo").value=""; toast("Posted"); }
-  catch(err){ toast("Couldn't post: "+(err.message||err.code)); }
-  b.disabled=false;
+  let vid=null;
+  try{
+    if(pendingVideo){ b.textContent="Uploading 0%"; vid=await MW.uploadVideo(pendingVideo,f=>{ const n=Math.round(f*100); b.textContent="Uploading "+n+"%"; $("#p-vbar").style.width=n+"%"; }); b.textContent="Posting..."; }
+    await db.collection("posts").add({authorId:me,text,photo:pendingPhoto||"",...(vid?{video:vid.url,videoPath:vid.path}:{}),likes:[],replyCount:0,sponsored:announce,announce,createdAt:Date.now()});
+    $("#p-text").value=""; $("#p-announce").checked=false; try{localStorage.removeItem("mw-dismissed");}catch(e){} pendingPhoto=null; $("#p-preview").hidden=true; $("#p-photo").value=""; $("#p-vclear").click(); toast("Posted"); }
+  catch(err){ if(vid) MW.deleteVideo(vid.path); toast("Couldn't post: "+(err.message||err.code)); }
+  b.disabled=false; b.textContent="Post";
 });
 function renderFeed(){
   const feed=$("#feed");
@@ -2129,6 +2142,7 @@ function renderFeed(){
     el.innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${p.authorId}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(shop[1])}" target="_blank" rel="noopener">Shop</a>`:""}</div>
       ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
       ${p.photo?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}">`:""}
+      ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}
       <div class="post-actions">
         <button class="act ${liked?"on":""}" data-like="${p.id}">♥ ${(p.likes||[]).length||""} Like</button>
         <button class="act" data-replies="${p.id}">💬 ${p.replyCount||""} Comment</button>
@@ -2148,7 +2162,7 @@ $("#feed").addEventListener("click",async e=>{
   if(t.dataset.giftto){ openGift(t.dataset.giftto); return; }
   if(t.dataset.replies){ const id=t.dataset.replies; if(openReplies.has(id)) openReplies.delete(id); else { openReplies.add(id); subReplies(id);} renderFeed(); }
   if(t.dataset.sponsor){ const p=posts.find(x=>x.id===t.dataset.sponsor); db.doc("posts/"+p.id).update({sponsored:!p.sponsored}).catch(err=>toast(err.message||err.code)); }
-  if(t.dataset.del){ if(t.dataset.confirm){ db.doc("posts/"+t.dataset.del).delete().then(()=>toast("Deleted")).catch(err=>toast(err.message||err.code)); } else { t.dataset.confirm="1"; t.textContent="Tap again to delete"; } }
+  if(t.dataset.del){ if(t.dataset.confirm){ const vp=(posts.find(x=>x.id===t.dataset.del)||{}).videoPath; db.doc("posts/"+t.dataset.del).delete().then(()=>{ if(vp) MW.deleteVideo(vp); toast("Deleted"); }).catch(err=>toast(err.message||err.code)); } else { t.dataset.confirm="1"; t.textContent="Tap again to delete"; } }
 });
 function subReplies(id){ if(replySubs[id]) return; replySubs[id]=db.collection("posts/"+id+"/replies").orderBy("createdAt","asc").limit(200).onSnapshot(s=>{replyCache[id]=s.docs.map(d=>d.data()); drawReplies(id);}, e=>console.warn(e)); }
 function drawReplies(id){
@@ -2200,28 +2214,33 @@ async function joinRoom(){
 }
 
 /* Ads */
-let ads=[], adCat="all", pendingAdPhoto="";
+let ads=[], adCat="all", pendingAdPhoto="", pendingAdVideo=null;
 function subAds(){ db.collection("ads").orderBy("createdAt","desc").limit(200).onSnapshot(s=>{ads=s.docs.map(d=>({id:d.id,...d.data()}));renderAds();}, e=>console.warn(e)); }
 function renderAds(){
   const list=ads.filter(a=>adCat==="all"||a.cat===adCat).sort((a,b)=>(b.sponsored?1:0)-(a.sponsored?1:0));
   $("#ads-empty").hidden=list.length>0;
-  $("#ads").innerHTML=list.map(a=>`<article class="ad ${a.sponsored?"sponsored":""}">${a.photo?`<img src="${esc(a.photo)}" alt="">`:""}
+  $("#ads").innerHTML=list.map(a=>`<article class="ad ${a.sponsored?"sponsored":""}">${/^https:\/\//.test(a.video||"")?`<video src="${esc(a.video)}#t=0.1" controls playsinline preload="metadata"${a.photo?` poster="${esc(a.photo)}"`:""}></video>`:a.photo?`<img src="${esc(a.photo)}" alt="">`:""}
     <div class="body"><span class="cat">${esc(a.cat)}${a.sponsored?' · <span class="badge">Promoted</span>':''}</span><h3>${esc(a.title)}</h3><p>${esc(a.desc)}</p></div>
     <div class="foot"><span class="muted">${esc(a.contact)}</span><span style="display:flex;gap:4px">${isOwner?`<button class="act" data-asp="${a.id}">${a.sponsored?"Unpromote":"Promote"}</button>`:""}${(a.authorId===me||isOwner)?`<button class="act" data-adel="${a.id}">Delete</button>`:""}</span></div></article>`).join("");
 }
 $("#ad-filters").addEventListener("click",e=>{const c=e.target.closest("[data-cat]"); if(!c) return; adCat=c.dataset.cat; $$("#ad-filters .chip").forEach(x=>x.setAttribute("aria-pressed",x===c)); renderAds();});
 $("#ads").addEventListener("click",e=>{const t=e.target.closest("button"); if(!t) return;
   if(t.dataset.asp){const a=ads.find(x=>x.id===t.dataset.asp); db.doc("ads/"+a.id).update({sponsored:!a.sponsored});}
-  if(t.dataset.adel){ if(t.dataset.confirm) db.doc("ads/"+t.dataset.adel).delete(); else {t.dataset.confirm="1"; t.textContent="Tap again";} }
+  if(t.dataset.adel){ if(t.dataset.confirm){ const vp=(ads.find(x=>x.id===t.dataset.adel)||{}).videoPath; db.doc("ads/"+t.dataset.adel).delete().then(()=>{ if(vp) MW.deleteVideo(vp); }); } else {t.dataset.confirm="1"; t.textContent="Tap again";} }
 });
 $("#new-ad").addEventListener("click",()=>{ if(needMember()) $("#ad-dialog").showModal(); });
 $("#ad-cancel").addEventListener("click",()=>$("#ad-dialog").close());
 $("#a-photo").addEventListener("change",async e=>{const f=e.target.files[0]; if(f){ try{pendingAdPhoto=await compress(f,900);}catch(err){toast(err.message);} }});
+$("#a-video").addEventListener("change",e=>{ pendingAdVideo=pickVideo(e.target.files[0],"#a-vinfo","#a-vwrap"); if(!pendingAdVideo) e.target.value=""; $("#a-vbar").style.width="0"; });
 $("#ad-form").addEventListener("submit",async e=>{
   e.preventDefault();
-  try{ await db.collection("ads").add({authorId:me,title:$("#a-title").value.trim(),cat:$("#a-cat").value,desc:$("#a-desc").value.trim(),contact:$("#a-contact").value.trim(),photo:pendingAdPhoto,sponsored:false,createdAt:Date.now()});
-    $("#ad-form").reset(); pendingAdPhoto=""; $("#ad-dialog").close(); toast("Your ad is live"); }
-  catch(err){ toast("Couldn't post ad: "+(err.message||err.code)); }
+  const b=$("#ad-form button[type=submit]"); if(b.disabled) return; b.disabled=true; let vid=null;
+  try{
+    if(pendingAdVideo){ b.textContent="Uploading 0%"; vid=await MW.uploadVideo(pendingAdVideo,f=>{ const n=Math.round(f*100); b.textContent="Uploading "+n+"%"; $("#a-vbar").style.width=n+"%"; }); b.textContent="Posting..."; }
+    await db.collection("ads").add({authorId:me,title:$("#a-title").value.trim(),cat:$("#a-cat").value,desc:$("#a-desc").value.trim(),contact:$("#a-contact").value.trim(),photo:pendingAdPhoto,...(vid?{video:vid.url,videoPath:vid.path}:{}),sponsored:false,createdAt:Date.now()});
+    $("#ad-form").reset(); pendingAdPhoto=""; pendingAdVideo=null; $("#a-vwrap").hidden=true; $("#ad-dialog").close(); toast("Your ad is live"); }
+  catch(err){ if(vid) MW.deleteVideo(vid.path); toast("Couldn't post ad: "+(err.message||err.code)); }
+  b.disabled=false; b.textContent="Post ad";
 });
 
 /* Campaigns */
