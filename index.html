@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791589040">
+<meta name="mw-build" content="1791589111">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1462,8 +1462,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791589040"></script>
-<script src="js/platform.js?v=1791589040"></script>
+<script src="js/config.js?v=1791589111"></script>
+<script src="js/platform.js?v=1791589111"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1561,13 +1561,16 @@ $("#announce-x").addEventListener("click",()=>{ try{localStorage.setItem("mw-dis
 let lives=[];
 function subLive(){ db.collection("live").limit(100).onSnapshot(s=>{ lives=s.docs.map(d=>({id:d.id,...d.data()})).filter(l=>Date.now()-(l.startedAt||0)<6*3600e3); renderLive(); }, e=>console.warn(e)); }
 function renderLive(){
-  const strip=$("#live-strip"); strip.hidden=!lives.length;
-  const sorted=[...lives].sort((a,b)=>(b.host?1:0)-(a.host?1:0));
-  strip.innerHTML=sorted.map(l=>`<a class="live-card ${l.host?"host":""}" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener"><span><span class="live-dot"></span><b>${esc(handleOf(l.id))}</b> ${l.host?'<span class="badge">Host</span>':''}</span><small>${esc(l.title)}</small><span style="font-size:13px;color:var(--gold-hi);font-weight:700">Watch live →</span></a>`).join("");
+  const fresh=lives.filter(l=>!l.onsite || Date.now()-(l.beat||l.startedAt||0)<90e3);
+  const strip=$("#live-strip"); strip.hidden=!fresh.length;
+  const sorted=[...fresh].sort((a,b)=>(b.host?1:0)-(a.host?1:0));
+  const lnk=l=>l.onsite?`href="#live" data-go="live"`:`href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener"`;
+  strip.innerHTML=sorted.map(l=>`<a class="live-card ${l.host?"host":""}" ${lnk(l)}><span><span class="live-dot"></span><b>${esc(handleOf(l.id))}</b> ${l.host?'<span class="badge">Host</span>':''}</span><small>${esc(l.title)}</small><span style="font-size:13px;color:var(--gold-hi);font-weight:700">Watch live →</span></a>`).join("");
   const host=sorted.find(l=>l.host); $("#host-live").hidden=!host;
-  if(host){ $("#host-live-title").textContent=host.title; $("#host-live-link").href=safeUrl(host.url); }
-  $("#end-live").hidden=!lives.some(l=>l.id===me);
+  if(host){ const L=$("#host-live-link"); $("#host-live-title").textContent=host.title; if(host.onsite){ L.href="#live"; L.dataset.go="live"; L.removeAttribute("target"); } else { L.href=safeUrl(host.url); delete L.dataset.go; L.target="_blank"; } }
+  $("#end-live").hidden=!fresh.some(l=>l.id===me && !l.onsite);
 }
+setInterval(()=>{ try{ renderLive(); }catch(_){} },30000);
 $("#go-live").addEventListener("click",()=>{ if(needMember()) $("#live-dialog").showModal(); });
 $("#live-form").addEventListener("submit",async e=>{ e.preventDefault();
   try{ await db.doc("live/"+me).set({title:$("#lv-title").value.trim(),url:$("#lv-url").value.trim(),host:isOwner,startedAt:Date.now()}); $("#live-dialog").close(); toast(isOwner?"You're live. Everybody sees the banner.":"You're live. Members can tap in."); }
@@ -2474,24 +2477,24 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791589040"></script>
-<script src="js/studio.js?v=1791589040"></script>
-<script src="js/owner.js?v=1791589040"></script>
-<script src="js/messages.js?v=1791589040"></script>
-<script src="js/videos.js?v=1791589040"></script>
-<script src="js/world3d.js?v=1791589040"></script>
-<script src="js/clips.js?v=1791589040"></script>
-<script src="js/dj.js?v=1791589040"></script>
-<script src="js/live.js?v=1791589040"></script>
-<script src="js/autotune.js?v=1791589040"></script>
-<script src="js/beatlab.js?v=1791589040"></script>
-<script src="js/friends.js?v=1791589040"></script>
-<script src="js/dating.js?v=1791589040"></script>
-<script src="js/books.js?v=1791589040"></script>
-<script src="js/social.js?v=1791589040"></script>
-<script src="js/jobs.js?v=1791589040"></script>
-<script src="js/golive.js?v=1791589040"></script>
-<script src="js/predict.js?v=1791589040"></script>
-<script src="js/ai-widget.js?v=1791589040"></script>
+<script src="js/appnav.js?v=1791589111"></script>
+<script src="js/studio.js?v=1791589111"></script>
+<script src="js/owner.js?v=1791589111"></script>
+<script src="js/messages.js?v=1791589111"></script>
+<script src="js/videos.js?v=1791589111"></script>
+<script src="js/world3d.js?v=1791589111"></script>
+<script src="js/clips.js?v=1791589111"></script>
+<script src="js/dj.js?v=1791589111"></script>
+<script src="js/live.js?v=1791589111"></script>
+<script src="js/autotune.js?v=1791589111"></script>
+<script src="js/beatlab.js?v=1791589111"></script>
+<script src="js/friends.js?v=1791589111"></script>
+<script src="js/dating.js?v=1791589111"></script>
+<script src="js/books.js?v=1791589111"></script>
+<script src="js/social.js?v=1791589111"></script>
+<script src="js/jobs.js?v=1791589111"></script>
+<script src="js/golive.js?v=1791589111"></script>
+<script src="js/predict.js?v=1791589111"></script>
+<script src="js/ai-widget.js?v=1791589111"></script>
 </body>
 </html>
