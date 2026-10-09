@@ -28,7 +28,7 @@
   const lib = radioView && radioView.querySelector("#dj-root");
   if (radioView && lib) {
     const box = document.createElement("div");
-    box.className = "lv-card"; box.id = "world-radio";
+    box.className = "lv-card"; box.id = "world-radio"; box.style.scrollMarginTop = "120px";
     box.innerHTML = `<div class="lv-head"><div><p class="eyebrow" style="margin:0">Live from around the world</p><h3>Live Radio Stations</h3></div><small class="muted">Tap a station to listen. Keeps playing when your phone locks.</small></div>
       <div class="lv-chips" id="lv-chips">${[["hip hop", "Hip Hop"], ["rnb", "R&B"], ["gospel", "Gospel"], ["jazz", "Jazz"], ["reggae", "Reggae"], ["pop", "Top 40"], ["oldies", "Oldies"], ["news", "News"], ["sports", "Sports"], ["islamic", "Islamic"]].map(([t, n], i) => `<button class="chip" type="button" data-tag="${t}" aria-pressed="${i === 0}">${n}</button>`).join("")}</div>
       <form class="lv-form" id="lv-form"><input type="search" id="lv-q" placeholder="Search any station or city (e.g. Hot 97, Pittsburgh)" aria-label="Search radio stations"><button class="btn sm" type="submit">Search</button></form>
@@ -81,7 +81,7 @@
       ["Lofi Girl (music)", "UCSJ4gkVC6NrvII8umztf0Ow"]
     ];
     const box = document.createElement("div");
-    box.className = "lv-card"; box.style.margin = "0 auto 28px"; box.style.maxWidth = "960px";
+    box.className = "lv-card"; box.id = "live-tv"; box.style.margin = "0 auto 28px"; box.style.maxWidth = "960px"; box.style.scrollMarginTop = "120px";
     box.innerHTML = `<div class="lv-head"><div><p class="eyebrow" style="margin:0">On now</p><h3>Live TV</h3></div><small class="muted">Free live channels. If one is off air, try another.</small></div>
       <div class="tv-grid">${CH.map(([n, id]) => `<button class="tv-ch" type="button" data-ch="${id}" data-name="${E(n)}"><span class="dot"></span>${E(n)}</button>`).join("")}</div>`;
     stage.before(box);

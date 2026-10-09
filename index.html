@@ -731,6 +731,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#shop" data-go="shop">Shop</a>
       <a href="#community" data-go="community">Community</a>
       <a href="#radio" data-go="radio">Radio</a>
+      <a href="#liveradio" data-go="liveradio">Live Radio</a>
+      <a href="#livetv" data-go="livetv">Live TV</a>
       <a href="#clips" data-go="clips">Clips</a>
       <a href="#studio" data-go="studio">Studio</a>
       <a href="#friends" data-go="friends">Friends</a>
@@ -1437,8 +1439,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791565698"></script>
-<script src="js/platform.js?v=1791565698"></script>
+<script src="js/config.js?v=1791565724"></script>
+<script src="js/platform.js?v=1791565724"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1451,7 +1453,11 @@ function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)re
 
 /* ---------- Tabs ---------- */
 const VIEWS=["home","services","shop","community","radio","clips","studio","friends","dating","videos","world","games","creators","chat","messages","ads","promote","contact"];
-function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return; if(!VIEWS.includes(v)) v="home";
+const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
+function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
+  if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+    let n=0; const t=setInterval(()=>{ const e=document.getElementById(el); if(e||++n>30){ clearInterval(t); e&&e.scrollIntoView({behavior:"smooth",block:"start"}); } },100); return; }
+  if(!VIEWS.includes(v)) v="home";
   const prevView=VIEWS.find(x=>!$("#v-"+x).hidden);
   if(prevView && prevView!==v){ // stop videos that would keep playing on a hidden page
     $$("#v-"+prevView+" .htt.playing").forEach(x=>{ x.classList.remove("playing"); x.querySelector("iframe")?.remove(); });
@@ -2428,18 +2434,18 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791565698"></script>
-<script src="js/studio.js?v=1791565698"></script>
-<script src="js/owner.js?v=1791565698"></script>
-<script src="js/messages.js?v=1791565698"></script>
-<script src="js/videos.js?v=1791565698"></script>
-<script src="js/world3d.js?v=1791565698"></script>
-<script src="js/clips.js?v=1791565698"></script>
-<script src="js/dj.js?v=1791565698"></script>
-<script src="js/live.js?v=1791565698"></script>
-<script src="js/beatlab.js?v=1791565698"></script>
-<script src="js/friends.js?v=1791565698"></script>
-<script src="js/dating.js?v=1791565698"></script>
-<script src="js/ai-widget.js?v=1791565698"></script>
+<script src="js/appnav.js?v=1791565724"></script>
+<script src="js/studio.js?v=1791565724"></script>
+<script src="js/owner.js?v=1791565724"></script>
+<script src="js/messages.js?v=1791565724"></script>
+<script src="js/videos.js?v=1791565724"></script>
+<script src="js/world3d.js?v=1791565724"></script>
+<script src="js/clips.js?v=1791565724"></script>
+<script src="js/dj.js?v=1791565724"></script>
+<script src="js/live.js?v=1791565724"></script>
+<script src="js/beatlab.js?v=1791565724"></script>
+<script src="js/friends.js?v=1791565724"></script>
+<script src="js/dating.js?v=1791565724"></script>
+<script src="js/ai-widget.js?v=1791565724"></script>
 </body>
 </html>
