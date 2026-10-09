@@ -247,7 +247,7 @@
 
   /* start with a simple example so the page isn't empty */
   S.view = "front";
-  const t1 = addLayer({ starter: true, type: "text", text: "MEECHIE'S WORLD", font: "Cinzel", color: "#d4a843", size: 34, x: 240, y: 175, outline: "#000000", outlineW: 0, curve: 0, shadow: false, spacing: 1, bold: true });
+  const t1 = addLayer({ starter: true, type: "text", text: "MEECHIE'S WORLD", font: "Cinzel", color: "#d4a843", size: 34, x: 240, y: 140, outline: "#000000", outlineW: 0, curve: 0, shadow: false, spacing: 1, bold: true });
   addLayer({ starter: true, type: "sym", sym: "emblem", color: "#d4a843", size: 120, x: 240, y: 262 });
   S.starter = true; S.sel = null; S.dirty = false; ui(); draw();
   document.fonts && document.fonts.ready.then(() => draw());
