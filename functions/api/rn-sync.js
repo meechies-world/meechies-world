@@ -31,11 +31,14 @@ export async function onRequestPost({ request }) {
   if (!songs.length) return json({ error: "Couldn't read songs from ReverbNation right now." }, 502);
 
   const now = Date.now(), added = [], skipped = [], failed = [];
+  const BATCH = 12; let tried = 0, remaining = 0;
   // oldest first so the radio plays them in release order
   const ordered = songs.slice().reverse();
   for (let i = 0; i < ordered.length; i++) {
     const s = ordered[i];
     if (done.has(String(s.id))) { skipped.push(clean(s.name)); continue; }
+    if (tried >= BATCH) { remaining++; continue; }
+    tried++;
     try {
       const mp3 = await fetch(s.url, { headers: { "user-agent": "MeechiesWorldSite/1.0" } });
       if (!mp3.ok || !mp3.body) throw new Error("download " + mp3.status);
@@ -46,12 +49,12 @@ export async function onRequestPost({ request }) {
       if (!up.ok) throw new Error("store " + up.status + " " + (await up.text()).slice(0, 120));
       const doc = { path: "tracks/" + id, coll: "tracks", data: {
         title: clean(s.name), artist: "Meechie", assetId: id, duration: Math.round(s.duration || 0),
-        cover: s.image || "", rnId: String(s.id), source: "reverbnation", addedAt: now + i,
+        cover: s.image || "", rnId: String(s.id), source: "reverbnation", addedAt: 1700000000000 + i * 1000,
       } };
       const ins = await fetch(SUPABASE_URL + "/rest/v1/docs", { method: "POST", headers: { ...H, "content-type": "application/json", prefer: "return=minimal" }, body: JSON.stringify(doc) });
       if (!ins.ok) throw new Error("save " + ins.status + " " + (await ins.text()).slice(0, 120));
       added.push(clean(s.name));
     } catch (e) { failed.push(clean(s.name) + ": " + String(e.message || e).slice(0, 140)); }
   }
-  return json({ added, skipped, failed, total: songs.length });
+  return json({ added, skipped, failed, remaining, total: songs.length });
 }
