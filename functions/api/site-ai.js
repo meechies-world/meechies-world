@@ -57,9 +57,10 @@ ${texts}`;
   for (const model of models) {
     try {
       const out = await env.AI.run(model, { messages: [{ role: "system", content: SYSTEM }, { role: "user", content: context + "\n\nOWNER REQUEST: " + req }], max_tokens: 1200, temperature: 0.2 });
-      const ops = parseJSON(out && (out.response || out.result));
+      const raw = out && (out.response !== undefined ? out.response : out.result);
+      const ops = raw && typeof raw === "object" ? raw : parseJSON(raw);
       if (ops && typeof ops === "object") return json({ reply: String(ops.reply || "").slice(0, 500), ops });
-      errs.push(model + ": unreadable: " + String(out && (out.response || out.result) || JSON.stringify(out)).slice(0, 200));
+      errs.push(model + ": unreadable: " + JSON.stringify(out).slice(0, 200));
     } catch (e) { errs.push(model + ": " + String(e && e.message || e).slice(0, 200)); }
   }
   return json({ error: "The AI is busy. Try again in a minute.", detail: errs }, 503);
