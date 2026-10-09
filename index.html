@@ -716,6 +716,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#shop" data-go="shop">Shop</a>
       <a href="#community" data-go="community">Community</a>
       <a href="#radio" data-go="radio">Radio</a>
+      <a href="#clips" data-go="clips">Clips</a>
       <a href="#videos" data-go="videos">Videos</a>
       <a href="#world" data-go="world">Virtual World</a>
       <a href="#chat" data-go="chat">Chat &amp; Walkie</a>
@@ -763,6 +764,10 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <div><b>$50</b><span>Services start at</span></div>
     </div>
 
+    <div class="card tt-box" id="home-tt" style="margin-top:56px">
+      <div class="tt-head"><div><p class="eyebrow" style="margin:0">Watch Meechie</p><h3 style="margin:2px 0 0">Latest on TikTok · @meechiesworldinc</h3></div><a class="btn" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener">Follow on TikTok</a></div>
+      <blockquote class="tiktok-embed" cite="https://www.tiktok.com/@meechiesworldinc" data-unique-id="meechiesworldinc" data-embed-type="creator" style="max-width:780px;min-width:0;margin:0 auto"><section><a target="_blank" rel="noopener" href="https://www.tiktok.com/@meechiesworldinc">Loading Meechie's TikTok videos...</a></section></blockquote>
+    </div>
     <div class="section-head" style="margin-top:64px">
       <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
       <p class="muted">Free to join. Tap any tile to step inside.</p>
@@ -964,6 +969,14 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 </section>
 
 <!-- WORLD -->
+<section class="view" id="v-clips" hidden>
+  <div class="clips-wrap">
+    <div class="clips" id="clips" aria-label="Clips. Swipe up for the next video."><div class="clip-empty"><h3>No clips yet</h3><p>Be the first. Tap + to post a video.</p></div></div>
+    <button class="clip-add" type="button" id="clip-add" aria-label="Post a clip">+<input type="file" id="clip-file" accept="video/*" aria-label="Choose a video to post"></button>
+    <div class="clip-up" id="clip-up" hidden><b>Posting your clip</b><input type="text" id="clip-cap" maxlength="300" placeholder="Add a caption (optional)" aria-label="Caption"><div class="vid-bar"><i id="clip-bar"></i></div><small id="clip-st"></small><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost sm" type="button" id="clip-cancel">Cancel</button><button class="btn sm" type="button" id="clip-go">Post</button></div></div>
+  </div>
+</section>
+
 <section class="view" id="v-videos" hidden>
   <div class="wrap">
     <div class="section-head">
@@ -1407,7 +1420,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["home","services","shop","community","radio","videos","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["home","services","shop","community","radio","clips","videos","world","games","creators","chat","messages","ads","promote","contact"];
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return; if(!VIEWS.includes(v)) v="home";
   VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
   $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -2161,7 +2174,7 @@ $("#join-form").addEventListener("submit",async e=>{
 
 /* Feed */
 let posts=[], openReplies=new Set(), replyCache={}, replySubs={};
-function subFeed(){ db.collection("posts").orderBy("createdAt","desc").limit(100).onSnapshot(s=>{posts=s.docs.map(d=>({id:d.id,...d.data()}));renderFeed();renderAnnouncement();}, e=>console.warn(e)); }
+function subFeed(){ db.collection("posts").orderBy("createdAt","desc").limit(100).onSnapshot(s=>{posts=s.docs.map(d=>({id:d.id,...d.data()}));renderFeed();renderAnnouncement();document.dispatchEvent(new Event("mw-posts"));}, e=>console.warn(e)); }
 let pendingPhoto=null, pendingVideo=null;
 function pickVideo(f,info,wrap){ if(!f) return null; if(f.size>MW.VIDEO_MAX){ toast("That video is over 50 MB. Trim it or record a shorter clip."); return null; } $(info).textContent=f.name+" · "+(f.size/1048576).toFixed(1)+" MB"; $(wrap).hidden=false; return f; }
 $("#p-video").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; pendingVideo=pickVideo(f,"#p-vinfo","#p-vwrap"); if(pendingVideo){ const v=$("#p-vprev"); try{ URL.revokeObjectURL(v.src); }catch(_){} v.src=URL.createObjectURL(pendingVideo); $("#p-vbar").style.width="0"; } });
@@ -2374,6 +2387,7 @@ boot();
 <script src="js/messages.js"></script>
 <script src="js/videos.js"></script>
 <script src="js/world3d.js"></script>
+<script src="js/clips.js"></script>
 <script src="js/ai-widget.js"></script>
 </body>
 </html>

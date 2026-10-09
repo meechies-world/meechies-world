@@ -119,7 +119,10 @@
   }
   // Load TikTok's profile player only when someone opens the Videos page.
   let ttLoaded = false;
-  const loadTT = () => { if (ttLoaded || view.hidden) return; ttLoaded = true; const sc = document.createElement("script"); sc.src = "https://www.tiktok.com/embed.js"; sc.async = true; document.body.appendChild(sc); };
-  new MutationObserver(loadTT).observe(view, { attributes: true, attributeFilter: ["hidden"] }); loadTT();
+  const home = document.getElementById("v-home");
+  const loadTT = () => { if (ttLoaded || (view.hidden && (!home || home.hidden))) return; ttLoaded = true; const sc = document.createElement("script"); sc.src = "https://www.tiktok.com/embed.js"; sc.async = true; document.body.appendChild(sc); };
+  new MutationObserver(loadTT).observe(view, { attributes: true, attributeFilter: ["hidden"] });
+  if (home) new MutationObserver(loadTT).observe(home, { attributes: true, attributeFilter: ["hidden"] });
+  if (document.readyState === "complete") loadTT(); else addEventListener("load", loadTT);
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
