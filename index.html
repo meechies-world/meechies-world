@@ -1862,19 +1862,24 @@ function renderTracks(){
   paintAir();
 }
 function showBar(t,sub){ lockScreen(t,sub); $("#player-bar").hidden=false; document.body.classList.add("has-player"); $("#pb-title").textContent=t.title; $("#pb-sub").textContent=sub; const c=$("#pb-cover"); c.style.backgroundImage=""; c.innerHTML=$("#air-cover").innerHTML||c.innerHTML; setCover(c,t); }
-function load(t,offset){ return new Promise(res=>{ media.src=trackUrl(t); media.currentTime=0;
-  media.onloadedmetadata=()=>{ if(offset) try{media.currentTime=Math.min(offset,(media.duration||offset)-0.5);}catch(e){} res(); };
-  media.onerror=()=>{ toast("This track couldn't load."); res(); }; media.load(); }); }
-async function tuneIn(){
-  const a=airNow(); if(!a){ toast("The station starts when the first track is added."); return; }
-  mode="radio"; curIdx=a.i; await load(tracks[a.i], airNow().offset);
-  media.play().catch(()=>toast("Tap play to start the audio.")); showBar(tracks[a.i],"Meechie's World Radio · LIVE");
+// Start playing right away (play() in the same moment the last song ends), then jump to the right spot.
+// Waiting for the file to load first fails when the phone screen is off, because phones hold back loading for hidden pages.
+function load(t,offset,autoplay){ return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
+  media.preload="auto"; media.src=trackUrl(t);
+  media.onloadedmetadata=()=>{ if(offset) try{media.currentTime=Math.min(offset,(media.duration||offset)-0.5);}catch(e){} fin(); };
+  media.onerror=()=>{ if(!document.hidden) toast("This track couldn't load."); fin(); };
+  if(autoplay){ media.play().catch(()=>{}); setTimeout(fin,4000); } else media.load(); }); }
+async function tuneIn(afterEnd){
+  let a=airNow(); if(a && afterEnd===true && a.i===curIdx) a={i:(curIdx+1)%tracks.length,offset:0}; // song file shorter than listed: move on instead of replaying
+  if(!a){ toast("The station starts when the first track is added."); return; }
+  mode="radio"; curIdx=a.i; await load(tracks[a.i], afterEnd===true? a.offset : airNow().offset, true);
+  media.play().catch(()=>{ if(!document.hidden) toast("Tap play to start the audio."); }); showBar(tracks[a.i],"Meechie's World Radio · LIVE");
   room?.presence({radio:true}); renderTracks(); updIcons();
 }
 async function playLib(i){
   if(mode==="library" && curIdx===i){ media.paused?media.play():media.pause(); return; }
   mode="library"; curIdx=(i+tracks.length)%tracks.length; const t=tracks[curIdx];
-  await load(t,0); media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
+  await load(t,0,true); media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
 }
 function updIcons(){ $("#pb-icon").innerHTML = media.paused?ICON_PLAY:ICON_PAUSE; $("#pb-play").setAttribute("aria-label",media.paused?"Play":"Pause");
   $("#tune-in").textContent = mode==="radio"&&!media.paused ? "❚❚ Pause radio" : "▶ Tune in"; renderTracks(); }
@@ -1889,7 +1894,7 @@ if("mediaSession" in navigator){ const ms=navigator.mediaSession, H=(a,f)=>{ try
   H("nexttrack",()=>{ if(mode==="library") playLib(curIdx+1); });
   H("previoustrack",()=>{ if(mode==="library") playLib(Math.max(0,curIdx-1)); });
   media.addEventListener("play",()=>{ try{ ms.playbackState="playing"; }catch(_){} }); media.addEventListener("pause",()=>{ try{ ms.playbackState="paused"; }catch(_){} }); }
-media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(); else if(mode==="library") playLib(curIdx+1); });
+media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(true); else if(mode==="library") playLib(curIdx+1); });
 media.addEventListener("timeupdate",()=>{ const d=media.duration||tracks[curIdx]?.duration||0; $("#pb-fill").style.width=(d?media.currentTime/d*100:0)+"%"; $("#pb-time").textContent=fmt(media.currentTime)+" / "+fmt(d); });
 $("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
 $("#pb-play").addEventListener("click",()=>{ if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
