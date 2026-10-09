@@ -18,8 +18,12 @@ export async function onRequestGet({ request }) {
   if (!place) place = [c.city, c.regionCode || c.region].filter(Boolean).join(" ");
   if (!place) place = "local";
   let list = [];
-  try { list = await search(place + " news live"); } catch (_) {}
+  try { list = await search(place + " local news live"); } catch (_) {}
+  if (list.length < 6) { try { list = list.concat(await search(place + " weather live")); } catch (_) {} }
   if (list.length < 3 && c.region) { try { list = list.concat(await search(c.region + " news live")); } catch (_) {} }
-  const seen = new Set(); list = list.filter((v) => !seen.has(v.id) && seen.add(v.id)).slice(0, 10);
+  const words = place.toLowerCase().split(/[\s,]+/).filter((w) => w.length > 2);
+  const isNews = (v) => /news|weather|kdka|wtae|wpxi|eyewitness|action news|\b(cbs|abc|nbc|fox)\b/i.test(v.title + " " + v.channel) && !/pope|vatican|india|pakistan|tv18|\bcam\b|camera|gaming|music|lofi/i.test(v.title + " " + v.channel);
+  const score = (v) => words.reduce((n, w) => n + ((v.title + " " + v.channel).toLowerCase().includes(w) ? 2 : 0), 0);
+  const seen = new Set(); list = list.filter((v) => isNews(v) && !seen.has(v.id) && seen.add(v.id)).sort((a, b) => score(b) - score(a)).slice(0, 10);
   return new Response(JSON.stringify({ place, list }), { headers: { "content-type": "application/json", "cache-control": "public, max-age=600" } });
 }
