@@ -23,7 +23,7 @@ async function decideSearch(env, turns) {
   try {
     const out = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
-        { role: "system", content: "You route questions for the Meechie's World website assistant. If answering the user's latest message needs outside facts (news, current events, sports, people, places, businesses, products, history, science, how-to, definitions, general knowledge) that are NOT about Meechie's World, its services, prices, shop, or website features, reply with ONLY a short web search query (max 8 words). Otherwise reply with exactly NONE." },
+        { role: "system", content: "You route questions for the Meechie's World website assistant. If answering the user's latest message needs outside facts (news, current events, sports, people, places, businesses, products, history, science, how-to, definitions, general knowledge) that are NOT about Meechie's World, its services, prices, shop, or website features, reply with ONLY a short web search query (max 8 words). Questions asking for recommendations, tools, current information, or anything happening in the world also need a search. Otherwise reply with exactly NONE." },
         ...turns.slice(-4)
       ], max_tokens: 24, temperature: 0
     });
@@ -114,6 +114,7 @@ export async function onRequestPost({ request, env }) {
     if (sources.length) live += "\n\nWeb results for \"" + q + "\" (use these for outside facts and cite them like [1], [2]; they may be incomplete and are not live news):\n" + sources.map((r, i) => "[" + (i + 1) + "] " + r.title + ": " + r.text).join("\n");
     else live += "\n\nA web lookup for \"" + q + "\" found nothing. If you are not sure of the answer, say so.";
   }
+  if (!sources.length) live += "\n\nNo web results were provided for this message, so do not claim to cite sources.";
   const SYSTEM = BRIEF + "\n\n" + EXTRA + "\n\n" + live;
   const MODELS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast", "@cf/meta/llama-3.1-8b-instruct", "@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/qwen/qwen2.5-coder-32b-instruct"];
   const errs = [];
@@ -121,7 +122,7 @@ export async function onRequestPost({ request, env }) {
     try {
       const out = await env.AI.run(model, { messages: [{ role: "system", content: SYSTEM }, ...turns], max_tokens: 500, temperature: 0.4 });
       const reply = String((out && (out.response || out.result || (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content) || "")) || "").trim();
-      if (reply) return json({ reply, sources: sources.map((r) => ({ title: r.title, url: r.url })) });
+      if (reply) return json({ reply, sources: sources.map((r) => ({ title: r.title, url: r.url })), searched: q || null, engine: sources.length ? (env.TAVILY_API_KEY && !/wikipedia|duckduckgo/.test(sources[0].url) ? "tavily" : "free") : null });
       errs.push(model + ": empty");
     } catch (e) { errs.push(model + ": " + String(e && e.message || e).slice(0, 160)); }
   }
