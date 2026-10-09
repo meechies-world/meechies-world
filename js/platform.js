@@ -12,7 +12,7 @@
   const cfg = window.MW_CONFIG || {};
   const ready = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
   const sb = ready ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true },
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
     realtime: { params: { eventsPerSecond: 20 } }
   }) : null;
   window.MW = { sb, ready };

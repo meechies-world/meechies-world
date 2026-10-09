@@ -1359,7 +1359,7 @@ function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)re
 
 /* ---------- Tabs ---------- */
 const VIEWS=["home","services","shop","community","radio","videos","world","games","creators","chat","messages","ads","promote","contact"];
-function go(v){ if(!VIEWS.includes(v)) v="home";
+function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return; if(!VIEWS.includes(v)) v="home";
   VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
   $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
   if(location.hash.slice(1)!==v) history.replaceState(null,"","#"+v);
@@ -2212,7 +2212,7 @@ function paintAuth(){ const up=authMode==="signup"; $("#auth-title").textContent
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-auth]"); if(!b) return; e.preventDefault(); if(b.dataset.auth==="signout"){ window.MW?.signOut?.(); return; } openAuth(b.dataset.auth); });
 if(window.MW_CONFIG?.FACEBOOK_LOGIN) $("#auth-social").hidden=false;
 $("#auth-fb").addEventListener("click",async()=>{ if(!window.MW?.ready) return; $("#auth-msg").textContent="Opening Facebook...";
-  const r=await MW.sb.auth.signInWithOAuth({provider:"facebook",options:{redirectTo:location.origin+"/#community",scopes:"email public_profile"}});
+  const r=await MW.sb.auth.signInWithOAuth({provider:"facebook",options:{redirectTo:location.origin+"/",scopes:"email public_profile"}});
   if(r.error) $("#auth-msg").textContent=r.error.message; });
 $("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"signin":"signup"; paintAuth(); });
 $("#auth-forgot").addEventListener("click",async()=>{ const em=$("#auth-email").value.trim(); if(!em){ $("#auth-msg").textContent="Type your email first."; return; } const r=await MW.reset(em); $("#auth-msg").textContent=r.error?r.error.message:"Check your email for a reset link."; });
@@ -2226,6 +2226,9 @@ $("#auth-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!win
 });
 function paintAuthBar(){ $("#authbar").innerHTML = me ? `<button class="btn ghost sm" type="button" data-auth="signout">Sign out</button>` : `<button class="btn sm" type="button" data-auth="signup">Join free</button>`; }
 window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
+(function(){ const q=new URLSearchParams(location.search), h=new URLSearchParams(location.hash.replace(/^#/,""));
+  const err=q.get("error_description")||h.get("error_description");
+  if(err){ setTimeout(()=>toast("Login didn't finish: "+err.replace(/\+/g," ")),500); history.replaceState(null,"",location.pathname+"#home"); go("home"); } })();
 
 /* ---------- Shop (Printify) ---------- */
 let shopLoaded=false;
