@@ -620,6 +620,10 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .yt-feat{position:absolute;left:8px;top:8px}
 .yt-meta{padding:10px 12px;display:grid;gap:4px}.yt-meta b{overflow-wrap:anywhere}.yt-meta small{color:var(--muted)}
 .yt-acts{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px}
+.rn-box{margin-top:48px}
+.rn-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:12px;margin-bottom:10px}
+.rn-frame{border:1px solid var(--gold);border-radius:16px;overflow:hidden;background:#111;box-shadow:0 0 0 6px #0f0d09,0 0 0 7px var(--gold-lo)}
+.rn-frame iframe{display:block;width:100%;min-width:100%;border:0}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -927,6 +931,12 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <p class="muted" style="font-size:13px;margin:8px 0 0" id="up-status">Upload MP3, WAV, M4A, AAC, OGG, MP4 or WebM files up to 50 MB each. Music videos play too. Only you see this.</p>
     </div>
     <div class="tracks" id="tracks"><div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie's World shows up here.</div></div>
+    <div class="rn-box">
+      <div class="rn-head"><div><p class="eyebrow">More music</p><h3 class="sub-h" style="margin:4px 0 0">Meechie on ReverbNation</h3></div>
+        <a class="btn ghost sm" href="https://www.reverbnation.com/halalmusic" target="_blank" rel="noopener">Become a fan on ReverbNation →</a></div>
+      <p class="muted" style="margin:0 0 14px">Play every song from the halal music page right here. Hit play all, or pick a track.</p>
+      <div class="rn-frame"><iframe title="Meechie's songs on ReverbNation" loading="lazy" width="100%" height="520" scrolling="no" frameborder="no" allow="autoplay; encrypted-media" src="https://legacy.reverbnation.com/widget_code/html_widget/artist_7533494?widget_id=55&amp;pwc[included_songs]=1&amp;context_type=page_object"></iframe></div>
+    </div>
   </div>
 </section>
 
@@ -2248,6 +2258,9 @@ async function loadShop(){ if(shopLoaded) return; shopLoaded=true;
 }
 new MutationObserver(()=>{ if(!$("#v-shop").hidden) loadShop(); }).observe($("#v-shop"),{attributes:true,attributeFilter:["hidden"]});
 if(!$("#v-shop").hidden) loadShop();
+
+/* Pause our radio when someone starts the ReverbNation player */
+window.addEventListener("blur",()=>{ setTimeout(()=>{ const a=document.activeElement; if(a && a.tagName==="IFRAME" && /reverbnation/.test(a.src) && !media.paused){ media.pause(); } },0); });
 boot();
 </script>
 <script src="js/studio.js"></script>
