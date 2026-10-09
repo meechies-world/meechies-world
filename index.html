@@ -731,6 +731,9 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#community" data-go="community">Community</a>
       <a href="#radio" data-go="radio">Radio</a>
       <a href="#clips" data-go="clips">Clips</a>
+      <a href="#studio" data-go="studio">Studio</a>
+      <a href="#friends" data-go="friends">Friends</a>
+      <a href="#dating" data-go="dating">Dating</a>
       <a href="#videos" data-go="videos">Videos</a>
       <a href="#world" data-go="world">Virtual World</a>
       <a href="#chat" data-go="chat">Chat &amp; Walkie</a>
@@ -984,6 +987,17 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 </section>
 
 <!-- WORLD -->
+<section class="view" id="v-studio" hidden>
+  <div class="wrap">
+    <div class="section-head"><div><p class="eyebrow">Make music free</p><h2>Studio</h2></div><p class="muted">Record your vocals over a beat right here, mix it, and post it to the community. Works on phones and computers. Use headphones while you record.</p></div>
+    <div id="bl-root"></div>
+  </div>
+</section>
+
+<section class="view" id="v-friends" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Your people</p><h2>Friends</h2></div><p class="muted">Add friends, accept requests, and see what your friends are posting.</p></div><div id="fr-root"></div></div></section>
+
+<section class="view" id="v-dating" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">18+ only</p><h2>Dating</h2></div><p class="muted">Make a dating profile with your photos and a video, swipe, and when you both like each other it's a match and you can message.</p></div><div id="dt-root"></div></div></section>
+
 <section class="view" id="v-clips" hidden>
   <div class="clips-wrap">
     <div class="clips" id="clips" aria-label="Clips. Swipe up for the next video."><div class="clip-empty"><h3>No clips yet</h3><p>Be the first. Tap + to post a video.</p></div></div>
@@ -1435,7 +1449,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["home","services","shop","community","radio","clips","videos","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["home","services","shop","community","radio","clips","studio","friends","dating","videos","world","games","creators","chat","messages","ads","promote","contact"];
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return; if(!VIEWS.includes(v)) v="home";
   const prevView=VIEWS.find(x=>!$("#v-"+x).hidden);
   if(prevView && prevView!==v){ // stop videos that would keep playing on a hidden page
@@ -1841,6 +1855,7 @@ paintRoom(); drawPeople();
 /* ---------- Radio + music player ---------- */
 const DEFAULT_EPOCH=Date.UTC(2026,0,1);
 let tracks=[], radioEpoch=DEFAULT_EPOCH, assets=null, mode=null, curIdx=-1;
+window.MW_TRACKS=()=>tracks;
 const media=$("#audio");
 const fmt=s=>{s=Math.max(0,Math.floor(s||0));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
 const trackUrl=t=>(window.MW?.assetUrl? MW.assetUrl(t.assetId) : "/_blob/"+t.assetId);
@@ -2241,7 +2256,8 @@ function renderFeed(){
     if(el._sig!==bodySig){ el._sig=bodySig; el.querySelector(".post-body").innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${esc(p.authorId)}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(safeUrl(shop[1]))}" target="_blank" rel="noopener">Shop</a>`:""}</div>
       ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
       ${/^data:image\//.test(p.photo||"")||/^https:\/\//.test(p.photo||"")?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}" loading="lazy">`:""}
-      ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}`; }
+      ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}
+      ${/^https:\/\//.test(p.audio||"")?`<audio class="aud" src="${esc(p.audio)}" controls preload="none" style="width:100%;margin-top:8px"></audio>`:""}`; }
     const ws=el.querySelector(".who small"); if(ws) ws.textContent=ago(p.createdAt);
     el.querySelector(".post-actions").innerHTML=`
         <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">♥ ${(p.likes||[]).length||""} Like</button>
@@ -2261,7 +2277,7 @@ $("#feed").addEventListener("click",async e=>{
   if(t.dataset.giftto){ openGift(t.dataset.giftto); return; }
   if(t.dataset.replies){ const id=t.dataset.replies; if(openReplies.has(id)) openReplies.delete(id); else { openReplies.add(id); subReplies(id);} renderFeed(); }
   if(t.dataset.sponsor){ const p=posts.find(x=>x.id===t.dataset.sponsor); db.doc("posts/"+p.id).update({sponsored:!p.sponsored}).catch(err=>toast(err.message||err.code)); }
-  if(t.dataset.del){ if(t.dataset.confirm){ const vp=(posts.find(x=>x.id===t.dataset.del)||{}).videoPath; db.doc("posts/"+t.dataset.del).delete().then(()=>{ if(vp) MW.deleteVideo(vp); toast("Deleted"); }).catch(err=>toast(err.message||err.code)); } else { t.dataset.confirm="1"; t.textContent="Tap again to delete"; } }
+  if(t.dataset.del){ if(t.dataset.confirm){ const pd=posts.find(x=>x.id===t.dataset.del)||{}, vp=pd.videoPath, ap=pd.audioPath; db.doc("posts/"+t.dataset.del).delete().then(()=>{ if(vp) MW.deleteVideo(vp); if(ap) MW.deleteVideo(ap); toast("Deleted"); }).catch(err=>toast(err.message||err.code)); } else { t.dataset.confirm="1"; t.textContent="Tap again to delete"; } }
 });
 function subReplies(id){ if(replySubs[id]) return; replySubs[id]=db.collection("posts/"+id+"/replies").orderBy("createdAt","asc").limit(200).onSnapshot(s=>{replyCache[id]=s.docs.map(d=>d.data()); drawReplies(id);}, e=>console.warn(e)); }
 function drawReplies(id){
@@ -2420,6 +2436,9 @@ boot();
 <script src="js/clips.js"></script>
 <script src="js/dj.js"></script>
 <script src="js/live.js"></script>
+<script src="js/beatlab.js"></script>
+<script src="js/friends.js"></script>
+<script src="js/dating.js"></script>
 <script src="js/ai-widget.js"></script>
 </body>
 </html>

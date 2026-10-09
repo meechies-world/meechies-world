@@ -232,6 +232,24 @@
     x.onerror = () => rej(new Error("Network problem. Check your connection and try again."));
     x.send(file);
   });
+  // Any member file (song mixdowns, dating photos): same private-folder rules as videos.
+  window.MW.uploadMedia = (blob, opts = {}) => new Promise((res, rej) => {
+    if (!session) return rej(new Error("Sign in first."));
+    if (blob.size > window.MW.VIDEO_MAX) return rej(new Error("That file is over 50 MB."));
+    const type = opts.type || blob.type || "application/octet-stream";
+    if (!/^(audio|image|video)\//.test(type)) return rej(new Error("That file type isn't supported."));
+    const ext = opts.ext || ({ "audio/wav": "wav", "audio/mpeg": "mp3", "audio/webm": "webm", "audio/mp4": "m4a", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[type] || "bin");
+    const path = session.user.id + "/" + newId() + "." + ext;
+    const x = new XMLHttpRequest();
+    x.open("POST", cfg.SUPABASE_URL + "/storage/v1/object/media/" + path);
+    x.setRequestHeader("authorization", "Bearer " + session.access_token);
+    x.setRequestHeader("apikey", cfg.SUPABASE_ANON_KEY);
+    x.setRequestHeader("content-type", type);
+    x.upload.onprogress = (e) => { if (e.lengthComputable && opts.onProg) opts.onProg(e.loaded / e.total); };
+    x.onload = () => { if (x.status >= 200 && x.status < 300) return res({ path, url: sb.storage.from("media").getPublicUrl(path).data.publicUrl }); let m = "Upload failed (" + x.status + ")"; try { const j = JSON.parse(x.responseText); m = j.message || j.error || m; } catch (_) {} rej(new Error(m)); };
+    x.onerror = () => rej(new Error("Network problem. Check your connection and try again."));
+    x.send(blob);
+  });
   window.MW.deleteVideo = (path) => (sb && path ? sb.storage.from("media").remove([path]).catch(() => {}) : Promise.resolve());
 
   /* ---------- the claude.use() shim ---------- */
