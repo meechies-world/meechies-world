@@ -927,7 +927,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
         <div class="field" style="flex:1;min-width:160px"><input type="text" id="up-artist" maxlength="60" placeholder="Artist name (default: Meechie)"></div>
         <button class="btn ghost sm" type="button" id="restart-station">Restart station from track 1</button>
       </div>
-      <p style="margin:10px 0 0"><a class="btn sm" href="/upload.html">📱 Uploading from your phone? Use the simple uploader</a></p>
+      <p style="margin:10px 0 0;display:flex;flex-wrap:wrap;gap:8px"><a class="btn sm" href="/upload.html">📱 Uploading from your phone? Use the simple uploader</a><button class="btn ghost sm" type="button" id="rn-sync">⟳ Sync my songs from ReverbNation</button></p>
       <p class="muted" style="font-size:13px;margin:8px 0 0" id="up-status">Upload MP3, WAV, M4A, AAC, OGG, MP4 or WebM files up to 50 MB each. Music videos play too. Only you see this.</p>
     </div>
     <div class="tracks" id="tracks"><div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie's World shows up here.</div></div>
@@ -2261,6 +2261,14 @@ if(!$("#v-shop").hidden) loadShop();
 
 /* Pause our radio when someone starts the ReverbNation player */
 window.addEventListener("blur",()=>{ setTimeout(()=>{ const a=document.activeElement; if(a && a.tagName==="IFRAME" && /reverbnation/.test(a.src) && !media.paused){ media.pause(); } },0); });
+
+$("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$("#up-status"); b.disabled=true; st.textContent="Copying your songs from ReverbNation... this can take a minute.";
+  try{ const r=await fetch("/api/rn-sync",{method:"POST",headers:{authorization:"Bearer "+(window.MW?.session?.()?.access_token||"")}}); const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error==="owner_only"?"Only the owner can sync.":(j.error||"Sync failed"));
+    st.textContent = (j.added.length?`Added ${j.added.length} song${j.added.length>1?"s":""}: ${j.added.join(", ")}. `:"No new songs. ")+(j.skipped.length?`${j.skipped.length} already on the radio. `:"")+(j.failed.length?`Couldn't copy: ${j.failed.join("; ")}`:"");
+    if(j.added.length) toast("Your ReverbNation songs are on the radio");
+  }catch(err){ st.textContent=err.message; }
+  b.disabled=false; });
 boot();
 </script>
 <script src="js/studio.js"></script>
