@@ -107,6 +107,58 @@
     room.on("gift", ({ data }) => { if (data && data.kind) { fly(id, data.kind); chatLog.push({ room: id, uid: data.uid, text: "sent " + (EMO[data.kind] || "🎁") }); paintChat(); paintBattle(); } });
   }
 
+  /* ---------- camera permission pop-up ----------
+   * When someone opens the Live page and the camera isn't allowed yet, the site asks for it right away
+   * (the phone's own "Allow camera?" box). If the browser needs a tap first, our pop-up has a big Allow button. */
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const inApp = /FBAN|FBAV|Instagram|TikTok|musical_ly|Snapchat|Line\/|GSA\//i.test(navigator.userAgent);
+  let askedThisVisit = false;
+  async function camState() { try { return (await navigator.permissions.query({ name: "camera" })).state; } catch (_) { return "unknown"; } }
+  function permModal(state, msg) {
+    let m = document.getElementById("gl-perm");
+    if (!m) { m = document.createElement("div"); m.id = "gl-perm"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true");
+      m.style.cssText = "position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:16px"; document.body.appendChild(m); }
+    const fix = isIOS ? "Tap <b>aA</b> next to the web address → <b>Website Settings</b> → set <b>Camera</b> and <b>Microphone</b> to <b>Allow</b>. (Also: iPhone Settings → Safari → Camera → Allow.) Then reload the page."
+      : "Tap the <b>🔒</b> next to the web address → <b>Permissions</b> → turn on <b>Camera</b> and <b>Microphone</b>. Then reload the page.";
+    const body = inApp ? `<p>You opened Meechie's World inside another app, and that app won't share the camera.</p><p>Tap <b>⋯</b> (top or bottom corner) and choose <b>Open in browser</b> / <b>Open in Safari</b> / <b>Open in Chrome</b>.</p>`
+      : state === "denied" ? `<p>Your camera is turned off for this site, so your phone won't ask again by itself.</p><p>${fix}</p>`
+      : `<p>To go live, Meechie's World needs your <b>camera</b> and <b>microphone</b>. When your phone asks, tap <b>Allow</b>.</p>${msg ? `<p style="color:#ffb4b4">${E(msg)}</p>` : ""}`;
+    m.innerHTML = `<div style="width:min(420px,100%);background:#15130f;border:1px solid var(--gold,#d4a843);border-radius:20px;padding:22px;color:var(--text,#f3ecdc);font:16px/1.45 var(--body,system-ui);display:grid;gap:10px;text-align:center">
+      <div style="font-size:44px">🎥🎤</div><h3 style="margin:0;font-size:21px">Allow camera &amp; microphone</h3>${body}
+      ${inApp ? "" : `<button class="btn" type="button" id="gl-perm-ok" style="background:#e5484d;color:#fff;font-size:17px;padding:13px">${state === "denied" ? "I turned it on — reload" : "Allow camera"}</button>`}
+      <button class="btn ghost" type="button" id="gl-perm-no">Not now</button></div>`;
+    m.hidden = false;
+    m.querySelector("#gl-perm-no").onclick = () => { m.hidden = true; };
+    const ok = m.querySelector("#gl-perm-ok"); if (ok) ok.onclick = () => (state === "denied" ? location.reload() : requestCam(true));
+  }
+  async function requestCam(fromTap) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { permModal("prompt"); return false; }
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      s.getTracks().forEach((t) => t.stop());
+      const m = document.getElementById("gl-perm"); if (m) m.hidden = true;
+      status(""); if (fromTap) say("Camera ready! Tap 🎥 Go live when you're set.");
+      return true;
+    } catch (e) {
+      const st = await camState();
+      if (e && e.name === "NotAllowedError" && (st === "denied" || fromTap)) permModal(st === "prompt" ? "denied" : st);
+      else if (e && e.name === "NotReadableError") permModal("prompt", "Your camera is being used by another app. Close it and tap Allow camera again.");
+      else if (e && e.name === "NotFoundError") permModal("prompt", "No camera was found on this device.");
+      else permModal(st);
+      return false;
+    }
+  }
+  async function autoAsk() {
+    if (askedThisVisit || hosting || !ME() || view.hidden) return;
+    askedThisVisit = true;
+    if (inApp) { permModal("prompt"); return; }
+    const st = await camState();
+    if (st === "granted") return;
+    if (st === "denied") { permModal("denied"); return; }
+    // ask the phone right away; if it needs a tap first, show our pop-up with the big button
+    permModal("prompt"); requestCam(false);
+  }
+
   /* ---------- hosting ---------- */
   let facing = "user";
   async function goLive() {
@@ -258,6 +310,8 @@
     d.collection("live").limit(100).onSnapshot((s) => { lives = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!view.hidden) render(); document.querySelectorAll('[data-go="live"]').forEach((a) => a.classList.toggle("has-live", lives.some(isLive))); }, () => {});
     d.collection("battles").orderBy("createdAt", "desc").limit(20).onSnapshot((s) => { battles = s.docs.map((x) => ({ id: x.id, ...x.data() })); paintBattle(); }, () => {});
     try { navigator.permissions && navigator.permissions.query({ name: "camera" }).then((p) => { const chk = () => { if (p.state === "denied" && !hosting) status("Your camera is blocked for this site. Tap the 🔒 or aA next to the web address → Website settings → allow Camera and Microphone, then reload."); else if (statusMsg.startsWith("Your camera is blocked")) status(""); }; chk(); p.onchange = chk; }).catch(() => {}); } catch (_) {}
+    new MutationObserver(() => { if (!view.hidden) setTimeout(autoAsk, 400); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
+    if (!view.hidden) setTimeout(autoAsk, 800);
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     render();
   }
