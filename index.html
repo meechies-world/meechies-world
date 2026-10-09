@@ -9,6 +9,17 @@
 <meta property="og:title" content="Meechie's World">
 <meta property="og:description" content="Join free: post, chat, play, design, and tune in to Meechie's World Radio.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://meechies-world.pages.dev/">
+<meta property="og:image" content="https://meechies-world.pages.dev/img/og.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://meechies-world.pages.dev/img/og.jpg">
+<link rel="canonical" href="https://meechies-world.pages.dev/">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Meechie's World">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Meechie's World Inc","url":"https://meechies-world.pages.dev/","logo":"https://meechies-world.pages.dev/img/icon-512.png","email":"meechiesworldinc@aol.com","sameAs":["https://www.tiktok.com/@meechiesworldinc","https://www.snapchat.com/add/elpesidentay","https://meechiesworld-inc.printify.me"]}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0a08'/%3E%3Cpath d='M32 8 L56 50 H8 Z' fill='none' stroke='%23d4a843' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M20 36 Q32 26 44 36 Q32 46 20 36Z' fill='none' stroke='%23d4a843' stroke-width='3'/%3E%3Ccircle cx='32' cy='36' r='4' fill='%23f0cf78'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -588,6 +599,27 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .support h3{font-family:var(--display);font-size:26px;color:var(--gold-hi)}
 #ai-log .msg{white-space:pre-wrap;overflow-wrap:anywhere}
 .fb-btn{width:100%;justify-content:center;gap:10px;background:#1877f2!important;border-color:#1877f2!important;color:#fff!important}
+#radio-note{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:9996;display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);padding:9px 10px 9px 16px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.6);font-size:14px;max-width:calc(100vw - 32px);animation:rnIn .4s ease}
+#radio-note b{color:var(--gold-hi)}#radio-note button{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px}
+@keyframes rnIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
+.yt-stage{max-width:960px;margin:0 auto}
+.yt-frame{position:relative;aspect-ratio:16/9;border:1px solid var(--gold);border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 6px #0f0d09,0 0 0 7px var(--gold-lo),0 30px 60px rgba(0,0,0,.6)}
+.yt-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.yt-empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;color:var(--muted)}
+.yt-poster{position:absolute;inset:0;border:0;background:#000 center/cover;cursor:pointer}
+.yt-pl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:rgba(212,168,67,.92);color:#0b0a08;font-size:18px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.yt-pl.big{width:78px;height:78px;font-size:28px}
+.yt-now{display:grid;gap:2px;text-align:center;margin:14px 0 0}.yt-now b{font-size:18px}.yt-now small{color:var(--muted)}
+.yt-form{max-width:760px;margin:28px auto 0;display:grid;gap:12px}
+.yt-preview img{width:200px;border-radius:10px;border:1px solid var(--line)}
+.yt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:18px}.yt-grid .empty{grid-column:1/-1}
+.yt-card{background:linear-gradient(180deg,#17130c,#0f0d09);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.yt-card.on{border-color:var(--gold)}
+.yt-thumb{position:relative;display:block;width:100%;aspect-ratio:16/9;border:0;padding:0;background:#000;cursor:pointer}
+.yt-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.yt-feat{position:absolute;left:8px;top:8px}
+.yt-meta{padding:10px 12px;display:grid;gap:4px}.yt-meta b{overflow-wrap:anywhere}.yt-meta small{color:var(--muted)}
+.yt-acts{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -659,6 +691,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#shop" data-go="shop">Shop</a>
       <a href="#community" data-go="community">Community</a>
       <a href="#radio" data-go="radio">Radio</a>
+      <a href="#videos" data-go="videos">Videos</a>
       <a href="#world" data-go="world">Virtual World</a>
       <a href="#chat" data-go="chat">Chat &amp; Walkie</a>
       <a href="#messages" data-go="messages">Messages<span class="dm-dot" hidden></span></a>
@@ -886,17 +919,43 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     </div>
     <div id="uploader" hidden>
       <div class="upload-row">
-        <span class="btn file-btn">Upload tracks<input type="file" id="up-audio" accept=".m4a,.mp4,.webm,audio/mp4,audio/x-m4a,video/mp4,video/webm,audio/webm" multiple aria-label="Upload tracks"></span>
+        <span class="btn file-btn">Upload tracks<input type="file" id="up-audio" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.mp4,.webm,video/mp4,video/webm" multiple aria-label="Upload tracks"></span>
         <div class="field" style="flex:1;min-width:160px"><input type="text" id="up-artist" maxlength="60" placeholder="Artist name (default: Meechie)"></div>
         <button class="btn ghost sm" type="button" id="restart-station">Restart station from track 1</button>
       </div>
-      <p class="muted" style="font-size:13px;margin:8px 0 0" id="up-status">Upload M4A, MP4 or WebM files up to 20 MB each. Music videos play too. Only you see this.</p>
+      <p class="muted" style="font-size:13px;margin:8px 0 0" id="up-status">Upload MP3, WAV, M4A, AAC, OGG, MP4 or WebM files up to 50 MB each. Music videos play too. Only you see this.</p>
     </div>
     <div class="tracks" id="tracks"><div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie's World shows up here.</div></div>
   </div>
 </section>
 
 <!-- WORLD -->
+<section class="view" id="v-videos" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Watch together</p><h2>Videos</h2></div>
+      <p class="muted">Watch music videos, interviews, and more from the community. Share any YouTube video by pasting its link.</p>
+    </div>
+    <div class="yt-stage">
+      <div class="yt-frame" id="yt-frame"><div class="yt-empty"><svg class="sqc-ico" aria-hidden="true" style="width:56px;height:56px"><use href="#sqc"/></svg><span>Shared videos play here.</span></div></div>
+      <div class="yt-now" id="yt-now"></div>
+    </div>
+    <form class="card yt-form" id="yt-form">
+      <h3 style="font-size:20px;margin:0">Share a YouTube video</h3>
+      <div class="req">
+        <div class="field full"><label for="yt-url">YouTube link</label><input type="url" id="yt-url" placeholder="https://youtu.be/..." required></div>
+        <div class="field"><label for="yt-title">Title</label><input type="text" id="yt-title" maxlength="100" placeholder="e.g. My new music video"></div>
+        <div class="field"><label for="yt-note">Note (optional)</label><input type="text" id="yt-note" maxlength="80" placeholder="Out now, tell a friend"></div>
+      </div>
+      <div class="yt-preview" id="yt-preview" hidden></div>
+      <button class="btn" type="submit">Share video</button>
+      <small class="muted">Only share videos you made or that are public on YouTube. Videos play from YouTube.</small>
+    </form>
+    <div class="filters" id="yt-sort" style="justify-content:center;margin-top:24px"><button class="chip" type="button" data-sort="new" aria-pressed="true">Newest</button><button class="chip" type="button" data-sort="top">Most liked</button></div>
+    <div class="yt-grid" id="yt-grid"><div class="empty">Loading videos...</div></div>
+  </div>
+</section>
+
 <section class="view" id="v-world" hidden>
   <div class="wrap">
     <div class="section-head">
@@ -1299,7 +1358,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["home","services","shop","community","radio","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["home","services","shop","community","radio","videos","world","games","creators","chat","messages","ads","promote","contact"];
 function go(v){ if(!VIEWS.includes(v)) v="home";
   VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
   $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -1738,10 +1797,44 @@ $("#tracks").addEventListener("click",async e=>{ const b=e.target.closest("butto
   if(b.dataset.tdel){ if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Tap again"; return; }
     const t=tracks.find(x=>x.id===b.dataset.tdel); await db.doc("tracks/"+t.id).delete().catch(err=>toast(err.message||err.code)); assets?.delete(t.assetId).catch(()=>{}); toast("Track deleted"); }
 });
+
+/* ---------- Radio starts when the site opens ---------- */
+let autoTried=false;
+function radioSnoozed(){ try{ return sessionStorage.getItem("mw_radio_off")==="1"; }catch(_){ return false; } }
+function snoozeRadio(){ try{ sessionStorage.setItem("mw_radio_off","1"); }catch(_){} hideRadioNote(); }
+function hideRadioNote(){ const n=document.getElementById("radio-note"); if(n) n.remove(); }
+function showRadioNote(){
+  if(document.getElementById("radio-note")) return;
+  const n=document.createElement("div"); n.id="radio-note";
+  n.innerHTML='<span>🔊 <b>Meechie\'s World Radio</b> is live. Tap anywhere to listen.</span><button type="button" aria-label="No thanks">✕</button>';
+  n.querySelector("button").addEventListener("click",e=>{ e.stopPropagation(); snoozeRadio(); });
+  document.body.appendChild(n);
+}
+async function autoRadio(){
+  if(autoTried || !tracks.length || radioSnoozed() || (window.MW_SITE && window.MW_SITE.autoplay===false)) return;
+  if(mode==="radio" && !media.paused) return;
+  autoTried=true;
+  const a=airNow(); if(!a) return;
+  mode="radio"; curIdx=a.i; await load(tracks[a.i], airNow().offset);
+  try{ await media.play(); showBar(tracks[a.i],"Meechie's World Radio · LIVE"); room?.presence({radio:true}); renderTracks(); updIcons(); }
+  catch(_){
+    showRadioNote();
+    const go=e=>{
+      if(e.target.closest && e.target.closest("#radio-note button,#player-bar,#tune-in,#mw-bar,#ai-panel,input,textarea,select")) return;
+      document.removeEventListener("pointerdown",go,true); document.removeEventListener("keydown",go,true); hideRadioNote();
+      if(radioSnoozed() || (mode==="radio" && !media.paused)) return;
+      const n=airNow(); if(!n) return;
+      if(n.i===curIdx){ try{ media.currentTime=n.offset; }catch(_){} media.play().then(()=>{ showBar(tracks[n.i],"Meechie's World Radio · LIVE"); room?.presence({radio:true}); renderTracks(); updIcons(); }).catch(()=>{}); }
+      else tuneIn();
+    };
+    document.addEventListener("pointerdown",go,true); document.addEventListener("keydown",go,true);
+  }
+}
+media.addEventListener("pause",()=>{ if(mode==="radio" && document.visibilityState==="visible" && !media.ended) { try{ sessionStorage.setItem("mw_radio_off","1"); }catch(_){} } });
 async function setEpoch(ms){ try{ await db.doc("radio/state").set({epoch:ms}); }catch(err){ toast(err.message||err.code); } }
 $("#restart-station").addEventListener("click",async()=>{ await setEpoch(Date.now()); toast("Station restarted from track 1"); if(mode==="radio") tuneIn(); });
 function subRadio(){
-  db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); }, e=>console.warn(e));
+  db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); if(!autoTried) setTimeout(autoRadio,400); }, e=>console.warn(e));
   db.doc("radio/state").onSnapshot(d=>{ radioEpoch=d.exists?(d.data().epoch||DEFAULT_EPOCH):DEFAULT_EPOCH; paintAir(); }, e=>console.warn(e));
   db.collection("requests").orderBy("createdAt","desc").limit(25).onSnapshot(s=>{
     $("#req-list").innerHTML = s.empty ? '<p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p>' : s.docs.map(d=>{const r=d.data(); return `<div><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)} <small class="muted">${ago(r.createdAt)}</small></div>`;}).join("");
@@ -1755,18 +1848,18 @@ $("#up-audio").addEventListener("change",async e=>{
   const artist=$("#up-artist").value.trim()||"Meechie"; let done=0;
   for(const f of files){
     const ext=(f.name.split(".").pop()||"").toLowerCase();
-    if(ext==="mp3"||ext==="wav"){ toast(f.name+": convert MP3/WAV to M4A first."); continue; }
-    if(f.size>20*1024*1024){ toast(f.name+" is over 20 MB."); continue; }
+    if(f.size>50*1024*1024){ toast(f.name+" is over 50 MB. Export it smaller (MP3 at 192 kbps works great)."); continue; }
     $("#up-status").textContent="Uploading "+f.name+"...";
     try{
       const duration=await mediaDuration(f);
-      const type = ext==="webm" ? "video/webm" : "video/mp4";
+      const TYPES={mp3:"audio/mpeg",wav:"audio/wav",m4a:"audio/mp4",aac:"audio/aac",ogg:"audio/ogg",oga:"audio/ogg",flac:"audio/flac",webm:"video/webm",mp4:"video/mp4",mov:"video/mp4"};
+      const type = f.type || TYPES[ext] || "audio/mpeg";
       const up=await assets.upload(f,{type});
       await db.collection("tracks").add({title:f.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," "),artist,assetId:up.id,duration:Math.round(duration),cover:"",addedAt:Date.now()});
       done++;
-    }catch(err){ toast(f.name+": "+(err.code==="unsupported_type"?"that file type isn't supported. Use M4A, MP4 or WebM.":(err.message||err.code))); }
+    }catch(err){ toast(f.name+": "+(err.code==="unsupported_type"?"that file type isn't supported. Use MP3, WAV, M4A, MP4 or WebM.":(err.message||err.code))); }
   }
-  $("#up-status").textContent= done ? `Added ${done} track${done>1?"s":""}. They're in the Library and on the radio rotation.` : "Upload M4A, MP4 or WebM files up to 20 MB each. Music videos play too. Only you see this.";
+  $("#up-status").textContent= done ? `Added ${done} track${done>1?"s":""}. They're in the Library and on the radio rotation.` : "Upload MP3, WAV, M4A, AAC, OGG, MP4 or WebM files up to 50 MB each. Music videos play too. Only you see this.";
 });
 
 /* ---------- Gold Rush Arena ---------- */
@@ -2149,6 +2242,7 @@ boot();
 <script src="js/studio.js"></script>
 <script src="js/owner.js"></script>
 <script src="js/messages.js"></script>
+<script src="js/videos.js"></script>
 <script src="js/ai-widget.js"></script>
 </body>
 </html>

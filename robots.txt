@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://meechies-world.pages.dev/sitemap.xml
