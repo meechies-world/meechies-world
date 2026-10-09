@@ -24,12 +24,15 @@ export async function onRequestPost({ request, env }) {
     .slice(-10).map((m) => ({ role: m.role, content: m.content.slice(0, 600) }));
   if (!turns.length || turns[turns.length - 1].role !== "user") return json({ error: "bad_request" }, 400);
 
-  try {
-    const out = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages: [{ role: "system", content: BRIEF }, ...turns], max_tokens: 320, temperature: 0.4 });
-    const reply = String((out && (out.response || out.result || "")) || "").trim();
-    if (!reply) return json({ error: "empty" }, 502);
-    return json({ reply });
-  } catch (e) {
-    return json({ error: "busy" }, 503);
+  const MODELS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast", "@cf/meta/llama-3.1-8b-instruct", "@cf/mistralai/mistral-small-3.1-24b-instruct", "@cf/qwen/qwen2.5-coder-32b-instruct"];
+  const errs = [];
+  for (const model of MODELS) {
+    try {
+      const out = await env.AI.run(model, { messages: [{ role: "system", content: BRIEF }, ...turns], max_tokens: 320, temperature: 0.4 });
+      const reply = String((out && (out.response || out.result || (out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content) || "")) || "").trim();
+      if (reply) return json({ reply });
+      errs.push(model + ": empty");
+    } catch (e) { errs.push(model + ": " + String(e && e.message || e).slice(0, 160)); }
   }
+  return json({ error: "busy", detail: errs }, 503);
 }
