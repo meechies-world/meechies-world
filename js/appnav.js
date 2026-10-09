@@ -55,7 +55,7 @@
 .appmore .grid a[aria-current=page]{border-color:var(--gold,#d4a843);color:var(--gold-hi,#f0cf78)}`;
   document.head.appendChild(css);
 
-  const ICON = { jobs: "💼", books: "📚", liveradio: "📡", livetv: "📺", home: "🏠", services: "🧰", shop: "🛍️", community: "👥", radio: "📻", clips: "🎬", videos: "📺", world: "🌐", games: "🎮", creators: "🎨", chat: "💬", messages: "✉️", ads: "📌", promote: "📣", contact: "📞", friends: "🤝", dating: "💘", studio: "🎚️" };
+  const ICON = { live: "🔴", predict: "🔮", jobs: "💼", books: "📚", liveradio: "📡", livetv: "📺", home: "🏠", services: "🧰", shop: "🛍️", community: "👥", radio: "📻", clips: "🎬", videos: "📺", world: "🌐", games: "🎮", creators: "🎨", chat: "💬", messages: "✉️", ads: "📌", promote: "📣", contact: "📞", friends: "🤝", dating: "💘", studio: "🎚️" };
   const bar = document.createElement("nav");
   bar.className = "apptab"; bar.setAttribute("aria-label", "App tabs");
   bar.innerHTML = TABS.map(([v, n, p]) => `<a href="#${v}" data-go="${v}"><svg viewBox="0 0 24 24" aria-hidden="true">${p}</svg>${n}</a>`).join("") +
