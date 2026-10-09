@@ -14,7 +14,7 @@ const EXTRA = `More facts:
 - Promotion: we promote paid campaigns across all Meechie's World social media (TikTok @meechiesworldinc, Snapchat elpesidentay) plus the site feed and Ad Board.
 - Donations: the Support Meechie's World section (Home and Contact pages) takes any amount. Meechie's World is a business, not a charity, so donations are not tax-deductible.
 - Members can message each other privately on the Messages tab, and the site owner can edit the site.
-How to answer: reply in the same language the visitor writes in. Be warm, confident, and specific. Use short paragraphs or a few bullet points, and end with one clear next step (which tab or button to use, or who to DM). Keep answers under 150 words unless asked for detail. Never invent prices, products, or promises that are not listed here.`;
+How to answer: reply in the same language the visitor writes in. Be warm, confident, and specific. Use short paragraphs or a few bullet points, and end with one clear next step (which tab or button to use, or who to DM). Keep answers under 150 words unless asked for detail. Never invent prices, products, or promises that are not listed here. Only mention Meechie's World services, books, or products when they genuinely relate to the question; for general-knowledge answers, just answer and cite the sources.`;
 
 // ---------- free web lookup (Wikipedia + DuckDuckGo instant answers) ----------
 const UA = { "user-agent": "MeechiesWorldAI/1.0 (https://meechies-world.pages.dev; meechiesworldinc@aol.com)" };
@@ -23,7 +23,7 @@ async function decideSearch(env, turns) {
   try {
     const out = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast", {
       messages: [
-        { role: "system", content: "You route questions for the Meechie's World website assistant. If answering the user's latest message needs outside facts (people, places, history, science, how-to, definitions, general knowledge) that are NOT about Meechie's World, its services, prices, shop, or website features, reply with ONLY a short web search query (max 8 words). Otherwise reply with exactly NONE." },
+        { role: "system", content: "You route questions for the Meechie's World website assistant. If answering the user's latest message needs outside facts (news, current events, sports, people, places, businesses, products, history, science, how-to, definitions, general knowledge) that are NOT about Meechie's World, its services, prices, shop, or website features, reply with ONLY a short web search query (max 8 words). Otherwise reply with exactly NONE." },
         ...turns.slice(-4)
       ], max_tokens: 24, temperature: 0
     });
@@ -32,7 +32,40 @@ async function decideSearch(env, turns) {
     return q;
   } catch (_) { return /\b(who|what|when|where|why|how)\b/i.test(last) && !/meechie|price|service|shop|promot|pay|site|join|radio|design/i.test(last) ? last.slice(0, 80) : null; }
 }
-async function webLookup(q) {
+async function tavily(env, q) {
+  if (!env.TAVILY_API_KEY) return [];
+  try {
+    const r = await fetch("https://api.tavily.com/search", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + env.TAVILY_API_KEY },
+      body: JSON.stringify({ query: q, search_depth: "basic", max_results: 4, include_answer: false }) }).then((x) => x.json());
+    return ((r && r.results) || []).slice(0, 4).map((x) => ({ title: x.title || x.url, text: String(x.content || "").slice(0, 900), url: x.url }));
+  } catch (_) { return []; }
+}
+function htmlToText(h) {
+  return h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ").trim();
+}
+async function readUrls(text) {
+  const urls = (text.match(/https?:\/\/[^\s<>"')]+/g) || []).slice(0, 2);
+  const out = [];
+  for (const u of urls) {
+    try {
+      const host = new URL(u).hostname;
+      if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.)/.test(host)) continue;
+      const r = await fetch(u, { headers: { ...UA, accept: "text/html,text/plain" }, redirect: "follow", cf: { cacheTtl: 300 } });
+      if (!r.ok) continue;
+      const ct = r.headers.get("content-type") || "";
+      if (!/text|html|json/.test(ct)) continue;
+      const raw = (await r.text()).slice(0, 400000);
+      const title = (raw.match(/<title[^>]*>([^<]*)<\/title>/i) || [, u])[1].trim().slice(0, 120);
+      out.push({ title: title || u, text: htmlToText(raw).slice(0, 3500), url: u });
+    } catch (_) {}
+  }
+  return out;
+}
+async function webLookup(q, env) {
+  const t = await tavily(env || {}, q);
+  if (t.length) return t;
   const results = [];
   try {
     const ddg = await fetch("https://api.duckduckgo.com/?no_html=1&skip_disambig=1&format=json&q=" + encodeURIComponent(q), { headers: UA }).then((r) => r.json());
@@ -73,10 +106,11 @@ export async function onRequestPost({ request, env }) {
     const st = await fetch(new URL("/api/store", request.url).toString()).then((r) => r.json());
     if (st && st.products && st.products.length) live += "\nCurrent Shop products (Shop tab, checkout on Printify): " + st.products.slice(0, 20).map((p) => p.title + (p.price ? " " + p.price : "")).join("; ") + ".";
   } catch (_) {}
-  let sources = [];
-  const q = await decideSearch(env, turns);
+  let sources = await readUrls(turns[turns.length - 1].content);
+  if (sources.length) live += "\n\nPages the visitor linked (read them to answer; cite like [1]):\n" + sources.map((r, i) => "[" + (i + 1) + "] " + r.title + " (" + r.url + "): " + r.text).join("\n");
+  const q = sources.length ? null : await decideSearch(env, turns);
   if (q) {
-    sources = await webLookup(q);
+    sources = await webLookup(q, env);
     if (sources.length) live += "\n\nWeb results for \"" + q + "\" (use these for outside facts and cite them like [1], [2]; they may be incomplete and are not live news):\n" + sources.map((r, i) => "[" + (i + 1) + "] " + r.title + ": " + r.text).join("\n");
     else live += "\n\nA web lookup for \"" + q + "\" found nothing. If you are not sure of the answer, say so.";
   }
