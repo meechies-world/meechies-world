@@ -574,6 +574,12 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .st-layers{display:grid;gap:6px}.st-l{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:14px}.st-l.on{border-color:var(--gold);background:rgba(212,168,67,.1)}
 .st-props{display:grid;gap:10px}
 @media (max-width:900px){.studio2{grid-template-columns:1fr}}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+.shop-grid .empty{grid-column:1/-1}
+.prod{display:grid;gap:8px;text-align:center;background:linear-gradient(180deg,#17130c,#0f0d09);border:1px solid var(--line);border-radius:16px;padding:12px;color:var(--text);text-decoration:none;transition:transform .2s,border-color .2s}
+.prod:hover{transform:translateY(-3px);border-color:var(--gold)}
+.prod img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#fff}
+.prod b{font-size:15px;line-height:1.3}.prod .pr{color:var(--gold-hi);font-weight:800;font-size:17px}.prod .buy{color:var(--gold-hi);font-size:13px;font-weight:700}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -642,6 +648,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <nav class="tabs" aria-label="Sections">
       <a href="#home" data-go="home">Home</a>
       <a href="#services" data-go="services">Services</a>
+      <a href="#shop" data-go="shop">Shop</a>
       <a href="#community" data-go="community">Community</a>
       <a href="#radio" data-go="radio">Radio</a>
       <a href="#world" data-go="world">Virtual World</a>
@@ -754,6 +761,18 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 </section>
 
 <!-- COMMUNITY -->
+<section class="view" id="v-shop" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Official merch</p><h2>Meechie's World Shop</h2></div>
+      <p class="muted">Bold. Fearless. Unapologetic. Every piece is printed on demand and shipped to you. Tap a product to see sizes and order.</p>
+    </div>
+    <div class="shop-grid" id="shop-grid"><div class="empty">Loading the latest drop...</div></div>
+    <div style="display:flex;justify-content:center;margin-top:28px"><a class="btn" id="shop-all" href="https://meechiesworld-inc.printify.me/products" target="_blank" rel="noopener">See the full store →</a></div>
+    <p class="muted center-p" style="font-size:13px;margin-top:14px">Checkout, payment, and shipping are handled securely by our print partner, Printify.</p>
+  </div>
+</section>
+
 <section class="view" id="v-community" hidden>
   <div class="wrap">
     <div class="section-head">
@@ -956,7 +975,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <div class="offer">
       <div><b>Design in your browser</b><span>T-shirts, long sleeves, hoodies, sweatshirts, and tanks in any color. Add text, symbols, and your own art, drag to place it, and design the front and back.</span></div>
       <div><b>Upload your finished art</b><span>Already have the artwork? Upload it, place it on the garment, and submit. A transparent PNG, 3000 pixels or bigger, prints best.</span></div>
-      <div><b>Community vote</b><span>Members vote with 🔥 on every design. The designs we pick get added to the Meechie's World store.</span></div>
+      <div><b>Community vote</b><span>Members vote with 🔥 on every design. The designs we pick get added to the <a href="#shop" data-go="shop">Meechie's World store</a>.</span></div>
       <div><b>Made on demand</b><span>Printing is print-on-demand, so there is no stock to buy up front. Orders are printed and shipped as they come in.</span></div>
       <div><b>Your share, in writing</b><span>If your design is picked, we agree your share of each sale in writing before anything goes on sale. Nothing is guaranteed.</span></div>
       <div><b>Want your own clothing line?</b><span>We set up your designs, your store, and your printing. Services start at $50 and are quoted per job. <a href="#contact" data-go="contact">Ask us</a></span></div>
@@ -1245,7 +1264,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["home","services","community","radio","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["home","services","shop","community","radio","world","games","creators","chat","messages","ads","promote","contact"];
 function go(v){ if(!VIEWS.includes(v)) v="home";
   VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
   $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -2073,6 +2092,17 @@ $("#auth-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!win
 });
 function paintAuthBar(){ $("#authbar").innerHTML = me ? `<button class="btn ghost sm" type="button" data-auth="signout">Sign out</button>` : `<button class="btn sm" type="button" data-auth="signup">Join free</button>`; }
 window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
+
+/* ---------- Shop (Printify) ---------- */
+let shopLoaded=false;
+async function loadShop(){ if(shopLoaded) return; shopLoaded=true;
+  try{ const r=await fetch("/api/store"); const j=await r.json(); const ps=j.products||[];
+    if(!ps.length) throw new Error("empty");
+    $("#shop-grid").innerHTML=ps.map(p=>`<a class="prod" href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy"><b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">Shop now →</span></a>`).join("");
+  }catch(_){ $("#shop-grid").innerHTML='<div class="empty">Our latest drop is in the store. Tap the button below to shop.</div>'; }
+}
+new MutationObserver(()=>{ if(!$("#v-shop").hidden) loadShop(); }).observe($("#v-shop"),{attributes:true,attributeFilter:["hidden"]});
+if(!$("#v-shop").hidden) loadShop();
 boot();
 </script>
 <script src="js/studio.js"></script>
