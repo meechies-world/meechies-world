@@ -12,12 +12,12 @@
   css.textContent = `
 :root{--tabbar:0px}
 /* computers: use the whole screen */
-@media (min-width:761px){
+@media (min-width:761px), (pointer:fine){
   .wrap{max-width:none!important;padding-inline:clamp(20px,3.2vw,56px)!important}
   #v-videos .yt-stage,#v-videos .tt-box,#v-videos .lv-card{max-width:1280px!important}
 }
 /* phones: app layout */
-@media (max-width:760px){
+@media (max-width:760px) and (pointer:coarse){
   :root{--tabbar:calc(60px + env(safe-area-inset-bottom,0px))}
   body{padding-bottom:var(--tabbar)}
   body.has-player{padding-bottom:calc(var(--tabbar) + 150px)!important}
@@ -37,13 +37,13 @@
 #hdr-right{display:flex;align-items:center;gap:6px;flex:none;margin-left:8px}
 @media (max-width:640px){#hdr-right{position:absolute;right:16px;top:12px;margin:0}#hdr-right .authbar{position:static!important;margin:0}}
 #hdr-menu{display:inline-grid;place-items:center;gap:0;border:1px solid var(--gold,#d4a843);background:#15130f;color:var(--gold-hi,#f0cf78);border-radius:12px;padding:7px 12px;font:800 13px var(--body,system-ui);cursor:pointer;margin-left:8px}
-@media (min-width:761px){#hdr-menu{display:none}header.bar nav.tabs{flex-wrap:wrap!important;overflow:visible!important;row-gap:4px}}
+@media (min-width:761px), (pointer:fine){#hdr-menu{display:none}header.bar nav.tabs{flex-wrap:wrap!important;overflow:visible!important;row-gap:4px}}
 .apptab{display:none;position:fixed;left:0;right:0;bottom:0;z-index:9990;height:var(--tabbar);padding-bottom:env(safe-area-inset-bottom,0px);grid-template-columns:repeat(5,1fr);background:color-mix(in srgb,#0b0a08 94%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--gold-lo,#8c6d26)}
 .apptab a,.apptab button{display:grid;justify-items:center;align-content:center;gap:3px;color:var(--muted,#a99f8b);text-decoration:none;font:700 10.5px var(--body,system-ui);background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .apptab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
 .apptab a[aria-current=page]{color:var(--gold-hi,#f0cf78)}
 .apptab a[aria-current=page] svg{filter:drop-shadow(0 0 6px rgba(212,168,67,.6))}
-@media (max-width:760px){#hdr-menu{padding:6px 10px;font-size:16px;margin-left:6px}#hdr-menu .t{display:none}}
+@media (max-width:760px) and (pointer:coarse){#hdr-menu{padding:6px 10px;font-size:16px;margin-left:6px}#hdr-menu .t{display:none}}
 .appmore{position:fixed;inset:0;z-index:10040;background:rgba(0,0,0,.55);display:flex;align-items:flex-end}
 .appmore[hidden]{display:none!important}
 .appmore .sheet{width:100%;max-height:78dvh;overflow:auto;background:#15130f;border-top:1px solid var(--gold,#d4a843);border-radius:20px 20px 0 0;padding:10px 14px calc(var(--tabbar) + 14px);animation:sheetUp .22s ease}

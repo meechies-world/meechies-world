@@ -13,10 +13,16 @@
   const DB = () => (typeof db !== "undefined" ? db : null);
   const PRO = () => { try { return !!(typeof isOwner !== "undefined" && isOwner) || !!(typeof members !== "undefined" && members[ME()]?.pro); } catch (_) { return false; } };
   const FREE_TRACKS = 4, PRO_TRACKS = 12;
-  const PLUGINS = [["reverb", "Reverb"], ["echo", "Echo"], ["polish", "Vocal Polish"], ["bass", "Bass Boost"], ["pitch", "Key Shift"]];
+  // basic effects are free; advanced ones are in the paid Plugin Pack (anyone can preview them, saving/posting needs the pack)
+  const PLUGINS = [["reverb", "Reverb", 0], ["echo", "Echo", 0], ["bass", "Bass Boost", 0], ["lofi", "Lo-Fi", 0], ["phone", "Phone Voice", 0],
+    ["autotune", "Auto-Tune", 1], ["hardtune", "Hard Tune (T-Pain)", 1], ["polish", "Vocal Polish", 1], ["doubler", "Doubler", 1], ["distort", "Distortion", 1],
+    ["up", "Pitch Up", 1], ["down", "Pitch Down", 1], ["eightd", "8D Audio", 1]];
+  const PAID = new Set(PLUGINS.filter((p) => p[2]).map((p) => p[0]));
+  const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  let keyRoot = 0, keyScale = "chromatic", master = { slowed: false, sped: false };
   const COLORS = ["#d4a843", "#3de0ff", "#ff5c8a", "#7b5cff", "#6fbf8b", "#ff9f43", "#e8e2d5", "#b0263a"];
 
-  let ctx = null, tracks = [], playing = false, recording = false, startAt = 0, playhead = 0, sources = [], raf = 0, bpm = 90, metro = false, metroNodes = [], nextId = 1;
+  let curRate = 1, ctx = null, tracks = [], playing = false, recording = false, startAt = 0, playhead = 0, sources = [], raf = 0, bpm = 90, metro = false, metroNodes = [], nextId = 1;
   let rec = null, recChunks = [], recStream = null, recTrack = null, recBegin = 0;
   const audio = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); return ctx; };
   const PX = 60; // pixels per second on the timeline
@@ -52,6 +58,8 @@
 .bl-fx button{border:1px dashed #5a4a26;background:transparent;color:var(--muted);border-radius:999px;padding:3px 8px;font:700 11px var(--body);cursor:pointer}
 .bl-fx button.on{border-style:solid;border-color:var(--gold);color:var(--gold-hi)}
 .bl-fx button.lock::after{content:" 🔒"}
+.bl-fx button.busy{opacity:.6}
+.bl-bar select{background:#0c0a07;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:6px;font:15px var(--body)}
 .bl-add{display:flex;flex-wrap:wrap;gap:8px;padding:10px}
 .bl-file{position:relative;overflow:hidden}.bl-file input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .bl-pro{border:1px solid var(--gold);border-radius:16px;padding:16px;background:radial-gradient(ellipse at 0 0,#2a2112,#0f0d09 70%);display:grid;gap:8px}
@@ -76,6 +84,10 @@
     <span class="t" id="bl-time">0:00.0</span>
     <label>BPM <input type="number" id="bl-bpm" min="40" max="220" value="90"></label>
     <button class="bl-btn" type="button" id="bl-metro" aria-label="Metronome">🥁 Click</button>
+    <label>Key <select id="bl-key" aria-label="Song key">${NOTES.map((n, i) => `<option value="${i}">${n}</option>`).join("")}</select></label>
+    <label><select id="bl-scale" aria-label="Scale"><option value="chromatic">Any note</option><option value="minor">Minor</option><option value="major">Major</option></select></label>
+    <button class="bl-btn" type="button" id="bl-slowed" title="Plugin Pack">🌙 Slowed + Reverb</button>
+    <button class="bl-btn" type="button" id="bl-sped" title="Plugin Pack">⚡ Sped Up</button>
     <span style="flex:1"></span>
     <button class="bl-btn" type="button" id="bl-export">⬇ Save WAV</button>
     <button class="bl-btn on" type="button" id="bl-post">📣 Post my song</button>
@@ -101,7 +113,7 @@
   </div>
   <div class="bl-pro" id="bl-pro">
     <b style="font-size:18px;color:var(--gold-hi)">🔌 Plugin Pack</b>
-    <span class="muted">Reverb, Echo, Vocal Polish (studio compressor + EQ), Bass Boost, Key Shift, and up to ${PRO_TRACKS} tracks. Recording, mixing and posting stay free.</span>
+    <span class="muted"><b>Free:</b> record, mix, Reverb, Echo, Bass Boost, Lo-Fi, Phone Voice, ${FREE_TRACKS} tracks.<br><b>Plugin Pack ($4.99 one time):</b> Auto-Tune, Hard Tune (T-Pain), Vocal Polish, Doubler, Distortion, Pitch Up/Down, 8D Audio, Slowed + Reverb, Sped Up, and up to ${PRO_TRACKS} tracks. Try any of them for free; unlock to save or post your song with them.</span>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="bl-pro-row"><a class="btn pay-btn" data-pay="plugins" href="#" hidden>Unlock the Plugin Pack</a><small class="muted" id="bl-pro-note">After you pay, Meechie unlocks your plugins (usually same day).</small></div>
     <div id="bl-owner" hidden style="display:grid;gap:6px;margin-top:8px;border-top:1px solid var(--line);padding-top:10px"><b>Owner: unlock a member</b><div style="display:flex;gap:8px"><input type="search" id="bl-uq" placeholder="Member name" aria-label="Member name" style="flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:16px var(--body)"></div><div id="bl-ulist" style="display:grid;gap:6px"></div></div>
   </div>`;
@@ -136,7 +148,7 @@
         <div class="r"><button type="button" class="${t.armed ? "on" : ""}" data-arm="${t.id}" title="Record on this track">●</button><button type="button" class="${t.mute ? "on" : ""}" data-mute="${t.id}">M</button><button type="button" class="${t.solo ? "on" : ""}" data-solo="${t.id}">S</button><button type="button" data-del="${t.id}" aria-label="Delete track">🗑</button></div>
         <input type="range" min="0" max="1.2" step="0.01" value="${t.vol}" data-vol="${t.id}" aria-label="Volume">
         <input type="range" min="-1" max="1" step="0.05" value="${t.pan}" data-pan="${t.id}" aria-label="Pan left or right">
-        <div class="bl-fx">${PLUGINS.map(([k, n]) => `<button type="button" class="${t.fx[k] ? "on" : ""} ${pro ? "" : "lock"}" data-fx="${k}" data-tid="${t.id}">${n}</button>`).join("")}</div>
+        <div class="bl-fx">${PLUGINS.map(([k, n, paid]) => `<button type="button" class="${t.fx[k] ? "on" : ""} ${paid && !pro ? "lock" : ""} ${t.busy && t.fx[k] && /tune|up|down/.test(k) ? "busy" : ""}" data-fx="${k}" data-tid="${t.id}">${n}</button>`).join("")}</div>
       </div>
       <div class="bl-lane" data-lane="${t.id}" style="width:${W}px">${t.buffer ? `<div class="bl-clip" data-clip="${t.id}" style="left:${t.offset * PX}px;width:${t.buffer.duration * PX}px"><canvas></canvas></div>` : ""}${recording && recTrack === t ? `<div class="bl-clip rec" id="bl-recclip" style="left:${recBegin * PX}px;width:2px"></div>` : ""}</div></div>`).join("") || `<div style="padding:28px;text-align:center" class="muted">Your song starts here. Add a vocal track or import a beat.</div>`;
     tracks.forEach((t) => { const c = root.querySelector(`[data-clip="${t.id}"] canvas`); if (c && t.buffer) drawWave(c, t); });
@@ -147,31 +159,65 @@
 
   /* ---------- effects ---------- */
   function impulse(c, sec, decay) { const n = Math.floor(c.sampleRate * sec), b = c.createBuffer(2, n, c.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decay); } return b; }
+  function curve(amount) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; c[i] = (1 + amount) * x / (1 + amount * Math.abs(x)); } return c; }
   function chain(c, t, src) {
-    let node = src; const pro = PRO();
-    if (pro && t.fx.pitch) { try { src.detune.value = 200; } catch (_) {} }
-    if (pro && t.fx.polish) { const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 90; const pres = c.createBiquadFilter(); pres.type = "peaking"; pres.frequency.value = 3500; pres.gain.value = 4; const comp = c.createDynamicsCompressor(); comp.threshold.value = -22; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.15; node.connect(hp); hp.connect(pres); pres.connect(comp); node = comp; }
-    if (pro && t.fx.bass) { const ls = c.createBiquadFilter(); ls.type = "lowshelf"; ls.frequency.value = 120; ls.gain.value = 8; node.connect(ls); node = ls; }
-    const g = c.createGain(); g.gain.value = t.vol; node.connect(g); node = g;
-    const p = c.createStereoPanner ? c.createStereoPanner() : null; if (p) { p.pan.value = t.pan; node.connect(p); node = p; }
+    let node = src; const fx = t.fx;
+    const add = (n) => { node.connect(n); node = n; return n; };
+    if (fx.polish) { const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 90; add(hp); const pres = c.createBiquadFilter(); pres.type = "peaking"; pres.frequency.value = 3500; pres.gain.value = 4; add(pres); const air = c.createBiquadFilter(); air.type = "highshelf"; air.frequency.value = 10000; air.gain.value = 3; add(air); const comp = c.createDynamicsCompressor(); comp.threshold.value = -22; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.15; add(comp); }
+    if (fx.bass) { const ls = c.createBiquadFilter(); ls.type = "lowshelf"; ls.frequency.value = 120; ls.gain.value = 8; add(ls); }
+    if (fx.distort) { const ws = c.createWaveShaper(); ws.curve = curve(12); ws.oversample = "4x"; add(ws); const tame = c.createGain(); tame.gain.value = 0.6; add(tame); }
+    if (fx.phone) { const a = c.createBiquadFilter(); a.type = "highpass"; a.frequency.value = 500; add(a); const b = c.createBiquadFilter(); b.type = "lowpass"; b.frequency.value = 3000; add(b); const ws = c.createWaveShaper(); ws.curve = curve(3); add(ws); }
+    if (fx.lofi) { const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3800; add(lp); const hs = c.createBiquadFilter(); hs.type = "highpass"; hs.frequency.value = 120; add(hs); const ws = c.createWaveShaper(); ws.curve = curve(1.5); add(ws); }
+    const g = c.createGain(); g.gain.value = t.vol; add(g);
+    const p = c.createStereoPanner ? c.createStereoPanner() : null;
+    if (p) { p.pan.value = t.pan; add(p); if (fx.eightd) { const lfo = c.createOscillator(), dep = c.createGain(); lfo.frequency.value = 0.18; dep.gain.value = 0.95; lfo.connect(dep); dep.connect(p.pan); p.pan.value = 0; lfo.start(); sources.push(lfo); } }
     const out = c.createGain(); node.connect(out);
-    if (pro && t.fx.reverb) { const cv = c.createConvolver(); cv.buffer = impulse(c, 2.4, 2.6); const wet = c.createGain(); wet.gain.value = 0.32; node.connect(cv); cv.connect(wet); wet.connect(out); }
-    if (pro && t.fx.echo) { const dl = c.createDelay(2); dl.delayTime.value = 60 / bpm * 0.75; const fb = c.createGain(); fb.gain.value = 0.35; const wet = c.createGain(); wet.gain.value = 0.35; node.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(out); }
+    if (fx.doubler) { [[0.017, -0.7], [0.027, 0.7]].forEach(([d, pan]) => { const dl = c.createDelay(0.1); dl.delayTime.value = d; const lfo = c.createOscillator(), dep = c.createGain(); lfo.frequency.value = 0.6 + d * 10; dep.gain.value = 0.002; lfo.connect(dep); dep.connect(dl.delayTime); lfo.start(); sources.push(lfo); const pn = c.createStereoPanner ? c.createStereoPanner() : c.createGain(); if (pn.pan) pn.pan.value = pan; const wg = c.createGain(); wg.gain.value = 0.55; node.connect(dl); dl.connect(pn); pn.connect(wg); wg.connect(out); }); }
+    if (fx.reverb) { const cv = c.createConvolver(); cv.buffer = impulse(c, 2.4, 2.6); const wet = c.createGain(); wet.gain.value = 0.32; node.connect(cv); cv.connect(wet); wet.connect(out); }
+    if (fx.echo) { const dl = c.createDelay(2); dl.delayTime.value = 60 / bpm * 0.75; const fb = c.createGain(); fb.gain.value = 0.35; const wet = c.createGain(); wet.gain.value = 0.35; node.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(out); }
     return out;
   }
+  /* master effects on the whole song */
+  const rate = () => (master.slowed ? 0.85 : master.sped ? 1.25 : 1);
+  function masterOut(c) {
+    const m = c.createGain(); m.connect(c.destination);
+    if (master.slowed) { const cv = c.createConvolver(); cv.buffer = impulse(c, 3.2, 2.2); const wet = c.createGain(); wet.gain.value = 0.4; m.connect(cv); cv.connect(wet); wet.connect(c.destination); }
+    return m;
+  }
+  /* pitch effects (Auto-Tune, Hard Tune, Pitch Up/Down) re-make the take in the background */
+  function pitchKey(t) { const f = t.fx; return [f.autotune ? "a" : "", f.hardtune ? "h" : "", f.up ? "u" : "", f.down ? "d" : "", keyRoot, keyScale].join(":"); }
+  function needsPitch(t) { return t.fx.autotune || t.fx.hardtune || t.fx.up || t.fx.down; }
+  function bufOf(t) { return needsPitch(t) && t.procBuf && t.procKey === pitchKey(t) ? t.procBuf : t.buffer; }
+  async function processPitch(t) {
+    if (!needsPitch(t) || !t.buffer || !window.MWPitch) { t.procBuf = null; t.procKey = ""; return; }
+    const k = pitchKey(t); if (t.procKey === k && t.procBuf) return; if (t.busyKey === k) return;
+    t.busy = true; t.busyKey = k; draw(); $("#bl-st").textContent = "Applying effects to " + t.name + "... (a few seconds)";
+    try {
+      let b = t.buffer;
+      if (t.fx.autotune || t.fx.hardtune) b = await MWPitch.autotune(b, { key: keyRoot, scale: keyScale, strength: t.fx.hardtune ? 1 : 0.75, speed: t.fx.hardtune ? 0 : 0.6 });
+      if (t.fx.up || t.fx.down) b = await MWPitch.shift(b, t.fx.up ? 3 : -4);
+      if (t.busyKey === k) { t.procBuf = b; t.procKey = k; }
+      $("#bl-st").textContent = "Done. " + (t.fx.hardtune ? "Hard Tune is on." : t.fx.autotune ? "Auto-Tune is on." : "Pitch effect is on.");
+    } catch (err) { $("#bl-st").textContent = "That effect couldn't be applied."; }
+    t.busy = false; t.busyKey = ""; draw(); if (playing) { stop(); play(); }
+  }
+  function usesPaid() { return master.slowed || master.sped || tracks.length > FREE_TRACKS || tracks.some((t) => Object.keys(t.fx).some((k) => t.fx[k] && PAID.has(k))); }
+  function needUnlock(what) { if (PRO() || !usesPaid()) return false; root.querySelector("#bl-pro").scrollIntoView({ behavior: "smooth", block: "center" }); say("Your song uses Plugin Pack effects. Unlock the pack ($4.99) to " + what + " it, or turn those effects off."); return true; }
   function audible(t) { const solo = tracks.some((x) => x.solo); return t.buffer && !t.mute && (!solo || t.solo); }
 
   /* ---------- transport ---------- */
   function play(fromRec) {
     const c = audio(); stopSources();
-    startAt = c.currentTime + 0.06 - playhead;
+    const r = fromRec ? 1 : rate(); curRate = r;
+    startAt = c.currentTime + 0.06 - playhead / r;
+    const mo = masterOut(c);
     tracks.forEach((t) => {
       if (!audible(t) || (fromRec && t === recTrack)) return;
-      const src = c.createBufferSource(); src.buffer = t.buffer;
+      const b = bufOf(t), src = c.createBufferSource(); src.buffer = b; src.playbackRate.value = r;
       const begin = t.offset - playhead;
-      if (begin + t.buffer.duration <= 0) return;
-      chain(c, t, src).connect(c.destination);
-      if (begin >= 0) src.start(c.currentTime + 0.06 + begin); else src.start(c.currentTime + 0.06, -begin);
+      if (begin + b.duration <= 0) return;
+      chain(c, t, src).connect(mo);
+      if (begin >= 0) src.start(c.currentTime + 0.06 + begin / r); else src.start(c.currentTime + 0.06, -begin);
       sources.push(src);
     });
     if (metro) scheduleMetro(c);
@@ -188,9 +234,9 @@
     }
   }
   function stopSources() { sources.forEach((s) => { try { s.stop(); } catch (_) {} }); sources = []; metroNodes.forEach((o) => { try { o.stop(); } catch (_) {} }); metroNodes = []; }
-  function stop() { if (recording) stopRec(); stopSources(); if (playing && ctx) playhead = Math.max(0, ctx.currentTime - startAt); playing = false; cancelAnimationFrame(raf); $("#bl-play").textContent = "▶"; movePH(); }
+  function stop() { if (recording) stopRec(); stopSources(); if (playing && ctx) playhead = Math.max(0, (ctx.currentTime - startAt) * curRate); playing = false; cancelAnimationFrame(raf); $("#bl-play").textContent = "▶"; movePH(); }
   function tick() {
-    if (!playing) return; playhead = Math.max(0, ctx.currentTime - startAt); movePH();
+    if (!playing) return; playhead = Math.max(0, (ctx.currentTime - startAt) * curRate); movePH();
     if (recording) { const rc = root.querySelector("#bl-recclip"); if (rc) rc.style.width = Math.max(2, (playhead - recBegin) * PX) + "px"; }
     const sc = $("#bl-scroll"), x = playhead * PX; if (x > sc.scrollLeft + sc.clientWidth - 120 || x < sc.scrollLeft) sc.scrollLeft = Math.max(0, x - 80);
     if (!recording && playhead > songLen()) { stop(); playhead = 0; movePH(); return; }
@@ -266,7 +312,7 @@
       const buf = await audio().decodeAudioData(await new Blob(recChunks, { type: r.mimeType }).arrayBuffer());
       const inLat = (() => { try { return inStream.getAudioTracks()[0].getSettings().latency || 0; } catch (_) { return 0; } })();
       const lat = Math.min(0.5, (ctx.baseLatency || 0) + (ctx.outputLatency || 0.05) + inLat); // line the take up with the beat
-      recTrack.buffer = buf; recTrack.offset = Math.max(0, recBegin - lat); recTrack.armed = false;
+      recTrack.buffer = buf; recTrack.offset = Math.max(0, recBegin - lat); recTrack.armed = false; recTrack.procBuf = null; recTrack.procKey = ""; processPitch(recTrack);
       $("#bl-st").textContent = "Got it. Drag the take to move it, or tap ● on a track to record again.";
     } catch (_) { $("#bl-st").textContent = "That take couldn't be saved. Try again."; }
     draw();
@@ -287,9 +333,12 @@
 
   /* ---------- export ---------- */
   async function render() {
-    const len = Math.max(1, ...tracks.filter(audible).map((t) => t.offset + t.buffer.duration)) + 1.5;
-    const sr = 44100, oc = new OfflineAudioContext(2, Math.ceil(len * sr), sr);
-    tracks.forEach((t) => { if (!audible(t)) return; const s = oc.createBufferSource(); s.buffer = t.buffer; chain(oc, t, s).connect(oc.destination); s.start(t.offset); });
+    for (const t of tracks) if (needsPitch(t) && bufOf(t) === t.buffer) await processPitch(t);
+    const r = rate(), len = (Math.max(1, ...tracks.filter(audible).map((t) => t.offset + bufOf(t).duration)) + 1.5) / r + (master.slowed ? 3 : 0);
+    const sr = 44100, oc = new OfflineAudioContext(2, Math.ceil(len * sr), sr), mo = masterOut(oc);
+    const keep = sources; sources = []; // LFOs made while building the mix belong to the offline render
+    tracks.forEach((t) => { if (!audible(t)) return; const s = oc.createBufferSource(); s.buffer = bufOf(t); s.playbackRate.value = r; chain(oc, t, s).connect(mo); s.start(t.offset / r); });
+    sources = keep;
     return oc.startRendering();
   }
   function wav(buf) {
@@ -302,6 +351,7 @@
   }
   $("#bl-export").addEventListener("click", async () => {
     if (!tracks.some(audible)) { say("Record or import something first."); return; }
+    if (needUnlock("save")) return;
     $("#bl-st").textContent = "Mixing your song..."; const blob = wav(await render());
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "meechies-world-song.wav"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     $("#bl-st").textContent = "Saved to your device.";
@@ -309,6 +359,7 @@
   $("#bl-post").addEventListener("click", async (e) => {
     if (typeof needMember === "function" && !needMember()) return;
     if (!tracks.some(audible)) { say("Record or import something first."); return; }
+    if (needUnlock("post")) return;
     const title = prompt("Name your song", "My new song"); if (title === null) return;
     const b = e.currentTarget; b.disabled = true; b.textContent = "Mixing...";
     try {
@@ -316,13 +367,21 @@
       if (blob.size > 50 * 1048576) throw new Error("This song is too long to post (over 50 MB). Save the WAV instead.");
       const up = await MW.uploadMedia(blob, { type: "audio/wav", ext: "wav", onProg: (f) => { b.textContent = "Uploading " + Math.round(f * 100) + "%"; } });
       await DB().collection("posts").add({ authorId: ME(), text: "🎤 New song: " + String(title).slice(0, 80) + " (made in the Meechie's World Studio)", photo: "", audio: up.url, audioPath: up.path, likes: [], replyCount: 0, sponsored: false, announce: false, createdAt: Date.now() });
-      say("Your song is posted in the Community feed!");
+      say("Your song is posted! Want more people to hear it? Promote it from the Promote page.");
     } catch (err) { say(err.message || "Couldn't post."); }
     b.disabled = false; b.textContent = "📣 Post my song";
   });
 
   /* ---------- controls ---------- */
   $("#bl-play").addEventListener("click", () => (playing ? stop() : play()));
+  $("#bl-key").addEventListener("change", (e) => { keyRoot = +e.target.value; tracks.forEach(processPitch); });
+  $("#bl-scale").addEventListener("change", (e) => { keyScale = e.target.value; tracks.forEach(processPitch); });
+  ["slowed", "sped"].forEach((m) => $("#bl-" + m).addEventListener("click", (e) => {
+    master[m] = !master[m]; if (master[m]) master[m === "slowed" ? "sped" : "slowed"] = false;
+    $("#bl-slowed").classList.toggle("on", master.slowed); $("#bl-sped").classList.toggle("on", master.sped);
+    if (master[m] && !PRO()) say("Previewing a Plugin Pack effect. Unlock the pack to save or post with it.");
+    if (playing) { stop(); play(); }
+  }));
   $("#bl-home").addEventListener("click", () => { const p = playing; stop(); playhead = 0; movePH(); $("#bl-scroll").scrollLeft = 0; if (p) play(); });
   $("#bl-rec").addEventListener("click", () => (recording ? stop() : (playing && stop(), startRec())));
   $("#bl-metro").addEventListener("click", (e) => { metro = !metro; e.currentTarget.classList.toggle("on", metro); if (playing) { stop(); play(); } });
@@ -342,8 +401,11 @@
     if (b.dataset.solo) { t.solo = !t.solo; draw(); if (playing) { stop(); play(); } }
     if (b.dataset.del) { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Sure?"; return; } stop(); tracks = tracks.filter((x) => x !== t); draw(); }
     if (b.dataset.fx) {
-      if (!PRO()) { root.querySelector("#bl-pro").scrollIntoView({ behavior: "smooth", block: "center" }); say("That's in the Plugin Pack. Unlock it below."); return; }
-      t.fx[b.dataset.fx] = !t.fx[b.dataset.fx]; draw(); if (playing) { stop(); play(); }
+      const k = b.dataset.fx; t.fx[k] = !t.fx[k];
+      if (k === "autotune" && t.fx.autotune) t.fx.hardtune = false; if (k === "hardtune" && t.fx.hardtune) t.fx.autotune = false;
+      if (k === "up" && t.fx.up) t.fx.down = false; if (k === "down" && t.fx.down) t.fx.up = false;
+      if (PAID.has(k) && t.fx[k] && !PRO()) say("Previewing a Plugin Pack effect. Unlock the pack to save or post with it.");
+      draw(); if (/tune|^up$|^down$/.test(k)) processPitch(t); else if (playing) { stop(); play(); }
     }
   });
   // drag a clip to move it in time
