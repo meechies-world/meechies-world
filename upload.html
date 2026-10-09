@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Upload music · Meechie's World</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0a08">
+<link rel="icon" href="/img/icon-192.png">
+<style>
+:root{--ink:#0b0a08;--panel:#15130f;--line:#3a3223;--gold:#d4a843;--gold-hi:#f0cf78;--text:#f3ecdc;--muted:#a99f8b;--ok:#8fd6a8;--bad:#ff9b8a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+header img{width:44px;height:44px;border-radius:10px}
+h1{font:800 24px Georgia,serif;color:var(--gold-hi);margin:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:14px}
+label{font-size:14px;color:var(--muted)}
+input[type=text]{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--text);font:inherit}
+.pick{position:relative;display:grid;place-items:center;gap:6px;border:2px dashed var(--gold);border-radius:14px;padding:28px 16px;text-align:center;cursor:pointer;background:rgba(212,168,67,.06)}
+.pick b{color:var(--gold-hi);font-size:18px}
+.pick input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.btn{display:block;width:100%;border:0;border-radius:999px;padding:14px;background:var(--gold);color:#0b0a08;font:800 16px system-ui,sans-serif;cursor:pointer}
+.btn[disabled]{opacity:.5}
+.list{display:grid;gap:10px}
+.item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
+.item .row{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.item .name{overflow-wrap:anywhere}
+.bar{height:8px;background:#2a2418;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--gold);transition:width .2s}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.muted{color:var(--muted)}
+a{color:var(--gold-hi)}
+.note{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="/img/icon-192.png" alt=""><div><h1>Upload music</h1><div class="muted" style="font-size:14px">Meechie's World Radio</div></div></header>
+  <div id="gate" class="card"><span class="muted">Checking your account...</span></div>
+  <div id="app" class="card" hidden>
+    <div><label for="artist">Artist name</label><input type="text" id="artist" value="Meechie" maxlength="60"></div>
+    <label class="pick" id="pick"><b>Tap to choose songs</b><span class="note">MP3, WAV, M4A, AAC, OGG, MP4 or WebM · up to 50 MB each · you can pick several</span><input type="file" id="files" multiple accept="audio/*,video/mp4,video/webm,.mp3,.m4a,.wav,.aac,.ogg,.flac"></label>
+    <div class="list" id="list"></div>
+    <button class="btn" id="go" type="button" disabled>Upload</button>
+    <p class="note" style="margin:0">Songs go into your Library and onto the radio rotation. Keep this page open until each song says “Done.” <a href="/#radio">Back to the Radio</a></p>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/platform.js"></script>
+<script>
+(function(){
+  const $=s=>document.querySelector(s);
+  const E=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const TYPES={mp3:"audio/mpeg",wav:"audio/wav",m4a:"audio/mp4",aac:"audio/aac",ogg:"audio/ogg",oga:"audio/ogg",flac:"audio/flac",webm:"video/webm",mp4:"video/mp4",mov:"video/mp4"};
+  let picked=[], db=null, session=null;
+
+  function duration(file){ return new Promise(res=>{
+    const isVid=/^video\//.test(file.type)||/\.(mp4|mov|webm)$/i.test(file.name);
+    const v=document.createElement(isVid?"video":"audio"); v.preload="metadata"; v.muted=true; const u=URL.createObjectURL(file); let done=false;
+    const finish=d=>{ if(done) return; done=true; URL.revokeObjectURL(u); const est=/\.wav$/i.test(file.name)? file.size/176400 : file.size*8/192000; res(isFinite(d)&&d>0? d : est); };
+    v.onloadedmetadata=()=>finish(v.duration); v.onerror=()=>finish(0); setTimeout(()=>finish(0),6000); v.src=u; try{v.load();}catch(_){}
+  }); }
+  function newId(){ return (crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)).replace(/-/g,"").slice(0,20); }
+  function uploadXHR(file,id,type,onProg){ return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();
+    x.open("POST", MW_CONFIG.SUPABASE_URL+"/storage/v1/object/assets/"+id);
+    x.setRequestHeader("authorization","Bearer "+session.access_token);
+    x.setRequestHeader("apikey",MW_CONFIG.SUPABASE_ANON_KEY);
+    x.setRequestHeader("content-type",type);
+    x.setRequestHeader("x-upsert","false");
+    x.upload.onprogress=e=>{ if(e.lengthComputable) onProg(e.loaded/e.total); };
+    x.onload=()=>{ if(x.status>=200&&x.status<300) res(); else { let m="Upload failed ("+x.status+")"; try{ const j=JSON.parse(x.responseText); m=j.message||j.error||m; }catch(_){} rej(new Error(m)); } };
+    x.onerror=()=>rej(new Error("Network problem. Check your connection and try again."));
+    x.send(file);
+  }); }
+  function draw(){
+    $("#list").innerHTML=picked.map((p,i)=>`<div class="item"><div class="row"><span class="name">${E(p.file.name)}</span><span class="${p.cls||"muted"}" id="s${i}">${E(p.msg||((p.file.size/1048576).toFixed(1)+" MB"))}</span></div><div class="bar"><i id="b${i}" style="width:${Math.round((p.prog||0)*100)}%"></i></div></div>`).join("");
+    $("#go").disabled=!picked.some(p=>!p.done);
+  }
+  $("#files").addEventListener("change",e=>{
+    const files=[...e.target.files]; e.target.value="";
+    if(!files.length){ $("#list").innerHTML='<p class="bad" style="margin:0">No song was picked. Try again and choose it from Files or Downloads.</p>'; return; }
+    files.forEach(f=>{ const p={file:f}; if(f.size>50*1024*1024){ p.msg="Over 50 MB"; p.cls="bad"; p.done=true; } picked.push(p); });
+    draw();
+  });
+  $("#go").addEventListener("click",async()=>{
+    $("#go").disabled=true; $("#pick").style.pointerEvents="none";
+    const artist=$("#artist").value.trim()||"Meechie";
+    for(let i=0;i<picked.length;i++){ const p=picked[i]; if(p.done) continue;
+      const set=(msg,cls)=>{ p.msg=msg; p.cls=cls; const s=$("#s"+i); if(s){ s.textContent=msg; s.className=cls||"muted"; } };
+      try{
+        set("Reading...","muted");
+        const ext=(p.file.name.split(".").pop()||"").toLowerCase(), type=p.file.type||TYPES[ext]||"audio/mpeg";
+        const d=await duration(p.file), id=newId();
+        set("Uploading 0%","muted");
+        await uploadXHR(p.file,id,type,f=>{ p.prog=f; const b=$("#b"+i); if(b) b.style.width=Math.round(f*100)+"%"; set("Uploading "+Math.round(f*100)+"%","muted"); });
+        await db.collection("tracks").add({title:p.file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").trim().slice(0,120),artist,assetId:id,duration:Math.round(d),cover:"",addedAt:Date.now()});
+        p.done=true; p.prog=1; set("Done ✓","ok");
+      }catch(err){ p.done=true; set(err.message||"Failed","bad"); }
+    }
+    $("#pick").style.pointerEvents=""; draw();
+  });
+  (async()=>{
+    await MW.sessionReady; session=MW.session();
+    if(!session){ $("#gate").innerHTML='<span>Sign in on the main site first, then come back here.</span><a class="btn" style="text-align:center;text-decoration:none" href="/#community">Go sign in</a>'; return; }
+    const user=await claude.use("user"); db=await claude.use("db");
+    if(!user.isOwner()){ $("#gate").innerHTML='<span class="bad">Only the owner can upload music to the radio.</span>'; return; }
+    $("#gate").hidden=true; $("#app").hidden=false;
+  })();
+})();
+</script>
+</body>
+</html>
