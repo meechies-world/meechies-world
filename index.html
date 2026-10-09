@@ -580,6 +580,10 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .prod:hover{transform:translateY(-3px);border-color:var(--gold)}
 .prod img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:12px;background:#fff}
 .prod b{font-size:15px;line-height:1.3}.prod .pr{color:var(--gold-hi);font-weight:800;font-size:17px}.prod .buy{color:var(--gold-hi);font-size:13px;font-weight:700}
+.pay-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.paybox{text-align:center}
+.tier .pay-btn{margin-top:8px;width:100%;justify-content:center}
+.pay-btn.pay-unset{opacity:.6;border-style:dashed}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -751,6 +755,12 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     </div>
     <p class="note">Legal Document Preparation provides document preparation and paralegal support only. Meechie's World Inc is not a law firm and does not give legal advice.</p>
 
+    <div style="margin-top:28px"><div class="card paybox" data-paybox hidden>
+      <h3 style="font-size:22px">Pay Meechie's World</h3>
+      <p class="muted" style="margin:6px 0 14px">Pay securely by card, Apple Pay, Google Pay, or Cash App Pay. Checkout is handled by Stripe. We never see your card number.</p>
+      <div class="pay-row"><a class="btn pay-btn" data-pay="deposit" href="#" hidden>Pay $50 deposit</a><a class="btn ghost pay-btn" data-pay="custom" href="#" hidden>Pay an invoice or quote</a></div>
+    </div>
+    </div>
     <div class="section-head" style="margin-top:56px"><div><p class="eyebrow">Publishing</p><h2>Meechie's World Books</h2></div></div>
     <div class="books">
       <div class="book"><span class="eyebrow">A Meechie's World Inc publication</span><h3>Paper Trail</h3><p>Coming as an audiobook and a chapter-by-chapter TikTok series.</p></div>
@@ -1111,14 +1121,14 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <p class="muted">We put your content in front of the whole community: pinned in the feed, gold-framed on the Ad Board, and shouted out on our TikTok.</p>
     </div>
     <div class="tiers">
-      <div class="tier"><h3>Spotlight</h3><div class="price">$50 <small>/ 7 days</small></div><ul><li>Gold "Promoted" badge</li><li>Top of the Ad Board</li><li>One pinned feed post</li></ul><button class="btn ghost" type="button" data-tier="Spotlight">Choose Spotlight</button></div>
-      <div class="tier feature"><span class="badge">Most popular</span><h3>Featured</h3><div class="price">$150 <small>/ 14 days</small></div><ul><li>Everything in Spotlight</li><li>Pinned in feed all 14 days</li><li>Mention in a TikTok video</li><li>Ad copy written for you</li></ul><button class="btn" type="button" data-tier="Featured">Choose Featured</button></div>
-      <div class="tier"><h3>Takeover</h3><div class="price">$400 <small>/ 30 days</small></div><ul><li>Everything in Featured</li><li>Dedicated TikTok video</li><li>Home page banner</li><li>Custom commercial available</li></ul><button class="btn ghost" type="button" data-tier="Takeover">Choose Takeover</button></div>
+      <div class="tier"><h3>Spotlight</h3><div class="price">$50 <small>/ 7 days</small></div><ul><li>Gold "Promoted" badge</li><li>Top of the Ad Board</li><li>One pinned feed post</li></ul><button class="btn ghost" type="button" data-tier="Spotlight">Choose Spotlight</button><a class="btn pay-btn" data-pay="spotlight" href="#" hidden>Pay $50 now</a></div>
+      <div class="tier feature"><span class="badge">Most popular</span><h3>Featured</h3><div class="price">$150 <small>/ 14 days</small></div><ul><li>Everything in Spotlight</li><li>Pinned in feed all 14 days</li><li>Mention in a TikTok video</li><li>Ad copy written for you</li></ul><button class="btn" type="button" data-tier="Featured">Choose Featured</button><a class="btn pay-btn" data-pay="featured" href="#" hidden>Pay $150 now</a></div>
+      <div class="tier"><h3>Takeover</h3><div class="price">$400 <small>/ 30 days</small></div><ul><li>Everything in Featured</li><li>Dedicated TikTok video</li><li>Home page banner</li><li>Custom commercial available</li></ul><button class="btn ghost" type="button" data-tier="Takeover">Choose Takeover</button><a class="btn pay-btn" data-pay="takeover" href="#" hidden>Pay $400 now</a></div>
     </div>
 
     <div class="card" style="margin-top:28px">
       <h3 style="font-size:22px;margin-bottom:6px">Request a campaign</h3>
-      <p class="muted" style="margin:0 0 18px">Fill this in and we'll turn it into a message you can DM us. We confirm every campaign and arrange payment directly.</p>
+      <p class="muted" style="margin:0 0 18px">Paid already, or want to talk first? Fill this in and we'll turn it into a message you can DM us so we can set up your campaign.</p>
       <form id="camp-form" class="req">
         <div class="field"><label for="c-tier">Package</label><select id="c-tier"><option>Spotlight</option><option selected>Featured</option><option>Takeover</option></select></div>
         <div class="field"><label for="c-biz">Business or brand</label><input type="text" id="c-biz" maxlength="80" required></div>
@@ -1161,6 +1171,11 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
       <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
       <form class="reply-form" id="ai-form"><input type="text" id="ai-q" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
+    </div>
+    <div class="card paybox" style="margin-bottom:24px" data-paybox hidden>
+      <h3 style="font-size:22px">Pay Meechie's World</h3>
+      <p class="muted" style="margin:6px 0 14px">Pay securely by card, Apple Pay, Google Pay, or Cash App Pay. Checkout is handled by Stripe. We never see your card number.</p>
+      <div class="pay-row"><a class="btn pay-btn" data-pay="deposit" href="#" hidden>Pay $50 deposit</a><a class="btn ghost pay-btn" data-pay="custom" href="#" hidden>Pay an invoice or quote</a></div>
     </div>
     <div class="socials">
       <a class="social" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2.2 1.8 3.7 4 3.9v3.1a7.5 7.5 0 0 1-4-1.2v6.4a6 6 0 1 1-6-6h.6v3.2a2.8 2.8 0 1 0 2.2 2.8V3h3.2Z"/></svg></span><div><b>TikTok</b><span>@meechiesworldinc</span></div></a>

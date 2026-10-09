@@ -11,10 +11,11 @@
   "use strict";
   const SEL = "h1,h2,h3,h4,p,li,small,label,span,a,button,b,strong,em,td,th,div,summary,legend";
   const SKIP = "input,textarea,select,option,script,style,svg,canvas,dialog,.toast,#authbar,#mw-bar,#mw-fab,[data-noedit]";
+  const PAY = [["spotlight", "Spotlight $50"], ["featured", "Featured $150"], ["takeover", "Takeover $400"], ["deposit", "Service deposit $50"], ["custom", "Any amount (invoice or quote)"]];
   const THEME = [["--gold", "Gold"], ["--ink", "Background"], ["--panel", "Cards"], ["--text", "Text"]];
   const DEFAULTS = { "--gold": "#d4a843", "--ink": "#0b0a08", "--panel": "#15130f", "--text": "#f3ecdc" };
   const root = document.documentElement;
-  let map = {}, links = {}, theme = {}, hidden = [], editing = false, admin = false, db = null, saveTimer = null, bar = null, hideStyle = null;
+  let map = {}, links = {}, theme = {}, hidden = [], pay = {}, editing = false, admin = false, db = null, saveTimer = null, bar = null, hideStyle = null;
   const tagged = [];
 
   const safe = (f) => { try { return f(); } catch (_) { return null; } };
@@ -51,18 +52,27 @@
     });
     if (!hideStyle) { hideStyle = document.createElement("style"); document.head.appendChild(hideStyle); }
     hideStyle.textContent = admin ? "" : hidden.map((v) => `[data-go="${v}"]{display:none!important}`).join("");
+    applyPay();
+  }
+  function applyPay() {
+    document.querySelectorAll("[data-pay]").forEach((a) => {
+      const u = pay[a.dataset.pay];
+      a.hidden = !u && !admin; a.classList.toggle("pay-unset", !u);
+      a.title = !u && admin ? "Owner: add your Stripe payment link in Edit site → Payments" : "";
+    });
+    document.querySelectorAll("[data-paybox]").forEach((b) => { b.hidden = !admin && ![...b.querySelectorAll("[data-pay]")].some((a) => pay[a.dataset.pay]); });
   }
   function load(data) {
-    map = (data && data.t) || {}; links = (data && data.l) || {}; theme = (data && data.theme) || {}; hidden = (data && data.hidden) || [];
+    pay = (data && data.pay) || {}; map = (data && data.t) || {}; links = (data && data.l) || {}; theme = (data && data.theme) || {}; hidden = (data && data.hidden) || [];
   }
-  function cache() { safe(() => localStorage.setItem("mw_site", JSON.stringify({ t: map, l: links, theme, hidden }))); }
+  function cache() { safe(() => localStorage.setItem("mw_site", JSON.stringify({ t: map, l: links, theme, hidden, pay }))); }
 
   /* ---- saving ---- */
   function status(msg, bad) { const s = document.getElementById("mw-status"); if (s) { s.textContent = msg; s.style.color = bad ? "#ff9b8a" : "#8fd6a8"; } }
   function save() {
     status("Saving...", false); clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
-      try { await db.doc("site/content").set({ t: map, l: links, theme, hidden, updatedAt: Date.now() }); cache(); status("Saved ✓", false); }
+      try { await db.doc("site/content").set({ t: map, l: links, theme, hidden, pay, updatedAt: Date.now() }); cache(); status("Saved ✓", false); }
       catch (e) { status("Could not save: " + (e.message || e.code), true); }
     }, 500);
   }
@@ -119,6 +129,8 @@ body.mw-editing{padding-bottom:230px}`;
  ${THEME.map(([k, n]) => `<label>${n} <input type="color" data-var="${k}" value="${theme[k] || DEFAULTS[k]}"></label>`).join("")}
  <button type="button" id="mw-rc">Reset colors</button>
  <button type="button" id="mw-ra">Undo all my edits</button></div>
+<div class="r" style="display:grid;gap:8px"><b style="color:#f0cf78">Payments: paste your Stripe payment links</b>
+ ${PAY.map(([k, n]) => `<label style="display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:8px;color:#a99f8b">${n}<input type="text" data-paylink="${k}" placeholder="https://buy.stripe.com/..." value="${(pay[k] || "").replace(/"/g, "&quot;")}"></label>`).join("")}</div>
 <div class="r" id="mw-linkrow" hidden><label style="flex:1">Link for this button/text <input type="text" id="mw-link" placeholder="https://"></label></div>
 <div class="r"><span style="color:#a99f8b">Show these pages to visitors:</span>
  ${views.filter((v) => v !== "home").map((v) => `<label><input type="checkbox" data-pg="${v}" ${hidden.includes(v) ? "" : "checked"}> ${name(v)}</label>`).join("")}</div>`;
@@ -135,6 +147,12 @@ body.mw-editing{padding-bottom:230px}`;
     ra.addEventListener("click", () => { if (ra.dataset.sure) { map = {}; links = {}; delete ra.dataset.sure; ra.textContent = "Undo all my edits"; applyAll(); save(); } else { ra.dataset.sure = "1"; ra.textContent = "Tap again to undo everything"; setTimeout(() => { delete ra.dataset.sure; ra.textContent = "Undo all my edits"; }, 4000); } });
     bar.querySelectorAll("input[data-pg]").forEach((i) => i.addEventListener("change", () => {
       hidden = hidden.filter((v) => v !== i.dataset.pg); if (!i.checked) hidden.push(i.dataset.pg); save();
+    }));
+    bar.querySelectorAll("input[data-paylink]").forEach((i) => i.addEventListener("change", () => {
+      const v = i.value.trim();
+      if (v && !/^https:\/\/(buy\.stripe\.com|checkout\.stripe\.com|donate\.stripe\.com)\//.test(v)) { status("That doesn't look like a Stripe payment link (it should start with https://buy.stripe.com/)", true); return; }
+      if (v) pay[i.dataset.paylink] = v; else delete pay[i.dataset.paylink];
+      applyPay(); save();
     }));
     bar.querySelector("#mw-link").addEventListener("change", (e) => {
       const o = e.target.dataset.orig, v = e.target.value.trim(); if (!o) return;
@@ -157,7 +175,20 @@ body.mw-editing{padding-bottom:230px}`;
     document.addEventListener("keyup", (e) => { if (editing && e.key === " " && e.target.tagName === "BUTTON") e.preventDefault(); }, true);
   }
 
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("[data-pay]"); if (!a || editing) return;
+    e.preventDefault();
+    const u = pay[a.dataset.pay];
+    if (!u) { if (admin) { setEditing(true); const f = document.querySelector(`[data-paylink="${a.dataset.pay}"]`); if (f) { f.scrollIntoView({ block: "center" }); f.focus(); } } return; }
+    const url = new URL(u); const s = window.MW && MW.session && MW.session();
+    if (s && s.user) { url.searchParams.set("client_reference_id", s.user.id); if (s.user.email) url.searchParams.set("prefilled_email", s.user.email); }
+    window.open(url.toString(), "_blank", "noopener");
+  });
   async function init() {
+    if (new URLSearchParams(location.search).get("paid")) {
+      history.replaceState(null, "", location.pathname + location.hash);
+      setTimeout(() => { if (typeof toast === "function") toast("Payment received. Thank you! We'll be in touch."); }, 600);
+    }
     tagAll();
     const c = safe(() => JSON.parse(localStorage.getItem("mw_site") || "null"));
     if (c) { load(c); applyAll(); }
