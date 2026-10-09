@@ -1,0 +1,2048 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Meechie's World</title>
+<meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
+<meta name="theme-color" content="#0b0a08">
+<meta property="og:title" content="Meechie's World">
+<meta property="og:description" content="Join free: post, chat, play, design, and tune in to Meechie's World Radio.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0a08'/%3E%3Cpath d='M32 8 L56 50 H8 Z' fill='none' stroke='%23d4a843' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M20 36 Q32 26 44 36 Q32 46 20 36Z' fill='none' stroke='%23d4a843' stroke-width='3'/%3E%3Ccircle cx='32' cy='36' r='4' fill='%23f0cf78'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: black-and-gold house style. Sticky crest bar, tabbed sections (Home, Services, Community, Chat, Ad Board, Promote, Contact), one column on phones. */
+:root{
+  --ink:#0b0a08; --panel:#15130f; --panel-2:#1d1a14; --line:#3a3223;
+  --gold:#d4a843; --gold-hi:#f0cf78; --gold-lo:#8c6d26;
+  --text:#f3ecdc; --muted:#a99f8b; --ok:#6fbf8b; --warn:#e58a5c;
+  --display:"Cinzel",Georgia,"Times New Roman",serif;
+  --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --deco:"Cinzel Decorative","Cinzel",Georgia,serif; --serif-it:"Cormorant Garamond",Georgia,serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:10px; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--text);font:16px/1.6 var(--body);margin:0}
+a{color:var(--gold-hi)}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--gold-hi);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.muted{color:var(--muted)}
+.rule{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);border:0;margin:0}
+
+/* Top bar */
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--ink) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar-in{display:flex;align-items:center;gap:16px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);flex:none}
+.brand svg{width:34px;height:34px}
+.brand b{font:700 15px/1 var(--display);letter-spacing:.06em}
+.brand small{display:block;font:500 9px/1.4 var(--mono);letter-spacing:.2em;color:var(--gold)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-left:auto;min-width:0}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{padding:8px 12px;border-radius:999px;text-decoration:none;color:var(--muted);font-weight:600;font-size:14px;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink);background:var(--gold)}
+nav.tabs a:hover:not([aria-current]){color:var(--text)}
+
+section.view{padding-block:40px 72px}
+section.view[hidden]{display:none}
+
+/* Buttons & fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--gold);background:var(--gold);color:var(--ink);font-weight:700;padding:11px 20px;border-radius:999px;cursor:pointer;text-decoration:none;transition:background .15s}
+.btn:hover{background:var(--gold-hi)}
+.btn.ghost{background:transparent;color:var(--gold-hi)}
+.btn.ghost:hover{background:color-mix(in srgb,var(--gold) 14%,transparent)}
+.btn.sm{padding:6px 14px;font-size:14px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.field{display:grid;gap:6px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+input[type=text],input[type=url],input[type=email],textarea,select{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+input:focus,textarea:focus,select:focus{border-color:var(--gold);outline:none}
+textarea{resize:vertical;min-height:90px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:40px;align-items:center;padding-block:24px 40px}
+.hero h1{font-size:clamp(44px,8vw,92px);font-weight:900;letter-spacing:.01em;line-height:.95}
+.hero h1 span{display:block;color:var(--gold);font-size:.42em;letter-spacing:.32em;margin-top:14px;font-weight:700}
+.hero p.lead{font-size:19px;max-width:34em;color:var(--muted);margin:22px 0 28px}
+.hero .ctas{display:flex;flex-wrap:wrap;gap:12px}
+.crest{justify-self:center;width:min(340px,100%);aspect-ratio:1;max-width:100%}
+.crest svg{width:100%;height:100%}
+@media (prefers-reduced-motion:no-preference){.crest .eye-glow{animation:glow 4s ease-in-out infinite}}
+@keyframes glow{50%{opacity:.35}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-block:1px solid var(--line);margin-top:8px}
+.stats div{padding:18px 12px;text-align:center;border-right:1px solid var(--line)}
+.stats div:last-child{border-right:0}
+.stats b{display:block;font:700 26px/1.1 var(--display);color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.stats span{font-size:13px;color:var(--muted)}
+
+.section-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:16px;margin-bottom:26px}
+.section-head h2{font-size:clamp(30px,4.5vw,46px)}
+.section-head h2::after{content:"";display:block;width:64px;height:2px;background:var(--gold);margin-top:12px}
+.section-head p{max-width:36em;margin:0}
+
+/* Services */
+.divisions{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.div{background:var(--panel);padding:26px;display:grid;gap:10px;align-content:start}
+.div .code{font:500 11px var(--mono);color:var(--gold);letter-spacing:.14em}
+.div h3{font-size:21px}
+.div ul{margin:0;padding-left:18px;color:var(--muted)}
+.div li{margin:3px 0}
+.note{border:1px dashed var(--gold-lo);border-radius:var(--r);padding:14px 16px;color:var(--muted);font-size:14px;margin-top:20px}
+
+.books{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:40px}
+.book{aspect-ratio:2/3;max-width:100%;border-radius:4px 10px 10px 4px;padding:22px 18px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(135deg,#1c170e,#0b0a08);border:1px solid var(--gold-lo);box-shadow:inset 6px 0 0 #000,inset 8px 0 0 var(--gold-lo)}
+.book h3{font-size:20px;color:var(--gold-hi)}
+.book p{margin:0;font-size:13px;color:var(--muted)}
+
+/* Community */
+.grid-2{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}
+.composer{display:grid;gap:12px}
+.composer .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.file-btn{position:relative;overflow:hidden}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.preview-img{max-height:220px;border-radius:var(--r);border:1px solid var(--line)}
+.feed{display:grid;gap:18px;margin-top:22px}
+.post{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:12px;min-width:0}
+.post.sponsored{border-color:var(--gold-lo);background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 8%,var(--panel)),var(--panel))}
+.post-head{display:flex;align-items:center;gap:12px}
+.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--gold-lo);color:var(--gold-hi);font:700 16px var(--display);flex:none}
+.post-head .who{min-width:0}
+.post-head b{display:block}
+.post-head small{color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:4px;font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:4px 7px;border-radius:999px;border:1px solid var(--gold-lo);color:var(--gold-hi)}
+.badge.ok{border-color:color-mix(in srgb,var(--ok) 60%,transparent);color:var(--ok)}
+.post-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.post img.photo{width:100%;border-radius:var(--r);max-height:560px;object-fit:cover}
+.post-actions{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+.act{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px}
+.act:hover{background:var(--panel-2);color:var(--text)}
+.act.on{color:var(--gold-hi)}
+.replies{display:grid;gap:8px}
+.reply{background:var(--panel-2);border-radius:10px;padding:8px 12px;font-size:14px;overflow-wrap:anywhere}
+.reply b{color:var(--gold-hi);margin-right:6px}
+.reply-form{display:flex;gap:8px}
+.reply-form input{flex:1;min-width:0}
+.empty{text-align:center;padding:44px 20px;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+.empty h3{color:var(--text);font-size:20px;margin-bottom:6px}
+aside.side{display:grid;gap:18px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 80px)}
+.side h3{font-size:16px;letter-spacing:.06em;margin-bottom:10px}
+.member-list{display:grid;gap:10px}
+.member-list div{display:flex;align-items:center;gap:10px;font-size:14px;min-width:0}
+.member-list .avatar{width:32px;height:32px;font-size:13px}
+.member-list span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Join */
+.gate{display:grid;gap:14px}
+.steps{display:grid;gap:10px;margin:0;padding:0;list-style:none;counter-reset:s}
+.steps li{display:flex;gap:12px;align-items:flex-start;font-size:14px;color:var(--muted)}
+.steps li::before{counter-increment:s;content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--gold-lo);color:var(--gold-hi);font:600 12px var(--mono)}
+.steps li.done{color:var(--text)}
+.steps li.done::before{content:"✓";background:var(--gold);color:var(--ink);border-color:var(--gold)}
+
+/* Chat + walkie */
+.chat{display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:540px;background:var(--panel)}
+.channels{border-right:1px solid var(--line);padding:16px;display:grid;gap:4px;align-content:start;background:var(--ink)}
+.channels button{text-align:left;background:none;border:0;padding:9px 12px;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:600}
+.channels button[aria-pressed="true"]{background:var(--panel-2);color:var(--gold-hi)}
+.channels .label{font:500 11px var(--mono);letter-spacing:.14em;color:var(--gold);padding:8px 12px 4px}
+.chat-main{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-width:0;max-height:640px}
+.chat-top{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.online{font-size:13px;color:var(--ok)}
+.msgs{overflow-y:auto;padding:16px 18px;display:grid;gap:10px;align-content:start}
+.msg{max-width:78%;background:var(--panel-2);padding:9px 13px;border-radius:14px 14px 14px 4px;overflow-wrap:anywhere;font-size:15px}
+.msg.mine{justify-self:end;background:color-mix(in srgb,var(--gold) 22%,var(--panel-2));border-radius:14px 14px 4px 14px}
+.msg small{display:block;font-size:11px;color:var(--muted);margin-bottom:2px}
+.msg audio{width:240px;max-width:100%;margin-top:4px}
+.chat-input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line);align-items:center}
+.chat-input input[type=text]{flex:1;min-width:0}
+.ptt{width:46px;height:46px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--gold);color:var(--gold-hi);cursor:pointer;position:relative;overflow:hidden}
+.ptt input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.ptt svg{width:20px;height:20px}
+
+/* Ads */
+.ads{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin-top:24px}
+.ad{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.ad.sponsored{border-color:var(--gold)}
+.ad img{width:100%;aspect-ratio:16/10;object-fit:cover}
+.ad .body{padding:16px;display:grid;gap:8px;flex:1;align-content:start}
+.ad h3{font-family:var(--body);font-size:18px;font-weight:700}
+.ad .cat{font:500 11px var(--mono);color:var(--gold);letter-spacing:.12em;text-transform:uppercase}
+.ad p{margin:0;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.ad .foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:none;border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:14px}
+.chip[aria-pressed="true"]{border-color:var(--gold);color:var(--gold-hi)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--gold-lo);border-radius:16px;width:min(560px,calc(100% - 32px));padding:26px}
+dialog::backdrop{background:rgba(0,0,0,.7)}
+dialog form{display:grid;gap:14px}
+
+/* Promote */
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.tier{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;display:grid;gap:14px;align-content:start}
+.tier.feature{border-color:var(--gold);background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 10%,var(--panel)),var(--panel))}
+.tier h3{font-size:22px}
+.price{font:700 40px/1 var(--display);color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.price small{font:500 14px var(--body);color:var(--muted)}
+.tier ul{margin:0;padding-left:18px;color:var(--muted);font-size:15px}
+.req{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.req .full{grid-column:1/-1}
+.inbox{display:grid;gap:10px;margin-top:16px}
+.inbox .item{background:var(--panel-2);border-radius:10px;padding:12px 14px;font-size:14px;overflow-wrap:anywhere}
+
+/* Trust */
+.trust{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
+.trust .card h3{font-family:var(--body);font-size:17px;margin-bottom:6px}
+.trust .card p{margin:0;color:var(--muted);font-size:14px}
+.status{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-top:12px;display:inline-block}
+.status.live{color:var(--ok)} .status.next{color:var(--gold)}
+
+/* Contact */
+.socials{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.social{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;text-decoration:none;color:var(--text);min-width:0}
+a.social:hover{border-color:var(--gold)}
+.social .ico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:var(--panel-2);color:var(--gold-hi);flex:none}
+.social .ico svg{width:22px;height:22px}
+.social div{min-width:0}
+.social b{display:block}
+.social span{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.copy{margin-left:auto;flex:none}
+
+/* Home upgrade */
+#v-home{position:relative;overflow:hidden}
+#v-home::before{content:"";position:absolute;inset:-200px -10% auto auto;width:780px;height:780px;max-width:120vw;background:radial-gradient(circle,color-mix(in srgb,var(--gold) 22%,transparent),transparent 62%);pointer-events:none}
+#v-home .wrap{position:relative}
+.crest{position:relative}
+.crest::before{content:"";position:absolute;inset:6%;border-radius:50%;border:1px solid color-mix(in srgb,var(--gold) 35%,transparent);box-shadow:0 0 0 18px color-mix(in srgb,var(--gold) 5%,transparent),0 0 0 40px color-mix(in srgb,var(--gold) 3%,transparent)}
+.hero h1{background:linear-gradient(180deg,#fff7e2 30%,#d9c79c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1 span{-webkit-text-fill-color:var(--gold)}
+.ticker{overflow:hidden;border-block:1px solid var(--gold-lo);background:linear-gradient(90deg,#120f08,#1c160b,#120f08);margin-top:12px;mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.ticker-in{display:flex;width:max-content;padding-block:12px}
+.ticker span{font:700 15px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--gold-hi);padding-inline:22px;display:flex;align-items:center;gap:22px;white-space:nowrap}
+.ticker span::after{content:"◆";font-size:9px;color:var(--gold-lo)}
+@media (prefers-reduced-motion:no-preference){.ticker-in{animation:tick 48s linear infinite}}
+@keyframes tick{to{transform:translateX(-50%)}}
+.stats{border:0;margin-top:28px;gap:14px}
+.stats div{border:1px solid var(--line)!important;border-radius:14px;background:var(--panel)}
+.bento{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.tile{position:relative;display:grid;gap:8px;align-content:start;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;text-decoration:none;color:var(--text);transition:border-color .2s,transform .2s;min-width:0;overflow:hidden}
+.tile:hover{border-color:var(--gold);transform:translateY(-2px)}
+.tile h3{font:700 19px/1.2 var(--body)}
+.tile p{margin:0;color:var(--muted);font-size:14px}
+.tile .go{margin-top:auto;padding-top:6px;font-weight:700;font-size:14px;color:var(--gold-hi)}
+.t-ico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(145deg,#2a2112,#15110a);border:1px solid var(--gold-lo);color:var(--gold-hi)}
+.t-ico svg{width:22px;height:22px}
+.tile.wide{grid-column:span 2}
+.t-radio,.t-world{grid-column:span 2;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);align-items:stretch;gap:20px;min-height:260px;padding:0}
+.t-copy{display:grid;gap:10px;padding:26px 26px 26px 0;align-content:center}
+.t-copy h3{font:700 clamp(22px,2.4vw,28px)/1.1 var(--display)}
+.pill{font:500 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;width:max-content}
+.pill.live{color:#ff8a8d}
+.t-art{position:relative;height:100%;min-height:220px}
+.t-radio{background:radial-gradient(circle at 25% 50%,color-mix(in srgb,var(--gold) 18%,transparent),transparent 60%),var(--panel)}
+.vinyl{position:absolute;left:50%;top:50%;width:180px;height:180px;margin:-90px 0 0 -90px;border-radius:50%;background:radial-gradient(circle,var(--gold) 0 17%,#0b0a08 18% 20%,transparent 21%),repeating-radial-gradient(circle,#141414 0 2px,#1d1d1d 2px 4px);box-shadow:0 10px 30px rgba(0,0,0,.6),0 0 0 2px #2a2a2a}
+@media (prefers-reduced-motion:no-preference){.vinyl{animation:spin 6s linear infinite}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.arm{position:absolute;right:16%;top:16%;width:6px;height:110px;background:linear-gradient(var(--gold-hi),var(--gold-lo));border-radius:3px;transform:rotate(28deg);transform-origin:top}
+.world-art{overflow:hidden}
+.w-sky{position:absolute;inset:0;background:linear-gradient(180deg,#0a0d24,#3a2350 60%,#c27a40)}
+.w-moon{position:absolute;right:22%;top:16%;width:34px;height:34px;border-radius:50%;background:#f5e6bf;box-shadow:0 0 30px #f5e6bf88;z-index:1}
+.w-floor{position:absolute;left:0;right:0;bottom:0;height:34%;background:repeating-linear-gradient(90deg,#1c160b 0 30px,#241c0e 30px 60px);border-top:2px solid var(--gold-lo)}
+.w-av{position:absolute;bottom:22%;width:22px;height:60px;border-radius:11px 11px 4px 4px;z-index:2}
+.w-av::before{content:"";position:absolute;left:3px;top:-16px;width:16px;height:16px;border-radius:50%;background:inherit;filter:brightness(1.6)}
+.a1{left:22%;background:#7a4a2b}.a2{left:44%;background:var(--gold);bottom:18%}.a3{left:64%;background:#7a1f2b}
+.roadmap{margin-top:40px;display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:28px;border:1px dashed var(--gold-lo);border-radius:18px;padding:26px}
+.roadmap h3{font-size:24px;margin-top:8px}
+.roadmap ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px 24px}
+.roadmap li{display:grid;gap:2px;padding-left:16px;border-left:2px solid var(--gold-lo)}
+.roadmap li span{color:var(--muted);font-size:14px}
+@media (max-width:900px){.bento{grid-template-columns:repeat(2,minmax(0,1fr))}.roadmap{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .bento{grid-template-columns:1fr}
+  .t-radio,.t-world,.tile.wide{grid-column:auto;grid-template-columns:1fr}
+  .t-art{min-height:170px}
+  .t-copy{padding:0 22px 22px}
+}
+
+/* Room scenery */
+.prop{position:absolute;pointer-events:none}
+.builder .opt{gap:8px}
+#av-opts{display:grid;gap:14px}
+
+/* Announcement + live */
+.announce{background:linear-gradient(90deg,var(--gold-lo),var(--gold),var(--gold-lo));color:var(--ink)}
+.announce .wrap{display:flex;gap:12px;align-items:center;padding-block:9px;font-weight:600;font-size:14px}
+.announce p{margin:0;flex:1;min-width:0;overflow-wrap:anywhere}
+.announce b{font-family:var(--display);letter-spacing:.08em;margin-right:6px}
+.announce button{background:none;border:0;cursor:pointer;color:var(--ink);font-size:18px;line-height:1;flex:none}
+.announce a.btn{background:var(--ink);color:var(--gold-hi);border-color:var(--ink);padding:5px 14px;font-size:13px;flex:none}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e5484d;margin-right:6px;vertical-align:middle}
+@media (prefers-reduced-motion:no-preference){.live-dot{animation:pulse 1.4s ease-in-out infinite}}
+@keyframes pulse{50%{opacity:.3}}
+.live-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;margin-bottom:18px}
+.live-card{flex:none;width:200px;background:var(--panel);border:1px solid #e5484d55;border-radius:12px;padding:12px;display:grid;gap:6px;text-decoration:none;color:var(--text)}
+.live-card.host{border-color:var(--gold)}
+.live-card small{color:var(--muted);overflow-wrap:anywhere}
+.post.announcement{border:1px solid var(--gold);box-shadow:0 0 0 1px var(--gold-lo) inset}
+.shop-link{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--gold-hi);text-decoration:none;border:1px solid var(--gold-lo);padding:4px 8px;border-radius:999px;margin-left:auto}
+.gift-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px}
+.gift{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:14px 8px;cursor:pointer;display:grid;gap:4px;justify-items:center;font-size:13px;font-weight:600}
+.gift span{font-size:30px;line-height:1}
+.gift:hover,.gift[aria-pressed="true"]{border-color:var(--gold)}
+.gift-feed{display:grid;gap:6px;font-size:13px}
+.shops{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-block:18px 36px}
+.shop{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;gap:12px;align-items:center;min-width:0}
+.shop div{min-width:0;flex:1}
+.shop .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.shop .links a{margin-left:0}
+
+/* Virtual world */
+.world{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
+.builder{display:grid;gap:14px}
+.avatar-stage{background:radial-gradient(circle at 50% 70%,color-mix(in srgb,var(--gold) 22%,transparent),transparent 65%),var(--panel-2);border-radius:12px;display:grid;place-items:center;padding:10px}
+.avatar-stage svg{width:150px;height:210px}
+.opt{display:grid;gap:6px}
+.opt b{font-size:12px;color:var(--muted);font-weight:600}
+.swatches{display:flex;flex-wrap:wrap;gap:6px}
+.swatches button{min-width:30px;height:30px;border-radius:8px;border:1px solid var(--line);cursor:pointer;background:var(--panel-2);font-size:12px;font-weight:600;padding:0 8px;color:var(--text)}
+.swatches button[aria-pressed="true"]{outline:2px solid var(--gold);outline-offset:1px}
+.rooms{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.scene{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:16px;overflow:hidden;border:1px solid var(--gold-lo);cursor:pointer;user-select:none;background:#0b0a08;box-shadow:0 20px 50px rgba(0,0,0,.55)}
+.scene .label{z-index:3000;position:absolute;left:14px;top:12px;font:700 12px var(--display);letter-spacing:.16em;color:var(--gold-hi);text-shadow:0 1px 4px #000;background:rgba(0,0,0,.45);padding:5px 10px;border-radius:999px;border:1px solid rgba(212,168,67,.35)}
+.scene .count{z-index:3000;position:absolute;right:14px;top:12px;font:600 12px var(--body);color:#fff;background:rgba(0,0,0,.45);padding:5px 10px;border-radius:999px}
+.scene .count::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+.scene .vig{position:absolute;inset:0;pointer-events:none;z-index:2500;background:radial-gradient(ellipse at 50% 55%,transparent 55%,rgba(0,0,0,.55))}
+.scene svg .flick{animation:flick 3.2s ease-in-out infinite}
+.scene svg .tw{animation:tw 2.6s ease-in-out infinite}
+.scene svg .beam{transform-box:fill-box;transform-origin:50% 0;animation:sweep 6s ease-in-out infinite alternate}
+.scene svg .led{animation:led 1.6s steps(1) infinite}
+.scene svg .pulse{animation:flick 1.4s ease-in-out infinite}
+.scene svg .spin{transform-box:fill-box;transform-origin:center;animation:spin 8s linear infinite}
+@keyframes flick{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes tw{0%,100%{opacity:.9}50%{opacity:.15}}
+@keyframes sweep{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
+@keyframes led{0%{opacity:.85}33%{opacity:.25}66%{opacity:.55}}
+.toon{position:absolute;width:calc(13.5% * var(--s,1));transform:translate(-50%,-100%);transition:left 1.2s ease-in-out,top 1.2s ease-in-out,width 1.2s ease-in-out;pointer-events:none;text-align:center}
+.toon .bod{transition:transform .25s}
+.toon.left .bod{transform:scaleX(-1)}
+.toon svg{width:100%;height:auto;display:block;filter:drop-shadow(0 4px 3px rgba(0,0,0,.45))}
+.toon .shadow{position:absolute;left:50%;bottom:calc(1.1em + 2px);width:70%;height:9%;transform:translate(-50%,50%);background:radial-gradient(ellipse,rgba(0,0,0,.55),transparent 70%);z-index:-1}
+.toon.walking .bod{animation:bob .4s ease-in-out infinite}
+.toon.left.walking .bod{animation:bobl .4s ease-in-out infinite}
+.toon.dance .bod{animation:dance .7s ease-in-out infinite}
+.toon.left.dance .bod{animation:dancel .7s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4%) rotate(2deg)}}
+@keyframes bobl{0%,100%{transform:scaleX(-1)}50%{transform:scaleX(-1) translateY(-4%) rotate(2deg)}}
+@keyframes dance{0%,100%{transform:rotate(-6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-6%)}}
+@keyframes dancel{0%,100%{transform:scaleX(-1) rotate(-6deg)}50%{transform:scaleX(-1) rotate(6deg) translateY(-6%)}}
+.toon .tag{font:700 11px var(--body);background:rgba(10,8,4,.75);color:var(--gold-hi);border:1px solid rgba(212,168,67,.35);border-radius:999px;padding:2px 9px;white-space:nowrap;display:inline-block;margin-top:2px}
+.toon.me .tag{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.toon .bubble{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#fffdf6;color:#14110a;font:600 12px/1.35 var(--body);padding:6px 11px;border-radius:12px;width:max-content;max-width:190px;overflow-wrap:anywhere;box-shadow:0 4px 14px rgba(0,0,0,.45);animation:pop .25s ease-out}
+.toon .bubble::after{content:"";position:absolute;left:50%;top:100%;margin-left:-6px;border:6px solid transparent;border-top-color:#fffdf6}
+@keyframes pop{from{transform:translateX(-50%) scale(.6);opacity:0}}
+.ripple{position:absolute;width:44px;height:16px;margin:-8px 0 0 -22px;border:2px solid var(--gold-hi);border-radius:50%;pointer-events:none;z-index:2400;animation:rip .7s ease-out forwards}
+@keyframes rip{from{transform:scale(.3);opacity:1}to{transform:scale(1.6);opacity:0}}
+.emotes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.emotes .chip{display:inline-flex;gap:6px;align-items:center}
+.say{display:flex;gap:8px;margin-top:10px}
+.say input{flex:1;min-width:0}
+.roomlog{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:grid;gap:4px;max-height:150px;overflow-y:auto;font-size:14px}
+.roomlog b{color:var(--gold-hi);margin-right:6px}
+.roomlog .sys{color:var(--muted);font-size:13px;font-style:italic}
+.avatar-stage svg{animation:breathe 3.5s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes breathe{50%{transform:scaleY(1.012)}}
+@media (max-width:900px){.world{grid-template-columns:1fr}.toon{width:calc(17% * var(--s,1))}.toon .tag{font-size:9px}}
+@media (prefers-reduced-motion:reduce){.scene svg *,.toon .bod,.avatar-stage svg{animation:none!important}}
+
+
+/* Radio + music player */
+.radio-top{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:22px;align-items:stretch}
+.onair{position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--gold-lo);padding:28px;display:grid;gap:18px;align-content:space-between;min-height:320px;
+  background:radial-gradient(circle at 85% 20%,color-mix(in srgb,var(--gold) 28%,transparent),transparent 55%),linear-gradient(160deg,#1d170c,#0b0a08)}
+.onair .freq{font:700 clamp(48px,8vw,84px)/.9 var(--display);color:var(--gold-hi);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.onair .freq small{font:500 13px var(--mono);letter-spacing:.2em;color:var(--gold);display:block;margin-top:8px}
+.onair-flag{display:inline-flex;align-items:center;gap:6px;font:500 11px var(--mono);letter-spacing:.18em;border:1px solid #e5484d88;color:#ff8a8d;padding:5px 10px;border-radius:999px;width:max-content}
+.onair-flag.off{border-color:var(--line);color:var(--muted)}
+.now{display:flex;gap:16px;align-items:center;min-width:0}
+.cover{width:84px;height:84px;border-radius:10px;flex:none;background:var(--panel-2) center/cover;border:1px solid var(--gold-lo);display:grid;place-items:center}
+.cover svg{width:46px;height:46px;opacity:.8}
+.now div{min-width:0}
+.now b{display:block;font-size:20px;overflow-wrap:anywhere}
+.now span{color:var(--muted)}
+.bars{display:flex;gap:3px;align-items:flex-end;height:34px}
+.bars i{width:5px;background:var(--gold);border-radius:2px;height:20%}
+.playing .bars i{animation:eq 1s ease-in-out infinite}
+.bars i:nth-child(2n){animation-delay:-.4s}.bars i:nth-child(3n){animation-delay:-.7s}.bars i:nth-child(5n){animation-delay:-.2s}
+@keyframes eq{0%,100%{height:15%}50%{height:100%}}
+@media (prefers-reduced-motion:reduce){.playing .bars i{animation:none;height:60%}}
+.req-list{display:grid;gap:8px;max-height:220px;overflow-y:auto;margin-bottom:12px}
+.req-list div{background:var(--panel-2);border-radius:10px;padding:8px 12px;font-size:14px;overflow-wrap:anywhere}
+.req-list b{color:var(--gold-hi);margin-right:6px}
+.tracks{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:14px}
+.track{display:grid;grid-template-columns:44px 48px minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel)}
+.track:last-child{border-bottom:0}
+.track.current{background:color-mix(in srgb,var(--gold) 10%,var(--panel))}
+.track .n{font:500 13px var(--mono);color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.track .cv{width:48px;height:48px;border-radius:8px;background:var(--panel-2) center/cover;border:1px solid var(--line)}
+.track .t{min-width:0}
+.track .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track .t small{color:var(--muted)}
+.track .d{font:500 13px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.track .ops{display:flex;gap:4px}
+.ibtn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--gold-hi);display:grid;place-items:center;cursor:pointer;flex:none}
+.ibtn:hover{border-color:var(--gold)}
+.ibtn svg{width:16px;height:16px}
+.ibtn.big{width:52px;height:52px;background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.ibtn.big svg{width:22px;height:22px}
+.upload-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
+.player-bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:color-mix(in srgb,var(--ink) 94%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--gold-lo);padding-bottom:env(safe-area-inset-bottom,0px)}
+.player-bar .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:center;padding-block:10px}
+.pb-now{display:flex;gap:10px;align-items:center;min-width:0}
+.pb-now .cover{width:44px;height:44px;border-radius:8px}
+.pb-now .cover svg{width:24px;height:24px}
+.pb-now div{min-width:0}
+.pb-now b,.pb-now small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-now small{color:var(--muted);font-size:12px}
+.pb-ctrl{display:flex;gap:8px;align-items:center}
+.pb-right{display:flex;gap:10px;align-items:center;justify-content:flex-end;min-width:0}
+.pb-progress{flex:1;max-width:260px;height:4px;background:var(--line);border-radius:2px;overflow:hidden;cursor:pointer}
+.pb-progress i{display:block;height:100%;background:var(--gold);width:0}
+.pb-time{font:500 12px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+input[type=range]{accent-color:var(--gold);width:90px}
+body.has-player{padding-bottom:84px}
+@media (max-width:900px){.radio-top{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .track{grid-template-columns:40px minmax(0,1fr) auto;}
+  .track .n,.track .d{display:none}
+  .player-bar .wrap{grid-template-columns:minmax(0,1fr) auto}
+  .pb-right{display:none}
+}
+
+/* ===== Masonic edition: centered layout, gold leaf, pillars, ornaments ===== */
+body{background:
+  radial-gradient(ellipse at 50% -10%,color-mix(in srgb,var(--gold) 12%,transparent),transparent 55%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cg fill='none' stroke='%23d4a843' stroke-opacity='.045' stroke-width='1'%3E%3Ccircle cx='80' cy='80' r='40'/%3E%3Ccircle cx='40' cy='80' r='40'/%3E%3Ccircle cx='120' cy='80' r='40'/%3E%3Ccircle cx='80' cy='40' r='40'/%3E%3Ccircle cx='80' cy='120' r='40'/%3E%3C/g%3E%3C/svg%3E"),
+  var(--ink)}
+.gold-leaf,.hero h1,.section-head h2,.sub-h,.team-head h3{background:linear-gradient(175deg,#fff3c9 0%,#f0cf78 28%,#c9982f 52%,#f7e3a1 70%,#a7801f 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* Hero */
+.hero{display:grid;grid-template-columns:90px minmax(0,1fr) 90px;gap:24px;align-items:center;padding-block:10px 36px;text-align:center}
+.hero-center{display:grid;justify-items:center;gap:6px;min-width:0}
+.hero .crest{width:min(230px,60vw);order:0;justify-self:center}
+.hero .eyebrow{margin-top:6px}
+.hero h1{font-family:var(--deco);font-weight:900;font-size:clamp(40px,7.4vw,88px);line-height:1;letter-spacing:.01em;margin-top:6px;filter:drop-shadow(0 2px 0 rgba(0,0,0,.6))}
+.motto{display:flex;align-items:center;gap:16px;font:700 clamp(14px,2vw,20px) var(--display);letter-spacing:.5em;color:var(--gold);margin-top:6px;padding-left:.5em}
+.motto .rule-l,.motto .rule-r{display:block;width:clamp(30px,8vw,90px);height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.motto .rule-r{transform:scaleX(-1)}
+.latin{font:italic 600 clamp(17px,2vw,21px)/1.3 var(--serif-it);color:var(--muted);margin:2px 0 0}
+.hero p.lead{margin:18px auto 26px;max-width:38em;text-align:center}
+.hero .ctas{justify-content:center}
+.pillar-col{position:relative;display:grid;justify-items:center;align-self:stretch}
+.pillar-col svg{width:70px;height:100%;max-height:520px}
+.pillar-col span{position:absolute;bottom:18%;font:700 22px var(--deco);color:var(--ink);background:var(--gold);width:34px;height:34px;border-radius:50%;display:grid;place-items:center;box-shadow:0 0 0 3px var(--ink),0 0 0 4px var(--gold-lo)}
+@media (max-width:900px){.hero{grid-template-columns:1fr}.pillar-col{display:none}}
+#v-home::before{inset:-260px 0 auto 50%;transform:translateX(-50%)}
+/* Centered section heads with square & compass divider */
+.section-head{display:grid;grid-template-columns:minmax(0,1fr);justify-content:stretch;justify-items:center;text-align:center;gap:10px;margin-bottom:34px}
+.section-head > div{display:grid;justify-items:center}
+.section-head h2{font-family:var(--display);font-weight:900;font-size:clamp(32px,5vw,54px);letter-spacing:.02em}
+.section-head h2::after{display:none}
+.section-head > div::after{content:"";display:block;width:min(320px,80vw);height:30px;margin-top:12px;background:
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 30'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23d4a843' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23d4a843'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M10 15H128' stroke='url(%23a)'/%3E%3Cpath d='M310 15H192' stroke='url(%23a)'/%3E%3Cpath d='M128 15l4-4 4 4-4 4zM192 15l-4-4-4 4 4 4z' fill='%23d4a843'/%3E%3Cg fill='none' stroke='%23f0cf78' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='160' cy='4.5' r='2.2'/%3E%3Cpath d='M159 6.5L150 25M161 6.5L170 25'/%3E%3Cpath d='M146 17l14 11 14-11'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat}
+.section-head p{max-width:40em;margin:0 auto;text-align:center}
+.section-head .btn{justify-self:center}
+.sub-h{font:900 clamp(24px,3vw,32px) var(--display);text-align:center;letter-spacing:.03em}
+.center-p{text-align:center;max-width:44em;margin:8px auto 24px}
+.eyebrow{letter-spacing:.3em}
+/* Ornamental frames: double gold rule with corner diamonds */
+.tile,.card,.tier,.div,.book,.fit,.design,.roadmap{position:relative}
+.tile::after,.tier::after,.roadmap::after,.team::after{content:"";position:absolute;inset:6px;border:1px solid color-mix(in srgb,var(--gold) 22%,transparent);border-radius:inherit;pointer-events:none}
+.tile,.tier{background:linear-gradient(180deg,#17130c,#0f0d09);text-align:center;justify-items:center}
+.tile .t-ico{margin-inline:auto}
+.t-copy{justify-items:center;text-align:center}
+.t-copy .pill{margin-inline:auto}
+.stats div{background:linear-gradient(180deg,#17130c,#0f0d09)}
+.stats b{font-family:var(--deco)}
+.roadmap{text-align:center;grid-template-columns:1fr}
+.roadmap li{border-left:0;padding-left:0;justify-items:center;text-align:center}
+.roadmap li b::before{content:"◆ ";color:var(--gold);font-size:10px}
+.divisions{background:var(--gold-lo)}
+.div{text-align:center;justify-items:center;background:linear-gradient(180deg,#17130c,#0f0d09)}
+.div ul{list-style:none;padding:0}
+.div li::before{content:"◆";color:var(--gold-lo);font-size:8px;margin-right:8px;vertical-align:2px}
+.books .book{text-align:center;align-items:center}
+.tier{justify-items:center}
+.tier ul{list-style:none;padding:0}
+.ticker span{font-family:var(--display)}
+.note{text-align:center}
+.filters{justify-content:center}
+/* Checkered pavement */
+.pavement{height:150px;overflow:hidden;perspective:340px;border-top:1px solid var(--gold-lo);background:linear-gradient(var(--ink),transparent 40%)}
+.pavement div{height:420px;margin:0 -50%;transform:rotateX(62deg);transform-origin:50% 0;background:repeating-conic-gradient(#e9dfc7 0 25%,#0b0a08 0 50%) 0 0/56px 56px;opacity:.5;mask-image:linear-gradient(transparent,#000 22%,#000 60%,transparent)}
+footer{text-align:center;padding-block:36px 40px;background:var(--ink)}
+footer .f-mark{width:70px;height:70px;display:block;margin:0 auto 12px}
+footer .f-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;margin-top:16px}
+footer .f-links a{color:var(--muted);text-decoration:none;font-weight:600}
+footer .f-links a:hover{color:var(--gold-hi)}
+/* Builder AI */
+.ai-me{display:grid;gap:8px;justify-items:center;text-align:center;padding:14px;border:1px dashed var(--gold-lo);border-radius:12px}
+.ai-me p{margin:0;font-size:13px}
+/* Creators */
+.wardrobe{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
+.wardrobe .empty,.designs .empty{grid-column:1/-1}
+.fit{background:linear-gradient(180deg,#17130c,#0f0d09);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:8px;justify-items:center;text-align:center}
+.fit-stage{width:100%;aspect-ratio:3/4;max-width:100%;display:grid;place-items:center;background:radial-gradient(circle at 50% 70%,color-mix(in srgb,var(--gold) 20%,transparent),transparent 65%)}
+.fit-stage svg{width:62%;height:auto}
+.fit-acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center}
+.studio{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;align-items:start}
+[hidden]{display:none!important}
+.t-art{width:100%;align-self:stretch;justify-self:stretch}
+.studio-canvas{border:1px solid var(--gold-lo);border-radius:18px;overflow:hidden;background:#0b0a08}
+.studio-canvas canvas{width:100%;height:auto;display:block}
+.studio-form{display:grid;gap:14px}
+.designs{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px;margin-top:18px}
+.design{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:grid;text-align:center}
+.design.picked{border-color:var(--gold)}
+.design img{width:100%;aspect-ratio:8/9;object-fit:cover}
+.design .dz{padding:12px;display:grid;gap:6px;justify-items:center}
+.design .pick{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:var(--ink)}
+.team{margin-top:64px;position:relative;border:1px solid var(--gold-lo);border-radius:22px;padding:clamp(20px,4vw,40px);background:radial-gradient(ellipse at 50% 0,color-mix(in srgb,var(--gold) 12%,transparent),transparent 60%),#0f0d09;display:grid;gap:24px}
+.team-head{text-align:center;display:grid;justify-items:center;gap:8px}
+.team-head .sqc-ico{width:64px;height:64px}
+.team-head h3{font:900 clamp(28px,4vw,42px) var(--display)}
+.team-head p{max-width:40em;margin:0;color:var(--muted)}
+.roles{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.roles div{display:grid;gap:4px;text-align:center;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.roles span{font-size:13px;color:var(--muted)}
+.path{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;counter-reset:p}
+.path li{text-align:center;display:grid;gap:4px;justify-items:center;position:relative}
+.path li::before{counter-increment:p;content:counter(p);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ink);font:700 16px var(--deco)}
+.path span{font-size:13px;color:var(--muted)}
+#team-form{display:grid;gap:14px}
+@media (max-width:900px){.studio{grid-template-columns:1fr}}
+@media (max-width:640px){.path{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Games */
+.arena-wrap{display:grid;gap:14px}
+.arena-top{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px}
+.arena-top .sub-h{text-align:center!important}
+.arena-stats{display:flex;gap:10px;flex-wrap:wrap}
+.arena-stats span{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:14px}
+.arena-stats b{color:var(--gold-hi);font-variant-numeric:tabular-nums;margin-left:4px}
+.arena{position:relative;border:1px solid var(--gold);border-radius:18px;overflow:hidden;box-shadow:0 0 0 6px #0f0d09,0 0 0 7px var(--gold-lo),0 30px 60px rgba(0,0,0,.6);touch-action:none;background:#0b0a08}
+.arena canvas{width:100%;height:auto;display:block;cursor:crosshair}
+.g-over{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:12px;text-align:center;background:radial-gradient(circle,rgba(20,15,6,.85),rgba(5,4,2,.94));padding:16px}
+.g-over h3{font:900 clamp(28px,5vw,48px) var(--deco);background:linear-gradient(175deg,#fff3c9,#f0cf78 30%,#c9982f 55%,#f7e3a1 75%,#a7801f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.g-over p{margin:0;color:var(--muted);max-width:30em}
+.g-over .sqc-ico{width:60px;height:60px}
+.g-dead{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.75);border:1px solid #e5484d;color:#fff;padding:12px 22px;border-radius:12px;font-weight:700}
+.g-fire{position:absolute;right:16px;bottom:16px;width:76px;height:76px;border-radius:50%;border:2px solid var(--gold-hi);background:rgba(212,168,67,.85);color:var(--ink);font:800 15px var(--body);display:none}
+@media (hover:none){.g-fire{display:block}}
+.arena-bottom{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.killfeed{display:grid;gap:4px;font-size:14px;max-height:160px;overflow-y:auto}
+.killfeed b{color:var(--gold-hi)}
+.leaders{margin:0;padding-left:22px;display:grid;gap:4px;font-size:14px}
+.leaders b{color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.squads{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:20px}
+.squads .empty{grid-column:1/-1}
+.squad{background:linear-gradient(180deg,#17130c,#0f0d09);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:6px;text-align:center;justify-items:center}
+.squad .epic{font:700 18px var(--mono);color:var(--gold-hi);overflow-wrap:anywhere}
+.squad small{color:var(--muted)}
+@media (max-width:640px){.arena-bottom{grid-template-columns:1fr}}
+
+.authbar{flex:none;margin-left:8px}
+#auth-dialog form{display:grid;gap:14px}
+@media (max-width:640px){.authbar{position:absolute;right:16px;top:12px}}
+footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
+footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
+body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--gold);color:var(--ink);font-weight:700;padding:10px 18px;border-radius:999px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+
+@media (max-width:900px){
+  .hero,.grid-2{grid-template-columns:1fr}
+  .crest{width:min(240px,70%);order:-1}
+  aside.side{position:static}
+  .tiers{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stats div:nth-child(2){border-right:0}
+  .stats div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+}
+@media (max-width:640px){
+  .bar-in{flex-wrap:wrap;gap:8px}
+  nav.tabs{margin-left:0;width:100%}
+  .chat{grid-template-columns:1fr}
+  .channels{border-right:0;border-bottom:1px solid var(--line);display:flex;overflow-x:auto}
+  .channels .label{display:none}
+  .channels button{white-space:nowrap}
+  .req{grid-template-columns:1fr}
+  .msg{max-width:90%}
+}
+</style>
+<style>[hidden]{display:none!important} img{max-width:100%} :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0cf78"/><stop offset="1" stop-color="#a7801f"/></linearGradient>
+    <symbol id="pillar" viewBox="0 0 60 420">
+      <circle cx="30" cy="22" r="20" fill="url(#g)"/><path d="M14 18q16-10 32 0M12 26q18 8 36 0" stroke="#0b0a08" stroke-opacity=".35" fill="none"/>
+      <rect x="6" y="44" width="48" height="10" fill="url(#g)"/><rect x="10" y="54" width="40" height="6" fill="#8c6d26"/>
+      <rect x="12" y="60" width="36" height="320" fill="#15110a" stroke="url(#g)" stroke-width="1.5"/>
+      <g stroke="#8c6d26" stroke-width="1.2" opacity=".8"><path d="M19 66v308M26 66v308M34 66v308M41 66v308"/></g>
+      <rect x="10" y="380" width="40" height="6" fill="#8c6d26"/><rect x="4" y="386" width="52" height="12" fill="url(#g)"/><rect x="0" y="398" width="60" height="10" fill="#8c6d26"/>
+    </symbol>
+    <symbol id="sqc" viewBox="0 0 64 64">
+      <g fill="none" stroke="url(#g)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="32" cy="9" r="4"/><path d="M30 12 L14 50 M34 12 L50 50"/><path d="M12 46l4 6M52 46l-4 6"/>
+        <path d="M8 38 L32 58 L56 38"/><path d="M14 38 L32 53 L50 38" stroke-width="1.6" opacity=".7"/>
+      </g>
+      <text x="32" y="38" text-anchor="middle" font-family="Cinzel,Georgia,serif" font-weight="700" font-size="11" fill="url(#g)">C</text>
+    </symbol>
+    <symbol id="emblem" viewBox="0 0 200 200">
+      <path d="M100 18 L178 140 H22 Z" fill="none" stroke="url(#g)" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M100 40 L160 132 H40 Z" fill="none" stroke="url(#g)" stroke-width="1.2" opacity=".55"/>
+      <path d="M66 96 Q100 66 134 96 Q100 126 66 96 Z" fill="#0b0a08" stroke="url(#g)" stroke-width="3.5"/>
+      <circle cx="100" cy="96" r="13" fill="url(#g)"/>
+      <circle cx="100" cy="96" r="5" fill="#0b0a08"/>
+      <circle class="eye-glow" cx="100" cy="96" r="24" fill="#f0cf78" opacity=".12"/>
+      <g stroke="url(#g)" stroke-width="2" opacity=".6"><path d="M100 52v10M76 64l5 8M124 64l-5 8"/></g>
+      <path d="M100 168 Q70 150 30 156 V176 Q70 170 100 186 Q130 170 170 176 V156 Q130 150 100 168 Z" fill="#0b0a08" stroke="url(#g)" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M100 168 V186" stroke="url(#g)" stroke-width="2.5"/>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="bar">
+  <div class="wrap bar-in">
+    <a class="brand" href="#home" data-go="home">
+      <svg aria-hidden="true"><use href="#emblem"/></svg>
+      <span><b>MEECHIE'S WORLD</b><small>INC • CONSCIENTIA</small></span>
+    </a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#home" data-go="home">Home</a>
+      <a href="#services" data-go="services">Services</a>
+      <a href="#community" data-go="community">Community</a>
+      <a href="#radio" data-go="radio">Radio</a>
+      <a href="#world" data-go="world">Virtual World</a>
+      <a href="#chat" data-go="chat">Chat &amp; Walkie</a>
+      <a href="#games" data-go="games">Games</a>
+      <a href="#creators" data-go="creators">Creators</a>
+      <a href="#ads" data-go="ads">Ad Board</a>
+      <a href="#promote" data-go="promote">Promote</a>
+      <a href="#contact" data-go="contact">Contact</a>
+    </nav>
+    <div class="authbar" id="authbar"><button class="btn sm" type="button" data-auth="signup">Join free</button></div>
+  </div>
+</header>
+<div class="announce" id="host-live" hidden><div class="wrap"><span class="live-dot"></span><p><b>MEECHIE IS LIVE</b><span id="host-live-title"></span></p><a class="btn" id="host-live-link" href="#" target="_blank" rel="noopener">Watch now</a></div></div>
+<div class="announce" id="announce" hidden><div class="wrap"><p><b>FROM MEECHIE</b><span id="announce-text"></span></p><a class="btn" href="#community" data-go="community">Open</a><button type="button" id="announce-x" aria-label="Dismiss announcement">×</button></div></div>
+
+<main>
+<!-- HOME -->
+<section class="view" id="v-home">
+  <div class="wrap">
+    <div class="hero">
+      <div class="pillar-col left" aria-hidden="true"><svg viewBox="0 0 60 420"><use href="#pillar"/></svg><span>B</span></div>
+      <div class="hero-center">
+        <div class="crest"><svg role="img" aria-label="Conscientia emblem: all-seeing eye in a pyramid over an open book"><use href="#emblem"/></svg></div>
+        <p class="eyebrow">Est. Meechie's World Inc</p>
+        <h1>Meechie's World</h1>
+        <div class="motto"><span class="rule-l"></span>CONSCIENTIA<span class="rule-r"></span></div>
+        <p class="latin">Lux e tenebris · Light out of darkness</p>
+        <p class="lead">One house for everything we do: music, media, websites, AI, legal document prep, apparel, books, and home services, plus a free community where real people post, talk, and build together.</p>
+        <div class="ctas">
+          <a class="btn" href="#community" data-go="community">Join the community free</a>
+          <a class="btn ghost" href="#services" data-go="services">See our services</a>
+        </div>
+      </div>
+      <div class="pillar-col right" aria-hidden="true"><svg viewBox="0 0 60 420"><use href="#pillar"/></svg><span>J</span></div>
+    </div>
+    <div class="ticker" aria-hidden="true"><div class="ticker-in">
+      <span>Music Production</span><span>Recording</span><span>Music Videos</span><span>Commercials</span><span>Artist Development</span><span>Websites</span><span>AI &amp; Code</span><span>Legal Document Prep</span><span>Apparel</span><span>Books</span><span>Remodeling</span><span>Security</span>
+      <span>Music Production</span><span>Recording</span><span>Music Videos</span><span>Commercials</span><span>Artist Development</span><span>Websites</span><span>AI &amp; Code</span><span>Legal Document Prep</span><span>Apparel</span><span>Books</span><span>Remodeling</span><span>Security</span>
+    </div></div>
+    <div class="stats">
+      <div><b>9</b><span>Divisions</span></div>
+      <div><b>$0</b><span>To join and chat</span></div>
+      <div><b>$0</b><span>Community ads</span></div>
+      <div><b>$50</b><span>Services start at</span></div>
+    </div>
+
+    <div class="section-head" style="margin-top:64px">
+      <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
+      <p class="muted">Free to join. Tap any tile to step inside.</p>
+    </div>
+    <div class="bento">
+      <a class="tile t-radio" href="#radio" data-go="radio">
+        <div class="t-art"><div class="vinyl"></div><div class="arm"></div></div>
+        <div class="t-copy"><span class="pill live">● Live now</span><h3>Meechie's World Radio</h3><p>A 24/7 station where everybody hears the same song at the same moment. Requests, shoutouts, and a full music library.</p><span class="go">Tune in →</span></div>
+      </a>
+      <a class="tile t-world" href="#world" data-go="world">
+        <div class="t-art world-art"><span class="w-moon"></span><span class="w-sky"></span><span class="w-floor"></span><span class="w-av a1"></span><span class="w-av a2"></span><span class="w-av a3"></span></div>
+        <div class="t-copy"><span class="pill live">● Live now</span><h3>Virtual World</h3><p>Dress up your character and hang out in the Gold Lounge, Studio B, the Rooftop, and Club Conscientia.</p><span class="go">Enter →</span></div>
+      </a>
+      <a class="tile" href="#community" data-go="community"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m3 18 5-5 4 4 3-3 6 6"/></svg></span><h3>Community Feed</h3><p>Post photos, comment, like, and send gifts.</p><span class="go">Open feed →</span></a>
+      <a class="tile" href="#chat" data-go="chat"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 6h4M12 2V0M9 12h6M9 15h6"/></svg></span><h3>Chat &amp; Walkie-Talkie</h3><p>Channels for every topic, plus voice clips.</p><span class="go">Start talking →</span></a>
+      <a class="tile" href="#community" data-go="community"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span><h3>Go Live</h3><p>Share your live. When Meechie goes live, everybody knows.</p><span class="go">Go live →</span></a>
+      <a class="tile" href="#ads" data-go="ads"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9h18l-2 11H5zM7 9l2-5h6l2 5"/></svg></span><h3>Shops &amp; Free Ads</h3><p>Link your Printify or Shopify. List your business free.</p><span class="go">Browse →</span></a>
+      <a class="tile wide" href="#promote" data-go="promote"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11v2a2 2 0 0 0 2 2h2l6 5V4L7 9H5a2 2 0 0 0-2 2zM17 8a5 5 0 0 1 0 8"/></svg></span><h3>Promote With Us</h3><p>Spotlight, Featured, and Takeover campaigns from $50.</p><span class="go">See packages →</span></a>
+      <a class="tile wide" href="#contact" data-go="contact"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><h3>Message Meechie</h3><p>DM us on TikTok or Snapchat, or email. We answer fast.</p><span class="go">Get in touch →</span></a>
+    </div>
+
+    <div class="roadmap">
+      <div><p class="eyebrow">Coming with the public launch</p><h3>Security &amp; more</h3></div>
+      <ul>
+        <li><b>Face verification</b><span>Selfie + ID check so every member is a real person</span></li>
+        <li><b>Biometric login</b><span>Face ID or fingerprint, no password to steal</span></li>
+        <li><b>Encrypted DMs &amp; walkie</b><span>End-to-end private messages and live talk</span></li>
+        <li><b>Coins &amp; paid gifts</b><span>Premium gifts that pay creators</span></li>
+        <li><b>In-site video live</b><span>Stream right here with chat and gifts on screen</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="view" id="v-services" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Services</p><h2>What we do</h2></div>
+      <p class="muted">Every service starts at $50. Message us on TikTok or Snapchat, or email, with what you need and we'll quote it.</p>
+    </div>
+    <div class="divisions">
+      <div class="div"><span class="code">DIV. 01 · STUDIO</span><h3>Music &amp; Studio</h3><ul><li>Music production and beats</li><li>Recording rap and singing artists</li><li>Sound engineering, mixing</li><li>Music video creation</li></ul></div>
+      <div class="div"><span class="code">DIV. 02 · MEDIA</span><h3>Media &amp; Commercials</h3><ul><li>Commercial production</li><li>AI video and characters</li><li>TikTok content and series</li><li>Book-to-video and audiobooks</li></ul></div>
+      <div class="div"><span class="code">DIV. 03 · PROMOTION</span><h3>Promotion &amp; Artist Development</h3><ul><li>Artist development and branding</li><li>Concert and event promotion</li><li>Sales and distribution</li><li>Paid campaigns on this platform</li></ul></div>
+      <div class="div"><span class="code">DIV. 04 · DIGITAL</span><h3>Websites, Code &amp; AI</h3><ul><li>Website building</li><li>Coding and programming</li><li>AI prompting and automation</li><li>Documents, decks, spreadsheets, research</li></ul></div>
+      <div class="div"><span class="code">DIV. 05 · LEGAL</span><h3>Legal Document Preparation</h3><ul><li>Paralegal services</li><li>Motions and packet preparation</li><li>Filing-ready PDF formatting</li><li>Document preparation only, not legal advice</li></ul></div>
+      <div class="div"><span class="code">DIV. 06 · INSIDE CONNECT</span><h3>Incarcerated Loved Ones</h3><ul><li>Helping families stay in touch</li><li>Help with approved money transfers</li><li>Grievance writing: food, conditions, rights</li><li>Reach us by DM</li></ul></div>
+      <div class="div"><span class="code">DIV. 07 · APPAREL</span><h3>Clothing &amp; Print</h3><ul><li>Meechie's World clothing line</li><li>On-demand printing setup for brands</li><li>Merch for artists and events</li></ul></div>
+      <div class="div"><span class="code">DIV. 08 · PROPERTY</span><h3>Home &amp; Property</h3><ul><li>House remodeling</li><li>Deep cleaning and cleanup</li><li>Landscaping</li></ul></div>
+      <div class="div"><span class="code">DIV. 09 · SECURITY</span><h3>Security</h3><ul><li>Event security</li><li>Personal security</li></ul></div>
+    </div>
+    <p class="note">Legal Document Preparation provides document preparation and paralegal support only. Meechie's World Inc is not a law firm and does not give legal advice.</p>
+
+    <div class="section-head" style="margin-top:56px"><div><p class="eyebrow">Publishing</p><h2>Meechie's World Books</h2></div></div>
+    <div class="books">
+      <div class="book"><span class="eyebrow">A Meechie's World Inc publication</span><h3>Paper Trail</h3><p>Coming as an audiobook and a chapter-by-chapter TikTok series.</p></div>
+      <div class="book"><span class="eyebrow">A Meechie's World Inc publication</span><h3>From Harlem to Fort Dix</h3><p>The Sean Combs story, told in the street's own voice. Movie-style video in production.</p></div>
+      <div class="book"><span class="eyebrow">A Meechie's World Inc publication</span><h3>Donald J. Trump: An Investigative Biography</h3><p>Narrated vertical video edition in production.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMMUNITY -->
+<section class="view" id="v-community" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">The Feed</p><h2>Community</h2></div>
+      <p class="muted">Post photos, share what you're working on, and talk with each other. Free for every member.</p>
+    </div>
+    <div class="live-strip" id="live-strip" hidden></div>
+    <div class="grid-2">
+      <div>
+        <div class="card" id="join-card" hidden>
+          <div class="gate">
+            <h3 style="font-size:22px">Join Meechie's World free</h3>
+            <p class="muted" style="margin:0">Pick the name people will see. You can post, comment, chat, and list ads as soon as you join.</p>
+            <ol class="steps">
+              <li id="st-1" class="done">Signed in</li>
+              <li id="st-2">Choose your handle</li>
+              <li>Face verification (launch build)</li>
+            </ol>
+            <form id="join-form" class="gate">
+              <div class="field"><label for="j-handle">Handle</label><input type="text" id="j-handle" maxlength="30" placeholder="e.g. KingOfFayette" required></div>
+              <div class="field"><label for="j-bio">What do you do? (optional)</label><input type="text" id="j-bio" maxlength="90" placeholder="Barber, artist, cook, small business..."></div>
+              <button class="btn" type="submit">Join free</button>
+            </form>
+          </div>
+        </div>
+        <div class="card composer" id="composer" hidden>
+          <div class="field"><label for="p-text">Share something with the community</label><textarea id="p-text" maxlength="2000" placeholder="What's going on?"></textarea></div>
+          <img id="p-preview" class="preview-img" alt="Photo to post" hidden>
+          <label id="announce-opt" hidden style="display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;color:var(--gold-hi)"><input type="checkbox" id="p-announce"> Send to everybody as an announcement (banner on every page)</label>
+          <div class="row">
+            <span class="btn ghost sm file-btn">Add photo<input type="file" id="p-photo" accept="image/*" aria-label="Add photo"></span>
+            <button class="btn" id="p-post" type="button">Post</button>
+          </div>
+        </div>
+        <div class="empty" id="signed-out" hidden>
+          <h3>Join the community</h3>
+          <p>Create your free account to post, chat, play, and design.</p><button class="btn" type="button" data-auth="signup" style="margin-top:12px">Join free</button> <button class="btn ghost" type="button" data-auth="signin" style="margin-top:12px">Sign in</button>
+        </div>
+        <div class="feed" id="feed">
+          <div class="empty" id="feed-empty"><h3>The feed is ready</h3><p>New posts appear here live. Be the first to post a photo or say hello.</p></div>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="card" id="me-card" hidden>
+          <h3>YOUR PROFILE</h3>
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><span class="avatar" id="me-av">?</span><div style="min-width:0"><b id="me-handle"></b><br><small class="muted" id="me-gifts">0 gifts received</small></div></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn sm" type="button" id="go-live">Go Live</button><button class="btn ghost sm" type="button" id="edit-profile">Edit profile &amp; shops</button></div>
+        </div>
+        <div class="card"><h3>RECENT GIFTS</h3><div class="gift-feed" id="gift-feed"><p class="muted" style="margin:0">Gifts members send each other show here.</p></div></div>
+        <div class="card"><h3>NEWEST MEMBERS</h3><div class="member-list" id="members"><p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p></div></div>
+        <div class="card"><h3>COMMUNITY RULES</h3><ul class="muted" style="margin:0;padding-left:18px;font-size:14px"><li>Real people only, one account each</li><li>No harassment or threats</li><li>No scams or illegal sales</li><li>Ads go on the Ad Board</li></ul></div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<!-- RADIO -->
+<section class="view" id="v-radio" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Meechie's World Radio</p><h2>Radio &amp; Music</h2></div>
+      <p class="muted">Tune in to the station and hear the same song as everybody else at the same moment, or pick any track from the library and play it yourself.</p>
+    </div>
+    <div class="radio-top">
+      <div class="onair" id="onair">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          <span class="onair-flag off" id="onair-flag">● OFF AIR</span>
+          <span class="muted" style="font-size:13px" id="listeners">0 listening</span>
+        </div>
+        <div class="freq">MWR 24/7<small>MEECHIE'S WORLD RADIO • CONSCIENTIA</small></div>
+        <div class="now">
+          <div class="cover" id="air-cover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gold)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg></div>
+          <div><span class="eyebrow">Now on air</span><b id="air-title">The station starts when the first track is added</b><span id="air-artist"></span></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <button class="btn" type="button" id="tune-in">▶ Tune in</button>
+          <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:18px;margin-bottom:12px">Requests &amp; shoutouts</h3>
+        <div class="req-list" id="req-list"><p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p></div>
+        <form class="reply-form" id="req-form"><input type="text" id="req-text" maxlength="160" placeholder="Play my song! / Shoutout to..." autocomplete="off"><button class="btn sm" type="submit">Send</button></form>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-top:40px">
+      <div><p class="eyebrow">Music player</p><h3 style="font-size:28px;margin-top:6px">The Library</h3></div>
+      <span class="muted" id="lib-count" style="font-size:14px">0 tracks</span>
+    </div>
+    <div id="uploader" hidden>
+      <div class="upload-row">
+        <span class="btn file-btn">Upload tracks<input type="file" id="up-audio" accept=".m4a,.mp4,.webm,audio/mp4,audio/x-m4a,video/mp4,video/webm,audio/webm" multiple aria-label="Upload tracks"></span>
+        <div class="field" style="flex:1;min-width:160px"><input type="text" id="up-artist" maxlength="60" placeholder="Artist name (default: Meechie)"></div>
+        <button class="btn ghost sm" type="button" id="restart-station">Restart station from track 1</button>
+      </div>
+      <p class="muted" style="font-size:13px;margin:8px 0 0" id="up-status">Upload M4A, MP4 or WebM files up to 20 MB each. Music videos play too. Only you see this.</p>
+    </div>
+    <div class="tracks" id="tracks"><div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie's World shows up here.</div></div>
+  </div>
+</section>
+
+<!-- WORLD -->
+<section class="view" id="v-world" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Meechie's World 3D-lite</p><h2>Virtual World</h2></div>
+      <p class="muted">Dress up your character, pick a room, tap the floor to walk, and talk. Everyone in the room sees you move and speak.</p>
+    </div>
+    <div class="world">
+      <div class="card builder">
+        <div class="avatar-stage" id="av-stage"></div>
+        <div class="ai-me">
+          <span class="btn ghost file-btn" id="ai-me-btn">✨ Make my AI look-alike<input type="file" id="ai-selfie" accept="image/*" aria-label="Upload a selfie"></span>
+          <button class="btn ghost sm" type="button" id="av-photo-toggle" hidden>Use my photo face</button>
+          <p class="muted" id="ai-me-status">Upload a clear, close-up selfie. AI matches your skin tone and hair, and your face can show on your avatar so people know who you are.</p>
+        </div>
+        <div id="av-opts"></div>
+        <div class="field"><label for="av-printtext">Print text (up to 10 letters)</label><input type="text" id="av-printtext" maxlength="10" hidden></div>
+        <div style="display:grid;gap:8px"><button class="btn" type="button" id="av-save">Save my look</button><button class="btn ghost" type="button" id="av-share">Share this outfit to the Wardrobe</button></div>
+      </div>
+      <div>
+        <div class="rooms" id="rooms">
+          <button class="chip" type="button" data-room="lounge" aria-pressed="true">Gold Lounge</button>
+          <button class="chip" type="button" data-room="studio">Studio B</button>
+          <button class="chip" type="button" data-room="rooftop">Rooftop</button>
+          <button class="chip" type="button" data-room="club">Club Conscientia</button>
+        </div>
+        <div class="scene" id="scene" role="application" aria-label="Room. Tap the floor to walk there.">
+          <div class="prop" id="props" style="inset:0"></div><div class="vig"></div><span class="label" id="room-label">GOLD LOUNGE</span><span class="count" id="room-count">1 here</span>
+        </div>
+        <div class="emotes" id="emotes"><button class="chip" type="button" data-pose="wave">👋 Wave</button><button class="chip" type="button" data-pose="dance">💃 Dance</button><button class="chip" type="button" data-pose="sit">🪑 Sit</button><button class="chip" type="button" data-pose="stand">🧍 Stand</button></div>
+        <form class="say" id="say-form"><input type="text" id="say-text" maxlength="120" placeholder="Say something in the room" autocomplete="off"><button class="btn" type="submit">Say</button></form>
+        <div class="roomlog" id="roomlog" aria-live="polite"><span class="sys">Tap the floor to walk. Say something and everyone in the room sees it.</span></div>
+        <p class="muted" id="world-status" style="font-size:13px;margin:8px 0 0">Sign in to enter rooms with other people.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GAMES -->
+<section class="view" id="v-games" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Play together</p><h2>Games</h2></div>
+      <p class="muted">Battle other members live in Gold Rush Arena, and find a squad for Fortnite.</p>
+    </div>
+    <div class="arena-wrap">
+      <div class="arena-top">
+        <div><h3 class="sub-h" style="font-size:30px">Gold Rush Arena</h3><p class="muted" style="margin:4px 0 0;font-size:14px">Last one standing in the storm. Eliminate players, stay inside the gold circle, respawn and go again.</p></div>
+        <div class="arena-stats"><span>Eliminations <b id="g-k">0</b></span><span>Health <b id="g-hp">100</b></span><span id="g-players">Practice mode</span></div>
+      </div>
+      <div class="arena" id="arena">
+        <canvas id="g-canvas" width="960" height="560" aria-label="Gold Rush Arena game"></canvas>
+        <div class="g-over" id="g-start">
+          <svg class="sqc-ico" aria-hidden="true"><use href="#sqc"/></svg>
+          <h3>Gold Rush Arena</h3>
+          <p>Move: <b>WASD</b> or arrow keys · Aim: <b>mouse</b> · Shoot: <b>click</b> or <b>space</b><br>On a phone: touch to move, tap <b>FIRE</b> to auto-aim.</p>
+          <button class="btn" type="button" id="g-play">Play now</button>
+          <small class="muted" id="g-mode-note">Signed-in members battle each other live. Bots fill in when you're alone.</small>
+        </div>
+        <div class="g-dead" id="g-dead" hidden>Eliminated. Back in <b id="g-rs">3</b>…</div>
+        <button class="g-fire" id="g-fire" type="button" aria-label="Fire">FIRE</button>
+      </div>
+      <div class="arena-bottom">
+        <div class="card"><h3 style="font-size:16px;letter-spacing:.06em;margin-bottom:10px">LIVE FEED</h3><div class="killfeed" id="g-feed"><span class="muted">Eliminations show here.</span></div></div>
+        <div class="card"><h3 style="font-size:16px;letter-spacing:.06em;margin-bottom:10px">ALL-TIME LEADERS</h3><ol class="leaders" id="g-leaders"><li class="muted">Get an elimination to make the board.</li></ol></div>
+      </div>
+    </div>
+
+    <h3 class="sub-h" style="margin-top:64px">Fortnite Squad Finder</h3>
+    <p class="muted center-p">Post your Epic name and what you want to play. Add each other in Fortnite and squad up.</p>
+    <form class="card" id="sq-form" style="max-width:760px;margin:0 auto">
+      <div class="req">
+        <div class="field"><label for="sq-epic">Epic Games name</label><input type="text" id="sq-epic" maxlength="40" required></div>
+        <div class="field"><label for="sq-plat">Platform</label><select id="sq-plat"><option>PlayStation</option><option>Xbox</option><option>PC</option><option>Switch</option><option>Mobile</option></select></div>
+        <div class="field"><label for="sq-mode">Mode</label><select id="sq-mode"><option>Battle Royale squads</option><option>Duos</option><option>Zero Build</option><option>Ranked</option><option>Creative / box fights</option><option>Custom match</option></select></div>
+        <div class="field"><label for="sq-note">Note (optional)</label><input type="text" id="sq-note" maxlength="80" placeholder="On tonight 9pm, mic on"></div>
+      </div>
+      <div style="display:flex;justify-content:center;margin-top:14px"><button class="btn" type="submit">Post to Squad Finder</button></div>
+    </form>
+    <div class="squads" id="squads"><div class="empty">No squads posted yet. Be the first.</div></div>
+  </div>
+</section>
+
+<!-- CREATORS -->
+<section class="view" id="v-creators" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Build with us</p><h2>Creators</h2></div>
+      <p class="muted">Design clothes for avatars and for our real clothing line, and join the team that builds Meechie's World.</p>
+    </div>
+
+    <h3 class="sub-h">The Wardrobe</h3>
+    <p class="muted center-p">Outfits members designed for their avatars. Tap Try on to wear one, then style your own in the Virtual World and share it here.</p>
+    <div class="wardrobe" id="wardrobe"><div class="empty">No outfits yet. Design one in the <a href="#world" data-go="world">Virtual World</a> and tap Share this outfit.</div></div>
+
+    <h3 class="sub-h" style="margin-top:56px">Clothing Design Studio</h3>
+    <p class="muted center-p">Design a piece for the Meechie's World clothing line. The community votes, and the designs we pick go into the store.</p>
+    <div class="studio">
+      <div class="studio-canvas"><canvas id="ds-canvas" width="480" height="540" aria-label="Your clothing design preview"></canvas></div>
+      <form class="card studio-form" id="ds-form">
+        <div class="req">
+          <div class="field"><label for="ds-garment">Garment</label><select id="ds-garment"><option value="tee">T-shirt</option><option value="hoodie">Hoodie</option></select></div>
+          <div class="field"><label for="ds-color">Garment color</label><select id="ds-color"><option value="#111111">Black</option><option value="#f3ecdc">Cream</option><option value="#d4a843">Gold</option><option value="#7a1f2b">Burgundy</option><option value="#1f3d7a">Royal blue</option><option value="#2f6b45">Forest</option><option value="#ffffff">White</option></select></div>
+          <div class="field"><label for="ds-l1">Top line</label><input type="text" id="ds-l1" maxlength="18" value="MEECHIE'S WORLD"></div>
+          <div class="field"><label for="ds-l2">Bottom line</label><input type="text" id="ds-l2" maxlength="18" value="CONSCIENTIA"></div>
+          <div class="field"><label for="ds-font">Lettering</label><select id="ds-font"><option value="Cinzel">Classic serif</option><option value="Cinzel Decorative">Ornate</option><option value="Hanken Grotesk">Modern</option><option value="Cormorant Garamond">Script italic</option></select></div>
+          <div class="field"><label for="ds-ink">Ink color</label><select id="ds-ink"><option value="#d4a843">Gold</option><option value="#f3ecdc">Cream</option><option value="#111111">Black</option><option value="#b0263a">Red</option><option value="#ffffff">White</option></select></div>
+          <div class="field"><label for="ds-symbol">Symbol</label><select id="ds-symbol"><option value="emblem">All-seeing eye</option><option value="compass">Square &amp; compass</option><option value="none">None</option><option value="upload">My own image</option></select></div>
+          <div class="field"><label for="ds-size">Graphic size</label><input type="range" id="ds-size" min="40" max="160" value="110"></div>
+          <div class="field full" id="ds-up-wrap" hidden><label for="ds-upload">Your graphic (PNG or JPG)</label><input type="file" id="ds-upload" accept="image/*"></div>
+          <div class="field full"><label for="ds-title">Design name</label><input type="text" id="ds-title" maxlength="50" placeholder="e.g. Gold Eye Classic Tee" required></div>
+        </div>
+        <button class="btn" type="submit">Submit design</button>
+        <p class="muted" style="font-size:13px;margin:0">By submitting you confirm the artwork is yours. If we add it to the store, we'll contact you to agree your share of each sale in writing.</p>
+      </form>
+    </div>
+    <div class="filters" id="dg-sort" style="justify-content:center;margin-top:28px"><button class="chip" type="button" data-sort="top" aria-pressed="true">Top voted</button><button class="chip" type="button" data-sort="new">Newest</button></div>
+    <div class="designs" id="designs"><div class="empty">Submitted designs show here for the community to vote on.</div></div>
+
+    <div class="team">
+      <div class="team-head">
+        <svg class="sqc-ico" aria-hidden="true"><use href="#sqc"/></svg>
+        <h3>Join the Team</h3>
+        <p>Know how to make this platform better? We're looking for builders. Help grow Meechie's World and earn a share of what you help create.</p>
+      </div>
+      <div class="roles">
+        <div><b>Designers</b><span>Clothing, avatar outfits, graphics, and the look of the app</span></div>
+        <div><b>Developers</b><span>Web, apps, video, payments, and security</span></div>
+        <div><b>Creators</b><span>Music, video, radio shows, and content</span></div>
+        <div><b>Promoters</b><span>Grow the community and bring in advertisers</span></div>
+        <div><b>Moderators</b><span>Keep the community safe and real</span></div>
+      </div>
+      <ol class="path">
+        <li><b>Apply</b><span>Tell us what you do</span></li>
+        <li><b>Talk</b><span>We meet and plan your part</span></li>
+        <li><b>Agree</b><span>Your share is put in writing</span></li>
+        <li><b>Earn</b><span>Ongoing income from what you build</span></li>
+      </ol>
+      <form class="card" id="team-form">
+        <div class="req">
+          <div class="field"><label for="tm-name">Your name or handle</label><input type="text" id="tm-name" maxlength="60" required></div>
+          <div class="field"><label for="tm-role">Role</label><select id="tm-role"><option>Designer</option><option>Developer</option><option>Creator</option><option>Promoter</option><option>Moderator</option><option>Other</option></select></div>
+          <div class="field"><label for="tm-contact">How we reach you</label><input type="text" id="tm-contact" maxlength="120" required></div>
+          <div class="field"><label for="tm-link">Portfolio or work link (optional)</label><input type="url" id="tm-link" maxlength="300" placeholder="https://"></div>
+          <div class="field full"><label for="tm-idea">How would you make Meechie's World better?</label><textarea id="tm-idea" maxlength="1200" required></textarea></div>
+        </div>
+        <button class="btn" type="submit">Create my application</button>
+        <p class="muted" style="font-size:13px;margin:0">Income depends on the results of what you build and is set in a written agreement before work starts. Nothing is guaranteed.</p>
+      </form>
+      <div class="card" id="team-ready" hidden>
+        <h3 style="font-size:18px">Your application is ready</h3>
+        <p class="muted" style="margin:6px 0 10px">It's copied. Send it as a DM to <b>@meechiesworldinc</b> on TikTok, <b>elpesidentay</b> on Snapchat, or email <b>meechiesworldinc@aol.com</b>.</p>
+        <pre class="item" id="team-msg" style="white-space:pre-wrap;margin:0;font:inherit;background:var(--panel-2);border-radius:10px;padding:12px 14px"></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CHAT -->
+<section class="view" id="v-chat" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Talk free</p><h2>Chat &amp; Walkie-Talkie</h2></div>
+      <p class="muted">Pick a channel and talk. Tap the mic to send a voice clip to the channel, walkie-talkie style.</p>
+    </div>
+    <div class="chat">
+      <div class="channels" id="channels">
+        <span class="label">CHANNELS</span>
+        <button type="button" data-ch="lounge" aria-pressed="true"># lounge</button>
+        <button type="button" data-ch="music"># music</button>
+        <button type="button" data-ch="business"># business</button>
+        <button type="button" data-ch="walkie">📻 walkie-talkie</button>
+      </div>
+      <div class="chat-main">
+        <div class="chat-top"><b id="ch-name"># lounge</b><span class="online" id="online">● 0 here now</span></div>
+        <div class="msgs" id="msgs"><div class="empty" style="border:0">No messages yet. Say hello.</div></div>
+        <form class="chat-input" id="chat-form">
+          <label class="ptt" title="Send a voice clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><input type="file" id="voice" accept="audio/*" capture aria-label="Send a voice clip"></label>
+          <input type="text" id="chat-text" maxlength="500" placeholder="Message the channel" autocomplete="off">
+          <button class="btn" type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+    <p class="note">Voice clips up to about 15 seconds. Live hold-to-talk audio and end-to-end encryption are part of the launch build.</p>
+  </div>
+</section>
+
+<!-- ADS -->
+<section class="view" id="v-ads" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Free for members</p><h2>Community Ad Board</h2></div>
+      <button class="btn" id="new-ad" type="button">Post a free ad</button>
+    </div>
+    <h3 style="font-size:20px">Member Shops</h3>
+    <p class="muted" style="margin:6px 0 0">Members link their Printify, Shopify, Etsy, or any store from their profile. Shop each other.</p>
+    <div class="shops" id="shops"><p class="muted" style="margin:0">Linked stores show up here. Add yours under Community → Edit profile &amp; shops.</p></div>
+    <div class="filters" id="ad-filters">
+      <button class="chip" type="button" data-cat="all" aria-pressed="true">All</button>
+      <button class="chip" type="button" data-cat="Business">Business</button>
+      <button class="chip" type="button" data-cat="Event">Events</button>
+      <button class="chip" type="button" data-cat="Service">Services</button>
+      <button class="chip" type="button" data-cat="For Sale">For Sale</button>
+      <button class="chip" type="button" data-cat="Hiring">Hiring</button>
+    </div>
+    <div class="ads" id="ads"></div>
+    <div class="empty" id="ads-empty" style="margin-top:24px"><h3>No ads yet</h3><p>Post your business, event, or service here for free. Promoted ads show at the top.</p></div>
+  </div>
+</section>
+
+<!-- PROMOTE -->
+<section class="view" id="v-promote" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Ad campaigns</p><h2>Promote with us</h2></div>
+      <p class="muted">We put your content in front of the whole community: pinned in the feed, gold-framed on the Ad Board, and shouted out on our TikTok.</p>
+    </div>
+    <div class="tiers">
+      <div class="tier"><h3>Spotlight</h3><div class="price">$50 <small>/ 7 days</small></div><ul><li>Gold "Promoted" badge</li><li>Top of the Ad Board</li><li>One pinned feed post</li></ul><button class="btn ghost" type="button" data-tier="Spotlight">Choose Spotlight</button></div>
+      <div class="tier feature"><span class="badge">Most popular</span><h3>Featured</h3><div class="price">$150 <small>/ 14 days</small></div><ul><li>Everything in Spotlight</li><li>Pinned in feed all 14 days</li><li>Mention in a TikTok video</li><li>Ad copy written for you</li></ul><button class="btn" type="button" data-tier="Featured">Choose Featured</button></div>
+      <div class="tier"><h3>Takeover</h3><div class="price">$400 <small>/ 30 days</small></div><ul><li>Everything in Featured</li><li>Dedicated TikTok video</li><li>Home page banner</li><li>Custom commercial available</li></ul><button class="btn ghost" type="button" data-tier="Takeover">Choose Takeover</button></div>
+    </div>
+
+    <div class="card" style="margin-top:28px">
+      <h3 style="font-size:22px;margin-bottom:6px">Request a campaign</h3>
+      <p class="muted" style="margin:0 0 18px">Fill this in and we'll turn it into a message you can DM us. We confirm every campaign and arrange payment directly.</p>
+      <form id="camp-form" class="req">
+        <div class="field"><label for="c-tier">Package</label><select id="c-tier"><option>Spotlight</option><option selected>Featured</option><option>Takeover</option></select></div>
+        <div class="field"><label for="c-biz">Business or brand</label><input type="text" id="c-biz" maxlength="80" required></div>
+        <div class="field"><label for="c-contact">How we reach you (TikTok, Snap, email, phone)</label><input type="text" id="c-contact" maxlength="120" required></div>
+        <div class="field"><label for="c-link">Link to your content (optional)</label><input type="url" id="c-link" maxlength="300" placeholder="https://"></div>
+        <div class="field full"><label for="c-goal">What do you want promoted?</label><textarea id="c-goal" maxlength="1000" required></textarea></div>
+        <div class="full"><button class="btn" type="submit">Create my request</button></div>
+      </form>
+    </div>
+    <div class="card" id="owner-inbox" style="margin-top:20px" hidden>
+      <h3 style="font-size:18px">Your request is ready</h3>
+      <p class="muted" style="margin:6px 0 0">Send it as a DM to <b>@meechiesworldinc</b> on TikTok, <b>elpesidentay</b> on Snapchat, or email <b>meechiesworldinc@aol.com</b>. We'll confirm and arrange payment.</p>
+      <div class="inbox"><pre class="item" id="inbox" style="white-space:pre-wrap;margin:0;font:inherit"></pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="view" id="v-contact" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Contact</p><h2>Message Meechie</h2></div>
+      <p class="muted">DM us on TikTok or Snapchat for the fastest reply, or ask our AI assistant right now.</p>
+    </div>
+    <div class="card" id="ai-card" style="margin-bottom:24px">
+      <h3 style="font-size:22px">Ask Meechie's AI</h3>
+      <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
+      <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
+      <form class="reply-form" id="ai-form"><input type="text" id="ai-q" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
+    </div>
+    <div class="socials">
+      <a class="social" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2.2 1.8 3.7 4 3.9v3.1a7.5 7.5 0 0 1-4-1.2v6.4a6 6 0 1 1-6-6h.6v3.2a2.8 2.8 0 1 0 2.2 2.8V3h3.2Z"/></svg></span><div><b>TikTok</b><span>@meechiesworldinc</span></div></a>
+      <a class="social" href="https://www.snapchat.com/add/elpesidentay" target="_blank" rel="noopener"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5c3 0 5.3 2.3 5.3 5.4v2.5c.5.2 1.1 0 1.6-.2.6-.2 1.1.5.6 1-.6.5-1.5.8-2 1.1.5 1.8 2 3.3 3.7 3.8.5.1.5.8 0 1-.8.3-1.7.4-2 .7-.2.4-.1 1-.6 1.1-.7.1-1.6-.2-2.6.1-1.1.4-1.9 1.7-4 1.7s-2.9-1.3-4-1.7c-1-.3-1.9 0-2.6-.1-.5-.1-.4-.7-.6-1.1-.3-.3-1.2-.4-2-.7-.5-.2-.5-.9 0-1 1.7-.5 3.2-2 3.7-3.8-.5-.3-1.4-.6-2-1.1-.5-.5 0-1.2.6-1 .5.2 1.1.4 1.6.2V7.9C6.7 4.8 9 2.5 12 2.5Z"/></svg></span><div><b>Snapchat</b><span>elpesidentay</span></div></a>
+      <div class="social"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span><div><b>Email</b><span>meechiesworldinc@aol.com</span></div><button class="btn ghost sm copy" type="button" data-copy="meechiesworldinc@aol.com">Copy</button></div>
+      <div class="social"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg></span><div><b>Phone</b><span>(724) 970-6015</span></div><button class="btn ghost sm copy" type="button" data-copy="+17249706015">Copy</button></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="pavement" aria-hidden="true"><div></div></div>
+<footer>
+  <div class="wrap">
+    <svg class="f-mark" aria-hidden="true"><use href="#emblem"/></svg>
+    <div class="f-brand">MEECHIE'S WORLD INC • CONSCIENTIA</div>
+    <p class="latin" style="margin:6px 0 0">Lux e tenebris</p>
+    <div class="f-links"><a href="#services" data-go="services">Services</a><a href="#community" data-go="community">Community</a><a href="#radio" data-go="radio">Radio</a><a href="#world" data-go="world">Virtual World</a><a href="#creators" data-go="creators">Creators</a><a href="#contact" data-go="contact">Contact</a></div>
+    <p style="margin:14px 0 0">© 2026 Meechie's World Inc. All rights reserved.</p>
+  </div>
+</footer>
+
+<dialog id="ad-dialog">
+  <form id="ad-form" method="dialog">
+    <h3 style="font-size:22px">Post a free ad</h3>
+    <div class="field"><label for="a-title">Headline</label><input type="text" id="a-title" maxlength="70" required></div>
+    <div class="field"><label for="a-cat">Category</label><select id="a-cat"><option>Business</option><option>Event</option><option>Service</option><option>For Sale</option><option>Hiring</option></select></div>
+    <div class="field"><label for="a-desc">Details</label><textarea id="a-desc" maxlength="600" required></textarea></div>
+    <div class="field"><label for="a-contact">How people reach you</label><input type="text" id="a-contact" maxlength="120" required></div>
+    <div class="field"><label for="a-photo">Photo (optional)</label><input type="file" id="a-photo" accept="image/*"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" type="button" id="ad-cancel">Cancel</button><button class="btn" type="submit">Post ad</button></div>
+  </form>
+</dialog>
+<dialog id="gift-dialog">
+  <form id="gift-form" method="dialog">
+    <h3 style="font-size:22px">Send a gift to <span id="gift-to"></span></h3>
+    <div class="gift-grid" id="gift-grid"></div>
+    <div class="field"><label for="gift-note">Note (optional)</label><input type="text" id="gift-note" maxlength="80"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="submit">Send gift</button></div>
+  </form>
+</dialog>
+<dialog id="profile-dialog">
+  <form id="profile-form" method="dialog">
+    <h3 style="font-size:22px">Edit profile &amp; shops</h3>
+    <div class="field"><label for="pf-handle">Handle</label><input type="text" id="pf-handle" maxlength="30" required></div>
+    <div class="field"><label for="pf-bio">What you do</label><input type="text" id="pf-bio" maxlength="90"></div>
+    <div class="field"><label for="pf-printify">Printify store link</label><input type="url" id="pf-printify" maxlength="300" placeholder="https://yourstore.printify.me"></div>
+    <div class="field"><label for="pf-shopify">Shopify store link</label><input type="url" id="pf-shopify" maxlength="300" placeholder="https://yourstore.myshopify.com"></div>
+    <div class="field"><label for="pf-other">Other store (Etsy, Cash App, website)</label><input type="url" id="pf-other" maxlength="300" placeholder="https://"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="submit">Save</button></div>
+  </form>
+</dialog>
+<dialog id="live-dialog">
+  <form id="live-form" method="dialog">
+    <h3 style="font-size:22px">Go Live</h3>
+    <p class="muted" style="margin:0">Start your live on TikTok, YouTube, Instagram, or Twitch, then paste the link. Everyone on Meechie's World sees you're live and can tap in.</p>
+    <div class="field"><label for="lv-title">What's the live about?</label><input type="text" id="lv-title" maxlength="80" required></div>
+    <div class="field"><label for="lv-url">Live link</label><input type="url" id="lv-url" maxlength="300" placeholder="https://www.tiktok.com/@you/live" required></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost" type="button" id="end-live" hidden>End my live</button><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="submit">I'm live</button></div>
+  </form>
+</dialog>
+<div class="player-bar" id="player-bar" hidden>
+  <div class="wrap">
+    <div class="pb-now"><div class="cover" id="pb-cover"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--gold)"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg></div><div><b id="pb-title"></b><small id="pb-sub"></small></div></div>
+    <div class="pb-ctrl">
+      <button class="ibtn" type="button" id="pb-prev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="ibtn big" type="button" id="pb-play" aria-label="Pause"><svg viewBox="0 0 24 24" fill="currentColor" id="pb-icon"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
+      <button class="ibtn" type="button" id="pb-next" aria-label="Next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+    </div>
+    <div class="pb-right"><span class="pb-time" id="pb-time">0:00</span><div class="pb-progress" id="pb-progress"><i id="pb-fill"></i></div><input type="range" id="pb-vol" min="0" max="1" step="0.05" value="0.9" aria-label="Volume"></div>
+  </div>
+</div>
+<video id="audio" playsinline preload="none" hidden></video>
+<dialog id="auth-dialog">
+  <form id="auth-form" method="dialog">
+    <svg class="sqc-ico" aria-hidden="true" style="width:48px;height:48px;justify-self:center"><use href="#sqc"/></svg>
+    <h3 id="auth-title" style="font-size:24px;text-align:center">Join Meechie's World</h3>
+    <p class="muted" id="auth-sub" style="margin:0;text-align:center">Free forever. Post, chat, play, and design.</p>
+    <div class="field"><label for="auth-email">Email</label><input type="email" id="auth-email" autocomplete="email" required></div>
+    <div class="field"><label for="auth-pass">Password (8+ characters)</label><input type="password" id="auth-pass" minlength="8" autocomplete="current-password" required style="width:100%;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px"></div>
+    <p class="muted" id="auth-msg" style="margin:0;font-size:14px;text-align:center" aria-live="polite"></p>
+    <button class="btn" type="submit" id="auth-go">Create my account</button>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px">
+      <button class="act" type="button" id="auth-switch">I already have an account</button>
+      <button class="act" type="button" id="auth-forgot">Forgot password</button>
+    </div>
+    <button class="btn ghost sm" type="button" data-close>Close</button>
+  </form>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/platform.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const initial = s => (String(s||"?").trim()[0]||"?").toUpperCase();
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
+function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
+
+/* ---------- Tabs ---------- */
+const VIEWS=["home","services","community","radio","world","games","creators","chat","ads","promote","contact"];
+function go(v){ if(!VIEWS.includes(v)) v="home";
+  VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
+  $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+  if(location.hash.slice(1)!==v) history.replaceState(null,"","#"+v);
+  window.scrollTo({top:0});
+}
+document.addEventListener("click",e=>{const a=e.target.closest("[data-go]"); if(a){e.preventDefault();go(a.dataset.go);}});
+go(location.hash.slice(1));
+
+/* ---------- Copy ---------- */
+$$("[data-copy]").forEach(b=>b.addEventListener("click",()=>{
+  const v=b.dataset.copy;
+  navigator.clipboard?.writeText(v).then(()=>toast("Copied "+v)).catch(()=>{const r=document.createRange();r.selectNodeContents(b.previousElementSibling.querySelector("span"));getSelection().removeAllRanges();getSelection().addRange(r);toast("Selected. Press copy.")});
+}));
+
+/* ---------- Image compression (keeps photos small enough to store) ---------- */
+function compress(file,max=1080){
+  return new Promise((res,rej)=>{
+    const img=new Image(); const url=URL.createObjectURL(file);
+    img.onload=()=>{ let q=.8, w=img.width, h=img.height; const s=Math.min(1,max/Math.max(w,h)); w=Math.round(w*s); h=Math.round(h*s);
+      const c=document.createElement("canvas"); c.width=w; c.height=h; c.getContext("2d").drawImage(img,0,0,w,h); URL.revokeObjectURL(url);
+      let d=c.toDataURL("image/jpeg",q); while(d.length>200000 && q>.35){q-=.1; d=c.toDataURL("image/jpeg",q);}
+      if(d.length>200000){ c.width=Math.round(w*.6); c.height=Math.round(h*.6); c.getContext("2d").drawImage(img,0,0,c.width,c.height); d=c.toDataURL("image/jpeg",.6);}
+      res(d);};
+    img.onerror=()=>rej(new Error("That file isn't an image we can read."));
+    img.src=url;
+  });
+}
+function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(f);});}
+
+/* ---------- Live platform ---------- */
+let db=null, user=null, me=null, isOwner=false, members={}, profileMe=null;
+const handleOf = id => members[id]?.handle || "Member";
+
+async function boot(){
+  [db,user] = await Promise.all([claude.use("db"), claude.use("user")]);
+  isOwner = user?.isOwner?.() ?? false;
+  if(!db || !user){ $("#signed-out").hidden=false; return; }
+  me = await user.id();
+  if(!me) $("#signed-out").hidden=false;
+  paintAuthBar();
+  db.collection("members").orderBy("joinedAt","desc").limit(200).onSnapshot(snap=>{
+    members={}; snap.docs.forEach(d=>members[d.id]=d.data());
+    profileMe = members[me] || null;
+    $("#join-card").hidden = !me || !!profileMe; $("#composer").hidden = !profileMe; $("#me-card").hidden = !profileMe;
+    if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=initial(profileMe.handle); $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
+    renderShops(); renderLive(); renderGifts();
+    const list=snap.docs.slice(0,8);
+    $("#members").innerHTML = list.length ? list.map(d=>`<div><span class="avatar">${esc(initial(d.data().handle))}</span><span><b>${esc(d.data().handle)}</b><br><small class="muted">${esc(d.data().bio||"Member")}</small></span></div>`).join("") : '<p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p>';
+    renderFeed(); renderAds(); renderMsgs();
+  }, err=>console.warn(err));
+  subFeed(); subAds(); subChannel("lounge"); joinRoom(); subLive(); subGifts(); enterWorld();
+  subRadio(); subCreators(); subGames();
+  if(isOwner){ $("#announce-opt").hidden=false; assets=await claude.use("assets"); $("#uploader").hidden=!assets; }
+}
+$$("dialog [data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
+
+/* Announcements: Meechie's posts marked "send to everybody" become a banner on every page */
+function renderAnnouncement(){
+  const a=posts.find(p=>p.announce); const bar=$("#announce");
+  let dismissed=""; try{dismissed=localStorage.getItem("mw-dismissed")||"";}catch(e){}
+  if(!a || dismissed===a.id){ bar.hidden=true; return; }
+  $("#announce-text").textContent=(a.text||"New photo from Meechie").slice(0,160); bar.hidden=false; bar.dataset.id=a.id;
+}
+$("#announce-x").addEventListener("click",()=>{ try{localStorage.setItem("mw-dismissed",$("#announce").dataset.id);}catch(e){} $("#announce").hidden=true; });
+
+/* Go Live */
+let lives=[];
+function subLive(){ db.collection("live").limit(100).onSnapshot(s=>{ lives=s.docs.map(d=>({id:d.id,...d.data()})).filter(l=>Date.now()-(l.startedAt||0)<6*3600e3); renderLive(); }, e=>console.warn(e)); }
+function renderLive(){
+  const strip=$("#live-strip"); strip.hidden=!lives.length;
+  const sorted=[...lives].sort((a,b)=>(b.host?1:0)-(a.host?1:0));
+  strip.innerHTML=sorted.map(l=>`<a class="live-card ${l.host?"host":""}" href="${esc(l.url)}" target="_blank" rel="noopener"><span><span class="live-dot"></span><b>${esc(handleOf(l.id))}</b> ${l.host?'<span class="badge">Host</span>':''}</span><small>${esc(l.title)}</small><span style="font-size:13px;color:var(--gold-hi);font-weight:700">Watch live →</span></a>`).join("");
+  const host=sorted.find(l=>l.host); $("#host-live").hidden=!host;
+  if(host){ $("#host-live-title").textContent=host.title; $("#host-live-link").href=host.url; }
+  $("#end-live").hidden=!lives.some(l=>l.id===me);
+}
+$("#go-live").addEventListener("click",()=>{ if(needMember()) $("#live-dialog").showModal(); });
+$("#live-form").addEventListener("submit",async e=>{ e.preventDefault();
+  try{ await db.doc("live/"+me).set({title:$("#lv-title").value.trim(),url:$("#lv-url").value.trim(),host:isOwner,startedAt:Date.now()}); $("#live-dialog").close(); toast(isOwner?"You're live. Everybody sees the banner.":"You're live. Members can tap in."); }
+  catch(err){ toast(err.message||err.code); }
+});
+$("#end-live").addEventListener("click",async()=>{ await db.doc("live/"+me).delete().catch(()=>{}); $("#live-dialog").close(); toast("Live ended"); });
+
+/* Gifts (free virtual gifts between members) */
+const GIFTS=[["rose","🌹","Rose"],["mic","🎤","Mic"],["gold","🪙","Gold Coin"],["crown","👑","Crown"],["fire","🔥","Fire"],["diamond","💎","Diamond"]];
+let giftTo=null, giftKind="rose", giftLog=[];
+$("#gift-grid").innerHTML=GIFTS.map(([k,e,n])=>`<button class="gift" type="button" data-gift="${k}" aria-pressed="${k==="rose"}"><span>${e}</span>${n}</button>`).join("");
+$("#gift-grid").addEventListener("click",e=>{const b=e.target.closest("[data-gift]"); if(!b) return; giftKind=b.dataset.gift; $$("#gift-grid .gift").forEach(x=>x.setAttribute("aria-pressed",x===b));});
+function openGift(uid){ if(!needMember()) return; if(uid===me){toast("Send gifts to other members.");return;} giftTo=uid; $("#gift-to").textContent=handleOf(uid); $("#gift-dialog").showModal(); }
+$("#gift-form").addEventListener("submit",async e=>{ e.preventDefault();
+  try{ await db.collection("gifts").add({from:me,to:giftTo,kind:giftKind,note:$("#gift-note").value.trim(),createdAt:Date.now()});
+    db.doc("members/"+giftTo).update({giftsReceived:(members[giftTo]?.giftsReceived||0)+1}).catch(()=>{});
+    $("#gift-note").value=""; $("#gift-dialog").close(); toast("Gift sent to "+handleOf(giftTo)); }
+  catch(err){ toast(err.message||err.code); }
+});
+function subGifts(){ db.collection("gifts").orderBy("createdAt","desc").limit(12).onSnapshot(s=>{giftLog=s.docs.map(d=>d.data()); renderGifts();}, e=>console.warn(e)); }
+function renderGifts(){ if(!giftLog.length) return;
+  $("#gift-feed").innerHTML=giftLog.map(g=>{const G=GIFTS.find(x=>x[0]===g.kind)||GIFTS[0]; return `<div><span style="font-size:18px">${G[1]}</span> <b>${esc(handleOf(g.from))}</b> → <b>${esc(handleOf(g.to))}</b>${g.note?` <span class="muted">“${esc(g.note)}”</span>`:""}</div>`;}).join(""); }
+
+/* Profile + store links */
+$("#edit-profile").addEventListener("click",()=>{ if(!needMember()) return; const p=profileMe;
+  $("#pf-handle").value=p.handle||""; $("#pf-bio").value=p.bio||""; $("#pf-printify").value=p.printify||""; $("#pf-shopify").value=p.shopify||""; $("#pf-other").value=p.store||""; $("#profile-dialog").showModal(); });
+$("#profile-form").addEventListener("submit",async e=>{ e.preventDefault();
+  const clean=v=>{v=v.trim(); return /^https:\/\//i.test(v)?v:"";};
+  try{ await db.doc("members/"+me).update({handle:$("#pf-handle").value.trim(),bio:$("#pf-bio").value.trim(),printify:clean($("#pf-printify").value),shopify:clean($("#pf-shopify").value),store:clean($("#pf-other").value)});
+    $("#profile-dialog").close(); toast("Profile saved"); }
+  catch(err){ toast(err.message||err.code); }
+});
+const shopLinks=m=>[["Printify",m.printify],["Shopify",m.shopify],["Store",m.store]].filter(x=>x[1]);
+function renderShops(){
+  const list=Object.entries(members).filter(([,m])=>shopLinks(m).length);
+  if(!list.length) return;
+  $("#shops").innerHTML=list.map(([id,m])=>`<div class="shop"><span class="avatar">${esc(initial(m.handle))}</span><div><b>${esc(m.handle)}</b><br><small class="muted">${esc(m.bio||"")}</small><div class="links">${shopLinks(m).map(([n,u])=>`<a class="shop-link" href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join("")}</div></div></div>`).join("");
+}
+
+/* ---------- Virtual world ---------- */
+const OPTS={
+  skin:{label:"Skin",vals:["#f6d3b3","#e0ac83","#c68a5e","#a26a43","#7a4a2b","#4f2f1c"]},
+  hair:{label:"Hair",vals:["fade","locs","braids","waves","long","bun","bald"]},
+  hairColor:{label:"Hair color",vals:["#111111","#4a2c17","#8a5a2b","#d4a843","#b0263a","#e8e2d5"]},
+  outfit:{label:"Outfit",vals:["suit","hoodie","dress","track"]},
+  outfitColor:{label:"Outfit color",vals:["#111111","#d4a843","#f3ecdc","#7a1f2b","#1f3d7a","#2f6b45"]},
+  extra:{label:"Extras",vals:["none","shades","goldchain","crown","cap"]},
+  trim:{label:"Trim color",vals:["#d4a843","#f3ecdc","#111111","#b0263a","#3de0ff","#7b5cff"]},
+  print:{label:"Chest print",vals:["none","emblem","compass","text"]},
+  printColor:{label:"Print color",vals:["#d4a843","#f3ecdc","#111111","#b0263a","#3de0ff"]}
+};
+let look={skin:"#a26a43",hair:"fade",hairColor:"#111111",outfit:"suit",outfitColor:"#111111",extra:"shades",trim:"#d4a843",print:"none",printColor:"#d4a843",printText:"MW",photo:false};
+let myFace="";
+try{ const s=JSON.parse(localStorage.getItem("mw-look")||"null"); if(s) look={...look,...s}; }catch(e){}
+let _clipN=0;
+function avatarSVG(L,pose,face){
+  pose=pose||"stand";
+  const s=L.skin, hc=L.hairColor, oc=L.outfitColor, trim=L.trim||"#d4a843", sh="#000";
+  const dark=c=>`${c}`;
+  let hairBack="", hairFront="";
+  if(L.hair==="fade"){ hairFront=`<path d="M36 38q-1-20 14-21q15 1 14 21q-3-9-14-10q-11 1-14 10z" fill="${hc}"/><path d="M37 37q2-6 6-8" stroke="#fff" stroke-opacity=".12" stroke-width="1.2" fill="none"/>`; }
+  if(L.hair==="waves"){ hairFront=`<path d="M35 39q-1-22 15-23q16 1 15 23q-4-11-15-12q-11 1-15 12z" fill="${hc}"/><path d="M39 27q4-3 8 0t8 0t8 0M38 32q4-3 8 0t8 0t8 0" stroke="#fff" stroke-opacity=".14" fill="none"/>`; }
+  if(L.hair==="locs"){ hairBack=[36,40,44,56,60,64].map((x,i)=>`<rect x="${x-1.8}" y="30" width="3.6" height="${30+(i%3)*6}" rx="1.8" fill="${hc}"/><path d="M${x} 34v${24+(i%3)*6}" stroke="#fff" stroke-opacity=".1" stroke-dasharray="2 2"/>`).join(""); hairFront=`<path d="M34 40q-1-24 16-24q17 0 16 24q-5-10-16-11q-11 1-16 11z" fill="${hc}"/>`; }
+  if(L.hair==="braids"){ hairFront=`<path d="M34 40q-1-24 16-24q17 0 16 24q-5-10-16-11q-11 1-16 11z" fill="${hc}"/><path d="M42 18v12M50 16v13M58 18v12" stroke="#fff" stroke-opacity=".15"/>`; hairBack=`<path d="M35 40v30M65 40v30" stroke="${hc}" stroke-width="5" stroke-linecap="round" stroke-dasharray="3.5 1.4"/>`; }
+  if(L.hair==="long"){ hairBack=`<path d="M33 42q0-28 17-28q17 0 17 28v34q-4 4-7-2v-30h-20v30q-3 6-7 2z" fill="${hc}"/>`; hairFront=`<path d="M35 40q2-22 15-22q13 0 15 22q-6-12-15-13q-9 1-15 13z" fill="${hc}"/><path d="M40 24q5-5 12-4" stroke="#fff" stroke-opacity=".15" stroke-width="1.4" fill="none"/>`; }
+  if(L.hair==="bun"){ hairFront=`<circle cx="50" cy="15" r="7.5" fill="${hc}"/><path d="M35 39q-1-21 15-21q16 0 15 21q-4-10-15-11q-11 1-15 11z" fill="${hc}"/>`; }
+  // torso
+  let body="";
+  const shade=`<path d="M50 66 L72 70 L76 120 L50 120z" fill="${sh}" opacity=".18"/>`;
+  if(L.outfit==="suit") body=`<path d="M29 72q21-10 42 0l5 48h-52z" fill="${oc}"/>${shade}<path d="M44 66l6 22 6-22z" fill="#f6f1e4"/><path d="M50 71l-2.6 3.6 2.6 16 2.6-16z" fill="${trim}"/><path d="M44 66l-7 24 9-6zM56 66l7 24-9-6z" fill="${oc}" stroke="${trim}" stroke-width=".9"/><circle cx="50" cy="98" r="1.2" fill="${trim}"/><circle cx="50" cy="106" r="1.2" fill="${trim}"/><path d="M38 84h6" stroke="${trim}" stroke-width="1.2"/>`;
+  if(L.outfit==="hoodie") body=`<path d="M27 74q23-14 46 0l4 46h-54z" fill="${oc}"/>${shade}<path d="M39 68q11 12 22 0" fill="none" stroke="${sh}" stroke-opacity=".3" stroke-width="3"/><path d="M38 98h24v10h-24z" fill="${sh}" opacity=".15" rx="3"/><path d="M46 72v14M54 72v14" stroke="${trim}" stroke-width="1.4"/><circle cx="46" cy="87" r="1.2" fill="${trim}"/><circle cx="54" cy="87" r="1.2" fill="${trim}"/>`;
+  if(L.outfit==="dress") body=`<path d="M38 68q12-6 24 0l2 18q15 18 15 36h-58q0-18 15-36z" fill="${oc}"/><path d="M50 70 L64 86 Q79 104 79 122 H50z" fill="${sh}" opacity=".16"/><path d="M36 86h28" stroke="${trim}" stroke-width="2"/><path d="M44 66q6 6 12 0" stroke="${trim}" stroke-width="1" fill="none"/>`;
+  if(L.outfit==="track") body=`<path d="M29 72q21-10 42 0l5 48h-52z" fill="${oc}"/>${shade}<path d="M32 76l-4 44M68 76l4 44" stroke="#f6f1e4" stroke-width="2.4"/><path d="M50 68v52" stroke="${sh}" stroke-opacity=".35" stroke-width="1.4"/><path d="M42 67q8 5 16 0" stroke="#f6f1e4" stroke-width="2" fill="none"/>`;
+  // legs by pose
+  const pant = L.outfit==="dress" ? s : (L.outfit==="suit"? oc : "#1b1b1f");
+  let legs;
+  if(pose==="sit") legs = L.outfit==="dress"
+    ? `<rect x="38" y="118" width="8" height="12" rx="3" fill="${s}"/><rect x="54" y="118" width="8" height="12" rx="3" fill="${s}"/><rect x="34" y="128" width="14" height="5" rx="2.4" fill="#0b0a08"/><rect x="52" y="128" width="14" height="5" rx="2.4" fill="#0b0a08"/>`
+    : `<rect x="34" y="114" width="14" height="10" rx="4" fill="${pant}"/><rect x="52" y="114" width="14" height="10" rx="4" fill="${pant}"/><rect x="36" y="122" width="10" height="10" fill="${pant}"/><rect x="54" y="122" width="10" height="10" fill="${pant}"/><rect x="33" y="130" width="15" height="5" rx="2.4" fill="#0b0a08"/><rect x="52" y="130" width="15" height="5" rx="2.4" fill="#0b0a08"/>`;
+  else legs = (L.outfit==="dress"
+    ? `<rect x="40" y="120" width="6.5" height="22" rx="2" fill="${s}"/><rect x="53.5" y="120" width="6.5" height="22" rx="2" fill="${s}"/>`
+    : `<rect x="37.5" y="118" width="11" height="26" rx="2" fill="${pant}"/><rect x="51.5" y="118" width="11" height="26" rx="2" fill="${pant}"/><path d="M51.5 118h11v26h-11z" fill="${sh}" opacity=".15"/>`)
+    + `<path d="M35 142h14v3a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2v-1q0-2 2-2z" fill="#0b0a08"/><path d="M51 142h14q2 0 2 2v1a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2z" fill="#0b0a08"/><path d="M37 143h8M53 143h8" stroke="#fff" stroke-opacity=".2"/>`;
+  // arms
+  const sleeve = L.outfit==="dress" ? s : oc;
+  const armL = pose==="dance"
+    ? `<g transform="rotate(130 30 74)"><rect x="25" y="72" width="9" height="32" rx="4.5" fill="${sleeve}"/><circle cx="29.5" cy="106" r="4.6" fill="${s}"/></g>`
+    : `<g transform="rotate(${pose==="sit"?14:9} 30 74)"><rect x="25" y="72" width="9" height="34" rx="4.5" fill="${sleeve}"/><circle cx="29.5" cy="108" r="4.6" fill="${s}"/></g>`;
+  const armR = (pose==="wave"||pose==="dance")
+    ? `<g transform="rotate(-150 70 74)"><rect x="66" y="72" width="9" height="32" rx="4.5" fill="${sleeve}"/><rect x="66" y="72" width="9" height="32" rx="4.5" fill="${sh}" opacity=".15"/><circle cx="70.5" cy="106" r="4.6" fill="${s}"/></g>`
+    : `<g transform="rotate(-${pose==="sit"?14:9} 70 74)"><rect x="66" y="72" width="9" height="34" rx="4.5" fill="${sleeve}"/><rect x="66" y="72" width="9" height="34" rx="4.5" fill="${sh}" opacity=".15"/><circle cx="70.5" cy="108" r="4.6" fill="${s}"/></g>`;
+  // head
+  const head = `<rect x="45" y="55" width="10" height="13" rx="3" fill="${s}"/><path d="M45 62h10v4h-10z" fill="${sh}" opacity=".18"/>
+    <ellipse cx="35.6" cy="43" rx="2.6" ry="3.6" fill="${s}"/><ellipse cx="64.4" cy="43" rx="2.6" ry="3.6" fill="${s}"/>
+    <ellipse cx="50" cy="41" rx="14.5" ry="16.5" fill="${s}"/><path d="M50 25 a14.5 16.5 0 0 1 0 33 a10 16.5 0 0 0 0 -33z" fill="${sh}" opacity=".1"/>
+    <path d="M44 51q6 4 12 0" stroke="#5a2b1a" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M50 41v5l-1.6 1" stroke="${sh}" stroke-opacity=".25" fill="none" stroke-linecap="round"/>`;
+  const eyes = L.extra==="shades" ? "" : `<path d="M40 35.5q3-1.6 6 0M54 35.5q3-1.6 6 0" stroke="${hc==="#e8e2d5"?"#555":hc}" stroke-width="1.3" fill="none" stroke-linecap="round"/><ellipse cx="43.5" cy="40" rx="2" ry="2.3" fill="#fff"/><ellipse cx="56.5" cy="40" rx="2" ry="2.3" fill="#fff"/><circle cx="43.8" cy="40.3" r="1.3" fill="#1a0f08"/><circle cx="56.8" cy="40.3" r="1.3" fill="#1a0f08"/>`;
+  let extra="";
+  if(L.extra==="shades") extra=`<path d="M37.5 37h11l-1 6q-4.5 2-9 0z" fill="#0b0b0b"/><path d="M51.5 37h11l-1 6q-4.5 2-9 0z" fill="#0b0b0b"/><path d="M48.5 38.5h3" stroke="#0b0b0b" stroke-width="1.2"/><path d="M39 38.5l3 3" stroke="#fff" stroke-opacity=".35"/><path d="M53 38.5l3 3" stroke="#fff" stroke-opacity=".35"/>`;
+  if(L.extra==="goldchain") extra=`<path d="M41 66q9 14 18 0" fill="none" stroke="${trim}" stroke-width="2.2" stroke-dasharray="2 .8"/><path d="M50 77l3.5 4-3.5 4-3.5-4z" fill="${trim}" stroke="#8c6d26" stroke-width=".6"/>`;
+  if(L.extra==="crown") extra=`<path d="M37 24l4 7 9-11 9 11 4-7v11h-26z" fill="${trim}" stroke="#8c6d26" stroke-width=".8"/><circle cx="50" cy="28" r="1.6" fill="#b0263a"/><circle cx="42" cy="31" r="1.1" fill="#1f3d7a"/><circle cx="58" cy="31" r="1.1" fill="#1f3d7a"/>`;
+  if(L.extra==="cap"){ const c=oc==="#111111"?"#d4a843":"#111"; extra=`<path d="M34 36q0-19 16-19q16 0 16 19z" fill="${c}"/><path d="M60 33q10 0 14 3q-6 1-14 0z" fill="${c}"/><path d="M50 17v19" stroke="#000" stroke-opacity=".2"/>`; }
+  const pc=L.printColor||trim; let print="";
+  const py=L.outfit==="dress"?84:96;
+  if(L.print==="emblem") print=`<path d="M50 ${py-7}l7 11h-14z" fill="none" stroke="${pc}" stroke-width="1.3"/><circle cx="50" cy="${py}" r="1.6" fill="${pc}"/><path d="M44 ${py+6}q6-2 12 0" stroke="${pc}" stroke-width="1" fill="none"/>`;
+  if(L.print==="compass") print=`<path d="M50 ${py-7}l-6 12M50 ${py-7}l6 12" stroke="${pc}" stroke-width="1.3" stroke-linecap="round"/><path d="M43 ${py+1}l7 6 7-6" fill="none" stroke="${pc}" stroke-width="1.3"/><circle cx="50" cy="${py-7}" r="1.2" fill="${pc}"/>`;
+  if(L.print==="text"){ const t=String(L.printText||"MW").slice(0,10); const fs=Math.max(4.5,Math.min(9,40/Math.max(1,t.length))); print=`<text x="50" y="${py+fs/3}" text-anchor="middle" font-family="Cinzel,Georgia,serif" font-weight="700" font-size="${fs}" fill="${pc}">${esc(t)}</text>`; }
+  let faceLayer="";
+  if(face){ const id="fc"+(++_clipN); faceLayer=`<clipPath id="${id}"><ellipse cx="50" cy="41" rx="14.5" ry="16.5"/></clipPath><image href="${face}" x="35" y="24" width="30" height="34" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/><ellipse cx="50" cy="41" rx="14.5" ry="16.5" fill="none" stroke="${trim}" stroke-width=".8"/>`; }
+  const top = face ? faceLayer+(["crown","cap"].includes(L.extra)?extra:"") : eyes+hairFront+extra;
+  const chain = face && L.extra==="goldchain" ? extra : "";
+  return `<svg viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg">${face?"":hairBack}${legs}${armL}${body}${print}${armR}${head}${top}${chain}</svg>`;
+}
+function drawBuilder(){
+  $("#av-stage").innerHTML=avatarSVG(look,"stand",look.photo&&myFace?myFace:"");
+  const pt=$("#av-printtext"); if(pt){ pt.hidden=look.print!=="text"; if(document.activeElement!==pt) pt.value=look.printText||""; }
+  $("#av-photo-toggle")&&($("#av-photo-toggle").hidden=!myFace, $("#av-photo-toggle").textContent=look.photo?"Use cartoon face":"Use my photo face");
+  $("#av-opts").innerHTML=Object.entries(OPTS).map(([k,o])=>`<div class="opt"><b>${o.label}</b><div class="swatches">${o.vals.map(v=>v.startsWith("#")?`<button type="button" data-k="${k}" data-v="${v}" aria-label="${o.label} ${v}" aria-pressed="${look[k]===v}" style="background:${v}"></button>`:`<button type="button" data-k="${k}" data-v="${v}" aria-pressed="${look[k]===v}">${v==="goldchain"?"gold chain":v}</button>`).join("")}</div></div>`).join("");
+}
+$("#av-opts").addEventListener("click",e=>{const b=e.target.closest("[data-k]"); if(!b) return; look[b.dataset.k]=b.dataset.v; drawBuilder(); try{localStorage.setItem("mw-look",JSON.stringify(look));}catch(e){} setMine({look:{...look}}); });
+$("#av-save").addEventListener("click",()=>{ if(!needMember()) return; db.doc("members/"+me).update({look}).then(()=>toast("Look saved")).catch(err=>toast(err.message||err.code)); });
+$("#av-printtext").addEventListener("input",e=>{ look.printText=e.target.value; drawBuilder(); try{localStorage.setItem("mw-look",JSON.stringify(look));}catch(_){} setMine({look:{...look}}); });
+$("#av-photo-toggle").addEventListener("click",()=>{ look.photo=!look.photo; drawBuilder(); setMine({look:{...look}}); });
+function faceCrop(file){ return new Promise((res,rej)=>{ const img=new Image(), u=URL.createObjectURL(file);
+  img.onload=()=>{ const side=Math.min(img.width,img.height)*.78, sx=(img.width-side)/2, sy=Math.max(0,(img.height-side)/2-side*.08);
+    const c=document.createElement("canvas"); c.width=c.height=112; c.getContext("2d").drawImage(img,sx,sy,side,side,0,0,112,112); URL.revokeObjectURL(u);
+    res({face:c.toDataURL("image/jpeg",.78), blob:null, canvas:c}); };
+  img.onerror=()=>rej(new Error("That file isn't a photo we can read.")); img.src=u; }); }
+$("#ai-selfie").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  const st=$("#ai-me-status"); st.textContent="Reading your photo...";
+  try{
+    const {face,canvas}=await faceCrop(f); myFace=face; look.photo=true; drawBuilder(); setMine({look:{...look}});
+    if(db && profileMe) db.doc("members/"+me).update({face}).catch(()=>{});
+    const smp=await claude.use("sample"); const lim=smp ? await smp.limits().catch(()=>null) : null;
+    if(smp && lim?.images){
+      st.textContent="AI is matching your look...";
+      const blob=await new Promise(r=>canvas.toBlob(r,"image/jpeg",.85));
+      const r=await smp.json(`The image is a close-up selfie a person uploaded to build their own cartoon avatar. Pick the closest match from each list. Return JSON only: {"skin": one of ${JSON.stringify(OPTS.skin.vals)}, "hair": one of ${JSON.stringify(OPTS.hair.vals)}, "hairColor": one of ${JSON.stringify(OPTS.hairColor.vals)}}. If unsure, choose the nearest option.`,{images:[blob],modelTier:"quick"});
+      ["skin","hair","hairColor"].forEach(k=>{ if(OPTS[k].vals.includes(r?.[k])) look[k]=r[k]; });
+      drawBuilder(); setMine({look:{...look}}); try{localStorage.setItem("mw-look",JSON.stringify(look));}catch(_){}
+      st.textContent="Done. Your avatar now matches you. Tap Save my look to keep it.";
+    } else st.textContent="Your face is on your avatar. Pick your skin tone and hair below, then tap Save my look.";
+  }catch(err){ st.textContent = err.code==="not_granted" ? "Your face is on your avatar. AI matching needs permission, so pick your skin tone and hair below." : (err.message||"Couldn't read that photo. Try another."); }
+});
+$("#av-share").addEventListener("click",async()=>{ if(!needMember()) return;
+  const fit={outfit:look.outfit,outfitColor:look.outfitColor,trim:look.trim,print:look.print,printColor:look.printColor,printText:look.printText,extra:look.extra};
+  try{ await db.collection("wardrobe").add({authorId:me,fit,likes:[],createdAt:Date.now()}); toast("Outfit shared to the Wardrobe"); }catch(err){ toast(err.message||err.code); } });
+drawBuilder();
+
+/* ---------- Rooms ---------- */
+const ROOMS={lounge:{name:"GOLD LOUNGE"},studio:{name:"STUDIO B"},rooftop:{name:"ROOFTOP"},club:{name:"CLUB CONSCIENTIA"}};
+const G="#d4a843",GH="#f0cf78",GL="#8c6d26";
+const FY=54, VPY=26;               // floor line and vanishing point (viewBox 160x90)
+function persp(fill, line, opts={}){
+  const k=(FY-VPY)/(90-VPY); let o=`<rect x="0" y="${FY}" width="160" height="${90-FY}" fill="${fill}"/>`;
+  if(opts.check){ // perspective checkerboard
+    const rows=7, cols=16; const ys=[...Array(rows+1)].map((_,j)=>FY+(90-FY)*Math.pow(j/rows,1.6));
+    for(let j=0;j<rows;j++) for(let i=-6;i<cols+6;i++){ if((i+j)%2) continue;
+      const bx0=i*10, bx1=bx0+10, f=y=>(y-VPY)/(90-VPY), X=(bx,y)=>80+(bx-80)*f(y);
+      o+=`<path d="M${X(bx0,ys[j])} ${ys[j]}L${X(bx1,ys[j])} ${ys[j]}L${X(bx1,ys[j+1])} ${ys[j+1]}L${X(bx0,ys[j+1])} ${ys[j+1]}z" fill="${opts.check}"/>`; }
+  }
+  for(let i=-14;i<=30;i++){ const bx=i*(opts.step||8), tx=80+(bx-80)*k; o+=`<path d="M${tx} ${FY}L${bx} 90" stroke="${line}" stroke-width="${opts.w||.35}"/>`; }
+  if(opts.cross!==false) for(let j=1;j<=8;j++){ const y=FY+(90-FY)*Math.pow(j/8,1.7); o+=`<path d="M0 ${y}H160" stroke="${line}" stroke-width="${(opts.w||.35)*.8}" opacity=".7"/>`; }
+  o+=`<rect x="0" y="${FY}" width="160" height="${90-FY}" fill="url(#floorFade)"/>`;
+  return o;
+}
+const DEFS=`<defs>
+  <linearGradient id="floorFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset=".35" stop-color="#000" stop-opacity=".1"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient>
+  <radialGradient id="glow"><stop offset="0" stop-color="${GH}" stop-opacity=".55"/><stop offset="1" stop-color="${GH}" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowR"><stop offset="0" stop-color="#ff5a6a" stop-opacity=".5"/><stop offset="1" stop-color="#ff5a6a" stop-opacity="0"/></radialGradient>
+  <linearGradient id="goldV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${GH}"/><stop offset="1" stop-color="${GL}"/></linearGradient>
+  <linearGradient id="nightSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060818"/><stop offset=".55" stop-color="#2a1c48"/><stop offset="1" stop-color="#c77a42"/></linearGradient>
+  <linearGradient id="beamG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+</defs>`;
+const pillar=(x,label)=>`<rect x="${x-4}" y="8" width="8" height="${FY-10}" fill="#1a140a"/><rect x="${x-4}" y="8" width="8" height="${FY-10}" fill="url(#goldV)" opacity=".18"/>${[...Array(4)].map((_,i)=>`<path d="M${x-2.6+i*1.75} 12v${FY-18}" stroke="${GL}" stroke-width=".35"/>`).join("")}<rect x="${x-5.5}" y="6" width="11" height="3" fill="${G}"/><circle cx="${x}" cy="4" r="3.2" fill="${G}" stroke="${GL}" stroke-width=".4"/><rect x="${x-5.5}" y="${FY-3}" width="11" height="3" fill="${G}"/><text x="${x}" y="${FY-5}" text-anchor="middle" font-size="2.4" font-family="serif" font-weight="700" fill="${GH}">${label}</text>`;
+const SCENES={
+ lounge:`${DEFS}<rect width="160" height="${FY}" fill="#20160a"/>
+  ${[...Array(9)].map((_,i)=>`<rect x="${4+i*17.6}" y="34" width="14" height="${FY-37}" fill="none" stroke="${GL}" stroke-width=".4" opacity=".7"/>`).join("")}
+  <rect x="0" y="32" width="160" height=".8" fill="${G}" opacity=".7"/><rect x="0" y="${FY-1.4}" width="160" height="1.4" fill="${GL}"/>
+  ${pillar(12,"B")}${pillar(148,"J")}
+  ${[38,122].map(x=>`<rect x="${x-10}" y="9" width="20" height="18" fill="#0f0b05" stroke="${G}" stroke-width=".9"/><rect x="${x-8}" y="11" width="16" height="14" fill="none" stroke="${GL}" stroke-width=".4"/><path d="M${x} 13.5l5.5 9.5h-11z" fill="none" stroke="${G}" stroke-width=".6"/><circle cx="${x}" cy="19.5" r="1.2" fill="${GH}"/>`).join("")}
+  <ellipse cx="80" cy="16" rx="26" ry="14" fill="url(#glow)" class="flick"/>
+  <path d="M80 0v5" stroke="${GL}" stroke-width=".5"/><path d="M68 5h24l-3 4h-18z" fill="${G}"/><path d="M71 9h18l-2 3h-14z" fill="${GL}"/>${[70,74,78,82,86,90].map((x,i)=>`<path d="M${x} 9v${3+(i%2)*2}" stroke="${GH}" stroke-width=".3"/><circle cx="${x}" cy="${12.6+(i%2)*2}" r=".9" fill="${GH}" class="tw" style="animation-delay:${i*.3}s"/>`).join("")}
+  ${persp("#2a1c0c","#3d2a12",{step:7})}
+  <ellipse cx="80" cy="72" rx="34" ry="9" fill="#3a0f16" stroke="${G}" stroke-width=".7"/><ellipse cx="80" cy="72" rx="29" ry="7" fill="none" stroke="${GL}" stroke-width=".4"/>
+  <g transform="translate(80 72) scale(1 .3)"><path d="M0 -14 L-12 8 M0 -14 L12 8" stroke="${G}" stroke-width="2.2" stroke-linecap="round"/><path d="M-13 -3 L0 12 L13 -3" fill="none" stroke="${G}" stroke-width="2.2"/></g>
+  <path d="M10 64h38l3 9h-44z" fill="#4a1420"/><path d="M12 58h34q3 0 3 3v4h-40v-4q0-3 3-3z" fill="#5a1a28"/><path d="M12 58h34" stroke="${G}" stroke-width=".5"/><rect x="9" y="73" width="1.6" height="3" fill="${G}"/><rect x="48" y="73" width="1.6" height="3" fill="${G}"/>
+  <path d="M112 ${FY}h40l6 18h-52z" fill="#1a1208"/><path d="M106 ${FY+18}h52v2.5h-52z" fill="${G}"/><path d="M112 ${FY}h40" stroke="${GH}" stroke-width=".6"/>
+  ${[118,123,128,134,139,144].map((x,i)=>`<rect x="${x}" y="${FY-8+(i%2)}" width="2.2" height="${8-(i%2)}" rx=".7" fill="${["#2f6b45","#7a1f2b",G][i%3]}"/><circle cx="${x+1.1}" cy="${FY-9+(i%2)}" r=".9" fill="${["#2f6b45","#7a1f2b",G][i%3]}"/>`).join("")}`,
+ studio:`${DEFS}<rect width="160" height="${FY}" fill="#121722"/>
+  ${[...Array(10)].map((_,i)=>[...Array(3)].map((_,r)=>`<path d="M${2+i*16} ${4+r*11}h14l-1.5 9h-11z" fill="#1b2232" stroke="#2a3348" stroke-width=".4"/>`).join("")).join("")}
+  <rect x="52" y="10" width="56" height="22" rx="1.5" fill="#0a0d14" stroke="#3a4560" stroke-width=".8"/><rect x="54" y="12" width="52" height="18" fill="#132036"/><rect x="54" y="12" width="52" height="18" fill="url(#glow)" opacity=".35"/><path d="M60 26h40" stroke="#2a3a58"/>${[...Array(14)].map((_,i)=>`<rect x="${61+i*2.7}" y="${22-(i%5)}" width="1.2" height="${4+(i%5)}" fill="${i%4?"#3e5b8c":G}" class="led" style="animation-delay:${i*.11}s"/>`).join("")}
+  <rect x="66" y="35" width="28" height="7" rx="1.5" fill="#2a0c0c" stroke="#ff4d57" stroke-width=".7" class="pulse"/><ellipse cx="80" cy="38.5" rx="20" ry="7" fill="url(#glowR)" class="pulse"/><text x="80" y="40.4" text-anchor="middle" font-size="4.3" font-family="sans-serif" font-weight="800" letter-spacing=".5" fill="#ff7b82">ON AIR</text>
+  ${persp("#161b26","#222a3a",{step:8,cross:true})}
+  ${[10,138].map(x=>`<rect x="${x}" y="30" width="13" height="30" rx="1.5" fill="#0b0d12" stroke="#2c3446" stroke-width=".6"/><circle cx="${x+6.5}" cy="38" r="3.8" fill="#151a24" stroke="${GL}" stroke-width=".5"/><circle cx="${x+6.5}" cy="38" r="1.2" fill="#0b0d12"/><circle cx="${x+6.5}" cy="51" r="5" fill="#151a24" stroke="${GL}" stroke-width=".5"/><circle cx="${x+6.5}" cy="51" r="1.8" fill="#0b0d12"/>`).join("")}
+  <path d="M100 66l10-6h40l4 10h-54z" fill="#1d2330" stroke="#323c52" stroke-width=".5"/><path d="M100 70h54v6h-54z" fill="#121620"/>${[...Array(16)].map((_,i)=>`<rect x="${112+i*2.3}" y="${62.5-(i%3)*.4+(i>7?1:0)}" width=".9" height="2.6" fill="${i%5?"#58627a":G}"/>`).join("")}
+  <path d="M46 78V46" stroke="#5a5a5a" stroke-width=".9"/><path d="M41 78h10M46 78l-4 3M46 78l4 3" stroke="#5a5a5a" stroke-width=".8"/><rect x="43.8" y="40" width="4.4" height="8" rx="2.2" fill="#2a2a2a" stroke="${G}" stroke-width=".5"/><path d="M44.5 42h3M44.5 44h3" stroke="#555" stroke-width=".4"/>`,
+ rooftop:`${DEFS}<rect width="160" height="${FY}" fill="url(#nightSky)"/>
+  ${[...Array(70)].map((_,i)=>`<circle cx="${(i*37.3)%160}" cy="${(i*13.7)%30}" r="${i%7?.25:.5}" fill="#fff" class="${i%3?"":"tw"}" style="animation-delay:${(i%9)*.3}s" opacity="${.35+(i%4)/6}"/>`).join("")}
+  <circle cx="130" cy="13" r="14" fill="url(#glow)"/><circle cx="130" cy="13" r="5.5" fill="#f7ebcb"/><circle cx="128" cy="12" r="1.1" fill="#e2d2a8"/><circle cx="132" cy="15" r=".8" fill="#e2d2a8"/>
+  <path d="M0 ${FY}V40h7v-7h9v13h5V30h4v-5h3v29h8V36h11v18h5V24h10v30h7V40h6v-9h9v23h5V33h8v21h7V28h5v-6h4v32h9V42h8v12z" fill="#0a0812"/>
+  <path d="M30 ${FY}V18h8v36zM98 ${FY}V14h4l1-6 1 6h4v40z" fill="#07060d"/>
+  ${[...Array(90)].map((_,i)=>{const x=(i*23.1)%156+2,y=22+(i*7.3)%30;return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="1" height="1.2" fill="${GH}" opacity="${(i%3)?.6:.12}"/>`}).join("")}
+  <circle cx="102" cy="8" r=".8" fill="#ff4d57" class="pulse"/>
+  ${persp("#2a2016","#3c2e1f",{step:6,cross:false})}
+  <path d="M0 ${FY-6}Q40 ${FY+2} 80 ${FY-6}T160 ${FY-6}" fill="none" stroke="#555" stroke-width=".3"/>${[...Array(17)].map((_,i)=>`<circle cx="${i*10}" cy="${(FY-6)+Math.sin(i/2.55*Math.PI/1.25)*0+((i%8)<4?(i%8):(8-(i%8)))*1.6}" r="1" fill="${GH}" class="tw" style="animation-delay:${i*.2}s"/>`).join("")}
+  <path d="M0 ${FY}h160" stroke="${G}" stroke-width=".8"/>${[...Array(33)].map((_,i)=>`<path d="M${i*5} ${FY}v-6" stroke="${GL}" stroke-width=".45"/>`).join("")}<path d="M0 ${FY-6}h160" stroke="${G}" stroke-width=".7"/>
+  <path d="M10 70h30l2 4h-34z" fill="#4a3420"/><path d="M8 74h34v1.6h-34z" fill="${G}"/><path d="M12 70v-6h26v6" fill="#3a2818" stroke="${GL}" stroke-width=".4"/><rect x="10" y="75" width="1.4" height="5" fill="${GL}"/><rect x="39" y="75" width="1.4" height="5" fill="${GL}"/>
+  <path d="M120 70h30l2 4h-34z" fill="#4a3420"/><path d="M118 74h34v1.6h-34z" fill="${G}"/><path d="M122 70v-6h26v6" fill="#3a2818" stroke="${GL}" stroke-width=".4"/><rect x="120" y="75" width="1.4" height="5" fill="${GL}"/><rect x="149" y="75" width="1.4" height="5" fill="${GL}"/>
+  <ellipse cx="80" cy="80" rx="9" ry="2.6" fill="#1a1208" stroke="${G}" stroke-width=".6"/><ellipse cx="80" cy="77.5" rx="5" ry="4" fill="url(#glow)" class="flick"/><path d="M77 79q3-7 3-9q1 4 3 9z" fill="#f0a040" class="flick"/>
+  <rect x="64" y="64" width="6" height="7" fill="#3a2a1a"/><circle cx="67" cy="61" r="5" fill="#2f5a36"/><rect x="92" y="64" width="6" height="7" fill="#3a2a1a"/><circle cx="95" cy="61" r="5" fill="#2f5a36"/>`,
+ club:`${DEFS}<rect width="160" height="${FY}" fill="#0c0910"/>
+  ${pillar(10,"B")}${pillar(150,"J")}
+  ${[[34,"#ff3d7f"],[80,"#f0cf78"],[126,"#7b5cff"]].map(([x,c],i)=>`<path d="M${x-1.5} 0 L${x-16} 70 L${x+16} 70 L${x+1.5} 0z" fill="${c}" opacity=".16" class="beam" style="animation-delay:${-i*2}s"/>`).join("")}
+  <path d="M80 0v7" stroke="#777" stroke-width=".4"/><circle cx="80" cy="12" r="5.5" fill="#bdbdbd"/><g class="spin">${[...Array(16)].map((_,i)=>`<rect x="${75.6+(i%4)*2.3}" y="${7.4+Math.floor(i/4)*2.3}" width="1.9" height="1.9" fill="${i%3?"#fff":"#9a9a9a"}" opacity=".9"/>`).join("")}</g><circle cx="80" cy="12" r="12" fill="url(#glow)" class="flick"/>
+  ${[...Array(30)].map((_,i)=>`<circle cx="${(i*41.7)%160}" cy="${(i*17.3)%48}" r=".6" fill="${[GH,"#ff6b9a","#8ad","#fff"][i%4]}" class="tw" style="animation-delay:${(i%7)*.25}s"/>`).join("")}
+  <rect x="54" y="${FY-18}" width="52" height="18" rx="1.5" fill="#100d08" stroke="${G}" stroke-width=".8"/>
+  <rect x="56" y="${FY-15}" width="48" height="10" fill="#0a0806"/><text x="80" y="${FY-8}" text-anchor="middle" font-size="4.4" font-family="serif" font-weight="700" letter-spacing=".8" fill="${GH}">CONSCIENTIA</text>
+  <circle cx="64" cy="${FY-21}" r="3.6" fill="#1a1a1a" stroke="#555" stroke-width=".4"/><circle cx="64" cy="${FY-21}" r="1" fill="${G}"/><circle cx="96" cy="${FY-21}" r="3.6" fill="#1a1a1a" stroke="#555" stroke-width=".4"/><circle cx="96" cy="${FY-21}" r="1" fill="${G}"/><rect x="72" y="${FY-23}" width="16" height="4" rx=".8" fill="#222"/>
+  ${persp("#0d0b0a","#2a2210",{check:"#1e1810",step:10,cross:false,w:.3})}
+  ${[...Array(10)].map((_,i)=>{const x=40+i*8;return `<ellipse cx="${x}" cy="${70+(i%3)*5}" rx="3.6" ry="1.1" fill="${["#ff3d7f","#f0cf78","#7b5cff","#3de0ff"][i%4]}" opacity=".5" class="led" style="animation-delay:${i*.17}s"/>`}).join("")}
+  ${[18,134].map(x=>`<rect x="${x}" y="${FY-14}" width="10" height="24" fill="#0a0a0a" stroke="#333" stroke-width=".4"/><circle cx="${x+5}" cy="${FY-8}" r="3" fill="#161616" stroke="${GL}" stroke-width=".4"/><circle cx="${x+5}" cy="${FY+3}" r="3.6" fill="#161616" stroke="${GL}" stroke-width=".4"/>`).join("")}`
+};
+let wroom=null, roomName="lounge", peersNow=[], heard={}, logLines=[];
+let mine={look:{...look},x:.5,y:.82,pose:"stand",uid:null,say:"",sayAt:0};
+function setMine(patch){ Object.assign(mine,patch); if(wroom) wroom.presence(patch).catch(()=>{}); drawPeople(); }
+function paintRoom(){ $("#room-label").textContent=ROOMS[roomName].name;
+  $("#props").innerHTML=`<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block">${SCENES[roomName]}</svg>`; }
+const clampX=x=>Math.min(.95,Math.max(.05,+x||.5)), clampY=y=>Math.min(.97,Math.max(.64,+y||.85));
+const toons=new Map();
+function nameFor(p){ const P=p.presence||{}; return p.isMe?"You":(members[p.by||P.uid]?.handle||"Guest"); }
+function drawPeople(){
+  const scene=$("#scene");
+  const people = wroom && peersNow.length ? peersNow.filter(p=>p.kind!=="agent" && p.presence?.look) : [{peer:"local",isMe:true,presence:mine}];
+  const seen=new Set();
+  people.forEach(p=>{
+    const P=p.isMe&&!wroom?mine:(p.sameTab?{...p.presence,...mine}:p.presence), key=p.peer; seen.add(key);
+    let t=toons.get(key);
+    if(!t){ t=document.createElement("div"); t.className="toon"+(p.isMe?" me":""); t.innerHTML=`<div class="shadow"></div><div class="bod"></div><span class="tag"></span>`; scene.appendChild(t); toons.set(key,t); t._x=clampX(P.x); }
+    const x=clampX(P.x), y=clampY(P.y), s=.55+(y-.6)/.37*.6;
+    if(Math.abs(x-(t._lx??x))>.003 || Math.abs(y-(t._ly??y))>.003){ t.classList.toggle("left", x<(t._lx??x)); t.classList.add("walking"); clearTimeout(t._wt); t._wt=setTimeout(()=>t.classList.remove("walking"),1200); }
+    t._lx=x; t._ly=y;
+    t.style.left=(x*100)+"%"; t.style.top=(y*100)+"%"; t.style.setProperty("--s",s.toFixed(3)); t.style.zIndex=Math.round(y*1000);
+    const pose=(P.pose==="wave" && Date.now()-(P.poseAt||0)>4000)?"stand":(P.pose||"stand");
+    t.classList.toggle("dance",pose==="dance");
+    const uid=p.by||P.uid, L2={...look,...(P.look||{})}; const face = L2.photo ? (p.isMe? myFace : (members[uid]?.face||"")) : "";
+    const sig=JSON.stringify([P.look,pose,face.length]); if(t._sig!==sig){ t._sig=sig; t.querySelector(".bod").innerHTML=avatarSVG(L2,pose==="dance"?"dance":pose,face); }
+    t.querySelector(".tag").textContent=nameFor(p);
+    const said=P.say && Date.now()-(P.sayAt||0)<8000; let b=t.querySelector(".bubble");
+    if(said){ if(!b||b._at!==P.sayAt){ b?.remove(); b=document.createElement("div"); b.className="bubble"; b._at=P.sayAt; b.textContent=P.say; t.prepend(b);} } else b?.remove();
+    if(P.say && P.sayAt && heard[key]!==P.sayAt){ heard[key]=P.sayAt; logLines.push({n:nameFor(p),t:String(P.say).slice(0,160)}); logLines=logLines.slice(-30); renderLog(); }
+  });
+  for(const [k,t] of toons) if(!seen.has(k)){ t.remove(); toons.delete(k); }
+  $("#room-count").textContent=people.length+" here";
+}
+function renderLog(){ const el=$("#roomlog"); if(!logLines.length) return; el.innerHTML=logLines.map(l=>`<div><b>${esc(l.n)}</b>${esc(l.t)}</div>`).join(""); el.scrollTop=el.scrollHeight; }
+async function enterWorld(){
+  mine.uid=me; const lobby=await claude.use("room");
+  if(!lobby){ $("#world-status").textContent="You're exploring solo. Sign in to meet other people in the rooms."; drawPeople(); return; }
+  switchRoom(lobby, roomName);
+  $("#rooms").addEventListener("click",e=>{const b=e.target.closest("[data-room]"); if(!b) return; $$("#rooms .chip").forEach(x=>x.setAttribute("aria-pressed",x===b)); switchRoom(lobby,b.dataset.room);});
+}
+function switchRoom(lobby,name){
+  wroom?.leave?.(); peersNow=[]; for(const t of toons.values()) t.remove(); toons.clear(); roomName=name; paintRoom();
+  logLines=[]; $("#roomlog").innerHTML=`<span class="sys">You entered ${esc(ROOMS[name].name.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase()))}. Tap the floor to walk.</span>`;
+  wroom=lobby.join("world-"+name);
+  wroom.presence({look:mine.look,x:mine.x,y:mine.y,pose:mine.pose,uid:me}).catch(()=>{});
+  wroom.onPeers(ch=>{ peersNow=[...ch.peers]; const n=peersNow.filter(p=>p.kind!=="agent").length; $("#world-status").textContent=n+(n===1?" person":" people")+" in this room right now.";
+    drawPeople(); });
+}
+// standalone room switching before sign-in
+$("#rooms").addEventListener("click",e=>{ if(wroom) return; const b=e.target.closest("[data-room]"); if(!b) return; $$("#rooms .chip").forEach(x=>x.setAttribute("aria-pressed",x===b)); roomName=b.dataset.room; paintRoom(); drawPeople(); });
+$("#scene").addEventListener("click",e=>{ const r=e.currentTarget.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+  const rp=document.createElement("div"); rp.className="ripple"; rp.style.left=(x*100)+"%"; rp.style.top=(clampY(y)*100)+"%"; e.currentTarget.appendChild(rp); setTimeout(()=>rp.remove(),750);
+  setMine({x:clampX(x),y:clampY(y),pose:mine.pose==="sit"?"stand":mine.pose}); });
+$("#emotes").addEventListener("click",e=>{ const b=e.target.closest("[data-pose]"); if(!b) return; setMine({pose:b.dataset.pose,poseAt:Date.now()}); if(b.dataset.pose==="wave") setTimeout(drawPeople,4100); });
+$("#say-form").addEventListener("submit",e=>{ e.preventDefault(); const t=$("#say-text").value.trim(); if(!t) return; $("#say-text").value=""; setMine({say:t,sayAt:Date.now()}); setTimeout(drawPeople,8100); });
+setInterval(drawPeople,2000);
+paintRoom(); drawPeople();
+
+
+/* ---------- Radio + music player ---------- */
+const DEFAULT_EPOCH=Date.UTC(2026,0,1);
+let tracks=[], radioEpoch=DEFAULT_EPOCH, assets=null, mode=null, curIdx=-1;
+const media=$("#audio");
+const fmt=s=>{s=Math.max(0,Math.floor(s||0));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
+const trackUrl=t=>(window.MW?.assetUrl? MW.assetUrl(t.assetId) : "/_blob/"+t.assetId);
+const ICON_PLAY='<path d="M7 4v16l13-8z"/>', ICON_PAUSE='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+function airNow(){
+  const total=tracks.reduce((a,t)=>a+(t.duration||0),0); if(!total) return null;
+  let t=((Date.now()-radioEpoch)/1000)%total; if(t<0) t+=total;
+  for(let i=0;i<tracks.length;i++){ const d=tracks[i].duration||0; if(t<d) return {i,offset:t,left:d-t}; t-=d; }
+  return {i:0,offset:0,left:tracks[0].duration};
+}
+function setCover(el,t){ if(t?.cover){ el.style.backgroundImage=`url("${t.cover}")`; el.innerHTML=""; } }
+function paintAir(){
+  const a=airNow(), t=a&&tracks[a.i];
+  $("#onair-flag").textContent = t ? "● ON AIR" : "● OFF AIR"; $("#onair-flag").classList.toggle("off",!t);
+  if(t){ $("#air-title").textContent=t.title; $("#air-artist").textContent=t.artist+" · "+fmt(a.left)+" left"; setCover($("#air-cover"),t); }
+  $("#onair").classList.toggle("playing", mode==="radio" && !media.paused);
+}
+setInterval(paintAir,1000);
+function renderTracks(){
+  $("#lib-count").textContent=tracks.length+(tracks.length===1?" track":" tracks");
+  if(!tracks.length){ $("#tracks").innerHTML='<div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie\'s World shows up here.</div>'; paintAir(); return; }
+  $("#tracks").innerHTML=tracks.map((t,i)=>`<div class="track ${mode==="library"&&curIdx===i?"current":""}">
+    <button class="ibtn" type="button" data-play="${i}" aria-label="Play ${esc(t.title)}"><svg viewBox="0 0 24 24" fill="currentColor">${mode==="library"&&curIdx===i&&!media.paused?ICON_PAUSE:ICON_PLAY}</svg></button>
+    <div class="cv" style="${t.cover?`background-image:url('${t.cover}')`:""}"></div>
+    <div class="t"><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></div>
+    <span class="d">${fmt(t.duration)}</span>
+    <span class="ops">${isOwner?`<button class="act" data-onair="${i}">Play on air</button><button class="act" data-tdel="${t.id}">Delete</button>`:""}</span></div>`).join("");
+  paintAir();
+}
+function showBar(t,sub){ $("#player-bar").hidden=false; document.body.classList.add("has-player"); $("#pb-title").textContent=t.title; $("#pb-sub").textContent=sub; const c=$("#pb-cover"); c.style.backgroundImage=""; c.innerHTML=$("#air-cover").innerHTML||c.innerHTML; setCover(c,t); }
+function load(t,offset){ return new Promise(res=>{ media.src=trackUrl(t); media.currentTime=0;
+  media.onloadedmetadata=()=>{ if(offset) try{media.currentTime=Math.min(offset,(media.duration||offset)-0.5);}catch(e){} res(); };
+  media.onerror=()=>{ toast("This track couldn't load."); res(); }; media.load(); }); }
+async function tuneIn(){
+  const a=airNow(); if(!a){ toast("The station starts when the first track is added."); return; }
+  mode="radio"; curIdx=a.i; await load(tracks[a.i], airNow().offset);
+  media.play().catch(()=>toast("Tap play to start the audio.")); showBar(tracks[a.i],"Meechie's World Radio · LIVE");
+  room?.presence({radio:true}); renderTracks(); updIcons();
+}
+async function playLib(i){
+  if(mode==="library" && curIdx===i){ media.paused?media.play():media.pause(); return; }
+  mode="library"; curIdx=(i+tracks.length)%tracks.length; const t=tracks[curIdx];
+  await load(t,0); media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
+}
+function updIcons(){ $("#pb-icon").innerHTML = media.paused?ICON_PLAY:ICON_PAUSE; $("#pb-play").setAttribute("aria-label",media.paused?"Play":"Pause");
+  $("#tune-in").textContent = mode==="radio"&&!media.paused ? "❚❚ Pause radio" : "▶ Tune in"; renderTracks(); }
+media.addEventListener("play",updIcons); media.addEventListener("pause",updIcons);
+media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(); else if(mode==="library") playLib(curIdx+1); });
+media.addEventListener("timeupdate",()=>{ const d=media.duration||tracks[curIdx]?.duration||0; $("#pb-fill").style.width=(d?media.currentTime/d*100:0)+"%"; $("#pb-time").textContent=fmt(media.currentTime)+" / "+fmt(d); });
+$("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
+$("#pb-play").addEventListener("click",()=>{ if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
+$("#pb-next").addEventListener("click",()=>{ if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
+$("#pb-prev").addEventListener("click",()=>{ if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
+$("#pb-progress").addEventListener("click",e=>{ if(mode!=="library"||!media.duration) return; const r=e.currentTarget.getBoundingClientRect(); media.currentTime=(e.clientX-r.left)/r.width*media.duration; });
+$("#pb-vol").addEventListener("input",e=>media.volume=+e.target.value);
+$("#tracks").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.play) playLib(+b.dataset.play);
+  if(b.dataset.onair){ const i=+b.dataset.onair, before=tracks.slice(0,i).reduce((a,t)=>a+(t.duration||0),0);
+    await setEpoch(Date.now()-before*1000); toast(tracks[i].title+" is on air now"); if(mode==="radio") tuneIn(); }
+  if(b.dataset.tdel){ if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Tap again"; return; }
+    const t=tracks.find(x=>x.id===b.dataset.tdel); await db.doc("tracks/"+t.id).delete().catch(err=>toast(err.message||err.code)); assets?.delete(t.assetId).catch(()=>{}); toast("Track deleted"); }
+});
+async function setEpoch(ms){ try{ await db.doc("radio/state").set({epoch:ms}); }catch(err){ toast(err.message||err.code); } }
+$("#restart-station").addEventListener("click",async()=>{ await setEpoch(Date.now()); toast("Station restarted from track 1"); if(mode==="radio") tuneIn(); });
+function subRadio(){
+  db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); }, e=>console.warn(e));
+  db.doc("radio/state").onSnapshot(d=>{ radioEpoch=d.exists?(d.data().epoch||DEFAULT_EPOCH):DEFAULT_EPOCH; paintAir(); }, e=>console.warn(e));
+  db.collection("requests").orderBy("createdAt","desc").limit(25).onSnapshot(s=>{
+    $("#req-list").innerHTML = s.empty ? '<p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p>' : s.docs.map(d=>{const r=d.data(); return `<div><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)} <small class="muted">${ago(r.createdAt)}</small></div>`;}).join("");
+  }, e=>console.warn(e));
+}
+$("#req-form").addEventListener("submit",e=>{ e.preventDefault(); if(!needMember()) return; const t=$("#req-text").value.trim(); if(!t) return; $("#req-text").value="";
+  db.collection("requests").add({authorId:me,text:t,createdAt:Date.now()}).then(()=>toast("Sent to the station")).catch(err=>toast(err.message||err.code)); });
+function mediaDuration(file){ return new Promise(res=>{ const v=document.createElement("video"); v.preload="metadata"; const u=URL.createObjectURL(file); v.onloadedmetadata=()=>{res(v.duration||0);URL.revokeObjectURL(u);}; v.onerror=()=>{res(0);URL.revokeObjectURL(u);}; v.src=u; }); }
+$("#up-audio").addEventListener("change",async e=>{
+  const files=[...e.target.files]; e.target.value=""; if(!files.length||!assets) return;
+  const artist=$("#up-artist").value.trim()||"Meechie"; let done=0;
+  for(const f of files){
+    const ext=(f.name.split(".").pop()||"").toLowerCase();
+    if(ext==="mp3"||ext==="wav"){ toast(f.name+": convert MP3/WAV to M4A first."); continue; }
+    if(f.size>20*1024*1024){ toast(f.name+" is over 20 MB."); continue; }
+    $("#up-status").textContent="Uploading "+f.name+"...";
+    try{
+      const duration=await mediaDuration(f);
+      const type = ext==="webm" ? "video/webm" : "video/mp4";
+      const up=await assets.upload(f,{type});
+      await db.collection("tracks").add({title:f.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," "),artist,assetId:up.id,duration:Math.round(duration),cover:"",addedAt:Date.now()});
+      done++;
+    }catch(err){ toast(f.name+": "+(err.code==="unsupported_type"?"that file type isn't supported. Use M4A, MP4 or WebM.":(err.message||err.code))); }
+  }
+  $("#up-status").textContent= done ? `Added ${done} track${done>1?"s":""}. They're in the Library and on the radio rotation.` : "Upload M4A, MP4 or WebM files up to 20 MB each. Music videos play too. Only you see this.";
+});
+
+/* ---------- Gold Rush Arena ---------- */
+const AW=960, AH=560, PR=16, SPEED=3.2, BSPEED=11, BLIFE=55, CYCLE=120000;
+const WALLS=[[150,110,120,26],[690,110,120,26],[150,424,120,26],[690,424,120,26],[440,250,80,60],[300,230,26,100],[634,230,26,100],[60,260,60,40],[840,260,60,40]];
+const gc=$("#g-canvas"), gx=gc.getContext("2d");
+let GM={on:false, me:null, bullets:[], remote:new Map(), seenShots:new Set(), seenDeaths:{}, bots:[], keys:{}, aim:{x:AW/2,y:AH/2}, moveT:null, arena:null, myPeer:null, kills:0, total:0, last:0, fireCd:0, feed:[]};
+function freeSpot(){ for(let i=0;i<60;i++){ const x=60+Math.random()*(AW-120), y=60+Math.random()*(AH-120); if(!hitWall(x,y,PR+6)) return {x,y}; } return {x:AW/2,y:80}; }
+function hitWall(x,y,r){ return WALLS.some(([wx,wy,ww,wh])=>x+r>wx&&x-r<wx+ww&&y+r>wy&&y-r<wy+wh); }
+function storm(){ const t=(Date.now()%CYCLE)/CYCLE; return {x:AW/2,y:AH/2,r:Math.max(150,560-t*1.2*410)}; }
+function newMe(){ const p=freeSpot(); return {x:p.x,y:p.y,a:0,hp:100,dead:false,deaths:(GM.me?.deaths||0),killedBy:null,shots:[],look:{c:look.outfitColor,s:look.skin,t:look.trim||"#d4a843"},n:profileMe?.handle||"You",uid:me}; }
+function spawnBots(){ GM.bots=[0,1,2].map(i=>{ const p=freeSpot(); return {id:"bot"+i,x:p.x,y:p.y,a:0,hp:100,dead:false,deaths:0,cd:0,tx:p.x,ty:p.y,n:["Ms. Baddie","Melody","Gold Bot"][i],look:{c:["#7a1f2b","#1f3d7a","#2f6b45"][i],s:["#c68a5e","#7a4a2b","#e0ac83"][i],t:"#d4a843"},respawn:0}; }); }
+async function startGame(){
+  $("#g-start").hidden=true; GM.on=true; GM.me=newMe(); GM.kills=0; GM.total=GM.total||0; updHud();
+  const lobby=db?await claude.use("room"):null;
+  if(lobby){ GM.arena=lobby.join("arena"); GM.arena.onPeers(ch=>{ const mine=ch.peers.find(p=>p.sameTab); if(mine) GM.myPeer=mine.peer; GM.peers=ch.peers; syncRemote(); }); }
+  spawnBots(); GM.last=performance.now(); requestAnimationFrame(loop);
+}
+function syncRemote(){
+  const live=new Set();
+  (GM.peers||[]).forEach(p=>{ if(p.sameTab||p.kind==="agent") return; const g=p.presence?.g; if(!g) return; live.add(p.peer);
+    let r=GM.remote.get(p.peer); if(!r){ r={rx:g.x,ry:g.y}; GM.remote.set(p.peer,r); } Object.assign(r,g,{peer:p.peer});
+    (g.shots||[]).forEach(s=>{ const k=p.peer+":"+s.i; if(GM.seenShots.has(k)) return; GM.seenShots.add(k); if(Date.now()-s.t<1500) GM.bullets.push({x:s.x,y:s.y,dx:Math.cos(s.a)*BSPEED,dy:Math.sin(s.a)*BSPEED,life:BLIFE,from:p.peer,mine:false}); });
+    const d=g.deaths||0; if(GM.seenDeaths[p.peer]===undefined) GM.seenDeaths[p.peer]=d;
+    else if(d>GM.seenDeaths[p.peer]){ GM.seenDeaths[p.peer]=d; const killer=g.killedBy; if(killer && killer===GM.myPeer) creditKill(g.n||"a player"); else addFeed((killer&&GM.remote.get(killer)?.n)||"The storm", g.n||"a player"); }
+  });
+  for(const k of GM.remote.keys()) if(!live.has(k)) GM.remote.delete(k);
+  $("#g-players").textContent = GM.remote.size ? (GM.remote.size+1)+" players live" : "Practice mode · bots";
+}
+function addFeed(a,b){ GM.feed.unshift(`<div><b>${esc(a)}</b> eliminated <b>${esc(b)}</b></div>`); GM.feed=GM.feed.slice(0,12); $("#g-feed").innerHTML=GM.feed.join(""); }
+function creditKill(victim,isBot){ GM.kills++; GM.total++; addFeed(GM.me.n,victim); updHud(); toast("Eliminated "+victim);
+  if(db && profileMe && !isBot) db.doc("scores/"+me).set({elims:GM.total,name:profileMe.handle,updatedAt:Date.now()}).catch(()=>{}); }
+function updHud(){ $("#g-k").textContent=GM.kills; $("#g-hp").textContent=Math.max(0,Math.round(GM.me?.hp??100)); }
+function shoot(){ const m=GM.me; if(!m||m.dead||GM.fireCd>0) return; GM.fireCd=12;
+  const s={i:Math.random().toString(36).slice(2,8),x:m.x+Math.cos(m.a)*(PR+4),y:m.y+Math.sin(m.a)*(PR+4),a:m.a,t:Date.now()};
+  GM.bullets.push({x:s.x,y:s.y,dx:Math.cos(s.a)*BSPEED,dy:Math.sin(s.a)*BSPEED,life:BLIFE,from:"me",mine:true}); m.shots=[...m.shots,s].slice(-6); }
+function damageMe(n,by){ const m=GM.me; if(m.dead) return; m.hp-=n; if(m.hp<=0){ m.hp=0; m.dead=true; m.deaths++; m.killedBy=by; let t=3; $("#g-dead").hidden=false; $("#g-rs").textContent=t;
+  const iv=setInterval(()=>{ t--; $("#g-rs").textContent=t; if(t<=0){ clearInterval(iv); const d=m.deaths; GM.me=newMe(); GM.me.deaths=d; $("#g-dead").hidden=true; updHud(); } },1000);
+  if(by && String(by).startsWith("bot")) addFeed(GM.bots.find(b=>b.id===by)?.n||"Bot",m.n); if(!by) addFeed("The storm",m.n); } updHud(); }
+function botAI(b,dt){
+  if(b.dead){ if(Date.now()>b.respawn){ const p=freeSpot(); Object.assign(b,{x:p.x,y:p.y,hp:100,dead:false}); } return; }
+  const tgt=GM.me&&!GM.me.dead?GM.me:null; const st=storm();
+  if(Math.hypot(b.tx-b.x,b.ty-b.y)<10||Math.random()<.01){ const ang=Math.random()*Math.PI*2, rr=Math.random()*st.r*.7; b.tx=st.x+Math.cos(ang)*rr; b.ty=st.y+Math.sin(ang)*rr; }
+  const dx=b.tx-b.x, dy=b.ty-b.y, d=Math.hypot(dx,dy)||1; const nx=b.x+dx/d*SPEED*.7, ny=b.y+dy/d*SPEED*.7;
+  if(!hitWall(nx,ny,PR)){ b.x=nx; b.y=ny; } else { b.tx=b.x+(Math.random()-.5)*300; b.ty=b.y+(Math.random()-.5)*300; }
+  if(tgt){ const ad=Math.hypot(tgt.x-b.x,tgt.y-b.y); b.a=Math.atan2(tgt.y-b.y,tgt.x-b.x)+(Math.random()-.5)*.25; b.cd-=1; if(ad<420&&b.cd<=0){ b.cd=40+Math.random()*40; GM.bullets.push({x:b.x+Math.cos(b.a)*20,y:b.y+Math.sin(b.a)*20,dx:Math.cos(b.a)*BSPEED*.8,dy:Math.sin(b.a)*BSPEED*.8,life:BLIFE,from:b.id,mine:false}); } }
+  if(Math.hypot(b.x-st.x,b.y-st.y)>st.r) b.hp-=.08; if(b.hp<=0){ b.dead=true; b.respawn=Date.now()+3000; }
+}
+function loop(now){
+  if(!GM.on) return; const dt=Math.min(3,(now-GM.last)/16.67); GM.last=now;
+  const m=GM.me, st=storm();
+  if(!$("#v-games").hidden){
+    if(!m.dead){
+      let vx=(GM.keys.d||GM.keys.arrowright?1:0)-(GM.keys.a||GM.keys.arrowleft?1:0), vy=(GM.keys.s||GM.keys.arrowdown?1:0)-(GM.keys.w||GM.keys.arrowup?1:0);
+      if(GM.moveT){ const dx=GM.moveT.x-m.x, dy=GM.moveT.y-m.y, d=Math.hypot(dx,dy); if(d>8){ vx=dx/d; vy=dy/d; } }
+      const l=Math.hypot(vx,vy)||1; const nx=m.x+vx/l*SPEED*dt, ny=m.y+vy/l*SPEED*dt;
+      if(!hitWall(nx,m.y,PR)) m.x=Math.min(AW-PR,Math.max(PR,nx)); if(!hitWall(m.x,ny,PR)) m.y=Math.min(AH-PR,Math.max(PR,ny));
+      m.a=Math.atan2(GM.aim.y-m.y,GM.aim.x-m.x);
+      if(GM.keys[" "]||GM.mouseDown) shoot();
+      if(Math.hypot(m.x-st.x,m.y-st.y)>st.r) damageMe(.09*dt,null);
+    }
+    GM.fireCd-=dt;
+    const solo=GM.remote.size===0; if(solo) GM.bots.forEach(b=>botAI(b,dt));
+    // bullets
+    GM.bullets=GM.bullets.filter(b=>{ b.x+=b.dx*dt; b.y+=b.dy*dt; b.life-=dt; if(b.life<=0||hitWall(b.x,b.y,2)||b.x<0||b.y<0||b.x>AW||b.y>AH) return false;
+      if(!b.mine && !m.dead && Math.hypot(b.x-m.x,b.y-m.y)<PR){ damageMe(20,b.from); return false; }
+      if(b.mine){ if(solo) for(const bot of GM.bots){ if(!bot.dead && Math.hypot(b.x-bot.x,b.y-bot.y)<PR){ bot.hp-=20; if(bot.hp<=0){ bot.dead=true; bot.respawn=Date.now()+3000; creditKill(bot.n,true); } return false; } }
+        for(const r of GM.remote.values()) if(!r.dead && Math.hypot(b.x-r.rx,b.y-r.ry)<PR) return false; }
+      return true; });
+    for(const r of GM.remote.values()){ r.rx+=(r.x-r.rx)*.35; r.ry+=(r.y-r.ry)*.35; }
+    if(GM.arena){ GM.arena.presence({g:{x:Math.round(m.x),y:Math.round(m.y),a:+m.a.toFixed(2),hp:Math.round(m.hp),dead:m.dead,deaths:m.deaths,killedBy:m.killedBy,shots:m.shots,n:m.n,look:m.look}}).catch(()=>{}); }
+    drawArena(st);
+  }
+  requestAnimationFrame(loop);
+}
+function drawPlayer(p,x,y,isMe){
+  if(p.dead) return;
+  gx.save(); gx.translate(x,y);
+  gx.fillStyle="rgba(0,0,0,.4)"; gx.beginPath(); gx.ellipse(3,5,PR,PR*.8,0,0,7); gx.fill();
+  gx.rotate(p.a||0); gx.fillStyle="#222"; gx.fillRect(PR-4,-3,16,6); gx.fillStyle=p.look?.t||"#d4a843"; gx.fillRect(PR+8,-3,4,6);
+  gx.fillStyle=p.look?.c||"#111"; gx.beginPath(); gx.arc(0,0,PR,0,7); gx.fill(); gx.lineWidth=2.5; gx.strokeStyle=isMe?"#f0cf78":(p.look?.t||"#8c6d26"); gx.stroke();
+  gx.fillStyle=p.look?.s||"#a26a43"; gx.beginPath(); gx.arc(3,0,8,0,7); gx.fill();
+  gx.restore();
+  gx.font="700 12px Hanken Grotesk, system-ui, sans-serif"; gx.textAlign="center"; gx.fillStyle=isMe?"#f0cf78":"#fff"; gx.fillText(isMe?"You":(p.n||"Player"),x,y-PR-14);
+  gx.fillStyle="rgba(0,0,0,.6)"; gx.fillRect(x-18,y-PR-9,36,5); gx.fillStyle=p.hp>50?"#6fbf8b":p.hp>25?"#e5b44d":"#e5484d"; gx.fillRect(x-18,y-PR-9,36*Math.max(0,p.hp)/100,5);
+}
+function drawArena(st){
+  // floor: masonic checker
+  for(let y=0;y<AH;y+=40) for(let x=0;x<AW;x+=40){ gx.fillStyle=((x+y)/40)%2?"#14110b":"#1d1810"; gx.fillRect(x,y,40,40); }
+  gx.strokeStyle="rgba(212,168,67,.25)"; gx.lineWidth=2; gx.strokeRect(20,20,AW-40,AH-40);
+  // center emblem
+  gx.save(); gx.globalAlpha=.18; gx.strokeStyle="#d4a843"; gx.lineWidth=3; gx.beginPath(); gx.moveTo(480,190); gx.lineTo(560,330); gx.lineTo(400,330); gx.closePath(); gx.stroke(); gx.restore();
+  // walls
+  WALLS.forEach(([x,y,w,h])=>{ gx.fillStyle="#0a0806"; gx.fillRect(x+4,y+6,w,h); const gr=gx.createLinearGradient(x,y,x,y+h); gr.addColorStop(0,"#3a2d14"); gr.addColorStop(1,"#241b0c"); gx.fillStyle=gr; gx.fillRect(x,y,w,h); gx.strokeStyle="#8c6d26"; gx.lineWidth=1.5; gx.strokeRect(x+.5,y+.5,w-1,h-1); });
+  // storm
+  gx.save(); gx.fillStyle="rgba(90,30,140,.38)"; gx.beginPath(); gx.rect(0,0,AW,AH); gx.arc(st.x,st.y,st.r,0,Math.PI*2,true); gx.fill("evenodd"); gx.strokeStyle="#f0cf78"; gx.lineWidth=3; gx.setLineDash([12,8]); gx.beginPath(); gx.arc(st.x,st.y,st.r,0,7); gx.stroke(); gx.restore();
+  // bullets
+  GM.bullets.forEach(b=>{ gx.strokeStyle=b.mine?"#fff3c9":"#ff8a8d"; gx.lineWidth=3; gx.beginPath(); gx.moveTo(b.x,b.y); gx.lineTo(b.x-b.dx*1.4,b.y-b.dy*1.4); gx.stroke(); });
+  if(GM.remote.size===0) GM.bots.forEach(b=>drawPlayer(b,b.x,b.y,false));
+  for(const r of GM.remote.values()) drawPlayer(r,r.rx,r.ry,false);
+  drawPlayer(GM.me,GM.me.x,GM.me.y,true);
+  const left=Math.ceil((CYCLE-(Date.now()%CYCLE))/1000); gx.font="700 14px Cinzel, Georgia, serif"; gx.fillStyle="#f0cf78"; gx.textAlign="left"; gx.fillText("STORM RESETS IN "+left+"s",28,46);
+}
+function toArena(e){ const r=gc.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*AW,y:(e.clientY-r.top)/r.height*AH}; }
+gc.addEventListener("mousemove",e=>{ GM.aim=toArena(e); });
+gc.addEventListener("mousedown",e=>{ if(e.pointerType==="touch") return; GM.aim=toArena(e); GM.mouseDown=true; shoot(); });
+window.addEventListener("mouseup",()=>GM.mouseDown=false);
+gc.addEventListener("touchstart",e=>{ e.preventDefault(); GM.moveT=toArena(e.touches[0]); },{passive:false});
+gc.addEventListener("touchmove",e=>{ e.preventDefault(); GM.moveT=toArena(e.touches[0]); },{passive:false});
+gc.addEventListener("touchend",()=>{ GM.moveT=null; });
+$("#g-fire").addEventListener("click",()=>{ const m=GM.me; if(!m) return; const targets=[...(GM.remote.size?[...GM.remote.values()].map(r=>({x:r.rx,y:r.ry,dead:r.dead})):GM.bots)].filter(t=>!t.dead);
+  let best=null,bd=1e9; targets.forEach(t=>{ const d=Math.hypot(t.x-m.x,t.y-m.y); if(d<bd){bd=d;best=t;} }); if(best) GM.aim={x:best.x,y:best.y}; m.a=Math.atan2(GM.aim.y-m.y,GM.aim.x-m.x); shoot(); });
+window.addEventListener("keydown",e=>{ if($("#v-games").hidden||!GM.on) return; if(e.target.matches("input,textarea,select")) return; const k=e.key.toLowerCase(); if(["w","a","s","d"," ","arrowup","arrowdown","arrowleft","arrowright"].includes(k)){ GM.keys[k]=true; e.preventDefault(); } });
+window.addEventListener("keyup",e=>{ GM.keys[e.key.toLowerCase()]=false; });
+$("#g-play").addEventListener("click",startGame);
+(function idle(){ GM.me=newMe(); spawnBots(); drawArena(storm()); })();
+function subGames(){
+  db.collection("scores").orderBy("elims","desc").limit(10).onSnapshot(s=>{ if(s.empty) return; $("#g-leaders").innerHTML=s.docs.map(d=>{ const v=d.data(); if(d.id===me) GM.total=Math.max(GM.total,v.elims||0); return `<li>${esc(handleOf(d.id)!=="Member"?handleOf(d.id):(v.name||"Member"))} · <b>${v.elims||0}</b></li>`; }).join(""); }, e=>console.warn(e));
+  db.collection("squads").orderBy("createdAt","desc").limit(60).onSnapshot(s=>{ if(s.empty) return; $("#squads").innerHTML=s.docs.map(d=>{ const q=d.data();
+    return `<div class="squad"><small>${esc(handleOf(q.authorId))} · ${ago(q.createdAt)}</small><span class="epic">${esc(q.epic)}</span><span class="badge">${esc(q.platform)}</span><b>${esc(q.mode)}</b>${q.note?`<small>${esc(q.note)}</small>`:""}<div class="fit-acts"><button class="btn sm ghost" type="button" data-epic="${esc(q.epic)}">Copy Epic name</button>${(q.authorId===me||isOwner)?`<button class="act" type="button" data-sqdel="${d.id}">Delete</button>`:""}</div></div>`; }).join(""); }, e=>console.warn(e));
+}
+$("#squads").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.epic) navigator.clipboard?.writeText(b.dataset.epic).then(()=>toast("Copied "+b.dataset.epic+". Add them in Fortnite.")).catch(()=>toast(b.dataset.epic));
+  if(b.dataset.sqdel){ if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Tap again"; return; } db.doc("squads/"+b.dataset.sqdel).delete().catch(err=>toast(err.message||err.code)); } });
+$("#sq-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!needMember()) return;
+  try{ await db.collection("squads").add({authorId:me,epic:$("#sq-epic").value.trim(),platform:$("#sq-plat").value,mode:$("#sq-mode").value,note:$("#sq-note").value.trim(),createdAt:Date.now()}); $("#sq-form").reset(); toast("Posted to the Squad Finder"); }
+  catch(err){ toast(err.message||err.code); } });
+
+/* ---------- Creators ---------- */
+
+let wardrobe=[], designs=[], dSort="top", dsImg=null;
+function subCreators(){
+  db.collection("wardrobe").orderBy("createdAt","desc").limit(60).onSnapshot(s=>{ wardrobe=s.docs.map(d=>({id:d.id,...d.data()})); renderWardrobe(); }, e=>console.warn(e));
+  db.collection("designs").orderBy("createdAt","desc").limit(120).onSnapshot(s=>{ designs=s.docs.map(d=>({id:d.id,...d.data()})); renderDesigns(); }, e=>console.warn(e));
+}
+function renderWardrobe(){
+  if(!wardrobe.length) return;
+  $("#wardrobe").innerHTML=wardrobe.map(w=>{ const liked=(w.likes||[]).includes(me);
+    return `<div class="fit"><div class="fit-stage">${avatarSVG({...look,...w.fit,photo:false},"stand","")}</div><b>${esc(handleOf(w.authorId))}'s fit</b>
+    <div class="fit-acts"><button class="btn sm" type="button" data-try="${w.id}">Try on</button><button class="act ${liked?"on":""}" type="button" data-wlike="${w.id}">♥ ${(w.likes||[]).length||""}</button>${(w.authorId===me||isOwner)?`<button class="act" type="button" data-wdel="${w.id}">Delete</button>`:""}</div></div>`; }).join("");
+}
+$("#wardrobe").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.try){ const w=wardrobe.find(x=>x.id===b.dataset.try); Object.assign(look,w.fit); drawBuilder(); setMine({look:{...look}}); try{localStorage.setItem("mw-look",JSON.stringify(look));}catch(_){} toast("You're wearing it. Head to the Virtual World."); }
+  if(b.dataset.wlike){ if(!needMember()) return; const w=wardrobe.find(x=>x.id===b.dataset.wlike); const st=new Set(w.likes||[]); st.has(me)?st.delete(me):st.add(me); db.doc("wardrobe/"+w.id).update({likes:[...st]}).catch(err=>toast(err.message||err.code)); }
+  if(b.dataset.wdel){ if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Tap again"; return; } db.doc("wardrobe/"+b.dataset.wdel).delete().catch(err=>toast(err.message||err.code)); }
+});
+/* design canvas */
+function garmentPath(ctx,kind){
+  ctx.beginPath();
+  if(kind==="hoodie"){ ctx.moveTo(150,70); ctx.quadraticCurveTo(240,10,330,70); ctx.lineTo(430,120); ctx.lineTo(470,330); ctx.lineTo(405,345); ctx.lineTo(380,200); ctx.lineTo(385,520); ctx.lineTo(95,520); ctx.lineTo(100,200); ctx.lineTo(75,345); ctx.lineTo(10,330); ctx.lineTo(50,120); ctx.closePath(); }
+  else { ctx.moveTo(165,40); ctx.quadraticCurveTo(240,85,315,40); ctx.lineTo(440,90); ctx.lineTo(475,200); ctx.lineTo(395,225); ctx.lineTo(385,510); ctx.lineTo(95,510); ctx.lineTo(85,225); ctx.lineTo(5,200); ctx.lineTo(40,90); ctx.closePath(); }
+}
+function drawSymbol(ctx,kind,cx,cy,size,ink){
+  ctx.save(); ctx.strokeStyle=ink; ctx.fillStyle=ink; ctx.lineWidth=Math.max(2,size/22); ctx.lineJoin="round"; ctx.lineCap="round";
+  if(kind==="emblem"){ const h=size*.9; ctx.beginPath(); ctx.moveTo(cx,cy-h/2); ctx.lineTo(cx+h*.58,cy+h/2); ctx.lineTo(cx-h*.58,cy+h/2); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx,cy+h*.12,h*.24,h*.12,0,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.arc(cx,cy+h*.12,h*.07,0,Math.PI*2); ctx.fill();
+    for(let i=-2;i<=2;i++){ const a=-Math.PI/2+i*.35; ctx.beginPath(); ctx.moveTo(cx+Math.cos(a)*h*.62,cy-h*.1+Math.sin(a)*h*.62); ctx.lineTo(cx+Math.cos(a)*h*.8,cy-h*.1+Math.sin(a)*h*.8); ctx.stroke(); } }
+  if(kind==="compass"){ const h=size; ctx.beginPath(); ctx.arc(cx,cy-h*.42,h*.06,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx-h*.03,cy-h*.37); ctx.lineTo(cx-h*.3,cy+h*.4); ctx.moveTo(cx+h*.03,cy-h*.37); ctx.lineTo(cx+h*.3,cy+h*.4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-h*.42,cy+h*.12); ctx.lineTo(cx,cy+h*.48); ctx.lineTo(cx+h*.42,cy+h*.12); ctx.stroke(); }
+  ctx.restore();
+}
+function drawDesign(){
+  const c=$("#ds-canvas"), ctx=c.getContext("2d"), g=$("#ds-garment").value, col=$("#ds-color").value, ink=$("#ds-ink").value, font=$("#ds-font").value, sym=$("#ds-symbol").value, size=+$("#ds-size").value;
+  ctx.clearRect(0,0,c.width,c.height);
+  const bg=ctx.createRadialGradient(240,270,40,240,270,340); bg.addColorStop(0,"#2a2112"); bg.addColorStop(1,"#0b0a08"); ctx.fillStyle=bg; ctx.fillRect(0,0,c.width,c.height);
+  ctx.save(); ctx.shadowColor="rgba(0,0,0,.6)"; ctx.shadowBlur=24; ctx.shadowOffsetY=10; garmentPath(ctx,g); ctx.fillStyle=col; ctx.fill(); ctx.restore();
+  garmentPath(ctx,g); ctx.save(); ctx.clip(); const sh=ctx.createLinearGradient(0,0,480,0); sh.addColorStop(0,"rgba(0,0,0,.25)"); sh.addColorStop(.35,"rgba(255,255,255,.06)"); sh.addColorStop(.65,"rgba(0,0,0,0)"); sh.addColorStop(1,"rgba(0,0,0,.3)"); ctx.fillStyle=sh; ctx.fillRect(0,0,480,540); ctx.restore();
+  ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.lineWidth=2; garmentPath(ctx,g); ctx.stroke();
+  if(g==="hoodie"){ ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(195,80); ctx.quadraticCurveTo(240,140,285,80); ctx.stroke(); ctx.fillStyle="rgba(0,0,0,.12)"; ctx.fillRect(160,400,160,70); }
+  const top=g==="hoodie"?190:150;
+  ctx.fillStyle=ink; ctx.textAlign="center"; ctx.textBaseline="middle";
+  const l1=$("#ds-l1").value.trim(), l2=$("#ds-l2").value.trim();
+  if(l1){ ctx.font=`700 ${Math.min(34,300/Math.max(6,l1.length)*1.6)}px "${font}", Georgia, serif`; ctx.fillText(l1,240,top); }
+  const symY=top+44+size*.6;
+  if(sym==="upload" && dsImg){ const r=Math.min(size*1.4/dsImg.width,size*1.4/dsImg.height); const w=dsImg.width*r,h=dsImg.height*r; ctx.drawImage(dsImg,240-w/2,symY-h/2,w,h); }
+  else if(sym!=="none" && sym!=="upload") drawSymbol(ctx,sym,240,symY,size,ink);
+  if(l2){ ctx.font=`700 ${Math.min(26,260/Math.max(6,l2.length)*1.5)}px "${font}", Georgia, serif`; ctx.fillText(l2,240,symY+size/2+(sym==="none"?0:26)); }
+}
+["ds-garment","ds-color","ds-ink","ds-font","ds-symbol","ds-size","ds-l1","ds-l2"].forEach(id=>$("#"+id).addEventListener("input",()=>{ $("#ds-up-wrap").hidden=$("#ds-symbol").value!=="upload"; drawDesign(); }));
+$("#ds-upload").addEventListener("change",e=>{ const f=e.target.files[0]; if(!f) return; const img=new Image(); img.onload=()=>{dsImg=img; drawDesign();}; img.src=URL.createObjectURL(f); });
+document.fonts?.ready?.then(drawDesign); drawDesign();
+$("#ds-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!needMember()) return;
+  const c=$("#ds-canvas"); let q=.82, img=c.toDataURL("image/jpeg",q); while(img.length>190000 && q>.4){ q-=.1; img=c.toDataURL("image/jpeg",q); }
+  try{ await db.collection("designs").add({authorId:me,title:$("#ds-title").value.trim(),garment:$("#ds-garment").value,img,votes:[],selected:false,createdAt:Date.now()}); $("#ds-title").value=""; toast("Design submitted. The community can vote now."); }
+  catch(err){ toast("Couldn't submit: "+(err.message||err.code)); }
+});
+function renderDesigns(){
+  if(!designs.length) return;
+  const list=[...designs].sort((a,b)=> (b.selected?1:0)-(a.selected?1:0) || (dSort==="top" ? (b.votes||[]).length-(a.votes||[]).length : b.createdAt-a.createdAt));
+  $("#designs").innerHTML=list.map(d=>{ const v=(d.votes||[]).includes(me);
+    return `<article class="design ${d.selected?"picked":""}"><img src="${esc(d.img)}" alt="${esc(d.title)}">${d.selected?'<span class="badge pick">Selected for the store</span>':""}
+    <div class="dz"><b>${esc(d.title)}</b><small class="muted">by ${esc(handleOf(d.authorId))}</small>
+    <div class="fit-acts"><button class="btn sm ${v?"":"ghost"}" type="button" data-vote="${d.id}">🔥 ${(d.votes||[]).length}</button>${isOwner?`<button class="act" type="button" data-pick="${d.id}">${d.selected?"Unselect":"Select for store"}</button>`:""}${(d.authorId===me||isOwner)?`<button class="act" type="button" data-ddel="${d.id}">Delete</button>`:""}</div></div></article>`; }).join("");
+}
+$("#dg-sort").addEventListener("click",e=>{ const b=e.target.closest("[data-sort]"); if(!b) return; dSort=b.dataset.sort; $$("#dg-sort .chip").forEach(x=>x.setAttribute("aria-pressed",x===b)); renderDesigns(); });
+$("#designs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.vote){ if(!needMember()) return; const d=designs.find(x=>x.id===b.dataset.vote); const st=new Set(d.votes||[]); st.has(me)?st.delete(me):st.add(me); db.doc("designs/"+d.id).update({votes:[...st]}).catch(err=>toast(err.message||err.code)); }
+  if(b.dataset.pick){ const d=designs.find(x=>x.id===b.dataset.pick); db.doc("designs/"+d.id).update({selected:!d.selected}).then(()=>toast(d.selected?"Unselected":"Selected for the store")).catch(err=>toast(err.message||err.code)); }
+  if(b.dataset.ddel){ if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Tap again"; return; } db.doc("designs/"+b.dataset.ddel).delete().catch(err=>toast(err.message||err.code)); }
+});
+$("#team-form").addEventListener("submit",e=>{ e.preventDefault();
+  const msg=`Meechie's World team application\nName: ${$("#tm-name").value.trim()}\nRole: ${$("#tm-role").value}\nReach me: ${$("#tm-contact").value.trim()}\nWork: ${$("#tm-link").value.trim()||"none"}\nMy idea: ${$("#tm-idea").value.trim()}`;
+  $("#team-msg").textContent=msg; $("#team-ready").hidden=false;
+  navigator.clipboard?.writeText(msg).then(()=>toast("Copied. Paste it in a DM to us.")).catch(()=>{ const r=document.createRange(); r.selectNodeContents($("#team-msg")); getSelection().removeAllRanges(); getSelection().addRange(r); toast("Selected. Copy it and DM us."); });
+  $("#team-ready").scrollIntoView({behavior:"smooth",block:"center"});
+});
+
+/* ---------- AI assistant ---------- */
+
+const AI_BRIEF=`You are the assistant on the Meechie's World Inc website (owner: Meechie). Be friendly, direct, and brief (under 120 words). Only describe what's listed here; for quotes or anything else, tell people to DM @meechiesworldinc on TikTok or elpesidentay on Snapchat, or email meechiesworldinc@aol.com.
+Services (all start at $50 minimum, quoted per job): music production, recording rap/singing artists, sound engineering, music videos, commercials, AI video and TikTok content, artist development, concert/event promotion, sales and distribution, website building, coding, AI prompting, documents/decks/spreadsheets/research, legal document preparation and paralegal services (document prep only, not legal advice, not a law firm), help for incarcerated people's families (staying in touch, approved money transfers, grievance writing), clothing line and on-demand printing setup, house remodeling, cleaning, landscaping, security.
+Books: Paper Trail; From Harlem to Fort Dix; Donald J. Trump: An Investigative Biography.
+Platform: Games tab (Gold Rush Arena, a live battle game members play against each other, plus a Fortnite Squad Finder to post Epic names and team up; Fortnite itself is played in Epic's app), joining, posting, chat, voice clips, gifts, the virtual world (with AI look-alike avatars and avatar outfit design), the Creators tab (design clothing for the line, vote on designs, apply to join the team and earn a share of what you build, set in a written agreement), going live, linking Printify/Shopify stores, and community ads are free. Paid promotion: Spotlight $50/7 days, Featured $150/14 days, Takeover $400/30 days; request it on the Promote tab.
+Never give legal advice, never promise outcomes, never collect payment details.`;
+let aiHist=[], sampleFn=null, aiBusy=false;
+function aiDraw(){ $("#ai-log").innerHTML = aiHist.length ? aiHist.map(m=>`<div class="msg ${m.role==="user"?"mine":""}">${esc(m.content)}</div>`).join("") : '<div class="msg">Hi, I\'m Meechie\'s AI. What can I help you with today?</div>'; const l=$("#ai-log"); l.scrollTop=l.scrollHeight; }
+aiDraw();
+claude.use("sample").then(s=>{ sampleFn=s; if(!s) $("#ai-card").hidden=true; });
+$("#ai-form").addEventListener("submit",async e=>{
+  e.preventDefault(); if(aiBusy||!sampleFn) return; const q=$("#ai-q").value.trim(); if(!q) return; $("#ai-q").value="";
+  aiHist.push({role:"user",content:q}); const ans={role:"assistant",content:"Thinking..."}; aiHist.push(ans); aiDraw(); aiBusy=true;
+  try{
+    const turns=aiHist.slice(0,-1).slice(-10).map((m,i)=>i===0&&m.role==="user"?{role:"user",content:AI_BRIEF+"\n\nVisitor: "+m.content}:m);
+    if(turns[0].role!=="user") turns.shift();
+    if(!turns[0].content.startsWith("You are")) turns[0]={role:"user",content:AI_BRIEF+"\n\nVisitor: "+turns[0].content};
+    const r=await sampleFn(turns,{modelTier:"quick",cache:false,onText:({text})=>{ans.content=text;aiDraw();}});
+    ans.content=r.text;
+  }catch(err){ ans.content = err.code==="rate_limited" ? "I'm getting a lot of questions. Try again in a minute, or DM us on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok."; }
+  aiBusy=false; aiDraw();
+});
+function needMember(){ if(!db){toast("The site is still being set up.");return false;} if(!me){openAuth("signup");return false;} if(!profileMe){go("community");toast("Join free first. Pick a handle.");return false;} return true; }
+
+/* Join */
+$("#join-form").addEventListener("submit",async e=>{
+  e.preventDefault(); if(!db) return;
+  const handle=$("#j-handle").value.trim(); if(!handle) return;
+  try{ await db.collection("members").doc(me).set({handle, bio:$("#j-bio").value.trim(), joinedAt:Date.now()}); toast("Welcome to Meechie's World, "+handle); }
+  catch(err){ toast("Couldn't join: "+(err.message||err.code)); }
+});
+
+/* Feed */
+let posts=[], openReplies=new Set(), replyCache={}, replySubs={};
+function subFeed(){ db.collection("posts").orderBy("createdAt","desc").limit(100).onSnapshot(s=>{posts=s.docs.map(d=>({id:d.id,...d.data()}));renderFeed();renderAnnouncement();}, e=>console.warn(e)); }
+let pendingPhoto=null;
+$("#p-photo").addEventListener("change",async e=>{const f=e.target.files[0]; if(!f) return; try{pendingPhoto=await compress(f); $("#p-preview").src=pendingPhoto; $("#p-preview").hidden=false;}catch(err){toast(err.message);} });
+$("#p-post").addEventListener("click",async()=>{
+  if(!needMember()) return;
+  const text=$("#p-text").value.trim(); if(!text && !pendingPhoto){toast("Write something or add a photo.");return;}
+  const b=$("#p-post"); b.disabled=true;
+  const announce = isOwner && $("#p-announce").checked;
+  try{ await db.collection("posts").add({authorId:me,text,photo:pendingPhoto||"",likes:[],replyCount:0,sponsored:announce,announce,createdAt:Date.now()});
+    $("#p-text").value=""; $("#p-announce").checked=false; try{localStorage.removeItem("mw-dismissed");}catch(e){} pendingPhoto=null; $("#p-preview").hidden=true; $("#p-photo").value=""; toast("Posted"); }
+  catch(err){ toast("Couldn't post: "+(err.message||err.code)); }
+  b.disabled=false;
+});
+function renderFeed(){
+  const feed=$("#feed");
+  const rank=p=>(p.announce?2:0)+(p.sponsored?1:0);
+  const list=[...posts].sort((a,b)=>rank(b)-rank(a));
+  $("#feed-empty").hidden = list.length>0;
+  feed.querySelectorAll(".post").forEach(n=>n.remove());
+  list.forEach(p=>{
+    const liked=(p.likes||[]).includes(me);
+    const el=document.createElement("article"); el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
+    const shop=shopLinks(members[p.authorId]||{})[0];
+    el.innerHTML=`<div class="post-head"><span class="avatar">${esc(initial(handleOf(p.authorId)))}</span><div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(shop[1])}" target="_blank" rel="noopener">Shop</a>`:""}</div>
+      ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
+      ${p.photo?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}">`:""}
+      <div class="post-actions">
+        <button class="act ${liked?"on":""}" data-like="${p.id}">♥ ${(p.likes||[]).length||""} Like</button>
+        <button class="act" data-replies="${p.id}">💬 ${p.replyCount||""} Comment</button>
+        ${p.authorId!==me?`<button class="act" data-giftto="${p.authorId}">🎁 Gift</button>`:""}
+        ${isOwner?`<button class="act" data-sponsor="${p.id}">${p.sponsored?"Unpin":"Pin as promoted"}</button>`:""}
+        ${(p.authorId===me||isOwner)?`<button class="act" data-del="${p.id}">Delete</button>`:""}
+      </div>
+      <div class="replies" data-rbox="${p.id}" ${openReplies.has(p.id)?"":"hidden"}></div>`;
+    feed.appendChild(el);
+    if(openReplies.has(p.id)) drawReplies(p.id);
+  });
+}
+$("#feed").addEventListener("click",async e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  if(t.dataset.like){ if(!needMember())return; const p=posts.find(x=>x.id===t.dataset.like); const s=new Set(p.likes||[]); s.has(me)?s.delete(me):s.add(me);
+    db.doc("posts/"+p.id).update({likes:[...s]}).catch(err=>toast(err.message||err.code)); }
+  if(t.dataset.giftto){ openGift(t.dataset.giftto); return; }
+  if(t.dataset.replies){ const id=t.dataset.replies; if(openReplies.has(id)) openReplies.delete(id); else { openReplies.add(id); subReplies(id);} renderFeed(); }
+  if(t.dataset.sponsor){ const p=posts.find(x=>x.id===t.dataset.sponsor); db.doc("posts/"+p.id).update({sponsored:!p.sponsored}).catch(err=>toast(err.message||err.code)); }
+  if(t.dataset.del){ if(t.dataset.confirm){ db.doc("posts/"+t.dataset.del).delete().then(()=>toast("Deleted")).catch(err=>toast(err.message||err.code)); } else { t.dataset.confirm="1"; t.textContent="Tap again to delete"; } }
+});
+function subReplies(id){ if(replySubs[id]) return; replySubs[id]=db.collection("posts/"+id+"/replies").orderBy("createdAt","asc").limit(200).onSnapshot(s=>{replyCache[id]=s.docs.map(d=>d.data()); drawReplies(id);}, e=>console.warn(e)); }
+function drawReplies(id){
+  const box=document.querySelector(`[data-rbox="${id}"]`); if(!box) return;
+  const draft=box.querySelector("input")?.value||"";
+  box.innerHTML=(replyCache[id]||[]).map(r=>`<div class="reply"><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)}</div>`).join("")+
+    `<form class="reply-form" data-rform="${id}"><input type="text" id="r-${id}" maxlength="500" placeholder="Write a comment"><button class="btn sm" type="submit">Reply</button></form>`;
+  box.querySelector("input").value=draft;
+}
+$("#feed").addEventListener("submit",async e=>{
+  const f=e.target.closest("[data-rform]"); if(!f) return; e.preventDefault(); if(!needMember()) return;
+  const id=f.dataset.rform, inp=f.querySelector("input"), text=inp.value.trim(); if(!text) return; inp.value="";
+  try{ await db.collection("posts/"+id+"/replies").add({authorId:me,text,createdAt:Date.now()});
+    const p=posts.find(x=>x.id===id); db.doc("posts/"+id).update({replyCount:(p?.replyCount||0)+1}).catch(()=>{}); }
+  catch(err){ toast(err.message||err.code); }
+});
+
+/* Chat + walkie */
+let channel="lounge", chUnsub=null, msgs=[], room=null;
+function subChannel(ch){ chUnsub?.(); channel=ch; msgs=[]; renderMsgs();
+  $("#ch-name").textContent = ch==="walkie" ? "📻 walkie-talkie" : "# "+ch;
+  chUnsub=db.collection("chat/"+ch+"/msgs").orderBy("createdAt","desc").limit(80).onSnapshot(s=>{msgs=s.docs.map(d=>d.data()).reverse(); renderMsgs();}, e=>console.warn(e));
+  room?.presence({channel:ch}); updOnline();
+}
+function updOnline(){ const L=(room?.peers?.()||[]).filter(p=>p.presence?.radio).length; $("#listeners").textContent=L+" listening";
+  const n=(room?.peers?.()||[]).filter(p=>p.kind!=="agent" && p.presence?.channel===channel).length; $("#online").textContent="● "+Math.max(n, db?1:0)+" here now"; }
+function renderMsgs(){
+  const box=$("#msgs"); if(!box) return;
+  if(!msgs.length){ box.innerHTML='<div class="empty" style="border:0">No messages yet. Say hello.</div>'; return; }
+  box.innerHTML=msgs.map(m=>`<div class="msg ${m.authorId===me?"mine":""}"><small>${esc(handleOf(m.authorId))} · ${ago(m.createdAt)}</small>${m.text?esc(m.text):""}${m.audio?`<audio controls preload="none" src="${esc(m.audio)}"></audio>`:""}</div>`).join("");
+  box.scrollTop=box.scrollHeight;
+}
+$("#channels").addEventListener("click",e=>{const b=e.target.closest("[data-ch]"); if(!b||!db) return; $$("#channels [data-ch]").forEach(x=>x.setAttribute("aria-pressed",x===b)); subChannel(b.dataset.ch);});
+$("#chat-form").addEventListener("submit",async e=>{
+  e.preventDefault(); if(!needMember()) return;
+  const t=$("#chat-text").value.trim(); if(!t) return; $("#chat-text").value="";
+  db.collection("chat/"+channel+"/msgs").add({authorId:me,text:t,createdAt:Date.now()}).catch(err=>toast(err.message||err.code));
+});
+$("#voice").addEventListener("change",async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f||!needMember()) return;
+  if(f.size>190000){ toast("Clip too long. Keep it under about 15 seconds."); return; }
+  try{ const audio=await readFile(f); await db.collection("chat/"+channel+"/msgs").add({authorId:me,audio,createdAt:Date.now()}); toast("Voice clip sent"); }
+  catch(err){ toast(err.message||err.code); }
+});
+async function joinRoom(){
+  room=await claude.use("room"); if(!room) return;
+  room.presence({channel});
+  room.onPeers(()=>updOnline());
+}
+
+/* Ads */
+let ads=[], adCat="all", pendingAdPhoto="";
+function subAds(){ db.collection("ads").orderBy("createdAt","desc").limit(200).onSnapshot(s=>{ads=s.docs.map(d=>({id:d.id,...d.data()}));renderAds();}, e=>console.warn(e)); }
+function renderAds(){
+  const list=ads.filter(a=>adCat==="all"||a.cat===adCat).sort((a,b)=>(b.sponsored?1:0)-(a.sponsored?1:0));
+  $("#ads-empty").hidden=list.length>0;
+  $("#ads").innerHTML=list.map(a=>`<article class="ad ${a.sponsored?"sponsored":""}">${a.photo?`<img src="${esc(a.photo)}" alt="">`:""}
+    <div class="body"><span class="cat">${esc(a.cat)}${a.sponsored?' · <span class="badge">Promoted</span>':''}</span><h3>${esc(a.title)}</h3><p>${esc(a.desc)}</p></div>
+    <div class="foot"><span class="muted">${esc(a.contact)}</span><span style="display:flex;gap:4px">${isOwner?`<button class="act" data-asp="${a.id}">${a.sponsored?"Unpromote":"Promote"}</button>`:""}${(a.authorId===me||isOwner)?`<button class="act" data-adel="${a.id}">Delete</button>`:""}</span></div></article>`).join("");
+}
+$("#ad-filters").addEventListener("click",e=>{const c=e.target.closest("[data-cat]"); if(!c) return; adCat=c.dataset.cat; $$("#ad-filters .chip").forEach(x=>x.setAttribute("aria-pressed",x===c)); renderAds();});
+$("#ads").addEventListener("click",e=>{const t=e.target.closest("button"); if(!t) return;
+  if(t.dataset.asp){const a=ads.find(x=>x.id===t.dataset.asp); db.doc("ads/"+a.id).update({sponsored:!a.sponsored});}
+  if(t.dataset.adel){ if(t.dataset.confirm) db.doc("ads/"+t.dataset.adel).delete(); else {t.dataset.confirm="1"; t.textContent="Tap again";} }
+});
+$("#new-ad").addEventListener("click",()=>{ if(needMember()) $("#ad-dialog").showModal(); });
+$("#ad-cancel").addEventListener("click",()=>$("#ad-dialog").close());
+$("#a-photo").addEventListener("change",async e=>{const f=e.target.files[0]; if(f){ try{pendingAdPhoto=await compress(f,900);}catch(err){toast(err.message);} }});
+$("#ad-form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{ await db.collection("ads").add({authorId:me,title:$("#a-title").value.trim(),cat:$("#a-cat").value,desc:$("#a-desc").value.trim(),contact:$("#a-contact").value.trim(),photo:pendingAdPhoto,sponsored:false,createdAt:Date.now()});
+    $("#ad-form").reset(); pendingAdPhoto=""; $("#ad-dialog").close(); toast("Your ad is live"); }
+  catch(err){ toast("Couldn't post ad: "+(err.message||err.code)); }
+});
+
+/* Campaigns */
+$$("[data-tier]").forEach(b=>b.addEventListener("click",()=>{ $("#c-tier").value=b.dataset.tier; $("#c-biz").focus(); }));
+$("#camp-form").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const msg=`Campaign request: ${$("#c-tier").value}\nBusiness: ${$("#c-biz").value.trim()}\nReach me: ${$("#c-contact").value.trim()}\nLink: ${$("#c-link").value.trim()||"none"}\nPromote: ${$("#c-goal").value.trim()}`;
+  $("#inbox").textContent=msg; $("#owner-inbox").hidden=false;
+  navigator.clipboard?.writeText(msg).then(()=>toast("Copied. Paste it in a DM to us.")).catch(()=>{const r=document.createRange();r.selectNodeContents($("#inbox"));getSelection().removeAllRanges();getSelection().addRange(r);toast("Selected. Copy it and DM us.");});
+});
+function subInbox(){}
+
+
+/* ---------- Accounts ---------- */
+let authMode="signup";
+function openAuth(mode){ authMode=mode||"signup"; paintAuth(); $("#auth-msg").textContent=""; $("#auth-dialog").showModal(); }
+function paintAuth(){ const up=authMode==="signup"; $("#auth-title").textContent=up?"Join Meechie's World":"Welcome back"; $("#auth-sub").textContent=up?"Free forever. Post, chat, play, and design.":"Sign in to your account."; $("#auth-go").textContent=up?"Create my account":"Sign in"; $("#auth-switch").textContent=up?"I already have an account":"I need an account"; $("#auth-pass").autocomplete=up?"new-password":"current-password"; }
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-auth]"); if(!b) return; e.preventDefault(); if(b.dataset.auth==="signout"){ window.MW?.signOut?.(); return; } openAuth(b.dataset.auth); });
+$("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"signin":"signup"; paintAuth(); });
+$("#auth-forgot").addEventListener("click",async()=>{ const em=$("#auth-email").value.trim(); if(!em){ $("#auth-msg").textContent="Type your email first."; return; } const r=await MW.reset(em); $("#auth-msg").textContent=r.error?r.error.message:"Check your email for a reset link."; });
+$("#auth-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!window.MW?.ready){ $("#auth-msg").textContent="The site is still being set up."; return; }
+  const em=$("#auth-email").value.trim(), pw=$("#auth-pass").value; $("#auth-go").disabled=true; $("#auth-msg").textContent="One moment...";
+  const r= authMode==="signup" ? await MW.signUp(em,pw) : await MW.signIn(em,pw);
+  $("#auth-go").disabled=false;
+  if(r.error){ $("#auth-msg").textContent=r.error.message; return; }
+  if(authMode==="signup" && !r.data.session){ $("#auth-msg").textContent="Check your email to confirm your account, then sign in."; return; }
+  $("#auth-msg").textContent="You're in. Loading...";
+});
+function paintAuthBar(){ $("#authbar").innerHTML = me ? `<button class="btn ghost sm" type="button" data-auth="signout">Sign out</button>` : `<button class="btn sm" type="button" data-auth="signup">Join free</button>`; }
+window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
+boot();
+</script>
+</body>
+</html>
