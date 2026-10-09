@@ -112,9 +112,37 @@
       <div><b id="tv-local-h" style="color:var(--gold-hi)">📍 Local news</b> <form id="tv-place" style="display:inline-flex;gap:6px;margin-left:6px"><input type="search" id="tv-q" placeholder="Other city" aria-label="City for local TV" style="width:140px;background:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--text);font:16px var(--body)"><button class="btn ghost sm" type="submit">Go</button></form></div>
       <div class="tv-grid" id="tv-pgh"></div>
       <div class="tv-grid" id="tv-local"><small class="muted">Finding live local news...</small></div>
-      <b style="color:var(--gold-hi)">🌎 National & world</b>
-      <div class="tv-grid">${CH.map(([n, id]) => `<button class="tv-ch" type="button" data-ch="${id}" data-name="${E(n)}"><span class="dot"></span>${E(n)}</button>`).join("")}</div>`;
+      <b style="color:var(--gold-hi)">🌎 National & world · live now</b>
+      <div class="tv-grid" id="tv-nat"><small class="muted">Checking which channels are live...</small></div>
+      <b style="color:var(--gold-hi)">📺 More live channels</b>
+      <div class="lv-chips" id="tv-cats">${[["news", "News"], ["sports", "Sports"], ["music", "Music"], ["hip hop", "Hip Hop"], ["comedy", "Comedy"], ["kids cartoons", "Kids"], ["gospel church", "Gospel"], ["islamic quran", "Islamic"], ["nature animals", "Nature"], ["gaming", "Gaming"], ["weather", "Weather"]].map(([q, n]) => `<button class="chip" type="button" data-cat="${E(q)}" aria-pressed="false">${n}</button>`).join("")}</div>
+      <div class="tv-grid" id="tv-cat"></div>
+      <b style="color:var(--gold-hi)">🎬 Free movies</b>
+      <div class="lv-chips" id="tv-mg">${[["", "Popular"], ["action", "Action"], ["comedy", "Comedy"], ["drama", "Drama"], ["horror", "Horror"], ["thriller", "Thriller"], ["family", "Family"], ["western", "Western"], ["black cinema", "Black Cinema"], ["classic", "Classics"]].map(([g, n], i) => `<button class="chip" type="button" data-mg="${E(g)}" aria-pressed="${i === 0}">${n}</button>`).join("")}</div>
+      <div class="mv-grid" id="tv-movies"><small class="muted">Loading free movies...</small></div>`;
     stage.before(box);
+    const mvCss = document.createElement("style"); mvCss.textContent = `.mv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.mv{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0c0a07;color:var(--text);cursor:pointer;padding:0;text-align:left}.mv img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}.mv span{display:block;padding:6px 8px;font:600 12.5px var(--body);line-height:1.3;max-height:3.9em;overflow:hidden}.mv small{display:block;padding:0 8px 8px;color:var(--muted);font-size:11px}`; document.head.appendChild(mvCss);
+    const btn = (v, label) => `<button class="tv-ch" type="button" data-vid="${E(v.id)}" data-name="${E(label || v.channel || v.title)}" title="${E(v.title || "")}"><span class="dot"></span>${E(String(label || v.channel || v.title).slice(0, 34))}</button>`;
+    async function national() {
+      const el = box.querySelector("#tv-nat");
+      const j = await fetch("/api/yt?mode=channels&ids=" + CH.map((c) => c[1]).join(",")).then((r) => r.json()).catch(() => ({ list: [] }));
+      const live = (j.list || []).filter((x) => x.live && x.ok);
+      el.innerHTML = live.length ? live.map((x) => btn({ id: x.id }, (CH.find((c) => c[1] === x.channel) || [])[0])).join("") : '<small class="muted">None of the national channels are live this minute. Try More live channels below.</small>';
+    }
+    async function cat(q, chip) {
+      box.querySelectorAll("#tv-cats .chip").forEach((x) => x.setAttribute("aria-pressed", x === chip));
+      const el = box.querySelector("#tv-cat"); el.innerHTML = '<small class="muted">Finding live channels...</small>';
+      const j = await fetch("/api/yt?mode=live&q=" + encodeURIComponent(q)).then((r) => r.json()).catch(() => ({ list: [] }));
+      el.innerHTML = (j.list || []).length ? j.list.map((v) => btn(v)).join("") : '<small class="muted">Nothing live in that category right now. Try another.</small>';
+    }
+    async function movies(g, chip) {
+      if (chip) box.querySelectorAll("#tv-mg .chip").forEach((x) => x.setAttribute("aria-pressed", x === chip));
+      const el = box.querySelector("#tv-movies"); el.innerHTML = '<small class="muted">Loading free movies...</small>';
+      const j = await fetch("/api/yt?mode=movies&genre=" + encodeURIComponent(g || "")).then((r) => r.json()).catch(() => ({ list: [] }));
+      el.innerHTML = (j.list || []).length ? j.list.map((v) => `<button class="mv" type="button" data-vid="${E(v.id)}" data-name="${E(v.title)}" data-movie="1"><img src="https://i.ytimg.com/vi/${E(v.id)}/hqdefault.jpg" alt="" loading="lazy"><span>${E(v.title)}</span><small>${E(v.len)} · ${E(v.channel)}</small></button>`).join("") : '<small class="muted">No free movies found for that one. Try another genre.</small>';
+    }
+    box.querySelector("#tv-cats").addEventListener("click", (e) => { const c = e.target.closest("[data-cat]"); if (c) cat(c.dataset.cat, c); });
+    box.querySelector("#tv-mg").addEventListener("click", (e) => { const c = e.target.closest("[data-mg]"); if (c) movies(c.dataset.mg, c); });
     // Pittsburgh stations by name (shown to everyone in Meechie's area, and anyone can tap them)
     const PGH = [["KDKA · CBS 2", "KDKA CBS News Pittsburgh", "kdka|cbs news pittsburgh|cbs pittsburgh", "https://www.cbsnews.com/pittsburgh/"],
       ["WTAE · ABC 4", "WTAE Pittsburgh's Action News 4", "wtae|action news 4", "https://www.wtae.com/"],
@@ -130,7 +158,7 @@
       el.innerHTML = (j.list || []).length ? j.list.map((v) => `<button class="tv-ch" type="button" data-vid="${E(v.id)}" data-name="${E(v.channel || v.title)}" title="${E(v.title)}"><span class="dot"></span>${E((v.channel || v.title).slice(0, 34))}</button>`).join("") : '<small class="muted">No local stations are live right now. Local news usually streams around 6 AM, noon, 5–6 PM and 11 PM.</small>';
     }
     box.querySelector("#tv-place").addEventListener("submit", (e) => { e.preventDefault(); const q = box.querySelector("#tv-q").value.trim(); if (q) localTV(q); });
-    let tvLoaded = false; const tvMaybe = () => { if (!tvLoaded && !vidView.hidden) { tvLoaded = true; localTV(); } };
+    let tvLoaded = false; const tvMaybe = () => { if (!tvLoaded && !vidView.hidden) { tvLoaded = true; localTV(); national(); movies(""); } };
     new MutationObserver(tvMaybe).observe(vidView, { attributes: true, attributeFilter: ["hidden"] }); tvMaybe();
     box.addEventListener("click", async (e) => {
       const stb = e.target.closest("[data-st]");
@@ -139,10 +167,10 @@
         const j = await fetch("/api/localtv?station=" + encodeURIComponent(stb.dataset.st) + "&match=" + encodeURIComponent(stb.dataset.match)).then((r) => r.json()).catch(() => ({ list: [] }));
         stb.disabled = false; stb.innerHTML = old;
         if (j.list && j.list[0]) { const fake = document.createElement("button"); fake.dataset.vid = j.list[0].id; fake.dataset.name = stb.dataset.name; return playVid(fake, stb); }
-        box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === stb));
-        const f = vidView.querySelector("#yt-frame"); f.classList.remove("tall");
-        f.innerHTML = `<div class="yt-empty"><b style="font-size:20px;color:var(--gold-hi)">${E(stb.dataset.name)}</b><span>Not streaming on the open web right now. Their newscasts stream live on their own site.</span><a class="btn" href="${E(stb.dataset.site)}" target="_blank" rel="noopener">Watch on ${E(stb.dataset.name.split(" · ")[0])}'s site</a></div>`;
-        vidView.querySelector("#yt-now").innerHTML = ""; stage.scrollIntoView({ behavior: "smooth", block: "start" }); return;
+        const near = box.querySelector("#tv-local [data-vid]");
+        say(stb.dataset.name + " isn't live right now (local news streams around 6 AM, noon, 5–6 PM and 11 PM)." + (near ? " Playing the nearest live local news instead." : ""));
+        if (near) return playVid(near, near);
+        return;
       }
       const lv = e.target.closest("[data-vid]");
       if (lv) return playVid(lv, lv);
@@ -154,7 +182,7 @@
         try { if (typeof media !== "undefined" && !media.paused) media.pause(); if (window.MW_LIVE && !MW_LIVE.paused) MW_LIVE.pause(); } catch (_) {}
         const f = vidView.querySelector("#yt-frame"); f.classList.remove("tall");
         f.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(lv.dataset.vid)}?autoplay=1&rel=0" title="${E(lv.dataset.name)} live" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
-        vidView.querySelector("#yt-now").innerHTML = `<b>● ${E(lv.dataset.name)}</b><small>Local live TV</small>`;
+        vidView.querySelector("#yt-now").innerHTML = `<b>${lv.dataset.movie ? "🎬" : "●"} ${E(lv.dataset.name)}</b><small>${lv.dataset.movie ? "Free movie" : "Live TV"}</small>`;
         stage.scrollIntoView({ behavior: "smooth", block: "start" }); return;
       }
     }

@@ -208,9 +208,36 @@
   /* ---------- member videos (bucket "media", each member's own folder) ---------- */
   const VTYPES = { mp4: "video/mp4", m4v: "video/x-m4v", mov: "video/quicktime", webm: "video/webm", "3gp": "video/3gpp", mkv: "video/x-matroska" };
   window.MW.VIDEO_MAX = 50 * 1024 * 1024;
-  window.MW.uploadVideo = (file, onProg) => new Promise((res, rej) => {
+  /* Big phone videos (over 50 MB) get shrunk to 720p in the browser before uploading, so any clip can be posted. */
+  window.MW.shrinkVideo = (file, onProg) => new Promise((res, rej) => {
+    const v = document.createElement("video"); v.muted = false; v.playsInline = true; v.preload = "auto"; v.src = URL.createObjectURL(file);
+    v.onerror = () => rej(new Error("This phone can't read that video. Try a shorter clip."));
+    v.onloadedmetadata = async () => {
+      try {
+        const dur = v.duration || 60, scale = Math.min(1, 720 / Math.min(v.videoWidth || 720, v.videoHeight || 720));
+        const W = Math.round((v.videoWidth || 720) * scale / 2) * 2, H = Math.round((v.videoHeight || 1280) * scale / 2) * 2;
+        const kbps = Math.max(600, Math.min(2500, Math.floor((40 * 8 * 1024) / dur))); // aim under ~40 MB
+        const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
+        const vs = cv.captureStream(30); let as = null;
+        try { const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(), src = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination(); src.connect(dst); as = dst.stream; } catch (_) {}
+        const stream = new MediaStream([...vs.getVideoTracks(), ...(as ? as.getAudioTracks() : [])]);
+        const type = ["video/mp4;codecs=avc1", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+        const rec = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), videoBitsPerSecond: kbps * 1000, audioBitsPerSecond: 128000 }); const chunks = [];
+        rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+        rec.onstop = () => { URL.revokeObjectURL(v.src); const t = (rec.mimeType || "video/webm").split(";")[0]; res(new File(chunks, "clip." + (/mp4/.test(t) ? "mp4" : "webm"), { type: t })); };
+        const draw = () => { if (v.ended || v.paused) return; g.drawImage(v, 0, 0, W, H); if (onProg) onProg(Math.min(0.99, v.currentTime / dur)); requestAnimationFrame(draw); };
+        v.onended = () => { try { rec.stop(); } catch (_) {} };
+        rec.start(1000); await v.play(); draw();
+      } catch (err) { rej(new Error("Couldn't shrink that video: " + (err.message || err))); }
+    };
+  });
+  window.MW.uploadVideo = (file, onProg) => new Promise(async (res, rej) => {
     if (!session) return rej(new Error("Sign in first."));
-    if (file.size > window.MW.VIDEO_MAX) return rej(new Error("That video is over 50 MB. Trim it or record a shorter clip."));
+    if (file.size > window.MW.VIDEO_MAX) {
+      try { file = await window.MW.shrinkVideo(file, (f) => onProg && onProg(f * 0.5)); const p0 = onProg; onProg = p0 ? (f) => p0(0.5 + f * 0.5) : null; }
+      catch (err) { return rej(err); }
+      if (file.size > window.MW.VIDEO_MAX) return rej(new Error("That video is still over 50 MB after shrinking. Post a shorter clip (under about 3 minutes)."));
+    }
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     let type = file.type || VTYPES[ext] || "video/mp4";
     if (!/^video\//.test(type)) return rej(new Error("Pick a video file (MP4, MOV or WebM)."));

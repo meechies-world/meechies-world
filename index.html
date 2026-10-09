@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791583035">
+<meta name="mw-build" content="1791583373">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -750,6 +750,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#messages" data-go="messages">Messages<span class="dm-dot" hidden></span></a>
       <a href="#games" data-go="games">Games</a>
       <a href="#creators" data-go="creators">Creators</a>
+      <a href="#jobs" data-go="jobs">Jobs</a>
       <a href="#ads" data-go="ads">Ad Board</a>
       <a href="#promote" data-go="promote">Promote</a>
       <a href="#contact" data-go="contact">Contact</a>
@@ -1010,6 +1011,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 </section>
 
 <section class="view" id="v-books" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Meechie's World Inc publications</p><h2>Books</h2></div><p class="muted">Read Meechie's books right here, free for members. Pick up where you left off on any device.</p></div><div id="bk-root"></div></div></section>
+
+<section class="view" id="v-jobs" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Work & hiring</p><h2>Jobs</h2></div><p class="muted">Companies post jobs and find workers. Workers list their skills and get hired. Message each other right here.</p></div><div id="jb-root"></div></div></section>
 
 <section class="view" id="v-friends" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Your people</p><h2>Friends</h2></div><p class="muted">Add friends, accept requests, and see what your friends are posting.</p></div><div id="fr-root"></div></div></section>
 
@@ -1453,8 +1456,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791583035"></script>
-<script src="js/platform.js?v=1791583035"></script>
+<script src="js/config.js?v=1791583373"></script>
+<script src="js/platform.js?v=1791583373"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1466,7 +1469,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["home","services","shop","community","radio","clips","studio","books","friends","dating","videos","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","world","games","creators","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -1511,7 +1514,7 @@ function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.o
 /* ---------- Live platform ---------- */
 let db=null, user=null, me=null, isOwner=false, members={}, profileMe=null;
 const handleOf = id => members[id]?.handle || "Member";
-const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo); return ph ? `<span class="avatar" style="background:url('${esc(ph)}') center/cover"></span>` : `<span class="avatar">${esc(initial(m.handle))}</span>`; };
+const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo); return ph ? `<span class="avatar" data-uid="${esc(id)}" style="background:url('${esc(ph)}') center/cover"></span>` : `<span class="avatar" data-uid="${esc(id)}">${esc(initial(m.handle))}</span>`; };
 
 async function boot(){
   [db,user] = await Promise.all([claude.use("db"), claude.use("user")]);
@@ -2256,7 +2259,7 @@ $("#join-form").addEventListener("submit",async e=>{
 let posts=[], openReplies=new Set(), replyCache={}, replySubs={};
 function subFeed(){ db.collection("posts").orderBy("createdAt","desc").limit(100).onSnapshot(s=>{posts=s.docs.map(d=>({id:d.id,...d.data()}));renderFeed();renderAnnouncement();document.dispatchEvent(new Event("mw-posts"));}, e=>console.warn(e)); }
 let pendingPhoto=null, pendingVideo=null;
-function pickVideo(f,info,wrap){ if(!f) return null; if(f.size>MW.VIDEO_MAX){ toast("That video is over 50 MB. Trim it or record a shorter clip."); return null; } $(info).textContent=f.name+" · "+(f.size/1048576).toFixed(1)+" MB"; $(wrap).hidden=false; return f; }
+function pickVideo(f,info,wrap){ if(!f) return null; if(f.size>MW.VIDEO_MAX){ toast("Big video: it will be shrunk to 720p before posting."); } $(info).textContent=f.name+" · "+(f.size/1048576).toFixed(1)+" MB"; $(wrap).hidden=false; return f; }
 $("#p-video").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; pendingVideo=pickVideo(f,"#p-vinfo","#p-vwrap"); if(pendingVideo){ const v=$("#p-vprev"); try{ URL.revokeObjectURL(v.src); }catch(_){} v.src=URL.createObjectURL(pendingVideo); $("#p-vbar").style.width="0"; } });
 $("#p-vclear").addEventListener("click",()=>{ pendingVideo=null; const v=$("#p-vprev"); try{ URL.revokeObjectURL(v.src); }catch(_){} v.removeAttribute("src"); $("#p-vwrap").hidden=true; });
 $("#p-photo").addEventListener("change",async e=>{const f=e.target.files[0]; if(!f) return; try{pendingPhoto=await compress(f); $("#p-preview").src=pendingPhoto; $("#p-preview").hidden=false;}catch(err){toast(err.message);} });
@@ -2276,8 +2279,9 @@ $("#p-post").addEventListener("click",async()=>{
 const postEls=new Map();
 function renderFeed(){
   const feed=$("#feed");
-  const rank=p=>(p.announce?2:0)+(p.sponsored?1:0);
-  const list=[...posts].sort((a,b)=>rank(b)-rank(a));
+  const F=window.MW_FOLLOWING||new Set();
+  const rank=p=>(p.announce?4:0)+(p.sponsored?2:0)+(F.has(p.authorId)?1:0); // announcements, promoted, then people you follow, then everyone
+  const list=[...posts].sort((a,b)=>rank(b)-rank(a)||(b.createdAt||0)-(a.createdAt||0));
   $("#feed-empty").hidden = list.length>0;
   const keep=new Set(list.map(p=>p.id));
   for(const [id,el] of postEls) if(!keep.has(id)){ el.remove(); postEls.delete(id); }
@@ -2289,8 +2293,8 @@ function renderFeed(){
     if(!el){ el=document.createElement("article"); el.innerHTML='<div class="post-body"></div><div class="post-actions"></div><div class="replies" hidden></div>'; el.querySelector(".replies").dataset.rbox=p.id; postEls.set(p.id,el); }
     el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
     // Only rebuild the top part (text, photo, video) when it really changed, so a playing video keeps playing.
-    const bodySig=JSON.stringify([p.text,p.photo,p.video,p.announce,p.sponsored,handleOf(p.authorId),(members[p.authorId]||{}).photo,shop&&shop[1],me]);
-    if(el._sig!==bodySig){ el._sig=bodySig; el.querySelector(".post-body").innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${esc(p.authorId)}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(safeUrl(shop[1]))}" target="_blank" rel="noopener">Shop</a>`:""}</div>
+    const bodySig=JSON.stringify([p.text,p.photo,p.video,p.announce,p.sponsored,handleOf(p.authorId),(members[p.authorId]||{}).photo,shop&&shop[1],me,F.has(p.authorId)]);
+    if(el._sig!==bodySig){ el._sig=bodySig; el.querySelector(".post-body").innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="btn sm fl-btn ${F.has(p.authorId)?"on":""}" type="button" data-follow="${esc(p.authorId)}" style="margin-left:auto">${F.has(p.authorId)?"Following":"＋ Follow"}</button><button class="act" type="button" data-dm="${esc(p.authorId)}">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(safeUrl(shop[1]))}" target="_blank" rel="noopener">Shop</a>`:""}</div>
       ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
       ${/^data:image\//.test(p.photo||"")||/^https:\/\//.test(p.photo||"")?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}" loading="lazy">`:""}
       ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}
@@ -2464,20 +2468,22 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791583035"></script>
-<script src="js/studio.js?v=1791583035"></script>
-<script src="js/owner.js?v=1791583035"></script>
-<script src="js/messages.js?v=1791583035"></script>
-<script src="js/videos.js?v=1791583035"></script>
-<script src="js/world3d.js?v=1791583035"></script>
-<script src="js/clips.js?v=1791583035"></script>
-<script src="js/dj.js?v=1791583035"></script>
-<script src="js/live.js?v=1791583035"></script>
-<script src="js/autotune.js?v=1791583035"></script>
-<script src="js/beatlab.js?v=1791583035"></script>
-<script src="js/friends.js?v=1791583035"></script>
-<script src="js/dating.js?v=1791583035"></script>
-<script src="js/books.js?v=1791583035"></script>
-<script src="js/ai-widget.js?v=1791583035"></script>
+<script src="js/appnav.js?v=1791583373"></script>
+<script src="js/studio.js?v=1791583373"></script>
+<script src="js/owner.js?v=1791583373"></script>
+<script src="js/messages.js?v=1791583373"></script>
+<script src="js/videos.js?v=1791583373"></script>
+<script src="js/world3d.js?v=1791583373"></script>
+<script src="js/clips.js?v=1791583373"></script>
+<script src="js/dj.js?v=1791583373"></script>
+<script src="js/live.js?v=1791583373"></script>
+<script src="js/autotune.js?v=1791583373"></script>
+<script src="js/beatlab.js?v=1791583373"></script>
+<script src="js/friends.js?v=1791583373"></script>
+<script src="js/dating.js?v=1791583373"></script>
+<script src="js/books.js?v=1791583373"></script>
+<script src="js/social.js?v=1791583373"></script>
+<script src="js/jobs.js?v=1791583373"></script>
+<script src="js/ai-widget.js?v=1791583373"></script>
 </body>
 </html>

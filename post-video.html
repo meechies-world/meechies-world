@@ -70,7 +70,7 @@ video{width:100%;max-height:260px;border-radius:12px;background:#000}
     document.querySelectorAll("#where button").forEach(x=>x.setAttribute("aria-pressed",x===b)); $("#f-post").hidden=where!=="post"; $("#f-ad").hidden=where!=="ad"; });
   $("#file").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value="";
     if(!f){ $("#st").innerHTML='<span class="bad">No video was picked. Try again.</span>'; return; }
-    if(f.size>MW.VIDEO_MAX){ $("#st").innerHTML='<span class="bad">That video is over 50 MB. Trim it or record a shorter clip.</span>'; return; }
+    if(f.size>MW.VIDEO_MAX){ $("#st").innerHTML='<span class="muted">Big video: it will be shrunk to 720p before posting.</span>'; }
     file=f; $("#pick-t").textContent=f.name+" ("+(f.size/1048576).toFixed(1)+" MB)"; const v=$("#prev"); v.src=URL.createObjectURL(f); v.hidden=false; $("#st").textContent=""; $("#go").disabled=false; });
   $("#app").addEventListener("submit",async e=>{ e.preventDefault(); if(!file) return;
     if(where==="ad" && (!$("#title").value.trim()||!$("#desc").value.trim()||!$("#contact").value.trim())){ $("#st").innerHTML='<span class="bad">Fill in the headline, details and how people reach you.</span>'; return; }

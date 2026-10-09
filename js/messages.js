@@ -8,7 +8,7 @@
   const view = document.getElementById("v-messages");
   if (!view || !window.MW || !MW.ready) return;
   const sb = MW.sb;
-  let uid = null, all = [], other = null, q = "", timer = null, started = false;
+  let seenIds = null, uid = null, all = [], other = null, q = "", timer = null, started = false;
 
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const handle = (id) => (typeof members !== "undefined" && members[id] && members[id].handle) || "Member";
@@ -50,6 +50,8 @@
   async function load() {
     const { data, error } = await sb.from("dms").select("*").order("created_at", { ascending: false }).limit(600);
     if (error) { console.warn(error); return; }
+    const prevIds = seenIds; seenIds = new Set((data || []).map((r) => r.id));
+    if (prevIds) (data || []).forEach((r) => { if (!prevIds.has(r.id) && r.recipient === uid && r.sender !== uid && window.MW_NOTIFY) MW_NOTIFY("New message from " + handle(r.sender), voiceUrl(r.body) ? "🎙️ Voice message" : String(r.body).slice(0, 80)); });
     all = data || []; paintDot(); autoPlayVoices(); if (!view.hidden) render();
   }
   function later() { clearTimeout(timer); timer = setTimeout(load, 200); }

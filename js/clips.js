@@ -103,7 +103,7 @@ body.has-player #v-clips .rail{bottom:70px}`;
   fi.addEventListener("click", (e) => { if (typeof needMember === "function" && !needMember()) e.preventDefault(); });
   fi.addEventListener("change", (e) => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-    if (f.size > (MW.VIDEO_MAX || 52428800)) { say("That video is over 50 MB. Trim it or record a shorter clip."); return; }
+    if (f.size > (MW.VIDEO_MAX || 52428800)) say("Big video: it will be shrunk to 720p before posting (takes about as long as the video).");
     file = f; up.hidden = false; document.getElementById("clip-st").textContent = f.name + " · " + (f.size / 1048576).toFixed(1) + " MB"; document.getElementById("clip-bar").style.width = "0";
   });
   document.getElementById("clip-cancel").addEventListener("click", () => { file = null; up.hidden = true; });
