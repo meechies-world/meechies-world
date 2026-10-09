@@ -433,7 +433,8 @@ input[type=range]{accent-color:var(--gold);width:90px}
 body.has-player{padding-bottom:150px}
 @media (max-width:900px){.radio-top{grid-template-columns:1fr}}
 @media (max-width:640px){
-  .track{grid-template-columns:40px minmax(0,1fr) auto;}
+  .track{grid-template-columns:40px 44px minmax(0,1fr) auto;gap:8px;padding:10px}
+  .track .t b,.track .t small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .track .n,.track .d{display:none}
   .player-bar .wrap{grid-template-columns:minmax(0,1fr) auto}
   .pb-right{display:none}
@@ -660,6 +661,12 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   .req{grid-template-columns:1fr}
   .msg{max-width:90%}
 }
+</style>
+<style>
+@media (max-width:640px){#radio-note{top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
+.toast{max-width:calc(100vw - 32px);z-index:10000!important}
+.tt-box .tiktok-embed{min-width:0!important}
+@media (max-width:640px){.tt-box{padding:12px}}
 </style>
 <style>[hidden]{display:none!important} img{max-width:100%} :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 </head>
@@ -927,7 +934,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <div class="card">
         <h3 style="font-size:18px;margin-bottom:12px">Requests &amp; shoutouts</h3>
         <div class="req-list" id="req-list"><p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p></div>
-        <form class="reply-form" id="req-form"><input type="text" id="req-text" maxlength="160" placeholder="Play my song! / Shoutout to..." autocomplete="off"><button class="btn sm" type="submit">Send</button></form>
+        <form class="reply-form" id="req-form"><input type="text" id="req-text" aria-label="Request a song or shoutout" maxlength="160" placeholder="Play my song! / Shoutout to..." autocomplete="off"><button class="btn sm" type="submit">Send</button></form>
       </div>
     </div>
 
@@ -938,7 +945,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <div id="uploader" hidden>
       <div class="upload-row">
         <span class="btn file-btn">Upload tracks<input type="file" id="up-audio" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.mp4,.webm,video/mp4,video/webm" multiple aria-label="Upload tracks"></span>
-        <div class="field" style="flex:1;min-width:160px"><input type="text" id="up-artist" maxlength="60" placeholder="Artist name (default: Meechie)"></div>
+        <div class="field" style="flex:1;min-width:160px"><input type="text" id="up-artist" aria-label="Artist name" maxlength="60" placeholder="Artist name (default: Meechie)"></div>
         <button class="btn ghost sm" type="button" id="restart-station">Restart station from track 1</button>
       </div>
       <p style="margin:10px 0 0;display:flex;flex-wrap:wrap;gap:8px"><a class="btn sm" href="/upload.html">📱 Uploading from your phone? Use the simple uploader</a><button class="btn ghost sm" type="button" id="rn-sync">⟳ Sync my songs from ReverbNation</button></p>
@@ -1014,7 +1021,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
           <div class="prop" id="props" style="inset:0"></div><div class="vig"></div><span class="label" id="room-label">GOLD LOUNGE</span><span class="count" id="room-count">1 here</span>
         </div>
         <div class="emotes" id="emotes"><button class="chip" type="button" data-pose="wave">👋 Wave</button><button class="chip" type="button" data-pose="dance">💃 Dance</button><button class="chip" type="button" data-pose="sit">🪑 Sit</button><button class="chip" type="button" data-pose="stand">🧍 Stand</button></div>
-        <form class="say" id="say-form"><input type="text" id="say-text" maxlength="120" placeholder="Say something in the room" autocomplete="off"><button class="btn" type="submit">Say</button></form>
+        <form class="say" id="say-form"><input type="text" id="say-text" aria-label="Say something in the room" maxlength="120" placeholder="Say something in the room" autocomplete="off"><button class="btn" type="submit">Say</button></form>
         <div class="roomlog" id="roomlog" aria-live="polite"><span class="sys">Tap the floor to walk. Say something and everyone in the room sees it.</span></div>
         <p class="muted" id="world-status" style="font-size:13px;margin:8px 0 0">Sign in to enter rooms with other people.</p>
       </div>
@@ -1180,7 +1187,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
         <div class="msgs" id="msgs"><div class="empty" style="border:0">No messages yet. Say hello.</div></div>
         <form class="chat-input" id="chat-form">
           <label class="ptt" title="Send a voice clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><input type="file" id="voice" accept="audio/*" capture aria-label="Send a voice clip"></label>
-          <input type="text" id="chat-text" maxlength="500" placeholder="Message the channel" autocomplete="off">
+          <input type="text" id="chat-text" aria-label="Chat message" maxlength="500" placeholder="Message the channel" autocomplete="off">
           <button class="btn" type="submit">Send</button>
         </form>
       </div>
@@ -1269,7 +1276,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <h3 style="font-size:22px">Ask Meechie's AI</h3>
       <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
       <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
-      <form class="reply-form" id="ai-form"><input type="text" id="ai-q" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
+      <form class="reply-form" id="ai-form"><input type="text" id="ai-q" aria-label="Ask Meechie's AI" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
     </div>
     <div class="card paybox" style="margin-bottom:24px" data-paybox hidden>
       <h3 style="font-size:22px">Pay Meechie's World</h3>
@@ -1357,6 +1364,14 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   </div>
 </div>
 <video id="audio" playsinline preload="none" hidden></video>
+<dialog id="pw-dialog">
+  <form id="pw-form" method="dialog">
+    <h3 style="font-size:22px">Set a new password</h3>
+    <div class="field"><label for="pw-new">New password (at least 8 characters)</label><input type="password" id="pw-new" minlength="8" autocomplete="new-password" required></div>
+    <p class="muted" id="pw-msg" style="margin:0"></p>
+    <div style="display:flex;justify-content:flex-end"><button class="btn" type="submit">Save password</button></div>
+  </form>
+</dialog>
 <dialog id="auth-dialog">
   <form id="auth-form" method="dialog">
     <svg class="sqc-ico" aria-hidden="true" style="width:48px;height:48px;justify-self:center"><use href="#sqc"/></svg>
@@ -1383,6 +1398,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const safeUrl = u => /^https?:\/\/[^\s"'<>]+$/i.test(String(u||"").trim()) ? String(u).trim() : "#";
+const safeImg = u => /^https:\/\/[^\s"'()<>\\]+$/i.test(String(u||"")) ? String(u) : "";
 const initial = s => (String(s||"?").trim()[0]||"?").toUpperCase();
 function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2600)}
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
@@ -1422,7 +1439,7 @@ function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.o
 /* ---------- Live platform ---------- */
 let db=null, user=null, me=null, isOwner=false, members={}, profileMe=null;
 const handleOf = id => members[id]?.handle || "Member";
-const avatarOf = id => { const m=members[id]||{}; return m.photo && /^https:\/\//.test(m.photo) ? `<span class="avatar" style="background:url('${esc(m.photo).replace(/'/g,"%27")}') center/cover"></span>` : `<span class="avatar">${esc(initial(m.handle))}</span>`; };
+const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo); return ph ? `<span class="avatar" style="background:url('${esc(ph)}') center/cover"></span>` : `<span class="avatar">${esc(initial(m.handle))}</span>`; };
 
 async function boot(){
   [db,user] = await Promise.all([claude.use("db"), claude.use("user")]);
@@ -1432,11 +1449,13 @@ async function boot(){
   if(!me) $("#signed-out").hidden=false;
   paintAuthBar();
   { const meta=window.MW?.session?.()?.user?.user_metadata||{}; const nm=(meta.full_name||meta.name||"").trim(); if(nm && !$("#j-handle").value) $("#j-handle").value=nm.slice(0,30); }
-  db.collection("members").orderBy("joinedAt","desc").limit(200).onSnapshot(snap=>{
-    members={}; snap.docs.forEach(d=>members[d.id]=d.data());
+  let myDoc=null; window._membersRedraw=()=>{ if(window._lastMembersSnap && (!!myDoc)!==(!!profileMe)) window._membersSnap(window._lastMembersSnap); };
+  if(me) db.doc("members/"+me).onSnapshot(d=>{ myDoc=d.exists?d.data():null; if(myDoc){ members[me]=myDoc; } window._membersRedraw&&window._membersRedraw(); }, ()=>{});
+  db.collection("members").orderBy("joinedAt","desc").limit(500).onSnapshot(window._membersSnap=snap=>{
+    window._lastMembersSnap=snap; members={}; snap.docs.forEach(d=>members[d.id]=d.data()); if(myDoc) members[me]=myDoc;
     profileMe = members[me] || null;
     $("#join-card").hidden = !me || !!profileMe; $("#composer").hidden = !profileMe; $("#me-card").hidden = !profileMe;
-    if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=profileMe.photo?"":initial(profileMe.handle); $("#me-av").style.background=profileMe.photo?`url("${profileMe.photo}") center/cover`:""; { const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture; if(ph && !profileMe.photo && /^https:\/\//.test(ph)) db.doc("members/"+me).update({photo:ph}).catch(()=>{}); } $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
+    if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=profileMe.photo?"":initial(profileMe.handle); $("#me-av").style.background=safeImg(profileMe.photo)?`url("${safeImg(profileMe.photo)}") center/cover`:""; { const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture; if(ph && !profileMe.photo && /^https:\/\//.test(ph)) db.doc("members/"+me).update({photo:ph}).catch(()=>{}); } $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
     renderShops(); renderLive(); renderGifts();
     const list=snap.docs.slice(0,8);
     $("#members").innerHTML = list.length ? list.map(d=>`<div>${avatarOf(d.id)}<span><b>${esc(d.data().handle)}</b><br><small class="muted">${esc(d.data().bio||"Member")}</small></span>${d.id!==me?`<button class="act dm-btn" type="button" data-dm="${d.id}">Message</button>`:""}</div>`).join("") : '<p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p>';
@@ -1463,9 +1482,9 @@ function subLive(){ db.collection("live").limit(100).onSnapshot(s=>{ lives=s.doc
 function renderLive(){
   const strip=$("#live-strip"); strip.hidden=!lives.length;
   const sorted=[...lives].sort((a,b)=>(b.host?1:0)-(a.host?1:0));
-  strip.innerHTML=sorted.map(l=>`<a class="live-card ${l.host?"host":""}" href="${esc(l.url)}" target="_blank" rel="noopener"><span><span class="live-dot"></span><b>${esc(handleOf(l.id))}</b> ${l.host?'<span class="badge">Host</span>':''}</span><small>${esc(l.title)}</small><span style="font-size:13px;color:var(--gold-hi);font-weight:700">Watch live →</span></a>`).join("");
+  strip.innerHTML=sorted.map(l=>`<a class="live-card ${l.host?"host":""}" href="${esc(safeUrl(l.url))}" target="_blank" rel="noopener"><span><span class="live-dot"></span><b>${esc(handleOf(l.id))}</b> ${l.host?'<span class="badge">Host</span>':''}</span><small>${esc(l.title)}</small><span style="font-size:13px;color:var(--gold-hi);font-weight:700">Watch live →</span></a>`).join("");
   const host=sorted.find(l=>l.host); $("#host-live").hidden=!host;
-  if(host){ $("#host-live-title").textContent=host.title; $("#host-live-link").href=host.url; }
+  if(host){ $("#host-live-title").textContent=host.title; $("#host-live-link").href=safeUrl(host.url); }
   $("#end-live").hidden=!lives.some(l=>l.id===me);
 }
 $("#go-live").addEventListener("click",()=>{ if(needMember()) $("#live-dialog").showModal(); });
@@ -1504,7 +1523,7 @@ const shopLinks=m=>[["Printify",m.printify],["Shopify",m.shopify],["Store",m.sto
 function renderShops(){
   const list=Object.entries(members).filter(([,m])=>shopLinks(m).length);
   if(!list.length) return;
-  $("#shops").innerHTML=list.map(([id,m])=>`<div class="shop"><span class="avatar">${esc(initial(m.handle))}</span><div><b>${esc(m.handle)}</b><br><small class="muted">${esc(m.bio||"")}</small><div class="links">${shopLinks(m).map(([n,u])=>`<a class="shop-link" href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join("")}</div></div></div>`).join("");
+  $("#shops").innerHTML=list.map(([id,m])=>`<div class="shop"><span class="avatar">${esc(initial(m.handle))}</span><div><b>${esc(m.handle)}</b><br><small class="muted">${esc(m.bio||"")}</small><div class="links">${shopLinks(m).map(([n,u])=>`<a class="shop-link" href="${esc(safeUrl(u))}" target="_blank" rel="noopener">${n}</a>`).join("")}</div></div></div>`).join("");
 }
 
 /* ---------- Virtual world ---------- */
@@ -1523,8 +1542,12 @@ let look={skin:"#a26a43",hair:"fade",hairColor:"#111111",outfit:"suit",outfitCol
 let myFace="";
 try{ const s=JSON.parse(localStorage.getItem("mw-look")||"null"); if(s) look={...look,...s}; }catch(e){}
 let _clipN=0;
+const LOOK_DEF={skin:"#a26a43",hair:"fade",hairColor:"#111111",outfit:"suit",outfitColor:"#111111",extra:"none",trim:"#d4a843",print:"none",printColor:"#d4a843"};
+function cleanLook(L){ const o={...(L||{})}; for(const k in LOOK_DEF){ const v=o[k]; if(OPTS[k]&&!OPTS[k].vals.includes(v)) o[k]=(k in OPTS && /^#[0-9a-f]{6}$/i.test(v||"") && OPTS[k].vals[0].startsWith("#"))? v : LOOK_DEF[k]; } o.printText=String(o.printText||"").slice(0,10); o.photo=!!o.photo; return o; }
+const cleanFace = f => /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(f||"") ? f : "";
 function avatarSVG(L,pose,face){
-  pose=pose||"stand";
+  L=cleanLook(L); face=cleanFace(face);
+  pose=["stand","wave","dance","sit"].includes(pose)?pose:"stand";
   const s=L.skin, hc=L.hairColor, oc=L.outfitColor, trim=L.trim||"#d4a843", sh="#000";
   const dark=c=>`${c}`;
   let hairBack="", hairFront="";
@@ -2064,7 +2087,7 @@ function renderDesigns(){
   $("#designs").innerHTML=list.map(d=>{ const v=(d.votes||[]).includes(me);
     return `<article class="design ${d.selected?"picked":""}"><img src="${esc(d.img)}" data-front="${esc(d.img)}" ${d.img2?`data-back="${esc(d.img2)}"`:""} alt="${esc(d.title)}">${d.selected?'<span class="badge pick">Selected for the store</span>':""}
     <div class="dz"><b>${esc(d.title)}</b><small class="muted">by ${esc(handleOf(d.authorId))}</small>${d.note?`<small class="muted">${esc(d.note)}</small>`:""}
-    <div class="fit-acts">${d.img2?`<button class="act" type="button" data-flip="${d.id}">Flip</button>`:""}${d.art&&(d.authorId===me||isOwner)?`<a class="act" download="${esc(d.title)}" href="${esc(d.art)}">Art file</a>`:""}<button class="btn sm ${v?"":"ghost"}" type="button" data-vote="${d.id}">🔥 ${(d.votes||[]).length}</button>${isOwner?`<button class="act" type="button" data-pick="${d.id}">${d.selected?"Unselect":"Select for store"}</button>`:""}${(d.authorId===me||isOwner)?`<button class="act" type="button" data-ddel="${d.id}">Delete</button>`:""}</div></div></article>`; }).join("");
+    <div class="fit-acts">${d.img2?`<button class="act" type="button" data-flip="${d.id}">Flip</button>`:""}${/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(d.art||"")&&(d.authorId===me||isOwner)?`<a class="act" download="${esc(d.title)}" href="${esc(d.art)}">Art file</a>`:""}<button class="btn sm ${v?"":"ghost"}" type="button" data-vote="${d.id}">🔥 ${(d.votes||[]).length}</button>${isOwner?`<button class="act" type="button" data-pick="${d.id}">${d.selected?"Unselect":"Select for store"}</button>`:""}${(d.authorId===me||isOwner)?`<button class="act" type="button" data-ddel="${d.id}">Delete</button>`:""}</div></div></article>`; }).join("");
 }
 $("#dg-sort").addEventListener("click",e=>{ const b=e.target.closest("[data-sort]"); if(!b) return; dSort=b.dataset.sort; $$("#dg-sort .chip").forEach(x=>x.setAttribute("aria-pressed",x===b)); renderDesigns(); });
 $("#designs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
@@ -2129,30 +2152,36 @@ $("#p-post").addEventListener("click",async()=>{
   catch(err){ if(vid) MW.deleteVideo(vid.path); toast("Couldn't post: "+(err.message||err.code)); }
   b.disabled=false; b.textContent="Post";
 });
+const postEls=new Map();
 function renderFeed(){
   const feed=$("#feed");
   const rank=p=>(p.announce?2:0)+(p.sponsored?1:0);
   const list=[...posts].sort((a,b)=>rank(b)-rank(a));
   $("#feed-empty").hidden = list.length>0;
-  feed.querySelectorAll(".post").forEach(n=>n.remove());
+  const keep=new Set(list.map(p=>p.id));
+  for(const [id,el] of postEls) if(!keep.has(id)){ el.remove(); postEls.delete(id); }
+  let prev=null;
   list.forEach(p=>{
     const liked=(p.likes||[]).includes(me);
-    const el=document.createElement("article"); el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
     const shop=shopLinks(members[p.authorId]||{})[0];
-    el.innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${p.authorId}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(shop[1])}" target="_blank" rel="noopener">Shop</a>`:""}</div>
+    let el=postEls.get(p.id);
+    if(!el){ el=document.createElement("article"); el.innerHTML='<div class="post-body"></div><div class="post-actions"></div><div class="replies" hidden></div>'; el.querySelector(".replies").dataset.rbox=p.id; postEls.set(p.id,el); }
+    el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
+    // Only rebuild the top part (text, photo, video) when it really changed, so a playing video keeps playing.
+    const bodySig=JSON.stringify([p.text,p.photo,p.video,p.announce,p.sponsored,p.createdAt>Date.now()-36e5?Math.floor(Date.now()/6e4):0,handleOf(p.authorId),(members[p.authorId]||{}).photo,shop&&shop[1],me]);
+    if(el._sig!==bodySig){ el._sig=bodySig; el.querySelector(".post-body").innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${esc(p.authorId)}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(safeUrl(shop[1]))}" target="_blank" rel="noopener">Shop</a>`:""}</div>
       ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
-      ${p.photo?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}">`:""}
-      ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}
-      <div class="post-actions">
-        <button class="act ${liked?"on":""}" data-like="${p.id}">♥ ${(p.likes||[]).length||""} Like</button>
-        <button class="act" data-replies="${p.id}">💬 ${p.replyCount||""} Comment</button>
-        ${p.authorId!==me?`<button class="act" data-giftto="${p.authorId}">🎁 Gift</button>`:""}
-        ${isOwner?`<button class="act" data-sponsor="${p.id}">${p.sponsored?"Unpin":"Pin as promoted"}</button>`:""}
-        ${(p.authorId===me||isOwner)?`<button class="act" data-del="${p.id}">Delete</button>`:""}
-      </div>
-      <div class="replies" data-rbox="${p.id}" ${openReplies.has(p.id)?"":"hidden"}></div>`;
-    feed.appendChild(el);
-    if(openReplies.has(p.id)) drawReplies(p.id);
+      ${/^data:image\//.test(p.photo||"")||/^https:\/\//.test(p.photo||"")?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}" loading="lazy">`:""}
+      ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}`; }
+    el.querySelector(".post-actions").innerHTML=`
+        <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">♥ ${(p.likes||[]).length||""} Like</button>
+        <button class="act" data-replies="${esc(p.id)}">💬 ${p.replyCount||""} Comment</button>
+        ${p.authorId!==me?`<button class="act" data-giftto="${esc(p.authorId)}">🎁 Gift</button>`:""}
+        ${isOwner?`<button class="act" data-sponsor="${esc(p.id)}">${p.sponsored?"Unpin":"Pin as promoted"}</button>`:""}
+        ${(p.authorId===me||isOwner)?`<button class="act" data-del="${esc(p.id)}">Delete</button>`:""}`;
+    const rb=el.querySelector(".replies"), open=openReplies.has(p.id); if(rb.hidden===open){ rb.hidden=!open; if(open) drawReplies(p.id); }
+    const want=prev?prev.nextSibling:feed.querySelector(".post"); if(el!==want) (prev? prev.after(el) : (feed.querySelector(".post")? feed.querySelector(".post").before(el) : feed.appendChild(el)));
+    prev=el;
   });
 }
 $("#feed").addEventListener("click",async e=>{
@@ -2225,7 +2254,7 @@ function renderAds(){
 }
 $("#ad-filters").addEventListener("click",e=>{const c=e.target.closest("[data-cat]"); if(!c) return; adCat=c.dataset.cat; $$("#ad-filters .chip").forEach(x=>x.setAttribute("aria-pressed",x===c)); renderAds();});
 $("#ads").addEventListener("click",e=>{const t=e.target.closest("button"); if(!t) return;
-  if(t.dataset.asp){const a=ads.find(x=>x.id===t.dataset.asp); db.doc("ads/"+a.id).update({sponsored:!a.sponsored});}
+  if(t.dataset.asp){const a=ads.find(x=>x.id===t.dataset.asp); db.doc("ads/"+a.id).update({sponsored:!a.sponsored}).catch(err=>toast(err.message||err.code));}
   if(t.dataset.adel){ if(t.dataset.confirm){ const vp=(ads.find(x=>x.id===t.dataset.adel)||{}).videoPath; db.doc("ads/"+t.dataset.adel).delete().then(()=>{ if(vp) MW.deleteVideo(vp); }); } else {t.dataset.confirm="1"; t.textContent="Tap again";} }
 });
 $("#new-ad").addEventListener("click",()=>{ if(needMember()) $("#ad-dialog").showModal(); });
@@ -2264,6 +2293,12 @@ $("#auth-fb").addEventListener("click",async()=>{ if(!window.MW?.ready) return; 
   const r=await MW.sb.auth.signInWithOAuth({provider:"facebook",options:{redirectTo:location.origin+"/",scopes:"email public_profile"}});
   if(r.error) $("#auth-msg").textContent=r.error.message; });
 $("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"signin":"signup"; paintAuth(); });
+function showRecovery(){ try{sessionStorage.setItem("mw_recovery","1");}catch(_){} const d=$("#pw-dialog"); if(!d.open) d.showModal(); }
+window.MW && (MW.onRecovery=showRecovery);
+try{ if(window.MW?.recovery || sessionStorage.getItem("mw_recovery")==="1") setTimeout(showRecovery,300); }catch(_){}
+$("#pw-form").addEventListener("submit",async e=>{ e.preventDefault(); const pw=$("#pw-new").value; if(pw.length<8){ $("#pw-msg").textContent="Use at least 8 characters."; return; }
+  const r=await MW.setPassword(pw); if(r.error){ $("#pw-msg").textContent=r.error.message; return; }
+  try{sessionStorage.removeItem("mw_recovery");}catch(_){} $("#pw-dialog").close(); toast("Password saved. You're signed in."); });
 $("#auth-forgot").addEventListener("click",async()=>{ const em=$("#auth-email").value.trim(); if(!em){ $("#auth-msg").textContent="Type your email first."; return; } const r=await MW.reset(em); $("#auth-msg").textContent=r.error?r.error.message:"Check your email for a reset link."; });
 $("#auth-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!window.MW?.ready){ $("#auth-msg").textContent="The site is still being set up."; return; }
   const em=$("#auth-email").value.trim(), pw=$("#auth-pass").value; $("#auth-go").disabled=true; $("#auth-msg").textContent="One moment...";

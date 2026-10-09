@@ -74,7 +74,7 @@
       const r = Math.min(170 / img.width, 170 / img.height);
       const l = addLayer({ type: "img", w: img.width * r, h: img.height * r, size: 100, x: 240, y: 230, name: file.name.replace(/\.[^.]+$/, "").slice(0, 24) || "My art" });
       imgs.set(l.id, img);
-      if (!S.art) S.art = { img, name: l.name };
+      if (!S.art || asArt) S.art = { img, name: l.name, id: l.id };
       if (asArt) { const t = $("#st-title"); if (t && !t.value) t.value = l.name; }
     };
     img.onerror = () => say("That file isn't an image we can read. Use PNG, JPG, or WEBP.");
@@ -178,7 +178,8 @@
     p.innerHTML = h;
   }
   function syncSliders() { const l = cur(); if (!l) return; const s = $("#sp-size"), r = $("#sp-rot"); if (s) s.value = Math.round(l.size); if (r) r.value = l.rot; }
-  function remove(id) { S.layers = S.layers.filter((l) => l.id !== id); imgs.delete(id); S.sel = null; S.dirty = true; ui(); draw(); }
+  function remove(id) { S.layers = S.layers.filter((l) => l.id !== id); imgs.delete(id);
+    if (S.art && S.art.id === id) { const nx = S.layers.find((l) => l.type === "img" && imgs.get(l.id)); S.art = nx ? { img: imgs.get(nx.id), name: nx.name, id: nx.id } : null; } S.sel = null; S.dirty = true; ui(); draw(); }
 
   $("#st-garments").addEventListener("click", (e) => { const b = e.target.closest("[data-g]"); if (b) { S.garment = b.dataset.g; ui(); draw(); } });
   $("#st-colors").addEventListener("click", (e) => { const b = e.target.closest("[data-c]"); if (b) { S.color = b.dataset.c; ui(); draw(); } });

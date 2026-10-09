@@ -68,7 +68,7 @@
     const msgs = all.filter((r) => (r.sender === uid && r.recipient === other) || (r.sender === other && r.recipient === uid)).slice().reverse();
     thread.innerHTML = `<div class="dm-head"><button type="button" class="act dm-back" data-back>← Back</button><span class="avatar">${E(ini(handle(other)))}</span><b>${E(handle(other))}</b></div>
 <div class="dm-msgs" id="dm-msgs">${msgs.length ? msgs.map((r) => `<div class="dm-b ${r.sender === uid ? "me" : ""}"><div>${E(r.body)}</div><small>${when(r.created_at)}${r.sender === uid && r.read_at ? " · seen" : ""}</small></div>`).join("") : `<p class="muted" style="text-align:center;margin:auto">Say hello to ${E(handle(other))}.</p>`}</div>
-<form class="dm-form" id="dm-form"><input type="text" id="dm-in" maxlength="2000" placeholder="Write a private message" autocomplete="off" required><button class="btn" type="submit">Send</button></form>`;
+<form class="dm-form" id="dm-form"><input type="text" id="dm-in" aria-label="Message" maxlength="2000" placeholder="Write a private message" autocomplete="off" required><button class="btn" type="submit">Send</button></form>`;
     const box = document.getElementById("dm-msgs"); if (box) box.scrollTop = box.scrollHeight;
     markRead();
   }

@@ -40,7 +40,7 @@ body.mw-editing #ai-fab{display:none!important}`;
   panel.id = "ai-panel"; panel.hidden = true; panel.setAttribute("aria-label", "Meechie's AI chat");
   panel.innerHTML = `<header><svg class="sqc-ico" aria-hidden="true" style="width:30px;height:30px"><use href="#sqc"/></svg><div><b>Meechie's AI</b><small>Answers 24/7 · any language</small></div><button type="button" id="ai-close" aria-label="Close">×</button></header>
 <div id="ai-log2" aria-live="polite"></div><div class="ai-chips" id="ai-chips"></div>
-<form id="ai-form2"><input id="ai-in2" maxlength="500" autocomplete="off" placeholder="Ask anything about Meechie's World"><button type="submit">Send</button></form>`;
+<form id="ai-form2"><input id="ai-in2" aria-label="Ask Meechie's AI" maxlength="500" autocomplete="off" placeholder="Ask anything about Meechie's World"><button type="submit">Send</button></form>`;
   document.body.append(fab, panel);
   const log = panel.querySelector("#ai-log2"), chips = panel.querySelector("#ai-chips"), inp = panel.querySelector("#ai-in2");
 

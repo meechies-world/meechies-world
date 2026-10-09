@@ -66,7 +66,7 @@ a{color:var(--gold-hi)}
   function uploadXHR(file,id,type,onProg){ return new Promise((res,rej)=>{
     const x=new XMLHttpRequest();
     x.open("POST", MW_CONFIG.SUPABASE_URL+"/storage/v1/object/assets/"+id);
-    x.setRequestHeader("authorization","Bearer "+session.access_token);
+    x.setRequestHeader("authorization","Bearer "+MW.session().access_token);
     x.setRequestHeader("apikey",MW_CONFIG.SUPABASE_ANON_KEY);
     x.setRequestHeader("content-type",type);
     x.setRequestHeader("x-upsert","false");
@@ -98,7 +98,7 @@ a{color:var(--gold-hi)}
         await uploadXHR(p.file,id,type,f=>{ p.prog=f; const b=$("#b"+i); if(b) b.style.width=Math.round(f*100)+"%"; set("Uploading "+Math.round(f*100)+"%","muted"); });
         await db.collection("tracks").add({title:p.file.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").trim().slice(0,120),artist,assetId:id,duration:Math.round(d),cover:"",addedAt:Date.now()});
         p.done=true; p.prog=1; set("Done ✓","ok");
-      }catch(err){ p.done=true; set(err.message||"Failed","bad"); }
+      }catch(err){ p.done=false; p.prog=0; set((err.message||"Failed")+" · tap Upload to retry","bad"); }
     }
     $("#pick").style.pointerEvents=""; draw();
   });

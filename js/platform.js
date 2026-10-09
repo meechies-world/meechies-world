@@ -33,7 +33,9 @@
     const next = s?.user?.id || null;
     sessionReady.then(() => {
       const cur = session?.user?.id || null;
-      if (next !== cur && (evt === "SIGNED_IN" || evt === "SIGNED_OUT")) setTimeout(() => location.reload(), 50);
+      if (evt !== "PASSWORD_RECOVERY" && next !== cur && (evt === "SIGNED_IN" || evt === "SIGNED_OUT")) setTimeout(() => location.reload(), 50);
+      else if (s && next === cur) session = s; // keep the fresh token after auto-refresh
+      if (evt === "PASSWORD_RECOVERY") { session = s; window.MW.recovery = true; if (typeof window.MW.onRecovery === "function") window.MW.onRecovery(); }
     });
   });
 
@@ -47,8 +49,12 @@
   function docSnap(row, path) {
     return { id: row ? lastOf(row.path) : lastOf(path), exists: !!row, data: () => (row ? row.data : undefined), metadata: {} };
   }
+  // Drop rows whose id or author fields aren't plain ids, so nothing user-made can sneak HTML into the page.
+  const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
+  const ID_KEYS = ["authorId", "from", "to", "uid", "by"];
+  const cleanRow = (r) => r && SAFE_ID.test(lastOf(r.path || "")) && r.data && typeof r.data === "object" && ID_KEYS.every((k) => r.data[k] == null || (typeof r.data[k] === "string" && SAFE_ID.test(r.data[k])));
   function querySnap(rows) {
-    const docs = rows.map((r) => docSnap(r));
+    const docs = rows.filter(cleanRow).map((r) => docSnap(r));
     return { docs, size: docs.length, empty: docs.length === 0, docChanges: () => docs.map((d, i) => ({ type: "added", doc: d, oldIndex: -1, newIndex: i })), metadata: {} };
   }
 
@@ -245,6 +251,7 @@
   window.MW.signUp = (email, password) => sb.auth.signUp({ email, password });
   window.MW.signIn = (email, password) => sb.auth.signInWithPassword({ email, password });
   window.MW.signOut = () => sb.auth.signOut();
+  window.MW.setPassword = (password) => sb.auth.updateUser({ password });
   window.MW.reset = (email) => sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin });
   window.MW.session = () => session;
   window.MW.sessionReady = sessionReady;
