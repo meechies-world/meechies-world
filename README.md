@@ -34,3 +34,9 @@ hosted free on **Cloudflare Pages**.
 ## Not on yet
 - AI assistant and AI look-alike matching (needs an AI API key and a small server function).
 - Face verification, passkey login, end-to-end encrypted DMs, paid coins, in-site video live.
+
+## Owner tools (after you are made admin)
+- **✎ Edit site** (bottom-left): tap any text and type, change colors, edit link addresses, and hide pages.
+  Saved in one row (`site/content`), shown to everyone.
+- **Messages** tab: private member-to-member messages (`dms` table, readable only by sender and recipient).
+- Database updates live in `supabase/update-owner-and-messages.sql`.

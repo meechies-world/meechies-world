@@ -630,6 +630,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#radio" data-go="radio">Radio</a>
       <a href="#world" data-go="world">Virtual World</a>
       <a href="#chat" data-go="chat">Chat &amp; Walkie</a>
+      <a href="#messages" data-go="messages">Messages<span class="dm-dot" hidden></span></a>
       <a href="#games" data-go="games">Games</a>
       <a href="#creators" data-go="creators">Creators</a>
       <a href="#ads" data-go="ads">Ad Board</a>
@@ -1083,6 +1084,19 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 </section>
 
 <!-- CONTACT -->
+<section class="view" id="v-messages" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Just between you two</p><h2>Messages</h2></div>
+      <p class="muted">Send a private message to any member. Only you and the other person can read it.</p>
+    </div>
+    <div class="dm-app">
+      <div class="dm-side"><input class="dm-search" type="search" placeholder="Find a member to message" aria-label="Find a member"><div class="dm-list"></div></div>
+      <div class="dm-thread"></div>
+    </div>
+  </div>
+</section>
+
 <section class="view" id="v-contact" hidden>
   <div class="wrap">
     <div class="section-head">
@@ -1197,7 +1211,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["home","services","community","radio","world","games","creators","chat","ads","promote","contact"];
+const VIEWS=["home","services","community","radio","world","games","creators","chat","messages","ads","promote","contact"];
 function go(v){ if(!VIEWS.includes(v)) v="home";
   VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
   $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -1246,7 +1260,7 @@ async function boot(){
     if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=initial(profileMe.handle); $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
     renderShops(); renderLive(); renderGifts();
     const list=snap.docs.slice(0,8);
-    $("#members").innerHTML = list.length ? list.map(d=>`<div><span class="avatar">${esc(initial(d.data().handle))}</span><span><b>${esc(d.data().handle)}</b><br><small class="muted">${esc(d.data().bio||"Member")}</small></span></div>`).join("") : '<p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p>';
+    $("#members").innerHTML = list.length ? list.map(d=>`<div><span class="avatar">${esc(initial(d.data().handle))}</span><span><b>${esc(d.data().handle)}</b><br><small class="muted">${esc(d.data().bio||"Member")}</small></span>${d.id!==me?`<button class="act dm-btn" type="button" data-dm="${d.id}">Message</button>`:""}</div>`).join("") : '<p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p>';
     renderFeed(); renderAds(); renderMsgs();
   }, err=>console.warn(err));
   subFeed(); subAds(); subChannel("lounge"); joinRoom(); subLive(); subGifts(); enterWorld();
@@ -1916,7 +1930,7 @@ function renderFeed(){
     const liked=(p.likes||[]).includes(me);
     const el=document.createElement("article"); el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
     const shop=shopLinks(members[p.authorId]||{})[0];
-    el.innerHTML=`<div class="post-head"><span class="avatar">${esc(initial(handleOf(p.authorId)))}</span><div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(shop[1])}" target="_blank" rel="noopener">Shop</a>`:""}</div>
+    el.innerHTML=`<div class="post-head"><span class="avatar">${esc(initial(handleOf(p.authorId)))}</span><div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${p.authorId}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(shop[1])}" target="_blank" rel="noopener">Shop</a>`:""}</div>
       ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
       ${p.photo?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}">`:""}
       <div class="post-actions">
@@ -2044,5 +2058,7 @@ function paintAuthBar(){ $("#authbar").innerHTML = me ? `<button class="btn ghos
 window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
 boot();
 </script>
+<script src="js/owner.js"></script>
+<script src="js/messages.js"></script>
 </body>
 </html>

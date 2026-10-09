@@ -30,7 +30,7 @@ create or replace function public.path_allowed(p_path text, p_coll text) returns
 language sql stable as $$
   select auth.uid() is not null
      and case
-       when p_coll in ('tracks', 'radio') then public.is_admin()
+       when p_coll in ('tracks', 'radio', 'site') then public.is_admin()
        when p_coll in ('members', 'scores', 'live') then p_path = p_coll || '/' || auth.uid()::text or public.is_admin()
        else true
      end
