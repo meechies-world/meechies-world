@@ -1842,13 +1842,19 @@ function subRadio(){
 }
 $("#req-form").addEventListener("submit",e=>{ e.preventDefault(); if(!needMember()) return; const t=$("#req-text").value.trim(); if(!t) return; $("#req-text").value="";
   db.collection("requests").add({authorId:me,text:t,createdAt:Date.now()}).then(()=>toast("Sent to the station")).catch(err=>toast(err.message||err.code)); });
-function mediaDuration(file){ return new Promise(res=>{ const v=document.createElement("video"); v.preload="metadata"; const u=URL.createObjectURL(file); v.onloadedmetadata=()=>{res(v.duration||0);URL.revokeObjectURL(u);}; v.onerror=()=>{res(0);URL.revokeObjectURL(u);}; v.src=u; }); }
+function mediaDuration(file){ return new Promise(res=>{
+  const isVid=/^video\//.test(file.type)||/\.(mp4|mov|webm)$/i.test(file.name);
+  const v=document.createElement(isVid?"video":"audio"); v.preload="metadata"; v.muted=true; const u=URL.createObjectURL(file); let done=false;
+  const finish=d=>{ if(done) return; done=true; URL.revokeObjectURL(u); const est=/\.wav$/i.test(file.name)? file.size/176400 : file.size*8/192000; res(isFinite(d)&&d>0? d : est); };
+  v.onloadedmetadata=()=>finish(v.duration); v.onerror=()=>finish(0); setTimeout(()=>finish(0),6000); v.src=u; try{ v.load(); }catch(_){} }); }
 $("#up-audio").addEventListener("change",async e=>{
-  const files=[...e.target.files]; e.target.value=""; if(!files.length||!assets) return;
-  const artist=$("#up-artist").value.trim()||"Meechie"; let done=0;
+  const files=[...e.target.files]; e.target.value="";
+  const st=$("#up-status"); if(!files.length){ st.textContent="No file was picked. On iPhone, the song must be saved in the Files app (Apple Music songs can't be uploaded)."; return; }
+  if(!assets){ st.textContent="Only the owner can upload. Sign in with your owner account."; return; }
+  const artist=$("#up-artist").value.trim()||"Meechie"; let done=0, failed=false;
   for(const f of files){
     const ext=(f.name.split(".").pop()||"").toLowerCase();
-    if(f.size>50*1024*1024){ toast(f.name+" is over 50 MB. Export it smaller (MP3 at 192 kbps works great)."); continue; }
+    if(f.size>50*1024*1024){ st.textContent=f.name+" is over 50 MB. Export it smaller (MP3 at 192 kbps works great)."; continue; }
     $("#up-status").textContent="Uploading "+f.name+"...";
     try{
       const duration=await mediaDuration(f);
@@ -1857,8 +1863,9 @@ $("#up-audio").addEventListener("change",async e=>{
       const up=await assets.upload(f,{type});
       await db.collection("tracks").add({title:f.name.replace(/\.[^.]+$/,"").replace(/[_-]+/g," "),artist,assetId:up.id,duration:Math.round(duration),cover:"",addedAt:Date.now()});
       done++;
-    }catch(err){ toast(f.name+": "+(err.code==="unsupported_type"?"that file type isn't supported. Use MP3, WAV, M4A, MP4 or WebM.":(err.message||err.code))); }
+    }catch(err){ const m=f.name+" didn't upload: "+(err.code==="unsupported_type"?"that file type isn't supported. Use MP3, WAV, M4A, MP4 or WebM.":(err.message||err.code||"unknown error")); toast(m); st.textContent=m; failed=true; }
   }
+  if(failed && !done) return;
   $("#up-status").textContent= done ? `Added ${done} track${done>1?"s":""}. They're in the Library and on the radio rotation.` : "Upload MP3, WAV, M4A, AAC, OGG, MP4 or WebM files up to 50 MB each. Music videos play too. Only you see this.";
 });
 
