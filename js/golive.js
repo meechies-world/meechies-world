@@ -17,7 +17,8 @@
   const EMO = { rose: "🌹", mic: "🎤", gold: "🪙", crown: "👑", fire: "🔥", diamond: "💎" };
   const MAX_VIEWERS = 12;
   const myPeer = Math.random().toString(36).slice(2, 12);
-  let lives = [], battles = [], hosting = null, watching = {}, chatLog = [], titleDraft = "", shellKey = "";
+  let lives = [], battles = [], hosting = null, watching = {}, chatLog = [], titleDraft = "", shellKey = "", statusMsg = "";
+  function status(t) { statusMsg = t || ""; const el = root.querySelector("#gl-status"); if (el) { el.textContent = statusMsg; el.style.display = statusMsg ? "" : "none"; } if (t) say(t); }
 
   const css = document.createElement("style");
   css.textContent = `
@@ -59,6 +60,7 @@
     shellKey = key;
     root.innerHTML = `
       <div class="gl-host-ctrl">${hosting ? `<button class="btn" type="button" id="gl-end" style="background:#e5484d;color:#fff">■ End my live</button><button class="btn ghost" type="button" id="gl-flip">🔄 Flip camera</button><button class="btn ghost" type="button" id="gl-battle">⚔️ Start a battle</button><span class="muted" id="gl-vc">0 watching</span>` : `<input type="text" id="gl-title" maxlength="80" placeholder="What's your live about?" value="${E(titleDraft)}" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)"><button class="btn" type="button" id="gl-go" style="background:#e5484d;color:#fff">🎥 Go live</button>`}</div>
+      <div id="gl-status" class="muted" style="font-size:14px;${statusMsg ? "" : "display:none;"}padding:10px 12px;border:1px solid #e5484d;border-radius:12px;background:#1a0d0d;color:#ffd6d6">${E(statusMsg)}</div>
       <div class="gl-stage" id="gl-stage"></div>
       <div id="gl-battlebox"></div>
       <h3 class="sub-h" style="margin:8px 0 0">Live now on Meechie's World</h3>
@@ -111,9 +113,10 @@
     if (!ME()) { if (typeof openAuth === "function") openAuth("signup"); return; }
     if (hosting) return;
     if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      say("This browser can't use the camera. If you opened the link inside TikTok, Instagram, Snapchat or Facebook, tap ⋯ and choose Open in Safari or Chrome."); return;
+      status("This browser can't use the camera. If you opened the link inside TikTok, Instagram, Snapchat or Facebook, tap ⋯ and choose Open in Safari or Chrome."); return;
     }
     const btn = root.querySelector("#gl-go"); if (btn) { btn.disabled = true; btn.textContent = "Starting camera…"; }
+    status(""); const el0 = root.querySelector("#gl-status"); if (el0) { el0.style.display = ""; el0.textContent = "Asking for your camera… if a box pops up, tap Allow."; }
     const reset = () => { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = "🎥 Go live"; } };
     let stream = null, lastErr = null;
     const tries = [
@@ -124,15 +127,16 @@
     for (const c of tries) { try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch (e) { lastErr = e; if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) break; } }
     if (!stream) {
       reset(); const n = lastErr && lastErr.name;
-      say(n === "NotAllowedError" || n === "SecurityError" ? "Camera is blocked. Tap the 🔒 or aA next to the web address, allow Camera and Microphone, then try again."
+      status(n === "NotAllowedError" || n === "SecurityError" ? "Camera is blocked. Tap the 🔒 or aA next to the web address, allow Camera and Microphone, then try again."
         : n === "NotFoundError" ? "No camera was found on this device."
         : n === "NotReadableError" ? "Your camera is being used by another app. Close it (FaceTime, TikTok, Zoom) and try again."
-        : "Couldn't start the camera" + (lastErr && lastErr.message ? ": " + lastErr.message : "."));
+        : "Couldn't start the camera (" + (n || "unknown") + (lastErr && lastErr.message ? ": " + lastErr.message : "") + ")");
       return;
     }
+    status("");
     if (!stream.getAudioTracks().length) say("Going live without sound: the microphone wasn't allowed.");
     let room;
-    try { room = await joinRoom(ME()); } catch (e) { stream.getTracks().forEach((t) => t.stop()); reset(); say(e.message || "Couldn't connect. Try again."); return; }
+    try { room = await joinRoom(ME()); } catch (e) { stream.getTracks().forEach((t) => t.stop()); reset(); status(e.message || "Couldn't connect. Try again."); return; }
     hosting = { stream, room, peers: {}, title: titleDraft.trim() || "Live with " + HANDLE(ME()) };
     wireChat(room, ME());
     room.on("want", async ({ data }) => {
@@ -253,6 +257,7 @@
     const d = await claude.use("db"); if (!d) { render(); return; }
     d.collection("live").limit(100).onSnapshot((s) => { lives = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!view.hidden) render(); document.querySelectorAll('[data-go="live"]').forEach((a) => a.classList.toggle("has-live", lives.some(isLive))); }, () => {});
     d.collection("battles").orderBy("createdAt", "desc").limit(20).onSnapshot((s) => { battles = s.docs.map((x) => ({ id: x.id, ...x.data() })); paintBattle(); }, () => {});
+    try { navigator.permissions && navigator.permissions.query({ name: "camera" }).then((p) => { const chk = () => { if (p.state === "denied" && !hosting) status("Your camera is blocked for this site. Tap the 🔒 or aA next to the web address → Website settings → allow Camera and Microphone, then reload."); else if (statusMsg.startsWith("Your camera is blocked")) status(""); }; chk(); p.onchange = chk; }).catch(() => {}); } catch (_) {}
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     render();
   }
