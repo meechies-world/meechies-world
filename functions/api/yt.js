@@ -52,6 +52,7 @@ export async function onRequestGet({ request }) {
       const genre = (url.searchParams.get("genre") || "").slice(0, 30);
       const raw = await search((genre ? genre + " " : "") + "full movie free", false);
       const long = raw.filter((v) => !v.live && /^\d+:\d{2}:\d{2}$/.test(v.len) && MOVIE_CHANNELS.test(v.channel));
+      if (url.searchParams.get("debug")) return json({ raw: raw.slice(0, 20).map((v) => [v.channel, v.len, v.title.slice(0, 40)]) }, 0);
       return json({ genre, list: await keepPlayable(long, 12) }, 3600);
     }
   } catch (err) { return json({ list: [], error: String(err && err.message || err) }, 60); }
