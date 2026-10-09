@@ -11,7 +11,7 @@
   "use strict";
   const SEL = "h1,h2,h3,h4,p,li,small,label,span,a,button,b,strong,em,td,th,div,summary,legend";
   const SKIP = "input,textarea,select,option,script,style,svg,canvas,dialog,.toast,#authbar,#mw-bar,#mw-fab,[data-noedit]";
-  const PAY = [["spotlight", "Spotlight $50"], ["featured", "Featured $150"], ["takeover", "Takeover $400"], ["deposit", "Service deposit $50"], ["custom", "Any amount (invoice or quote)"]];
+  const PAY = [["spotlight", "Spotlight $50"], ["featured", "Featured $150"], ["takeover", "Takeover $400"], ["deposit", "Service deposit $50"], ["custom", "Any amount (invoice or quote)"], ["donate", "Donations (support)"]];
   const THEME = [["--gold", "Gold"], ["--ink", "Background"], ["--panel", "Cards"], ["--text", "Text"]];
   const DEFAULTS = { "--gold": "#d4a843", "--ink": "#0b0a08", "--panel": "#15130f", "--text": "#f3ecdc" };
   const root = document.documentElement;

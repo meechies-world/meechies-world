@@ -584,6 +584,8 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .paybox{text-align:center}
 .tier .pay-btn{margin-top:8px;width:100%;justify-content:center}
 .pay-btn.pay-unset{opacity:.6;border-style:dashed}
+.support{display:grid;justify-items:center;text-align:center;gap:10px;margin:28px auto;max-width:720px;border-color:var(--gold-lo)}
+.support h3{font-family:var(--display);font-size:26px;color:var(--gold-hi)}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -722,6 +724,13 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a class="tile wide" href="#contact" data-go="contact"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><h3>Meechie's AI</h3><p>Ask about services and pricing any time, day or night. Or DM us.</p><span class="go">Ask now →</span></a>
     </div>
 
+    <div class="card support" data-paybox hidden>
+      <svg class="sqc-ico" aria-hidden="true" style="width:44px;height:44px"><use href="#sqc"/></svg>
+      <h3>Support Meechie's World</h3>
+      <p class="muted">Love the community, the radio, and the free features? Chip in any amount to help keep it all running and growing.</p>
+      <div class="pay-row"><a class="btn pay-btn" data-pay="donate" href="#" hidden>Donate</a></div>
+      <small class="muted">Meechie's World is a business, not a charity, so contributions are not tax-deductible. Thank you for the love.</small>
+    </div>
     <div class="roadmap">
       <div><p class="eyebrow">Coming with the public launch</p><h3>Security &amp; more</h3></div>
       <ul>
@@ -1118,7 +1127,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   <div class="wrap">
     <div class="section-head">
       <div><p class="eyebrow">Ad campaigns</p><h2>Promote with us</h2></div>
-      <p class="muted">We put your content in front of the whole community: pinned in the feed, gold-framed on the Ad Board, and shouted out on our TikTok.</p>
+      <p class="muted">We put your content in front of the whole community and promote it on all of our social media: pinned in the feed, gold-framed on the Ad Board, and shouted out on our TikTok, Snapchat, and every Meechie's World page.</p>
     </div>
     <div class="tiers">
       <div class="tier"><h3>Spotlight</h3><div class="price">$50 <small>/ 7 days</small></div><ul><li>Gold "Promoted" badge</li><li>Top of the Ad Board</li><li>One pinned feed post</li></ul><button class="btn ghost" type="button" data-tier="Spotlight">Choose Spotlight</button><a class="btn pay-btn" data-pay="spotlight" href="#" hidden>Pay $50 now</a></div>
@@ -1176,6 +1185,13 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <h3 style="font-size:22px">Pay Meechie's World</h3>
       <p class="muted" style="margin:6px 0 14px">Pay securely by card, Apple Pay, Google Pay, or Cash App Pay. Checkout is handled by Stripe. We never see your card number.</p>
       <div class="pay-row"><a class="btn pay-btn" data-pay="deposit" href="#" hidden>Pay $50 deposit</a><a class="btn ghost pay-btn" data-pay="custom" href="#" hidden>Pay an invoice or quote</a></div>
+    </div>
+    <div class="card support" style="margin-bottom:24px" data-paybox hidden>
+      <svg class="sqc-ico" aria-hidden="true" style="width:44px;height:44px"><use href="#sqc"/></svg>
+      <h3>Support Meechie's World</h3>
+      <p class="muted">Love the community, the radio, and the free features? Chip in any amount to help keep it all running and growing.</p>
+      <div class="pay-row"><a class="btn pay-btn" data-pay="donate" href="#" hidden>Donate</a></div>
+      <small class="muted">Meechie's World is a business, not a charity, so contributions are not tax-deductible. Thank you for the love.</small>
     </div>
     <div class="socials">
       <a class="social" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener"><span class="ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 3c.4 2.2 1.8 3.7 4 3.9v3.1a7.5 7.5 0 0 1-4-1.2v6.4a6 6 0 1 1-6-6h.6v3.2a2.8 2.8 0 1 0 2.2 2.8V3h3.2Z"/></svg></span><div><b>TikTok</b><span>@meechiesworldinc</span></div></a>
@@ -2123,5 +2139,6 @@ boot();
 <script src="js/studio.js"></script>
 <script src="js/owner.js"></script>
 <script src="js/messages.js"></script>
+<script src="js/ai-widget.js"></script>
 </body>
 </html>
