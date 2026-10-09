@@ -301,7 +301,7 @@ body.mw-editing{padding-bottom:300px}
       if (editing) return; // never overwrite while the owner is typing
       load(snap.exists ? snap.data() : null); cache(); applyAll();
     }, () => {});
-    if (admin) { buildUI(); document.getElementById("mw-fab").hidden = false; }
+    if (admin) { safe(() => localStorage.setItem("mw_owner_device", "1")); buildUI(); document.getElementById("mw-fab").hidden = false; }
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();

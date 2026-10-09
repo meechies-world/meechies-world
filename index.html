@@ -2210,7 +2210,7 @@ let authMode="signup";
 function openAuth(mode){ authMode=mode||"signup"; paintAuth(); $("#auth-msg").textContent=""; $("#auth-dialog").showModal(); }
 function paintAuth(){ const up=authMode==="signup"; $("#auth-title").textContent=up?"Join Meechie's World":"Welcome back"; $("#auth-sub").textContent=up?"Free forever. Post, chat, play, and design.":"Sign in to your account."; $("#auth-go").textContent=up?"Create my account":"Sign in"; $("#auth-switch").textContent=up?"I already have an account":"I need an account"; $("#auth-pass").autocomplete=up?"new-password":"current-password"; }
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-auth]"); if(!b) return; e.preventDefault(); if(b.dataset.auth==="signout"){ window.MW?.signOut?.(); return; } openAuth(b.dataset.auth); });
-if(window.MW_CONFIG?.FACEBOOK_LOGIN) $("#auth-social").hidden=false;
+{ let ownerDev=false; try{ ownerDev=localStorage.getItem("mw_owner_device")==="1"; }catch(_){} if(window.MW_CONFIG?.FACEBOOK_LOGIN && (window.MW_CONFIG?.FACEBOOK_PUBLIC || ownerDev)) $("#auth-social").hidden=false; }
 $("#auth-fb").addEventListener("click",async()=>{ if(!window.MW?.ready) return; $("#auth-msg").textContent="Opening Facebook...";
   const r=await MW.sb.auth.signInWithOAuth({provider:"facebook",options:{redirectTo:location.origin+"/",scopes:"email public_profile"}});
   if(r.error) $("#auth-msg").textContent=r.error.message; });
