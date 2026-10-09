@@ -27,7 +27,15 @@
       adminFlag = !!r.data;
     }
   })();
-  if (sb) sb.auth.onAuthStateChange((evt) => { if (evt === "SIGNED_IN" || evt === "SIGNED_OUT") setTimeout(() => location.reload(), 50); });
+  // Reload only when the signed-in person actually changes (sign in / sign out),
+  // never on the session-restored or token-refresh events that fire on every load.
+  if (sb) sb.auth.onAuthStateChange((evt, s) => {
+    const next = s?.user?.id || null;
+    sessionReady.then(() => {
+      const cur = session?.user?.id || null;
+      if (next !== cur && (evt === "SIGNED_IN" || evt === "SIGNED_OUT")) setTimeout(() => location.reload(), 50);
+    });
+  });
 
   const uid = () => session?.user?.id || null;
   const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36)).replace(/-/g, "").slice(0, 20);
