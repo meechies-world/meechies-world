@@ -558,6 +558,22 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .authbar{flex:none;margin-left:8px}
 #auth-dialog form{display:grid;gap:14px}
 @media (max-width:640px){.authbar{position:absolute;right:16px;top:12px}}
+.offer{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:18px auto 0;max-width:1060px}
+.offer>div{background:linear-gradient(180deg,#17130c,#0f0d09);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:6px;text-align:center}
+.offer b{color:var(--gold-hi);font-family:var(--display)}.offer span{color:var(--muted);font-size:14px;line-height:1.5}.offer a{color:var(--gold-hi)}
+.studio2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:24px;align-items:start;margin-top:18px}
+.studio2 .studio-canvas canvas{aspect-ratio:480/540;touch-action:none;cursor:grab}
+.st-bar{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center;margin-top:12px}
+.st-panel{display:grid;gap:18px}.st-sec{display:grid;gap:10px}.st-sec>b{color:var(--gold-hi);letter-spacing:.04em}
+.st-r{display:grid;grid-template-columns:78px minmax(0,1fr);gap:10px;align-items:center}.st-r>label{color:var(--muted);font-size:13px}
+.st-r input[type=text],.st-r select,.st-sec .field input,.st-add select{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:var(--text);font:inherit}
+.st-r input[type=range]{width:100%}.st-r input[type=color],.st-colors input[type=color]{width:38px;height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:none}
+.st-colors{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.st-sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}.st-sw.on{border-color:var(--gold-hi);box-shadow:0 0 0 2px var(--gold-lo)}
+.st-add{display:flex;flex-wrap:wrap;gap:8px}.st-add select{width:auto}.st-add .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}.st-add .file-btn{position:relative;overflow:hidden}
+.st-inl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.st-chk{display:flex;gap:8px;align-items:center;color:var(--text)!important}
+.st-layers{display:grid;gap:6px}.st-l{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:14px}.st-l.on{border-color:var(--gold);background:rgba(212,168,67,.1)}
+.st-props{display:grid;gap:10px}
+@media (max-width:900px){.studio2{grid-template-columns:1fr}}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -692,7 +708,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a class="tile" href="#community" data-go="community"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span><h3>Go Live</h3><p>Share your live. When Meechie goes live, everybody knows.</p><span class="go">Go live →</span></a>
       <a class="tile" href="#ads" data-go="ads"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9h18l-2 11H5zM7 9l2-5h6l2 5"/></svg></span><h3>Shops &amp; Free Ads</h3><p>Link your Printify or Shopify. List your business free.</p><span class="go">Browse →</span></a>
       <a class="tile wide" href="#promote" data-go="promote"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11v2a2 2 0 0 0 2 2h2l6 5V4L7 9H5a2 2 0 0 0-2 2zM17 8a5 5 0 0 1 0 8"/></svg></span><h3>Promote With Us</h3><p>Spotlight, Featured, and Takeover campaigns from $50.</p><span class="go">See packages →</span></a>
-      <a class="tile wide" href="#contact" data-go="contact"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><h3>Message Meechie</h3><p>DM us on TikTok or Snapchat, or email. We answer fast.</p><span class="go">Get in touch →</span></a>
+      <a class="tile wide" href="#contact" data-go="contact"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><h3>Meechie's AI</h3><p>Ask about services and pricing any time, day or night. Or DM us.</p><span class="go">Ask now →</span></a>
     </div>
 
     <div class="roadmap">
@@ -935,25 +951,43 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <p class="muted center-p">Outfits members designed for their avatars. Tap Try on to wear one, then style your own in the Virtual World and share it here.</p>
     <div class="wardrobe" id="wardrobe"><div class="empty">No outfits yet. Design one in the <a href="#world" data-go="world">Virtual World</a> and tap Share this outfit.</div></div>
 
+    <h3 class="sub-h" style="margin-top:56px">What Meechie's World Apparel offers</h3>
+    <p class="muted center-p">Design it here, get it voted on, and have it made. Everything below is how it works.</p>
+    <div class="offer">
+      <div><b>Design in your browser</b><span>T-shirts, long sleeves, hoodies, sweatshirts, and tanks in any color. Add text, symbols, and your own art, drag to place it, and design the front and back.</span></div>
+      <div><b>Upload your finished art</b><span>Already have the artwork? Upload it, place it on the garment, and submit. A transparent PNG, 3000 pixels or bigger, prints best.</span></div>
+      <div><b>Community vote</b><span>Members vote with 🔥 on every design. The designs we pick get added to the Meechie's World store.</span></div>
+      <div><b>Made on demand</b><span>Printing is print-on-demand, so there is no stock to buy up front. Orders are printed and shipped as they come in.</span></div>
+      <div><b>Your share, in writing</b><span>If your design is picked, we agree your share of each sale in writing before anything goes on sale. Nothing is guaranteed.</span></div>
+      <div><b>Want your own clothing line?</b><span>We set up your designs, your store, and your printing. Services start at $50 and are quoted per job. <a href="#contact" data-go="contact">Ask us</a></span></div>
+      <div><b>Avatar clothes are free</b><span>Dress your character in the Virtual World, then share the outfit to the Wardrobe above.</span></div>
+      <div><b>Your art stays yours</b><span>By submitting you confirm the artwork is yours. We only use it if we contact you and you agree.</span></div>
+    </div>
+
     <h3 class="sub-h" style="margin-top:56px">Clothing Design Studio</h3>
-    <p class="muted center-p">Design a piece for the Meechie's World clothing line. The community votes, and the designs we pick go into the store.</p>
-    <div class="studio">
-      <div class="studio-canvas"><canvas id="ds-canvas" width="480" height="540" aria-label="Your clothing design preview"></canvas></div>
-      <form class="card studio-form" id="ds-form">
-        <div class="req">
-          <div class="field"><label for="ds-garment">Garment</label><select id="ds-garment"><option value="tee">T-shirt</option><option value="hoodie">Hoodie</option></select></div>
-          <div class="field"><label for="ds-color">Garment color</label><select id="ds-color"><option value="#111111">Black</option><option value="#f3ecdc">Cream</option><option value="#d4a843">Gold</option><option value="#7a1f2b">Burgundy</option><option value="#1f3d7a">Royal blue</option><option value="#2f6b45">Forest</option><option value="#ffffff">White</option></select></div>
-          <div class="field"><label for="ds-l1">Top line</label><input type="text" id="ds-l1" maxlength="18" value="MEECHIE'S WORLD"></div>
-          <div class="field"><label for="ds-l2">Bottom line</label><input type="text" id="ds-l2" maxlength="18" value="CONSCIENTIA"></div>
-          <div class="field"><label for="ds-font">Lettering</label><select id="ds-font"><option value="Cinzel">Classic serif</option><option value="Cinzel Decorative">Ornate</option><option value="Hanken Grotesk">Modern</option><option value="Cormorant Garamond">Script italic</option></select></div>
-          <div class="field"><label for="ds-ink">Ink color</label><select id="ds-ink"><option value="#d4a843">Gold</option><option value="#f3ecdc">Cream</option><option value="#111111">Black</option><option value="#b0263a">Red</option><option value="#ffffff">White</option></select></div>
-          <div class="field"><label for="ds-symbol">Symbol</label><select id="ds-symbol"><option value="emblem">All-seeing eye</option><option value="compass">Square &amp; compass</option><option value="none">None</option><option value="upload">My own image</option></select></div>
-          <div class="field"><label for="ds-size">Graphic size</label><input type="range" id="ds-size" min="40" max="160" value="110"></div>
-          <div class="field full" id="ds-up-wrap" hidden><label for="ds-upload">Your graphic (PNG or JPG)</label><input type="file" id="ds-upload" accept="image/*"></div>
-          <div class="field full"><label for="ds-title">Design name</label><input type="text" id="ds-title" maxlength="50" placeholder="e.g. Gold Eye Classic Tee" required></div>
-        </div>
-        <button class="btn" type="submit">Submit design</button>
-        <p class="muted" style="font-size:13px;margin:0">By submitting you confirm the artwork is yours. If we add it to the store, we'll contact you to agree your share of each sale in writing.</p>
+    <p class="muted center-p">Design your piece, or just upload your art. Tap anything on the shirt to edit it.</p>
+    <div class="studio2">
+      <div class="st-left">
+        <div class="studio-canvas"><canvas id="st-canvas" aria-label="Your clothing design. Drag items to move them."></canvas></div>
+        <div class="st-bar"><div id="st-viewbtns" class="filters"></div><button class="btn ghost sm" type="button" id="st-dl">Download picture</button></div>
+      </div>
+      <form class="card st-panel" id="st-form">
+        <div class="st-sec"><b>1 · Garment</b><div id="st-garments" class="filters"></div>
+          <div class="st-r"><label>Color</label><div id="st-colors" class="st-colors"></div></div>
+          <div class="st-r"><label>Fabric</label><select id="st-tex"><option value="none">Smooth</option><option value="heather">Heather</option></select></div></div>
+        <div class="st-sec"><b>2 · Add to your design</b>
+          <div class="st-add">
+            <label class="btn sm file-btn">⬆ Upload my art<input type="file" id="st-up-art" accept="image/*"></label>
+            <button class="btn ghost sm" type="button" id="st-add-text">+ Text</button>
+            <select id="st-add-sym" aria-label="Add a symbol"><option value="">+ Symbol</option><option value="emblem">All-seeing eye</option><option value="compass">Square &amp; compass</option><option value="star">Star</option><option value="crown">Crown</option><option value="flame">Flame</option><option value="bolt">Bolt</option></select>
+            <label class="btn ghost sm file-btn">+ Picture<input type="file" id="st-up-img" accept="image/*"></label>
+          </div></div>
+        <div class="st-sec"><b>3 · Edit</b><div id="st-layers" class="st-layers"></div><div id="st-props" class="st-props"></div></div>
+        <div class="st-sec"><b>4 · Submit</b>
+          <div class="field"><label for="st-title">Design name</label><input type="text" id="st-title" maxlength="50" placeholder="e.g. Gold Eye Classic Tee" required></div>
+          <div class="field"><label for="st-note">Notes for us (optional)</label><input type="text" id="st-note" maxlength="300" placeholder="Sizes, colors, ideas, or how to reach you"></div>
+          <button class="btn" type="submit" id="st-submit">Submit design</button>
+          <p class="muted" style="font-size:13px;margin:0">Your mockup and your main art file are saved for review. By submitting you confirm the artwork is yours.</p></div>
       </form>
     </div>
     <div class="filters" id="dg-sort" style="justify-content:center;margin-top:28px"><button class="chip" type="button" data-sort="top" aria-pressed="true">Top voted</button><button class="chip" type="button" data-sort="new">Newest</button></div>
@@ -1417,6 +1451,14 @@ function faceCrop(file){ return new Promise((res,rej)=>{ const img=new Image(), 
     const c=document.createElement("canvas"); c.width=c.height=112; c.getContext("2d").drawImage(img,sx,sy,side,side,0,0,112,112); URL.revokeObjectURL(u);
     res({face:c.toDataURL("image/jpeg",.78), blob:null, canvas:c}); };
   img.onerror=()=>rej(new Error("That file isn't a photo we can read.")); img.src=u; }); }
+function localMatch(cv){
+  const ctx=cv.getContext("2d"), W=cv.width;
+  const avg=(x,y,w,h)=>{ const d=ctx.getImageData(x,y,w,h).data; let r=0,g=0,b=0,n=0; for(let i=0;i<d.length;i+=4){ r+=d[i]; g+=d[i+1]; b+=d[i+2]; n++; } return [r/n,g/n,b/n]; };
+  const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  const near=(rgb,vals)=>vals.reduce((best,v)=>{ const c=hex(v), d=(c[0]-rgb[0])**2+(c[1]-rgb[1])**2+(c[2]-rgb[2])**2; return d<best[0]?[d,v]:best; },[1e12,vals[0]])[1];
+  const s=W/112; const skin=avg(Math.round(38*s),Math.round(58*s),Math.round(36*s),Math.round(20*s)); const hair=avg(Math.round(34*s),Math.round(2*s),Math.round(44*s),Math.round(14*s));
+  return {skin:near(skin,OPTS.skin.vals), hairColor:near(hair,OPTS.hairColor.vals)};
+}
 $("#ai-selfie").addEventListener("change",async e=>{
   const f=e.target.files[0]; e.target.value=""; if(!f) return;
   const st=$("#ai-me-status"); st.textContent="Reading your photo...";
@@ -1431,7 +1473,11 @@ $("#ai-selfie").addEventListener("change",async e=>{
       ["skin","hair","hairColor"].forEach(k=>{ if(OPTS[k].vals.includes(r?.[k])) look[k]=r[k]; });
       drawBuilder(); setMine({look:{...look}}); try{localStorage.setItem("mw-look",JSON.stringify(look));}catch(_){}
       st.textContent="Done. Your avatar now matches you. Tap Save my look to keep it.";
-    } else st.textContent="Your face is on your avatar. Pick your skin tone and hair below, then tap Save my look.";
+    } else {
+      const m=localMatch(canvas); look.skin=m.skin; look.hairColor=m.hairColor;
+      drawBuilder(); setMine({look:{...look}}); try{localStorage.setItem("mw-look",JSON.stringify(look));}catch(_){}
+      st.textContent="Done. Your face is on your avatar and your skin tone and hair color are matched. Pick your hairstyle below, then tap Save my look.";
+    }
   }catch(err){ st.textContent = err.code==="not_granted" ? "Your face is on your avatar. AI matching needs permission, so pick your skin tone and hair below." : (err.message||"Couldn't read that photo. Try another."); }
 });
 $("#av-share").addEventListener("click",async()=>{ if(!needMember()) return;
@@ -1826,41 +1872,17 @@ function drawSymbol(ctx,kind,cx,cy,size,ink){
     ctx.beginPath(); ctx.moveTo(cx-h*.42,cy+h*.12); ctx.lineTo(cx,cy+h*.48); ctx.lineTo(cx+h*.42,cy+h*.12); ctx.stroke(); }
   ctx.restore();
 }
-function drawDesign(){
-  const c=$("#ds-canvas"), ctx=c.getContext("2d"), g=$("#ds-garment").value, col=$("#ds-color").value, ink=$("#ds-ink").value, font=$("#ds-font").value, sym=$("#ds-symbol").value, size=+$("#ds-size").value;
-  ctx.clearRect(0,0,c.width,c.height);
-  const bg=ctx.createRadialGradient(240,270,40,240,270,340); bg.addColorStop(0,"#2a2112"); bg.addColorStop(1,"#0b0a08"); ctx.fillStyle=bg; ctx.fillRect(0,0,c.width,c.height);
-  ctx.save(); ctx.shadowColor="rgba(0,0,0,.6)"; ctx.shadowBlur=24; ctx.shadowOffsetY=10; garmentPath(ctx,g); ctx.fillStyle=col; ctx.fill(); ctx.restore();
-  garmentPath(ctx,g); ctx.save(); ctx.clip(); const sh=ctx.createLinearGradient(0,0,480,0); sh.addColorStop(0,"rgba(0,0,0,.25)"); sh.addColorStop(.35,"rgba(255,255,255,.06)"); sh.addColorStop(.65,"rgba(0,0,0,0)"); sh.addColorStop(1,"rgba(0,0,0,.3)"); ctx.fillStyle=sh; ctx.fillRect(0,0,480,540); ctx.restore();
-  ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.lineWidth=2; garmentPath(ctx,g); ctx.stroke();
-  if(g==="hoodie"){ ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(195,80); ctx.quadraticCurveTo(240,140,285,80); ctx.stroke(); ctx.fillStyle="rgba(0,0,0,.12)"; ctx.fillRect(160,400,160,70); }
-  const top=g==="hoodie"?190:150;
-  ctx.fillStyle=ink; ctx.textAlign="center"; ctx.textBaseline="middle";
-  const l1=$("#ds-l1").value.trim(), l2=$("#ds-l2").value.trim();
-  if(l1){ ctx.font=`700 ${Math.min(34,300/Math.max(6,l1.length)*1.6)}px "${font}", Georgia, serif`; ctx.fillText(l1,240,top); }
-  const symY=top+44+size*.6;
-  if(sym==="upload" && dsImg){ const r=Math.min(size*1.4/dsImg.width,size*1.4/dsImg.height); const w=dsImg.width*r,h=dsImg.height*r; ctx.drawImage(dsImg,240-w/2,symY-h/2,w,h); }
-  else if(sym!=="none" && sym!=="upload") drawSymbol(ctx,sym,240,symY,size,ink);
-  if(l2){ ctx.font=`700 ${Math.min(26,260/Math.max(6,l2.length)*1.5)}px "${font}", Georgia, serif`; ctx.fillText(l2,240,symY+size/2+(sym==="none"?0:26)); }
-}
-["ds-garment","ds-color","ds-ink","ds-font","ds-symbol","ds-size","ds-l1","ds-l2"].forEach(id=>$("#"+id).addEventListener("input",()=>{ $("#ds-up-wrap").hidden=$("#ds-symbol").value!=="upload"; drawDesign(); }));
-$("#ds-upload").addEventListener("change",e=>{ const f=e.target.files[0]; if(!f) return; const img=new Image(); img.onload=()=>{dsImg=img; drawDesign();}; img.src=URL.createObjectURL(f); });
-document.fonts?.ready?.then(drawDesign); drawDesign();
-$("#ds-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!needMember()) return;
-  const c=$("#ds-canvas"); let q=.82, img=c.toDataURL("image/jpeg",q); while(img.length>190000 && q>.4){ q-=.1; img=c.toDataURL("image/jpeg",q); }
-  try{ await db.collection("designs").add({authorId:me,title:$("#ds-title").value.trim(),garment:$("#ds-garment").value,img,votes:[],selected:false,createdAt:Date.now()}); $("#ds-title").value=""; toast("Design submitted. The community can vote now."); }
-  catch(err){ toast("Couldn't submit: "+(err.message||err.code)); }
-});
 function renderDesigns(){
   if(!designs.length) return;
   const list=[...designs].sort((a,b)=> (b.selected?1:0)-(a.selected?1:0) || (dSort==="top" ? (b.votes||[]).length-(a.votes||[]).length : b.createdAt-a.createdAt));
   $("#designs").innerHTML=list.map(d=>{ const v=(d.votes||[]).includes(me);
-    return `<article class="design ${d.selected?"picked":""}"><img src="${esc(d.img)}" alt="${esc(d.title)}">${d.selected?'<span class="badge pick">Selected for the store</span>':""}
-    <div class="dz"><b>${esc(d.title)}</b><small class="muted">by ${esc(handleOf(d.authorId))}</small>
-    <div class="fit-acts"><button class="btn sm ${v?"":"ghost"}" type="button" data-vote="${d.id}">🔥 ${(d.votes||[]).length}</button>${isOwner?`<button class="act" type="button" data-pick="${d.id}">${d.selected?"Unselect":"Select for store"}</button>`:""}${(d.authorId===me||isOwner)?`<button class="act" type="button" data-ddel="${d.id}">Delete</button>`:""}</div></div></article>`; }).join("");
+    return `<article class="design ${d.selected?"picked":""}"><img src="${esc(d.img)}" data-front="${esc(d.img)}" ${d.img2?`data-back="${esc(d.img2)}"`:""} alt="${esc(d.title)}">${d.selected?'<span class="badge pick">Selected for the store</span>':""}
+    <div class="dz"><b>${esc(d.title)}</b><small class="muted">by ${esc(handleOf(d.authorId))}</small>${d.note?`<small class="muted">${esc(d.note)}</small>`:""}
+    <div class="fit-acts">${d.img2?`<button class="act" type="button" data-flip="${d.id}">Flip</button>`:""}${d.art&&(d.authorId===me||isOwner)?`<a class="act" download="${esc(d.title)}" href="${esc(d.art)}">Art file</a>`:""}<button class="btn sm ${v?"":"ghost"}" type="button" data-vote="${d.id}">🔥 ${(d.votes||[]).length}</button>${isOwner?`<button class="act" type="button" data-pick="${d.id}">${d.selected?"Unselect":"Select for store"}</button>`:""}${(d.authorId===me||isOwner)?`<button class="act" type="button" data-ddel="${d.id}">Delete</button>`:""}</div></div></article>`; }).join("");
 }
 $("#dg-sort").addEventListener("click",e=>{ const b=e.target.closest("[data-sort]"); if(!b) return; dSort=b.dataset.sort; $$("#dg-sort .chip").forEach(x=>x.setAttribute("aria-pressed",x===b)); renderDesigns(); });
 $("#designs").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.flip){ const im=b.closest(".design").querySelector("img"); const back=im.dataset.back; im.src = im.src===back ? im.dataset.front : back; return; }
   if(b.dataset.vote){ if(!needMember()) return; const d=designs.find(x=>x.id===b.dataset.vote); const st=new Set(d.votes||[]); st.has(me)?st.delete(me):st.add(me); db.doc("designs/"+d.id).update({votes:[...st]}).catch(err=>toast(err.message||err.code)); }
   if(b.dataset.pick){ const d=designs.find(x=>x.id===b.dataset.pick); db.doc("designs/"+d.id).update({selected:!d.selected}).then(()=>toast(d.selected?"Unselected":"Selected for the store")).catch(err=>toast(err.message||err.code)); }
   if(b.dataset.ddel){ if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Tap again"; return; } db.doc("designs/"+b.dataset.ddel).delete().catch(err=>toast(err.message||err.code)); }
@@ -1874,25 +1896,20 @@ $("#team-form").addEventListener("submit",e=>{ e.preventDefault();
 
 /* ---------- AI assistant ---------- */
 
-const AI_BRIEF=`You are the assistant on the Meechie's World Inc website (owner: Meechie). Be friendly, direct, and brief (under 120 words). Only describe what's listed here; for quotes or anything else, tell people to DM @meechiesworldinc on TikTok or elpesidentay on Snapchat, or email meechiesworldinc@aol.com.
-Services (all start at $50 minimum, quoted per job): music production, recording rap/singing artists, sound engineering, music videos, commercials, AI video and TikTok content, artist development, concert/event promotion, sales and distribution, website building, coding, AI prompting, documents/decks/spreadsheets/research, legal document preparation and paralegal services (document prep only, not legal advice, not a law firm), help for incarcerated people's families (staying in touch, approved money transfers, grievance writing), clothing line and on-demand printing setup, house remodeling, cleaning, landscaping, security.
-Books: Paper Trail; From Harlem to Fort Dix; Donald J. Trump: An Investigative Biography.
-Platform: Games tab (Gold Rush Arena, a live battle game members play against each other, plus a Fortnite Squad Finder to post Epic names and team up; Fortnite itself is played in Epic's app), joining, posting, chat, voice clips, gifts, the virtual world (with AI look-alike avatars and avatar outfit design), the Creators tab (design clothing for the line, vote on designs, apply to join the team and earn a share of what you build, set in a written agreement), going live, linking Printify/Shopify stores, and community ads are free. Paid promotion: Spotlight $50/7 days, Featured $150/14 days, Takeover $400/30 days; request it on the Promote tab.
-Never give legal advice, never promise outcomes, never collect payment details.`;
-let aiHist=[], sampleFn=null, aiBusy=false;
+let aiHist=[], aiBusy=false;
 function aiDraw(){ $("#ai-log").innerHTML = aiHist.length ? aiHist.map(m=>`<div class="msg ${m.role==="user"?"mine":""}">${esc(m.content)}</div>`).join("") : '<div class="msg">Hi, I\'m Meechie\'s AI. What can I help you with today?</div>'; const l=$("#ai-log"); l.scrollTop=l.scrollHeight; }
 aiDraw();
-claude.use("sample").then(s=>{ sampleFn=s; if(!s) $("#ai-card").hidden=true; });
 $("#ai-form").addEventListener("submit",async e=>{
-  e.preventDefault(); if(aiBusy||!sampleFn) return; const q=$("#ai-q").value.trim(); if(!q) return; $("#ai-q").value="";
-  aiHist.push({role:"user",content:q}); const ans={role:"assistant",content:"Thinking..."}; aiHist.push(ans); aiDraw(); aiBusy=true;
+  e.preventDefault(); if(aiBusy) return; const q=$("#ai-q").value.trim(); if(!q) return;
+  if(!me){ openAuth("signup"); toast("Join free to chat with Meechie's AI."); return; }
+  $("#ai-q").value=""; aiHist.push({role:"user",content:q}); const ans={role:"assistant",content:"Thinking..."}; aiHist.push(ans); aiDraw(); aiBusy=true;
   try{
-    const turns=aiHist.slice(0,-1).slice(-10).map((m,i)=>i===0&&m.role==="user"?{role:"user",content:AI_BRIEF+"\n\nVisitor: "+m.content}:m);
-    if(turns[0].role!=="user") turns.shift();
-    if(!turns[0].content.startsWith("You are")) turns[0]={role:"user",content:AI_BRIEF+"\n\nVisitor: "+turns[0].content};
-    const r=await sampleFn(turns,{modelTier:"quick",cache:false,onText:({text})=>{ans.content=text;aiDraw();}});
-    ans.content=r.text;
-  }catch(err){ ans.content = err.code==="rate_limited" ? "I'm getting a lot of questions. Try again in a minute, or DM us on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok."; }
+    const tok=window.MW?.session?.()?.access_token;
+    const r=await fetch("/api/ai",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+tok},body:JSON.stringify({messages:aiHist.slice(0,-1).slice(-10)})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.reply) throw Object.assign(new Error(j.error||"fail"),{code:j.error});
+    ans.content=j.reply;
+  }catch(err){ ans.content = err.code==="busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com."; }
   aiBusy=false; aiDraw();
 });
 function needMember(){ if(!db){toast("The site is still being set up.");return false;} if(!me){openAuth("signup");return false;} if(!profileMe){go("community");toast("Join free first. Pick a handle.");return false;} return true; }
@@ -2058,6 +2075,7 @@ function paintAuthBar(){ $("#authbar").innerHTML = me ? `<button class="btn ghos
 window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
 boot();
 </script>
+<script src="js/studio.js"></script>
 <script src="js/owner.js"></script>
 <script src="js/messages.js"></script>
 </body>
