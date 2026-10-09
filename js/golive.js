@@ -148,6 +148,31 @@
       return false;
     }
   }
+  /* Site-wide: shortly after someone opens Meechie's World, ask (once per device) for camera + microphone,
+   * so Live, Studio, voice messages and the AI are ready to go. Our pop-up comes first, then the phone's own box. */
+  function siteAsk() {
+    let seen = null; try { seen = localStorage.getItem("mw-cam-asked"); } catch (_) {}
+    if (seen || inApp || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext) return;
+    camState().then((st) => {
+      if (st === "granted" || st === "denied") return;
+      if (document.querySelector("dialog[open], #gl-perm:not([hidden])")) { setTimeout(siteAsk, 15000); return; }
+      try { localStorage.setItem("mw-cam-asked", "1"); } catch (_) {}
+      let m = document.getElementById("gl-perm");
+      if (!m) { m = document.createElement("div"); m.id = "gl-perm"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true");
+        m.style.cssText = "position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:16px"; document.body.appendChild(m); }
+      m.innerHTML = `<div style="width:min(420px,100%);background:#15130f;border:1px solid var(--gold,#d4a843);border-radius:20px;padding:22px;color:var(--text,#f3ecdc);font:16px/1.45 var(--body,system-ui);display:grid;gap:10px;text-align:center">
+        <div style="font-size:44px">🎥🎤</div><h3 style="margin:0;font-size:21px">Turn on your camera &amp; mic?</h3>
+        <p>Meechie's World uses your <b>camera</b> and <b>microphone</b> to go live, record in the Studio, send voice messages, and talk to Meechie's AI.</p>
+        <p class="muted" style="font-size:14px;margin:0">Nothing turns on until you use one of those. When your phone asks, tap <b>Allow</b>.</p>
+        <button class="btn" type="button" id="gl-perm-ok" style="font-size:17px;padding:13px">Allow camera &amp; mic</button>
+        <button class="btn ghost" type="button" id="gl-perm-no">Not now</button></div>`;
+      m.hidden = false;
+      m.querySelector("#gl-perm-no").onclick = () => { m.hidden = true; };
+      m.querySelector("#gl-perm-ok").onclick = async () => { if (await requestCam(false)) say("You're all set! 🎉"); else { const st2 = await camState(); if (st2 === "denied") permModal("denied"); else m.hidden = true; } };
+    });
+  }
+  setTimeout(siteAsk, 5000);
+
   async function autoAsk() {
     if (askedThisVisit || hosting || !ME() || view.hidden) return;
     askedThisVisit = true;
