@@ -2,7 +2,7 @@
 (function () {
   "use strict";
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const fmt = (t) => E(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+  const fmt = (t) => E(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\((https:\/\/[^\s)]+)\)/g, (m, u) => `(<a href="${u}" target="_blank" rel="noopener" style="color:var(--gold-hi,#f0cf78)">link</a>)`).replace(/\n/g, "<br>");
   const CHIPS = ["What services do you offer?", "How do I promote my business?", "What's in the shop?", "How do I submit a clothing design?", "How do I pay or book?"];
   let hist = [];
   try { hist = JSON.parse(sessionStorage.getItem("mw_ai") || "[]"); } catch (_) { hist = []; }
@@ -58,7 +58,7 @@ body.mw-editing #ai-fab{display:none!important}`;
       const tok = MW.session().access_token;
       const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ messages: hist.slice(-12) }) });
       const j = await r.json().catch(() => ({}));
-      reply = r.ok && j.reply ? j.reply : (j.error === "busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com.");
+      reply = r.ok && j.reply ? j.reply + (j.sources && j.sources.length ? "\n\nSources: " + j.sources.map((x, i) => "[" + (i + 1) + "] " + x.title + " (" + x.url + ")").join("  ") : "") : (j.error === "busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com.");
     } catch (_) { reply = "I can't connect right now. Check your internet and try again."; }
     hist.push({ role: "assistant", content: reply }); hist = hist.slice(-24);
     try { sessionStorage.setItem("mw_ai", JSON.stringify(hist)); } catch (_) {}

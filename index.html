@@ -586,6 +586,7 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .pay-btn.pay-unset{opacity:.6;border-style:dashed}
 .support{display:grid;justify-items:center;text-align:center;gap:10px;margin:28px auto;max-width:720px;border-color:var(--gold-lo)}
 .support h3{font-family:var(--display);font-size:26px;color:var(--gold-hi)}
+#ai-log .msg{white-space:pre-wrap;overflow-wrap:anywhere}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -1958,7 +1959,7 @@ $("#ai-form").addEventListener("submit",async e=>{
     const r=await fetch("/api/ai",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+tok},body:JSON.stringify({messages:aiHist.slice(0,-1).slice(-10)})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.reply) throw Object.assign(new Error(j.error||"fail"),{code:j.error});
-    ans.content=j.reply;
+    ans.content=j.reply+(j.sources&&j.sources.length?"\n\nSources: "+j.sources.map((x,i)=>"["+(i+1)+"] "+x.title+" — "+x.url).join("\n"):"");
   }catch(err){ ans.content = err.code==="busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com."; }
   aiBusy=false; aiDraw();
 });
