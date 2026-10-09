@@ -1317,10 +1317,10 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <p class="muted">DM us on TikTok or Snapchat for the fastest reply, or ask our AI assistant right now.</p>
     </div>
     <div class="card" id="ai-card" style="margin-bottom:24px">
-      <h3 style="font-size:22px">Ask Meechie's AI</h3>
+      <h3 style="font-size:22px">Ask Meechie (AI assistant)</h3>
       <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
       <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
-      <form class="reply-form" id="ai-form"><input type="text" id="ai-q" aria-label="Ask Meechie's AI" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
+      <form class="reply-form" id="ai-form"><input type="text" id="ai-q" aria-label="Ask Meechie" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
     </div>
     <div class="card paybox" style="margin-bottom:24px" data-paybox hidden>
       <h3 style="font-size:22px">Pay Meechie's World</h3>
@@ -2194,7 +2194,7 @@ function aiDraw(){ $("#ai-log").innerHTML = aiHist.length ? aiHist.map(m=>`<div 
 aiDraw();
 $("#ai-form").addEventListener("submit",async e=>{
   e.preventDefault(); if(aiBusy) return; const q=$("#ai-q").value.trim(); if(!q) return;
-  if(!me){ openAuth("signup"); toast("Join free to chat with Meechie's AI."); return; }
+  if(!me){ openAuth("signup"); toast("Join free to chat with Meechie, our AI assistant."); return; }
   $("#ai-q").value=""; aiHist.push({role:"user",content:q}); const ans={role:"assistant",content:"Thinking..."}; aiHist.push(ans); aiDraw(); aiBusy=true;
   try{
     const tok=window.MW?.session?.()?.access_token;

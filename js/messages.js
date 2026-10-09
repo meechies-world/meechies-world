@@ -15,6 +15,23 @@
   const ini = (s) => (String(s || "?").trim()[0] || "?").toUpperCase();
   const when = (iso) => { const ms = new Date(iso).getTime(), s = (Date.now() - ms) / 1000; if (s < 60) return "now"; if (s < 3600) return Math.floor(s / 60) + "m"; if (s < 86400) return Math.floor(s / 3600) + "h"; return new Date(ms).toLocaleDateString(); };
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
+  /* walkie-talkie voice messages: body = "🎙️ Voice message ⟦<our storage url>⟧" */
+  const VOICE_RE = /^🎙️ Voice message ⟦(https:\/\/yjouaysczttqbytksejq\.supabase\.co\/storage\/v1\/object\/public\/media\/[A-Za-z0-9_\-\/]+\.(?:webm|m4a|mp4|ogg))⟧$/;
+  const voiceUrl = (b) => (VOICE_RE.exec(b || "") || [])[1] || "";
+  const preview = (b) => (voiceUrl(b) ? "🎙️ Voice message" : b);
+  const bootAt = Date.now(); const heard = new Set();
+  function autoPlayVoices() {
+    let walkieOn = true; try { walkieOn = localStorage.getItem("mw_walkie_auto") !== "0"; } catch (_) {}
+    for (const r of all) {
+      const u = voiceUrl(r.body); if (!u || r.sender === uid || heard.has(r.id) || new Date(r.created_at).getTime() < bootAt - 5000) continue;
+      heard.add(r.id);
+      const isFriend = window.MW_FRIENDS && MW_FRIENDS.isFriend(r.sender);
+      if (!walkieOn || !(isFriend || r.sender === other)) continue;
+      say("📻 Walkie from " + handle(r.sender));
+      try { if (typeof media !== "undefined" && !media.paused) { media.volume = 0.25; } } catch (_) {}
+      const a = new Audio(u); a.play().catch(() => {}); a.onended = a.onerror = () => { try { media.volume = 1; } catch (_) {} };
+    }
+  }
 
   function convos() {
     const m = new Map();
@@ -33,7 +50,7 @@
   async function load() {
     const { data, error } = await sb.from("dms").select("*").order("created_at", { ascending: false }).limit(600);
     if (error) { console.warn(error); return; }
-    all = data || []; paintDot(); if (!view.hidden) render();
+    all = data || []; paintDot(); autoPlayVoices(); if (!view.hidden) render();
   }
   function later() { clearTimeout(timer); timer = setTimeout(load, 200); }
 
@@ -61,14 +78,14 @@
       items = found.length ? found.map((id) => `<button type="button" class="dm-row" data-open="${id}"><span class="avatar">${E(ini(ms[id].handle))}</span><span class="dm-t"><b>${E(ms[id].handle)}</b><small>${E(ms[id].bio || "Member")}</small></span></button>`).join("") : `<p class="muted" style="margin:10px 4px">No member found with that name.</p>`;
     } else {
       const cs = convos();
-      items = cs.length ? cs.map((c) => `<button type="button" class="dm-row ${c.id === other ? "on" : ""}" data-open="${c.id}"><span class="avatar">${E(ini(handle(c.id)))}</span><span class="dm-t"><b>${E(handle(c.id))}</b><small>${c.last.sender === uid ? "You: " : ""}${E(c.last.body.slice(0, 60))}</small></span><span class="dm-m">${when(c.last.created_at)}${c.unread ? `<i>${c.unread}</i>` : ""}</span></button>`).join("") : `<p class="muted" style="margin:10px 4px">No messages yet. Search for a member above, or tap Message on a member card.</p>`;
+      items = cs.length ? cs.map((c) => `<button type="button" class="dm-row ${c.id === other ? "on" : ""}" data-open="${c.id}"><span class="avatar">${E(ini(handle(c.id)))}</span><span class="dm-t"><b>${E(handle(c.id))}</b><small>${c.last.sender === uid ? "You: " : ""}${E(preview(c.last.body).slice(0, 60))}</small></span><span class="dm-m">${when(c.last.created_at)}${c.unread ? `<i>${c.unread}</i>` : ""}</span></button>`).join("") : `<p class="muted" style="margin:10px 4px">No messages yet. Search for a member above, or tap Message on a member card.</p>`;
     }
     list.innerHTML = items;
     if (!other) { thread.innerHTML = `<div class="dm-none"><svg class="sqc-ico" aria-hidden="true" style="width:46px;height:46px"><use href="#sqc"/></svg><b>Private messages</b><span class="muted">Only you and the other person can read these. They are not end-to-end encrypted, so never send passwords or card numbers.</span></div>`; return; }
     const msgs = all.filter((r) => (r.sender === uid && r.recipient === other) || (r.sender === other && r.recipient === uid)).slice().reverse();
     thread.innerHTML = `<div class="dm-head"><button type="button" class="act dm-back" data-back>← Back</button><span class="avatar">${E(ini(handle(other)))}</span><b>${E(handle(other))}</b></div>
-<div class="dm-msgs" id="dm-msgs">${msgs.length ? msgs.map((r) => `<div class="dm-b ${r.sender === uid ? "me" : ""}"><div>${E(r.body)}</div><small>${when(r.created_at)}${r.sender === uid && r.read_at ? " · seen" : ""}</small></div>`).join("") : `<p class="muted" style="text-align:center;margin:auto">Say hello to ${E(handle(other))}.</p>`}</div>
-<form class="dm-form" id="dm-form"><input type="text" id="dm-in" aria-label="Message" maxlength="2000" placeholder="Write a private message" autocomplete="off" required><button class="btn" type="submit">Send</button></form>`;
+<div class="dm-msgs" id="dm-msgs">${msgs.length ? msgs.map((r) => `<div class="dm-b ${r.sender === uid ? "me" : ""}"><div>${voiceUrl(r.body) ? `<span style="font-size:13px">🎙️ Walkie</span><audio src="${E(voiceUrl(r.body))}" controls preload="none" style="display:block;max-width:240px;margin-top:4px"></audio>` : E(r.body)}</div><small>${when(r.created_at)}${r.sender === uid && r.read_at ? " · seen" : ""}</small></div>`).join("") : `<p class="muted" style="text-align:center;margin:auto">Say hello to ${E(handle(other))}.</p>`}</div>
+<form class="dm-form" id="dm-form"><button type="button" class="dm-walkie" id="dm-walkie" aria-label="Hold to talk (walkie-talkie)">📻</button><input type="text" id="dm-in" aria-label="Message" maxlength="2000" placeholder="Message, or hold 📻 to talk" autocomplete="off" required><button class="btn" type="submit">Send</button></form>`;
     const box = document.getElementById("dm-msgs"); if (box) box.scrollTop = box.scrollHeight;
     markRead();
   }
@@ -96,6 +113,8 @@
 .dm-b.me{align-self:flex-end;background:rgba(212,168,67,.16);border-color:var(--gold-lo);border-radius:14px 14px 4px 14px}
 .dm-b small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
 .dm-form{display:flex;gap:8px;padding:12px;border-top:1px solid var(--line)}
+.dm-walkie{width:46px;height:46px;flex:none;border-radius:50%;border:2px solid var(--gold);background:#1d1810;color:#fff;font-size:20px;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.dm-walkie.on{background:#e5484d;border-color:#e5484d;box-shadow:0 0 0 6px rgba(229,72,77,.3)}
 .dm-form input{flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:999px;padding:11px 16px;color:var(--text);font:inherit}
 .dm-none{margin:auto;display:grid;gap:10px;justify-items:center;text-align:center;padding:24px;max-width:30em}
 .dm-dot{display:inline-block;margin-left:6px;background:var(--gold);color:var(--ink);border-radius:999px;font-size:11px;font-weight:800;padding:0 6px;line-height:16px}
@@ -115,6 +134,32 @@
       if (error) { i.value = body; say("Could not send: " + error.message); return; }
       load();
     });
+    /* walkie-talkie: hold the 📻 button, talk, let go. Friends hear it right away if they're on the site. */
+    let rec = null, chunks = [], stream = null, t0 = 0;
+    const wBtn = () => document.getElementById("dm-walkie");
+    view.addEventListener("pointerdown", async (e) => {
+      if (!e.target.closest("#dm-walkie") || rec || !other) return; e.preventDefault();
+      try { stream = stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
+      catch (_) { say("Allow the microphone to use the walkie-talkie."); return; }
+      const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((x) => window.MediaRecorder && MediaRecorder.isTypeSupported(x)) || "";
+      rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined); chunks = []; rec.ondataavailable = (ev) => ev.data.size && chunks.push(ev.data);
+      rec.start(); t0 = Date.now(); wBtn()?.classList.add("on"); const i = document.getElementById("dm-in"); if (i) i.placeholder = "Talking... let go to send";
+    });
+    const release = async () => {
+      if (!rec) return; const r = rec; rec = null; wBtn()?.classList.remove("on");
+      const i = document.getElementById("dm-in"); if (i) i.placeholder = "Message, or hold 📻 to talk";
+      await new Promise((res) => { r.onstop = res; try { r.stop(); } catch (_) { res(); } });
+      if (Date.now() - t0 < 500) { say("Hold the 📻 button while you talk."); return; }
+      const mime = (r.mimeType || "audio/webm").split(";")[0], ext = /mp4/.test(mime) ? "m4a" : "webm";
+      try {
+        const up = await MW.uploadMedia(new Blob(chunks, { type: mime }), { type: mime, ext });
+        const { error } = await sb.from("dms").insert({ recipient: other, body: "🎙️ Voice message ⟦" + up.url + "⟧" });
+        if (error) throw error; say("📻 Sent"); load();
+      } catch (err) { say("Couldn't send: " + (err.message || err)); }
+    };
+    ["pointerup", "pointercancel"].forEach((ev) => document.addEventListener(ev, release));
+    view.addEventListener("contextmenu", (e) => { if (e.target.closest("#dm-walkie")) e.preventDefault(); });
+
     /* "Message" buttons anywhere on the site */
     document.addEventListener("click", (e) => {
       const b = e.target.closest("[data-dm]"); if (!b) return; e.preventDefault();

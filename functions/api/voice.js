@@ -39,7 +39,7 @@ export async function onRequest({ request, env }) {
 
   // first ring
   if (!url.searchParams.has("h") && !speech) {
-    return xml(gather(next([]), "Hey, thanks for calling Meechie's World! I'm Meechie's A I assistant. Ask me about our services, prices, music, the website, or anything else. How can I help you?") + `<Redirect method="POST">${X(next([], 1))}</Redirect>`);
+    return xml(gather(next([]), "Hey, thanks for calling Meechie's World! This is Meechie, the A I assistant. Ask me about our services, prices, music, the website, or anything else. How can I help you?") + `<Redirect method="POST">${X(next([], 1))}</Redirect>`);
   }
   // silence
   if (!speech) {

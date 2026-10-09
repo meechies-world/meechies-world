@@ -41,19 +41,19 @@ body.mw-editing #ai-fab{display:none!important}`;
   document.head.appendChild(css);
 
   const fab = document.createElement("button");
-  fab.id = "ai-fab"; fab.type = "button"; fab.innerHTML = '<span class="dot"></span>Ask Meechie\'s AI';
+  fab.id = "ai-fab"; fab.type = "button"; fab.innerHTML = '<span class="dot"></span>Ask Meechie (AI)';
   const panel = document.createElement("section");
-  panel.id = "ai-panel"; panel.hidden = true; panel.setAttribute("aria-label", "Meechie's AI chat");
-  panel.innerHTML = `<header><svg class="sqc-ico" aria-hidden="true" style="width:30px;height:30px"><use href="#sqc"/></svg><div><b>Meechie's AI</b><small>Answers 24/7 · talk, type, or send a photo</small></div><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
+  panel.id = "ai-panel"; panel.hidden = true; panel.setAttribute("aria-label", "Chat with Meechie, the AI assistant");
+  panel.innerHTML = `<header><svg class="sqc-ico" aria-hidden="true" style="width:30px;height:30px"><use href="#sqc"/></svg><div><b>Meechie · AI</b><small>Answers 24/7 · talk, type, or send a photo</small></div><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
 <div id="ai-log2" aria-live="polite"></div><div class="ai-chips" id="ai-chips"></div>
 <div id="ai-attach" hidden></div>
-<form id="ai-form2"><label class="ai-tool" id="ai-pic" aria-label="Send a photo">📷<input type="file" accept="image/*" id="ai-file" aria-label="Choose a photo"></label><button type="button" class="ai-tool" id="ai-mic" aria-label="Talk to the AI">🎙️</button><input id="ai-in2" aria-label="Ask Meechie's AI" maxlength="1500" autocomplete="off" placeholder="Ask me anything"><button type="submit">Send</button></form>`;
+<form id="ai-form2"><label class="ai-tool" id="ai-pic" aria-label="Send a photo">📷<input type="file" accept="image/*" id="ai-file" aria-label="Choose a photo"></label><button type="button" class="ai-tool" id="ai-mic" aria-label="Talk to the AI">🎙️</button><input id="ai-in2" aria-label="Ask Meechie" maxlength="1500" autocomplete="off" placeholder="Ask me anything"><button type="submit">Send</button></form>`;
   document.body.append(fab, panel);
   const log = panel.querySelector("#ai-log2"), chips = panel.querySelector("#ai-chips"), inp = panel.querySelector("#ai-in2");
 
   function signedIn() { const s = window.MW && MW.session && MW.session(); return !!(s && s.user); }
   function draw(thinking) {
-    const hello = `<div class="ai-m">Hi! I'm Meechie's AI. Ask me about services and prices, promotion, the shop, clothing designs, or how anything on the site works.</div>`;
+    const hello = `<div class="ai-m">Hey! I'm Meechie, the AI assistant for Meechie's World. Ask me about services and prices, promotion, the shop, clothing designs, or how anything on the site works.</div>`;
     log.innerHTML = hello + hist.map((m) => `<div class="ai-m ${m.role === "user" ? "me" : ""}">${m.pic ? `<img src="${E(m.pic)}" alt="Photo you sent">` : ""}${fmt(m.content)}</div>`).join("") + (thinking ? `<div class="ai-m"><span class="ai-typing"><i></i><i></i><i></i></span></div>` : "");
     if (!signedIn()) log.innerHTML += `<div class="ai-m">Join free (it takes 20 seconds) to chat with me.<br><button class="btn sm" type="button" data-auth="signup" style="margin-top:8px">Join free</button> <button class="btn sm ghost" type="button" data-auth="signin" style="margin-top:8px">Sign in</button></div>`;
     chips.innerHTML = hist.length ? "" : CHIPS.map((c) => `<button type="button">${E(c)}</button>`).join("");
