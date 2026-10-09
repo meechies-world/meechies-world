@@ -11,13 +11,13 @@
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
   const ME = () => (typeof me !== "undefined" ? me : null);
   const DB = () => (typeof db !== "undefined" ? db : null);
-  const HANDLE = (id) => (typeof handleOf === "function" ? handleOf(id) : "Member");
+  const HANDLE = (id) => { const h = typeof handleOf === "function" ? handleOf(id) : "Member"; if (h !== "Member") return h; const l = lives.find((x) => x.id === id); return l && l.host ? "Meechie" : (id === ME() && typeof isOwner !== "undefined" && isOwner ? "Meechie" : h); };
   const ICE = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"] }] };
   const VAL = { rose: 1, mic: 5, gold: 10, fire: 20, crown: 50, diamond: 100 };
   const EMO = { rose: "🌹", mic: "🎤", gold: "🪙", crown: "👑", fire: "🔥", diamond: "💎" };
   const MAX_VIEWERS = 12;
   const myPeer = Math.random().toString(36).slice(2, 12);
-  let lives = [], battles = [], hosting = null, watching = {}, chatLog = [];
+  let lives = [], battles = [], hosting = null, watching = {}, chatLog = [], titleDraft = "", shellKey = "";
 
   const css = document.createElement("style");
   css.textContent = `
@@ -42,7 +42,9 @@
 .gl-battle{display:grid;gap:6px}
 .gl-score{height:20px;border-radius:999px;overflow:hidden;display:flex;border:1px solid var(--line);font:800 12px var(--body)}
 .gl-score i{display:grid;place-items:center;color:#fff;transition:flex-grow .6s}.gl-score .a{background:#e5484d}.gl-score .b{background:#3b82f6}
-.gl-host-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}`;
+.gl-host-ctrl{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gl-snd{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:6;border:0;border-radius:999px;background:rgba(0,0,0,.65);color:#fff;font:800 15px var(--body);padding:12px 18px;cursor:pointer}
+.gl-wait{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font:700 14px var(--body);text-align:center;padding:20px;z-index:2}`;
   document.head.appendChild(css);
 
   const isLive = (l) => l.onsite && Date.now() - (l.beat || l.startedAt || 0) < 90e3;
@@ -52,20 +54,26 @@
   /* ---------- page ---------- */
   function render() {
     if (!ME()) { root.innerHTML = `<div class="empty"><h3>Sign in to go live or watch</h3><button class="btn" type="button" data-auth="signup" style="margin-top:12px">Join free</button></div>`; return; }
-    const on = lives.filter(isLive);
-    const watchingIds = Object.keys(watching);
+    const key = ME() + "|" + !!hosting + "|" + Object.keys(watching).join(",");
+    if (key === shellKey && root.querySelector("#gl-list")) { paintList(); paintBattle(); return; }
+    shellKey = key;
     root.innerHTML = `
-      <div class="gl-host-ctrl">${hosting ? `<button class="btn" type="button" id="gl-end" style="background:#e5484d;color:#fff">■ End my live</button><button class="btn ghost" type="button" id="gl-flip">🔄 Flip camera</button><button class="btn ghost" type="button" id="gl-battle">⚔️ Start a battle</button><span class="muted" id="gl-vc">0 watching</span>` : `<input type="text" id="gl-title" maxlength="80" placeholder="What's your live about?" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)"><button class="btn" type="button" id="gl-go" style="background:#e5484d;color:#fff">🎥 Go live</button>`}</div>
+      <div class="gl-host-ctrl">${hosting ? `<button class="btn" type="button" id="gl-end" style="background:#e5484d;color:#fff">■ End my live</button><button class="btn ghost" type="button" id="gl-flip">🔄 Flip camera</button><button class="btn ghost" type="button" id="gl-battle">⚔️ Start a battle</button><span class="muted" id="gl-vc">0 watching</span>` : `<input type="text" id="gl-title" maxlength="80" placeholder="What's your live about?" value="${E(titleDraft)}" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)"><button class="btn" type="button" id="gl-go" style="background:#e5484d;color:#fff">🎥 Go live</button>`}</div>
       <div class="gl-stage" id="gl-stage"></div>
       <div id="gl-battlebox"></div>
       <h3 class="sub-h" style="margin:8px 0 0">Live now on Meechie's World</h3>
-      <div class="gl-list">${on.filter((l) => l.id !== ME()).map((l) => `<button class="gl-card" type="button" data-watch="${E(l.id)}"><span><span class="dot"></span><b>${E(HANDLE(l.id))}</b>${l.host ? ' <span class="badge">Host</span>' : ""}</span><small class="muted">${E(l.title || "Live")}</small><span style="color:var(--gold-hi);font-weight:700">${watchingIds.includes(l.id) ? "Watching ✓" : "Watch →"}</span></button>`).join("") || '<p class="muted">Nobody is live right now. Be the first!</p>'}</div>
+      <div class="gl-list" id="gl-list"></div>
       <p class="muted" style="font-size:13px;margin:0">Gifts you send count toward battles. Video goes straight from the host to you, so it works best with good Wi-Fi.</p>`;
-    paintStage(); paintBattle();
+    paintStage(); paintList(); paintBattle();
+  }
+  function paintList() {
+    const el = root.querySelector("#gl-list"); if (!el) return;
+    const on = lives.filter(isLive).filter((l) => l.id !== ME());
+    el.innerHTML = on.map((l) => `<button class="gl-card" type="button" data-watch="${E(l.id)}"><span><span class="dot"></span><b>${E(HANDLE(l.id))}</b>${l.host ? ' <span class="badge">Host</span>' : ""}</span><small class="muted">${E(l.title || "Live")}</small><span style="color:var(--gold-hi);font-weight:700">${watching[l.id] ? "Watching ✓ (tap to leave)" : "Watch →"}</span></button>`).join("") || '<p class="muted">Nobody else is live right now. Be the first!</p>';
   }
   function box(id, label, isMe) {
     const b = document.createElement("div"); b.className = "gl-box"; b.dataset.box = id;
-    b.innerHTML = `<video playsinline autoplay ${isMe ? "muted" : ""}></video><span class="tag"><b>● LIVE</b> ${E(label)}</span><span class="cnt" data-cnt="${E(id)}"></span><div class="gl-chat" data-chat="${E(id)}"></div>
+    b.innerHTML = `<video playsinline autoplay muted></video>${isMe ? "" : `<div class="gl-wait" data-wait>Connecting to the live…</div><button class="gl-snd" type="button" data-unmute hidden>🔊 Tap for sound</button>`}<span class="tag"><b>● LIVE</b> ${E(label)}</span><span class="cnt" data-cnt="${E(id)}"></span><div class="gl-chat" data-chat="${E(id)}"></div>
       <form class="gl-bar" data-chatform="${E(id)}"><input maxlength="150" placeholder="Say something..." aria-label="Live chat">${isMe ? "" : `<button type="button" data-giftlive="${E(id)}">🎁</button>`}<button type="submit">Send</button></form>`;
     return b;
   }
@@ -73,8 +81,14 @@
     const st = root.querySelector("#gl-stage"); if (!st) return;
     st.innerHTML = "";
     if (hosting) { const b = box(ME(), "You", true); st.appendChild(b); b.querySelector("video").srcObject = hosting.stream; }
-    for (const [id, w] of Object.entries(watching)) { const b = box(id, HANDLE(id), false); st.appendChild(b); if (w.stream) b.querySelector("video").srcObject = w.stream; }
+    for (const [id, w] of Object.entries(watching)) { const b = box(id, HANDLE(id), false); st.appendChild(b); if (w.stream) attach(b, w); }
     paintChat();
+  }
+  function attach(b, w) {
+    const v = b.querySelector("video"); v.srcObject = w.stream; v.muted = !w.sound;
+    const wait = b.querySelector("[data-wait]"); if (wait) wait.remove();
+    const snd = b.querySelector("[data-unmute]"); if (snd) snd.hidden = !!w.sound;
+    v.play().catch(() => { v.muted = true; w.sound = false; if (snd) snd.hidden = false; v.play().catch(() => {}); });
   }
   function paintChat() {
     root.querySelectorAll("[data-chat]").forEach((c) => { const id = c.dataset.chat; c.innerHTML = chatLog.filter((m) => m.room === id).slice(-8).map((m) => `<div><b>${E(HANDLE(m.uid))}</b> ${E(m.text)}</div>`).join(""); });
@@ -94,12 +108,32 @@
   /* ---------- hosting ---------- */
   let facing = "user";
   async function goLive() {
-    if (typeof needMember === "function" && !needMember()) return;
-    let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } }, audio: { echoCancellation: true, noiseSuppression: true } }); }
-    catch (_) { say("Allow the camera and microphone to go live."); return; }
-    const room = await joinRoom(ME());
-    hosting = { stream, room, peers: {}, title: (root.querySelector("#gl-title") || {}).value || "Live with " + HANDLE(ME()) };
+    if (!ME()) { if (typeof openAuth === "function") openAuth("signup"); return; }
+    if (hosting) return;
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      say("This browser can't use the camera. If you opened the link inside TikTok, Instagram, Snapchat or Facebook, tap ⋯ and choose Open in Safari or Chrome."); return;
+    }
+    const btn = root.querySelector("#gl-go"); if (btn) { btn.disabled = true; btn.textContent = "Starting camera…"; }
+    const reset = () => { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = "🎥 Go live"; } };
+    let stream = null, lastErr = null;
+    const tries = [
+      { video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } }, audio: { echoCancellation: true, noiseSuppression: true } },
+      { video: true, audio: true },
+      { video: true, audio: false },
+    ];
+    for (const c of tries) { try { stream = await navigator.mediaDevices.getUserMedia(c); break; } catch (e) { lastErr = e; if (e && (e.name === "NotAllowedError" || e.name === "SecurityError")) break; } }
+    if (!stream) {
+      reset(); const n = lastErr && lastErr.name;
+      say(n === "NotAllowedError" || n === "SecurityError" ? "Camera is blocked. Tap the 🔒 or aA next to the web address, allow Camera and Microphone, then try again."
+        : n === "NotFoundError" ? "No camera was found on this device."
+        : n === "NotReadableError" ? "Your camera is being used by another app. Close it (FaceTime, TikTok, Zoom) and try again."
+        : "Couldn't start the camera" + (lastErr && lastErr.message ? ": " + lastErr.message : "."));
+      return;
+    }
+    if (!stream.getAudioTracks().length) say("Going live without sound: the microphone wasn't allowed.");
+    let room;
+    try { room = await joinRoom(ME()); } catch (e) { stream.getTracks().forEach((t) => t.stop()); reset(); say(e.message || "Couldn't connect. Try again."); return; }
+    hosting = { stream, room, peers: {}, title: titleDraft.trim() || "Live with " + HANDLE(ME()) };
     wireChat(room, ME());
     room.on("want", async ({ data }) => {
       if (!hosting || !data || !data.peer) return;
@@ -115,10 +149,11 @@
     room.on("answer", async ({ data }) => { const pc = hosting && hosting.peers[data && data.from]; if (pc && data.sdp) { try { await pc.setRemoteDescription(data.sdp); } catch (_) {} } });
     room.on("ice", async ({ data }) => { if (!data || data.to !== "host") return; const pc = hosting && hosting.peers[data.from]; if (pc && data.c) { try { await pc.addIceCandidate(data.c); } catch (_) {} } });
     room.on("bye", ({ data }) => { const pc = hosting && hosting.peers[data && data.from]; if (pc) { try { pc.close(); } catch (_) {} delete hosting.peers[data.from]; count(); } });
-    await DB().doc("live/" + ME()).set({ title: hosting.title.slice(0, 80), url: "", onsite: true, host: typeof isOwner !== "undefined" && isOwner, startedAt: Date.now(), beat: Date.now() }).catch((e) => say(e.message || e.code));
+    let saved = true;
+    await DB().doc("live/" + ME()).set({ title: hosting.title.slice(0, 80), url: "", onsite: true, host: typeof isOwner !== "undefined" && isOwner, startedAt: Date.now(), beat: Date.now() }).catch((e) => { saved = false; say("You're live, but we couldn't list you on the Live page: " + (e.message || e.code)); });
     hosting.beat = setInterval(() => DB().doc("live/" + ME()).update({ beat: Date.now() }).catch(() => {}), 30000);
-    room.emit("hello", {}); say("You're live! Share the site so people can watch.");
-    render();
+    room.emit("hello", {}); if (saved) say("You're live! Share the site so people can watch.");
+    shellKey = ""; render();
   }
   function count() { const n = hosting ? Object.values(hosting.peers).filter((p) => p.connectionState === "connected").length : 0; const el = root.querySelector("#gl-vc"); if (el) el.textContent = n + " watching"; const c = root.querySelector(`[data-cnt="${CSS.escape(ME() || "")}"]`); if (c) c.textContent = "👁 " + n; }
   async function endLive() {
@@ -126,7 +161,7 @@
     clearInterval(hosting.beat); hosting.room.emit("ended", {});
     Object.values(hosting.peers).forEach((p) => { try { p.close(); } catch (_) {} });
     hosting.stream.getTracks().forEach((t) => t.stop()); try { hosting.room.leave(); } catch (_) {}
-    hosting = null; await DB().doc("live/" + ME()).delete().catch(() => {}); say("Your live has ended."); render();
+    hosting = null; shellKey = ""; await DB().doc("live/" + ME()).delete().catch(() => {}); say("Your live has ended."); render();
   }
   async function flip() {
     if (!hosting) return; facing = facing === "user" ? "environment" : "user";
@@ -145,7 +180,8 @@
     const room = await joinRoom(id); const pc = new RTCPeerConnection(ICE);
     const w = watching[id] = { room, pc, stream: null };
     pc.addTransceiver("video", { direction: "recvonly" }); pc.addTransceiver("audio", { direction: "recvonly" });
-    pc.ontrack = (e) => { w.stream = e.streams[0]; const v = root.querySelector(`[data-box="${CSS.escape(id)}"] video`); if (v) { v.srcObject = w.stream; v.play().catch(() => {}); } };
+    pc.ontrack = (e) => { w.stream = e.streams[0] || w.stream || new MediaStream([e.track]); if (!w.stream.getTracks().includes(e.track)) w.stream.addTrack(e.track); const b = root.querySelector(`[data-box="${CSS.escape(id)}"]`); if (b) attach(b, w); };
+    pc.onconnectionstatechange = () => { if (pc.connectionState === "failed") { const t = root.querySelector(`[data-box="${CSS.escape(id)}"] [data-wait]`); if (t) t.textContent = "Couldn't connect to this live from your network. Try Wi-Fi, or try again in a minute."; } };
     pc.onicecandidate = (e) => { if (e.candidate) room.emit("ice", { to: "host", from: myPeer, c: e.candidate.toJSON() }); };
     room.on("offer", async ({ data }) => {
       if (!data || data.to !== myPeer) return;
@@ -155,11 +191,12 @@
     room.on("full", ({ data }) => { if (data && data.to === myPeer) { say("This live is full right now. Try again in a bit."); stopWatch(id); } });
     room.on("ended", () => { say(HANDLE(id) + "'s live ended."); stopWatch(id); });
     wireChat(room, id);
-    const ask = () => { if (!w.got && watching[id]) { room.emit("want", { peer: myPeer, uid: ME() }); setTimeout(ask, 2500); } };
+    let tries = 0;
+    const ask = () => { if (!w.got && watching[id]) { if (++tries > 12) { const t = root.querySelector(`[data-box="${CSS.escape(id)}"] [data-wait]`); if (t) t.textContent = "The host isn't answering. Their live may have just ended."; return; } room.emit("want", { peer: myPeer, uid: ME() }); setTimeout(ask, 2500); } };
     setTimeout(ask, 600);
-    render();
+    shellKey = ""; render();
   }
-  function stopWatch(id) { const w = watching[id]; if (!w) return; try { w.room.emit("bye", { from: myPeer }); w.pc.close(); w.room.leave(); } catch (_) {} delete watching[id]; render(); }
+  function stopWatch(id) { const w = watching[id]; if (!w) return; try { w.room.emit("bye", { from: myPeer }); w.pc.close(); w.room.leave(); } catch (_) {} delete watching[id]; shellKey = ""; render(); }
 
   /* ---------- battles ---------- */
   function paintBattle() {
@@ -187,6 +224,7 @@
   /* ---------- clicks ---------- */
   root.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.unmute !== undefined) { const bx = b.closest("[data-box]"), w = watching[bx.dataset.box]; if (w) { w.sound = true; attach(bx, w); } return; }
     if (b.id === "gl-go") return goLive();
     if (b.id === "gl-end") return endLive();
     if (b.id === "gl-flip") return flip();
@@ -200,6 +238,8 @@
       form.addEventListener("submit", once);
     }
   });
+  root.addEventListener("input", (e) => { if (e.target.id === "gl-title") titleDraft = e.target.value; });
+  root.addEventListener("keydown", (e) => { if (e.target.id === "gl-title" && e.key === "Enter") { e.preventDefault(); goLive(); } });
   root.addEventListener("submit", (e) => {
     const f = e.target.closest("[data-chatform]"); if (!f) return; e.preventDefault();
     const id = f.dataset.chatform, inp = f.querySelector("input"), text = inp.value.trim(); if (!text) return; inp.value = "";
