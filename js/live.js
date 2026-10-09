@@ -110,10 +110,19 @@
     box.className = "lv-card"; box.id = "live-tv"; box.style.margin = "0 auto 28px"; box.style.maxWidth = "960px"; box.style.scrollMarginTop = "120px";
     box.innerHTML = `<div class="lv-head"><div><p class="eyebrow" style="margin:0">On now</p><h3>Live TV</h3></div><small class="muted">Free live channels. If one is off air, try another.</small></div>
       <div><b id="tv-local-h" style="color:var(--gold-hi)">📍 Local news</b> <form id="tv-place" style="display:inline-flex;gap:6px;margin-left:6px"><input type="search" id="tv-q" placeholder="Other city" aria-label="City for local TV" style="width:140px;background:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--text);font:16px var(--body)"><button class="btn ghost sm" type="submit">Go</button></form></div>
+      <div class="tv-grid" id="tv-pgh"></div>
       <div class="tv-grid" id="tv-local"><small class="muted">Finding live local news...</small></div>
       <b style="color:var(--gold-hi)">🌎 National & world</b>
       <div class="tv-grid">${CH.map(([n, id]) => `<button class="tv-ch" type="button" data-ch="${id}" data-name="${E(n)}"><span class="dot"></span>${E(n)}</button>`).join("")}</div>`;
     stage.before(box);
+    // Pittsburgh stations by name (shown to everyone in Meechie's area, and anyone can tap them)
+    const PGH = [["KDKA · CBS 2", "KDKA CBS News Pittsburgh", "kdka|cbs news pittsburgh|cbs pittsburgh", "https://www.cbsnews.com/pittsburgh/"],
+      ["WTAE · ABC 4", "WTAE Pittsburgh's Action News 4", "wtae|action news 4", "https://www.wtae.com/"],
+      ["WPXI · NBC 11", "WPXI Channel 11 News", "wpxi|channel 11", "https://www.wpxi.com/"],
+      ["WPGH · FOX 53", "FOX 53 Pittsburgh WPGH", "wpgh|fox 53", "https://fox53pittsburgh.com/"],
+      ["WPCW · CW 19", "CW Pittsburgh WPCW", "wpcw|cw pittsburgh|cw 19", "https://www.cbsnews.com/pittsburgh/"],
+      ["WQED · PBS 13", "WQED Pittsburgh", "wqed", "https://www.wqed.org/"]];
+    box.querySelector("#tv-pgh").innerHTML = `<b style="width:100%;color:var(--gold-hi)">🏙️ Pittsburgh channels</b>` + PGH.map(([n, q, m, site]) => `<button class="tv-ch" type="button" data-st="${E(q)}" data-match="${E(m)}" data-site="${E(site)}" data-name="${E(n)}"><span class="dot"></span>${E(n)}</button>`).join("");
     async function localTV(place) {
       const el = box.querySelector("#tv-local"); el.innerHTML = '<small class="muted">Finding live local news...</small>';
       const j = await fetch("/api/localtv" + (place ? "?place=" + encodeURIComponent(place) : "")).then((r) => r.json()).catch(() => ({ list: [] }));
@@ -123,16 +132,33 @@
     box.querySelector("#tv-place").addEventListener("submit", (e) => { e.preventDefault(); const q = box.querySelector("#tv-q").value.trim(); if (q) localTV(q); });
     let tvLoaded = false; const tvMaybe = () => { if (!tvLoaded && !vidView.hidden) { tvLoaded = true; localTV(); } };
     new MutationObserver(tvMaybe).observe(vidView, { attributes: true, attributeFilter: ["hidden"] }); tvMaybe();
-    box.addEventListener("click", (e) => {
+    box.addEventListener("click", async (e) => {
+      const stb = e.target.closest("[data-st]");
+      if (stb) {
+        stb.disabled = true; const old = stb.innerHTML; stb.innerHTML = "Checking...";
+        const j = await fetch("/api/localtv?station=" + encodeURIComponent(stb.dataset.st) + "&match=" + encodeURIComponent(stb.dataset.match)).then((r) => r.json()).catch(() => ({ list: [] }));
+        stb.disabled = false; stb.innerHTML = old;
+        if (j.list && j.list[0]) { const fake = document.createElement("button"); fake.dataset.vid = j.list[0].id; fake.dataset.name = stb.dataset.name; return playVid(fake, stb); }
+        box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === stb));
+        const f = vidView.querySelector("#yt-frame"); f.classList.remove("tall");
+        f.innerHTML = `<div class="yt-empty"><b style="font-size:20px;color:var(--gold-hi)">${E(stb.dataset.name)}</b><span>Not streaming on the open web right now. Their newscasts stream live on their own site.</span><a class="btn" href="${E(stb.dataset.site)}" target="_blank" rel="noopener">Watch on ${E(stb.dataset.name.split(" · ")[0])}'s site</a></div>`;
+        vidView.querySelector("#yt-now").innerHTML = ""; stage.scrollIntoView({ behavior: "smooth", block: "start" }); return;
+      }
       const lv = e.target.closest("[data-vid]");
-      if (lv) {
-        box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === lv));
+      if (lv) return playVid(lv, lv);
+      return chanClick(e);
+    });
+    function playVid(lv, btn) {
+      {
+        box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === btn));
         try { if (typeof media !== "undefined" && !media.paused) media.pause(); if (window.MW_LIVE && !MW_LIVE.paused) MW_LIVE.pause(); } catch (_) {}
         const f = vidView.querySelector("#yt-frame"); f.classList.remove("tall");
         f.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(lv.dataset.vid)}?autoplay=1&rel=0" title="${E(lv.dataset.name)} live" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
         vidView.querySelector("#yt-now").innerHTML = `<b>● ${E(lv.dataset.name)}</b><small>Local live TV</small>`;
         stage.scrollIntoView({ behavior: "smooth", block: "start" }); return;
       }
+    }
+    function chanClick(e) {
       const b = e.target.closest("[data-ch]"); if (!b) return;
       box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === b));
       try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
@@ -140,6 +166,6 @@
       f.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/live_stream?channel=${encodeURIComponent(b.dataset.ch)}&autoplay=1&rel=0" title="${E(b.dataset.name)} live" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
       vidView.querySelector("#yt-now").innerHTML = `<b>● ${E(b.dataset.name)}</b><small>Live TV</small>`;
       stage.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    }
   }
 })();

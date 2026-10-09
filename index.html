@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791566261">
+<meta name="mw-build" content="1791566548">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -736,6 +736,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#livetv" data-go="livetv">Live TV</a>
       <a href="#clips" data-go="clips">Clips</a>
       <a href="#studio" data-go="studio">Studio</a>
+      <a href="#books" data-go="books">Books</a>
       <a href="#friends" data-go="friends">Friends</a>
       <a href="#dating" data-go="dating">Dating</a>
       <a href="#videos" data-go="videos">Videos</a>
@@ -997,6 +998,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <div id="bl-root"></div>
   </div>
 </section>
+
+<section class="view" id="v-books" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Meechie's World Inc publications</p><h2>Books</h2></div><p class="muted">Read Meechie's books right here, free for members. Pick up where you left off on any device.</p></div><div id="bk-root"></div></div></section>
 
 <section class="view" id="v-friends" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Your people</p><h2>Friends</h2></div><p class="muted">Add friends, accept requests, and see what your friends are posting.</p></div><div id="fr-root"></div></div></section>
 
@@ -1440,8 +1443,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791566261"></script>
-<script src="js/platform.js?v=1791566261"></script>
+<script src="js/config.js?v=1791566548"></script>
+<script src="js/platform.js?v=1791566548"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1453,7 +1456,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["home","services","shop","community","radio","clips","studio","friends","dating","videos","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["home","services","shop","community","radio","clips","studio","books","friends","dating","videos","world","games","creators","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -2450,19 +2453,20 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791566261"></script>
-<script src="js/studio.js?v=1791566261"></script>
-<script src="js/owner.js?v=1791566261"></script>
-<script src="js/messages.js?v=1791566261"></script>
-<script src="js/videos.js?v=1791566261"></script>
-<script src="js/world3d.js?v=1791566261"></script>
-<script src="js/clips.js?v=1791566261"></script>
-<script src="js/dj.js?v=1791566261"></script>
-<script src="js/live.js?v=1791566261"></script>
-<script src="js/autotune.js?v=1791566261"></script>
-<script src="js/beatlab.js?v=1791566261"></script>
-<script src="js/friends.js?v=1791566261"></script>
-<script src="js/dating.js?v=1791566261"></script>
-<script src="js/ai-widget.js?v=1791566261"></script>
+<script src="js/appnav.js?v=1791566548"></script>
+<script src="js/studio.js?v=1791566548"></script>
+<script src="js/owner.js?v=1791566548"></script>
+<script src="js/messages.js?v=1791566548"></script>
+<script src="js/videos.js?v=1791566548"></script>
+<script src="js/world3d.js?v=1791566548"></script>
+<script src="js/clips.js?v=1791566548"></script>
+<script src="js/dj.js?v=1791566548"></script>
+<script src="js/live.js?v=1791566548"></script>
+<script src="js/autotune.js?v=1791566548"></script>
+<script src="js/beatlab.js?v=1791566548"></script>
+<script src="js/friends.js?v=1791566548"></script>
+<script src="js/dating.js?v=1791566548"></script>
+<script src="js/books.js?v=1791566548"></script>
+<script src="js/ai-widget.js?v=1791566548"></script>
 </body>
 </html>

@@ -14,6 +14,14 @@ async function search(q) {
 }
 export async function onRequestGet({ request }) {
   const url = new URL(request.url), c = request.cf || {};
+  // one station by name: e.g. ?station=WPXI&match=wpxi|channel 11
+  const station = (url.searchParams.get("station") || "").slice(0, 40);
+  if (station) {
+    const match = new RegExp((url.searchParams.get("match") || station).replace(/[^\w| ]/g, ""), "i");
+    let list = []; try { list = await search(station + " live"); } catch (_) {}
+    list = list.filter((v) => match.test(v.channel + " " + v.title)).slice(0, 3);
+    return new Response(JSON.stringify({ station, list }), { headers: { "content-type": "application/json", "cache-control": "public, max-age=300" } });
+  }
   let place = (url.searchParams.get("place") || "").slice(0, 60).trim();
   if (!place) place = [c.city, c.regionCode || c.region].filter(Boolean).join(" ");
   if (!place) place = "local";
