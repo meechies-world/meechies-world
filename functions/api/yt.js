@@ -25,7 +25,7 @@ async function keepPlayable(list, max) {
   for (const v of checks) if (v && out.length < max) out.push(v);
   return out;
 }
-const MOVIE_CHANNELS = /filmrise|popcornflix|movie central|maverick movies|grizzly imports|timeless classic|full movies free|the film detective|hoopla|tubi|crackle|moviestime|free movies by cineverse|cineverse|bonanza|black cinema|urban movie channel|umc|hallmark|kino|shout! factory|mill creek/i;
+const MOVIE_CHANNELS = /^(filmrise( movies)?|popcornflix|movie central|maverick movies|timeless classic movies|the film detective|grizzly imports)$/i;
 
 export async function onRequestGet({ request }) {
   const url = new URL(request.url), mode = url.searchParams.get("mode") || "live";
@@ -50,9 +50,11 @@ export async function onRequestGet({ request }) {
     }
     if (mode === "movies") {
       const genre = (url.searchParams.get("genre") || "").slice(0, 30);
-      const raw = await search((genre ? genre + " " : "") + "full movie free", false);
-      const long = raw.filter((v) => !v.live && /^\d+:\d{2}:\d{2}$/.test(v.len) && MOVIE_CHANNELS.test(v.channel));
-      if (url.searchParams.get("debug")) return json({ raw: raw.slice(0, 20).map((v) => [v.channel, v.len, v.title.slice(0, 40)]) }, 0);
+      const official = ["FilmRise Movies", "Popcornflix", "Movie Central", "Maverick Movies", "Timeless Classic Movies"];
+      const batches = await Promise.all(official.map((ch) => search((genre ? genre + " " : "") + "full movie " + ch, false).catch(() => [])));
+      const seen = new Set(), long = [];
+      for (const list of batches) for (const v of list) if (!v.live && !seen.has(v.id) && /^\d+:\d{2}:\d{2}$/.test(v.len) && MOVIE_CHANNELS.test(v.channel)) { seen.add(v.id); long.push(v); }
+      if (url.searchParams.get("debug")) return json({ n: long.length, raw: batches.flat().slice(0, 25).map((v) => [v.channel, v.len, v.title.slice(0, 40)]) }, 0);
       return json({ genre, list: await keepPlayable(long, 12) }, 3600);
     }
   } catch (err) { return json({ list: [], error: String(err && err.message || err) }, 60); }
