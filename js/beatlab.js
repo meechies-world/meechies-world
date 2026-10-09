@@ -59,6 +59,12 @@
 .bl-lib div{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px}
 .bl-lib span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #bl-root{--hw:170px}
+.bl-in{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#0f0d09}
+.bl-inl{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.bl-inl select{max-width:220px;background:#0c0a07;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:6px;font:14px var(--body)}
+.bl-inl input[type=range]{width:110px;accent-color:var(--gold)}
+.bl-meter{width:140px;height:10px;border-radius:9px;background:#1d1810;overflow:hidden;border:1px solid var(--line)}
+.bl-meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4ade80 0 60%,#facc15 60% 85%,#ef4444 85%);transition:width .05s}
 @media (max-width:640px){#bl-root{--hw:118px}.bl-bar{top:56px}.bl-head .r button{padding:4px 6px}}`;
   document.head.appendChild(css);
 
@@ -74,12 +80,22 @@
     <button class="bl-btn" type="button" id="bl-export">⬇ Save WAV</button>
     <button class="bl-btn on" type="button" id="bl-post">📣 Post my song</button>
   </div>
+  <div class="bl-in" id="bl-in">
+    <label class="bl-inl">🎙️ Microphone <select id="bl-dev" aria-label="Microphone"><option value="">Default mic</option></select></label>
+    <button class="bl-btn" type="button" id="bl-devscan" title="Plug in your mic or audio interface, then tap">🔌 Find my mic</button>
+    <label class="bl-inl"><input type="checkbox" id="bl-hq" checked> Studio quality (raw sound, no phone filters)</label>
+    <label class="bl-inl"><input type="checkbox" id="bl-stack" checked> New layer each take</label>
+    <label class="bl-inl"><input type="checkbox" id="bl-mon"> Hear myself (headphones only)</label>
+    <label class="bl-inl">Input <input type="range" id="bl-gain" min="0" max="2.5" step="0.05" value="1" aria-label="Input volume"></label>
+    <div class="bl-meter" aria-hidden="true"><i id="bl-lvl"></i></div>
+    <button class="bl-btn" type="button" id="bl-test">Test mic</button>
+  </div>
   <div class="bl-tracks"><div class="bl-scroll" id="bl-scroll"><div class="bl-ruler" id="bl-ruler"></div><div id="bl-rows"></div><div class="bl-ph" id="bl-ph"></div></div>
     <div class="bl-add">
       <button class="bl-btn" type="button" id="bl-new">＋ Vocal track</button>
       <label class="bl-btn bl-file">📂 Import a beat or sound<input type="file" id="bl-import" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" aria-label="Import audio"></label>
       <button class="bl-btn" type="button" id="bl-libbtn">📻 Beats from the radio library</button>
-      <small class="muted" id="bl-st" style="align-self:center">Tap ＋ Vocal track, then ● REC. Use headphones so the beat doesn't get into your mic.</small>
+      <small class="muted" id="bl-st" style="align-self:center">Tap ● REC to record. Every take stacks as a new layer. Plug in a USB mic or audio interface (on phones use a USB-C/Lightning adapter) and tap 🔌 Find my mic. Use headphones so the beat doesn't get into your mic.</small>
     </div>
     <div class="bl-lib" id="bl-lib" hidden style="padding:0 10px 10px"></div>
   </div>
@@ -182,16 +198,61 @@
   }
 
   /* ---------- recording ---------- */
+  /* ---------- input: pick your mic (USB mic, audio interface, headset), studio quality, level meter, monitoring ---------- */
+  let inStream = null, inSrc = null, inGain = null, inAn = null, inDest = null, inMon = null, inDevice = "", inHQ = true, meterRaf = 0;
+  async function listMics() {
+    try {
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
+      const sel = $("#bl-dev"), cur = sel.value;
+      sel.innerHTML = '<option value="">Default mic</option>' + devs.filter((d) => d.deviceId && d.deviceId !== "default").map((d, i) => `<option value="${E(d.deviceId)}">${E(d.label || "Microphone " + (i + 1))}</option>`).join("");
+      if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+      // a newly plugged-in mic (USB / interface / headset) gets picked automatically
+      const ext = devs.find((d) => /usb|interface|focusrite|scarlett|audient|presonus|behringer|shure|rode|blue|yeti|at2020|headset|external|line in/i.test(d.label || ""));
+      if (!cur && ext) { sel.value = ext.deviceId; }
+      return devs.length;
+    } catch (_) { return 0; }
+  }
+  async function openInput(force) {
+    const want = $("#bl-dev").value, hq = $("#bl-hq").checked;
+    if (inStream && !force && want === inDevice && hq === inHQ) return true;
+    closeInput();
+    const c = audio();
+    const cons = { echoCancellation: !hq, noiseSuppression: !hq, autoGainControl: !hq, channelCount: { ideal: hq ? 2 : 1 }, sampleRate: { ideal: 48000 }, ...(want ? { deviceId: { exact: want } } : {}) };
+    try { inStream = await navigator.mediaDevices.getUserMedia({ audio: cons }); }
+    catch (err) { try { inStream = await navigator.mediaDevices.getUserMedia({ audio: want ? { deviceId: want } : true }); } catch (_) { say("Allow the microphone to record."); return false; } }
+    inDevice = want; inHQ = hq;
+    inSrc = c.createMediaStreamSource(inStream); inGain = c.createGain(); inGain.gain.value = +$("#bl-gain").value;
+    inAn = c.createAnalyser(); inAn.fftSize = 1024; inDest = c.createMediaStreamDestination(); inMon = c.createGain(); inMon.gain.value = $("#bl-mon").checked ? 1 : 0;
+    inSrc.connect(inGain); inGain.connect(inAn); inGain.connect(inDest); inGain.connect(inMon); inMon.connect(c.destination);
+    await listMics(); meter();
+    const tr = inStream.getAudioTracks()[0]; const lbl = tr && tr.label ? tr.label : "your mic";
+    $("#bl-st").textContent = "Using " + lbl + (hq ? " in studio quality." : ".");
+    return true;
+  }
+  function closeInput() { cancelAnimationFrame(meterRaf); try { inStream && inStream.getTracks().forEach((t) => t.stop()); } catch (_) {} try { inSrc && inSrc.disconnect(); inMon && inMon.disconnect(); } catch (_) {} inStream = inSrc = inGain = inAn = inDest = inMon = null; $("#bl-lvl").style.width = "0"; }
+  function meter() {
+    cancelAnimationFrame(meterRaf); if (!inAn) return; const d = new Float32Array(inAn.fftSize);
+    const loop = () => { if (!inAn) return; inAn.getFloatTimeDomainData(d); let pk = 0; for (const v of d) pk = Math.max(pk, Math.abs(v)); $("#bl-lvl").style.width = Math.min(100, pk * 110) + "%"; if (pk > 0.98) $("#bl-st").textContent = "Too loud! Turn the Input slider down so the meter stays out of the red."; meterRaf = requestAnimationFrame(loop); };
+    loop();
+  }
+  $("#bl-devscan").addEventListener("click", async () => { const ok = await openInput(true); if (ok) { const n = await listMics(); say(n > 1 ? "Found " + n + " microphones. Pick yours from the list." : "Using your mic. Plug in a USB mic or interface and tap again."); await openInput(true); } });
+  $("#bl-dev").addEventListener("change", () => openInput(true));
+  $("#bl-hq").addEventListener("change", () => { if (inStream) openInput(true); });
+  $("#bl-gain").addEventListener("input", (e) => { if (inGain) inGain.gain.value = +e.target.value; });
+  $("#bl-mon").addEventListener("change", (e) => { if (e.target.checked) say("Use headphones, or you'll get loud feedback."); if (inMon) inMon.gain.value = e.target.checked ? 1 : 0; else if (e.target.checked) openInput(); });
+  $("#bl-test").addEventListener("click", async (e) => { if (inStream && !recording) { closeInput(); e.currentTarget.textContent = "Test mic"; $("#bl-st").textContent = "Mic test off."; return; } if (await openInput()) { e.currentTarget.textContent = "Stop test"; } });
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener("devicechange", async () => { await listMics(); if (inStream) openInput(true); say("Mic change detected"); });
+
   async function startRec() {
     if (typeof needMember === "function" && !needMember()) return;
     let t = tracks.find((x) => x.armed) || tracks.find((x) => !x.buffer);
+    if (t && t.buffer && $("#bl-stack").checked) { const base = t.name.replace(/ \(take \d+\)$/, ""); const n = tracks.filter((x) => x.name.startsWith(base)).length + 1; t.armed = false; t = addTrack(base + " (take " + n + ")"); } // stack a new layer
     if (!t) t = addTrack("Vocals"); if (!t) return;
     if (t.buffer && !confirm("Record over \"" + t.name + "\"? The old take will be replaced.")) return;
-    try { recStream = recStream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); }
-    catch (_) { say("Allow the microphone to record."); return; }
     const c = audio();
+    const ok = await openInput(); if (!ok) return;
     const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((x) => window.MediaRecorder && MediaRecorder.isTypeSupported(x)) || "";
-    rec = new MediaRecorder(recStream, type ? { mimeType: type } : undefined); recChunks = [];
+    rec = new MediaRecorder(inDest.stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 256000 }); recChunks = [];
     rec.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
     recTrack = t; recBegin = playhead; recording = true;
     $("#bl-rec").classList.add("on"); $("#bl-st").textContent = "Recording on " + t.name + "... tap ● again to stop.";
@@ -203,7 +264,8 @@
     $("#bl-st").textContent = "Processing your take...";
     try {
       const buf = await audio().decodeAudioData(await new Blob(recChunks, { type: r.mimeType }).arrayBuffer());
-      const lat = Math.min(0.4, (ctx.baseLatency || 0) + (ctx.outputLatency || 0.05)); // line the take up with the beat
+      const inLat = (() => { try { return inStream.getAudioTracks()[0].getSettings().latency || 0; } catch (_) { return 0; } })();
+      const lat = Math.min(0.5, (ctx.baseLatency || 0) + (ctx.outputLatency || 0.05) + inLat); // line the take up with the beat
       recTrack.buffer = buf; recTrack.offset = Math.max(0, recBegin - lat); recTrack.armed = false;
       $("#bl-st").textContent = "Got it. Drag the take to move it, or tap ● on a track to record again.";
     } catch (_) { $("#bl-st").textContent = "That take couldn't be saved. Try again."; }
@@ -303,6 +365,6 @@
   $("#bl-uq").addEventListener("input", ownerPanel);
   $("#bl-ulist").addEventListener("click", async (e) => { const b = e.target.closest("[data-unlock]"); if (!b) return; try { await DB().doc("members/" + b.dataset.unlock).update({ pro: b.dataset.on === "1" }); say(b.dataset.on === "1" ? "Plugins unlocked" : "Plugins removed"); setTimeout(ownerPanel, 600); } catch (err) { say(err.message || err.code); } });
   // stop when leaving the page
-  new MutationObserver(() => { if (view.hidden && (playing || recording)) stop(); if (!view.hidden) { draw(); ownerPanel(); } }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
+  new MutationObserver(() => { if (view.hidden && (playing || recording)) stop(); if (view.hidden) { closeInput(); const tb = $("#bl-test"); if (tb) tb.textContent = "Test mic"; } if (!view.hidden) { draw(); ownerPanel(); } }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   draw();
 })();
