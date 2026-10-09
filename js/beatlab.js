@@ -152,7 +152,9 @@
       </div>
       <div class="bl-lane" data-lane="${t.id}" style="width:${W}px">${t.buffer ? `<div class="bl-clip" data-clip="${t.id}" style="left:${t.offset * PX}px;width:${t.buffer.duration * PX}px"><canvas></canvas></div>` : ""}${recording && recTrack === t ? `<div class="bl-clip rec" id="bl-recclip" style="left:${recBegin * PX}px;width:2px"></div>` : ""}</div></div>`).join("") || `<div style="padding:28px;text-align:center" class="muted">Your song starts here. Add a vocal track or import a beat.</div>`;
     tracks.forEach((t) => { const c = root.querySelector(`[data-clip="${t.id}"] canvas`); if (c && t.buffer) drawWave(c, t); });
-    $("#bl-pro").hidden = false; $("#bl-pro-note").textContent = pro ? "✅ Your Plugin Pack is unlocked. Tap any effect on a track." : "After you pay, Meechie unlocks your plugins (usually same day).";
+    const own = typeof isOwner !== "undefined" && isOwner;
+    $("#bl-pro").hidden = false; $("#bl-pro-note").textContent = own ? "✅ Owner: everything is unlocked for you, free." : pro ? "✅ Your Plugin Pack is unlocked. Tap any effect on a track." : "After you pay, Meechie unlocks your plugins (usually same day).";
+    const payBtn = root.querySelector('[data-pay="plugins"]'); if (payBtn) payBtn.style.display = pro ? "none" : "";
     movePH();
   }
   function movePH() { const hw = parseFloat(getComputedStyle(root).getPropertyValue("--hw")) || 170; $("#bl-ph").style.left = hw + playhead * PX + "px"; $("#bl-time").textContent = Math.floor(playhead / 60) + ":" + (playhead % 60).toFixed(1).padStart(4, "0"); }
@@ -429,4 +431,5 @@
   // stop when leaving the page
   new MutationObserver(() => { if (view.hidden && (playing || recording)) stop(); if (view.hidden) { closeInput(); const tb = $("#bl-test"); if (tb) tb.textContent = "Test mic"; } if (!view.hidden) { draw(); ownerPanel(); } }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   draw();
+  if (window.MW && MW.sessionReady) MW.sessionReady.then(() => setTimeout(() => { draw(); ownerPanel(); }, 1500));
 })();
