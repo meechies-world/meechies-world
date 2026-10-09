@@ -587,6 +587,7 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .support{display:grid;justify-items:center;text-align:center;gap:10px;margin:28px auto;max-width:720px;border-color:var(--gold-lo)}
 .support h3{font-family:var(--display);font-size:26px;color:var(--gold-hi)}
 #ai-log .msg{white-space:pre-wrap;overflow-wrap:anywhere}
+.fb-btn{width:100%;justify-content:center;gap:10px;background:#1877f2!important;border-color:#1877f2!important;color:#fff!important}
 footer{border-top:1px solid var(--line);padding-block:30px;text-align:center;color:var(--muted);font-size:13px}
 footer .f-brand{font:700 14px var(--display);letter-spacing:.2em;color:var(--gold)}
 body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -1211,7 +1212,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <div class="f-brand">MEECHIE'S WORLD INC • CONSCIENTIA</div>
     <p class="latin" style="margin:6px 0 0">Lux e tenebris</p>
     <div class="f-links"><a href="#services" data-go="services">Services</a><a href="#community" data-go="community">Community</a><a href="#radio" data-go="radio">Radio</a><a href="#world" data-go="world">Virtual World</a><a href="#creators" data-go="creators">Creators</a><a href="#contact" data-go="contact">Contact</a></div>
-    <p style="margin:14px 0 0">© 2026 Meechie's World Inc. All rights reserved.</p>
+    <p style="margin:14px 0 0"><a href="/privacy.html" style="color:var(--gold-hi)">Privacy Policy</a> · <a href="/privacy.html#delete" style="color:var(--gold-hi)">Delete my data</a></p>
+    <p style="margin:8px 0 0">© 2026 Meechie's World Inc. All rights reserved.</p>
   </div>
 </footer>
 
@@ -1271,6 +1273,7 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     <svg class="sqc-ico" aria-hidden="true" style="width:48px;height:48px;justify-self:center"><use href="#sqc"/></svg>
     <h3 id="auth-title" style="font-size:24px;text-align:center">Join Meechie's World</h3>
     <p class="muted" id="auth-sub" style="margin:0;text-align:center">Free forever. Post, chat, play, and design.</p>
+    <div id="auth-social" hidden><button class="btn fb-btn" type="button" id="auth-fb"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.8c0-.9.3-1.5 1.6-1.5h1.7V4.4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.2v2.3H7.5V14h2.7v8h3.3z"/></svg>Continue with Facebook</button><p class="muted" style="margin:10px 0 0;text-align:center;font-size:13px">or use your email</p></div>
     <div class="field"><label for="auth-email">Email</label><input type="email" id="auth-email" autocomplete="email" required></div>
     <div class="field"><label for="auth-pass">Password (8+ characters)</label><input type="password" id="auth-pass" minlength="8" autocomplete="current-password" required style="width:100%;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px"></div>
     <p class="muted" id="auth-msg" style="margin:0;font-size:14px;text-align:center" aria-live="polite"></p>
@@ -1330,6 +1333,7 @@ function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.o
 /* ---------- Live platform ---------- */
 let db=null, user=null, me=null, isOwner=false, members={}, profileMe=null;
 const handleOf = id => members[id]?.handle || "Member";
+const avatarOf = id => { const m=members[id]||{}; return m.photo && /^https:\/\//.test(m.photo) ? `<span class="avatar" style="background:url('${esc(m.photo).replace(/'/g,"%27")}') center/cover"></span>` : `<span class="avatar">${esc(initial(m.handle))}</span>`; };
 
 async function boot(){
   [db,user] = await Promise.all([claude.use("db"), claude.use("user")]);
@@ -1338,14 +1342,15 @@ async function boot(){
   me = await user.id();
   if(!me) $("#signed-out").hidden=false;
   paintAuthBar();
+  { const meta=window.MW?.session?.()?.user?.user_metadata||{}; const nm=(meta.full_name||meta.name||"").trim(); if(nm && !$("#j-handle").value) $("#j-handle").value=nm.slice(0,30); }
   db.collection("members").orderBy("joinedAt","desc").limit(200).onSnapshot(snap=>{
     members={}; snap.docs.forEach(d=>members[d.id]=d.data());
     profileMe = members[me] || null;
     $("#join-card").hidden = !me || !!profileMe; $("#composer").hidden = !profileMe; $("#me-card").hidden = !profileMe;
-    if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=initial(profileMe.handle); $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
+    if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=profileMe.photo?"":initial(profileMe.handle); $("#me-av").style.background=profileMe.photo?`url("${profileMe.photo}") center/cover`:""; { const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture; if(ph && !profileMe.photo && /^https:\/\//.test(ph)) db.doc("members/"+me).update({photo:ph}).catch(()=>{}); } $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
     renderShops(); renderLive(); renderGifts();
     const list=snap.docs.slice(0,8);
-    $("#members").innerHTML = list.length ? list.map(d=>`<div><span class="avatar">${esc(initial(d.data().handle))}</span><span><b>${esc(d.data().handle)}</b><br><small class="muted">${esc(d.data().bio||"Member")}</small></span>${d.id!==me?`<button class="act dm-btn" type="button" data-dm="${d.id}">Message</button>`:""}</div>`).join("") : '<p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p>';
+    $("#members").innerHTML = list.length ? list.map(d=>`<div>${avatarOf(d.id)}<span><b>${esc(d.data().handle)}</b><br><small class="muted">${esc(d.data().bio||"Member")}</small></span>${d.id!==me?`<button class="act dm-btn" type="button" data-dm="${d.id}">Message</button>`:""}</div>`).join("") : '<p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p>';
     renderFeed(); renderAds(); renderMsgs();
   }, err=>console.warn(err));
   subFeed(); subAds(); subChannel("lounge"); joinRoom(); subLive(); subGifts(); enterWorld();
@@ -1969,7 +1974,7 @@ function needMember(){ if(!db){toast("The site is still being set up.");return f
 $("#join-form").addEventListener("submit",async e=>{
   e.preventDefault(); if(!db) return;
   const handle=$("#j-handle").value.trim(); if(!handle) return;
-  try{ await db.collection("members").doc(me).set({handle, bio:$("#j-bio").value.trim(), joinedAt:Date.now()}); toast("Welcome to Meechie's World, "+handle); }
+  try{ const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture; await db.collection("members").doc(me).set({handle, bio:$("#j-bio").value.trim(), joinedAt:Date.now(), ...(ph&&/^https:\/\//.test(ph)?{photo:ph}:{})}); toast("Welcome to Meechie's World, "+handle); }
   catch(err){ toast("Couldn't join: "+(err.message||err.code)); }
 });
 
@@ -1998,7 +2003,7 @@ function renderFeed(){
     const liked=(p.likes||[]).includes(me);
     const el=document.createElement("article"); el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
     const shop=shopLinks(members[p.authorId]||{})[0];
-    el.innerHTML=`<div class="post-head"><span class="avatar">${esc(initial(handleOf(p.authorId)))}</span><div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${p.authorId}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(shop[1])}" target="_blank" rel="noopener">Shop</a>`:""}</div>
+    el.innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="act" type="button" data-dm="${p.authorId}" style="margin-left:auto">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(shop[1])}" target="_blank" rel="noopener">Shop</a>`:""}</div>
       ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
       ${p.photo?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}">`:""}
       <div class="post-actions">
@@ -2112,6 +2117,10 @@ let authMode="signup";
 function openAuth(mode){ authMode=mode||"signup"; paintAuth(); $("#auth-msg").textContent=""; $("#auth-dialog").showModal(); }
 function paintAuth(){ const up=authMode==="signup"; $("#auth-title").textContent=up?"Join Meechie's World":"Welcome back"; $("#auth-sub").textContent=up?"Free forever. Post, chat, play, and design.":"Sign in to your account."; $("#auth-go").textContent=up?"Create my account":"Sign in"; $("#auth-switch").textContent=up?"I already have an account":"I need an account"; $("#auth-pass").autocomplete=up?"new-password":"current-password"; }
 document.addEventListener("click",e=>{ const b=e.target.closest("[data-auth]"); if(!b) return; e.preventDefault(); if(b.dataset.auth==="signout"){ window.MW?.signOut?.(); return; } openAuth(b.dataset.auth); });
+if(window.MW_CONFIG?.FACEBOOK_LOGIN) $("#auth-social").hidden=false;
+$("#auth-fb").addEventListener("click",async()=>{ if(!window.MW?.ready) return; $("#auth-msg").textContent="Opening Facebook...";
+  const r=await MW.sb.auth.signInWithOAuth({provider:"facebook",options:{redirectTo:location.origin+"/#community",scopes:"email public_profile"}});
+  if(r.error) $("#auth-msg").textContent=r.error.message; });
 $("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"signin":"signup"; paintAuth(); });
 $("#auth-forgot").addEventListener("click",async()=>{ const em=$("#auth-email").value.trim(); if(!em){ $("#auth-msg").textContent="Type your email first."; return; } const r=await MW.reset(em); $("#auth-msg").textContent=r.error?r.error.message:"Check your email for a reset link."; });
 $("#auth-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!window.MW?.ready){ $("#auth-msg").textContent="The site is still being set up."; return; }
