@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791566548">
+<meta name="mw-build" content="1791583003">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -636,6 +636,11 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .tt-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px}
 .tt-box .tiktok-embed{background:transparent;border:0}
 .tt-box{grid-template-columns:minmax(0,1fr)}
+.feat-vid{position:relative;margin:18px 0 8px;border-radius:18px;overflow:hidden;border:1px solid var(--gold);box-shadow:0 0 0 6px #0f0d09,0 0 0 7px var(--gold-lo),0 30px 60px rgba(0,0,0,.6);background:#000;aspect-ratio:16/9}
+.feat-vid video{width:100%;height:100%;display:block;object-fit:cover;cursor:pointer}
+.fv-snd{position:absolute;top:12px;right:12px;border:0;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;padding:8px 14px;font:700 13px var(--body);cursor:pointer}
+.fv-cap{position:absolute;left:0;right:0;bottom:0;padding:40px 16px 14px;background:linear-gradient(transparent,rgba(0,0,0,.85));display:grid;gap:2px;pointer-events:none}
+.fv-cap b{color:#fff;font-size:clamp(15px,2.4vw,22px)}
 .htt-wrap{position:relative;min-width:0;max-width:100%}
 .htt-grid{max-width:100%;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
 .htt-grid{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(190px,240px);gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;scrollbar-width:none;overscroll-behavior-x:contain}
@@ -759,6 +764,11 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <!-- HOME -->
 <section class="view" id="v-home">
   <div class="wrap">
+    <div class="feat-vid" id="feat-vid">
+      <video id="fv" src="/media/the-world-gone-be.mp4" poster="/media/the-world-gone-be.jpg" playsinline muted loop preload="metadata"></video>
+      <button type="button" class="fv-snd" id="fv-snd">🔇 Tap for sound</button>
+      <div class="fv-cap"><span class="eyebrow" style="margin:0">New from Halal Music</span><b>"The World Gone Be What The World Gone Be"</b></div>
+    </div>
     <div class="hero">
       <div class="pillar-col left" aria-hidden="true"><svg viewBox="0 0 60 420"><use href="#pillar"/></svg><span>B</span></div>
       <div class="hero-center">
@@ -1443,8 +1453,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791566548"></script>
-<script src="js/platform.js?v=1791566548"></script>
+<script src="js/config.js?v=1791583003"></script>
+<script src="js/platform.js?v=1791583003"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2453,20 +2463,20 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791566548"></script>
-<script src="js/studio.js?v=1791566548"></script>
-<script src="js/owner.js?v=1791566548"></script>
-<script src="js/messages.js?v=1791566548"></script>
-<script src="js/videos.js?v=1791566548"></script>
-<script src="js/world3d.js?v=1791566548"></script>
-<script src="js/clips.js?v=1791566548"></script>
-<script src="js/dj.js?v=1791566548"></script>
-<script src="js/live.js?v=1791566548"></script>
-<script src="js/autotune.js?v=1791566548"></script>
-<script src="js/beatlab.js?v=1791566548"></script>
-<script src="js/friends.js?v=1791566548"></script>
-<script src="js/dating.js?v=1791566548"></script>
-<script src="js/books.js?v=1791566548"></script>
-<script src="js/ai-widget.js?v=1791566548"></script>
+<script src="js/appnav.js?v=1791583003"></script>
+<script src="js/studio.js?v=1791583003"></script>
+<script src="js/owner.js?v=1791583003"></script>
+<script src="js/messages.js?v=1791583003"></script>
+<script src="js/videos.js?v=1791583003"></script>
+<script src="js/world3d.js?v=1791583003"></script>
+<script src="js/clips.js?v=1791583003"></script>
+<script src="js/dj.js?v=1791583003"></script>
+<script src="js/live.js?v=1791583003"></script>
+<script src="js/autotune.js?v=1791583003"></script>
+<script src="js/beatlab.js?v=1791583003"></script>
+<script src="js/friends.js?v=1791583003"></script>
+<script src="js/dating.js?v=1791583003"></script>
+<script src="js/books.js?v=1791583003"></script>
+<script src="js/ai-widget.js?v=1791583003"></script>
 </body>
 </html>

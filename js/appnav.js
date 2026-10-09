@@ -101,3 +101,16 @@
   setTimeout(check, 4000); setInterval(check, 5 * 60e3);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (pending && !busy()) location.reload(); else check(); } });
 })();
+
+/* Featured music video on Home: plays muted when you scroll to it (like TikTok/Instagram); tap for sound. */
+(function () {
+  const v = document.getElementById("fv"), btn = document.getElementById("fv-snd"); if (!v) return;
+  const home = document.getElementById("v-home");
+  const vis = () => !home.hidden && document.visibilityState === "visible";
+  new IntersectionObserver((e) => e.forEach((x) => { if (x.isIntersecting && x.intersectionRatio > 0.5 && vis()) v.play().catch(() => {}); else v.pause(); }), { threshold: [0, 0.5] }).observe(v);
+  new MutationObserver(() => { if (home.hidden) v.pause(); }).observe(home, { attributes: true, attributeFilter: ["hidden"] });
+  const sound = (on) => { v.muted = !on; btn.textContent = on ? "🔊 Sound on" : "🔇 Tap for sound"; if (on) { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} v.play().catch(() => {}); } };
+  btn.addEventListener("click", () => sound(v.muted));
+  v.addEventListener("click", () => { if (v.muted) sound(true); else if (v.paused) v.play(); else v.pause(); });
+  try { if (typeof media !== "undefined") media.addEventListener("play", () => { if (!v.muted) sound(false); }); } catch (_) {}
+})();
