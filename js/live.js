@@ -23,6 +23,9 @@
 .tv-ch .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#e5484d;margin-right:6px;vertical-align:1px}`;
   document.head.appendChild(css);
 
+  let wherePromise = null;
+  const where = () => { if (!wherePromise) wherePromise = fetch("/api/where").then((r) => r.json()).catch(() => ({})); return wherePromise; };
+
   /* ---------------- Live radio ---------------- */
   const radioView = document.getElementById("v-radio");
   const lib = radioView && radioView.querySelector("#dj-root");
@@ -30,7 +33,7 @@
     const box = document.createElement("div");
     box.className = "lv-card"; box.id = "world-radio"; box.style.scrollMarginTop = "120px";
     box.innerHTML = `<div class="lv-head"><div><p class="eyebrow" style="margin:0">Live from around the world</p><h3>Live Radio Stations</h3></div><small class="muted">Tap a station to listen. Keeps playing when your phone locks.</small></div>
-      <div class="lv-chips" id="lv-chips">${[["hip hop", "Hip Hop"], ["rnb", "R&B"], ["gospel", "Gospel"], ["jazz", "Jazz"], ["reggae", "Reggae"], ["pop", "Top 40"], ["oldies", "Oldies"], ["news", "News"], ["sports", "Sports"], ["islamic", "Islamic"]].map(([t, n], i) => `<button class="chip" type="button" data-tag="${t}" aria-pressed="${i === 0}">${n}</button>`).join("")}</div>
+      <div class="lv-chips" id="lv-chips"><button class="chip" type="button" data-local="1" aria-pressed="true">📍 Local</button>${[["hip hop", "Hip Hop"], ["rnb", "R&B"], ["gospel", "Gospel"], ["jazz", "Jazz"], ["reggae", "Reggae"], ["pop", "Top 40"], ["oldies", "Oldies"], ["news", "News"], ["sports", "Sports"], ["islamic", "Islamic"]].map(([t, n]) => `<button class="chip" type="button" data-tag="${t}" aria-pressed="false">${n}</button>`).join("")}</div>
       <form class="lv-form" id="lv-form"><input type="search" id="lv-q" placeholder="Search any station or city (e.g. Hot 97, Pittsburgh)" aria-label="Search radio stations"><button class="btn sm" type="submit">Search</button></form>
       <div class="lv-grid" id="lv-grid"><small class="muted">Loading stations...</small></div>`;
     lib.after(box);
@@ -53,11 +56,28 @@
       const raw = await find(params);
       const seen = new Set();
       stations = raw.filter((s) => /^https:\/\//.test(s.url_resolved || "") && !seen.has(s.name.trim().toLowerCase()) && seen.add(s.name.trim().toLowerCase())).slice(0, 30);
-      g.innerHTML = stations.length ? stations.map((s, i) => `<button class="lv-st ${cur && cur.stationuuid === s.stationuuid ? "on" : ""}" type="button" data-st="${i}">${/^https:\/\//.test(s.favicon || "") ? `<img src="${E(s.favicon)}" alt="" loading="lazy" onerror="this.outerHTML='<span class=ph>📻</span>'">` : '<span class="ph">📻</span>'}<span><b>${E(s.name.trim())}</b><small>${E([s.state, s.countrycode].filter(Boolean).join(", "))}${s.bitrate ? " · " + s.bitrate + "k" : ""}</small></span></button>`).join("") : '<small class="muted">No stations found. Try another search.</small>';
+      paint();
+    }
+    function paint(head) {
+      const g = box.querySelector("#lv-grid");
+      g.innerHTML = (head ? `<div style="grid-column:1/-1;font-weight:700;color:var(--gold-hi)">${E(head)}</div>` : "") + (stations.length ? stations.map((s, i) => `<button class="lv-st ${cur && cur.stationuuid === s.stationuuid ? "on" : ""}" type="button" data-st="${i}">${/^https:\/\//.test(s.favicon || "") ? `<img src="${E(s.favicon)}" alt="" loading="lazy" onerror="this.outerHTML='<span class=ph>📻</span>'">` : '<span class="ph">📻</span>'}<span><b>${E(s.name.trim())}</b><small>${E([s.state, s.countrycode].filter(Boolean).join(", "))}${s.bitrate ? " · " + s.bitrate + "k" : ""}</small></span></button>`).join("") : '<small class="muted">No stations found. Try another search.</small>');
+    }
+    async function showLocal() {
+      const w = await where(); const g = box.querySelector("#lv-grid");
+      if (w && w.lat && w.lon) {
+        g.innerHTML = '<small class="muted">Finding stations near ' + E(w.city || "you") + '...</small>';
+        let res = await find({ geo_lat: String(w.lat), geo_long: String(w.lon), geo_distance: "120000", limit: "60" });
+        if (res.length < 6 && w.region) res = res.concat(await find({ state: w.region, countrycode: w.country || "US", limit: "40" }));
+        const seen = new Set(); stations = res.filter((s) => /^https:\/\//.test(s.url_resolved || "") && !seen.has(s.name.trim().toLowerCase()) && seen.add(s.name.trim().toLowerCase())).slice(0, 36);
+        paint(stations.length ? "📍 Local stations near " + (w.city || "you") + (w.regionCode ? ", " + w.regionCode : "") : "");
+        if (!stations.length) show({ tag: "hip hop" });
+      } else show({ tag: "hip hop" });
     }
     box.addEventListener("click", (e) => {
+      const lc = e.target.closest("[data-local]");
+      if (lc) { box.querySelectorAll("[data-tag],[data-local]").forEach((x) => x.setAttribute("aria-pressed", x === lc)); showLocal(); return; }
       const c = e.target.closest("[data-tag]");
-      if (c) { box.querySelectorAll("[data-tag]").forEach((x) => x.setAttribute("aria-pressed", x === c)); show({ tag: c.dataset.tag }); return; }
+      if (c) { box.querySelectorAll("[data-tag],[data-local]").forEach((x) => x.setAttribute("aria-pressed", x === c)); show({ tag: c.dataset.tag }); return; }
       const b = e.target.closest("[data-st]"); if (!b) return;
       const s = stations[+b.dataset.st]; if (!s) return;
       if (typeof media === "undefined") return;
@@ -70,9 +90,9 @@
       try { showBar(t, "LIVE RADIO · " + (s.countrycode || "")); renderTracks && renderTracks(); document.getElementById("pb-time").textContent = "● LIVE"; document.getElementById("pb-fill").style.width = "100%"; } catch (_) {}
       try { fetch(API[0] + "/json/url/" + s.stationuuid).catch(() => {}); } catch (_) {}
     });
-    box.querySelector("#lv-form").addEventListener("submit", (e) => { e.preventDefault(); const q = box.querySelector("#lv-q").value.trim(); if (!q) return; box.querySelectorAll("[data-tag]").forEach((x) => x.setAttribute("aria-pressed", "false")); show({ name: q }); });
+    box.querySelector("#lv-form").addEventListener("submit", (e) => { e.preventDefault(); const q = box.querySelector("#lv-q").value.trim(); if (!q) return; box.querySelectorAll("[data-tag],[data-local]").forEach((x) => x.setAttribute("aria-pressed", "false")); show({ name: q }); });
     let loaded = false;
-    const maybe = () => { if (!loaded && !radioView.hidden) { loaded = true; show({ tag: "hip hop" }); } };
+    const maybe = () => { if (!loaded && !radioView.hidden) { loaded = true; showLocal(); } };
     new MutationObserver(maybe).observe(radioView, { attributes: true, attributeFilter: ["hidden"] }); maybe();
   }
 
@@ -89,9 +109,30 @@
     const box = document.createElement("div");
     box.className = "lv-card"; box.id = "live-tv"; box.style.margin = "0 auto 28px"; box.style.maxWidth = "960px"; box.style.scrollMarginTop = "120px";
     box.innerHTML = `<div class="lv-head"><div><p class="eyebrow" style="margin:0">On now</p><h3>Live TV</h3></div><small class="muted">Free live channels. If one is off air, try another.</small></div>
+      <div><b id="tv-local-h" style="color:var(--gold-hi)">📍 Local news</b> <form id="tv-place" style="display:inline-flex;gap:6px;margin-left:6px"><input type="search" id="tv-q" placeholder="Other city" aria-label="City for local TV" style="width:140px;background:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 12px;color:var(--text);font:16px var(--body)"><button class="btn ghost sm" type="submit">Go</button></form></div>
+      <div class="tv-grid" id="tv-local"><small class="muted">Finding live local news...</small></div>
+      <b style="color:var(--gold-hi)">🌎 National & world</b>
       <div class="tv-grid">${CH.map(([n, id]) => `<button class="tv-ch" type="button" data-ch="${id}" data-name="${E(n)}"><span class="dot"></span>${E(n)}</button>`).join("")}</div>`;
     stage.before(box);
+    async function localTV(place) {
+      const el = box.querySelector("#tv-local"); el.innerHTML = '<small class="muted">Finding live local news...</small>';
+      const j = await fetch("/api/localtv" + (place ? "?place=" + encodeURIComponent(place) : "")).then((r) => r.json()).catch(() => ({ list: [] }));
+      box.querySelector("#tv-local-h").textContent = "📍 Local news" + (j.place && j.place !== "local" ? " · " + j.place : "");
+      el.innerHTML = (j.list || []).length ? j.list.map((v) => `<button class="tv-ch" type="button" data-vid="${E(v.id)}" data-name="${E(v.channel || v.title)}" title="${E(v.title)}"><span class="dot"></span>${E((v.channel || v.title).slice(0, 34))}</button>`).join("") : '<small class="muted">No local stations are live right now. Local news usually streams around 6 AM, noon, 5–6 PM and 11 PM.</small>';
+    }
+    box.querySelector("#tv-place").addEventListener("submit", (e) => { e.preventDefault(); const q = box.querySelector("#tv-q").value.trim(); if (q) localTV(q); });
+    let tvLoaded = false; const tvMaybe = () => { if (!tvLoaded && !vidView.hidden) { tvLoaded = true; localTV(); } };
+    new MutationObserver(tvMaybe).observe(vidView, { attributes: true, attributeFilter: ["hidden"] }); tvMaybe();
     box.addEventListener("click", (e) => {
+      const lv = e.target.closest("[data-vid]");
+      if (lv) {
+        box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === lv));
+        try { if (typeof media !== "undefined" && !media.paused) media.pause(); if (window.MW_LIVE && !MW_LIVE.paused) MW_LIVE.pause(); } catch (_) {}
+        const f = vidView.querySelector("#yt-frame"); f.classList.remove("tall");
+        f.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(lv.dataset.vid)}?autoplay=1&rel=0" title="${E(lv.dataset.name)} live" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+        vidView.querySelector("#yt-now").innerHTML = `<b>● ${E(lv.dataset.name)}</b><small>Local live TV</small>`;
+        stage.scrollIntoView({ behavior: "smooth", block: "start" }); return;
+      }
       const b = e.target.closest("[data-ch]"); if (!b) return;
       box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === b));
       try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
