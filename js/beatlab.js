@@ -127,6 +127,13 @@
     tracks.forEach((x) => { if (!buffer) x.armed = false; });
     tracks.push(t); draw(); return t;
   }
+  // The Beat Maker hands finished beats to the studio through this
+  window.MW_STUDIO = { addBeat(name, buf, beatBpm) {
+    const t = addTrack(name, buf, 0); if (!t) return false;
+    if (beatBpm) { bpm = beatBpm; const b = root.querySelector("#bl-bpm"); if (b) b.value = beatBpm; }
+    const st = root.querySelector("#bl-st"); if (st) st.textContent = "Your beat \"" + name + "\" is on a track. Tap ＋ Vocal track, then ● REC to record over it.";
+    return true;
+  } };
   function songLen() { return Math.max(30, ...tracks.map((t) => (t.buffer ? t.offset + t.buffer.duration : 0))) + 4; }
   function peaks(buf, w) {
     const d = buf.getChannelData(0), step = Math.max(1, Math.floor(d.length / w)), out = new Float32Array(w);
