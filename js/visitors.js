@@ -12,11 +12,25 @@
   const ready = () => typeof db !== "undefined" && db && typeof me !== "undefined";
   const tok = () => (window.MW && MW.session && MW.session() && MW.session().access_token) || "";
 
-  function ping(kind) {
-    const t = tok(); if (kind !== "gate" && !t) return;
-    fetch("/api/visit", { method: "POST", headers: { "content-type": "application/json", ...(t ? { authorization: "Bearer " + t } : {}) }, body: JSON.stringify({ kind }), keepalive: true }).catch(() => {});
+  // Alerts go straight from the visitor's browser to the owner's ntfy channel (free; Cloudflare's shared servers hit ntfy's daily limit).
+  // Visitors on the sign-up screen can't read the channel, so those go through the site's server (/api/visit) instead.
+  const device = () => /iPhone|iPad/i.test(navigator.userAgent) ? "iPhone" : /Android/i.test(navigator.userAgent) ? "Android phone" : /Mobi/i.test(navigator.userAgent) ? "phone" : "computer";
+  async function ping(kind) {
+    const t = tok();
+    if (kind === "gate" || !t) { if (kind === "gate") fetch("/api/visit", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind }), keepalive: true }).catch(() => {}); return; }
+    if (typeof isOwner !== "undefined" && isOwner) return; // your own visits aren't announced
+    let al = null; try { const d = await db.doc("site/alerts").get(); al = d.exists ? d.data() : null; } catch (_) {}
+    if (!al || al.off || !/^[A-Za-z0-9_-]{12,64}$/.test(al.topic || "")) return;
+    const who = (typeof profileMe !== "undefined" && profileMe && profileMe.handle) || ls("mw_join_name") || "A member";
+    const msg = kind === "contact" ? "📇 " + who + " just sent you their contact info. Open Messages on the site to see it."
+      : kind === "joined" ? "🎉 New member: " + who + " just made an account on Meechie's World (" + device() + ")."
+      : "🔔 " + who + " just came on Meechie's World (" + device() + ").";
+    fetch("https://ntfy.sh/" + al.topic, { method: "POST", body: msg, keepalive: true,
+      headers: { Title: kind === "joined" ? "New member" : kind === "contact" ? "New contact info" : "Someone's on your site", Tags: kind === "joined" ? "tada" : kind === "contact" ? "card_index" : "eyes", Click: "https://meechies-world.pages.dev/" } }).catch(() => {});
   }
   window.MW_VISIT = ping;
+  // the owner's visit lets the site's server learn the alert channel (for sign-up screen alerts)
+  function refreshServer() { const t = tok(); if (t) fetch("/api/visit", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + t }, body: '{"kind":"enter"}' }).catch(() => {}); }
 
   // someone on the sign-up screen
   setTimeout(() => { if (gated() && !ss("mw_v_gate")) { ss("mw_v_gate", "1"); ping("gate"); } }, 3000);
@@ -25,7 +39,8 @@
   let started = false; const wasNew = !!ls("mw_join_name"); // they just made their account on the sign-up screen
   const wait = setInterval(() => {
     if (!ready() || !me || gated()) return; clearInterval(wait); if (started) return; started = true;
-    if (!ss("mw_v_enter") || (typeof isOwner !== "undefined" && isOwner)) { ss("mw_v_enter", "1"); setTimeout(() => ping(wasNew ? "joined" : "enter"), 2500); }
+    if (typeof isOwner !== "undefined" && isOwner) refreshServer();
+    else if (!ss("mw_v_enter")) { ss("mw_v_enter", "1"); setTimeout(() => ping(wasNew ? "joined" : "enter"), 2500); }
     if (typeof isOwner !== "undefined" && isOwner) ownerTools(); else contactTimer();
   }, 700);
 
@@ -104,8 +119,8 @@
         if (k === "close") sh.remove();
         if (k === "copy") navigator.clipboard?.writeText(al.topic).then(() => toast("Channel name copied")).catch(() => toast("Press and hold the name to copy it"));
         if (k === "new") { const r = new Uint8Array(12); crypto.getRandomValues(r); const topic = "mw-alerts-" + [...r].map((b) => b.toString(36).padStart(2, "0")).join("").slice(0, 18);
-          try { await db.doc("site/alerts").set({ topic, off: false, updatedAt: Date.now() }); ping("enter"); sh.remove(); pill.click(); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
-        if (k === "off") { try { await db.doc("site/alerts").set({ ...al, off: true, updatedAt: Date.now() }); ping("enter"); sh.remove(); toast("Phone alerts are off"); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
+          try { await db.doc("site/alerts").set({ topic, off: false, updatedAt: Date.now() }); refreshServer(); sh.remove(); pill.click(); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
+        if (k === "off") { try { await db.doc("site/alerts").set({ ...al, off: true, updatedAt: Date.now() }); refreshServer(); sh.remove(); toast("Phone alerts are off"); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
         if (k === "desk") { if (!("Notification" in window)) { toast("This browser can't show notifications"); return; } const p = await Notification.requestPermission(); a.textContent = p === "granted" ? "✓ On" : "Blocked in browser settings"; }
       });
     });
