@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791643386">
+<meta name="mw-build" content="1791645347">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1735,8 +1735,8 @@ body[data-view=jobs]{--sec-accent:#60a5fa}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791643386"></script>
-<script src="js/platform.js?v=1791643386"></script>
+<script src="js/config.js?v=1791645347"></script>
+<script src="js/platform.js?v=1791645347"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2257,14 +2257,14 @@ function lockScreen(t,sub){ if(!("mediaSession" in navigator)||!t) return;
 if("mediaSession" in navigator){ const ms=navigator.mediaSession, H=(a,f)=>{ try{ ms.setActionHandler(a,f); }catch(_){} };
   H("play",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.play().catch(()=>{}); return; } if(mode==="dj"){ window.MW_DJ?.start(); return; } if(mode==="radio"&&media.paused) tuneIn(); else media.play().catch(()=>{}); });
   H("pause",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.pause(); return; } if(mode==="dj"){ window.MW_DJ?.stop(); return; } media.pause(); });
-  H("nexttrack",()=>{ if(mode==="library") playLib(curIdx+1); });
+  H("nexttrack",()=>{ if(mode==="library") playLib(curIdx+1); else if(mode==="intro") tuneIn(); });
   H("previoustrack",()=>{ if(mode==="library"){ if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); } });
   media.addEventListener("play",()=>{ try{ ms.playbackState="playing"; }catch(_){} }); media.addEventListener("pause",()=>{ try{ ms.playbackState="paused"; }catch(_){} }); }
-media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(true); else if(mode==="library"){ const n=(curIdx+1)%tracks.length; playLib(n, xfOffset(n)||0); } });
+media.addEventListener("ended",()=>{ if(mode==="intro"){ tuneIn(); return; } if(mode==="radio") tuneIn(true); else if(mode==="library"){ const n=(curIdx+1)%tracks.length; playLib(n, xfOffset(n)||0); } });
 media.addEventListener("timeupdate",()=>{ const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0); $("#pb-fill").style.width=(mode==="live"?100:(d?media.currentTime/d*100:0))+"%"; $("#pb-time").textContent=mode==="live"?"● LIVE":fmt(media.currentTime)+" / "+fmt(d); });
 $("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
 $("#pb-play").addEventListener("click",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.paused?MW_LIVE.play().catch(()=>{}):MW_LIVE.pause(); return; } if(mode==="dj"){ document.getElementById("dj-listen")?.click(); return; } if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
-$("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
+$("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="intro"){ tuneIn(); return; } if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
 $("#pb-prev").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
 $("#pb-progress").addEventListener("click",e=>{ if(mode!=="library"||!media.duration) return; const r=e.currentTarget.getBoundingClientRect(); media.currentTime=(e.clientX-r.left)/r.width*media.duration; });
 /* ---------- Volume + crossfade between songs ----------
@@ -2280,7 +2280,7 @@ let xfIdx=-1, xfActive=false, xfNode=null;
 function applyVol(){ try{ media.volume=Math.max(0,Math.min(1,userVol*fadeVol*duckVol)); }catch(_){} }
 window.MW_duck=(v)=>{ duckVol=v; applyVol(); };
 $("#pb-vol").addEventListener("input",e=>{ userVol=+e.target.value; applyVol(); });
-const xfMode=()=>mode==="radio"||mode==="library";
+const xfMode=()=>mode==="radio"||mode==="library"||mode==="intro";
 function xfStop(){ xfActive=false; xfIdx=-1; try{ xfPlayer.pause(); xfPlayer.removeAttribute("src"); xfPlayer.load(); }catch(_){} if(fadeVol!==1){ fadeVol=1; applyVol(); } }
 /* Where the next song is right now, if the crossfade player is already playing it */
 function xfOffset(i){ return (xfActive && xfIdx===i && !xfPlayer.paused) ? xfPlayer.currentTime+0.12 : null; }
@@ -2297,10 +2297,11 @@ setInterval(()=>{
   const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0), left=d-media.currentTime;
   if(d<=XF*3 || IOS) return;
   if(xfActive && left>XF+0.5){ xfStop(); return; } // went back or seeked during a crossfade: cancel it
-  const next=(curIdx+1)%tracks.length;
+  const intro=mode==="intro", air=intro?airNow():null;
+  const next=intro ? (air?air.i:0) : (curIdx+1)%tracks.length; // after the welcome song: whatever the station is playing
   if(!xfActive && left<20 && xfIdx!==next && !document.hidden){ xfIdx=next; xfPlayer.src=trackUrl(tracks[next]); xfPlayer.volume=0; xfPlayer.load(); }
   if(!xfActive && left<XF && left>0.3 && xfIdx===next && !document.hidden && xfPlayer.readyState>=2){
-    xfRoute(); xfActive=true; try{ xfPlayer.currentTime=Math.max(0,XF-left); }catch(_){} xfPlayer.volume=0; xfPlayer.play().catch(()=>xfStop());
+    xfRoute(); xfActive=true; try{ xfPlayer.currentTime=intro ? Math.max(0,air.offset) : Math.max(0,XF-left); }catch(_){} xfPlayer.volume=0; xfPlayer.play().catch(()=>xfStop());
   }
   if(xfActive){
     const k=Math.max(0,Math.min(1,left/XF));           // 1 → 0 across the crossfade
@@ -2417,6 +2418,19 @@ function renderFeatured(){
 }
 renderFeatured();
 
+/* Welcome song: when someone taps Enter, "Ain't Nobody Gone Be There For You" plays first, from the start.
+   When it ends (with a crossfade on computers and Android), the live radio comes on right where the station is. */
+const INTRO_ID="rn33483912d2u1px";
+const introIdx=()=>{ let i=tracks.findIndex(t=>t.id===INTRO_ID); if(i<0) i=tracks.findIndex(t=>/ain'?t\s*no\s*body\s*gon/i.test(t.title||"")); return i; };
+async function playIntro(){
+  const i=introIdx(); if(i<0) return false;
+  const tok=++playTok; mode="intro"; curIdx=i; autoTried=true;
+  await load(tracks[i],0,true); if(tok!==playTok) return true;
+  media.play().catch(()=>{ if(!document.hidden) toast("Tap play to start the audio."); });
+  showBar(tracks[i],"Welcome to Meechie's World · the live radio comes on next"); room?.presence({radio:null}); renderTracks(); updIcons();
+  return true;
+}
+
 /* Enter screen: the tap counts as permission, so the radio can start with sound right away */
 (function(){
   const en=document.getElementById("enter"); if(!en) return;
@@ -2428,8 +2442,10 @@ renderFeatured();
     try{ sessionStorage.removeItem("mw_radio_off"); }catch(_){}
     hideRadioNote();
     if(window.MW_SITE && window.MW_SITE.autoplay===false) return;
-    if(!tracks.length) return;                       // subRadio() starts the station as soon as the songs arrive
-    setTimeout(()=>{ if(mode==="radio" && !media.paused) return; if(mode && mode!=="radio" && !media.paused) return;
+    if(!tracks.length){ window._introPending=true; return; } // the welcome song starts as soon as the songs arrive
+    setTimeout(async()=>{ if(mode && !media.paused && mode!=="radio") return;
+      if(await playIntro()) return;                 // the welcome song first, then the live radio
+      if(mode==="radio" && !media.paused) return;
       if(!autoTried) autoRadio(); else tuneIn(); },250);
   });
   mute.addEventListener("click",()=>{ snoozeRadio(); if(mode==="radio" && !media.paused) media.pause(); close(); });
@@ -2438,7 +2454,7 @@ renderFeatured();
 async function setEpoch(ms){ try{ await db.doc("radio/state").set({epoch:ms}); }catch(err){ toast(err.message||err.code); } }
 $("#restart-station").addEventListener("click",async()=>{ await setEpoch(Date.now()); toast("Station restarted from track 1"); if(mode==="radio") tuneIn(); });
 function subRadio(){
-  db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); if(!autoTried) setTimeout(autoRadio,400); }, e=>console.warn(e));
+  db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); if(window._introPending){ window._introPending=false; playIntro().then(ok=>{ if(!ok && !autoTried) autoRadio(); }); } else if(!autoTried) setTimeout(autoRadio,400); }, e=>console.warn(e));
   db.doc("radio/state").onSnapshot(d=>{ radioEpoch=d.exists?(d.data().epoch||DEFAULT_EPOCH):DEFAULT_EPOCH; paintAir(); }, e=>console.warn(e));
   db.collection("requests").orderBy("createdAt","desc").limit(25).onSnapshot(s=>{
     $("#req-list").innerHTML = s.empty ? '<p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p>' : s.docs.map(d=>{const r=d.data(); return `<div><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)} <small class="muted">${ago(r.createdAt)}</small></div>`;}).join("");
@@ -2895,28 +2911,28 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791643386"></script>
-<script src="js/studio.js?v=1791643386"></script>
-<script src="js/owner.js?v=1791643386"></script>
-<script src="js/messages.js?v=1791643386"></script>
-<script src="js/videos.js?v=1791643386"></script>
-<script src="js/markets.js?v=1791643386"></script>
-<script src="js/coin.js?v=1791643386"></script>
-<script src="js/preach.js?v=1791643386"></script>
-<script src="js/world3d.js?v=1791643386"></script>
-<script src="js/clips.js?v=1791643386"></script>
-<script src="js/dj.js?v=1791643386"></script>
-<script src="js/live.js?v=1791643386"></script>
-<script src="js/autotune.js?v=1791643386"></script>
-<script src="js/beatmaker.js?v=1791643386"></script>
-<script src="js/beatlab.js?v=1791643386"></script>
-<script src="js/friends.js?v=1791643386"></script>
-<script src="js/dating.js?v=1791643386"></script>
-<script src="js/books.js?v=1791643386"></script>
-<script src="js/social.js?v=1791643386"></script>
-<script src="js/jobs.js?v=1791643386"></script>
-<script src="js/golive.js?v=1791643386"></script>
-<script src="js/predict.js?v=1791643386"></script>
-<script src="js/ai-widget.js?v=1791643386"></script>
+<script src="js/appnav.js?v=1791645347"></script>
+<script src="js/studio.js?v=1791645347"></script>
+<script src="js/owner.js?v=1791645347"></script>
+<script src="js/messages.js?v=1791645347"></script>
+<script src="js/videos.js?v=1791645347"></script>
+<script src="js/markets.js?v=1791645347"></script>
+<script src="js/coin.js?v=1791645347"></script>
+<script src="js/preach.js?v=1791645347"></script>
+<script src="js/world3d.js?v=1791645347"></script>
+<script src="js/clips.js?v=1791645347"></script>
+<script src="js/dj.js?v=1791645347"></script>
+<script src="js/live.js?v=1791645347"></script>
+<script src="js/autotune.js?v=1791645347"></script>
+<script src="js/beatmaker.js?v=1791645347"></script>
+<script src="js/beatlab.js?v=1791645347"></script>
+<script src="js/friends.js?v=1791645347"></script>
+<script src="js/dating.js?v=1791645347"></script>
+<script src="js/books.js?v=1791645347"></script>
+<script src="js/social.js?v=1791645347"></script>
+<script src="js/jobs.js?v=1791645347"></script>
+<script src="js/golive.js?v=1791645347"></script>
+<script src="js/predict.js?v=1791645347"></script>
+<script src="js/ai-widget.js?v=1791645347"></script>
 </body>
 </html>
