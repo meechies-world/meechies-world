@@ -118,7 +118,7 @@
       <div class="lv-chips" id="tv-cats">${[["news", "News"], ["sports", "Sports"], ["music", "Music"], ["hip hop", "Hip Hop"], ["comedy", "Comedy"], ["kids cartoons", "Kids"], ["gospel church", "Gospel"], ["islamic quran", "Islamic"], ["nature animals", "Nature"], ["gaming", "Gaming"], ["weather", "Weather"]].map(([q, n]) => `<button class="chip" type="button" data-cat="${E(q)}" aria-pressed="false">${n}</button>`).join("")}</div>
       <div class="tv-grid" id="tv-cat"></div>
       <b style="color:var(--gold-hi)">🎬 Free movies</b>
-      <div class="lv-chips" id="tv-mg">${[["", "Popular"], ["action", "Action"], ["comedy", "Comedy"], ["drama", "Drama"], ["horror", "Horror"], ["thriller", "Thriller"], ["family", "Family"], ["western", "Western"], ["black cinema", "Black Cinema"], ["classic", "Classics"]].map(([g, n], i) => `<button class="chip" type="button" data-mg="${E(g)}" aria-pressed="${i === 0}">${n}</button>`).join("")}</div>
+      <div class="lv-chips" id="tv-mg">${[["", "🆕 Newest", 1], ["", "Popular"], ["hip hop music", "Hip-Hop & Music", 1], ["crime courtroom lawyer", "Crime & Courtroom", 1], ["true story", "True Story", 1], ["documentary", "Documentary", 1], ["business money hustle", "Business & Hustle", 1], ["faith inspirational", "Faith", 1], ["urban", "Urban", 1], ["black cinema", "Black Cinema"], ["action", "Action"], ["comedy", "Comedy"], ["drama", "Drama"], ["thriller", "Thriller"], ["horror", "Horror"], ["family", "Family"], ["western", "Western"], ["classic", "Classics"]].map(([g, n, nw], i) => `<button class="chip" type="button" data-mg="${E(g)}" data-new="${nw ? 1 : ""}" aria-pressed="${i === 0}">${n}</button>`).join("")}</div>
       <div class="mv-grid" id="tv-movies"><small class="muted">Loading free movies...</small></div>`;
     stage.before(box);
     const mvCss = document.createElement("style"); mvCss.textContent = `.mv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}.mv{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0c0a07;color:var(--text);cursor:pointer;padding:0;text-align:left}.mv img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}.mv span{display:block;padding:6px 8px;font:600 12.5px var(--body);line-height:1.3;max-height:3.9em;overflow:hidden}.mv small{display:block;padding:0 8px 8px;color:var(--muted);font-size:11px}`; document.head.appendChild(mvCss);
@@ -135,14 +135,14 @@
       const j = await fetch("/api/yt?mode=live&q=" + encodeURIComponent(q)).then((r) => r.json()).catch(() => ({ list: [] }));
       el.innerHTML = (j.list || []).length ? j.list.map((v) => btn(v)).join("") : '<small class="muted">Nothing live in that category right now. Try another.</small>';
     }
-    async function movies(g, chip) {
+    async function movies(g, chip, nw) {
       if (chip) box.querySelectorAll("#tv-mg .chip").forEach((x) => x.setAttribute("aria-pressed", x === chip));
       const el = box.querySelector("#tv-movies"); el.innerHTML = '<small class="muted">Loading free movies...</small>';
-      const j = await fetch("/api/yt?mode=movies&genre=" + encodeURIComponent(g || "")).then((r) => r.json()).catch(() => ({ list: [] }));
-      el.innerHTML = (j.list || []).length ? j.list.map((v) => `<button class="mv" type="button" data-vid="${E(v.id)}" data-name="${E(v.title)}" data-movie="1"><img src="https://i.ytimg.com/vi/${E(v.id)}/hqdefault.jpg" alt="" loading="lazy"><span>${E(v.title)}</span><small>${E(v.len)} · ${E(v.channel)}</small></button>`).join("") : '<small class="muted">No free movies found for that one. Try another genre.</small>';
+      const j = await fetch("/api/yt?mode=movies&genre=" + encodeURIComponent(g || "") + (nw ? "&new=1" : "")).then((r) => r.json()).catch(() => ({ list: [] }));
+      el.innerHTML = (j.list || []).length ? j.list.map((v) => `<button class="mv" type="button" data-vid="${E(v.id)}" data-name="${E(v.title)}" data-movie="1"><img src="https://i.ytimg.com/vi/${E(v.id)}/hqdefault.jpg" alt="" loading="lazy"><span>${E(v.title)}</span><small>${E(v.len)}${v.ago ? " · " + E(v.ago) : ""} · ${E(v.channel)}</small></button>`).join("") : '<small class="muted">No free movies found for that one. Try another genre.</small>';
     }
     box.querySelector("#tv-cats").addEventListener("click", (e) => { const c = e.target.closest("[data-cat]"); if (c) cat(c.dataset.cat, c); });
-    box.querySelector("#tv-mg").addEventListener("click", (e) => { const c = e.target.closest("[data-mg]"); if (c) movies(c.dataset.mg, c); });
+    box.querySelector("#tv-mg").addEventListener("click", (e) => { const c = e.target.closest("[data-mg]"); if (c) movies(c.dataset.mg, c, c.dataset.new === "1"); });
     // Pittsburgh stations by name (shown to everyone in Meechie's area, and anyone can tap them)
     const PGH = [["KDKA · CBS 2", "KDKA CBS News Pittsburgh", "kdka|cbs news pittsburgh|cbs pittsburgh", "https://www.cbsnews.com/pittsburgh/"],
       ["WTAE · ABC 4", "WTAE Pittsburgh's Action News 4", "wtae|action news 4", "https://www.wtae.com/"],
@@ -158,7 +158,7 @@
       el.innerHTML = (j.list || []).length ? j.list.map((v) => `<button class="tv-ch" type="button" data-vid="${E(v.id)}" data-name="${E(v.channel || v.title)}" title="${E(v.title)}"><span class="dot"></span>${E((v.channel || v.title).slice(0, 34))}</button>`).join("") : '<small class="muted">No local stations are live right now. Local news usually streams around 6 AM, noon, 5–6 PM and 11 PM.</small>';
     }
     box.querySelector("#tv-place").addEventListener("submit", (e) => { e.preventDefault(); const q = box.querySelector("#tv-q").value.trim(); if (q) localTV(q); });
-    let tvLoaded = false; const tvMaybe = () => { if (!tvLoaded && !vidView.hidden) { tvLoaded = true; localTV(); national(); movies(""); } };
+    let tvLoaded = false; const tvMaybe = () => { if (!tvLoaded && !vidView.hidden) { tvLoaded = true; localTV(); national(); movies("", null, true); } };
     new MutationObserver(tvMaybe).observe(vidView, { attributes: true, attributeFilter: ["hidden"] }); tvMaybe();
     box.addEventListener("click", async (e) => {
       const stb = e.target.closest("[data-st]");
