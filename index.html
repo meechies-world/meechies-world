@@ -799,7 +799,11 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <section class="view" id="v-home">
   <div class="wrap">
     <div class="feat-vid" id="feat-vid">
-      <video id="fv" src="/media/the-world-gone-be.mp4" poster="/media/the-world-gone-be.jpg" playsinline muted loop preload="metadata"></video>
+      <!-- Streams from Supabase storage, which sends the video in pieces (iPhones won't play it otherwise). The site's own copy is the backup. -->
+      <video id="fv" poster="/media/the-world-gone-be.jpg" playsinline muted loop preload="metadata">
+        <source src="https://yjouaysczttqbytksejq.supabase.co/storage/v1/object/public/media/e5aaace5-4272-4817-8f3c-883b24006026/4970054c6ef54b42881c.bin" type="video/mp4">
+        <source src="/media/the-world-gone-be.mp4" type="video/mp4">
+      </video>
       <button type="button" class="fv-snd" id="fv-snd">🔇 Tap for sound</button>
       <div class="fv-cap"><span class="eyebrow" style="margin:0">New from Halal Music</span><b>"The World Gone Be What The World Gone Be"</b></div>
     </div>
