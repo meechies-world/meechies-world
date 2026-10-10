@@ -85,7 +85,7 @@
   let found = [];
   const clean = (t) => String(t || "").replace(/<\/?mark>/g, "").replace(/\s+/g, " ").trim();
   async function clSearch(q, courts) {
-    const u = CL + "/api/rest/v4/search/?type=o&order_by=score%20desc&q=" + encodeURIComponent(q) + (courts ? "&court=" + encodeURIComponent(courts) : "");
+    const u = CL + "/api/rest/v4/search/?type=o&highlight=on&order_by=score%20desc&q=" + encodeURIComponent(q) + (courts ? "&court=" + encodeURIComponent(courts) : "");
     const r = await fetch(u); if (!r.ok) throw new Error("search " + r.status);
     return (await r.json()).results || [];
   }
@@ -105,7 +105,7 @@
     const seen = new Set();
     found = res.filter((x) => x.citation && x.citation.length && x.caseName).filter((x) => !seen.has(x.cluster_id) && seen.add(x.cluster_id)).slice(0, 12).map((x) => ({
       name: clean(x.caseName), cite: pickCite(x.citation), court: x.court_citation_string || x.court || "", courtId: x.court_id, year: String(x.dateFiled || "").slice(0, 4),
-      url: CL + x.absolute_url, snippet: clean(x.syllabus || (x.opinions && x.opinions[0] && x.opinions[0].snippet) || "").slice(0, 300), cited: x.citeCount || 0 }));
+      url: CL + x.absolute_url, snippet: clean((x.opinions && x.opinions[0] && x.opinions[0].snippet) || x.syllabus || "").replace(/^.{0,40}?(Appeal:|Doc:|Filed:|Pg:).*?(PUBLISHED|UNPUBLISHED)\s*/i, "").slice(0, 700), cited: x.citeCount || 0 }));
     if (!found.length) { msg.textContent = "No published cases matched. Try fewer, simpler words."; box.innerHTML = ""; return; }
     msg.textContent = found.length + " real cases found. Check the ones to give the AI, then draft. Tap a name to read the case.";
     box.innerHTML = found.map((f, i) => `<label><input type="checkbox" data-i="${i}" ${i < 6 ? "checked" : ""}><span><b><a href="${E(f.url)}" target="_blank" rel="noopener">${E(f.name)}</a></b><small>${E(f.cite)} · ${E(f.court)} ${E(f.year)}${f.cited ? " · cited " + f.cited + " times" : ""}</small>${f.snippet ? `<small style="display:block;margin-top:4px">${E(f.snippet)}</small>` : ""}</span></label>`).join("");
@@ -116,6 +116,14 @@
     return list.find((x) => !/LEXIS|WL/.test(x)) || list[0];
   }
   const chosen = () => [...view.querySelectorAll("#lg-res input:checked")].map((x) => found[+x.dataset.i]).filter(Boolean);
+
+  /* ---------- earlier versions (last 8, this device only) ---------- */
+  const HKEY = "mw_legal_versions_v1";
+  const vers = () => { try { return JSON.parse(localStorage.getItem(HKEY) || "[]"); } catch (_) { return []; } };
+  function keepVersion(label) { const t = el("draft").value; if (!t.trim()) return; const v = vers().filter((x) => x.text !== t); v.unshift({ at: Date.now(), label, text: t }); try { localStorage.setItem(HKEY, JSON.stringify(v.slice(0, 8))); } catch (_) {} paintVers(); }
+  function paintVers() { $("#lg-hist").innerHTML = '<option value="">Earlier versions</option>' + vers().map((v, i) => `<option value="${i}">${E(new Date(v.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))} · ${E(v.label)}</option>`).join(""); }
+  paintVers();
+  $("#lg-hist").addEventListener("change", (e) => { const v = vers()[+e.target.value]; e.target.value = ""; if (!v) return; keepVersion("before restoring"); el("draft").value = v.text; save(); verify(); say("Restored that version"); });
 
   /* ---------- AI: draft / revise / review / ask ---------- */
   async function callAI(body, btn, msgEl, wait) {
@@ -135,13 +143,37 @@
     if (!o.facts.trim()) { $("#lg-go-msg").textContent = "Fill in step 2 (what happened) first."; el("facts").focus(); return; }
     if (!o.relief.trim()) { $("#lg-go-msg").textContent = "Say what you want the court to do (step 2)."; el("relief").focus(); return; }
     const t = await callAI({ mode: "draft", docType: o.doc, case: caseObj(), facts: o.facts, relief: o.relief, issues: o.issues, instructions: o.instructions, research: chosen() }, e.currentTarget, $("#lg-go-msg"), "Meechie's AI is writing your " + o.doc + "... this can take a minute");
-    if (t) { el("draft").value = t; save(); $("#lg-ver").innerHTML = ""; $("#lg-draft-card").scrollIntoView({ behavior: "smooth", block: "start" }); verify(); }
+    if (t) { keepVersion("before new draft"); el("draft").value = t; keepVersion("AI draft: " + o.doc); save(); $("#lg-ver").innerHTML = ""; $("#lg-fact-out").hidden = true; $("#lg-draft-card").scrollIntoView({ behavior: "smooth", block: "start" }); verify(); }
   });
   $("#lg-revise").addEventListener("click", async (e) => {
     const ins = $("#lg-rev-ins").value.trim(); if (!ins) { $("#lg-tools-msg").textContent = "Type what to change, then tap Revise."; $("#lg-rev-ins").focus(); return; }
     if (!el("draft").value.trim()) { $("#lg-tools-msg").textContent = "Draft a document first."; return; }
     const t = await callAI({ mode: "revise", case: caseObj(), draft: el("draft").value, instructions: ins, research: chosen() }, e.currentTarget, $("#lg-tools-msg"), "Revising...");
-    if (t) { el("draft").value = t; $("#lg-rev-ins").value = ""; save(); verify(); }
+    if (t) { keepVersion("before revise"); el("draft").value = t; keepVersion("revised: " + ins.slice(0, 30)); $("#lg-rev-ins").value = ""; save(); verify(); }
+  });
+  $("#lg-suggest").addEventListener("click", async (e) => {
+    const o = read(); if (!o.facts.trim()) { $("#lg-sug-msg").textContent = "Fill in step 2 (what happened) first."; el("facts").focus(); return; }
+    const options = Object.values(DOCS).flat().join("; ");
+    const t = await callAI({ mode: "suggest", case: caseObj(), facts: o.facts, relief: o.relief, options }, e.currentTarget, $("#lg-sug-msg"), "Thinking about your case...");
+    if (!t) return;
+    const all = Object.values(DOCS).flat(), box = $("#lg-sug"); box.innerHTML = "";
+    t.split("\n").map((l) => l.trim()).filter(Boolean).forEach((l) => {
+      const m = l.match(/^DOCUMENT:\s*(.+?)\s*\|\s*WHY:\s*(.+?)(?:\s*\|\s*TIMING:\s*(.+))?$/i);
+      const d = document.createElement("div"); d.className = "info";
+      if (m) { const name = all.find((x) => x.toLowerCase() === m[1].toLowerCase()) || all.find((x) => x.toLowerCase().includes(m[1].toLowerCase().slice(0, 18))); d.innerHTML = `<span>📄</span><span><b>${E(m[1])}</b> — ${E(m[2])}${m[3] ? `<br><small>⏰ ${E(m[3])}</small>` : ""}${name ? `<br><button class="btn sm" type="button" data-pick="${E(name)}" style="margin-top:6px">Use this</button>` : ""}</span>`; }
+      else d.innerHTML = `<span>💡</span><span>${E(l.replace(/^ALSO:\s*/i, ""))}</span>`;
+      box.appendChild(d);
+    });
+  });
+  $("#lg-sug").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; el("doc").value = b.dataset.pick; save(); $("#lg-q").value = ""; say("Picked: " + b.dataset.pick); $("#lg-find").click(); });
+
+  // second opinion on every legal statement (uses Claude when the owner has connected it)
+  $("#lg-fact").addEventListener("click", async (e) => {
+    if (!el("draft").value.trim()) { $("#lg-tools-msg").textContent = "Draft or paste a document first."; return; }
+    if (!$("#lg-ver").children.length) await verify();
+    const checks = [...view.querySelectorAll("#lg-ver div")].map((d) => d.textContent.replace(/\s+/g, " ").trim()).join("\n");
+    const t = await callAI({ mode: "factcheck", case: caseObj(), draft: el("draft").value, checks, research: chosen() }, e.currentTarget, $("#lg-tools-msg"), "Double-checking every legal statement...");
+    if (t) { const o = $("#lg-fact-out"); o.hidden = false; o.textContent = t; o.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   });
   $("#lg-check").addEventListener("click", async (e) => {
     if (!el("draft").value.trim()) { $("#lg-tools-msg").textContent = "Draft or paste a document first."; return; }
@@ -163,7 +195,7 @@
     const text = el("draft").value, box = $("#lg-ver"); box.innerHTML = "";
     const cites = [...new Set([...text.matchAll(CITE_RE)].map((m) => (m[1] + " " + m[2].replace(/\s+/g, " ") + " " + m[3]).replace(/\s+/g, " ")))].slice(0, 25);
     const stats = [...new Set([...text.matchAll(STAT_RE)].map((m) => m[1] + "|" + m[2].replace(/[.,;:]$/, "")))].slice(0, 15);
-    const need = (text.match(/\[CITATION NEEDED[^\]]*\]/gi) || []).length, holes = [...new Set(text.match(/\[[A-Z][A-Z0-9 ,'/&-]{2,60}\]/g) || [])].filter((x) => !/CITATION NEEDED/i.test(x));
+    const need = (text.match(/\[CITATION NEEDED[^\]]*\]/gi) || []).length, holes = [...new Set(text.match(/\[[A-Z][A-Z0-9 ,'/&-]{2,60}\]/g) || [])].filter((x) => !/CITATION NEEDED|VERIFY HOLDING/i.test(x));
     if (!cites.length && !stats.length) box.innerHTML = '<div class="info">No case citations found in the document to check.</div>';
     for (const c of cites) {
       const row = document.createElement("div"); row.className = "info"; row.innerHTML = `<span>⏳</span><span><b>${E(c)}</b> — checking the court database...</span>`; box.appendChild(row);
@@ -177,10 +209,31 @@
           const nameOk = !first || new RegExp(first.replace(/[^\w]/g, ""), "i").test(before);
           row.className = nameOk ? "ok" : "bad";
           row.innerHTML = `<span>${nameOk ? "✅" : "⚠️"}</span><span><b>${E(c)}</b> is real: <a href="${E(CL + hit.absolute_url)}" target="_blank" rel="noopener">${E(realName)}</a> (${E(hit.court_citation_string || hit.court || "")} ${E(String(hit.dateFiled || "").slice(0, 4))}).${nameOk ? " Read it to make sure it says what your document says." : " But the case name in your document doesn't match. Fix the name or the citation."}</span>`;
-        } else { row.className = "bad"; row.innerHTML = `<span>❌</span><span><b>${E(c)}</b> was not found in the court database. It may be wrong or made up. Look it up before filing, or remove it.</span>`; }
+        } else { row.className = "bad"; row.innerHTML = `<span>❌</span><span><b>${E(c)}</b> NOT FOUND in the court database. It may be wrong or made up. Look it up before filing, or remove it.</span>`; }
       } catch (_) { row.innerHTML = `<span>❔</span><span><b>${E(c)}</b> couldn't be checked right now. Try Verify again.</span>`; }
       await new Promise((r) => setTimeout(r, 250));
     }
+    // every quote next to a citation: is that exact wording really in that case?
+    const quotes = [];
+    for (const c of cites) {
+      const reC = new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"), "g"); let m;
+      while ((m = reC.exec(text))) {
+        const win = text.slice(Math.max(0, m.index - 420), Math.min(text.length, m.index + 260));
+        for (const q of win.matchAll(/[“"]([^”"]{25,400})[”"]/g)) { const w = q[1].replace(/[^\w\s'-]/g, " ").split(/\s+/).filter(Boolean); if (w.length >= 5) quotes.push({ cite: c, quote: q[1], probe: w.slice(1, 10).join(" ") }); }
+      }
+    }
+    const seenQ = new Set();
+    for (const q of quotes.filter((q) => !seenQ.has(q.probe) && seenQ.add(q.probe)).slice(0, 15)) {
+      const row = document.createElement("div"); row.className = "info"; row.innerHTML = `<span>⏳</span><span>Checking the quote “${E(q.quote.slice(0, 80))}…”</span>`; box.appendChild(row);
+      try {
+        const j = await fetch(CL + "/api/rest/v4/search/?type=o&q=" + encodeURIComponent('"' + q.probe + '" AND citation:("' + q.cite + '")')).then((r) => r.json());
+        if (j.count > 0) { row.className = "ok"; row.innerHTML = `<span>✅</span><span>Quote found word for word in ${E(q.cite)}: “${E(q.quote.slice(0, 120))}${q.quote.length > 120 ? "…" : ""}”</span>`; }
+        else { row.className = "bad"; row.innerHTML = `<span>❌</span><span><b>Quote NOT IN THE CASE</b> ${E(q.cite)}: “${E(q.quote.slice(0, 120))}${q.quote.length > 120 ? "…" : ""}”. Those words aren't in that opinion. Remove the quote marks and describe the case in your own words, or find the real wording.</span>`; }
+      } catch (_) { row.innerHTML = `<span>❔</span><span>Couldn't check the quote “${E(q.quote.slice(0, 60))}…” right now.</span>`; }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    const vh = (text.match(/\[VERIFY HOLDING\]/gi) || []).length;
+    if (vh) { const row = document.createElement("div"); row.className = "bad"; row.innerHTML = `<span>📖</span><span>${vh} case${vh > 1 ? "s are" : " is"} marked [VERIFY HOLDING]. Open each case and make sure it really says what your document says, then delete the mark.</span>`; box.appendChild(row); }
     for (const s of stats) { const [t, sec] = s.split("|"); const row = document.createElement("div"); row.className = "info"; row.innerHTML = `<span>📘</span><span><b>${E(t)} U.S.C. § ${E(sec)}</b> — <a href="https://www.law.cornell.edu/uscode/text/${E(t)}/${E(sec.replace(/\(.*$/, ""))}" target="_blank" rel="noopener">read the law</a> to check it says what your document says.</span>`; box.appendChild(row); }
     if (need) { const row = document.createElement("div"); row.className = "bad"; row.innerHTML = `<span>📝</span><span>${need} spot${need > 1 ? "s" : ""} marked [CITATION NEEDED]. Use "Find real case law" above, or remove the point.</span>`; box.appendChild(row); }
     if (holes.length) { const row = document.createElement("div"); row.className = "bad"; row.innerHTML = `<span>✏️</span><span>Fill in before filing: ${holes.slice(0, 20).map(E).join(", ")}</span>`; box.appendChild(row); }
