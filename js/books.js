@@ -24,12 +24,33 @@
 .bk-card{display:grid;gap:8px;text-align:left;background:none;border:0;color:var(--text);cursor:pointer;padding:0}
 .bk-cover{aspect-ratio:2/3;border-radius:6px 12px 12px 6px;background:linear-gradient(135deg,#2a2112,#0b0a08) center/cover;border:1px solid var(--gold-lo);box-shadow:6px 8px 22px rgba(0,0,0,.6),inset 6px 0 10px rgba(0,0,0,.45);display:grid;place-items:center;padding:14px;text-align:center;font:700 18px var(--display,Georgia,serif);color:var(--gold-hi)}
 .bk-card b{font-size:15px}.bk-card small{color:var(--muted)}
-.bk-reader{position:relative;border:1px solid var(--line);border-radius:16px;background:#f6efe0;color:#1b1610;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.bk-reader{position:relative;border:1px solid var(--line);border-radius:16px;background:radial-gradient(circle at 50% 30%,#221b10,#0b0a08 70%);color:#1b1610;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .bk-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:#0f0d09;color:var(--text);border-bottom:1px solid var(--line)}
 .bk-top b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bk-page{position:relative;padding:28px clamp(18px,6vw,70px) 40px;min-height:60vh;font-family:Georgia,"Times New Roman",serif;line-height:1.7;max-width:820px;margin:0 auto}
+/* Each page is styled like a Meechie's World Inc page: warm paper, a faint Conscientia emblem behind the text,
+   a thin gold double frame with art-deco corners, the emblem and "MEECHIE'S WORLD INC • CONSCIENTIA" at the top,
+   and the page number centered above a gold rule at the bottom. */
+.bk-sheet{position:relative;max-width:860px;margin:18px auto;background:radial-gradient(ellipse at 50% 38%,#fdf8ec 0%,#f6edd8 62%,#ebdcbc 100%);box-shadow:0 10px 40px rgba(0,0,0,.35),inset 0 0 60px rgba(120,90,30,.18);border-radius:4px;isolation:isolate}
+.bk-sheet::before{content:"";position:absolute;inset:0;background:var(--bk-emb) center 46%/min(72%,560px) no-repeat;opacity:.075;pointer-events:none;z-index:0}
+.bk-sheet::after{content:"";position:absolute;inset:14px;border:1px solid rgba(167,128,31,.6);outline:1px solid rgba(167,128,31,.35);outline-offset:5px;pointer-events:none;z-index:0}
+.bk-orn i{position:absolute;width:34px;height:34px;border:2px solid #b38a2c;pointer-events:none;z-index:1}
+.bk-orn i::after{content:"";position:absolute;width:8px;height:8px;background:#c99a35;transform:rotate(45deg)}
+.bk-orn i:nth-child(1){top:24px;left:24px;border-right:0;border-bottom:0}.bk-orn i:nth-child(1)::after{top:8px;left:8px}
+.bk-orn i:nth-child(2){top:24px;right:24px;border-left:0;border-bottom:0}.bk-orn i:nth-child(2)::after{top:8px;right:8px}
+.bk-orn i:nth-child(3){bottom:24px;left:24px;border-right:0;border-top:0}.bk-orn i:nth-child(3)::after{bottom:8px;left:8px}
+.bk-orn i:nth-child(4){bottom:24px;right:24px;border-left:0;border-top:0}.bk-orn i:nth-child(4)::after{bottom:8px;right:8px}
+.bk-head{position:relative;z-index:1;display:grid;justify-items:center;gap:6px;padding:36px 60px 0}
+.bk-head .em{width:44px;height:44px;background:var(--bk-emb) center/contain no-repeat}
+.bk-head small{font:600 11px/1.2 var(--mono,monospace);letter-spacing:.26em;color:#7d7262;font-variant:small-caps}
+.bk-head hr,.bk-foot hr{width:min(260px,60%);height:1px;border:0;margin:6px 0 0;background:linear-gradient(90deg,transparent,#b38a2c,transparent)}
+.bk-foot{position:relative;z-index:1;display:grid;justify-items:center;gap:6px;padding:0 60px 40px;font:italic 600 15px var(--serif-it,Georgia,serif);color:#8a6a22}
+.bk-page{position:relative;z-index:1;padding:22px clamp(30px,7vw,84px) 26px;min-height:60vh;font-family:Georgia,"Times New Roman",serif;line-height:1.7;max-width:820px;margin:0 auto}
 .bk-page p{margin:0 0 1em}
-.bk-page h2,.bk-page h3{font-family:Georgia,serif;color:#5a4410}
+.bk-page h2,.bk-page h3{font-family:var(--display,Georgia,serif);color:#7a5a14;letter-spacing:.04em;text-align:center;margin:.4em 0 .7em}
+.bk-page h2::after{content:"";display:block;width:70px;height:2px;margin:10px auto 0;background:#b38a2c}
+@media (max-width:640px){.bk-sheet{margin:10px 6px}.bk-orn i{width:22px;height:22px}.bk-orn i:nth-child(n){top:auto;left:auto;right:auto;bottom:auto}
+  .bk-orn i:nth-child(1){top:20px;left:20px}.bk-orn i:nth-child(2){top:20px;right:20px}.bk-orn i:nth-child(3){bottom:20px;left:20px}.bk-orn i:nth-child(4){bottom:20px;right:20px}
+  .bk-orn i::after{width:6px;height:6px}.bk-head{padding:30px 40px 0}.bk-foot{padding:0 40px 34px}}
 .bk-wm{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:.09;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:120px;transform:rotate(-24deg) scale(1.4);font:700 15px system-ui,sans-serif;color:#000;align-items:center;justify-items:center}
 .bk-nav{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#0f0d09;color:var(--text);border-top:1px solid var(--line)}
 .bk-nav input[type=range]{flex:1;accent-color:var(--gold)}
@@ -39,6 +60,14 @@
 .bk-admin input,.bk-admin textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}
 @media print{#v-books{display:none!important}body::after{content:"Printing is turned off for Meechie's World books.";display:block;padding:40px;font:20px sans-serif}}`;
   document.head.appendChild(css);
+  // The Conscientia emblem from the site's own artwork, used behind every book page
+  try {
+    const sym = document.querySelector("symbol#emblem"), grad = document.getElementById("g");
+    if (sym) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs>${grad ? grad.outerHTML : ""}</defs>${sym.innerHTML}</svg>`;
+      document.documentElement.style.setProperty("--bk-emb", `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}")`);
+    }
+  } catch (_) {}
 
   function shelf() {
     const own = OWNER();
@@ -71,7 +100,10 @@
       <div class="bk-top"><button class="btn ghost sm" type="button" data-shelf="1">← Books</button><b>${E(open.title)}</b>
         <button class="btn ghost sm" type="button" data-fs="-1" aria-label="Smaller text">A−</button><button class="btn ghost sm" type="button" data-fs="1" aria-label="Bigger text">A+</button>
         ${OWNER() ? `<button class="act" type="button" data-delbook="${E(open.id)}">Delete book</button>` : ""}</div>
-      <div class="bk-page" id="bk-page" style="font-size:${fontSize}px"><p style="opacity:.6">Loading page...</p></div>
+      <div class="bk-sheet"><div class="bk-orn" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div class="bk-head" aria-hidden="true"><span class="em"></span><small>MEECHIE'S WORLD INC • CONSCIENTIA</small><hr></div>
+        <div class="bk-page" id="bk-page" style="font-size:${fontSize}px"><p style="opacity:.6">Loading page...</p></div>
+        <div class="bk-foot"><span>Page ${page + 1}</span><hr></div></div>
       <div class="bk-wm" aria-hidden="true">${Array(30).fill(`<span>${E(stamp)}</span>`).join("")}</div>
       <div class="bk-nav"><button class="btn sm" type="button" data-pg="-1">‹ Back</button><input type="range" min="1" max="${open.pages}" value="${page + 1}" id="bk-range" aria-label="Page"><span id="bk-num">${page + 1} / ${open.pages}</span><button class="btn sm" type="button" data-pg="1">Next ›</button></div></div>`;
     const html = await getPage(page);
