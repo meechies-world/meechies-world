@@ -6,7 +6,7 @@
   const box = document.getElementById("clips");
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
-  let muted = true, els = new Map(), file = null, io = null;
+  let muted = true, touched = false, els = new Map(), file = null, io = null;
 
   const css = document.createElement("style");
   css.textContent = `
@@ -75,20 +75,22 @@ body.has-player #v-clips .rail{bottom:70px}`;
     if (!v.src) v.src = v.dataset.src;
     // preload the next clip
     const n = el.nextElementSibling?.querySelector("video"); if (n && !n.src) { n.preload = "metadata"; n.src = n.dataset.src; }
+    if (!touched && window.MW_canSound && MW_canSound()) muted = false; // sound on by itself after your first tap on the site
     v.muted = muted;
     el.querySelector(".paused-ic")?.remove(); // it plays again, so drop the ▶ left from an earlier tap
-    try { if (typeof media !== "undefined" && !muted && !media.paused) media.pause(); } catch (_) {}
-    v.play().catch(() => {});
+    el.querySelector(".snd").textContent = muted ? "🔇 Tap for sound" : "🔊";
+    if (!muted) window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })();
+    v.play().catch(() => { if (!v.muted) { v.muted = muted = true; el.querySelector(".snd").textContent = "🔇 Tap for sound"; window.MW_videoSound?.end(); v.play().catch(() => {}); } });
   }
   function setupIO() {
-    io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting && en.intersectionRatio > 0.6 && !view.hidden) activate(en.target); else en.target.querySelector("video").pause(); }), { root: box, threshold: [0, 0.6, 1] });
+    io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting && en.intersectionRatio > 0.6 && !view.hidden) activate(en.target); else { const v = en.target.querySelector("video"); if (!v.paused) { v.pause(); if (!v.muted) window.MW_videoSound?.end(); } } }), { root: box, threshold: [0, 0.6, 1] });
     els.forEach((el) => io.observe(el));
   }
 
   box.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     const d = DB(), uid = ME(), list = P();
-    if (b && b.classList.contains("snd")) { muted = !muted; els.forEach((x) => { x.querySelector("video").muted = muted; x.querySelector(".snd").textContent = muted ? "🔇 Tap for sound" : "🔊"; }); if (!muted) { try { if (!media.paused) media.pause(); } catch (_) {} } return; }
+    if (b && b.classList.contains("snd")) { touched = true; muted = !muted; if (muted) window.MW_videoSound?.end(); else window.MW_videoSound?.start(); els.forEach((x) => { x.querySelector("video").muted = muted; x.querySelector(".snd").textContent = muted ? "🔇 Tap for sound" : "🔊"; }); return; }
     if (b && b.dataset.clike) { if (typeof needMember === "function" && !needMember()) return; const p = list.find((x) => x.id === b.dataset.clike); if (!p) return; const s = new Set(p.likes || []); s.has(uid) ? s.delete(uid) : s.add(uid); d.doc("posts/" + p.id).update({ likes: [...s] }).catch((err) => say(err.message || err.code)); return; }
     if (b && b.dataset.ccom) { const id = b.dataset.ccom; try { openReplies.add(id); subReplies(id); } catch (_) {} if (typeof go === "function") go("community"); setTimeout(() => { renderFeed && renderFeed(); document.querySelector(`[data-rbox="${id}"]`)?.closest(".post")?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 250); return; }
     if (b && b.dataset.cshare) { const url = location.origin + "/#clips"; if (navigator.share) navigator.share({ title: "Meechie's World Clips", url }).catch(() => {}); else navigator.clipboard?.writeText(url).then(() => say("Link copied")); return; }

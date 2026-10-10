@@ -109,8 +109,9 @@
   const vis = () => !home.hidden && document.visibilityState === "visible";
   new IntersectionObserver((e) => e.forEach((x) => { if (x.isIntersecting && x.intersectionRatio > 0.5 && vis()) v.play().catch(() => {}); else v.pause(); }), { threshold: [0, 0.5] }).observe(v);
   new MutationObserver(() => { if (home.hidden) v.pause(); }).observe(home, { attributes: true, attributeFilter: ["hidden"] });
-  const sound = (on) => { v.muted = !on; btn.textContent = on ? "🔊 Sound on" : "🔇 Tap for sound"; if (on) { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} v.play().catch(() => {}); } };
+  const sound = (on) => { const was = !v.muted; v.muted = !on; btn.textContent = on ? "🔊 Sound on" : "🔇 Tap for sound"; if (on) { window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })(); v.play().catch(() => {}); } else if (was) window.MW_videoSound?.end(); };
+  v.addEventListener("pause", () => { if (!v.muted) sound(false); });
   btn.addEventListener("click", () => sound(v.muted));
   v.addEventListener("click", () => { if (v.muted) sound(true); else if (v.paused) v.play(); else v.pause(); });
-  try { if (typeof media !== "undefined") media.addEventListener("play", () => { if (!v.muted) sound(false); }); } catch (_) {}
+  try { if (typeof media !== "undefined") media.addEventListener("play", () => { if (!v.muted) { v.muted = true; btn.textContent = "🔇 Tap for sound"; } }); } catch (_) {}
 })();
