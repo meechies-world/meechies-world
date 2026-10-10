@@ -222,4 +222,28 @@
     w.document.write(`<!doctype html><meta charset="utf-8"><title>${E(el("doc").value)}</title><style>body{font:12pt/2 "Times New Roman",Times,serif;margin:1in;white-space:pre-wrap;color:#000}@page{margin:1in}</style><body>${E(txt)}</body>`);
     w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
   });
+  /* ---------- hire Meechie: $50 per document ---------- */
+  $("#lg-hire-go").addEventListener("click", async (e) => {
+    const msg = $("#lg-hire-msg"), o = read(), n = +$("#lg-hire-n").value || 1, how = $("#lg-hire-how").value.trim();
+    if (!tok()) { if (typeof openAuth === "function") openAuth("signin"); return; }
+    if (!how) { msg.textContent = "Add the best way to reach you."; $("#lg-hire-how").focus(); return; }
+    if (!o.facts.trim()) { msg.textContent = "Fill in step 2 (what happened) so Meechie knows the case."; el("facts").focus(); return; }
+    const lines = ["⚖️ LEGAL DOCUMENT REQUEST — " + n + " document" + (n > 1 ? "s" : "") + " ($" + n * 50 + ")",
+      "Document: " + o.doc, o.name && "Name: " + o.name + (o.role ? " (" + o.role + ")" : ""),
+      [o.court, o.county, o.state].filter(Boolean).length && "Court: " + [o.court, o.county, o.state].filter(Boolean).join(", ") + " (" + o.system + ")",
+      o.caseNo && "Case no.: " + o.caseNo, o.judge && "Judge: " + o.judge, o.other && "Other side: " + o.other + (o.otherCounsel ? " — " + o.otherCounsel : ""),
+      o.charges && "Charges/claims: " + o.charges, o.status && "Status: " + o.status, "Reach me: " + how,
+      "", "WHAT HAPPENED:", o.facts.trim().slice(0, 2500), "", "WANTS THE COURT TO: " + o.relief.trim().slice(0, 600),
+      o.issues && "ISSUES: " + o.issues.trim().slice(0, 500), $("#lg-hire-note").value.trim() && "NOTE: " + $("#lg-hire-note").value.trim().slice(0, 600)].filter(Boolean).join("\n").slice(0, 4800);
+    e.currentTarget.classList.add("busy"); msg.textContent = "Sending...";
+    try {
+      const a = await MW.sb.from("admins").select("user_id").limit(1); const owner = a.data && a.data[0] && a.data[0].user_id;
+      if (!owner) throw new Error("Couldn't reach Meechie right now.");
+      const r = await MW.sb.from("dms").insert({ recipient: owner, body: lines }); if (r.error) throw r.error;
+      try { window.MW_VISIT && MW_VISIT("contact"); } catch (_) {}
+      const pay = view.querySelector('[data-pay="legal"]'); const canPay = pay && !pay.hidden && /^https:/.test(pay.href);
+      msg.textContent = "Sent! Meechie will reach out." + (canPay ? " Tap Pay to pay $" + n * 50 + " (set the quantity to " + n + " at checkout)." : " He'll send you how to pay.");
+    } catch (err) { msg.textContent = (err && err.message) || "Couldn't send. Try again."; }
+    finally { e.currentTarget.classList.remove("busy"); }
+  });
 })();
