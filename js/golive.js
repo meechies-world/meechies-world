@@ -132,10 +132,10 @@
     const ok = m.querySelector("#gl-perm-ok"); if (ok) ok.onclick = () => (state === "denied" ? location.reload() : requestCam(true));
   }
   /* The Live page's camera pop-up belongs to the Live page: close it when the visitor goes to another page */
-  window.addEventListener("hashchange", () => setTimeout(() => {
-    const m = document.getElementById("gl-perm");
-    if (m && !m.hidden && m.dataset.from === "live" && view.hidden) m.hidden = true;
-  }, 0));
+  // (the menu switches pages without changing the address, so watch the Live page itself being hidden)
+  const closeLivePerm = () => { const m = document.getElementById("gl-perm"); if (m && !m.hidden && m.dataset.from === "live" && view.hidden) m.hidden = true; };
+  new MutationObserver(closeLivePerm).observe(view, { attributes: true, attributeFilter: ["hidden"] });
+  window.addEventListener("hashchange", () => setTimeout(closeLivePerm, 0));
   async function requestCam(fromTap) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { permModal("prompt"); return false; }
     try {
