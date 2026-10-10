@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791647894">
+<meta name="mw-build" content="1791650015">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1781,8 +1781,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791647894"></script>
-<script src="js/platform.js?v=1791647894"></script>
+<script src="js/config.js?v=1791650015"></script>
+<script src="js/platform.js?v=1791650015"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1807,6 +1807,7 @@ function go(v){ if(/access_token|error_description|refresh_token/.test(location.
     if(prevView==="videos"){ const f=$("#yt-frame"); if(f && f.querySelector("iframe")){ f.innerHTML='<div class="yt-empty"><span>Tap a video or channel to play.</span></div>'; $$("#v-videos .tv-ch.on").forEach(b=>b.classList.remove("on")); } }
     $$("#v-"+prevView+" video").forEach(x=>{ try{ x.pause(); }catch(_){} });
     if(prevView==="preach") window.MW_PREACH?.stop();
+    window.MW_videoSound?.end(); // the video on the page you left stopped: bring the radio back
   }
   VIEWS.forEach(x=>$("#v-"+x).hidden = x!==v);
   document.body.dataset.view=v; document.body.classList.add("themed");
@@ -2440,7 +2441,20 @@ async function autoRadio(){
     document.addEventListener("pointerdown",go,true); document.addEventListener("keydown",go,true);
   }
 }
-media.addEventListener("pause",()=>{ if(mode==="radio" && document.visibilityState==="visible" && !media.ended) { try{ sessionStorage.setItem("mw_radio_off","1"); }catch(_){} } });
+/* Videos play with their own sound. While one does, the radio (or the welcome song) steps aside,
+   and it comes back on its own when the video stops or you scroll away.
+   Sound starts by itself after your first tap on the site, except on iPhones, which need a tap on each video. */
+window.MW_canSound=()=>!IOS && (!navigator.userActivation || navigator.userActivation.hasBeenActive);
+{ let back=null, t=0;
+  window.MW_videoSound={
+    start(){ clearTimeout(t); if(back===null) back=(!media.paused && (mode==="radio"||mode==="intro"||mode==="library")) ? mode : false;
+      if(!media.paused){ window._mwVidPause=true; media.pause(); window._mwVidPause=false; } },
+    end(){ clearTimeout(t); t=setTimeout(()=>{ const m=back; back=null; if(!m || !media.paused) return;
+      if(m==="radio") tuneIn(); else media.play().catch(()=>{}); },1500); },
+    holding:()=>back!==null
+  };
+}
+media.addEventListener("pause",()=>{ if(window._mwVidPause) return; if(mode==="radio" && document.visibilityState==="visible" && !media.ended) { try{ sessionStorage.setItem("mw_radio_off","1"); }catch(_){} } });
 /* ---------- Featured Artists: official embedded players (free, no licensing needed from us) ----------
    Add a row for each artist you're featuring. Only SoundCloud, Spotify and YouTube links are embedded.
    Example: { artist: "Artist name", title: "Song title", url: "https://soundcloud.com/artist/track" } */
@@ -2988,29 +3002,29 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791647894"></script>
-<script src="js/studio.js?v=1791647894"></script>
-<script src="js/owner.js?v=1791647894"></script>
-<script src="js/messages.js?v=1791647894"></script>
-<script src="js/videos.js?v=1791647894"></script>
-<script src="js/markets.js?v=1791647894"></script>
-<script src="js/coin.js?v=1791647894"></script>
-<script src="js/preach.js?v=1791647894"></script>
-<script src="js/world3d.js?v=1791647894"></script>
-<script src="js/clips.js?v=1791647894"></script>
-<script src="js/dj.js?v=1791647894"></script>
-<script src="js/live.js?v=1791647894"></script>
-<script src="js/autotune.js?v=1791647894"></script>
-<script src="js/beatmaker.js?v=1791647894"></script>
-<script src="js/beatlab.js?v=1791647894"></script>
-<script src="js/friends.js?v=1791647894"></script>
-<script src="js/dating.js?v=1791647894"></script>
-<script src="js/books.js?v=1791647894"></script>
-<script src="js/social.js?v=1791647894"></script>
-<script src="js/jobs.js?v=1791647894"></script>
-<script src="js/golive.js?v=1791647894"></script>
-<script src="js/predict.js?v=1791647894"></script>
-<script src="js/visitors.js?v=1791647894"></script>
-<script src="js/ai-widget.js?v=1791647894"></script>
+<script src="js/appnav.js?v=1791650015"></script>
+<script src="js/studio.js?v=1791650015"></script>
+<script src="js/owner.js?v=1791650015"></script>
+<script src="js/messages.js?v=1791650015"></script>
+<script src="js/videos.js?v=1791650015"></script>
+<script src="js/markets.js?v=1791650015"></script>
+<script src="js/coin.js?v=1791650015"></script>
+<script src="js/preach.js?v=1791650015"></script>
+<script src="js/world3d.js?v=1791650015"></script>
+<script src="js/clips.js?v=1791650015"></script>
+<script src="js/dj.js?v=1791650015"></script>
+<script src="js/live.js?v=1791650015"></script>
+<script src="js/autotune.js?v=1791650015"></script>
+<script src="js/beatmaker.js?v=1791650015"></script>
+<script src="js/beatlab.js?v=1791650015"></script>
+<script src="js/friends.js?v=1791650015"></script>
+<script src="js/dating.js?v=1791650015"></script>
+<script src="js/books.js?v=1791650015"></script>
+<script src="js/social.js?v=1791650015"></script>
+<script src="js/jobs.js?v=1791650015"></script>
+<script src="js/golive.js?v=1791650015"></script>
+<script src="js/predict.js?v=1791650015"></script>
+<script src="js/visitors.js?v=1791650015"></script>
+<script src="js/ai-widget.js?v=1791650015"></script>
 </body>
 </html>

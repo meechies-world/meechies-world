@@ -44,7 +44,7 @@
   }
   function play(i) {
     poster(i); const v = vids[i];
-    try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} // pause the radio so they don't play over each other
+    window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })(); // the radio steps aside while the song plays
     frame.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&rel=0&playsinline=1" title="${E(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
   }
   async function load() {
@@ -61,7 +61,7 @@
   frame.addEventListener("click", (e) => { if (e.target.closest(".pr-poster") && cur >= 0) play(cur); });
 
   // stop the video when leaving the page
-  window.MW_PREACH = { stop() { if (frame.querySelector("iframe") && cur >= 0) poster(cur); } };
+  window.MW_PREACH = { stop() { if (frame.querySelector("iframe") && cur >= 0) { poster(cur); window.MW_videoSound?.end(); } } };
   new MutationObserver(() => { if (!view.hidden) load(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   if (!view.hidden) load();
 })();

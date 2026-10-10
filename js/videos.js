@@ -38,7 +38,7 @@
 
   function play(v, scroll) {
     current = v;
-    try { if (typeof media !== "undefined" && media && !media.paused) media.pause(); } catch (_) {}
+    window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && media && !media.paused) media.pause(); } catch (_) {} })();
     const src = v.tt ? `https://www.tiktok.com/player/v1/${v.tt}?autoplay=1&rel=0&description=1&music_info=1` : `https://www.youtube-nocookie.com/embed/${v.yt}?autoplay=1&rel=0&modestbranding=1`;
     $v("#yt-frame").classList.toggle("tall", !!v.tt);
     $v("#yt-frame").innerHTML = `<iframe src="${src}" title="${E(v.title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
@@ -105,9 +105,9 @@
     hgrid.querySelectorAll(".htt").forEach((c) => { const r = c.getBoundingClientRect(); const vis = Math.min(r.right, gr.right) - Math.max(r.left, gr.left); if (vis > bv + 4) { bv = vis; best = c; } });
     return best;
   }
-  function stopGrid(hgrid) { hgrid.querySelectorAll(".htt.playing").forEach((x) => { x.classList.remove("playing"); x.querySelector("iframe")?.remove(); }); }
-  /* Videos start muted when they scroll into view (like TikTok). A tap on a video, or on "Tap for sound",
-     plays it with sound, and once sound is on, the next videos you swipe to keep their sound too. */
+  function stopGrid(hgrid) { let loud = false; hgrid.querySelectorAll(".htt.playing").forEach((x) => { if (x.dataset.snd === "1") loud = true; x.classList.remove("playing"); x.dataset.snd = ""; x.querySelector("iframe")?.remove(); }); if (loud) window.MW_videoSound?.end(); }
+  /* Videos play with sound when they scroll into view, once you've tapped anywhere on the site. iPhones start them muted:
+     a tap on a video, or on "Tap for sound", plays it with sound, and the next videos you swipe to keep their sound too. */
   let ttSound = false;
   const sndCss = document.createElement("style");
   sndCss.textContent = `.htt .htt-snd{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(0,0,0,.7);color:#fff;border:1px solid var(--gold,#d4a843);border-radius:999px;padding:7px 14px;font:600 13px/1 var(--body,system-ui);white-space:nowrap;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5)}`;
@@ -115,9 +115,10 @@
   function playCard(hgrid, b, auto) {
     const v = vids.find((x) => x.id === b.dataset.htt); if (!v) return;
     grids.forEach(stopGrid);
-    const muted = auto && !ttSound;
-    // sound on: pause the radio so they don't play over each other. Muted auto-play leaves the radio alone.
-    if (!muted) { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} }
+    // with sound once you've tapped anywhere on the site (iPhones: after you tap "Tap for sound" once)
+    const muted = auto && !ttSound && !(window.MW_canSound && MW_canSound());
+    // sound on: the radio steps aside while it plays and comes back after. Muted auto-play leaves the radio alone.
+    if (!muted) { b.dataset.snd = "1"; window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })(); }
     b.classList.add("playing"); hgrid._auto = true;
     b.insertAdjacentHTML("beforeend", `<iframe src="https://www.tiktok.com/player/v1/${v.tt}?autoplay=1&loop=1&rel=0&music_info=1&description=1${muted ? "&mute=1&muted=1" : ""}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen title="${E(v.title)}"></iframe>`
       + (muted ? `<span class="htt-snd" role="button" tabindex="0" aria-label="Turn on sound">🔇 Tap for sound</span>` : ""));
