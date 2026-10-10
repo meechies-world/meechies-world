@@ -25,7 +25,7 @@
   let started = false; const wasNew = !!ls("mw_join_name"); // they just made their account on the sign-up screen
   const wait = setInterval(() => {
     if (!ready() || !me || gated()) return; clearInterval(wait); if (started) return; started = true;
-    if (!ss("mw_v_enter")) { ss("mw_v_enter", "1"); setTimeout(() => ping(wasNew ? "joined" : "enter"), 2500); }
+    if (!ss("mw_v_enter") || (typeof isOwner !== "undefined" && isOwner)) { ss("mw_v_enter", "1"); setTimeout(() => ping(wasNew ? "joined" : "enter"), 2500); }
     if (typeof isOwner !== "undefined" && isOwner) ownerTools(); else contactTimer();
   }, 700);
 
@@ -104,8 +104,8 @@
         if (k === "close") sh.remove();
         if (k === "copy") navigator.clipboard?.writeText(al.topic).then(() => toast("Channel name copied")).catch(() => toast("Press and hold the name to copy it"));
         if (k === "new") { const r = new Uint8Array(12); crypto.getRandomValues(r); const topic = "mw-alerts-" + [...r].map((b) => b.toString(36).padStart(2, "0")).join("").slice(0, 18);
-          try { await db.doc("site/alerts").set({ topic, off: false, updatedAt: Date.now() }); sh.remove(); pill.click(); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
-        if (k === "off") { try { await db.doc("site/alerts").set({ ...al, off: true, updatedAt: Date.now() }); sh.remove(); toast("Phone alerts are off"); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
+          try { await db.doc("site/alerts").set({ topic, off: false, updatedAt: Date.now() }); ping("enter"); sh.remove(); pill.click(); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
+        if (k === "off") { try { await db.doc("site/alerts").set({ ...al, off: true, updatedAt: Date.now() }); ping("enter"); sh.remove(); toast("Phone alerts are off"); } catch (err) { toast("Couldn't save: " + (err.message || err)); } }
         if (k === "desk") { if (!("Notification" in window)) { toast("This browser can't show notifications"); return; } const p = await Notification.requestPermission(); a.textContent = p === "granted" ? "✓ On" : "Blocked in browser settings"; }
       });
     });
