@@ -143,6 +143,8 @@ body.has-player #v-clips .rail{bottom:70px}`;
   }
   addEventListener("resize", fit);
   new MutationObserver(fit).observe(document.body, { attributes: true, attributeFilter: ["class"] }); // player bar showing or hiding
+  const pbar = document.getElementById("player-bar"); if (pbar) new MutationObserver(fit).observe(pbar, { attributes: true, attributeFilter: ["hidden", "style", "class"] });
+  setInterval(() => { if (!view.hidden && !document.hidden) fit(); }, 1500); // catch anything else that moves the bottom bars
   new MutationObserver(() => { if (!view.hidden) setTimeout(() => { fit(); snapIntoView(); }, 60); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   if (!view.hidden) setTimeout(() => { fit(); snapIntoView(); }, 300);
 
