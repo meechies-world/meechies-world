@@ -106,15 +106,26 @@
     return best;
   }
   function stopGrid(hgrid) { hgrid.querySelectorAll(".htt.playing").forEach((x) => { x.classList.remove("playing"); x.querySelector("iframe")?.remove(); }); }
+  /* Videos start muted when they scroll into view (like TikTok). A tap on a video, or on "Tap for sound",
+     plays it with sound, and once sound is on, the next videos you swipe to keep their sound too. */
+  let ttSound = false;
+  const sndCss = document.createElement("style");
+  sndCss.textContent = `.htt .htt-snd{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(0,0,0,.7);color:#fff;border:1px solid var(--gold,#d4a843);border-radius:999px;padding:7px 14px;font:600 13px/1 var(--body,system-ui);white-space:nowrap;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5)}`;
+  document.head.appendChild(sndCss);
   function playCard(hgrid, b, auto) {
     const v = vids.find((x) => x.id === b.dataset.htt); if (!v) return;
     grids.forEach(stopGrid);
-    // a tap means they want sound: pause the radio. Auto-play stays muted and leaves the radio alone.
-    if (!auto) { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} }
+    const muted = auto && !ttSound;
+    // sound on: pause the radio so they don't play over each other. Muted auto-play leaves the radio alone.
+    if (!muted) { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} }
     b.classList.add("playing"); hgrid._auto = true;
-    b.insertAdjacentHTML("beforeend", `<iframe src="https://www.tiktok.com/player/v1/${v.tt}?autoplay=1&loop=1&rel=0&music_info=1&description=1${auto ? "&mute=1&muted=1" : ""}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen title="${E(v.title)}"></iframe>`);
+    b.insertAdjacentHTML("beforeend", `<iframe src="https://www.tiktok.com/player/v1/${v.tt}?autoplay=1&loop=1&rel=0&music_info=1&description=1${muted ? "&mute=1&muted=1" : ""}" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen title="${E(v.title)}"></iframe>`
+      + (muted ? `<span class="htt-snd" role="button" tabindex="0" aria-label="Turn on sound">🔇 Tap for sound</span>` : ""));
   }
+  function soundOn(hgrid, card) { ttSound = true; card.classList.remove("playing"); card.querySelector("iframe")?.remove(); card.querySelector(".htt-snd")?.remove(); playCard(hgrid, card, false); }
+  grids.forEach((hgrid) => hgrid.addEventListener("keydown", (e) => { const s = e.target.closest(".htt-snd"); if (s && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); soundOn(hgrid, s.closest("[data-htt]")); } }));
   grids.forEach((hgrid) => hgrid.addEventListener("click", (e) => {
+    const snd = e.target.closest(".htt-snd"); if (snd) { e.stopPropagation(); soundOn(hgrid, snd.closest("[data-htt]")); return; }
     const b = e.target.closest("[data-htt]"); if (!b || b.classList.contains("playing")) return;
     hgrid._stopped = false; playCard(hgrid, b, false); b.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }));
