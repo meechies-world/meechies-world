@@ -118,6 +118,34 @@ body.has-player #v-clips .rail{bottom:70px}`;
     b.disabled = false; b.textContent = "Post";
   });
 
+  /* Phones: the feed starts partway down the page (under the menu and banner), so a fixed height pushed the
+     + button and the posting box off the bottom of the screen, behind the player bar and bottom menu.
+     Fit the feed to the space that's actually visible, and keep + and the posting box above the bottom bars. */
+  const addBtn = document.getElementById("clip-add");
+  function bottomUI() { // how much of the screen bottom is covered by the fixed player bar / bottom menu
+    let top = innerHeight;
+    document.querySelectorAll("nav.apptab, #player-bar, .apptab").forEach((el) => { if (el.hidden || getComputedStyle(el).display === "none") return; const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom >= innerHeight - 2) top = Math.min(top, r.top); });
+    return Math.max(0, innerHeight - top);
+  }
+  function fit() {
+    if (view.hidden) return;
+    const phone = matchMedia("(max-width:640px)").matches, under = bottomUI();
+    if (!phone) { box.style.height = ""; addBtn.style.cssText = ""; up.style.cssText = ""; return; }
+    const hdr = document.querySelector("header.bar")?.getBoundingClientRect().height || 0;
+    box.style.height = Math.max(360, innerHeight - hdr - under) + "px";
+    addBtn.style.cssText = `position:fixed;bottom:${under + 12}px;z-index:31`;
+    up.style.cssText = `position:fixed;left:12px;right:12px;bottom:${under + 62}px;z-index:32`;
+  }
+  function snapIntoView() { // line the feed up right under the menu so the whole video shows
+    if (!matchMedia("(max-width:640px)").matches) return;
+    const hdr = document.querySelector("header.bar")?.getBoundingClientRect().height || 0;
+    window.scrollTo({ top: box.getBoundingClientRect().top + scrollY - hdr, behavior: "instant" });
+  }
+  addEventListener("resize", fit);
+  new MutationObserver(fit).observe(document.body, { attributes: true, attributeFilter: ["class"] }); // player bar showing or hiding
+  new MutationObserver(() => { if (!view.hidden) setTimeout(() => { fit(); snapIntoView(); }, 60); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
+  if (!view.hidden) setTimeout(() => { fit(); snapIntoView(); }, 300);
+
   // pause everything when leaving the page
   new MutationObserver(() => { if (view.hidden) els.forEach((x) => x.querySelector("video").pause()); else { render(); const first = [...els.values()].find((x) => { const r = x.getBoundingClientRect(), br = box.getBoundingClientRect(); return r.top >= br.top - 5 && r.top < br.bottom - 50; }); first && activate(first); } }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   document.addEventListener("visibilitychange", () => { if (document.hidden) els.forEach((x) => x.querySelector("video").pause()); });
