@@ -2033,6 +2033,7 @@ function showRadioNote(){
 }
 async function autoRadio(){
   if(autoTried || !tracks.length || radioSnoozed() || (window.MW_SITE && window.MW_SITE.autoplay===false)) return;
+  { const en=document.getElementById("enter"); if(en && !en.hidden && !en.classList.contains("out")) return; } // wait for the Enter button
   if(mode && !media.paused) return;
   autoTried=true;
   const a=airNow(); if(!a) return;
@@ -2092,7 +2093,7 @@ renderFeatured();
     setTimeout(()=>{ if(mode==="radio" && !media.paused) return; if(mode && mode!=="radio" && !media.paused) return;
       if(!autoTried) autoRadio(); else tuneIn(); },250);
   });
-  mute.addEventListener("click",()=>{ snoozeRadio(); close(); });
+  mute.addEventListener("click",()=>{ snoozeRadio(); if(mode==="radio" && !media.paused) media.pause(); close(); });
   setTimeout(()=>{ if(!en.hidden) btn.focus({preventScroll:true}); },50);
 })();
 async function setEpoch(ms){ try{ await db.doc("radio/state").set({epoch:ms}); }catch(err){ toast(err.message||err.code); } }
