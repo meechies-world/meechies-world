@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791640783">
+<meta name="mw-build" content="1791642553">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
 <meta name="theme-color" content="#0b0a08">
-<meta property="og:title" content="Meechie's World">
-<meta property="og:description" content="Join free: post, chat, play, design, and tune in to Meechie's World Radio.">
+<meta property="og:title" content="Meechie's World Inc — Music, Media & Business">
+<meta property="og:description" content="Join free: Meechie's World Radio, a full music studio, videos, books, the shop, live stock &amp; crypto markets, and Meechie's Coin — all in one place.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://meechies-world.pages.dev/">
-<meta property="og:image" content="https://meechies-world.pages.dev/img/og.jpg">
-<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image" content="https://meechies-world.pages.dev/img/og-2.jpg">
+<meta property="og:image:width" content="1200"><meta property="og:image:alt" content="Meechie's World Inc — gold Conscientia emblem with Radio, Studio, Videos, Books, Shop, Markets and Meechie's Coin"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://meechies-world.pages.dev/img/og.jpg">
+<meta name="twitter:image" content="https://meechies-world.pages.dev/img/og-2.jpg">
 <link rel="canonical" href="https://meechies-world.pages.dev/">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -797,6 +797,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <a href="#dating" data-go="dating">Dating</a>
       <a href="#videos" data-go="videos">Videos</a>
       <a href="#preach" data-go="preach">ASAP Preach</a>
+      <a href="#markets" data-go="markets">Markets</a>
+      <a href="#coin" data-go="coin">Meechie's Coin</a>
       <a href="#world" data-go="world">Virtual World</a>
       <a href="#chat" data-go="chat">Chat &amp; Walkie</a>
       <a href="#messages" data-go="messages">Messages<span class="dm-dot" hidden></span></a>
@@ -1135,6 +1137,84 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     </div>
     <div class="pr-grid" id="pr-grid"></div>
     <small class="muted" style="display:block;margin-top:14px">Videos play from ASAP Preach's official YouTube channel. Meechie's World isn't affiliated with ASAP Preach.</small>
+  </div>
+</section>
+
+<!-- MARKETS -->
+<section class="view" id="v-markets" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Live prices</p><h2>Markets</h2></div>
+      <p class="muted">The stock market and crypto, live. Tap a name to see its chart, or search any stock or coin inside the chart.</p>
+    </div>
+    <div class="mk-tape" id="mk-tape"></div>
+    <div class="mk-tabs" role="tablist"><button type="button" data-tab="stocks" class="on">📈 Stocks</button><button type="button" data-tab="crypto">🪙 Crypto</button><button type="button" data-tab="news">📰 Market News</button></div>
+    <div data-pane="stocks">
+      <div class="mk-grid">
+        <div class="mk-card"><div class="mk-sym" id="mk-ssym"></div><div class="mk-chart" id="mk-schart"></div></div>
+        <div class="mk-card"><h3>Today's biggest movers</h3><div class="mk-side" id="mk-movers"></div></div>
+      </div>
+      <div class="mk-card mk-wide"><h3>S&amp;P 500 map: which companies are up and down today</h3><div style="height:calc(100% - 34px)" id="mk-heat"></div></div>
+    </div>
+    <div data-pane="crypto" hidden>
+      <div class="mk-grid">
+        <div class="mk-card"><div class="mk-sym" id="mk-csym"></div><div class="mk-chart" id="mk-cchart"></div></div>
+        <div class="mk-card"><h3>Top coins today</h3><div class="mk-side" id="mk-cover"></div></div>
+      </div>
+      <div class="mk-trade"><div><b>🪙 Meechie's Coin is coming</b><small class="muted">Get on the launch list and be first to know when it goes live.</small></div><a class="btn" href="#coin" data-go="coin">See Meechie's Coin</a></div>
+      <div class="mk-card mk-wide"><h3>Every coin: price, market cap and volume</h3><div style="height:calc(100% - 34px)" id="mk-cscreen"></div></div>
+    </div>
+    <div data-pane="news" hidden>
+      <div class="mk-card mk-wide" style="margin-top:0"><h3>Latest market headlines</h3><div style="height:calc(100% - 34px)" id="mk-news"></div></div>
+    </div>
+    <small class="mk-note">Market data and charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView</a>. Prices may be delayed. For information only — not financial advice.</small>
+  </div>
+</section>
+
+<!-- MEECHIE'S COIN -->
+<section class="view" id="v-coin" hidden>
+  <div class="wrap">
+    <div class="cn-hero">
+      <div id="cn-coin"></div>
+      <div>
+        <span class="cn-badge" id="cn-badge">COMING SOON</span>
+        <h2>Meechie's Coin</h2>
+        <p class="muted" id="cn-sym" style="margin:0 0 6px"></p>
+        <p id="cn-about"></p>
+        <div class="cn-acts"><a class="btn" id="cn-buy" href="#" target="_blank" rel="noopener" hidden>Buy Meechie's Coin</a><button class="btn" type="button" id="cn-notify">🔔 Notify me at launch</button><small class="muted" id="cn-count"></small></div>
+      </div>
+    </div>
+    <div class="cn-chart" id="cn-chart" hidden></div>
+    <div class="cn-grid">
+      <div class="cn-card"><h3>What it's for</h3><ul id="cn-uses"></ul></div>
+      <div class="cn-card cn-warn"><h3>⚠️ Stay safe</h3><p id="cn-warn-text" style="margin:0"></p></div>
+      <div class="cn-card" id="cn-addr-card" hidden><h3>Official contract address <small class="muted" id="cn-addr-chain"></small></h3><div class="cn-addr"><code id="cn-addr"></code><button class="btn sm" type="button" id="cn-copy">Copy</button></div></div>
+    </div>
+    <div class="cn-own" id="cn-owner" hidden>
+      <h3 style="margin-top:0">Owner: set up Meechie's Coin <small class="muted">(only you see this)</small></h3>
+      <form id="cn-form">
+        <label>Status<select name="status"><option value="soon">Coming soon</option><option value="live">Live (on sale)</option></select></label>
+        <label>Ticker symbol (example: MEECH)<input name="symbol" maxlength="10" autocomplete="off"></label>
+        <label>Blockchain<select name="chain"><option value="">Not picked yet</option><option value="solana">Solana</option><option value="base">Base</option><option value="ethereum">Ethereum</option><option value="bsc">BNB Chain</option><option value="polygon">Polygon</option><option value="arbitrum">Arbitrum</option></select></label>
+        <label>Launch date (shows on the badge)<input name="launchDate" maxlength="30" placeholder="Dec 1, 2026"></label>
+        <label class="full">Contract address (the coin's official address)<input name="contract" autocomplete="off" spellcheck="false"></label>
+        <label class="full">Trading pair address (from DexScreener — shows the live price chart)<input name="pair" autocomplete="off" spellcheck="false"></label>
+        <label class="full">Buy link (the swap page where people buy it, starts with https://)<input name="buyUrl" type="url" autocomplete="off"></label>
+        <label class="full">About the coin<textarea name="about" rows="3" maxlength="600"></textarea></label>
+        <label class="full">What it's for (one per line)<textarea name="uses" rows="4"></textarea></label>
+        <div class="full" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn" type="submit">Save</button><small class="muted" id="cn-msg"></small></div>
+      </form>
+      <p class="muted" id="cn-list" style="margin:14px 0 6px"></p>
+      <details><summary><b>Launch checklist</b></summary><ol class="cn-steps">
+        <li>Talk to a lawyer who handles crypto first. Depending on how the coin is sold and promised, it can count as a security under SEC rules.</li>
+        <li>Pick the blockchain (Solana and Base cost the least to launch on).</li>
+        <li>Create the coin and set its total supply with a trusted token tool, using your own wallet. Keep the wallet's secret phrase offline and never share it.</li>
+        <li>Add it to a trading pool (liquidity) so people can buy and sell it, then lock that liquidity so buyers can trust it.</li>
+        <li>Paste the contract address, trading pair, and buy link above, and set Status to Live.</li>
+        <li>Announce it with the site banner so the launch list and every member sees it.</li>
+      </ol></details>
+    </div>
+    <small class="muted" style="display:block;margin-top:14px">Crypto is risky and prices can go to zero. Nothing on this page is financial advice.</small>
   </div>
 </section>
 
@@ -1546,8 +1626,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791640783"></script>
-<script src="js/platform.js?v=1791640783"></script>
+<script src="js/config.js?v=1791642553"></script>
+<script src="js/platform.js?v=1791642553"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1559,7 +1639,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["live","predict","jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","world","games","creators","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -2705,26 +2785,28 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791640783"></script>
-<script src="js/studio.js?v=1791640783"></script>
-<script src="js/owner.js?v=1791640783"></script>
-<script src="js/messages.js?v=1791640783"></script>
-<script src="js/videos.js?v=1791640783"></script>
-<script src="js/preach.js?v=1791640783"></script>
-<script src="js/world3d.js?v=1791640783"></script>
-<script src="js/clips.js?v=1791640783"></script>
-<script src="js/dj.js?v=1791640783"></script>
-<script src="js/live.js?v=1791640783"></script>
-<script src="js/autotune.js?v=1791640783"></script>
-<script src="js/beatmaker.js?v=1791640783"></script>
-<script src="js/beatlab.js?v=1791640783"></script>
-<script src="js/friends.js?v=1791640783"></script>
-<script src="js/dating.js?v=1791640783"></script>
-<script src="js/books.js?v=1791640783"></script>
-<script src="js/social.js?v=1791640783"></script>
-<script src="js/jobs.js?v=1791640783"></script>
-<script src="js/golive.js?v=1791640783"></script>
-<script src="js/predict.js?v=1791640783"></script>
-<script src="js/ai-widget.js?v=1791640783"></script>
+<script src="js/appnav.js?v=1791642553"></script>
+<script src="js/studio.js?v=1791642553"></script>
+<script src="js/owner.js?v=1791642553"></script>
+<script src="js/messages.js?v=1791642553"></script>
+<script src="js/videos.js?v=1791642553"></script>
+<script src="js/markets.js?v=1791642553"></script>
+<script src="js/coin.js?v=1791642553"></script>
+<script src="js/preach.js?v=1791642553"></script>
+<script src="js/world3d.js?v=1791642553"></script>
+<script src="js/clips.js?v=1791642553"></script>
+<script src="js/dj.js?v=1791642553"></script>
+<script src="js/live.js?v=1791642553"></script>
+<script src="js/autotune.js?v=1791642553"></script>
+<script src="js/beatmaker.js?v=1791642553"></script>
+<script src="js/beatlab.js?v=1791642553"></script>
+<script src="js/friends.js?v=1791642553"></script>
+<script src="js/dating.js?v=1791642553"></script>
+<script src="js/books.js?v=1791642553"></script>
+<script src="js/social.js?v=1791642553"></script>
+<script src="js/jobs.js?v=1791642553"></script>
+<script src="js/golive.js?v=1791642553"></script>
+<script src="js/predict.js?v=1791642553"></script>
+<script src="js/ai-widget.js?v=1791642553"></script>
 </body>
 </html>
