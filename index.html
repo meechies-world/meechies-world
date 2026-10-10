@@ -1980,11 +1980,15 @@ media.addEventListener("play",()=>{ if(boostCtx && boostCtx.state!=="running") b
 const fmt=s=>{s=Math.max(0,Math.floor(s||0));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0");};
 const trackUrl=t=>(window.MW?.assetUrl? MW.assetUrl(t.assetId) : "/_blob/"+t.assetId);
 const ICON_PLAY='<path d="M7 4v16l13-8z"/>', ICON_PAUSE='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+/* Crossfade: on the station schedule, each song hands over XF seconds before it ends, so the next song
+   starts while the last one fades out. Everyone's player uses the same schedule, so the station stays in sync. */
+const XF=4;
+const slot=t=>{ const d=t.duration||0; return d>XF*3 ? d-XF : d; };
 function airNow(){
-  const total=tracks.reduce((a,t)=>a+(t.duration||0),0); if(!total) return null;
+  const total=tracks.reduce((a,t)=>a+slot(t),0); if(!total) return null;
   let t=((Date.now()-radioEpoch)/1000)%total; if(t<0) t+=total;
-  for(let i=0;i<tracks.length;i++){ const d=tracks[i].duration||0; if(t<d) return {i,offset:t,left:d-t}; t-=d; }
-  return {i:0,offset:0,left:tracks[0].duration};
+  for(let i=0;i<tracks.length;i++){ const d=slot(tracks[i]); if(t<d) return {i,offset:t,left:d-t}; t-=d; }
+  return {i:0,offset:0,left:slot(tracks[0])};
 }
 function setCover(el,t){ if(t?.cover){ el.style.backgroundImage=`url("${t.cover}")`; el.innerHTML=""; } }
 function paintAir(){
@@ -2017,14 +2021,17 @@ let playTok=0;
 async function tuneIn(afterEnd){ const tok=++playTok;
   let a=airNow(); if(a && afterEnd===true && a.i===curIdx) a={i:(curIdx+1)%tracks.length,offset:0}; // song file shorter than listed: move on instead of replaying
   if(!a){ toast("The station starts when the first track is added."); return; }
-  mode="radio"; curIdx=a.i; await load(tracks[a.i], afterEnd===true? a.offset : airNow().offset, true); if(tok!==playTok) return;
+  // After a song ends: pick up exactly where the crossfade left the next song, or near its start if there was no crossfade
+  const handoff=afterEnd===true ? xfOffset(a.i) : null;
+  const off=afterEnd===true ? (handoff!=null ? handoff : Math.max(0,a.offset-XF)) : airNow().offset;
+  mode="radio"; curIdx=a.i; await load(tracks[a.i], off, true); if(tok!==playTok) return;
   media.play().catch(()=>{ if(!document.hidden) toast("Tap play to start the audio."); }); showBar(tracks[a.i],"Meechie's World Radio · LIVE");
   room?.presence({radio:true}); renderTracks(); updIcons();
 }
-async function playLib(i){
+async function playLib(i,off){
   if(mode==="library" && curIdx===i){ media.paused?media.play():media.pause(); return; }
   const tok=++playTok; mode="library"; curIdx=(i+tracks.length)%tracks.length; const t=tracks[curIdx];
-  await load(t,0,true); if(tok!==playTok) return; media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
+  await load(t,off||0,true); if(tok!==playTok) return; media.play().catch(()=>{}); showBar(t,t.artist); room?.presence({radio:null}); renderTracks();
 }
 function updIcons(){ const el=(mode==="live"&&window.MW_LIVE)?MW_LIVE:media; $("#pb-icon").innerHTML = el.paused?ICON_PLAY:ICON_PAUSE; $("#pb-play").setAttribute("aria-label",el.paused?"Play":"Pause");
   $("#tune-in").textContent = mode==="radio"&&!media.paused ? "❚❚ Pause radio" : "▶ Tune in"; renderTracks(); }
@@ -2040,14 +2047,53 @@ if("mediaSession" in navigator){ const ms=navigator.mediaSession, H=(a,f)=>{ try
   H("nexttrack",()=>{ if(mode==="library") playLib(curIdx+1); });
   H("previoustrack",()=>{ if(mode==="library"){ if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); } });
   media.addEventListener("play",()=>{ try{ ms.playbackState="playing"; }catch(_){} }); media.addEventListener("pause",()=>{ try{ ms.playbackState="paused"; }catch(_){} }); }
-media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(true); else if(mode==="library") playLib(curIdx+1); });
+media.addEventListener("ended",()=>{ if(mode==="radio") tuneIn(true); else if(mode==="library"){ const n=(curIdx+1)%tracks.length; playLib(n, xfOffset(n)||0); } });
 media.addEventListener("timeupdate",()=>{ const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0); $("#pb-fill").style.width=(mode==="live"?100:(d?media.currentTime/d*100:0))+"%"; $("#pb-time").textContent=mode==="live"?"● LIVE":fmt(media.currentTime)+" / "+fmt(d); });
 $("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
 $("#pb-play").addEventListener("click",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.paused?MW_LIVE.play().catch(()=>{}):MW_LIVE.pause(); return; } if(mode==="dj"){ document.getElementById("dj-listen")?.click(); return; } if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
 $("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
 $("#pb-prev").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
 $("#pb-progress").addEventListener("click",e=>{ if(mode!=="library"||!media.duration) return; const r=e.currentTarget.getBoundingClientRect(); media.currentTime=(e.clientX-r.left)/r.width*media.duration; });
-$("#pb-vol").addEventListener("input",e=>media.volume=+e.target.value);
+/* ---------- Volume + crossfade between songs ----------
+   About 20 seconds before a song ends, the next song loads in a second player. For the last XF seconds the
+   next song plays and gets louder while the current one fades out, so there's no silent gap. When the current
+   song ends, the main player takes over the next song from the exact same spot.
+   Real volume = your slider × the fade × the "duck" (music dips while a voice message plays).
+   Skipped on iPhones (websites can't change volume there) and while the page is in the background
+   (phones slow down timers then); in those cases the next song just starts right away. */
+let userVol=+$("#pb-vol").value||1, fadeVol=1, duckVol=1;
+const xfPlayer=new Audio(); xfPlayer.crossOrigin="anonymous"; xfPlayer.preload="auto"; xfPlayer.setAttribute("playsinline","");
+let xfIdx=-1, xfActive=false, xfNode=null;
+function applyVol(){ try{ media.volume=Math.max(0,Math.min(1,userVol*fadeVol*duckVol)); }catch(_){} }
+window.MW_duck=(v)=>{ duckVol=v; applyVol(); };
+$("#pb-vol").addEventListener("input",e=>{ userVol=+e.target.value; applyVol(); });
+const xfMode=()=>mode==="radio"||mode==="library";
+function xfStop(){ xfActive=false; xfIdx=-1; try{ xfPlayer.pause(); xfPlayer.removeAttribute("src"); xfPlayer.load(); }catch(_){} if(fadeVol!==1){ fadeVol=1; applyVol(); } }
+/* Where the next song is right now, if the crossfade player is already playing it */
+function xfOffset(i){ return (xfActive && xfIdx===i && !xfPlayer.paused) ? xfPlayer.currentTime+0.12 : null; }
+function xfRoute(){ // send the crossfade player through the same equalizer and booster as the main player
+  if(xfNode || !boostCtx) return;
+  try{ xfNode=boostCtx.createMediaElementSource(xfPlayer); xfNode.connect(eqNodes[0]||boostGain); }catch(_){ xfNode=null; }
+}
+// main player picked up the next song: retire the crossfade player
+media.addEventListener("playing",()=>{ if(xfActive && xfIdx===curIdx) setTimeout(xfStop,150); else if(xfActive || xfIdx>=0) xfStop(); fadeVol=1; applyVol(); });
+media.addEventListener("pause",()=>{ if(!media.ended) xfStop(); });
+document.addEventListener("visibilitychange",()=>{ if(document.hidden && !xfActive){ fadeVol=1; applyVol(); } });
+setInterval(()=>{
+  if(!xfMode()||media.paused||tracks.length<2){ if(xfIdx>=0&&!xfActive) xfStop(); return; }
+  const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0), left=d-media.currentTime;
+  if(d<=XF*3 || IOS) return;
+  const next=(curIdx+1)%tracks.length;
+  if(!xfActive && left<20 && xfIdx!==next && !document.hidden){ xfIdx=next; xfPlayer.src=trackUrl(tracks[next]); xfPlayer.volume=0; xfPlayer.load(); }
+  if(!xfActive && left<XF && left>0.3 && xfIdx===next && !document.hidden && xfPlayer.readyState>=2){
+    xfRoute(); xfActive=true; try{ xfPlayer.currentTime=Math.max(0,XF-left); }catch(_){} xfPlayer.volume=0; xfPlayer.play().catch(()=>xfStop());
+  }
+  if(xfActive){
+    const k=Math.max(0,Math.min(1,left/XF));           // 1 → 0 across the crossfade
+    fadeVol=Math.pow(k,1.5); applyVol();                 // current song fades out
+    try{ xfPlayer.volume=Math.max(0,Math.min(1,userVol*duckVol*(1-Math.pow(k,1.5)))); }catch(_){} // next song fades in
+  }
+},60);
 /* ---------- Equalizer panel ---------- */
 (function(){
   const panel=$("#eq-panel"), btn=$("#pb-eq"), bands=$("#eq-bands"), presets=$("#eq-presets"), onBox=$("#eq-on"), note=$("#eq-note"), enable=$("#eq-enable");
