@@ -127,10 +127,15 @@
       <div style="font-size:44px">🎥🎤</div><h3 style="margin:0;font-size:21px">Allow camera &amp; microphone</h3>${body}
       ${inApp ? "" : `<button class="btn" type="button" id="gl-perm-ok" style="background:#e5484d;color:#fff;font-size:17px;padding:13px">${state === "denied" ? "I turned it on — reload" : "Allow camera"}</button>`}
       <button class="btn ghost" type="button" id="gl-perm-no">Not now</button></div>`;
-    m.hidden = false;
+    m.hidden = false; m.dataset.from = "live";
     m.querySelector("#gl-perm-no").onclick = () => { m.hidden = true; };
     const ok = m.querySelector("#gl-perm-ok"); if (ok) ok.onclick = () => (state === "denied" ? location.reload() : requestCam(true));
   }
+  /* The Live page's camera pop-up belongs to the Live page: close it when the visitor goes to another page */
+  window.addEventListener("hashchange", () => setTimeout(() => {
+    const m = document.getElementById("gl-perm");
+    if (m && !m.hidden && m.dataset.from === "live" && view.hidden) m.hidden = true;
+  }, 0));
   async function requestCam(fromTap) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { permModal("prompt"); return false; }
     try {
@@ -166,7 +171,7 @@
         <p class="muted" style="font-size:14px;margin:0">Nothing turns on until you use one of those. When your phone asks, tap <b>Allow</b>.</p>
         <button class="btn" type="button" id="gl-perm-ok" style="font-size:17px;padding:13px">Allow camera &amp; mic</button>
         <button class="btn ghost" type="button" id="gl-perm-no">Not now</button></div>`;
-      m.hidden = false;
+      m.hidden = false; m.dataset.from = "site";
       m.querySelector("#gl-perm-no").onclick = () => { m.hidden = true; };
       m.querySelector("#gl-perm-ok").onclick = async () => { if (await requestCam(false)) say("You're all set! 🎉"); else { const st2 = await camState(); if (st2 === "denied") permModal("denied"); else m.hidden = true; } };
     });
