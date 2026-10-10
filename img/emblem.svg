@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs>
+  <linearGradient id="emG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3c7"/><stop offset=".35" stop-color="#f0cf78"/><stop offset=".7" stop-color="#d4a843"/><stop offset="1" stop-color="#8f6519"/></linearGradient>
+  <linearGradient id="emGh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9c7020"/><stop offset=".5" stop-color="#ffe9a8"/><stop offset="1" stop-color="#9c7020"/></linearGradient>
+  <linearGradient id="emL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2c14"/><stop offset="1" stop-color="#1a140a"/></linearGradient>
+  <linearGradient id="emR" x1="1" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#140f07"/><stop offset="1" stop-color="#0b0905"/></linearGradient>
+  <radialGradient id="emGlow" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff1bf" stop-opacity=".95"/><stop offset=".35" stop-color="#f0cf78" stop-opacity=".45"/><stop offset="1" stop-color="#d4a843" stop-opacity="0"/></radialGradient>
+  <radialGradient id="emIris" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#fff6d2"/><stop offset=".45" stop-color="#e6b94f"/><stop offset="1" stop-color="#7a5212"/></radialGradient>
+  <linearGradient id="emPage" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2213"/><stop offset="1" stop-color="#120e07"/></linearGradient>
+  <clipPath id="emPyr"><path d="M71.4 74H128.6L164.9 140H35.1Z"/></clipPath>
+<linearGradient id="emBeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1bf" stop-opacity=".0"/><stop offset=".55" stop-color="#f0cf78" stop-opacity=".10"/><stop offset="1" stop-color="#f0cf78" stop-opacity=".28"/></linearGradient>
+</defs>
+
+<g transform="translate(100 50)" stroke="#e8c065" stroke-linecap="round"><path d="M0-36V-48" transform="rotate(-90)" stroke-width="2.2" opacity="1"/><path d="M0-36V-45" transform="rotate(-75)" stroke-width="1.1" opacity="0.7"/><path d="M0-36V-54" transform="rotate(-60)" stroke-width="2.2" opacity="1"/><path d="M0-36V-45" transform="rotate(-45)" stroke-width="1.1" opacity="0.7"/><path d="M0-36V-54" transform="rotate(-30)" stroke-width="2.2" opacity="1"/><path d="M0-36V-45" transform="rotate(-15)" stroke-width="1.1" opacity="0.7"/><path d="M0-36V-54" transform="rotate(0)" stroke-width="2.2" opacity="1"/><path d="M0-36V-45" transform="rotate(15)" stroke-width="1.1" opacity="0.7"/><path d="M0-36V-54" transform="rotate(30)" stroke-width="2.2" opacity="1"/><path d="M0-36V-45" transform="rotate(45)" stroke-width="1.1" opacity="0.7"/><path d="M0-36V-54" transform="rotate(60)" stroke-width="2.2" opacity="1"/><path d="M0-36V-45" transform="rotate(75)" stroke-width="1.1" opacity="0.7"/><path d="M0-36V-48" transform="rotate(90)" stroke-width="2.2" opacity="1"/></g>
+<circle cx="100" cy="50" r="40" fill="url(#emGlow)" opacity=".45"/>
+
+<path d="M71.4 74H100V140H35.1Z" fill="url(#emL)"/>
+<path d="M100 74H128.6L164.9 140H100Z" fill="url(#emR)"/>
+<g clip-path="url(#emPyr)" stroke="#d4a843" stroke-width=".9" opacity=".55">
+  <path d="M30 90H170M30 106H170M30 122H170"/>
+  <path d="M86 74V90M100 74V90M114 74V90M78 90V106M93 90V106M107 90V106M122 90V106M70 106V122M85 106V122M100 106V122M115 106V122M130 106V122M62 122V140M78 122V140M93 122V140M107 122V140M122 122V140M138 122V140"/>
+</g>
+<path d="M71.4 74H128.6L164.9 140H35.1Z" fill="none" stroke="url(#emG)" stroke-width="4.2" stroke-linejoin="round"/>
+<path d="M75 80H125" stroke="#fff3c7" stroke-width=".8" opacity=".5"/>
+<path d="M73.5 77.5 40.5 137" stroke="#fff3c7" stroke-width="1" opacity=".55" stroke-linecap="round"/>
+<path d="M100 26.5 79 63.5" stroke="#fff3c7" stroke-width=".9" opacity=".6" stroke-linecap="round"/>
+
+<path d="M100 22 124.2 66H75.8Z" fill="#0d0a05" stroke="url(#emG)" stroke-width="3.8" stroke-linejoin="round"/>
+<path d="M100 31 117.5 62H82.5Z" fill="none" stroke="#f0cf78" stroke-width=".8" opacity=".5"/>
+<circle class="eye-glow" cx="100" cy="52" r="13" fill="url(#emGlow)" opacity=".75"/>
+<path d="M85 52Q100 40 115 52Q100 64 85 52Z" fill="#0b0905" stroke="url(#emG)" stroke-width="2.2" stroke-linejoin="round"/>
+<path d="M86 49Q100 37 114 49" fill="none" stroke="url(#emG)" stroke-width="1" opacity=".8"/>
+<circle cx="100" cy="52" r="5.8" fill="url(#emIris)"/>
+<circle cx="100" cy="52" r="2.4" fill="#0b0905"/>
+<circle cx="98.2" cy="50.2" r="1.2" fill="#fffbe6"/>
+<path d="M50 140H150L170 158H30Z" fill="url(#emBeam)"/>
+<g fill="#fff3c7"><path d="M32 30l1.4 3.6 3.6 1.4-3.6 1.4L32 40l-1.4-3.6L27 35l3.6-1.4Z" opacity=".85"/><path d="M168 30l1.4 3.6 3.6 1.4-3.6 1.4L168 40l-1.4-3.6L163 35l3.6-1.4Z" opacity=".85"/><circle cx="46" cy="58" r="1.2" opacity=".7"/><circle cx="154" cy="58" r="1.2" opacity=".7"/><circle cx="22" cy="96" r="1" opacity=".5"/><circle cx="178" cy="96" r="1" opacity=".5"/></g>
+
+<path d="M24 150Q62 136 100 152Q138 136 176 150V184Q138 172 100 188Q62 172 24 184Z" fill="#0b0905"/>
+<g fill="none" stroke="url(#emG)" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M100 152Q62 136 24 150V180Q62 168 100 184Q138 168 176 180V150Q138 136 100 152Z" fill="url(#emPage)" stroke-width="3.2"/>
+  <path d="M24 180V185Q62 173 100 189Q138 173 176 185V180" stroke-width="2.6"/>
+  <path d="M27 182.5Q62 170.5 100 186.5Q138 170.5 173 182.5" stroke-width=".8" opacity=".7"/>
+  <g stroke="#e2b54e" stroke-width=".7" opacity=".7"><path d="M21 152V183"/><path d="M18.5 154V181.5"/><path d="M179 152V183"/><path d="M181.5 154V181.5"/></g>
+  <path d="M100 152Q66 139 30 151" stroke="#fff3c7" stroke-width=".9" opacity=".6"/><path d="M100 152Q134 139 170 151" stroke="#fff3c7" stroke-width=".9" opacity=".6"/>
+  <path d="M100 152V184" stroke="#e2b54e" stroke-width="2.4"/>
+  <g stroke-width="1.1" opacity=".75"><path d="M36 154Q62 146 90 157"/><path d="M36 161Q62 153 90 164"/><path d="M36 168Q62 160 90 171"/><path d="M36 175Q58 168 76 173"/><path d="M164 154Q138 146 110 157"/><path d="M164 161Q138 153 110 164"/><path d="M164 168Q138 160 110 171"/><path d="M164 175Q142 168 124 173"/></g>
+</g>
+<path d="M104 184V198L108 194 112 198V181" fill="#b23a2a" stroke="#6e1d14" stroke-width=".8"/>
+</svg>

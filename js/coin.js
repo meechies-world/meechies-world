@@ -52,9 +52,8 @@
 <circle cx="100" cy="100" r="96" fill="url(#cnR)"/><circle cx="100" cy="100" r="86" fill="url(#cnF)"/>
 <circle cx="100" cy="100" r="84" fill="none" stroke="#7a5512" stroke-width="1.5" stroke-dasharray="2 4"/>
 <text font-family="Cinzel,Georgia,serif" font-weight="900" font-size="15" letter-spacing="3" fill="#5a3d0b"><textPath href="#cnT" startOffset="2%">MEECHIE'S COIN • MEECHIE'S WORLD INC •</textPath></text>
-<circle cx="100" cy="100" r="58" fill="none" stroke="#7a5512" stroke-width="2"/>
-<g fill="none" stroke="#4a320a" stroke-linejoin="round" stroke-linecap="round"><path d="M100 58 128 104H72Z" stroke-width="5"/><path d="M87 89q13-10 26 0q-13 10-26 0Z" stroke-width="3"/>
-<path d="M70 110 100 116 130 110V128L100 135 70 128Z" stroke-width="4"/><path d="M100 116V135" stroke-width="3"/></g><circle cx="100" cy="89" r="4" fill="#4a320a"/></svg>`;
+<circle cx="100" cy="100" r="62" fill="#0b0905" stroke="#7a5512" stroke-width="2.5"/><circle cx="100" cy="100" r="58" fill="none" stroke="#e2b54e" stroke-width=".8" opacity=".7"/>
+<svg x="50" y="48" width="100" height="100" viewBox="0 0 200 200"><use href="#emblem"/></svg></svg>`;
 
   function render() {
     const live = C.status === "live";
