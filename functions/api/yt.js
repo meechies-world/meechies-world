@@ -112,8 +112,12 @@ export async function onRequestGet({ request }) {
       const batches = await Promise.all(official.map((ch) => search((genre ? genre + " " : "") + what + " " + ch, false, newest).catch(() => [])));
       const seen = new Set(), long = [];
       for (const list of batches) for (const v of list) if (!v.live && !seen.has(v.id) && /^\d+:\d{2}:\d{2}$/.test(v.len) && MOVIE_CHANNELS.test(v.channel)) { seen.add(v.id); long.push(v); }
-      // newest: interleave the channels so one channel doesn't fill the whole row
-      if (newest) { const by = {}; long.forEach((v) => (by[v.channel] = by[v.channel] || []).push(v)); const cols = Object.values(by); long.length = 0; for (let i = 0; cols.some((c) => c[i]); i++) cols.forEach((c) => c[i] && long.push(c[i])); }
+      // newest: sort by how long ago each was posted ("3 days ago", "2mo ago", "1y ago" ...)
+      if (newest) {
+        const U = { s: 1 / 86400, sec: 1 / 86400, second: 1 / 86400, min: 1 / 1440, minute: 1 / 1440, h: 1 / 24, hr: 1 / 24, hour: 1 / 24, d: 1, day: 1, w: 7, wk: 7, week: 7, mo: 30, month: 30, y: 365, yr: 365, year: 365 };
+        const days = (a) => { const m = String(a || "").toLowerCase().match(/(\d+)\s*([a-z]+)/); if (!m) return 99999; const u = m[2].replace(/s$/, ""); return +m[1] * (U[u] ?? U[u.slice(0, 2)] ?? U[u[0]] ?? 99999); };
+        long.sort((a, b) => days(a.ago) - days(b.ago));
+      }
       if (url.searchParams.get("debug")) return json({ n: long.length, raw: batches.flat().slice(0, 25).map((v) => [v.channel, v.len, v.title.slice(0, 40), v.ago]) }, 0);
       return json({ genre, newest, list: await keepPlayable(long, 12) }, newest ? 1800 : 3600);
     }
