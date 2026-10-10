@@ -7,9 +7,9 @@ const UA = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 const json = (o, age = 600) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json", "cache-control": "public, max-age=" + age } });
 function walk(o, out) { if (!o || typeof o !== "object") return; if (o.videoRenderer) out.push(o.videoRenderer); for (const k in o) walk(o[k], out); }
 const txt = (r) => (r && (r.simpleText || (r.runs || []).map((x) => x.text).join(""))) || "";
-async function search(q, live, newest) {
-  // live filter, long (>20 min) videos, or long videos sorted newest first
-  const u = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q) + (live ? "&sp=EgJAAQ%253D%253D" : newest ? "&sp=CAISAhgC" : "&sp=EgIYAg%253D%253D");
+async function search(q, live, newest, sp) {
+  // live filter, long (>20 min) videos, long videos sorted newest first, or a custom filter (sp)
+  const u = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q) + (sp != null ? (sp ? "&sp=" + sp : "") : live ? "&sp=EgJAAQ%253D%253D" : newest ? "&sp=CAISAhgC" : "&sp=EgIYAg%253D%253D");
   const html = await fetch(u, { headers: UA, cf: { cacheTtl: 900 } }).then((r) => r.text());
   const m = html.match(/var ytInitialData = (\{.*?\});<\/script>/s); if (!m) return [];
   let data; try { data = JSON.parse(m[1]); } catch (_) { return []; }
@@ -127,6 +127,35 @@ export async function onRequestGet({ request }) {
       // the embeddable check also talks to YouTube; if it gets blocked, keep the official uploads rather than show nothing
       const playable = await keepPlayable(list, 15);
       return json({ channel: name, list: playable.length ? playable : list.slice(0, 15) }, 1800);
+    }
+    if (mode === "songs") {
+      // an artist's real songs (music videos, audio, lyric videos), never Shorts or clips
+      const ch = url.searchParams.get("channel") || "", q = (url.searchParams.get("q") || "").slice(0, 60);
+      if (!/^UC[\w-]{20,24}$/.test(ch) || !q) return json({ list: [], error: "bad_channel" }, 60);
+      const SONG = /official (music )?video|official audio|music video|lyric|visuali[sz]er|\(audio\)|official song|\bft\.?\s|\bfeat\.?\s|\s[xX]\s/i;
+      const secs = (t) => String(t || "").split(":").reduce((a, n) => a * 60 + +n, 0);
+      const key = q.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const mine = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, "").includes(key);
+      const dbg = {};
+      // 1) the channel feed: newest uploads, minus anything posted as a Short
+      const fr = await fetch("https://www.youtube.com/feeds/videos.xml?channel_id=" + ch, { headers: UA, cf: { cacheTtl: 1800 } }).catch(() => ({ ok: false }));
+      const xml = fr.ok ? await fr.text() : ""; dbg.feed = fr.status;
+      const un = (s) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+      const feed = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map((m) => ({
+        id: (m[1].match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/) || [])[1],
+        title: un((m[1].match(/<title>([^<]*)<\/title>/) || [])[1] || ""),
+        published: (m[1].match(/<published>([^<]+)<\/published>/) || [])[1] || "",
+        short: /\/shorts\//.test(m[1]),
+      })).filter((v) => v.id && !v.short && !/#shorts?\b/i.test(v.title) && SONG.test(v.title));
+      // 2) YouTube search for the artist's songs: only his channel, at least 1:45 long
+      const batches = await Promise.all([q + " official music video", q + " official audio", q + " song"].map((s) => search(s, false, false, "").catch(() => [])));
+      const found = batches.flat().filter((v) => !v.live && mine(v.channel) && secs(v.len) >= 105 && !/#shorts?\b/i.test(v.title) && (SONG.test(v.title) || secs(v.len) >= 150));
+      dbg.feedSongs = feed.length; dbg.searchSongs = found.length;
+      const seen = new Set(), list = [];
+      for (const v of [...feed, ...found.map((v) => ({ id: v.id, title: v.title, published: v.ago, len: v.len }))]) if (/^[\w-]{11}$/.test(v.id) && !seen.has(v.id)) { seen.add(v.id); list.push({ id: v.id, title: v.title, published: v.published, len: v.len || "" }); }
+      if (url.searchParams.get("debug")) return json({ dbg, n: list.length, list: list.map((v) => [v.title.slice(0, 60), v.len, v.published]) }, 0);
+      const playable = await keepPlayable(list, 24);
+      return json({ list: playable.length ? playable : list.slice(0, 24) }, 1800);
     }
     if (mode === "movies") {
       const genre = (url.searchParams.get("genre") || "").slice(0, 30), newest = url.searchParams.get("new") === "1";
