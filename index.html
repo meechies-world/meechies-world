@@ -438,6 +438,7 @@ a.social:hover{border-color:var(--gold)}
 .eq-band input{writing-mode:vertical-lr;direction:rtl;width:28px;height:120px;accent-color:var(--gold);padding:0;border:0;background:none}
 .eq-db{font:600 11px var(--mono);color:var(--gold-hi);font-variant-numeric:tabular-nums}
 .eq-note{margin:0;font-size:12px;color:var(--muted)}
+.eq-own{flex-basis:100%;font-size:12px;color:var(--gold-hi)}
 @media (max-width:640px){.eq-panel{right:16px;left:16px;width:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
 .pb-now{display:flex;gap:10px;align-items:center;min-width:0}
 .pb-now .cover{width:44px;height:44px;border-radius:8px}
@@ -1607,7 +1608,7 @@ async function boot(){
     renderFeed(); renderAds(); renderMsgs();
   }, err=>console.warn(err));
   subFeed(); subAds(); subChannel("lounge"); joinRoom(); subLive(); subGifts(); enterWorld();
-  subRadio(); subCreators(); subGames();
+  subRadio(); subCreators(); subGames(); window._subEq && window._subEq();
   if(isOwner){ $("#announce-opt").hidden=false; assets=await claude.use("assets"); $("#uploader").hidden=!assets; }
 }
 $$("dialog [data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
@@ -1963,7 +1964,9 @@ let boostCtx=null, boostGain=null, eqNodes=[];
 /* Equalizer: 5 bands between the song and the booster. Saved per listener. */
 const EQ_BANDS=[{f:60,type:"lowshelf",n:"Bass"},{f:250,type:"peaking",n:"Low mid"},{f:1000,type:"peaking",n:"Mid"},{f:3500,type:"peaking",n:"Presence"},{f:10000,type:"highshelf",n:"Air"}];
 const EQ_PRESETS={ "Flat":[0,0,0,0,0], "Studio":[2,-1,0,1.5,2], "Hip-Hop":[5,1,-1,1.5,2], "Vocals":[-1,-1,2,3,1.5], "Bass Boost":[8,3,0,0,0] };
-let eqGains=(()=>{ try{ const s=JSON.parse(localStorage.getItem("mw_eq")||"null"); if(Array.isArray(s)&&s.length===5) return s.map(Number); }catch(_){} return EQ_PRESETS.Studio.slice(); })();
+/* Listeners hear Meechie's station EQ (saved in site/eq) until they change their own. */
+let eqStation=EQ_PRESETS.Studio.slice(), eqPersonal=false;
+let eqGains=(()=>{ try{ const s=JSON.parse(localStorage.getItem("mw_eq")||"null"); if(Array.isArray(s)&&s.length===5){ eqPersonal=true; return s.map(Number); } }catch(_){} return EQ_PRESETS.Studio.slice(); })();
 let eqOn=(()=>{ try{ return localStorage.getItem("mw_eq_on")!=="0"; }catch(_){ return true; } })();
 function applyEq(){ eqNodes.forEach((n,i)=>{ n.gain.value = eqOn ? eqGains[i] : 0; }); }
 function setupBoost(force){ if(boostCtx) return true; if((IOS||TOUCH) && !force) return false;
@@ -2097,14 +2100,25 @@ setInterval(()=>{
 /* ---------- Equalizer panel ---------- */
 (function(){
   const panel=$("#eq-panel"), btn=$("#pb-eq"), bands=$("#eq-bands"), presets=$("#eq-presets"), onBox=$("#eq-on"), note=$("#eq-note"), enable=$("#eq-enable");
-  const save=()=>{ try{ localStorage.setItem("mw_eq",JSON.stringify(eqGains)); localStorage.setItem("mw_eq_on",eqOn?"1":"0"); }catch(_){} };
+  const same=(a,b)=>a.every((v,i)=>Math.abs(v-b[i])<0.01);
+  let ownerTimer=0;
+  const save=()=>{
+    eqPersonal=true;
+    try{ localStorage.setItem("mw_eq",JSON.stringify(eqGains)); localStorage.setItem("mw_eq_on",eqOn?"1":"0"); }catch(_){}
+    // the owner's settings become the station default for every listener who hasn't changed theirs
+    if(typeof isOwner!=="undefined" && isOwner){ clearTimeout(ownerTimer); ownerTimer=setTimeout(()=>{
+      eqStation=eqGains.slice(); db.doc("site/eq").set({gains:eqStation,updatedAt:Date.now()}).then(()=>{ const s=$("#eq-own"); if(s) s.textContent="Saved as the station sound ✓"; }).catch(e=>toast("Couldn't save the station EQ: "+(e.message||e.code)));
+    },700); }
+  };
   const phone=IOS||TOUCH;
   function paint(){
-    const live=!!boostCtx;
+    const live=!!boostCtx, owner=typeof isOwner!=="undefined" && isOwner;
     enable.hidden=live; note.hidden=!(phone&&live);
     onBox.checked=eqOn; onBox.disabled=!live;
-    const cur=Object.keys(EQ_PRESETS).find(k=>EQ_PRESETS[k].every((v,i)=>Math.abs(v-eqGains[i])<0.01));
-    presets.innerHTML=Object.keys(EQ_PRESETS).map(k=>`<button type="button" class="eq-chip${k===cur?" on":""}" data-preset="${k}"${live?"":" disabled"}>${k}</button>`).join("");
+    const all={ "Station":eqStation, ...EQ_PRESETS };
+    const cur=same(eqGains,eqStation) ? "Station" : Object.keys(EQ_PRESETS).find(k=>same(EQ_PRESETS[k],eqGains));
+    presets.innerHTML=Object.keys(all).filter(k=>!(owner&&k==="Station")).map(k=>`<button type="button" class="eq-chip${k===cur?" on":""}" data-preset="${k}"${live?"":" disabled"}>${k==="Station"?"Meechie's mix":k}</button>`).join("")
+      + (owner ? `<small class="eq-own" id="eq-own">You're the owner: listeners hear your settings until they change their own.</small>` : "");
     bands.innerHTML=EQ_BANDS.map((b,i)=>`<label class="eq-band"><span class="eq-db">${eqGains[i]>0?"+":""}${(+eqGains[i]).toFixed(1)}</span><input type="range" min="-12" max="12" step="0.5" value="${eqGains[i]}" data-band="${i}" aria-label="${b.n} ${b.f<1000?b.f+" hertz":b.f/1000+" kilohertz"}"${live?"":" disabled"}><span>${b.n}</span><small>${b.f<1000?b.f:b.f/1000+"k"}Hz</small></label>`).join("");
   }
   function show(open){ panel.hidden=!open; btn.setAttribute("aria-expanded",String(open)); if(open){ if(!phone) wakeBoost(); paint(); } }
@@ -2112,7 +2126,13 @@ setInterval(()=>{
   $("#eq-x").addEventListener("click",()=>show(false));
   enable.addEventListener("click",()=>{ if(setupBoost(true)){ if(boostCtx.state!=="running") boostCtx.resume().catch(()=>{}); eqOn=true; applyEq(); save(); toast("Equalizer on"); } else toast("This browser can't run the equalizer."); paint(); });
   onBox.addEventListener("change",()=>{ eqOn=onBox.checked; applyEq(); save(); });
-  presets.addEventListener("click",e=>{ const b=e.target.closest("[data-preset]"); if(!b) return; eqGains=EQ_PRESETS[b.dataset.preset].slice(); eqOn=true; applyEq(); save(); paint(); });
+  presets.addEventListener("click",e=>{ const b=e.target.closest("[data-preset]"); if(!b) return;
+    if(b.dataset.preset==="Station"){ // back to Meechie's mix: forget this listener's own setting
+      eqGains=eqStation.slice(); eqOn=true; eqPersonal=false; applyEq(); try{ localStorage.removeItem("mw_eq"); localStorage.setItem("mw_eq_on","1"); }catch(_){} paint(); return; }
+    eqGains=EQ_PRESETS[b.dataset.preset].slice(); eqOn=true; applyEq(); save(); paint(); });
+  // load the station EQ; listeners who haven't changed theirs follow it, even when Meechie updates it later
+  window._subEq=()=>{ try{ db.doc("site/eq").onSnapshot(s=>{ const g=s.exists && s.data().gains; if(!Array.isArray(g)||g.length!==5) return;
+    eqStation=g.map(Number); if(!eqPersonal){ eqGains=eqStation.slice(); applyEq(); } if(!panel.hidden) paint(); }, ()=>{}); }catch(_){} };
   bands.addEventListener("input",e=>{ const i=e.target.dataset.band; if(i==null) return; eqGains[+i]=+e.target.value; eqOn=true; onBox.checked=true; applyEq(); save();
     const lab=e.target.parentElement.querySelector(".eq-db"); lab.textContent=(eqGains[i]>0?"+":"")+(+eqGains[i]).toFixed(1); presets.querySelectorAll(".eq-chip").forEach(c=>c.classList.remove("on")); });
   document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!panel.hidden) show(false); });
