@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791650364">
+<meta name="mw-build" content="1791650946">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -778,6 +778,8 @@ body[data-view=live]{--sec-accent:#ff3b4f}
 body[data-view=predict]{--sec-accent:#a78bfa}
 #v-jobs{--gold:#60a5fa;--gold-hi:#c3dcfd;--gold-lo:#245c9e;--panel:#0e131b;--line:#22334a;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(96,165,250,0.16),transparent 70%),repeating-linear-gradient(0deg,rgba(96,165,250,0.045) 0 1px,transparent 1px 44px),repeating-linear-gradient(90deg,rgba(96,165,250,0.045) 0 1px,transparent 1px 44px)}
 body[data-view=jobs]{--sec-accent:#60a5fa}
+#v-legal{--gold:#93b4ff;--gold-hi:#d6e2ff;--gold-lo:#3f5a9c;--panel:#0f131c;--line:#26324a;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(147,180,255,.16),transparent 70%),repeating-linear-gradient(0deg,rgba(147,180,255,.045) 0 1px,transparent 1px 30px)}
+body[data-view=legal]{--sec-accent:#93b4ff}
 </style>
 <style>
 /* Members-only gate */
@@ -973,6 +975,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <nav class="tabs" aria-label="Sections">
       <a href="#home" data-go="home">Home</a>
       <a href="#services" data-go="services">Services</a>
+      <a href="#legal" data-go="legal">⚖️ Legal Help</a>
       <a href="#shop" data-go="shop">Shop</a>
       <a href="#community" data-go="community">Community</a>
       <a href="#radio" data-go="radio">Radio</a>
@@ -1362,6 +1365,95 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   </div>
 </section>
 
+<!-- LEGAL HELP -->
+<section class="view" data-theme="legal" id="v-legal" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Iustitiam quaerimus · We seek justice</p><h2>Legal Help</h2></div>
+      <p class="muted">Representing yourself (pro se)? Build your case, and let Meechie's AI draft your motion, petition or complaint with real case law, then check every citation before you file.</p>
+    </div>
+    <div class="lg-warn"><b>⚖️ Legal document preparation, not legal advice.</b> Meechie's World isn't a law firm and the AI isn't a lawyer. You review, sign and file your own papers. Always read the cases you cite, check your court's local rules and deadlines, and talk to a lawyer or legal aid if you can. Your case details stay on this device. They're never posted to the site.</div>
+    <div class="lg-steps">
+      <div class="lg-card">
+        <h3><span class="n">1</span>Your case</h3>
+        <p>Fill in what you know. Leave anything blank you don't have. It saves on this device as you type.</p>
+        <div class="lg-grid">
+          <label>Court system<select data-k="system"><option>State court</option><option>Federal court</option></select></label>
+          <label>State<select data-k="state" id="lg-state"></select></label>
+          <label>County / federal district<input data-k="county" placeholder="e.g. Monongalia County / N.D. W. Va."></label>
+          <label>Court name<input data-k="court" placeholder="e.g. Circuit Court of Monongalia County"></label>
+          <label>Case number<input data-k="caseNo" placeholder="e.g. 22-F-163"></label>
+          <label>Type of case<select data-k="type"><option>Criminal</option><option>Post-conviction / appeal</option><option>Civil rights (§ 1983)</option><option>Civil</option><option>Family</option><option>Landlord / tenant</option><option>Small claims</option><option>Other</option></select></label>
+          <label>Judge<input data-k="judge" placeholder="Hon. ..."></label>
+          <label>Your name (as on the case)<input data-k="name"></label>
+          <label>You are the<select data-k="role"><option>Defendant</option><option>Plaintiff</option><option>Petitioner</option><option>Respondent</option><option>Appellant</option><option>Appellee</option></select></label>
+          <label>Other side<input data-k="other" placeholder="e.g. State of West Virginia"></label>
+          <label>Prosecutor / other side's lawyer<input data-k="otherCounsel" placeholder="Name and office"></label>
+          <label>Charges or claims<input data-k="charges" placeholder="e.g. W. Va. Code § 61-2-9"></label>
+          <label class="full">Where the case is now / next court date<input data-k="status" placeholder="e.g. Pretrial hearing set for Nov 3, 2026; in custody since ..."></label>
+          <label>Your mailing address (for the signature)<input data-k="address" autocomplete="street-address"></label>
+          <label>Phone / email (for the signature)<input data-k="contact"></label>
+        </div>
+        <div class="acts"><button class="btn sm ghost" type="button" id="lg-export">💾 Save case file</button><label class="btn sm ghost" style="cursor:pointer">📂 Open case file<input type="file" id="lg-import" accept="application/json,.json" hidden></label><button class="btn sm ghost" type="button" id="lg-clear">Start a new case</button></div>
+      </div>
+
+      <div class="lg-card">
+        <h3><span class="n">2</span>What happened &amp; what you want</h3>
+        <p>Write it in your own words, in order, with dates. The AI only uses facts you give it, and never makes facts up.</p>
+        <div class="lg-grid">
+          <label class="full">What happened<textarea data-k="facts" rows="8" placeholder="e.g. On March 3, 2026 police stopped my car for a broken taillight. They searched the trunk without asking or a warrant..."></textarea></label>
+          <label class="full">What do you want the court to do?<textarea data-k="relief" rows="3" placeholder="e.g. Throw out the evidence from the search and dismiss the charge."></textarea></label>
+          <label class="full">Legal issues or arguments <small>(optional: what you think was wrong)</small><textarea data-k="issues" rows="3" placeholder="e.g. illegal search, no probable cause, speedy trial, ineffective counsel"></textarea></label>
+        </div>
+      </div>
+
+      <div class="lg-card">
+        <h3><span class="n">3</span>Pick your document &amp; find real case law</h3>
+        <p>The AI uses the cases you check here. They come from CourtListener, a free database of real court opinions.</p>
+        <div class="lg-grid">
+          <label class="full">Document<select data-k="doc" id="lg-doc"></select></label>
+          <label class="full">Search case law about<input id="lg-q" placeholder="Leave blank to use your issues and document type"></label>
+        </div>
+        <div class="acts"><button class="btn sm" type="button" id="lg-find">🔎 Find real case law</button><span class="lg-msg" id="lg-find-msg"></span></div>
+        <div class="lg-res" id="lg-res"></div>
+        <label class="full" style="margin-top:12px">Extra instructions for the AI <small>(optional)</small><textarea data-k="instructions" rows="2" placeholder="e.g. Keep it under 6 pages. Mention that I asked my lawyer to file this and he refused."></textarea></label>
+        <div class="acts"><button class="btn" type="button" id="lg-go">✍️ Draft my document</button><span class="lg-msg" id="lg-go-msg"></span></div>
+      </div>
+
+      <div class="lg-card" id="lg-draft-card">
+        <h3><span class="n">4</span>Your document</h3>
+        <p>Edit anything right here. Then verify the citations, get an AI review, and download it.</p>
+        <textarea data-k="draft" id="lg-draft" spellcheck="true" placeholder="Your drafted document shows up here. You can also paste a document you already wrote to check or fix it."></textarea>
+        <div class="acts"><button class="btn sm" type="button" id="lg-verify">✅ Verify citations</button><button class="btn sm ghost" type="button" id="lg-check">🧐 AI review</button><button class="btn sm ghost" type="button" id="lg-pdf">📄 Download PDF</button><button class="btn sm ghost" type="button" id="lg-print">🖨️ Print</button><button class="btn sm ghost" type="button" id="lg-copy">📋 Copy</button><label style="display:inline-flex;align-items:center;gap:6px;font-weight:500"><input type="checkbox" id="lg-dbl" checked style="width:auto">Double-spaced</label></div>
+        <div class="lg-ver" id="lg-ver"></div>
+        <div class="acts"><input id="lg-rev-ins" placeholder="Tell the AI what to change (e.g. add an argument about the 3-term rule)" style="flex:1;min-width:220px"><button class="btn sm" type="button" id="lg-revise">🔁 Revise</button><span class="lg-msg" id="lg-tools-msg"></span></div>
+        <div class="lg-out" id="lg-review" hidden></div>
+      </div>
+
+      <div class="lg-card">
+        <h3>❓ Ask a legal question</h3>
+        <p>How does bail work? What's a 2255? How do I serve the other side? The AI explains in plain words and looks up real cases.</p>
+        <textarea id="lg-ask" rows="3" placeholder="Type your question"></textarea>
+        <div class="acts"><button class="btn sm" type="button" id="lg-ask-go">Ask Meechie's AI</button><span class="lg-msg" id="lg-ask-msg"></span></div>
+        <div class="lg-out" id="lg-ask-out" hidden></div>
+      </div>
+
+      <div class="lg-card">
+        <h3>📚 Free legal resources</h3>
+        <div class="lg-links">
+          <a href="https://www.courtlistener.com/" target="_blank" rel="noopener"><b>CourtListener</b><small>Search millions of real court opinions, free</small></a>
+          <a href="https://www.law.cornell.edu/" target="_blank" rel="noopener"><b>Cornell Legal Information Institute</b><small>Federal laws, court rules and plain-English guides</small></a>
+          <a href="https://www.uscourts.gov/forms-rules/forms" target="_blank" rel="noopener"><b>U.S. Courts forms</b><small>Official federal forms, including pro se forms</small></a>
+          <a href="https://www.uscourts.gov/court-programs/pro-se-litigants" target="_blank" rel="noopener"><b>Federal pro se help</b><small>How to represent yourself in federal court</small></a>
+          <a href="https://www.lawhelp.org/" target="_blank" rel="noopener"><b>LawHelp.org</b><small>Find free legal aid in your state</small></a>
+          <a href="https://scholar.google.com/" target="_blank" rel="noopener"><b>Google Scholar</b><small>Pick "Case law" to search cases</small></a>
+          <a href="#contact" data-go="contact"><b>Meechie's World paralegal services</b><small>Want us to prepare your packet? Book document prep</small></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- MEECHIE'S COIN -->
 <section class="view" data-theme="coin" id="v-coin" hidden>
   <div class="wrap">
@@ -1690,7 +1782,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <p class="muted">DM us on TikTok or Snapchat for the fastest reply, or ask our AI assistant right now.</p>
     </div>
     <div class="card" id="ai-card" style="margin-bottom:24px">
-      <h3 style="font-size:22px">Ask Meechie (AI assistant)</h3>
+      <h3 style="font-size:22px;display:flex;align-items:center;gap:12px"><img src="/img/meechie-ai.jpg" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-hi)">Ask Meechie (AI assistant)</h3>
       <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
       <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
       <form class="reply-form" id="ai-form"><input type="text" id="ai-q" aria-label="Ask Meechie" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
@@ -1817,8 +1909,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791650364"></script>
-<script src="js/platform.js?v=1791650364"></script>
+<script src="js/config.js?v=1791650946"></script>
+<script src="js/platform.js?v=1791650946"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1830,7 +1922,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["live","predict","jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -2779,7 +2871,7 @@ $("#ai-form").addEventListener("submit",async e=>{
   $("#ai-q").value=""; aiHist.push({role:"user",content:q}); const ans={role:"assistant",content:"Thinking..."}; aiHist.push(ans); aiDraw(); aiBusy=true;
   try{
     const tok=window.MW?.session?.()?.access_token;
-    const r=await fetch("/api/ai",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+tok},body:JSON.stringify({messages:aiHist.slice(0,-1).slice(-10)})});
+    const r=await fetch("/api/ai",{method:"POST",headers:{"content-type":"application/json",authorization:"Bearer "+tok},body:JSON.stringify({messages:aiHist.slice(0,-1).slice(-16)})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.reply) throw Object.assign(new Error(j.error||"fail"),{code:j.error});
     ans.content=j.reply+(j.sources&&j.sources.length?"\n\nSources: "+j.sources.map((x,i)=>"["+(i+1)+"] "+x.title+" — "+x.url).join("\n"):"");
@@ -3038,29 +3130,30 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791650364"></script>
-<script src="js/studio.js?v=1791650364"></script>
-<script src="js/owner.js?v=1791650364"></script>
-<script src="js/messages.js?v=1791650364"></script>
-<script src="js/videos.js?v=1791650364"></script>
-<script src="js/markets.js?v=1791650364"></script>
-<script src="js/coin.js?v=1791650364"></script>
-<script src="js/preach.js?v=1791650364"></script>
-<script src="js/world3d.js?v=1791650364"></script>
-<script src="js/clips.js?v=1791650364"></script>
-<script src="js/dj.js?v=1791650364"></script>
-<script src="js/live.js?v=1791650364"></script>
-<script src="js/autotune.js?v=1791650364"></script>
-<script src="js/beatmaker.js?v=1791650364"></script>
-<script src="js/beatlab.js?v=1791650364"></script>
-<script src="js/friends.js?v=1791650364"></script>
-<script src="js/dating.js?v=1791650364"></script>
-<script src="js/books.js?v=1791650364"></script>
-<script src="js/social.js?v=1791650364"></script>
-<script src="js/jobs.js?v=1791650364"></script>
-<script src="js/golive.js?v=1791650364"></script>
-<script src="js/predict.js?v=1791650364"></script>
-<script src="js/visitors.js?v=1791650364"></script>
-<script src="js/ai-widget.js?v=1791650364"></script>
+<script src="js/appnav.js?v=1791650946"></script>
+<script src="js/studio.js?v=1791650946"></script>
+<script src="js/owner.js?v=1791650946"></script>
+<script src="js/messages.js?v=1791650946"></script>
+<script src="js/videos.js?v=1791650946"></script>
+<script src="js/markets.js?v=1791650946"></script>
+<script src="js/legal.js?v=1791650946"></script>
+<script src="js/coin.js?v=1791650946"></script>
+<script src="js/preach.js?v=1791650946"></script>
+<script src="js/world3d.js?v=1791650946"></script>
+<script src="js/clips.js?v=1791650946"></script>
+<script src="js/dj.js?v=1791650946"></script>
+<script src="js/live.js?v=1791650946"></script>
+<script src="js/autotune.js?v=1791650946"></script>
+<script src="js/beatmaker.js?v=1791650946"></script>
+<script src="js/beatlab.js?v=1791650946"></script>
+<script src="js/friends.js?v=1791650946"></script>
+<script src="js/dating.js?v=1791650946"></script>
+<script src="js/books.js?v=1791650946"></script>
+<script src="js/social.js?v=1791650946"></script>
+<script src="js/jobs.js?v=1791650946"></script>
+<script src="js/golive.js?v=1791650946"></script>
+<script src="js/predict.js?v=1791650946"></script>
+<script src="js/visitors.js?v=1791650946"></script>
+<script src="js/ai-widget.js?v=1791650946"></script>
 </body>
 </html>

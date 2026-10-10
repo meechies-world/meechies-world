@@ -13,9 +13,9 @@ export async function onRequestPost({ request, env }) {
   if (!body || typeof body !== "object") return json({ error: "bad_request" }, 400);
   const turns = (Array.isArray(body.messages) ? body.messages : [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
-    .slice(-16).map((m) => ({ role: m.role, content: m.content.slice(0, 1500) }));
+    .slice(-20).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
   if (!turns.length || turns[turns.length - 1].role !== "user") return json({ error: "bad_request" }, 400);
   const image = typeof body.image === "string" && body.image.length < 2200000 ? body.image : "";
-  const out = await answer(env, turns, { origin: new URL(request.url).origin, image });
+  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token });
   return json(out, out.error ? 503 : 200);
 }
