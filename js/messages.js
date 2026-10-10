@@ -28,8 +28,8 @@
       const isFriend = window.MW_FRIENDS && MW_FRIENDS.isFriend(r.sender);
       if (!walkieOn || !(isFriend || r.sender === other)) continue;
       say("📻 Walkie from " + handle(r.sender));
-      try { if (typeof media !== "undefined" && !media.paused) { media.volume = 0.25; } } catch (_) {}
-      const a = new Audio(u); a.play().catch(() => {}); a.onended = a.onerror = () => { try { media.volume = 1; } catch (_) {} };
+      try { if (typeof media !== "undefined" && !media.paused) { if (window.MW_duck) MW_duck(0.25); else media.volume = 0.25; } } catch (_) {}
+      const a = new Audio(u); a.play().catch(() => {}); a.onended = a.onerror = () => { try { if (window.MW_duck) MW_duck(1); else media.volume = 1; } catch (_) {} };
     }
   }
 
