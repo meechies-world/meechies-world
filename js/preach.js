@@ -6,7 +6,8 @@
   const frame = document.getElementById("pr-frame"), grid = document.getElementById("pr-grid");
   const titleEl = document.getElementById("pr-title"), dateEl = document.getElementById("pr-date");
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const day = (iso) => { try { return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); } catch (_) { return ""; } };
+  // dates come as a full date from the feed, or as "3 weeks ago" from the channel page
+  const day = (s) => { if (!s) return ""; if (/ago$/.test(s)) return s; const d = new Date(s); return isNaN(d) ? s : d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); };
   let vids = [], loaded = false, cur = -1;
 
   const css = document.createElement("style");

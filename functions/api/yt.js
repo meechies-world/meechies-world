@@ -52,16 +52,42 @@ export async function onRequestGet({ request }) {
       // a channel's latest uploads, from YouTube's public feed
       const ch = url.searchParams.get("channel") || "";
       if (!/^UC[\w-]{20,24}$/.test(ch)) return json({ list: [], error: "bad_channel" }, 60);
-      const xml = await fetch("https://www.youtube.com/feeds/videos.xml?channel_id=" + ch, { headers: UA, cf: { cacheTtl: 1800 } }).then((r) => r.text());
+      const dbg = {};
+      // 1) YouTube's public feed
+      const fr = await fetch("https://www.youtube.com/feeds/videos.xml?channel_id=" + ch, { headers: UA, cf: { cacheTtl: 1800 } }).catch((e) => ({ ok: false, status: String(e) }));
+      const xml = fr.ok ? await fr.text() : ""; dbg.feed = fr.status;
       const un = (s) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
-      const name = un((xml.match(/<author>\s*<name>([^<]*)<\/name>/) || [])[1] || "");
-      const list = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map((m) => ({
+      let name = un((xml.match(/<author>\s*<name>([^<]*)<\/name>/) || [])[1] || "");
+      let list = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map((m) => ({
         id: (m[1].match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/) || [])[1],
         title: un((m[1].match(/<title>([^<]*)<\/title>/) || [])[1] || ""),
         published: (m[1].match(/<published>([^<]+)<\/published>/) || [])[1] || "",
         channel: name,
       })).filter((v) => v.id);
-      return json({ channel: name, list: await keepPlayable(list, 15) }, 1800);
+      // 2) if the feed is blocked or empty, read the channel's Videos page instead (newest first)
+      if (!list.length) {
+        const pr = await fetch("https://www.youtube.com/channel/" + ch + "/videos", { headers: UA, cf: { cacheTtl: 1800 } }).catch((e) => ({ ok: false, status: String(e) }));
+        const html = pr.ok ? await pr.text() : ""; dbg.page = pr.status;
+        const m = html.match(/var ytInitialData = (\{.*?\});<\/script>/s);
+        if (m) {
+          let data = null; try { data = JSON.parse(m[1]); } catch (_) {}
+          name = name || (data && data.metadata && data.metadata.channelMetadataRenderer && data.metadata.channelMetadataRenderer.title) || "";
+          const vr = []; walk(data, vr);
+          list = vr.filter((v) => v.videoId).map((v) => ({ id: v.videoId, title: txt(v.title), published: txt(v.publishedTimeText), channel: name }));
+          if (!list.length) { // newer YouTube layout
+            const lk = []; (function w(o) { if (!o || typeof o !== "object") return; if (o.lockupViewModel) lk.push(o.lockupViewModel); for (const k in o) w(o[k]); })(data);
+            list = lk.filter((l) => l.contentId && /VIDEO/.test(l.contentType || "VIDEO")).map((l) => {
+              const md = l.metadata && l.metadata.lockupMetadataViewModel;
+              const rows = JSON.stringify((md && md.metadata) || {}); const ago = (rows.match(/"content":"([^"]*ago)"/) || [])[1] || "";
+              return { id: l.contentId, title: (md && md.title && md.title.content) || "", published: ago, channel: name };
+            });
+          }
+          dbg.found = list.length;
+        } else dbg.noData = true;
+      }
+      const seen = new Set(); list = list.filter((v) => /^[\w-]{11}$/.test(v.id) && !seen.has(v.id) && seen.add(v.id));
+      if (url.searchParams.get("debug")) return json({ dbg, n: list.length, sample: list.slice(0, 3) }, 0);
+      return json({ channel: name, list: await keepPlayable(list, 15) }, list.length ? 1800 : 120);
     }
     if (mode === "movies") {
       const genre = (url.searchParams.get("genre") || "").slice(0, 30);
