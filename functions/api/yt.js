@@ -46,7 +46,14 @@ export async function onRequestGet({ request }) {
         try {
           const r = await fetch("https://www.youtube.com/channel/" + id + "/live", { headers: UA, cf: { cacheTtl: 600 } }); status = r.status;
           const html = r.ok ? await r.text() : "";
-          const vid = (html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/) || [])[1];
+          // YouTube has moved the live video's id around; look in each place it has used
+          const vid = [
+            /<link[^>]*rel="canonical"[^>]*href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/,
+            /<link[^>]*href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"[^>]*rel="canonical"/,
+            /<meta[^>]*property="og:url"[^>]*content="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/,
+            /"videoDetails":\{"videoId":"([\w-]{11})"/,
+            /"currentVideoEndpoint":\{[^{}]*?"watchEndpoint":\{"videoId":"([\w-]{11})"/,
+          ].map((re) => (html.match(re) || [])[1]).find(Boolean);
           const live = /"isLiveNow":true|"isLive":true/.test(html);
           dbg.push({ id, status, vid: !!vid, live, len: html.length });
           if (vid && live) return { channel: id, live: true, id: vid, ok: await embeddable(vid) };
