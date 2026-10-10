@@ -10,6 +10,7 @@ export async function onRequestPost({ request, env }) {
   if (!who.ok) return json({ error: "sign_in" }, 401);
 
   let body; try { body = await request.json(); } catch (_) { return json({ error: "bad_request" }, 400); }
+  if (!body || typeof body !== "object") return json({ error: "bad_request" }, 400);
   const turns = (Array.isArray(body.messages) ? body.messages : [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-16).map((m) => ({ role: m.role, content: m.content.slice(0, 1500) }));

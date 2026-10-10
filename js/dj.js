@@ -31,7 +31,7 @@
       const clean = () => { d.el.removeEventListener("loadedmetadata", ok); d.el.removeEventListener("error", bad); };
       d.el.addEventListener("loadedmetadata", ok); d.el.addEventListener("error", bad);
     });
-    function wire() { const c = actx(); if (!c || d.gain || !d.cors) return; try { const s = c.createMediaElementSource(d.el); d.gain = c.createGain(); s.connect(d.gain).connect(c.destination); } catch (_) { d.gain = null; } d.apply(); }
+    function wire() { if (!OWNER() && ((typeof IOS !== "undefined" && IOS) || (typeof TOUCH !== "undefined" && TOUCH))) return; /* phone listeners: plain audio so it keeps playing when the screen locks */ const c = actx(); if (!c || d.gain || !d.cors) return; try { const s = c.createMediaElementSource(d.el); d.gain = c.createGain(); s.connect(d.gain).connect(c.destination); } catch (_) { d.gain = null; } d.apply(); }
     d.vol = (v) => { d.level = Math.max(0, Math.min(1, v)); d.apply(); };
     d.apply = () => { if (d.gain) { d.gain.gain.value = d.level; d.el.volume = 1; } else d.el.volume = d.level; };
     d.stop = () => { try { d.el.pause(); } catch (_) {} };
@@ -178,7 +178,7 @@
     $("#dj-banner").hidden = !live || OWNER();
     if (!live && listening) endSet();
     // people already listening to the station move over to the live set automatically
-    if (live && !was && !OWNER() && typeof mode !== "undefined" && mode === "radio" && typeof media !== "undefined" && !media.paused) { autoMoved = true; startListening(); }
+    if (live && !was && !document.hidden && !OWNER() && typeof mode !== "undefined" && mode === "radio" && typeof media !== "undefined" && !media.paused) { autoMoved = true; startListening(); }
     if (listening) { follow("A"); follow("B"); }
     playVoice();
   }

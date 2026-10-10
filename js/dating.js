@@ -188,8 +188,9 @@
   async function init() {
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) { render(); return; }
-    d.collection("dating").limit(1000).onSnapshot((s) => { profiles = {}; s.docs.forEach((x) => { const v = x.data(); if (v && v.age >= 18) profiles[x.id] = v; }); if (!view.hidden && !editing) render(); }, () => {});
-    d.collection("datelikes").limit(2000).onSnapshot((s) => { const before = likesLoaded ? matches().length : Infinity; likesLoaded = true; likes = {}; s.docs.forEach((x) => { const v = x.data() || {}; likes[x.id] = { liked: (v.liked || []).filter((i) => typeof i === "string"), passed: (v.passed || []).filter((i) => typeof i === "string"), blocked: (v.blocked || []).filter((i) => typeof i === "string") }; }); if (!view.hidden && !editing && tab !== "discover") render(); if (ME() && matches().length > before && view.hidden) say("💘 You have a new Dating match!"); }, () => {});
+    let dtLoaded = false;
+    d.collection("dating").limit(1000).onSnapshot((s) => { const first = !dtLoaded; dtLoaded = true; profiles = {}; s.docs.forEach((x) => { const v = x.data(); if (v && v.age >= 18) profiles[x.id] = v; }); if (!view.hidden && !editing && (first || !root.querySelector("#dt-form"))) render(); }, () => {}); // after the first load, don't wipe a profile someone is filling in
+    d.collection("datelikes").limit(2000).onSnapshot((s) => { const before = likesLoaded ? matches().length : Infinity; likesLoaded = true; likes = {}; s.docs.forEach((x) => { const v = x.data() || {}; likes[x.id] = { liked: (v.liked || []).filter((i) => typeof i === "string"), passed: (v.passed || []).filter((i) => typeof i === "string"), blocked: (v.blocked || []).filter((i) => typeof i === "string") }; }); if (!view.hidden && !editing && tab !== "discover" && !root.querySelector("#dt-form")) render(); if (ME() && matches().length > before && view.hidden) say("💘 You have a new Dating match!"); }, () => {});
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     setTimeout(render, 1200);
   }

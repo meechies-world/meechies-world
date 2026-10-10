@@ -151,6 +151,7 @@
       if (!rec) return; const r = rec; rec = null; wBtn()?.classList.remove("on");
       const i = document.getElementById("dm-in"); if (i) i.placeholder = "Message, or hold 📻 to talk";
       await new Promise((res) => { r.onstop = res; try { r.stop(); } catch (_) { res(); } });
+      try { stream && stream.getTracks().forEach((t) => t.stop()); } catch (_) {} stream = null; // turn the mic off between messages
       if (Date.now() - t0 < 500) { say("Hold the 📻 button while you talk."); return; }
       const mime = (r.mimeType || "audio/webm").split(";")[0], ext = /mp4/.test(mime) ? "m4a" : "webm";
       try {

@@ -186,7 +186,9 @@
     if (st === "granted") return;
     if (st === "denied") { permModal("denied"); return; }
     // ask the phone right away; if it needs a tap first, show our pop-up with the big button
-    permModal("prompt"); requestCam(false);
+    permModal("prompt");
+    // if they answer the browser's box after leaving Live, don't leave the Live pop-up over another page
+    requestCam(false).then(() => { const m = document.getElementById("gl-perm"); if (m && view.hidden && m.dataset.from === "live") m.hidden = true; });
   }
 
   /* ---------- hosting ---------- */
@@ -319,7 +321,9 @@
     if (b.dataset.giftlive) {
       const to = b.dataset.giftlive; if (typeof openGift !== "function") return;
       openGift(to);
+      const dlg = document.getElementById("gift-dialog"); if (!dlg || !dlg.open) return; // not opened (not a member, or gifting yourself)
       const form = document.getElementById("gift-form");
+      dlg.addEventListener("close", () => form.removeEventListener("submit", once), { once: true }); // cancelled: don't fire on a later gift
       const once = () => { form.removeEventListener("submit", once); setTimeout(() => { const g = (typeof giftKind !== "undefined" ? giftKind : "rose"); const r = to === ME() ? hosting && hosting.room : (watching[to] || {}).room; if (r) r.emit("gift", { uid: ME(), kind: g }); fly(to, g); }, 300); };
       form.addEventListener("submit", once);
     }

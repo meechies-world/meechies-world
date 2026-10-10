@@ -63,7 +63,7 @@ body.has-player #v-clips .rail{bottom:70px}`;
       el.querySelector(".cap").innerHTML = `<b>@${E(HANDLE(p.authorId))}</b>${p.text ? `<p>${E(p.text)}</p>` : ""}`;
       el.querySelector(".rail").innerHTML = `<span>${AV(p.authorId)}</span>
         <button type="button" class="${liked ? "on" : ""}" data-clike="${E(p.id)}" aria-label="Like"><span class="ic">♥</span>${(p.likes || []).length || ""}</button>
-        <button type="button" data-ccom="${E(p.id)}" aria-label="Comments"><span class="ic">💬</span>${p.replyCount || ""}</button>
+        <button type="button" data-ccom="${E(p.id)}" aria-label="Comments"><span class="ic">💬</span>${(+p.replyCount) || ""}</button>
         <button type="button" data-cshare="${E(p.id)}" aria-label="Share"><span class="ic">↗</span>Share</button>`;
       if (prev ? prev.nextSibling !== el : box.firstChild !== el) (prev ? prev.after(el) : box.prepend(el));
       prev = el;
@@ -76,6 +76,7 @@ body.has-player #v-clips .rail{bottom:70px}`;
     // preload the next clip
     const n = el.nextElementSibling?.querySelector("video"); if (n && !n.src) { n.preload = "metadata"; n.src = n.dataset.src; }
     v.muted = muted;
+    el.querySelector(".paused-ic")?.remove(); // it plays again, so drop the ▶ left from an earlier tap
     try { if (typeof media !== "undefined" && !muted && !media.paused) media.pause(); } catch (_) {}
     v.play().catch(() => {});
   }
@@ -131,11 +132,15 @@ body.has-player #v-clips .rail{bottom:70px}`;
   function fit() {
     if (view.hidden) return;
     const phone = matchMedia("(max-width:640px)").matches, under = bottomUI();
-    if (!phone) { box.style.height = ""; addBtn.style.cssText = ""; up.style.cssText = ""; return; }
+    if (!phone) { box.style.removeProperty("height"); addBtn.style.cssText = ""; up.style.cssText = ""; return; }
     const hdr = document.querySelector("header.bar")?.getBoundingClientRect().height || 0;
-    box.style.height = Math.max(360, innerHeight - hdr - under) + "px";
-    addBtn.style.cssText = `position:fixed;bottom:${under + 12}px;z-index:31`;
-    up.style.cssText = `position:fixed;left:12px;right:12px;bottom:${under + 62}px;z-index:32`;
+    // "important" so it wins over the phone layout's fixed height in appnav.js (which assumes a one-row header)
+    box.style.setProperty("height", Math.max(360, innerHeight - hdr - under) + "px", "important");
+    // on narrow phones the "Ask Meechie" button sits on the same row and covers part of +, so lift + above it
+    let lift = under; const fab = document.getElementById("ai-fab");
+    if (fab && !fab.hidden && getComputedStyle(fab).display !== "none") { const r = fab.getBoundingClientRect(); if (r.height > 0 && r.left < innerWidth / 2 + 36) lift = Math.max(lift, innerHeight - r.top); }
+    addBtn.style.cssText = `position:fixed;bottom:${lift + 12}px;z-index:31`;
+    up.style.cssText = `position:fixed;left:12px;right:12px;bottom:${lift + 62}px;z-index:32`;
   }
   function snapIntoView() { // line the feed up right under the menu so the whole video shows
     if (!matchMedia("(max-width:640px)").matches) return;

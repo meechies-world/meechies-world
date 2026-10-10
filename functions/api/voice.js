@@ -27,12 +27,14 @@ function gather(url, prompt) {
 export async function onRequest({ request, env }) {
   const url = new URL(request.url);
   let params = {};
-  if (request.method === "POST") { const f = await request.formData(); for (const [k, v] of f) params[k] = String(v); }
+  if (request.method === "POST") { try { const f = await request.formData(); for (const [k, v] of f) params[k] = String(v); } catch (_) { return new Response("Bad request", { status: 400 }); } }
   if (!(await validTwilio(request, params, env.TWILIO_AUTH_TOKEN))) return new Response("Forbidden", { status: 403 });
 
   const self = url.origin + url.pathname;
   // short call memory travels in the URL (last few turns)
   let hist = []; try { hist = JSON.parse(unb64u(url.searchParams.get("h") || "") || "[]"); } catch (_) { hist = []; }
+  // only plain caller/AI turns from the URL (never a "system" turn, never non-text)
+  hist = (Array.isArray(hist) ? hist : []).filter((t) => t && (t.role === "user" || t.role === "assistant") && typeof t.content === "string");
   const misses = +(url.searchParams.get("m") || 0);
   const speech = (params.SpeechResult || "").trim();
   const next = (h, m = 0) => self + "?h=" + b64u(JSON.stringify(h.slice(-6).map((t) => ({ role: t.role, content: t.content.slice(0, 280) })))) + (m ? "&m=" + m : "");

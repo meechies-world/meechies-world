@@ -78,13 +78,13 @@
     const v = (id) => root.querySelector("#" + id).value.trim();
     try {
       await DB().collection("jobs").add({ authorId: ME(), kind: tab, title: v("jf-title").slice(0, 90), company: v("jf-co").slice(0, 80), location: v("jf-loc").slice(0, 80), pay: v("jf-pay").slice(0, 60), type: v("jf-type"), skills: v("jf-skills").slice(0, 160), desc: v("jf-desc").slice(0, 1500), sponsored: false, createdAt: Date.now() });
-      formOpen = false; say(tab === "job" ? "Your job is posted" : "You're listed for hire");
+      formOpen = false; render(); say(tab === "job" ? "Your job is posted" : "You're listed for hire");
     } catch (er) { say("Couldn't post: " + (er.message || er.code)); }
   });
   async function init() {
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) { render(); return; }
-    d.collection("jobs").orderBy("createdAt", "desc").limit(300).onSnapshot((s) => { items = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!view.hidden) render(); }, () => {});
+    d.collection("jobs").orderBy("createdAt", "desc").limit(300).onSnapshot((s) => { items = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!view.hidden && !(formOpen && root.querySelector("#jb-form"))) render(); } /* don't wipe a post being typed */, () => {});
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     render();
   }

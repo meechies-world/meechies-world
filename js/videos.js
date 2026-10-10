@@ -181,7 +181,7 @@
   async function init() {
     if (!window.claude) return;
     db = await window.claude.use("db"); if (!db) return;
-    db.collection("videos").orderBy("createdAt", "desc").limit(120).onSnapshot((s) => { vids = s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((v) => /^[\w-]{11}$/.test(v.yt || "") || /^\d{8,25}$/.test(v.tt || "")); render(); renderHome(); }, () => {});
+    db.collection("videos").orderBy("createdAt", "desc").limit(120).onSnapshot((s) => { vids = s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((v) => (v.tt ? /^\d{8,25}$/.test(v.tt) : /^[\w-]{11}$/.test(v.yt || ""))); render(); renderHome(); }, () => {});
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();

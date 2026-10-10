@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791613714">
+<meta name="mw-build" content="1791630299">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1546,8 +1546,8 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791613714"></script>
-<script src="js/platform.js?v=1791613714"></script>
+<script src="js/config.js?v=1791630299"></script>
+<script src="js/platform.js?v=1791630299"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1991,7 +1991,7 @@ let eqOn=(()=>{ try{ return localStorage.getItem("mw_eq_on")!=="0"; }catch(_){ r
 function applyEq(){ eqNodes.forEach((n,i)=>{ n.gain.value = eqOn ? eqGains[i] : 0; }); }
 function setupBoost(force){ if(boostCtx) return true; if((IOS||TOUCH) && !force) return false;
   try{ const C=window.AudioContext||window.webkitAudioContext; boostCtx=new C();
-    const src=boostCtx.createMediaElementSource(media); boostGain=boostCtx.createGain(); boostGain.gain.value=+(window.MW_SITE?.boost||2);
+    const src=boostCtx.createMediaElementSource(media); boostGain=boostCtx.createGain(); boostGain.gain.value=(IOS||TOUCH)?1:+(window.MW_SITE?.boost||2); /* booster is desktop-only; phones get the EQ alone */
     const lim=boostCtx.createDynamicsCompressor(); lim.threshold.value=-4; lim.knee.value=4; lim.ratio.value=20; lim.attack.value=0.002; lim.release.value=0.15;
     eqNodes=EQ_BANDS.map(b=>{ const f=boostCtx.createBiquadFilter(); f.type=b.type; f.frequency.value=b.f; if(b.type==="peaking") f.Q.value=1; return f; });
     let node=src; eqNodes.forEach(f=>{ node.connect(f); node=f; }); node.connect(boostGain); boostGain.connect(lim); lim.connect(boostCtx.destination);
@@ -2106,6 +2106,7 @@ setInterval(()=>{
   if(!xfMode()||media.paused||tracks.length<2){ if(xfIdx>=0&&!xfActive) xfStop(); return; }
   const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0), left=d-media.currentTime;
   if(d<=XF*3 || IOS) return;
+  if(xfActive && left>XF+0.5){ xfStop(); return; } // went back or seeked during a crossfade: cancel it
   const next=(curIdx+1)%tracks.length;
   if(!xfActive && left<20 && xfIdx!==next && !document.hidden){ xfIdx=next; xfPlayer.src=trackUrl(tracks[next]); xfPlayer.volume=0; xfPlayer.load(); }
   if(!xfActive && left<XF && left>0.3 && xfIdx===next && !document.hidden && xfPlayer.readyState>=2){
@@ -2145,7 +2146,9 @@ setInterval(()=>{
   btn.addEventListener("click",()=>show(panel.hidden));
   $("#eq-x").addEventListener("click",()=>show(false));
   enable.addEventListener("click",()=>{ if(setupBoost(true)){ if(boostCtx.state!=="running") boostCtx.resume().catch(()=>{}); eqOn=true; applyEq(); save(); toast("Equalizer on"); } else toast("This browser can't run the equalizer."); paint(); });
-  onBox.addEventListener("change",()=>{ eqOn=onBox.checked; applyEq(); save(); });
+  onBox.addEventListener("change",()=>{ eqOn=onBox.checked; applyEq(); save();
+    // phones: the music stays routed through the equalizer until the page reloads, so reload to get lock-screen playback back
+    if(!eqOn && phone && boostCtx){ toast("Equalizer off. Reloading so music keeps playing when your screen locks…"); setTimeout(()=>location.reload(),900); } });
   presets.addEventListener("click",e=>{ const b=e.target.closest("[data-preset]"); if(!b) return;
     if(b.dataset.preset==="Station"){ // back to Meechie's mix: forget this listener's own setting
       eqGains=eqStation.slice(); eqOn=true; eqPersonal=false; applyEq(); try{ localStorage.removeItem("mw_eq"); localStorage.setItem("mw_eq_on","1"); }catch(_){} paint(); return; }
@@ -2395,7 +2398,7 @@ window.addEventListener("keyup",e=>{ GM.keys[e.key.toLowerCase()]=false; });
 $("#g-play").addEventListener("click",startGame);
 (function idle(){ GM.me=newMe(); spawnBots(); drawArena(storm()); })();
 function subGames(){
-  db.collection("scores").orderBy("elims","desc").limit(10).onSnapshot(s=>{ if(s.empty) return; $("#g-leaders").innerHTML=s.docs.map(d=>{ const v=d.data(); if(d.id===me) GM.total=Math.max(GM.total,v.elims||0); return `<li>${esc(handleOf(d.id)!=="Member"?handleOf(d.id):(v.name||"Member"))} · <b>${v.elims||0}</b></li>`; }).join(""); }, e=>console.warn(e));
+  db.collection("scores").orderBy("elims","desc").limit(10).onSnapshot(s=>{ if(s.empty) return; $("#g-leaders").innerHTML=s.docs.map(d=>{ const v=d.data(); if(d.id===me) GM.total=Math.max(GM.total,(+v.elims)||0); return `<li>${esc(handleOf(d.id)!=="Member"?handleOf(d.id):(v.name||"Member"))} · <b>${(+v.elims)||0}</b></li>`; }).join(""); }, e=>console.warn(e));
   db.collection("squads").orderBy("createdAt","desc").limit(60).onSnapshot(s=>{ if(s.empty) return; $("#squads").innerHTML=s.docs.map(d=>{ const q=d.data();
     return `<div class="squad"><small>${esc(handleOf(q.authorId))} · ${ago(q.createdAt)}</small><span class="epic">${esc(q.epic)}</span><span class="badge">${esc(q.platform)}</span><b>${esc(q.mode)}</b>${q.note?`<small>${esc(q.note)}</small>`:""}<div class="fit-acts"><button class="btn sm ghost" type="button" data-epic="${esc(q.epic)}">Copy Epic name</button>${(q.authorId===me||isOwner)?`<button class="act" type="button" data-sqdel="${d.id}">Delete</button>`:""}</div></div>`; }).join(""); }, e=>console.warn(e));
 }
@@ -2536,7 +2539,7 @@ function renderFeed(){
     const ws=el.querySelector(".who small"); if(ws) ws.textContent=ago(p.createdAt);
     el.querySelector(".post-actions").innerHTML=`
         <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">♥ ${(p.likes||[]).length||""} Like</button>
-        <button class="act" data-replies="${esc(p.id)}">💬 ${p.replyCount||""} Comment</button>
+        <button class="act" data-replies="${esc(p.id)}">💬 ${(+p.replyCount)||""} Comment</button>
         ${p.authorId!==me?`<button class="act" data-giftto="${esc(p.authorId)}">🎁 Gift</button>`:""}
         ${isOwner?`<button class="act" data-sponsor="${esc(p.id)}">${p.sponsored?"Unpin":"Pin as promoted"}</button>`:""}
         ${(p.authorId===me||isOwner)?`<button class="act" data-del="${esc(p.id)}">Delete</button>`:""}`;
@@ -2702,26 +2705,26 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791613714"></script>
-<script src="js/studio.js?v=1791613714"></script>
-<script src="js/owner.js?v=1791613714"></script>
-<script src="js/messages.js?v=1791613714"></script>
-<script src="js/videos.js?v=1791613714"></script>
-<script src="js/preach.js?v=1791613714"></script>
-<script src="js/world3d.js?v=1791613714"></script>
-<script src="js/clips.js?v=1791613714"></script>
-<script src="js/dj.js?v=1791613714"></script>
-<script src="js/live.js?v=1791613714"></script>
-<script src="js/autotune.js?v=1791613714"></script>
-<script src="js/beatmaker.js?v=1791613714"></script>
-<script src="js/beatlab.js?v=1791613714"></script>
-<script src="js/friends.js?v=1791613714"></script>
-<script src="js/dating.js?v=1791613714"></script>
-<script src="js/books.js?v=1791613714"></script>
-<script src="js/social.js?v=1791613714"></script>
-<script src="js/jobs.js?v=1791613714"></script>
-<script src="js/golive.js?v=1791613714"></script>
-<script src="js/predict.js?v=1791613714"></script>
-<script src="js/ai-widget.js?v=1791613714"></script>
+<script src="js/appnav.js?v=1791630299"></script>
+<script src="js/studio.js?v=1791630299"></script>
+<script src="js/owner.js?v=1791630299"></script>
+<script src="js/messages.js?v=1791630299"></script>
+<script src="js/videos.js?v=1791630299"></script>
+<script src="js/preach.js?v=1791630299"></script>
+<script src="js/world3d.js?v=1791630299"></script>
+<script src="js/clips.js?v=1791630299"></script>
+<script src="js/dj.js?v=1791630299"></script>
+<script src="js/live.js?v=1791630299"></script>
+<script src="js/autotune.js?v=1791630299"></script>
+<script src="js/beatmaker.js?v=1791630299"></script>
+<script src="js/beatlab.js?v=1791630299"></script>
+<script src="js/friends.js?v=1791630299"></script>
+<script src="js/dating.js?v=1791630299"></script>
+<script src="js/books.js?v=1791630299"></script>
+<script src="js/social.js?v=1791630299"></script>
+<script src="js/jobs.js?v=1791630299"></script>
+<script src="js/golive.js?v=1791630299"></script>
+<script src="js/predict.js?v=1791630299"></script>
+<script src="js/ai-widget.js?v=1791630299"></script>
 </body>
 </html>
