@@ -61,5 +61,5 @@ export async function onRequestPost({ request, env }) {
     method: "POST", body: msg,
     headers: { Title: kind === "joined" ? "New member" : kind === "contact" ? "New contact info" : "Someone's on your site", Tags: kind === "joined" ? "tada" : "eyes", Click: "https://meechies-world.pages.dev/", Priority: kind === "joined" ? "high" : "default" },
   }).catch(() => null);
-  return json({ ok: !!(r && r.ok) });
+  return json({ ok: !!(r && r.ok), status: r ? r.status : 0, info: r && !r.ok ? (await r.text().catch(() => "")).slice(0, 200) : undefined });
 }
