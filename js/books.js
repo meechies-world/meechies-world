@@ -110,27 +110,47 @@
 
   /* ---------- owner publishing ---------- */
   const clean = (t) => E(t).replace(/\r/g, "");
+  // A heading is a short line like "CHAPTER 12", "Part III", "Prologue" — not a sentence that starts with "Chapter 10 returns..."
+  const isHeading = (p) => p.length < 60 && !/[.,;:]$/.test(p) &&
+    (/^(chapter|part)\s+([0-9]+|[ivxlc]+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i.test(p) || /^(prologue|epilogue|introduction|preface|afterword|acknowledg(e)?ments|contents)$/i.test(p));
+  const paraHtml = (p) => (isHeading(p) ? `<h2>${clean(p)}</h2>` : `<p>${clean(p)}</p>`);
   function toPages(text) {
-    // ~1800 characters per page, never splitting a paragraph unless it's huge
-    const paras = text.split(/\n\s*\n|\n(?=\s*(?:chapter|part)\b)/i).map((p) => p.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean);
+    // Text files: ~2,000 characters per page, never splitting a paragraph unless it's huge
+    const paras = text.split(/\n\s*\n|\n(?=\s*(?:chapter|part)\s+\S+\s*\n)/i).map((p) => p.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean);
     const pages = []; let cur = "";
     for (const p of paras) {
-      const isHead = /^(chapter|part|prologue|epilogue|introduction|preface)\b/i.test(p) && p.length < 90;
-      const html = isHead ? `<h2>${clean(p)}</h2>` : `<p>${clean(p)}</p>`;
-      if ((cur.length + html.length > 2200 && cur) || (isHead && cur.length > 400)) { pages.push(cur); cur = ""; }
+      const html = paraHtml(p), head = html.startsWith("<h2>");
+      if ((cur.length + html.length > 2200 && cur) || (head && cur.length > 400)) { pages.push(cur); cur = ""; }
       cur += html;
     }
     if (cur) pages.push(cur);
     return pages;
   }
+  /* PDFs: one site page per PDF page, so page numbers (and the table of contents) match the printed book.
+     Lines that repeat on most pages (running headers, "Page 12" footers) are left out. */
+  function pdfToPages(pageTexts) {
+    // Only short lines at the very top or bottom of a page that show up on most pages count as headers/footers.
+    const norm = (l) => l.trim().replace(/\d+/g, "#").toLowerCase();
+    const edges = (t) => { const ls = t.split("\n").map((l) => l.trim()).filter(Boolean); return [...ls.slice(0, 2), ...ls.slice(-2)]; };
+    const count = {};
+    pageTexts.forEach((t) => new Set(edges(t).map(norm)).forEach((l) => { count[l] = (count[l] || 0) + 1; }));
+    const repeated = (l) => { const n = norm(l); return n.length > 0 && n.length < 60 && !/[.!?,;:"”]$/.test(n) && pageTexts.length >= 8 && count[n] >= pageTexts.length * 0.6; };
+    return pageTexts.map((t) => {
+      const ls = t.split("\n"), nonEmpty = ls.map((l, i) => (l.trim() ? i : -1)).filter((i) => i >= 0);
+      const edge = new Set([...nonEmpty.slice(0, 2), ...nonEmpty.slice(-2)]);
+      const lines = ls.filter((l, i) => !(edge.has(i) && (repeated(l) || /^\s*(page\s+)?\d{1,4}\s*$/i.test(l))));
+      const paras = lines.join("\n").split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean);
+      return paras.length ? paras.map(paraHtml).join("") : '<p style="opacity:.55;text-align:center">(This page is a picture or blank in the printed book.)</p>';
+    });
+  }
   async function pdfText(file) {
     if (!window.pdfjsLib) await new Promise((res, rej) => { const s = document.createElement("script"); s.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-    const doc = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise; let out = "";
+    const doc = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise; const out = [];
     for (let i = 1; i <= doc.numPages; i++) {
-      const pg = await doc.getPage(i), tc = await pg.getTextContent(); let lastY = null, line = "";
-      for (const it of tc.items) { const y = Math.round(it.transform[5]); if (lastY !== null && Math.abs(y - lastY) > 2) { out += line.trimEnd() + "\n"; line = ""; if (Math.abs(y - lastY) > 18) out += "\n"; } line += it.str; lastY = y; }
-      out += line + "\n\n"; const st = document.getElementById("bk-st"); if (st) st.textContent = "Reading PDF page " + i + " of " + doc.numPages + "...";
+      const pg = await doc.getPage(i), tc = await pg.getTextContent(); let lastY = null, line = "", txt = "";
+      for (const it of tc.items) { const y = Math.round(it.transform[5]); if (lastY !== null && Math.abs(y - lastY) > 2) { txt += line.trimEnd() + "\n"; line = ""; if (Math.abs(y - lastY) > 18) txt += "\n"; } line += it.str; lastY = y; }
+      out.push(scrub(txt + line)); const st = document.getElementById("bk-st"); if (st) st.textContent = "Reading PDF page " + i + " of " + doc.numPages + "...";
     }
     return out;
   }
@@ -145,8 +165,11 @@
     const btn = root.querySelector("#bk-go"); btn.disabled = true;
     let id = "", saved = 0;
     try {
-      const text = scrub(/pdf$/i.test(f.name) || f.type === "application/pdf" ? await pdfText(f) : await f.text());
-      const pages = toPages(text); if (!pages.length) throw new Error("No text found in that file. If it's a scanned PDF, send it to Claude to convert.");
+      const isPdf = /pdf$/i.test(f.name) || f.type === "application/pdf";
+      let pages;
+      if (isPdf) { const pt = await pdfText(f); if (!pt.some((t) => t.trim())) throw new Error("No text found in that file. If it's a scanned PDF, send it to Claude to convert."); pages = pdfToPages(pt); }
+      else pages = toPages(scrub(await f.text()));
+      if (!pages.length) throw new Error("No text found in that file. If it's a scanned PDF, send it to Claude to convert.");
       let cover = ""; const cf = root.querySelector("#bk-c").files[0];
       if (cf) { const d = await (typeof compress === "function" ? compress(cf, 700) : null); if (d) { const blob = await (await fetch(d)).blob(); cover = (await MW.uploadMedia(blob, { type: "image/jpeg" })).url; } }
       id = (title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "book") + "-" + Date.now().toString(36);
