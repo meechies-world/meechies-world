@@ -124,7 +124,8 @@ body.has-player #v-clips .rail{bottom:70px}`;
   const addBtn = document.getElementById("clip-add");
   function bottomUI() { // how much of the screen bottom is covered by the fixed player bar / bottom menu
     let top = innerHeight;
-    document.querySelectorAll("nav.apptab, #player-bar, .apptab").forEach((el) => { if (el.hidden || getComputedStyle(el).display === "none") return; const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom >= innerHeight - 2) top = Math.min(top, r.top); });
+    // the bottom menu sits at the screen's edge and the player bar sits right on top of it, so count both
+    document.querySelectorAll("nav.apptab, #player-bar, .apptab").forEach((el) => { if (el.hidden || getComputedStyle(el).display === "none") return; const r = el.getBoundingClientRect(); if (r.height > 0 && r.bottom > innerHeight * 0.6) top = Math.min(top, r.top); });
     return Math.max(0, innerHeight - top);
   }
   function fit() {
