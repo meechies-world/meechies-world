@@ -33,11 +33,12 @@ export async function onRequestPost({ request, env }) {
       fetch(SUPABASE_URL + "/rest/v1/docs?select=data&path=eq.members/" + uid, { headers: H }).then((r) => r.json()).catch(() => []),
       topic ? Promise.resolve([]) : fetch(SUPABASE_URL + "/rest/v1/docs?select=data&path=eq.site/alerts", { headers: H }).then((r) => r.json()).catch(() => []),
     ]);
+    const t = al[0] && al[0].data && al[0].data.topic, off = !!(al[0] && al[0].data && al[0].data.off);
+    // remember the alert channel so visitors on the sign-up screen (not signed in yet) can be announced too
+    if (!topic && TOPIC_RE.test(t || "")) { topic = t; await cachePut("alerts-topic", off ? "off" : t, 86400 * 30); }
     if (Array.isArray(adm) && adm.length) return json({ ok: true, skipped: "owner" });
+    if (off) return json({ ok: true, skipped: "alerts_off" });
     name = String((mem[0] && mem[0].data && mem[0].data.handle) || (u.user_metadata && (u.user_metadata.full_name || u.user_metadata.name)) || "").slice(0, 40);
-    const t = al[0] && al[0].data && al[0].data.topic;
-    if (!topic && TOPIC_RE.test(t || "")) { topic = t; await cachePut("alerts-topic", t, 86400 * 30); }
-    if (al[0] && al[0].data && al[0].data.off) return json({ ok: true, skipped: "alerts_off" });
   }
   if (!topic) topic = (await cacheGet("alerts-topic")) || "";
   if (!TOPIC_RE.test(topic)) return json({ ok: true, skipped: "no_topic" });
