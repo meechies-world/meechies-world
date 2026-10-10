@@ -2,6 +2,15 @@
  * Tap a video to play it in the big player. Videos only load when the page is opened. */
 (function () {
   const CHANNEL = "UCDG6YLw_vMVDRXKErys6EJQ"; // youtube.com/@officialasappreach
+  // Official music videos from his channel, shown if YouTube won't share the latest list right now
+  const BACKUP = [
+    { id: "mV3a0Mc-Xl4", title: "ASAP Preach - \"Yahweh\" (Official Music Video)" },
+    { id: "8Q-eK_madnc", title: "ASAP Preach - Yeshua w/ Brett Raio (Official Music Video)" },
+    { id: "PDz84Hv6CiA", title: "ASAP Preach X OfficialBigYeet X BrotherBoMusic - Nothing To Lose (Official Music Video)" },
+    { id: "quNODkMw8YQ", title: "ASAP Preach X Rogue2Redeemed - Not Alone (Official Music Video)" },
+    { id: "QkToQPqFShs", title: "ASAP Preach X Rezum \"Owe You Praise\" (Official Music Video)" },
+    { id: "xByqCozpNwA", title: "ASAP Preach - Falling Away (Official Music Video)" },
+  ];
   const view = document.getElementById("v-preach"); if (!view) return;
   const frame = document.getElementById("pr-frame"), grid = document.getElementById("pr-grid");
   const titleEl = document.getElementById("pr-title"), dateEl = document.getElementById("pr-date");
@@ -41,14 +50,10 @@
   async function load() {
     if (loaded) return; loaded = true;
     try {
-      const j = await fetch("/api/yt?mode=uploads&channel=" + CHANNEL).then((r) => r.json());
+      const j = await fetch("/api/yt?mode=uploads&q=" + encodeURIComponent("ASAP Preach") + "&channel=" + CHANNEL).then((r) => r.json());
       vids = (j.list || []).filter((v) => v && v.id);
     } catch (_) { vids = []; }
-    if (!vids.length) {
-      loaded = false;
-      frame.innerHTML = '<div class="yt-empty"><span>Couldn\'t load ASAP Preach\'s videos right now. <a href="https://www.youtube.com/@officialasappreach" target="_blank" rel="noopener">Watch on YouTube</a></span></div>';
-      return;
-    }
+    if (!vids.length) { vids = BACKUP.slice(); setTimeout(() => { loaded = false; }, 5 * 60e3); } // try for the newest list again in a few minutes
     grid.innerHTML = vids.map((v, i) => `<button class="pr-card" type="button" data-i="${i}"><div class="th" style="background-image:url('https://i.ytimg.com/vi/${E(v.id)}/mqdefault.jpg')"></div><b>${E(v.title)}</b><small>${E(v.published ? day(v.published) : "")}</small></button>`).join("");
     poster(0);
   }

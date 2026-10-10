@@ -85,9 +85,22 @@ export async function onRequestGet({ request }) {
           dbg.found = list.length;
         } else dbg.noData = true;
       }
+      // 3) still nothing: search YouTube for the channel's name, newest first, keeping only this channel's videos
+      const q = (url.searchParams.get("q") || "").slice(0, 60);
+      if (!list.length && q) {
+        const sr = await fetch("https://www.youtube.com/results?search_query=" + encodeURIComponent(q) + "&sp=CAI%253D", { headers: UA, cf: { cacheTtl: 1800 } }).catch((e) => ({ ok: false, status: String(e) }));
+        const html = sr.ok ? await sr.text() : ""; dbg.search = sr.status;
+        const m = html.match(/var ytInitialData = (\{.*?\});<\/script>/s); let data = null; if (m) { try { data = JSON.parse(m[1]); } catch (_) {} }
+        const vr = []; walk(data, vr);
+        list = vr.filter((v) => v.videoId && JSON.stringify(v.ownerText || v.longBylineText || "").includes(ch)).map((v) => ({ id: v.videoId, title: txt(v.title), published: txt(v.publishedTimeText), channel: txt(v.ownerText) }));
+        name = name || (list[0] && list[0].channel) || ""; dbg.searchFound = list.length;
+      }
       const seen = new Set(); list = list.filter((v) => /^[\w-]{11}$/.test(v.id) && !seen.has(v.id) && seen.add(v.id));
       if (url.searchParams.get("debug")) return json({ dbg, n: list.length, sample: list.slice(0, 3) }, 0);
-      return json({ channel: name, list: await keepPlayable(list, 15) }, list.length ? 1800 : 120);
+      if (!list.length) return json({ channel: name, list: [] }, 120);
+      // the embeddable check also talks to YouTube; if it gets blocked, keep the official uploads rather than show nothing
+      const playable = await keepPlayable(list, 15);
+      return json({ channel: name, list: playable.length ? playable : list.slice(0, 15) }, 1800);
     }
     if (mode === "movies") {
       const genre = (url.searchParams.get("genre") || "").slice(0, 30);
