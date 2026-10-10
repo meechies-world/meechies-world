@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791645347">
+<meta name="mw-build" content="1791647430">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -13,6 +13,7 @@
 <meta property="og:url" content="https://meechies-world.pages.dev/">
 <meta property="og:image" content="https://meechies-world.pages.dev/img/og-3.jpg">
 <meta property="og:image:width" content="1200"><meta property="og:image:alt" content="Meechie's World Inc — gold Conscientia emblem with Radio, Studio, Videos, Books, Shop, Markets and Meechie's Coin"><meta property="og:image:height" content="630">
+<meta name="robots" content="noai, noimageai">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://meechies-world.pages.dev/img/og-3.jpg">
 <link rel="canonical" href="https://meechies-world.pages.dev/">
@@ -778,6 +779,25 @@ body[data-view=predict]{--sec-accent:#a78bfa}
 #v-jobs{--gold:#60a5fa;--gold-hi:#c3dcfd;--gold-lo:#245c9e;--panel:#0e131b;--line:#22334a;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(96,165,250,0.16),transparent 70%),repeating-linear-gradient(0deg,rgba(96,165,250,0.045) 0 1px,transparent 1px 44px),repeating-linear-gradient(90deg,rgba(96,165,250,0.045) 0 1px,transparent 1px 44px)}
 body[data-view=jobs]{--sec-accent:#60a5fa}
 </style>
+<style>
+/* Members-only gate */
+html.gated{overflow:hidden}
+html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .apptab,html.gated #player-bar,html.gated #gl-perm,html.gated #ai-widget,html.gated #ai-fab,html.gated .announce,html.gated #radio-note{display:none!important}
+#gate{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;overflow:auto;padding:24px 16px;background:radial-gradient(ellipse 70% 50% at 50% 20%,rgba(212,168,67,.18),transparent 70%),#070605}
+#gate .gt-in{width:min(420px,100%);display:grid;gap:12px;text-align:center}
+#gate .gt-crest{width:170px;height:177px;justify-self:center;filter:drop-shadow(0 0 24px rgba(212,168,67,.35))}
+#gate h1{font:900 30px/1.1 var(--display);letter-spacing:.06em;background:linear-gradient(175deg,#fff3c9,#f0cf78 40%,#c9982f);-webkit-background-clip:text;background-clip:text;color:transparent}
+#gate .gt-sub{margin:0;color:var(--muted)}
+#gate form{display:grid;gap:12px;text-align:left;background:var(--panel);border:1px solid var(--gold-lo);border-radius:16px;padding:18px}
+#gate .gt-field{display:grid;gap:6px}
+#gate label{font-weight:600;font-size:14px}#gate label small{color:var(--muted);font-weight:400}
+#gate input{width:100%;font:16px var(--body);padding:12px 13px;border-radius:10px;border:1px solid var(--line);background:var(--ink);color:var(--text)}
+#gate input:focus{border-color:var(--gold);outline:none}
+#gate .gt-msg{margin:0;min-height:1.2em;font-size:14px;color:var(--gold-hi);text-align:center}
+#gate .gt-links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#gate .gt-links button{background:none;border:0;color:var(--gold-hi);font:600 14px var(--body);cursor:pointer;padding:6px 2px;text-decoration:underline}
+#gate .gt-fine{margin:0;font-size:12.5px;color:var(--muted)}
+</style>
 <style>[hidden]{display:none!important} img{max-width:100%} :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 </head>
 <body>
@@ -881,6 +901,32 @@ body[data-view=jobs]{--sec-accent:#60a5fa}
 /* Show the Enter screen once per visit, before the page paints behind it */
 (function(){ var seen=false; try{ seen=sessionStorage.getItem("mw_entered")==="1"; }catch(_){}
   if(!seen){ var e=document.getElementById("enter"); if(e){ e.hidden=false; document.documentElement.style.overflow="hidden"; } } })();
+</script>
+
+<div id="gate" role="dialog" aria-modal="true" aria-labelledby="gt-title" hidden>
+  <div class="gt-in">
+    <svg aria-hidden="true" viewBox="0 0 300 312" class="gt-crest"><use href="#crest-full"/></svg>
+    <h1 id="gt-title">Members only</h1>
+    <p class="gt-sub" id="gt-sub">Create your free account to enter Meechie's World.</p>
+    <form id="gt-form" autocomplete="on">
+      <div class="gt-field" id="gt-name-f"><label for="gt-name">Your name</label><input id="gt-name" name="name" maxlength="30" autocomplete="nickname" placeholder="What should we call you?"></div>
+      <div class="gt-field"><label for="gt-email">Email</label><input id="gt-email" name="email" type="email" autocomplete="email" required></div>
+      <div class="gt-field"><label for="gt-pass">Password <small>(8+ characters)</small></label><input id="gt-pass" name="password" type="password" minlength="8" autocomplete="new-password" required></div>
+      <p class="gt-msg" id="gt-msg" aria-live="polite"></p>
+      <button class="btn" type="submit" id="gt-go">Create my account &amp; enter</button>
+      <button class="btn fb-btn" type="button" id="gt-fb" hidden>Continue with Facebook</button>
+    </form>
+    <div class="gt-links"><button type="button" id="gt-switch">I already have an account</button><button type="button" id="gt-forgot">Forgot password</button></div>
+    <p class="gt-fine">Free forever. Accounts keep Meechie's World safe for real people. <a href="/privacy.html">Privacy</a></p>
+  </div>
+</div>
+<script>
+/* Members only: anyone not signed in sees this sign-up screen instead of the site. It shows before the page paints.
+   (The member data itself is also locked to signed-in accounts on the database side.) */
+(function(){ var signed=false; try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^sb-.*-auth-token$/.test(k) && localStorage.getItem(k)){ signed=true; break; } } }catch(_){}
+  if(/[?&#](code=|access_token=|type=recovery)/.test(location.href)) signed=true; // coming back from Facebook or a password-reset link
+  if(!signed){ document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true; }
+})();
 </script>
 
 <header class="bar">
@@ -1735,8 +1781,8 @@ body[data-view=jobs]{--sec-accent:#60a5fa}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791645347"></script>
-<script src="js/platform.js?v=1791645347"></script>
+<script src="js/config.js?v=1791647430"></script>
+<script src="js/platform.js?v=1791647430"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -1810,6 +1856,7 @@ async function boot(){
   db.collection("members").orderBy("joinedAt","desc").limit(500).onSnapshot(window._membersSnap=snap=>{
     window._lastMembersSnap=snap; members={}; snap.docs.forEach(d=>members[d.id]=d.data()); if(myDoc) members[me]=myDoc;
     profileMe = members[me] || null;
+    if(me && !profileMe && !window._autoJoined){ let nm=""; try{ nm=localStorage.getItem("mw_join_name")||""; }catch(_){} if(nm){ window._autoJoined=true; db.collection("members").doc(me).set({handle:nm, bio:"", joinedAt:Date.now()}).then(()=>{ try{ localStorage.removeItem("mw_join_name"); }catch(_){} toast("Welcome to Meechie's World, "+nm); }).catch(()=>{ window._autoJoined=false; }); } }
     $("#join-card").hidden = !me || !!profileMe; $("#composer").hidden = !profileMe; $("#me-card").hidden = !profileMe;
     if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=profileMe.photo?"":initial(profileMe.handle); $("#me-av").style.background=safeImg(profileMe.photo)?`url("${safeImg(profileMe.photo)}") center/cover`:""; { const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture; if(ph && !profileMe.photo && /^https:\/\//.test(ph)) db.doc("members/"+me).update({photo:ph}).catch(()=>{}); } $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
     renderShops(); renderLive(); renderGifts();
@@ -2374,6 +2421,7 @@ function showRadioNote(){
 async function autoRadio(){
   if(autoTried || !tracks.length || radioSnoozed() || (window.MW_SITE && window.MW_SITE.autoplay===false)) return;
   { const en=document.getElementById("enter"); if(en && !en.hidden && !en.classList.contains("out")) return; } // wait for the Enter button
+  if(document.documentElement.classList.contains("gated")) return; // not signed in yet
   if(mode && !media.paused) return;
   autoTried=true;
   const a=airNow(); if(!a) return;
@@ -2863,6 +2911,35 @@ $("#auth-fb").addEventListener("click",async()=>{ if(!window.MW?.ready) return; 
   const r=await MW.sb.auth.signInWithOAuth({provider:"facebook",options:{redirectTo:location.origin+"/",scopes:"email public_profile"}});
   if(r.error) $("#auth-msg").textContent=r.error.message; });
 $("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"signin":"signup"; paintAuth(); });
+/* ---------- Members-only gate ---------- */
+(function(){
+  const g=$("#gate"); if(!g) return;
+  let up=true;
+  const paint=()=>{ $("#gt-name-f").hidden=!up; $("#gt-name").required=up; $("#gt-pass").autocomplete=up?"new-password":"current-password";
+    $("#gt-title").textContent=up?"Members only":"Welcome back"; $("#gt-sub").textContent=up?"Create your free account to enter Meechie's World.":"Sign in to enter Meechie's World.";
+    $("#gt-go").textContent=up?"Create my account & enter":"Sign in & enter"; $("#gt-switch").textContent=up?"I already have an account":"I'm new here"; $("#gt-msg").textContent=""; };
+  paint();
+  $("#gt-switch").addEventListener("click",()=>{ up=!up; paint(); });
+  if(!$("#auth-social").hidden) $("#gt-fb").hidden=false;
+  $("#gt-fb").addEventListener("click",()=>$("#auth-fb").click());
+  $("#gt-forgot").addEventListener("click",async()=>{ const em=$("#gt-email").value.trim(); if(!em){ $("#gt-msg").textContent="Type your email first, then tap Forgot password."; return; }
+    const r=await MW.reset?.(em); $("#gt-msg").textContent=r&&r.error?r.error.message:"Check your email for a link to set a new password."; });
+  $("#gt-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!window.MW?.ready){ $("#gt-msg").textContent="The site is still starting up. Try again in a moment."; return; }
+    const name=$("#gt-name").value.trim().replace(/\s+/g," "), em=$("#gt-email").value.trim(), pw=$("#gt-pass").value;
+    if(up && name.length<2){ $("#gt-msg").textContent="Type your name (at least 2 letters)."; return; }
+    if(pw.length<8){ $("#gt-msg").textContent="Your password needs at least 8 characters."; return; }
+    $("#gt-go").disabled=true; $("#gt-msg").textContent="One moment...";
+    if(up){ try{ localStorage.setItem("mw_join_name",name.slice(0,30)); }catch(_){} }
+    const r= up ? await MW.signUp(em,pw,name) : await MW.signIn(em,pw);
+    $("#gt-go").disabled=false;
+    if(r.error){ $("#gt-msg").textContent=r.error.message; return; }
+    if(up && !r.data.session){ up=false; paint(); $("#gt-msg").textContent="Almost there: check your email and tap the link to confirm, then sign in here."; return; }
+    $("#gt-msg").textContent="You're in. Loading..."; // the page reloads into the site
+  });
+  // a saved sign-in turned out to be expired: show the gate after all
+  (window.MW?.sessionReady||Promise.resolve()).then(()=>{ const s=window.MW?.session?.(); if(!s && window.MW?.ready && !/[?&#](code=|access_token=|type=recovery)/.test(location.href)){ document.documentElement.classList.add("gated"); g.hidden=false; const en=$("#enter"); if(en) en.hidden=true; } });
+})();
+
 function showRecovery(){ try{sessionStorage.setItem("mw_recovery","1");}catch(_){} const d=$("#pw-dialog"); if(!d.open) d.showModal(); }
 window.MW && (MW.onRecovery=showRecovery);
 try{ if(window.MW?.recovery || sessionStorage.getItem("mw_recovery")==="1") setTimeout(showRecovery,300); }catch(_){}
@@ -2911,28 +2988,29 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791645347"></script>
-<script src="js/studio.js?v=1791645347"></script>
-<script src="js/owner.js?v=1791645347"></script>
-<script src="js/messages.js?v=1791645347"></script>
-<script src="js/videos.js?v=1791645347"></script>
-<script src="js/markets.js?v=1791645347"></script>
-<script src="js/coin.js?v=1791645347"></script>
-<script src="js/preach.js?v=1791645347"></script>
-<script src="js/world3d.js?v=1791645347"></script>
-<script src="js/clips.js?v=1791645347"></script>
-<script src="js/dj.js?v=1791645347"></script>
-<script src="js/live.js?v=1791645347"></script>
-<script src="js/autotune.js?v=1791645347"></script>
-<script src="js/beatmaker.js?v=1791645347"></script>
-<script src="js/beatlab.js?v=1791645347"></script>
-<script src="js/friends.js?v=1791645347"></script>
-<script src="js/dating.js?v=1791645347"></script>
-<script src="js/books.js?v=1791645347"></script>
-<script src="js/social.js?v=1791645347"></script>
-<script src="js/jobs.js?v=1791645347"></script>
-<script src="js/golive.js?v=1791645347"></script>
-<script src="js/predict.js?v=1791645347"></script>
-<script src="js/ai-widget.js?v=1791645347"></script>
+<script src="js/appnav.js?v=1791647430"></script>
+<script src="js/studio.js?v=1791647430"></script>
+<script src="js/owner.js?v=1791647430"></script>
+<script src="js/messages.js?v=1791647430"></script>
+<script src="js/videos.js?v=1791647430"></script>
+<script src="js/markets.js?v=1791647430"></script>
+<script src="js/coin.js?v=1791647430"></script>
+<script src="js/preach.js?v=1791647430"></script>
+<script src="js/world3d.js?v=1791647430"></script>
+<script src="js/clips.js?v=1791647430"></script>
+<script src="js/dj.js?v=1791647430"></script>
+<script src="js/live.js?v=1791647430"></script>
+<script src="js/autotune.js?v=1791647430"></script>
+<script src="js/beatmaker.js?v=1791647430"></script>
+<script src="js/beatlab.js?v=1791647430"></script>
+<script src="js/friends.js?v=1791647430"></script>
+<script src="js/dating.js?v=1791647430"></script>
+<script src="js/books.js?v=1791647430"></script>
+<script src="js/social.js?v=1791647430"></script>
+<script src="js/jobs.js?v=1791647430"></script>
+<script src="js/golive.js?v=1791647430"></script>
+<script src="js/predict.js?v=1791647430"></script>
+<script src="js/visitors.js?v=1791647430"></script>
+<script src="js/ai-widget.js?v=1791647430"></script>
 </body>
 </html>

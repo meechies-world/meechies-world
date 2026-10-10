@@ -293,7 +293,7 @@
   };
 
   /* ---------- auth helpers for the sign-in dialog ---------- */
-  window.MW.signUp = (email, password) => sb.auth.signUp({ email, password });
+  window.MW.signUp = (email, password, name) => sb.auth.signUp({ email, password, options: name ? { data: { full_name: String(name).slice(0, 30) } } : undefined });
   window.MW.signIn = (email, password) => sb.auth.signInWithPassword({ email, password });
   window.MW.signOut = () => sb.auth.signOut();
   window.MW.setPassword = (password) => sb.auth.updateUser({ password });
