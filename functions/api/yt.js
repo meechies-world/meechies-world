@@ -48,6 +48,21 @@ export async function onRequestGet({ request }) {
       }));
       return json({ list: res }, 600);
     }
+    if (mode === "uploads") {
+      // a channel's latest uploads, from YouTube's public feed
+      const ch = url.searchParams.get("channel") || "";
+      if (!/^UC[\w-]{20,24}$/.test(ch)) return json({ list: [], error: "bad_channel" }, 60);
+      const xml = await fetch("https://www.youtube.com/feeds/videos.xml?channel_id=" + ch, { headers: UA, cf: { cacheTtl: 1800 } }).then((r) => r.text());
+      const un = (s) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+      const name = un((xml.match(/<author>\s*<name>([^<]*)<\/name>/) || [])[1] || "");
+      const list = [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map((m) => ({
+        id: (m[1].match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/) || [])[1],
+        title: un((m[1].match(/<title>([^<]*)<\/title>/) || [])[1] || ""),
+        published: (m[1].match(/<published>([^<]+)<\/published>/) || [])[1] || "",
+        channel: name,
+      })).filter((v) => v.id);
+      return json({ channel: name, list: await keepPlayable(list, 15) }, 1800);
+    }
     if (mode === "movies") {
       const genre = (url.searchParams.get("genre") || "").slice(0, 30);
       const official = ["FilmRise Movies", "Popcornflix", "Movie Central", "Maverick Movies", "Timeless Classic Movies"];
