@@ -611,6 +611,20 @@ footer .f-links a:hover{color:var(--gold-hi)}
 .fb-btn{width:100%;justify-content:center;gap:10px;background:#1877f2!important;border-color:#1877f2!important;color:#fff!important}
 #radio-note{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:9996;display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);padding:9px 10px 9px 16px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.6);font-size:14px;max-width:calc(100vw - 32px);animation:rnIn .4s ease}
 #radio-note b{color:var(--gold-hi)}#radio-note button{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px}
+/* Enter screen: one tap opens the site and starts the radio (browsers only allow sound after a tap) */
+#enter{position:fixed;inset:0;z-index:99999;display:grid;place-items:center;text-align:center;padding:24px;overflow:auto;background:radial-gradient(circle at 50% 36%,color-mix(in srgb,var(--gold) 16%,transparent),transparent 58%),var(--ink)}
+#enter[hidden]{display:none}
+#enter.out{opacity:0;transition:opacity .5s ease;pointer-events:none}
+#enter .en-in{max-width:520px;display:flex;flex-direction:column;align-items:center;gap:14px}
+#enter svg{width:150px;height:150px;filter:drop-shadow(0 0 28px rgba(212,168,67,.4))}
+#enter h1{font:900 clamp(26px,7vw,40px)/1.1 var(--display);letter-spacing:.06em;margin:6px 0 0;color:var(--text)}
+#enter .en-sub{font:500 12px/1.4 var(--mono);letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin:0}
+#enter .en-tag{font:italic 600 19px/1.4 var(--serif-it);color:var(--gold-hi);margin:0 0 6px}
+#enter .btn{font-size:17px;padding:15px 34px;letter-spacing:.08em;animation:enPulse 2.2s ease-in-out infinite}
+#enter .en-mute{background:none;border:0;color:var(--muted);font:500 13px var(--body);cursor:pointer;text-decoration:underline;padding:8px}
+#enter .en-mute:hover{color:var(--gold-hi)}
+@keyframes enPulse{0%,100%{box-shadow:0 0 0 0 rgba(212,168,67,.5)}50%{box-shadow:0 0 0 14px rgba(212,168,67,0)}}
+@media (prefers-reduced-motion:reduce){#enter .btn{animation:none}#enter.out{transition:none}}
 @keyframes rnIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
 .yt-stage{max-width:960px;margin:0 auto}
 .yt-frame{position:relative;aspect-ratio:16/9;border:1px solid var(--gold);border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 6px #0f0d09,0 0 0 7px var(--gold-lo),0 30px 60px rgba(0,0,0,.6)}
@@ -725,6 +739,22 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
     </symbol>
   </defs>
 </svg>
+
+<div id="enter" role="dialog" aria-modal="true" aria-labelledby="en-title" hidden>
+  <div class="en-in">
+    <svg aria-hidden="true"><use href="#emblem"/></svg>
+    <h1 id="en-title">MEECHIE'S WORLD</h1>
+    <p class="en-sub">INC • CONSCIENTIA</p>
+    <p class="en-tag">Enter. The station is live.</p>
+    <button class="btn" id="en-go" type="button">▶ ENTER MEECHIE'S WORLD</button>
+    <button class="en-mute" id="en-mute" type="button">Enter without sound</button>
+  </div>
+</div>
+<script>
+/* Show the Enter screen once per visit, before the page paints behind it */
+(function(){ var seen=false; try{ seen=sessionStorage.getItem("mw_entered")==="1"; }catch(_){}
+  if(!seen){ var e=document.getElementById("enter"); if(e){ e.hidden=false; document.documentElement.style.overflow="hidden"; } } })();
+</script>
 
 <header class="bar">
   <div class="wrap bar-in">
@@ -2017,6 +2047,24 @@ async function autoRadio(){
   }
 }
 media.addEventListener("pause",()=>{ if(mode==="radio" && document.visibilityState==="visible" && !media.ended) { try{ sessionStorage.setItem("mw_radio_off","1"); }catch(_){} } });
+/* Enter screen: the tap counts as permission, so the radio can start with sound right away */
+(function(){
+  const en=document.getElementById("enter"); if(!en) return;
+  const btn=document.getElementById("en-go"), mute=document.getElementById("en-mute");
+  function close(){ try{ sessionStorage.setItem("mw_entered","1"); }catch(_){}
+    document.documentElement.style.overflow=""; en.classList.add("out"); setTimeout(()=>{ en.hidden=true; },520); }
+  btn.addEventListener("click",()=>{
+    close();
+    try{ sessionStorage.removeItem("mw_radio_off"); }catch(_){}
+    hideRadioNote();
+    if(window.MW_SITE && window.MW_SITE.autoplay===false) return;
+    if(!tracks.length) return;                       // subRadio() starts the station as soon as the songs arrive
+    setTimeout(()=>{ if(mode==="radio" && !media.paused) return; if(mode && mode!=="radio" && !media.paused) return;
+      if(!autoTried) autoRadio(); else tuneIn(); },250);
+  });
+  mute.addEventListener("click",()=>{ snoozeRadio(); close(); });
+  setTimeout(()=>{ if(!en.hidden) btn.focus({preventScroll:true}); },50);
+})();
 async function setEpoch(ms){ try{ await db.doc("radio/state").set({epoch:ms}); }catch(err){ toast(err.message||err.code); } }
 $("#restart-station").addEventListener("click",async()=>{ await setEpoch(Date.now()); toast("Station restarted from track 1"); if(mode==="radio") tuneIn(); });
 function subRadio(){
