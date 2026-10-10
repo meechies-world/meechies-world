@@ -7,13 +7,14 @@ const UA = { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 const json = (o, age = 600) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json", "cache-control": "public, max-age=" + age } });
 function walk(o, out) { if (!o || typeof o !== "object") return; if (o.videoRenderer) out.push(o.videoRenderer); for (const k in o) walk(o[k], out); }
 const txt = (r) => (r && (r.simpleText || (r.runs || []).map((x) => x.text).join(""))) || "";
-async function search(q, live) {
-  const u = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q) + (live ? "&sp=EgJAAQ%253D%253D" : "&sp=EgIYAg%253D%253D"); // live filter, or long (>20 min) videos
+async function search(q, live, newest) {
+  // live filter, long (>20 min) videos, or long videos sorted newest first
+  const u = "https://www.youtube.com/results?search_query=" + encodeURIComponent(q) + (live ? "&sp=EgJAAQ%253D%253D" : newest ? "&sp=CAISAhgC" : "&sp=EgIYAg%253D%253D");
   const html = await fetch(u, { headers: UA, cf: { cacheTtl: 900 } }).then((r) => r.text());
   const m = html.match(/var ytInitialData = (\{.*?\});<\/script>/s); if (!m) return [];
   let data; try { data = JSON.parse(m[1]); } catch (_) { return []; }
   const vids = []; walk(data, vids);
-  return vids.filter((v) => v.videoId).map((v) => ({ id: v.videoId, title: txt(v.title), channel: txt(v.ownerText), len: txt(v.lengthText), live: JSON.stringify(v.badges || v.thumbnailOverlays || "").includes("LIVE") }));
+  return vids.filter((v) => v.videoId).map((v) => ({ id: v.videoId, title: txt(v.title), channel: txt(v.ownerText), len: txt(v.lengthText), ago: txt(v.publishedTimeText), live: JSON.stringify(v.badges || v.thumbnailOverlays || "").includes("LIVE") }));
 }
 async function embeddable(id) {
   const r = await fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id), { headers: UA, cf: { cacheTtl: 3600 } }).catch(() => null);
@@ -25,7 +26,7 @@ async function keepPlayable(list, max) {
   for (const v of checks) if (v && out.length < max) out.push(v);
   return out;
 }
-const MOVIE_CHANNELS = /^(filmrise( movies)?|popcornflix|movie central|maverick movies|timeless classic movies|the film detective|grizzly imports)$/i;
+const MOVIE_CHANNELS = /^(filmrise( movies| documentaries)?|popcornflix|movie central|maverick movies|timeless classic movies|the film detective|grizzly imports|free documentary)$/i;
 
 export async function onRequestGet({ request }) {
   const url = new URL(request.url), mode = url.searchParams.get("mode") || "live";
@@ -103,13 +104,22 @@ export async function onRequestGet({ request }) {
       return json({ channel: name, list: playable.length ? playable : list.slice(0, 15) }, 1800);
     }
     if (mode === "movies") {
-      const genre = (url.searchParams.get("genre") || "").slice(0, 30);
+      const genre = (url.searchParams.get("genre") || "").slice(0, 30), newest = url.searchParams.get("new") === "1";
       const official = ["FilmRise Movies", "Popcornflix", "Movie Central", "Maverick Movies", "Timeless Classic Movies"];
-      const batches = await Promise.all(official.map((ch) => search((genre ? genre + " " : "") + "full movie " + ch, false).catch(() => [])));
+      const docs = /documentary|true story|biography/i.test(genre);
+      if (docs) official.push("FilmRise Documentaries", "Free Documentary"); // official free documentary channels
+      const what = docs ? "full documentary" : "full movie";
+      const batches = await Promise.all(official.map((ch) => search((genre ? genre + " " : "") + what + " " + ch, false, newest).catch(() => [])));
       const seen = new Set(), long = [];
       for (const list of batches) for (const v of list) if (!v.live && !seen.has(v.id) && /^\d+:\d{2}:\d{2}$/.test(v.len) && MOVIE_CHANNELS.test(v.channel)) { seen.add(v.id); long.push(v); }
-      if (url.searchParams.get("debug")) return json({ n: long.length, raw: batches.flat().slice(0, 25).map((v) => [v.channel, v.len, v.title.slice(0, 40)]) }, 0);
-      return json({ genre, list: await keepPlayable(long, 12) }, 3600);
+      // newest: sort by how long ago each was posted ("3 days ago", "2mo ago", "1y ago" ...)
+      if (newest) {
+        const U = { s: 1 / 86400, sec: 1 / 86400, second: 1 / 86400, min: 1 / 1440, minute: 1 / 1440, h: 1 / 24, hr: 1 / 24, hour: 1 / 24, d: 1, day: 1, w: 7, wk: 7, week: 7, mo: 30, month: 30, y: 365, yr: 365, year: 365 };
+        const days = (a) => { const m = String(a || "").toLowerCase().match(/(\d+)\s*([a-z]+)/); if (!m) return 99999; const u = m[2].replace(/s$/, ""); return +m[1] * (U[u] ?? U[u.slice(0, 2)] ?? U[u[0]] ?? 99999); };
+        long.sort((a, b) => days(a.ago) - days(b.ago));
+      }
+      if (url.searchParams.get("debug")) return json({ n: long.length, raw: batches.flat().slice(0, 25).map((v) => [v.channel, v.len, v.title.slice(0, 40), v.ago]) }, 0);
+      return json({ genre, newest, list: await keepPlayable(long, 12) }, newest ? 1800 : 3600);
     }
   } catch (err) { return json({ list: [], error: String(err && err.message || err) }, 60); }
   return json({ list: [] }, 60);
