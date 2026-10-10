@@ -988,6 +988,11 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <div><p class="eyebrow">Meechie's World Radio</p><h2>Radio &amp; Music</h2></div>
       <p class="muted">Tune in to the station and hear the same song as everybody else at the same moment, or pick any track from the library and play it yourself.</p>
     </div>
+    <div class="featured card" id="featured-wrap" hidden>
+      <h3>FEATURED ARTISTS</h3>
+      <p class="muted" style="margin:0 0 12px;font-size:14px">Big-name songs play through their official players, so each one is their platform's player and not part of the station.</p>
+      <div class="featured-grid" id="featured"></div>
+    </div>
     <div class="radio-top">
       <div class="onair" id="onair">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -2047,6 +2052,31 @@ async function autoRadio(){
   }
 }
 media.addEventListener("pause",()=>{ if(mode==="radio" && document.visibilityState==="visible" && !media.ended) { try{ sessionStorage.setItem("mw_radio_off","1"); }catch(_){} } });
+/* ---------- Featured Artists: official embedded players (free, no licensing needed from us) ----------
+   Add a row for each artist you're featuring. Only SoundCloud, Spotify and YouTube links are embedded.
+   Example: { artist: "Artist name", title: "Song title", url: "https://soundcloud.com/artist/track" } */
+const FEATURED=[
+  // { artist:"", title:"", url:"" },
+];
+function embedFor(u){
+  try{
+    const x=new URL(u), h=x.hostname.replace(/^www\./,"");
+    if(h==="soundcloud.com"||h==="m.soundcloud.com") return "https://w.soundcloud.com/player/?url="+encodeURIComponent("https://soundcloud.com"+x.pathname)+"&visual=false&color=%23d4a843";
+    if(h==="open.spotify.com"){ const m=x.pathname.match(/^\/(track|album|playlist)\/([A-Za-z0-9]+)/); return m?`https://open.spotify.com/embed/${m[1]}/${m[2]}`:null; }
+    if(h==="youtube.com"||h==="m.youtube.com"){ const id=x.searchParams.get("v"); return id&&/^[\w-]{6,20}$/.test(id)?"https://www.youtube.com/embed/"+id:null; }
+    if(h==="youtu.be"){ const id=x.pathname.slice(1); return /^[\w-]{6,20}$/.test(id)?"https://www.youtube.com/embed/"+id:null; }
+  }catch(_){} return null;
+}
+function renderFeatured(){
+  const wrap=document.getElementById("featured-wrap"), box=document.getElementById("featured");
+  if(!wrap||!box) return;
+  const items=FEATURED.map(f=>({...f,src:embedFor(f.url||"")})).filter(f=>f.src);
+  if(!items.length){ wrap.hidden=true; box.innerHTML=""; return; }
+  wrap.hidden=false;
+  box.innerHTML=items.map(f=>`<div class="feat"><small class="muted">${esc(f.artist||"")}${f.title?" · "+esc(f.title):""}</small><iframe src="${f.src}" title="${esc((f.artist||"")+" "+(f.title||""))}" loading="lazy" allow="autoplay; encrypted-media; clipboard-write" style="width:100%;border:0;border-radius:8px;height:${f.src.includes("spotify")?"152":"166"}px"></iframe></div>`).join("");
+}
+renderFeatured();
+
 /* Enter screen: the tap counts as permission, so the radio can start with sound right away */
 (function(){
   const en=document.getElementById("enter"); if(!en) return;
