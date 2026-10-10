@@ -125,7 +125,7 @@
     const btn = (v, label) => `<button class="tv-ch" type="button" data-vid="${E(v.id)}" data-name="${E(label || v.channel || v.title)}" title="${E(v.title || "")}"><span class="dot"></span>${E(String(label || v.channel || v.title).slice(0, 34))}</button>`;
     async function national() {
       const el = box.querySelector("#tv-nat");
-      const j = await fetch("/api/yt?mode=channels&ids=" + CH.map((c) => c[1]).join(",")).then((r) => r.json()).catch(() => ({ list: [] }));
+      const j = await fetch("/api/yt?mode=channels&ids=" + CH.map((c) => c[1]).join(",") + "&names=" + encodeURIComponent(CH.map((c) => c[0]).join("|"))).then((r) => r.json()).catch(() => ({ list: [] }));
       const live = (j.list || []).filter((x) => x.live && x.ok);
       el.innerHTML = live.length ? live.map((x) => btn({ id: x.id }, (CH.find((c) => c[1] === x.channel) || [])[0])).join("") : '<small class="muted">None of the national channels are live this minute. Try More live channels below.</small>';
     }
