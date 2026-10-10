@@ -38,15 +38,40 @@ export async function onRequestGet({ request }) {
     }
     if (mode === "channels") {
       const ids = (url.searchParams.get("ids") || "").split(",").filter((x) => /^UC[\w-]{20,24}$/.test(x)).slice(0, 20);
-      const res = await Promise.all(ids.map(async (id) => {
+      // optional channel names (same order as ids): used to find the live stream by search when YouTube won't show the channel page
+      const names = (url.searchParams.get("names") || "").split("|").map((s) => s.trim().slice(0, 40));
+      const dbg = [];
+      const res = await Promise.all(ids.map(async (id, i) => {
+        let status = 0;
         try {
-          const html = await fetch("https://www.youtube.com/channel/" + id + "/live", { headers: UA, cf: { cacheTtl: 600 } }).then((r) => r.text());
-          const vid = (html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/) || [])[1];
+          const r = await fetch("https://www.youtube.com/channel/" + id + "/live", { headers: UA, cf: { cacheTtl: 600 } }); status = r.status;
+          const html = r.ok ? await r.text() : "";
+          // YouTube has moved the live video's id around; look in each place it has used
+          const vid = [
+            /<link[^>]*rel="canonical"[^>]*href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/,
+            /<link[^>]*href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"[^>]*rel="canonical"/,
+            /<meta[^>]*property="og:url"[^>]*content="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})/,
+            /"videoDetails":\{"videoId":"([\w-]{11})"/,
+            /"currentVideoEndpoint":\{[^{}]*?"watchEndpoint":\{"videoId":"([\w-]{11})"/,
+          ].map((re) => (html.match(re) || [])[1]).find(Boolean);
           const live = /"isLiveNow":true|"isLive":true/.test(html);
-          if (!vid || !live) return { channel: id, live: false };
-          return { channel: id, live: true, id: vid, ok: await embeddable(vid) };
-        } catch (_) { return { channel: id, live: false }; }
+          dbg.push({ id, status, vid: !!vid, live, len: html.length });
+          if (vid && live) return { channel: id, live: true, id: vid, ok: await embeddable(vid) };
+        } catch (e) { dbg.push({ id, status, err: String(e).slice(0, 60) }); }
+        // fallback: search live streams for the channel's name and keep one from that channel
+        const nm = names[i];
+        if (nm) {
+          try {
+            // "ABC News Live" -> "abcnew", "NASA TV" -> "nasa": the start of the channel's name, to match the search result's channel
+            const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+            const key = norm(nm.replace(/\(.*?\)/g, "").replace(/\b(live|now|tv|english|24\/7)\b/gi, "")).slice(0, 6);
+            const hit = key.length >= 3 && (await search(nm.replace(/\(.*?\)/g, "") + " live", true)).find((v) => v.live && norm(v.channel).startsWith(key));
+            if (hit) return { channel: id, live: true, id: hit.id, ok: await embeddable(hit.id), via: "search" };
+          } catch (_) {}
+        }
+        return { channel: id, live: false };
       }));
+      if (url.searchParams.get("debug")) return json({ dbg, list: res }, 0);
       return json({ list: res }, 600);
     }
     if (mode === "uploads") {
