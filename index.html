@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791650946">
+<meta name="mw-build" content="1791651129">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1430,6 +1430,18 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <div class="lg-out" id="lg-review" hidden></div>
       </div>
 
+      <div class="lg-card" id="lg-hire" style="border-color:var(--gold)">
+        <h3>👨🏽‍💼 Have Meechie prepare it for you <span class="badge" style="margin-left:auto">$50 per motion</span></h3>
+        <p>Rather have a pro do it? Meechie's World Inc prepares your motion, petition, complaint or letter for <b>$50 per document</b>, typed and formatted, ready for you to sign and file. (Document preparation, not legal advice. Meechie's World isn't a law firm.)</p>
+        <div class="lg-grid">
+          <label>How many documents?<select id="lg-hire-n"><option value="1">1 document · $50</option><option value="2">2 documents · $100</option><option value="3">3 documents · $150</option><option value="4">4 documents · $200</option><option value="5">5 documents · $250</option></select></label>
+          <label>Best way to reach you<input id="lg-hire-how" placeholder="Phone, email, or inmate mail address"></label>
+          <label class="full">Anything else Meechie should know?<textarea id="lg-hire-note" rows="2" placeholder="Deadlines, court dates, what you've already filed..."></textarea></label>
+        </div>
+        <p style="margin:10px 0 0;font-size:13px;color:var(--muted)">Sending the request shares the case info from steps 1–3 with Meechie privately (only Meechie sees it, in Messages).</p>
+        <div class="acts"><button class="btn" type="button" id="lg-hire-go">📨 Send my request to Meechie</button><a class="btn ghost pay-btn" data-pay="legal" href="#" hidden>💳 Pay $50 per motion</a><span class="lg-msg" id="lg-hire-msg"></span></div>
+      </div>
+
       <div class="lg-card">
         <h3>❓ Ask a legal question</h3>
         <p>How does bail work? What's a 2255? How do I serve the other side? The AI explains in plain words and looks up real cases.</p>
@@ -1909,8 +1921,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791650946"></script>
-<script src="js/platform.js?v=1791650946"></script>
+<script src="js/config.js?v=1791651129"></script>
+<script src="js/platform.js?v=1791651129"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -3130,30 +3142,30 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791650946"></script>
-<script src="js/studio.js?v=1791650946"></script>
-<script src="js/owner.js?v=1791650946"></script>
-<script src="js/messages.js?v=1791650946"></script>
-<script src="js/videos.js?v=1791650946"></script>
-<script src="js/markets.js?v=1791650946"></script>
-<script src="js/legal.js?v=1791650946"></script>
-<script src="js/coin.js?v=1791650946"></script>
-<script src="js/preach.js?v=1791650946"></script>
-<script src="js/world3d.js?v=1791650946"></script>
-<script src="js/clips.js?v=1791650946"></script>
-<script src="js/dj.js?v=1791650946"></script>
-<script src="js/live.js?v=1791650946"></script>
-<script src="js/autotune.js?v=1791650946"></script>
-<script src="js/beatmaker.js?v=1791650946"></script>
-<script src="js/beatlab.js?v=1791650946"></script>
-<script src="js/friends.js?v=1791650946"></script>
-<script src="js/dating.js?v=1791650946"></script>
-<script src="js/books.js?v=1791650946"></script>
-<script src="js/social.js?v=1791650946"></script>
-<script src="js/jobs.js?v=1791650946"></script>
-<script src="js/golive.js?v=1791650946"></script>
-<script src="js/predict.js?v=1791650946"></script>
-<script src="js/visitors.js?v=1791650946"></script>
-<script src="js/ai-widget.js?v=1791650946"></script>
+<script src="js/appnav.js?v=1791651129"></script>
+<script src="js/studio.js?v=1791651129"></script>
+<script src="js/owner.js?v=1791651129"></script>
+<script src="js/messages.js?v=1791651129"></script>
+<script src="js/videos.js?v=1791651129"></script>
+<script src="js/markets.js?v=1791651129"></script>
+<script src="js/legal.js?v=1791651129"></script>
+<script src="js/coin.js?v=1791651129"></script>
+<script src="js/preach.js?v=1791651129"></script>
+<script src="js/world3d.js?v=1791651129"></script>
+<script src="js/clips.js?v=1791651129"></script>
+<script src="js/dj.js?v=1791651129"></script>
+<script src="js/live.js?v=1791651129"></script>
+<script src="js/autotune.js?v=1791651129"></script>
+<script src="js/beatmaker.js?v=1791651129"></script>
+<script src="js/beatlab.js?v=1791651129"></script>
+<script src="js/friends.js?v=1791651129"></script>
+<script src="js/dating.js?v=1791651129"></script>
+<script src="js/books.js?v=1791651129"></script>
+<script src="js/social.js?v=1791651129"></script>
+<script src="js/jobs.js?v=1791651129"></script>
+<script src="js/golive.js?v=1791651129"></script>
+<script src="js/predict.js?v=1791651129"></script>
+<script src="js/visitors.js?v=1791651129"></script>
+<script src="js/ai-widget.js?v=1791651129"></script>
 </body>
 </html>
