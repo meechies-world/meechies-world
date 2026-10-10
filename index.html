@@ -422,6 +422,23 @@ a.social:hover{border-color:var(--gold)}
 .upload-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px}
 .player-bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:color-mix(in srgb,var(--ink) 94%,transparent);backdrop-filter:blur(12px);border-top:1px solid var(--gold-lo);padding-bottom:env(safe-area-inset-bottom,0px)}
 .player-bar .wrap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:center;padding-block:10px}
+/* Equalizer */
+.pb-eqbtn{flex:none;min-width:40px;min-height:32px;border:1px solid var(--gold-lo);background:transparent;color:var(--gold-hi);font:700 12px var(--mono);letter-spacing:.08em;border-radius:999px;cursor:pointer;padding:0 10px}
+.pb-eqbtn[aria-expanded="true"],.pb-eqbtn:hover{background:var(--gold);color:var(--ink)}
+.eq-panel{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:31;width:min(400px,calc(100vw - 32px));background:linear-gradient(180deg,#1d1a14,#0f0d0a);border:1px solid var(--gold);border-radius:16px;padding:14px 16px 16px;box-shadow:0 18px 40px rgba(0,0,0,.65);display:grid;gap:12px}
+.eq-panel[hidden]{display:none}
+.eq-head{display:flex;align-items:center;gap:12px}.eq-head b{font:700 13px var(--mono);letter-spacing:.18em;color:var(--gold);flex:1}
+.eq-on{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text)}.eq-on input{width:auto;accent-color:var(--gold)}
+.eq-x{background:none;border:0;color:var(--muted);font-size:16px;cursor:pointer;min-width:32px;min-height:32px}
+.eq-presets{display:flex;flex-wrap:wrap;gap:6px}
+.eq-chip{border:1px solid var(--gold-lo);background:transparent;color:var(--text);border-radius:999px;padding:6px 12px;font:600 13px var(--body);cursor:pointer;min-height:32px}
+.eq-chip.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}.eq-chip:disabled{opacity:.45;cursor:default}
+.eq-bands{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center}
+.eq-band{display:grid;justify-items:center;gap:4px;font-size:12px;color:var(--text)}.eq-band small{color:var(--muted);font:500 10px var(--mono)}
+.eq-band input{writing-mode:vertical-lr;direction:rtl;width:28px;height:120px;accent-color:var(--gold);padding:0;border:0;background:none}
+.eq-db{font:600 11px var(--mono);color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.eq-note{margin:0;font-size:12px;color:var(--muted)}
+@media (max-width:640px){.eq-panel{right:16px;left:16px;width:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
 .pb-now{display:flex;gap:10px;align-items:center;min-width:0}
 .pb-now .cover{width:44px;height:44px;border-radius:8px}
 .pb-now .cover svg{width:24px;height:24px}
@@ -1468,9 +1485,17 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
       <button class="ibtn" type="button" id="pb-prev" aria-label="Previous"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
       <button class="ibtn big" type="button" id="pb-play" aria-label="Pause"><svg viewBox="0 0 24 24" fill="currentColor" id="pb-icon"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></button>
       <button class="ibtn" type="button" id="pb-next" aria-label="Next"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      <button class="pb-eqbtn" type="button" id="pb-eq" aria-label="Equalizer" aria-expanded="false">EQ</button>
     </div>
     <div class="pb-right"><span class="pb-time" id="pb-time">0:00</span><div class="pb-progress" id="pb-progress"><i id="pb-fill"></i></div><input type="range" id="pb-vol" min="0" max="1" step="0.05" value="0.9" aria-label="Volume"></div>
   </div>
+</div>
+<div class="eq-panel" id="eq-panel" role="dialog" aria-label="Equalizer" hidden>
+  <div class="eq-head"><b>EQUALIZER</b><label class="eq-on"><input type="checkbox" id="eq-on"> On</label><button type="button" class="eq-x" id="eq-x" aria-label="Close equalizer">✕</button></div>
+  <div class="eq-presets" id="eq-presets"></div>
+  <div class="eq-bands" id="eq-bands"></div>
+  <p class="eq-note" id="eq-note" hidden>On phones, the equalizer pauses the music when your screen locks. Turn it off to keep listening with the screen off.</p>
+  <button class="btn sm" type="button" id="eq-enable" hidden>Turn on equalizer</button>
 </div>
 <audio id="audio" playsinline preload="none" hidden></audio>
 <dialog id="pw-dialog">
@@ -1934,13 +1959,21 @@ media.crossOrigin="anonymous"; // our songs allow this, and it lets the booster 
    (Skipped on iPhone/iPad, where it would stop the music when the screen locks.) */
 const IOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const TOUCH=matchMedia("(pointer:coarse)").matches||/Android|Mobile/i.test(navigator.userAgent); // phones pause the booster when the screen locks, so phones play straight
-let boostCtx=null, boostGain=null;
-function setupBoost(){ if(boostCtx||IOS||TOUCH) return;
+let boostCtx=null, boostGain=null, eqNodes=[];
+/* Equalizer: 5 bands between the song and the booster. Saved per listener. */
+const EQ_BANDS=[{f:60,type:"lowshelf",n:"Bass"},{f:250,type:"peaking",n:"Low mid"},{f:1000,type:"peaking",n:"Mid"},{f:3500,type:"peaking",n:"Presence"},{f:10000,type:"highshelf",n:"Air"}];
+const EQ_PRESETS={ "Flat":[0,0,0,0,0], "Studio":[2,-1,0,1.5,2], "Hip-Hop":[5,1,-1,1.5,2], "Vocals":[-1,-1,2,3,1.5], "Bass Boost":[8,3,0,0,0] };
+let eqGains=(()=>{ try{ const s=JSON.parse(localStorage.getItem("mw_eq")||"null"); if(Array.isArray(s)&&s.length===5) return s.map(Number); }catch(_){} return EQ_PRESETS.Studio.slice(); })();
+let eqOn=(()=>{ try{ return localStorage.getItem("mw_eq_on")!=="0"; }catch(_){ return true; } })();
+function applyEq(){ eqNodes.forEach((n,i)=>{ n.gain.value = eqOn ? eqGains[i] : 0; }); }
+function setupBoost(force){ if(boostCtx) return true; if((IOS||TOUCH) && !force) return false;
   try{ const C=window.AudioContext||window.webkitAudioContext; boostCtx=new C();
     const src=boostCtx.createMediaElementSource(media); boostGain=boostCtx.createGain(); boostGain.gain.value=+(window.MW_SITE?.boost||2);
     const lim=boostCtx.createDynamicsCompressor(); lim.threshold.value=-4; lim.knee.value=4; lim.ratio.value=20; lim.attack.value=0.002; lim.release.value=0.15;
-    src.connect(boostGain); boostGain.connect(lim); lim.connect(boostCtx.destination);
-  }catch(_){ boostCtx=null; } }
+    eqNodes=EQ_BANDS.map(b=>{ const f=boostCtx.createBiquadFilter(); f.type=b.type; f.frequency.value=b.f; if(b.type==="peaking") f.Q.value=1; return f; });
+    let node=src; eqNodes.forEach(f=>{ node.connect(f); node=f; }); node.connect(boostGain); boostGain.connect(lim); lim.connect(boostCtx.destination);
+    applyEq(); return true;
+  }catch(_){ boostCtx=null; eqNodes=[]; return false; } }
 const wakeBoost=()=>{ setupBoost(); if(boostCtx && boostCtx.state!=="running") boostCtx.resume().catch(()=>{}); };
 document.addEventListener("pointerdown",wakeBoost,{capture:true}); document.addEventListener("keydown",wakeBoost,{capture:true});
 media.addEventListener("play",()=>{ if(boostCtx && boostCtx.state!=="running") boostCtx.resume().catch(()=>{}); });
@@ -2015,6 +2048,29 @@ $("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") retu
 $("#pb-prev").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
 $("#pb-progress").addEventListener("click",e=>{ if(mode!=="library"||!media.duration) return; const r=e.currentTarget.getBoundingClientRect(); media.currentTime=(e.clientX-r.left)/r.width*media.duration; });
 $("#pb-vol").addEventListener("input",e=>media.volume=+e.target.value);
+/* ---------- Equalizer panel ---------- */
+(function(){
+  const panel=$("#eq-panel"), btn=$("#pb-eq"), bands=$("#eq-bands"), presets=$("#eq-presets"), onBox=$("#eq-on"), note=$("#eq-note"), enable=$("#eq-enable");
+  const save=()=>{ try{ localStorage.setItem("mw_eq",JSON.stringify(eqGains)); localStorage.setItem("mw_eq_on",eqOn?"1":"0"); }catch(_){} };
+  const phone=IOS||TOUCH;
+  function paint(){
+    const live=!!boostCtx;
+    enable.hidden=live; note.hidden=!(phone&&live);
+    onBox.checked=eqOn; onBox.disabled=!live;
+    const cur=Object.keys(EQ_PRESETS).find(k=>EQ_PRESETS[k].every((v,i)=>Math.abs(v-eqGains[i])<0.01));
+    presets.innerHTML=Object.keys(EQ_PRESETS).map(k=>`<button type="button" class="eq-chip${k===cur?" on":""}" data-preset="${k}"${live?"":" disabled"}>${k}</button>`).join("");
+    bands.innerHTML=EQ_BANDS.map((b,i)=>`<label class="eq-band"><span class="eq-db">${eqGains[i]>0?"+":""}${(+eqGains[i]).toFixed(1)}</span><input type="range" min="-12" max="12" step="0.5" value="${eqGains[i]}" data-band="${i}" aria-label="${b.n} ${b.f<1000?b.f+" hertz":b.f/1000+" kilohertz"}"${live?"":" disabled"}><span>${b.n}</span><small>${b.f<1000?b.f:b.f/1000+"k"}Hz</small></label>`).join("");
+  }
+  function show(open){ panel.hidden=!open; btn.setAttribute("aria-expanded",String(open)); if(open){ if(!phone) wakeBoost(); paint(); } }
+  btn.addEventListener("click",()=>show(panel.hidden));
+  $("#eq-x").addEventListener("click",()=>show(false));
+  enable.addEventListener("click",()=>{ if(setupBoost(true)){ if(boostCtx.state!=="running") boostCtx.resume().catch(()=>{}); eqOn=true; applyEq(); save(); toast("Equalizer on"); } else toast("This browser can't run the equalizer."); paint(); });
+  onBox.addEventListener("change",()=>{ eqOn=onBox.checked; applyEq(); save(); });
+  presets.addEventListener("click",e=>{ const b=e.target.closest("[data-preset]"); if(!b) return; eqGains=EQ_PRESETS[b.dataset.preset].slice(); eqOn=true; applyEq(); save(); paint(); });
+  bands.addEventListener("input",e=>{ const i=e.target.dataset.band; if(i==null) return; eqGains[+i]=+e.target.value; eqOn=true; onBox.checked=true; applyEq(); save();
+    const lab=e.target.parentElement.querySelector(".eq-db"); lab.textContent=(eqGains[i]>0?"+":"")+(+eqGains[i]).toFixed(1); presets.querySelectorAll(".eq-chip").forEach(c=>c.classList.remove("on")); });
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!panel.hidden) show(false); });
+})();
 $("#tracks").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.play) playLib(+b.dataset.play);
   if(b.dataset.onair){ const i=+b.dataset.onair, before=tracks.slice(0,i).reduce((a,t)=>a+(t.duration||0),0);
