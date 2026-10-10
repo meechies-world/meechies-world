@@ -150,6 +150,10 @@ export async function onRequestGet({ request }) {
       // 2) YouTube search for the artist's songs: only his channel, at least 1:45 long
       const batches = await Promise.all([q + " official music video", q + " official audio", q + " song"].map((s) => search(s, false, false, "").catch(() => [])));
       const found = batches.flat().filter((v) => !v.live && mine(v.channel) && secs(v.len) >= 105 && !/#shorts?\b/i.test(v.title) && (SONG.test(v.title) || secs(v.len) >= 150));
+      // newest first ("2mo ago" -> 60 days)
+      const U = { s: 0, min: 0, h: 0, d: 1, w: 7, mo: 30, y: 365 };
+      const days = (a) => { const m = String(a || "").toLowerCase().match(/(\d+)\s*(mo|min|[a-z])/); return m ? +m[1] * (U[m[2]] ?? 9999) : 99999; };
+      found.sort((a, b) => days(a.ago) - days(b.ago));
       dbg.feedSongs = feed.length; dbg.searchSongs = found.length;
       const seen = new Set(), list = [];
       for (const v of [...feed, ...found.map((v) => ({ id: v.id, title: v.title, published: v.ago, len: v.len }))]) if (/^[\w-]{11}$/.test(v.id) && !seen.has(v.id)) { seen.add(v.id); list.push({ id: v.id, title: v.title, published: v.published, len: v.len || "" }); }
