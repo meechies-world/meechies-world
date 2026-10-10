@@ -134,20 +134,35 @@
     }
     return out;
   }
+  /* PDFs often carry invisible control characters (like the "null" character). The database refuses to
+     save text that contains them, which used to stop an upload part-way through. Strip them first. */
+  const scrub = (t) => String(t)
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F￾￿]/g, "")
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "");
   async function publish() {
     const st = root.querySelector("#bk-st"), title = root.querySelector("#bk-t").value.trim(), f = root.querySelector("#bk-f").files[0];
-    if (!title || !f) { st.textContent = "Add a title and the book file."; return; }
+    if (!title || !f) { st.textContent = "Add a title and the book file."; say("Add a title and the book file."); return; }
     const btn = root.querySelector("#bk-go"); btn.disabled = true;
+    let id = "", saved = 0;
     try {
-      const text = /pdf$/i.test(f.name) || f.type === "application/pdf" ? await pdfText(f) : await f.text();
+      const text = scrub(/pdf$/i.test(f.name) || f.type === "application/pdf" ? await pdfText(f) : await f.text());
       const pages = toPages(text); if (!pages.length) throw new Error("No text found in that file. If it's a scanned PDF, send it to Claude to convert.");
       let cover = ""; const cf = root.querySelector("#bk-c").files[0];
       if (cf) { const d = await (typeof compress === "function" ? compress(cf, 700) : null); if (d) { const blob = await (await fetch(d)).blob(); cover = (await MW.uploadMedia(blob, { type: "image/jpeg" })).url; } }
-      const id = (title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "book") + "-" + Date.now().toString(36);
-      for (let i = 0; i < pages.length; i++) { await DB().doc("bookpages/" + id + "_" + i).set({ book: id, n: i, html: pages[i] }); if (i % 5 === 0) st.textContent = "Publishing page " + (i + 1) + " of " + pages.length + "..."; }
-      await DB().doc("books/" + id).set({ title, author: root.querySelector("#bk-a").value.trim() || "Meechie's World Inc", blurb: root.querySelector("#bk-b").value.trim(), cover, pages: pages.length, free: root.querySelector("#bk-free").checked, order: Date.now(), createdAt: Date.now() });
+      id = (title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "book") + "-" + Date.now().toString(36);
+      for (let i = 0; i < pages.length; i++) {
+        try { await DB().doc("bookpages/" + id + "_" + i).set({ book: id, n: i, html: pages[i] }); }
+        catch (e) { throw new Error("Page " + (i + 1) + " of " + pages.length + " wouldn't save (" + (e.message || e) + ")."); }
+        saved = i + 1; if (i % 5 === 0 || saved === pages.length) st.textContent = "Publishing page " + saved + " of " + pages.length + "...";
+      }
+      await DB().doc("books/" + id).set({ title, author: scrub(root.querySelector("#bk-a").value.trim()) || "Meechie's World Inc", blurb: scrub(root.querySelector("#bk-b").value.trim()), cover, pages: pages.length, free: root.querySelector("#bk-free").checked, order: Date.now(), createdAt: Date.now() });
       st.textContent = "Published! " + pages.length + " pages."; say("Your book is live in Books");
-    } catch (err) { st.textContent = err.message || "Couldn't publish."; }
+    } catch (err) {
+      // Clean up a half-finished upload so it doesn't leave stray pages behind
+      for (let i = 0; i < saved; i++) await DB().doc("bookpages/" + id + "_" + i).delete().catch(() => {});
+      const msg = "Your book didn't publish: " + (err.message || "something went wrong") + " Nothing was saved. Try again, or send the file to Claude.";
+      st.textContent = msg; st.style.color = "var(--warn)"; say(msg);
+    }
     btn.disabled = false;
   }
 
