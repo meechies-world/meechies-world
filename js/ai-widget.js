@@ -13,7 +13,8 @@
 #ai-fab{position:fixed;right:16px;bottom:16px;z-index:9997;display:flex;align-items:center;gap:8px;border:1px solid var(--gold-hi,#f0cf78);background:linear-gradient(180deg,#1d1810,#0f0d09);color:var(--gold-hi,#f0cf78);font:700 14px system-ui,sans-serif;padding:11px 16px;border-radius:999px;cursor:pointer;box-shadow:0 10px 28px rgba(0,0,0,.55)}
 .ai-av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold-hi,#f0cf78);flex:none;margin:-4px 0 -4px -6px}.ai-av.lg{width:38px;height:38px;margin:0}.ai-av.sm{width:26px;height:26px;margin:2px 0 0}
 .ai-row{display:flex;gap:7px;align-items:flex-start;max-width:92%}.ai-row .ai-m{max-width:100%}
-.ai-copy{display:block;margin-top:6px;background:none;border:0;color:var(--muted,#a99f8b);font:600 11px system-ui,sans-serif;cursor:pointer;padding:0;text-decoration:underline}
+.ai-acts{display:flex;gap:12px;margin-top:6px}.ai-check{margin-top:8px;padding:8px 10px;border-radius:10px;border:1px dashed var(--gold-lo,#8c6d26);background:rgba(212,168,67,.06);font-size:13px}
+.ai-copy{display:block;background:none;border:0;color:var(--muted,#a99f8b);font:600 11px system-ui,sans-serif;cursor:pointer;padding:0;text-decoration:underline}
 #ai-fab .dot{width:9px;height:9px;border-radius:50%;background:#6fbf8b;box-shadow:0 0 0 3px rgba(111,191,139,.25)}
 body.has-player #ai-fab,body.has-player #ai-panel{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 body.has-player #ai-panel{height:min(520px,calc(100vh - 180px))}
@@ -57,7 +58,7 @@ body.mw-editing #ai-fab{display:none!important}`;
   function signedIn() { const s = window.MW && MW.session && MW.session(); return !!(s && s.user); }
   function draw(thinking) {
     const hello = `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">Hey! I'm Meechie, the AI assistant for Meechie's World. Ask me about services and prices, promotion, the shop, clothing designs, or how anything on the site works. I can also explain court procedure and help you draft motions on the Legal Help tab.</div></div>`;
-    log.innerHTML = hello + hist.map((m, i) => m.role === "user" ? `<div class="ai-m me">${m.pic ? `<img src="${E(m.pic)}" alt="Photo you sent">` : ""}${fmt(m.content)}</div>` : `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">${fmt(m.content)}<button type="button" class="ai-copy" data-copy-i="${i}" aria-label="Copy this answer">Copy</button></div></div>`).join("") + (thinking ? `<div class="ai-m"><span class="ai-typing"><i></i><i></i><i></i></span></div>` : "");
+    log.innerHTML = hello + hist.map((m, i) => m.role === "user" ? `<div class="ai-m me">${m.pic ? `<img src="${E(m.pic)}" alt="Photo you sent">` : ""}${fmt(m.content)}</div>` : `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">${fmt(m.content)}<span class="ai-acts"><button type="button" class="ai-copy" data-copy-i="${i}" aria-label="Copy this answer">Copy</button><button type="button" class="ai-copy" data-check-i="${i}" aria-label="Double-check this answer">🔍 Double-check</button></span>${m.check ? `<div class="ai-check">${fmt(m.check)}</div>` : ""}</div></div>`).join("") + (thinking ? `<div class="ai-m"><span class="ai-typing"><i></i><i></i><i></i></span></div>` : "");
     if (!signedIn()) log.innerHTML += `<div class="ai-m">Join free (it takes 20 seconds) to chat with me.<br><button class="btn sm" type="button" data-auth="signup" style="margin-top:8px">Join free</button> <button class="btn sm ghost" type="button" data-auth="signin" style="margin-top:8px">Sign in</button></div>`;
     chips.innerHTML = hist.length ? "" : CHIPS.map((c) => `<button type="button">${E(c)}</button>`).join("");
     log.scrollTop = log.scrollHeight;
@@ -75,7 +76,7 @@ body.mw-editing #ai-fab{display:none!important}`;
       reply = r.ok && j.reply ? j.reply + (j.sources && j.sources.length ? "\n\nSources: " + j.sources.map((x, i) => "[" + (i + 1) + "] " + x.title + " (" + x.url + ")").join("  ") : "") : (j.error === "busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com.");
     } catch (_) { reply = "I can't connect right now. Check your internet and try again."; }
     hist.push({ role: "assistant", content: reply }); hist = hist.slice(-40);
-    try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((m) => ({ role: m.role, content: m.content })))); } catch (_) {}
+    try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((m) => ({ role: m.role, content: m.content, ...(m.check ? { check: m.check } : {}) })))); } catch (_) {}
     busy = false; draw(false); speak(reply);
   }
   /* read answers out loud */
@@ -120,7 +121,19 @@ body.mw-editing #ai-fab{display:none!important}`;
   panel.querySelector("#ai-close").addEventListener("click", () => { panel.hidden = true; fab.hidden = false; });
   chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; fab.hidden = false; return; } ask(b.textContent); });
   panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} window.speechSynthesis?.cancel(); draw(false); inp.focus(); });
-  log.addEventListener("click", (e) => { const c = e.target.closest("[data-copy-i]"); if (!c) return; const m = hist[+c.dataset.copyI]; if (m) navigator.clipboard?.writeText(m.content).then(() => { c.textContent = "Copied ✓"; setTimeout(() => (c.textContent = "Copy"), 1500); }).catch(() => {}); });
+  log.addEventListener("click", async (e) => {
+    const k = e.target.closest("[data-check-i]"); if (k) {
+      const i = +k.dataset.checkI, m = hist[i], q = [...hist.slice(0, i)].reverse().find((x) => x.role === "user"); if (!m || k.dataset.busy) return;
+      k.dataset.busy = "1"; k.textContent = "Checking...";
+      try {
+        const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + MW.session().access_token }, body: JSON.stringify({ verify: { question: q ? q.content : "", answer: m.content } }) });
+        const j = await r.json().catch(() => ({}));
+        m.check = r.ok && j.text ? (j.by === "claude" ? "Double-checked by Claude:\n" : "Double-checked by a second AI:\n") + j.text + (j.sources && j.sources.length ? "\nSources: " + j.sources.map((x) => x.url).join("  ") : "") : "Couldn't double-check right now. Try again in a minute.";
+      } catch (_) { m.check = "Couldn't double-check right now."; }
+      try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((x) => ({ role: x.role, content: x.content, ...(x.check ? { check: x.check } : {}) })))); } catch (_) {}
+      draw(false); return;
+    }
+    const c = e.target.closest("[data-copy-i]"); if (!c) return; const m = hist[+c.dataset.copyI]; if (m) navigator.clipboard?.writeText(m.content).then(() => { c.textContent = "Copied ✓"; setTimeout(() => (c.textContent = "Copy"), 1500); }).catch(() => {}); });
   panel.querySelector("#ai-form2").addEventListener("submit", (e) => { e.preventDefault(); let q = inp.value; if (!q.trim() && pending) q = "What is in this picture?"; inp.value = ""; ask(q); });
   // hide the bubble on the Contact page, which already has the full AI box
   const contact = document.getElementById("v-contact");

@@ -51,7 +51,19 @@
 #v-legal .lg-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
 #v-legal .lg-links a{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--ink);text-decoration:none;color:var(--text)}
 #v-legal .lg-links a b{color:var(--gold-hi);display:block}#v-legal .lg-links a small{color:var(--muted)}
-#v-legal .busy{opacity:.6;pointer-events:none}`;
+#v-legal .busy{opacity:.6;pointer-events:none}
+#v-legal .lg-track{position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:5;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 12px;padding:8px;border:1px solid var(--line);border-radius:14px;background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(8px)}
+#v-legal .lg-track a{display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 6px;border-radius:10px;text-decoration:none;color:var(--muted);font:700 13px var(--body);text-align:center}
+#v-legal .lg-track a i{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line);font-size:12px;flex:none}
+#v-legal .lg-track a.done{color:var(--text)}#v-legal .lg-track a.done i{background:#2f7d4a;border-color:#2f7d4a;color:#fff;font-size:0}#v-legal .lg-track a.done i::before{content:"✓";font-size:12px}
+#v-legal .lg-track a.next{background:rgba(147,180,255,.12);color:var(--gold-hi)}#v-legal .lg-track a.next i{border-color:var(--gold)}
+#v-legal .lg-cases{display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin:0 0 14px}
+#v-legal .lg-cases label{flex:1;min-width:220px}
+#v-legal .lg-dl{display:grid;gap:8px}
+#v-legal .lg-dl div{display:grid;grid-template-columns:78px 1fr;gap:12px;align-items:start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--ink)}
+#v-legal .lg-dl b{color:var(--gold-hi);font-size:16px}#v-legal .lg-dl small{display:block;color:var(--muted);margin-top:2px}
+@media (max-width:820px){#v-legal .lg-track{position:static}}
+@media (max-width:560px){#v-legal .lg-track a{flex-direction:column;gap:3px;font-size:11px;padding:6px 2px}}`;
   document.head.appendChild(css);
 
   // fill the pickers
@@ -63,8 +75,26 @@
   const el = (k) => view.querySelector(`[data-k="${k}"]`);
   function read() { const o = {}; FIELDS.forEach((k) => { const x = el(k); if (x) o[k] = x.value; }); return o; }
   function write(o) { FIELDS.forEach((k) => { const x = el(k); if (x && o && o[k] != null) x.value = o[k]; }); }
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(read())); } catch (_) {} }
-  try { const o = JSON.parse(localStorage.getItem(KEY) || "null"); if (o) write(o); } catch (_) {}
+  /* several cases, each saved on this device: { cur, cases: { id: { data, updated } } } */
+  const CKEY = "mw_legal_cases_v2";
+  let store = { cur: "", cases: {} };
+  try { store = JSON.parse(localStorage.getItem(CKEY) || "null") || store; } catch (_) {}
+  if (!store.cases || !Object.keys(store.cases).length) { // first time: bring over the one saved case
+    let old = null; try { old = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (_) {}
+    const id = "c" + Date.now().toString(36); store = { cur: id, cases: { [id]: { data: old || {}, updated: Date.now() } } };
+  }
+  if (!store.cases[store.cur]) store.cur = Object.keys(store.cases)[0];
+  const titleOf = (d) => (d && (d.caseNo || d.name || d.doc)) ? [d.name, d.caseNo, d.doc].filter(Boolean).join(" · ").slice(0, 60) : "Untitled case";
+  function persist() { try { localStorage.setItem(CKEY, JSON.stringify(store)); } catch (_) {} }
+  function save() { store.cases[store.cur] = { data: read(), updated: Date.now() }; persist(); paintCases(); track(); }
+  function paintCases() {
+    const sel = $("#lg-cases"); if (!sel) return;
+    const ids = Object.keys(store.cases).sort((a, b) => (store.cases[b].updated || 0) - (store.cases[a].updated || 0));
+    sel.innerHTML = ids.map((id) => `<option value="${E(id)}"${id === store.cur ? " selected" : ""}>${E(titleOf(store.cases[id].data))}</option>`).join("");
+  }
+  function blank() { FIELDS.forEach((k) => { const x = el(k); if (!x) return; if (x.tagName === "SELECT") x.selectedIndex = 0; else x.value = ""; }); }
+  function openCase(id) { store.cur = id; persist(); blank(); write(store.cases[id].data || {}); paintCases(); paintVers(); track(); $("#lg-res").innerHTML = ""; $("#lg-ver").innerHTML = ""; $("#lg-review").hidden = true; }
+  write(store.cases[store.cur].data || {}); paintCases();
   let st = 0; view.addEventListener("input", () => { clearTimeout(st); st = setTimeout(save, 400); });
   const caseObj = () => { const o = read(); return { system: o.system, state: o.state, county: o.county, court: o.court, caseNo: o.caseNo, type: o.type, judge: o.judge, name: o.name, role: o.role, other: o.other, otherCounsel: o.otherCounsel, charges: o.charges, status: o.status, address: o.address, contact: o.contact }; };
 
@@ -76,10 +106,37 @@
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     try { const o = JSON.parse(await f.text()); write(o); save(); say("Case file opened"); } catch (_) { say("That file isn't a saved case file."); }
   });
+  // "Start a new case" now erases just this case (the others stay saved)
+  $("#lg-clear").textContent = "Erase this case";
   $("#lg-clear").addEventListener("click", (e) => {
-    const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tap again to erase"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Start a new case"; }, 3000); return; }
-    FIELDS.forEach((k) => { const x = el(k); if (x && x.tagName !== "SELECT") x.value = ""; }); save(); delete b.dataset.sure; b.textContent = "Start a new case"; $("#lg-res").innerHTML = ""; $("#lg-ver").innerHTML = ""; $("#lg-review").hidden = true;
+    const b = e.currentTarget; if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Tap again to erase"; setTimeout(() => { delete b.dataset.sure; b.textContent = "Erase this case"; }, 3000); return; }
+    delete b.dataset.sure; b.textContent = "Erase this case";
+    try { localStorage.removeItem(HKEY()); } catch (_) {}
+    delete store.cases[store.cur];
+    if (!Object.keys(store.cases).length) { const id = "c" + Date.now().toString(36); store.cases[id] = { data: {}, updated: Date.now() }; }
+    openCase(Object.keys(store.cases)[0]); persist(); say("Case erased from this device");
   });
+  $("#lg-cases").addEventListener("change", (e) => { const id = e.target.value; save(); if (store.cases[id]) openCase(id); });
+  $("#lg-newcase").addEventListener("click", () => { save(); const id = "c" + Date.now().toString(36); store.cases[id] = { data: {}, updated: Date.now() }; openCase(id); persist(); $("#lg-c1").scrollIntoView({ behavior: "smooth", block: "start" }); say("New case started. Your other cases are still saved."); });
+  // a made-up example so people can see how it works
+  $("#lg-example").addEventListener("click", () => {
+    save(); const id = "c" + Date.now().toString(36);
+    store.cases[id] = { updated: Date.now(), data: { system: "State court", state: "West Virginia", county: "Example County", court: "Circuit Court of Example County, West Virginia", caseNo: "EX-26-F-001", type: "Criminal", judge: "", name: "John Q. Sample", role: "Defendant", other: "State of West Virginia", otherCounsel: "Example County Prosecuting Attorney", charges: "Possession with intent to deliver", status: "Pretrial; next hearing not yet set",
+      facts: "On January 5, 2026 around 11 p.m. I was driving home when an officer pulled me over, saying my license plate light was out. He took my license and ran it, and it came back clean. He then told me to get out of the car and asked if he could search it. I said no. He made me wait about 25 minutes for a drug dog. The dog walked around the car, and the officer said it alerted. He searched the trunk and found a backpack that isn't mine. I was arrested.",
+      relief: "Suppress (throw out) everything found in the search and anything I said after the stop, because the stop was dragged out without reasonable suspicion.",
+      issues: "traffic stop extended for drug dog without reasonable suspicion", doc: "Motion to Suppress Evidence", instructions: "", draft: "" } };
+    openCase(id); persist(); $("#lg-c3").scrollIntoView({ behavior: "smooth", block: "start" });
+    say("Example case loaded (made up). Tap Find real case law, then Draft my document.");
+  });
+
+  /* ---------- progress tracker ---------- */
+  function track() {
+    const o = read(), done = [!!(o.state && (o.court || o.caseNo || o.name)), !!(o.facts.trim() && o.relief.trim()), !!(o.doc && (view.querySelector("#lg-res input:checked") || o.draft.trim())), !!o.draft.trim()];
+    const next = done.indexOf(false);
+    view.querySelectorAll("#lg-track a").forEach((a, i) => { a.classList.toggle("done", done[i]); a.classList.toggle("next", i === next); });
+  }
+  $("#lg-track").addEventListener("click", (e) => { const a = e.target.closest("[data-to]"); if (!a) return; e.preventDefault(); document.getElementById(a.dataset.to)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
+  setTimeout(track, 0);
 
   /* ---------- case law research (CourtListener) ---------- */
   let found = [];
@@ -118,9 +175,9 @@
   const chosen = () => [...view.querySelectorAll("#lg-res input:checked")].map((x) => found[+x.dataset.i]).filter(Boolean);
 
   /* ---------- earlier versions (last 8, this device only) ---------- */
-  const HKEY = "mw_legal_versions_v1";
-  const vers = () => { try { return JSON.parse(localStorage.getItem(HKEY) || "[]"); } catch (_) { return []; } };
-  function keepVersion(label) { const t = el("draft").value; if (!t.trim()) return; const v = vers().filter((x) => x.text !== t); v.unshift({ at: Date.now(), label, text: t }); try { localStorage.setItem(HKEY, JSON.stringify(v.slice(0, 8))); } catch (_) {} paintVers(); }
+  const HKEY = () => "mw_legal_versions_v1_" + store.cur;
+  const vers = () => { try { return JSON.parse(localStorage.getItem(HKEY()) || "[]"); } catch (_) { return []; } };
+  function keepVersion(label) { const t = el("draft").value; if (!t.trim()) return; const v = vers().filter((x) => x.text !== t); v.unshift({ at: Date.now(), label, text: t }); try { localStorage.setItem(HKEY(), JSON.stringify(v.slice(0, 8))); } catch (_) {} paintVers(); }
   function paintVers() { $("#lg-hist").innerHTML = '<option value="">Earlier versions</option>' + vers().map((v, i) => `<option value="${i}">${E(new Date(v.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))} · ${E(v.label)}</option>`).join(""); }
   paintVers();
   $("#lg-hist").addEventListener("change", (e) => { const v = vers()[+e.target.value]; e.target.value = ""; if (!v) return; keepVersion("before restoring"); el("draft").value = v.text; save(); verify(); say("Restored that version"); });

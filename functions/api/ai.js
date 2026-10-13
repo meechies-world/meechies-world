@@ -1,5 +1,5 @@
 // Website chat for Meechie's AI. Signed-in members only (keeps strangers from burning the free AI allowance).
-import { answer, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { answer, verifyAnswer, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 
 export async function onRequestPost({ request, env }) {
@@ -11,6 +11,10 @@ export async function onRequestPost({ request, env }) {
 
   let body; try { body = await request.json(); } catch (_) { return json({ error: "bad_request" }, 400); }
   if (!body || typeof body !== "object") return json({ error: "bad_request" }, 400);
+  if (body.verify && typeof body.verify === "object") { // "Double-check" button: a second opinion on one answer
+    const v = await verifyAnswer(env, body.verify.question, body.verify.answer, { origin: new URL(request.url).origin, token });
+    return json(v, v.error ? 503 : 200);
+  }
   const turns = (Array.isArray(body.messages) ? body.messages : [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-20).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
