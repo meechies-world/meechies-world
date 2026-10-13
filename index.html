@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791651597">
+<meta name="mw-build" content="1791935094">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1373,8 +1373,12 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <p class="muted">Representing yourself (pro se)? Build your case, and let Meechie's AI draft your motion, petition or complaint with real case law, then check every citation before you file.</p>
     </div>
     <div class="lg-warn"><b>⚖️ Legal document preparation, not legal advice.</b> Meechie's World isn't a law firm and the AI isn't a lawyer. You review, sign and file your own papers. Always read the cases you cite, check your court's local rules and deadlines, and talk to a lawyer or legal aid if you can. Your case details stay on this device. They're never posted to the site.</div>
+    <nav class="lg-track" id="lg-track" aria-label="Your progress">
+      <a href="#" data-to="lg-c1"><i>1</i>Your case</a><a href="#" data-to="lg-c2"><i>2</i>What happened</a><a href="#" data-to="lg-c3"><i>3</i>Document</a><a href="#" data-to="lg-draft-card"><i>4</i>Check &amp; file</a>
+    </nav>
+    <div class="lg-cases"><label>My cases<select id="lg-cases"></select></label><button class="btn sm ghost" type="button" id="lg-newcase">＋ New case</button><button class="btn sm ghost" type="button" id="lg-example">✨ Try an example</button></div>
     <div class="lg-steps">
-      <div class="lg-card">
+      <div class="lg-card" id="lg-c1">
         <h3><span class="n">1</span>Your case</h3>
         <p>Fill in what you know. Leave anything blank you don't have. It saves on this device as you type.</p>
         <div class="lg-grid">
@@ -1397,7 +1401,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <div class="acts"><button class="btn sm ghost" type="button" id="lg-export">💾 Save case file</button><label class="btn sm ghost" style="cursor:pointer">📂 Open case file<input type="file" id="lg-import" accept="application/json,.json" hidden></label><button class="btn sm ghost" type="button" id="lg-clear">Start a new case</button></div>
       </div>
 
-      <div class="lg-card">
+      <div class="lg-card" id="lg-c2">
         <h3><span class="n">2</span>What happened &amp; what you want</h3>
         <p>Write it in your own words, in order, with dates. The AI only uses facts you give it, and never makes facts up.</p>
         <div class="lg-grid">
@@ -1407,7 +1411,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         </div>
       </div>
 
-      <div class="lg-card">
+      <div class="lg-card" id="lg-c3">
         <h3><span class="n">3</span>Pick your document &amp; find real case law</h3>
         <p>The AI uses the cases you check here. They come from CourtListener, a free database of real court opinions.</p>
         <div class="lg-grid">
@@ -1450,6 +1454,21 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <textarea id="lg-ask" rows="3" placeholder="Type your question"></textarea>
         <div class="acts"><button class="btn sm" type="button" id="lg-ask-go">Ask Meechie's AI</button><span class="lg-msg" id="lg-ask-msg"></span></div>
         <div class="lg-out" id="lg-ask-out" hidden></div>
+      </div>
+
+      <div class="lg-card">
+        <h3>⏰ Common deadlines (federal court)</h3>
+        <p>Missing a deadline can end your case. These are the usual federal limits. State courts set their own, so look up your state's rules or ask the clerk. Count calendar days, and check whether your court counts weekends and holidays.</p>
+        <div class="lg-dl">
+          <div><b>14 days</b><span>Notice of appeal in a criminal case, after the judgment <small>Fed. R. App. P. 4(b)(1)(A)</small></span></div>
+          <div><b>30 days</b><span>Notice of appeal in a civil case, after the judgment (60 days if the U.S. is a party) <small>Fed. R. App. P. 4(a)(1)</small></span></div>
+          <div><b>21 days</b><span>Answer a federal civil complaint after you're served <small>Fed. R. Civ. P. 12(a)(1)(A)(i)</small></span></div>
+          <div><b>28 days</b><span>Motion to alter or amend a civil judgment, or for a new civil trial <small>Fed. R. Civ. P. 59(b), (e)</small></span></div>
+          <div><b>14 days</b><span>Motion for a new trial in a criminal case, unless it's based on newly discovered evidence (3 years) <small>Fed. R. Crim. P. 33(b)</small></span></div>
+          <div><b>1 year</b><span>Federal prisoner's § 2255 motion, usually counted from when the conviction became final <small>28 U.S.C. § 2255(f)</small></span></div>
+          <div><b>1 year</b><span>State prisoner's federal habeas petition, with time paused while a proper state petition is pending <small>28 U.S.C. § 2244(d)</small></span></div>
+          <div><b>14 days</b><span>Objections to a magistrate judge's report and recommendation <small>Fed. R. Civ. P. 72(b)(2); 28 U.S.C. § 636(b)(1)</small></span></div>
+        </div>
       </div>
 
       <div class="lg-card">
@@ -1923,8 +1942,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791651597"></script>
-<script src="js/platform.js?v=1791651597"></script>
+<script src="js/config.js?v=1791935094"></script>
+<script src="js/platform.js?v=1791935094"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -3144,30 +3163,30 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791651597"></script>
-<script src="js/studio.js?v=1791651597"></script>
-<script src="js/owner.js?v=1791651597"></script>
-<script src="js/messages.js?v=1791651597"></script>
-<script src="js/videos.js?v=1791651597"></script>
-<script src="js/markets.js?v=1791651597"></script>
-<script src="js/legal.js?v=1791651597"></script>
-<script src="js/coin.js?v=1791651597"></script>
-<script src="js/preach.js?v=1791651597"></script>
-<script src="js/world3d.js?v=1791651597"></script>
-<script src="js/clips.js?v=1791651597"></script>
-<script src="js/dj.js?v=1791651597"></script>
-<script src="js/live.js?v=1791651597"></script>
-<script src="js/autotune.js?v=1791651597"></script>
-<script src="js/beatmaker.js?v=1791651597"></script>
-<script src="js/beatlab.js?v=1791651597"></script>
-<script src="js/friends.js?v=1791651597"></script>
-<script src="js/dating.js?v=1791651597"></script>
-<script src="js/books.js?v=1791651597"></script>
-<script src="js/social.js?v=1791651597"></script>
-<script src="js/jobs.js?v=1791651597"></script>
-<script src="js/golive.js?v=1791651597"></script>
-<script src="js/predict.js?v=1791651597"></script>
-<script src="js/visitors.js?v=1791651597"></script>
-<script src="js/ai-widget.js?v=1791651597"></script>
+<script src="js/appnav.js?v=1791935094"></script>
+<script src="js/studio.js?v=1791935094"></script>
+<script src="js/owner.js?v=1791935094"></script>
+<script src="js/messages.js?v=1791935094"></script>
+<script src="js/videos.js?v=1791935094"></script>
+<script src="js/markets.js?v=1791935094"></script>
+<script src="js/legal.js?v=1791935094"></script>
+<script src="js/coin.js?v=1791935094"></script>
+<script src="js/preach.js?v=1791935094"></script>
+<script src="js/world3d.js?v=1791935094"></script>
+<script src="js/clips.js?v=1791935094"></script>
+<script src="js/dj.js?v=1791935094"></script>
+<script src="js/live.js?v=1791935094"></script>
+<script src="js/autotune.js?v=1791935094"></script>
+<script src="js/beatmaker.js?v=1791935094"></script>
+<script src="js/beatlab.js?v=1791935094"></script>
+<script src="js/friends.js?v=1791935094"></script>
+<script src="js/dating.js?v=1791935094"></script>
+<script src="js/books.js?v=1791935094"></script>
+<script src="js/social.js?v=1791935094"></script>
+<script src="js/jobs.js?v=1791935094"></script>
+<script src="js/golive.js?v=1791935094"></script>
+<script src="js/predict.js?v=1791935094"></script>
+<script src="js/visitors.js?v=1791935094"></script>
+<script src="js/ai-widget.js?v=1791935094"></script>
 </body>
 </html>
