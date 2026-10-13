@@ -225,11 +225,11 @@
   $("#lg-sug").addEventListener("click", (e) => { const b = e.target.closest("[data-pick]"); if (!b) return; el("doc").value = b.dataset.pick; save(); $("#lg-q").value = ""; say("Picked: " + b.dataset.pick); $("#lg-find").click(); });
 
   // second opinion on every legal statement (uses Claude when the owner has connected it)
-  $("#lg-fact").addEventListener("click", async (e) => {
+  $("#lg-fact").addEventListener("click", async (e) => { const btn = e.currentTarget;
     if (!el("draft").value.trim()) { $("#lg-tools-msg").textContent = "Draft or paste a document first."; return; }
     if (!$("#lg-ver").children.length) await verify();
     const checks = [...view.querySelectorAll("#lg-ver div")].map((d) => d.textContent.replace(/\s+/g, " ").trim()).join("\n");
-    const t = await callAI({ mode: "factcheck", case: caseObj(), draft: el("draft").value, checks, research: chosen() }, e.currentTarget, $("#lg-tools-msg"), "Double-checking every legal statement...");
+    const t = await callAI({ mode: "factcheck", case: caseObj(), draft: el("draft").value, checks, research: chosen() }, btn, $("#lg-tools-msg"), "Double-checking every legal statement...");
     if (t) { const o = $("#lg-fact-out"); o.hidden = false; o.textContent = t; o.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   });
   $("#lg-check").addEventListener("click", async (e) => {
@@ -237,11 +237,11 @@
     const t = await callAI({ mode: "review", case: caseObj(), draft: el("draft").value, research: chosen() }, e.currentTarget, $("#lg-tools-msg"), "Reviewing your document...");
     if (t) { $("#lg-review").hidden = false; $("#lg-review").textContent = t; }
   });
-  $("#lg-ask-go").addEventListener("click", async (e) => {
+  $("#lg-ask-go").addEventListener("click", async (e) => { const btn = e.currentTarget;
     const q = $("#lg-ask").value.trim(); if (!q) { $("#lg-ask-msg").textContent = "Type your question."; return; }
     let research = [];
     try { const st = el("state").value, c = COURTS[st]; const res = await clSearch(q.slice(0, 120), ["scotus", c ? c[0] + " " + c[1] : ""].join(" ").trim()); research = res.filter((x) => x.citation && x.citation.length).slice(0, 6).map((x) => ({ name: clean(x.caseName), cite: pickCite(x.citation), court: x.court_citation_string || "", year: String(x.dateFiled || "").slice(0, 4), snippet: clean(x.syllabus || "").slice(0, 300), url: CL + x.absolute_url })); } catch (_) {}
-    const t = await callAI({ mode: "ask", question: q, case: caseObj(), research }, e.currentTarget, $("#lg-ask-msg"), "Looking into it...");
+    const t = await callAI({ mode: "ask", question: q, case: caseObj(), research }, btn, $("#lg-ask-msg"), "Looking into it...");
     if (t) { const out = $("#lg-ask-out"); out.hidden = false; out.textContent = t + (research.length ? "\n\nCases found:\n" + research.map((r, i) => "[" + (i + 1) + "] " + r.name + ", " + r.cite + " — " + r.url).join("\n") : ""); }
   });
 
@@ -333,7 +333,7 @@
     w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
   });
   /* ---------- hire Meechie: $50 per document ---------- */
-  $("#lg-hire-go").addEventListener("click", async (e) => {
+  $("#lg-hire-go").addEventListener("click", async (e) => { const btn = e.currentTarget;
     const msg = $("#lg-hire-msg"), o = read(), n = +$("#lg-hire-n").value || 1, how = $("#lg-hire-how").value.trim();
     if (!tok()) { if (typeof openAuth === "function") openAuth("signin"); return; }
     if (!how) { msg.textContent = "Add the best way to reach you."; $("#lg-hire-how").focus(); return; }
@@ -345,7 +345,7 @@
       o.charges && "Charges/claims: " + o.charges, o.status && "Status: " + o.status, "Reach me: " + how,
       "", "WHAT HAPPENED:", o.facts.trim().slice(0, 2500), "", "WANTS THE COURT TO: " + o.relief.trim().slice(0, 600),
       o.issues && "ISSUES: " + o.issues.trim().slice(0, 500), $("#lg-hire-note").value.trim() && "NOTE: " + $("#lg-hire-note").value.trim().slice(0, 600)].filter(Boolean).join("\n").slice(0, 4800);
-    e.currentTarget.classList.add("busy"); msg.textContent = "Sending...";
+    btn.classList.add("busy"); msg.textContent = "Sending...";
     try {
       const a = await MW.sb.from("admins").select("user_id").limit(1); const owner = a.data && a.data[0] && a.data[0].user_id;
       if (!owner) throw new Error("Couldn't reach Meechie right now.");
@@ -354,6 +354,6 @@
       const pay = view.querySelector('[data-pay="legal"]'); const canPay = pay && !pay.hidden && /^https:/.test(pay.href);
       msg.textContent = "Sent! Meechie will reach out." + (canPay ? " Tap Pay to pay $" + n * 50 + " (set the quantity to " + n + " at checkout)." : " He'll send you how to pay.");
     } catch (err) { msg.textContent = (err && err.message) || "Couldn't send. Try again."; }
-    finally { e.currentTarget.classList.remove("busy"); }
+    finally { btn.classList.remove("busy"); }
   });
 })();

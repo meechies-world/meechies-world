@@ -44,6 +44,7 @@
     }
     return b;
   }
+  const typing = () => { const f = root.querySelector("#pr-new"); return !!(f && f.contains(document.activeElement)); }; // don't wipe the owner's new question mid-typing
   function render() {
     if (!ME()) { root.innerHTML = `<div class="empty"><h3>Sign in to play Predictions</h3><button class="btn" type="button" data-auth="signup" style="margin-top:12px">Join free</button></div>`; return; }
     const list = qs.filter(official).filter((q) => tab === "open" ? q.resolved == null : q.resolved != null).sort((a, b) => tab === "open" ? (a.closesAt || 9e15) - (b.closesAt || 9e15) : b.createdAt - a.createdAt);
@@ -77,15 +78,15 @@
     if (opts.length < 2) { say("Give at least two answers, separated by commas."); return; }
     const c = root.querySelector("#pr-c").value;
     await DB().collection("predict").add({ authorId: ME(), q: root.querySelector("#pr-q").value.trim().slice(0, 140), options: opts, closesAt: c ? new Date(c).getTime() : null, resolved: null, createdAt: Date.now() }).catch((er) => say(er.message || er.code));
-    say("Question posted");
+    say("Question posted"); document.activeElement?.blur(); render();
   });
   async function init() {
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) { render(); return; }
     // which accounts are the owner's (so only Meechie's questions show)
-    d.doc("site/owners").onSnapshot((s) => { owners = new Set((s.exists && s.data().ids) || []); if (OWNER() && ME() && !owners.has(ME())) d.doc("site/owners").set({ ids: [...owners, ME()] }).catch(() => {}); if (!view.hidden) render(); }, () => {});
-    d.collection("predict").orderBy("createdAt", "desc").limit(100).onSnapshot((s) => { qs = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!view.hidden) render(); }, () => {});
-    d.collection("picks").limit(5000).onSnapshot((s) => { const seen = new Set(); picks = s.docs.map((x) => x.data()).filter((p) => Number.isFinite(p.pts) && p.pts > 0 && p.pts <= 100000).filter((p) => { const k = p.authorId + "|" + p.q; if (seen.has(k)) return false; seen.add(k); return true; }); if (!view.hidden) render(); }, () => {});
+    d.doc("site/owners").onSnapshot((s) => { owners = new Set((s.exists && s.data().ids) || []); if (OWNER() && ME() && !owners.has(ME())) d.doc("site/owners").set({ ids: [...owners, ME()] }).catch(() => {}); if (!view.hidden && !typing()) render(); }, () => {});
+    d.collection("predict").orderBy("createdAt", "desc").limit(100).onSnapshot((s) => { qs = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!view.hidden && !typing()) render(); }, () => {});
+    d.collection("picks").limit(5000).onSnapshot((s) => { const seen = new Set(); picks = s.docs.map((x) => x.data()).filter((p) => Number.isFinite(p.pts) && p.pts > 0 && p.pts <= 100000).filter((p) => { const k = p.authorId + "|" + p.q; if (seen.has(k)) return false; seen.add(k); return true; }); if (!view.hidden && !typing()) render(); }, () => {});
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();

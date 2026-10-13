@@ -105,7 +105,7 @@
     hgrid.querySelectorAll(".htt").forEach((c) => { const r = c.getBoundingClientRect(); const vis = Math.min(r.right, gr.right) - Math.max(r.left, gr.left); if (vis > bv + 4) { bv = vis; best = c; } });
     return best;
   }
-  function stopGrid(hgrid) { let loud = false; hgrid.querySelectorAll(".htt.playing").forEach((x) => { if (x.dataset.snd === "1") loud = true; x.classList.remove("playing"); x.dataset.snd = ""; x.querySelector("iframe")?.remove(); }); if (loud) window.MW_videoSound?.end(); }
+  function stopGrid(hgrid) { let loud = false; hgrid.querySelectorAll(".htt.playing").forEach((x) => { if (x.dataset.snd === "1") loud = true; x.classList.remove("playing"); x.dataset.snd = ""; x.querySelector("iframe")?.remove(); }); if (loud && !$v("#yt-frame iframe")) window.MW_videoSound?.end(); }
   /* Videos play with sound when they scroll into view, once you've tapped anywhere on the site. iPhones start them muted:
      a tap on a video, or on "Tap for sound", plays it with sound, and the next videos you swipe to keep their sound too. */
   let ttSound = false;

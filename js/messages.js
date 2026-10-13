@@ -84,11 +84,15 @@
     }
     list.innerHTML = items;
     if (!other) { thread.innerHTML = `<div class="dm-none"><svg class="sqc-ico" aria-hidden="true" style="width:46px;height:46px"><use href="#sqc"/></svg><b>Private messages</b><span class="muted">Only you and the other person can read these. They are not end-to-end encrypted, so never send passwords or card numbers.</span></div>`; return; }
+    // keep a half-typed message when the thread refreshes (new message, read receipt, 45s refresh)
+    const prevIn = document.getElementById("dm-in"), keep = prevIn && thread.dataset.with === other, draft = keep ? prevIn.value : "", hadFocus = keep && document.activeElement === prevIn;
+    thread.dataset.with = other;
     const msgs = all.filter((r) => (r.sender === uid && r.recipient === other) || (r.sender === other && r.recipient === uid)).slice().reverse();
     thread.innerHTML = `<div class="dm-head"><button type="button" class="act dm-back" data-back>← Back</button><span class="avatar">${E(ini(handle(other)))}</span><b>${E(handle(other))}</b></div>
 <div class="dm-msgs" id="dm-msgs">${msgs.length ? msgs.map((r) => `<div class="dm-b ${r.sender === uid ? "me" : ""}"><div>${voiceUrl(r.body) ? `<span style="font-size:13px">🎙️ Walkie</span><audio src="${E(voiceUrl(r.body))}" controls preload="none" style="display:block;max-width:240px;margin-top:4px"></audio>` : E(r.body)}</div><small>${when(r.created_at)}${r.sender === uid && r.read_at ? " · seen" : ""}</small></div>`).join("") : `<p class="muted" style="text-align:center;margin:auto">Say hello to ${E(handle(other))}.</p>`}</div>
 <form class="dm-form" id="dm-form"><button type="button" class="dm-walkie" id="dm-walkie" aria-label="Hold to talk (walkie-talkie)">📻</button><input type="text" id="dm-in" aria-label="Message" maxlength="2000" placeholder="Message, or hold 📻 to talk" autocomplete="off" required><button class="btn" type="submit">Send</button></form>`;
     const box = document.getElementById("dm-msgs"); if (box) box.scrollTop = box.scrollHeight;
+    const ni = document.getElementById("dm-in"); if (ni && draft) ni.value = draft; if (ni && hadFocus) ni.focus();
     markRead();
   }
 

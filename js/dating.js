@@ -179,8 +179,8 @@
   function wireSwipe() {
     const card = root.querySelector("#dt-top"); if (!card) return;
     let x0 = null, dx = 0;
-    card.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) return; x0 = e.clientX; dx = 0; card.style.transition = "none"; card.setPointerCapture(e.pointerId); });
-    card.addEventListener("pointermove", (e) => { if (x0 == null) return; dx = e.clientX - x0; card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; card.querySelector(".stamp.like").style.opacity = Math.max(0, dx / 120); card.querySelector(".stamp.nope").style.opacity = Math.max(0, -dx / 120); });
+    card.addEventListener("pointerdown", (e) => { if (e.target.closest("button")) return; x0 = e.clientX; dx = 0; card.style.transition = "none"; });
+    card.addEventListener("pointermove", (e) => { if (x0 == null) return; dx = e.clientX - x0; if (Math.abs(dx) > 8 && !card.hasPointerCapture(e.pointerId)) card.setPointerCapture(e.pointerId); /* capture only a real drag, so taps on a photo side still work */ card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; card.querySelector(".stamp.like").style.opacity = Math.max(0, dx / 120); card.querySelector(".stamp.nope").style.opacity = Math.max(0, -dx / 120); });
     const end = () => { if (x0 == null) return; x0 = null; card.style.transition = ""; if (Math.abs(dx) > 110) decide(card.dataset.id, dx > 0); else { card.style.transform = ""; card.querySelectorAll(".stamp").forEach((s) => (s.style.opacity = 0)); } };
     card.addEventListener("pointerup", end); card.addEventListener("pointercancel", end);
   }
