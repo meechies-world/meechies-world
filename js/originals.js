@@ -30,6 +30,9 @@
 .orig-card .snd{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:#fff;border:1px solid var(--gold,#d4a843);border-radius:999px;padding:6px 12px;font:600 12px var(--body);white-space:nowrap;pointer-events:none}
 .orig-card.loud .snd{display:none}
 @media (max-width:640px){.orig-row{grid-auto-columns:62vw}}
+.orig-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:44px;height:44px;border-radius:50%;border:1px solid var(--gold,#d4a843);background:rgba(0,0,0,.72);color:var(--gold-hi,#f0cf78);font:800 26px/1 var(--body,system-ui);display:grid;place-items:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+.orig-nav:hover{background:rgba(212,168,67,.25)}.orig-nav.prev{left:-6px}.orig-nav.next{right:-6px}
+.orig-card .num{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.7);color:#fff;border-radius:999px;padding:3px 9px;font:700 11px var(--body);pointer-events:none}
 #wv-box{position:fixed;inset:0;z-index:100001;background:#000;display:grid;place-items:center}
 #wv-box video{width:100%;height:100%;max-width:min(100vw,calc(100vh*9/16));object-fit:contain;background:#000}
 #wv-box .skip{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 16px);border:1px solid var(--gold-hi,#f0cf78);background:rgba(0,0,0,.6);color:#fff;font:700 14px var(--body,system-ui);padding:9px 16px;border-radius:999px;cursor:pointer}
@@ -90,21 +93,40 @@
 
   /* ---------- the Originals row (Home and Videos) ---------- */
   document.querySelectorAll("[data-originals]").forEach((row) => {
-    row.innerHTML = VIDS.map((v, i) => `<div class="orig-card" data-o="${i}">${vid(v, 'muted loop')}<span class="snd">🔇 Tap for sound</span></div>`).join("");
+    row.innerHTML = VIDS.map((v, i) => `<div class="orig-card" data-o="${i}">${vid(v, 'muted')}<span class="snd">🔇 Tap for sound</span><span class="num">${i + 1} / ${VIDS.length}</span></div>`).join("");
     const cards = [...row.querySelectorAll(".orig-card")];
     let loud = false; // after a tap, the next videos keep their sound
     const stopAll = (except) => cards.forEach((c) => { if (c !== except) { const v = c.querySelector("video"); if (!v.paused) v.pause(); if (c.classList.contains("loud")) { c.classList.remove("loud"); v.muted = true; window.MW_videoSound?.end(); } } });
-    function play(c, withSound) {
+    function play(c, withSound, fromStart) {
       stopAll(c); const v = c.querySelector("video");
+      if (fromStart) { try { v.currentTime = 0; } catch (_) {} }
       const s = withSound || loud || (window.MW_canSound && MW_canSound());
       v.muted = !s; c.classList.toggle("loud", s);
       if (s) window.MW_videoSound?.start();
       v.play().catch(() => { if (!v.muted) { v.muted = true; c.classList.remove("loud"); window.MW_videoSound?.end(); v.play().catch(() => {}); } });
     }
+    let auto = 0; // ignore the scroll handler while we move the row ourselves
+    function goTo(i, withSound) {
+      const c = cards[(i + cards.length) % cards.length];
+      auto = Date.now();
+      row.scrollTo({ left: c.offsetLeft - row.offsetLeft - (row.clientWidth - c.offsetWidth) / 2, behavior: "smooth" });
+      play(c, withSound, true);
+    }
+    const idx = (c) => cards.indexOf(c);
+    const current = () => cards.find((c) => !c.querySelector("video").paused) || centered();
     const centered = () => { const r = row.getBoundingClientRect(); let best = null, bv = 0; cards.forEach((c) => { const b = c.getBoundingClientRect(); const vis = Math.min(b.right, r.right) - Math.max(b.left, r.left); if (vis > bv + 4) { bv = vis; best = c; } }); return best; };
     const shown = () => !row.closest(".view")?.hidden;
-    new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && e.intersectionRatio >= 0.5 && shown()) { const c = centered(); if (c) play(c, false); } else stopAll(null); }), { threshold: [0, 0.5] }).observe(row);
-    let t = 0; row.addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(() => { const c = centered(); if (c && c.querySelector("video").paused && shown()) play(c, false); }, 220); }, { passive: true });
+    // when one video ends, the next one plays (after the last, it goes back to the first)
+    cards.forEach((c, i) => c.querySelector("video").addEventListener("ended", () => { if (shown()) goTo(i + 1, c.classList.contains("loud")); }));
+    // ‹ › buttons
+    const wrap = row.closest(".orig-wrap");
+    if (wrap) {
+      wrap.insertAdjacentHTML("beforeend", '<button type="button" class="orig-nav prev" aria-label="Previous video">‹</button><button type="button" class="orig-nav next" aria-label="Next video">›</button>');
+      wrap.querySelector(".orig-nav.prev").addEventListener("click", (e) => { e.stopPropagation(); const c = current(); goTo((c ? idx(c) : 0) - 1, true); loud = true; });
+      wrap.querySelector(".orig-nav.next").addEventListener("click", (e) => { e.stopPropagation(); const c = current(); goTo((c ? idx(c) : -1) + 1, true); loud = true; });
+    }
+    new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && e.intersectionRatio >= 0.5 && shown()) { const c = centered(); if (c && c.querySelector("video").paused) play(c, false); } else stopAll(null); }), { threshold: [0, 0.5] }).observe(row);
+    let t = 0; row.addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(() => { if (Date.now() - auto < 1200) return; const c = centered(); if (c && c.querySelector("video").paused && shown()) play(c, false); }, 220); }, { passive: true });
     row.addEventListener("click", (e) => { const c = e.target.closest(".orig-card"); if (!c) return; const v = c.querySelector("video");
       if (!c.classList.contains("loud")) { loud = true; play(c, true); } else if (v.paused) v.play().catch(() => {}); else { v.pause(); } });
     // leaving the page stops it
