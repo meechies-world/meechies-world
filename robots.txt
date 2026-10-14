@@ -40,4 +40,4 @@ Disallow: /
 User-agent: *
 Disallow: /api/
 Allow: /
-Sitemap: https://meechies-world.pages.dev/sitemap.xml
+Sitemap: https://meechiesworldinc.com/sitemap.xml
