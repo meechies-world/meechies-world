@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791935688">
+<meta name="mw-build" content="1791936874">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -785,8 +785,8 @@ body[data-view=legal]{--sec-accent:#93b4ff}
 /* Members-only gate */
 html.gated{overflow:hidden}
 html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .apptab,html.gated #player-bar,html.gated #gl-perm,html.gated #ai-widget,html.gated #ai-fab,html.gated .announce,html.gated #radio-note{display:none!important}
-#gate{position:fixed;inset:0;z-index:100000;display:grid;place-items:center;overflow:auto;padding:24px 16px;background:radial-gradient(ellipse 70% 50% at 50% 20%,rgba(212,168,67,.18),transparent 70%),#070605}
-#gate .gt-in{width:min(420px,100%);display:grid;gap:12px;text-align:center}
+#gate{position:fixed;inset:0;z-index:100000;display:grid;place-items:start center;overflow:auto;padding:24px 16px;background:radial-gradient(ellipse 70% 50% at 50% 20%,rgba(212,168,67,.18),transparent 70%),#070605}
+#gate .gt-in{width:min(420px,100%);display:grid;gap:12px;text-align:center;margin:auto 0}
 #gate .gt-crest{width:170px;height:193px;justify-self:center;filter:drop-shadow(0 0 24px rgba(212,168,67,.35))}
 #gate h1{font:900 30px/1.1 var(--display);letter-spacing:.06em;background:linear-gradient(175deg,#fff3c9,#f0cf78 40%,#c9982f);-webkit-background-clip:text;background-clip:text;color:transparent}
 #gate .gt-sub{margin:0;color:var(--muted)}
@@ -1049,7 +1049,11 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div><b>$50</b><span>Services start at</span></div>
     </div>
 
-    <div class="card tt-box" id="home-tt" style="margin-top:56px">
+    <div class="card tt-box" style="margin-top:56px">
+      <div class="tt-head"><div><p class="eyebrow" style="margin:0">Only on Meechie's World</p><h3 style="margin:2px 0 0">Meechie's World Originals</h3></div></div>
+      <div class="orig-wrap"><div class="orig-row" data-originals></div></div>
+    </div>
+    <div class="card tt-box" id="home-tt" style="margin-top:18px">
       <div class="tt-head"><div><p class="eyebrow" style="margin:0">Watch Meechie</p><h3 style="margin:2px 0 0">Latest on TikTok · @meechiesworldinc</h3></div><a class="btn" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener">Follow on TikTok</a></div>
       <div class="htt-wrap"><div class="htt-grid" id="home-tt-grid"><small class="muted">Loading Meechie's TikToks...</small></div></div>
     </div>
@@ -1292,6 +1296,10 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <div class="section-head">
       <div><p class="eyebrow">Watch together</p><h2>Videos</h2></div>
       <p class="muted">Watch music videos, interviews, and more from the community. Share any YouTube or TikTok video by pasting its link.</p>
+    </div>
+    <div class="card tt-box" style="margin-bottom:18px">
+      <div class="tt-head"><div><p class="eyebrow" style="margin:0">Only on Meechie's World</p><h3 style="margin:2px 0 0">Meechie's World Originals</h3></div></div>
+      <div class="orig-wrap"><div class="orig-row" data-originals></div></div>
     </div>
     <div class="card tt-box">
       <div class="tt-head"><div><p class="eyebrow" style="margin:0">Latest from Meechie</p><h3 style="margin:2px 0 0">@meechiesworldinc on TikTok</h3></div><a class="btn" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener">Follow on TikTok</a></div>
@@ -1942,8 +1950,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791935688"></script>
-<script src="js/platform.js?v=1791935688"></script>
+<script src="js/config.js?v=1791936874"></script>
+<script src="js/platform.js?v=1791936874"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -3166,30 +3174,32 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791935688"></script>
-<script src="js/studio.js?v=1791935688"></script>
-<script src="js/owner.js?v=1791935688"></script>
-<script src="js/messages.js?v=1791935688"></script>
-<script src="js/videos.js?v=1791935688"></script>
-<script src="js/markets.js?v=1791935688"></script>
-<script src="js/legal.js?v=1791935688"></script>
-<script src="js/coin.js?v=1791935688"></script>
-<script src="js/preach.js?v=1791935688"></script>
-<script src="js/world3d.js?v=1791935688"></script>
-<script src="js/clips.js?v=1791935688"></script>
-<script src="js/dj.js?v=1791935688"></script>
-<script src="js/live.js?v=1791935688"></script>
-<script src="js/autotune.js?v=1791935688"></script>
-<script src="js/beatmaker.js?v=1791935688"></script>
-<script src="js/beatlab.js?v=1791935688"></script>
-<script src="js/friends.js?v=1791935688"></script>
-<script src="js/dating.js?v=1791935688"></script>
-<script src="js/books.js?v=1791935688"></script>
-<script src="js/social.js?v=1791935688"></script>
-<script src="js/jobs.js?v=1791935688"></script>
-<script src="js/golive.js?v=1791935688"></script>
-<script src="js/predict.js?v=1791935688"></script>
-<script src="js/visitors.js?v=1791935688"></script>
-<script src="js/ai-widget.js?v=1791935688"></script>
+<script src="js/appnav.js?v=1791936874"></script>
+<script src="js/studio.js?v=1791936874"></script>
+<script src="js/owner.js?v=1791936874"></script>
+<script src="js/messages.js?v=1791936874"></script>
+<script src="js/videos.js?v=1791936874"></script>
+<script src="js/markets.js?v=1791936874"></script>
+<script src="js/legal.js?v=1791936874"></script>
+<script src="js/coin.js?v=1791936874"></script>
+<script src="js/preach.js?v=1791936874"></script>
+<script src="js/world3d.js?v=1791936874"></script>
+<script src="js/clips.js?v=1791936874"></script>
+<script src="js/dj.js?v=1791936874"></script>
+<script src="js/live.js?v=1791936874"></script>
+<script src="js/autotune.js?v=1791936874"></script>
+<script src="js/beatmaker.js?v=1791936874"></script>
+<script src="js/beatlab.js?v=1791936874"></script>
+<script src="js/friends.js?v=1791936874"></script>
+<script src="js/dating.js?v=1791936874"></script>
+<script src="js/books.js?v=1791936874"></script>
+<script src="js/social.js?v=1791936874"></script>
+<script src="js/jobs.js?v=1791936874"></script>
+<script src="js/golive.js?v=1791936874"></script>
+<script src="js/predict.js?v=1791936874"></script>
+<script src="js/originals.js?v=1791936874"></script>
+<script src="js/verify.js?v=1791936874"></script>
+<script src="js/visitors.js?v=1791936874"></script>
+<script src="js/ai-widget.js?v=1791936874"></script>
 </body>
 </html>
