@@ -71,7 +71,7 @@ const TRUSTED_CITES = [...TRUSTED.matchAll(/(\d+ U\.S\. \d+)/g)].map((m) => m[1]
 const CITE_RE = /\b(\d{1,4}) (U\.S\.|S\. ?Ct\.|L\. ?Ed\. ?2d|F\.(?: ?2d| ?3d| ?4th)?|F\. ?Supp\.(?: ?2d| ?3d)?|F\. ?App'x|S\.E\.(?:2d)?|N\.E\.(?:2d|3d)?|N\.W\.(?:2d)?|S\.W\.(?:2d|3d)?|So\.(?: ?2d| ?3d)?|A\.(?:2d|3d)?|P\.(?:2d|3d)?|W\. ?Va\.|Md\.|Pa\.|Va\.) (\d{1,5})\b/g;
 const norm = (c) => String(c || "").replace(/\s+/g, " ").replace(/S\. ?Ct\./, "S. Ct.").trim();
 function guard(text, research) {
-  let t = String(text || "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:]|$)/g, "$1$2").replace(/^#{1,6}\s*/gm, "");
+  let t = String(text || "").replace(/[\u2010-\u2015]/g, "-").replace(/[\u00a0\u202f\u2007]/g, " ").replace(/[\u2018\u2019]/g, "'").replace(/\*\*(.+?)\*\*/g, "$1").replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,;:]|$)/g, "$1$2").replace(/^#{1,6}\s*/gm, "");
   const allowed = new Set([...TRUSTED_CITES, ...research.map((r) => norm(r.cite))].map(norm));
   const snippets = research.map((r) => String(r.snippet || "").toLowerCase()).join(" ");
   const flagged = [];
