@@ -15,8 +15,10 @@ async function cacheGet(k) { const r = await caches.default.match(cacheKey(k)); 
 async function cachePut(k, v, ttl) { await caches.default.put(cacheKey(k), new Response(v, { headers: { "cache-control": "max-age=" + ttl } })); }
 
 export async function onRequestPost({ request, env }) {
-  let body = {}; try { body = await request.json(); } catch (_) {}
-  const kind = ["enter", "joined", "gate", "contact"].includes(body.kind) ? body.kind : "enter";
+  let body = {}; try { body = (await request.json()) || {}; } catch (_) {}
+  const auth0 = (request.headers.get("authorization") || "").trim();
+  // people who aren't signed in can only ever trigger the "someone is on the sign-up screen" alert (no fake "new member" pushes)
+  const kind = !auth0 ? "gate" : ["enter", "joined", "gate", "contact"].includes(body.kind) ? body.kind : "enter";
   const ip = request.headers.get("cf-connecting-ip") || "x";
   const ua = request.headers.get("user-agent") || "";
   const device = /iPhone|iPad/i.test(ua) ? "iPhone" : /Android/i.test(ua) ? "Android phone" : /Mobile/i.test(ua) ? "phone" : "computer";

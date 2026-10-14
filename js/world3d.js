@@ -1143,7 +1143,7 @@
       bindInput(); resize();
       if (window.ResizeObserver) { S.ro = new ResizeObserver(function () { resize(); }); S.ro.observe(containerEl); }
       else window.addEventListener("resize", resize);
-      if (window.IntersectionObserver) { S.io = new IntersectionObserver(function (en) { if (S) S.visible = en[0].isIntersecting || isFs(); }); S.io.observe(containerEl); }
+      if (window.IntersectionObserver) { S.io = new IntersectionObserver(function (en) { if (!S) return; if (!en[0].isIntersecting && S.cssFs && !S.container.getClientRects().length) setCssFs(false); S.visible = en[0].isIntersecting || isFs(); }); S.io.observe(containerEl); }
       applyRoom(pending.room || "lounge");
       if (pending.list) applyList(pending.list); else S.ui.count.textContent = "👥 0";
       syncFsUi();

@@ -154,6 +154,7 @@ export async function onRequestPost({ request, env }) {
   const who = await fetch(SUPABASE_URL + "/auth/v1/user", { headers: { apikey: SUPABASE_ANON, authorization: "Bearer " + token } });
   if (!who.ok) return json({ error: "sign_in" }, 401);
   let b; try { b = await request.json(); } catch (_) { return json({ error: "bad_request" }, 400); }
+  if (!b || typeof b !== "object") return json({ error: "bad_request" }, 400);
   const mode = ["draft", "revise", "review", "ask", "suggest", "factcheck"].includes(b.mode) ? b.mode : "draft";
   const research = (Array.isArray(b.research) ? b.research : []).slice(0, 10).map((r, i) =>
     `[${i + 1}] ${cut(r.name, 160)}, ${cut(r.cite, 80)} (${cut(r.court, 80)} ${cut(r.year, 8)})${r.snippet ? "\n    Passage from the opinion: " + cut(r.snippet, 700) : ""}`).join("\n");

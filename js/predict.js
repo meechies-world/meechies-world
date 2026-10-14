@@ -67,18 +67,17 @@
       if (bal <= 0) { say("You're out of points. They come back when your other picks win."); return; }
       const amt = Math.floor(+prompt(`How many points on "${q.options[+b.dataset.opt]}"? You have ${bal}.`, String(Math.min(100, bal))));
       if (!(amt > 0) || amt > bal) { if (amt > bal) say("You only have " + bal + " points."); return; }
-      await DB().collection("picks").add({ authorId: ME(), q: q.id, opt: +b.dataset.opt, pts: amt, createdAt: Date.now() }).catch((er) => say(er.message || er.code));
-      say("Pick locked in!"); return;
+      await DB().collection("picks").add({ authorId: ME(), q: q.id, opt: +b.dataset.opt, pts: amt, createdAt: Date.now() }).then(() => say("Pick locked in!"), (er) => say(er.message || er.code));
+      return;
     }
-    if (b.dataset.res) { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Tap again to confirm"; return; } await DB().doc("predict/" + b.dataset.res).update({ resolved: +b.dataset.opt }).catch((er) => say(er.message || er.code)); say("Result posted. Points paid out."); }
+    if (b.dataset.res) { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Tap again to confirm"; return; } await DB().doc("predict/" + b.dataset.res).update({ resolved: +b.dataset.opt }).then(() => say("Result posted. Points paid out."), (er) => say(er.message || er.code)); }
   });
   root.addEventListener("submit", async (e) => {
     if (e.target.id !== "pr-new") return; e.preventDefault();
     const opts = root.querySelector("#pr-o").value.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 8);
     if (opts.length < 2) { say("Give at least two answers, separated by commas."); return; }
     const c = root.querySelector("#pr-c").value;
-    await DB().collection("predict").add({ authorId: ME(), q: root.querySelector("#pr-q").value.trim().slice(0, 140), options: opts, closesAt: c ? new Date(c).getTime() : null, resolved: null, createdAt: Date.now() }).catch((er) => say(er.message || er.code));
-    say("Question posted"); document.activeElement?.blur(); render();
+    await DB().collection("predict").add({ authorId: ME(), q: root.querySelector("#pr-q").value.trim().slice(0, 140), options: opts, closesAt: c ? new Date(c).getTime() : null, resolved: null, createdAt: Date.now() }).then(() => { say("Question posted"); document.activeElement?.blur(); render(); }, (er) => say(er.message || er.code));
   });
   async function init() {
     if (!window.claude) return;

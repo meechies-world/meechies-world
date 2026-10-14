@@ -40,6 +40,7 @@ export async function onRequestPost({ request, env }) {
   if (!Array.isArray(adm) || !adm.length) return json({ error: "owner_only" }, 403);
 
   let b; try { b = await request.json(); } catch (_) { return json({ error: "Bad request" }, 400); }
+  if (!b || typeof b !== "object") return json({ error: "Bad request" }, 400);
   const req = String(b.request || "").slice(0, 800);
   if (!req) return json({ error: "Tell me what to change." }, 400);
   const texts = (Array.isArray(b.texts) ? b.texts : []).slice(0, 220).map((t) => `${t.id}: ${String(t.text).slice(0, 160)}`).join("\n");

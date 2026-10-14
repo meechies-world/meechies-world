@@ -97,8 +97,8 @@ body.has-player #v-clips .rail{bottom:70px}`;
     if (b) return;
     const clip = e.target.closest(".clip"); if (!clip) return;
     const v = clip.querySelector("video"); if (!v.src) return activate(clip);
-    if (v.paused) { v.play().catch(() => {}); clip.querySelector(".paused-ic")?.remove(); }
-    else { v.pause(); const i = document.createElement("span"); i.className = "paused-ic"; i.textContent = "▶"; clip.appendChild(i); }
+    if (v.paused) { if (!v.muted) window.MW_videoSound?.start(); v.play().catch(() => {}); clip.querySelector(".paused-ic")?.remove(); }
+    else { v.pause(); if (!v.muted) window.MW_videoSound?.end(); const i = document.createElement("span"); i.className = "paused-ic"; i.textContent = "▶"; clip.appendChild(i); }
   });
 
   // posting a clip
@@ -158,7 +158,8 @@ body.has-player #v-clips .rail{bottom:70px}`;
 
   // pause everything when leaving the page
   new MutationObserver(() => { if (view.hidden) els.forEach((x) => x.querySelector("video").pause()); else { render(); const first = [...els.values()].find((x) => { const r = x.getBoundingClientRect(), br = box.getBoundingClientRect(); return r.top >= br.top - 5 && r.top < br.bottom - 50; }); first && activate(first); } }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) els.forEach((x) => x.querySelector("video").pause()); });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) els.forEach((x) => x.querySelector("video").pause());
+    else if (!view.hidden) { const br = box.getBoundingClientRect(), c = [...els.values()].find((x) => { const r = x.getBoundingClientRect(); return r.top >= br.top - 5 && r.top < br.bottom - 50; }); if (c && !c.querySelector(".paused-ic")) activate(c); } }); // coming back (unless you had paused it): start the clip on screen again
   document.addEventListener("mw-posts", render);
   setupIO(); render();
 })();

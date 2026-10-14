@@ -264,7 +264,7 @@
   /* ---------- watching ---------- */
   async function watch(id) {
     if (watching[id]) return;
-    if (typeof media !== "undefined") { try { media.pause(); } catch (_) {} }
+    if (window.MW_videoSound) MW_videoSound.start(); else if (typeof media !== "undefined") { try { media.pause(); } catch (_) {} }
     const room = await joinRoom(id); const pc = new RTCPeerConnection(ICE);
     const w = watching[id] = { room, pc, stream: null };
     pc.addTransceiver("video", { direction: "recvonly" }); pc.addTransceiver("audio", { direction: "recvonly" });
@@ -284,7 +284,7 @@
     setTimeout(ask, 600);
     shellKey = ""; render();
   }
-  function stopWatch(id) { const w = watching[id]; if (!w) return; try { w.room.emit("bye", { from: myPeer }); w.pc.close(); w.room.leave(); } catch (_) {} delete watching[id]; shellKey = ""; render(); }
+  function stopWatch(id) { const w = watching[id]; if (!w) return; try { w.room.emit("bye", { from: myPeer }); w.pc.close(); w.room.leave(); } catch (_) {} delete watching[id]; if (!Object.keys(watching).length) window.MW_videoSound?.end(); shellKey = ""; render(); }
 
   /* ---------- battles ---------- */
   function paintBattle() {
@@ -346,7 +346,7 @@
     try { navigator.permissions && navigator.permissions.query({ name: "camera" }).then((p) => { const chk = () => { if (p.state === "denied" && !hosting) status("Your camera is blocked for this site. Tap the 🔒 or aA next to the web address → Website settings → allow Camera and Microphone, then reload."); else if (statusMsg.startsWith("Your camera is blocked")) status(""); }; chk(); p.onchange = chk; }).catch(() => {}); } catch (_) {}
     new MutationObserver(() => { if (!view.hidden) setTimeout(autoAsk, 400); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     if (!view.hidden) setTimeout(autoAsk, 800);
-    new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
+    new MutationObserver(() => { if (!view.hidden) { shellKey = ""; render(); } }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     render();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();

@@ -134,7 +134,7 @@
   view.addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     const find = (id) => vids.find((x) => x.id === id);
-    if (b.dataset.play) { play(find(b.dataset.play), !!b.closest(".yt-card")); return; }
+    if (b.dataset.play) { const v = find(b.dataset.play); if (v) play(v, !!b.closest(".yt-card")); return; }
     if (b.dataset.like) {
       if (typeof needMember === "function" && !needMember()) return;
       const v = find(b.dataset.like), s = new Set(v.likes || []); s.has(me) ? s.delete(me) : s.add(me);

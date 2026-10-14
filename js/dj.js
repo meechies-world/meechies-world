@@ -161,10 +161,10 @@
   function stopListening() { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
-  window.MW_DJ = { start: () => { if (isLive()) startListening(); }, stop: stopListening };
+  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening };
   // anything else starting on the main player ends DJ listening
   if (typeof media !== "undefined") media.addEventListener("play", () => { if (listening) { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; } });
-  $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : startListening()));
+  $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : isLive() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
 
   let ownerLoaded = false;
   function onState(d) {
@@ -244,23 +244,25 @@
   });
 
   /* Talk over the music: hold the button, talk, let go. Your voice goes out to everyone listening. */
-  let rec = null, chunks = [], micStream = null, talkStart = 0;
+  let rec = null, chunks = [], micStream = null, talkStart = 0, held = false;
   const talkBtn = $("#dj-talk"), talkSt = $("#dj-talk-st");
   async function talkDown(e) {
-    e.preventDefault(); if (!OWNER() || rec) return;
+    e.preventDefault(); if (!OWNER() || rec) return; held = true;
     try {
       micStream = micStream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      if (!held || rec) { if (!rec) { micStream.getTracks().forEach((t) => t.stop()); micStream = null; } return; } // let go while the mic permission box was up
       const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
       rec = new MediaRecorder(micStream, type ? { mimeType: type } : undefined); chunks = [];
       rec.ondataavailable = (ev) => ev.data.size && chunks.push(ev.data);
       rec.start(); talkStart = Date.now(); talkBtn.classList.add("on"); talkSt.textContent = "Talking... let go to send";
       S.duck = true; levels(); save(true);
-    } catch (err) { say("Allow the microphone to talk over the music."); rec = null; }
+    } catch (err) { held = false; say("Allow the microphone to talk over the music."); rec = null; }
   }
   async function talkUp() {
-    if (!rec) return; const r = rec; rec = null; talkBtn.classList.remove("on");
+    held = false; if (!rec) return; const r = rec; rec = null; talkBtn.classList.remove("on");
     const long = Date.now() - talkStart;
     await new Promise((res) => { r.onstop = res; r.stop(); });
+    try { micStream.getTracks().forEach((t) => t.stop()); } catch (_) {} micStream = null; // turn the mic off between talks
     S.duck = false; levels();
     if (long < 600) { talkSt.textContent = "Hold the button while you talk"; save(true); return; }
     talkSt.textContent = "Sending your voice...";

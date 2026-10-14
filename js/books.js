@@ -106,7 +106,8 @@
         <div class="bk-foot"><span>Page ${page + 1}</span><hr></div></div>
       <div class="bk-wm" aria-hidden="true">${Array(30).fill(`<span>${E(stamp)}</span>`).join("")}</div>
       <div class="bk-nav"><button class="btn sm" type="button" data-pg="-1">‹ Back</button><input type="range" min="1" max="${open.pages}" value="${page + 1}" id="bk-range" aria-label="Page"><span id="bk-num">${page + 1} / ${open.pages}</span><button class="btn sm" type="button" data-pg="1">Next ›</button></div></div>`;
-    const html = await getPage(page);
+    const want = page, book = open; const html = await getPage(want);
+    if (want !== page || book !== open) return; // you turned the page again while this one loaded
     const pg = root.querySelector("#bk-page"); if (!pg) return;
     pg.innerHTML = html; // pages are written by the owner's upload and cleaned below before saving
     try { localStorage.setItem("mw_bk_" + open.id, page); } catch (_) {}

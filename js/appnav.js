@@ -23,7 +23,7 @@
   body.has-player{padding-bottom:calc(var(--tabbar) + 150px)!important}
   header.bar nav.tabs{order:9;width:100%;margin:0!important;padding-bottom:2px}
   header.bar .brand small{display:none}
-  .player-bar{bottom:var(--tabbar)!important}
+  .player-bar{bottom:var(--tabbar)!important;padding-bottom:0!important}
   #ai-fab,#ai-panel,#mw-fab{bottom:calc(var(--tabbar) + 12px)!important}
   body.has-player #ai-fab,body.has-player #ai-panel,body.has-player #mw-fab{bottom:calc(var(--tabbar) + 84px)!important}
   #ai-panel{height:min(560px,calc(100dvh - var(--tabbar) - 120px))!important}

@@ -93,7 +93,8 @@
     sel.innerHTML = ids.map((id) => `<option value="${E(id)}"${id === store.cur ? " selected" : ""}>${E(titleOf(store.cases[id].data))}</option>`).join("");
   }
   function blank() { FIELDS.forEach((k) => { const x = el(k); if (!x) return; if (x.tagName === "SELECT") x.selectedIndex = 0; else x.value = ""; }); }
-  function openCase(id) { store.cur = id; persist(); blank(); write(store.cases[id].data || {}); paintCases(); paintVers(); track(); $("#lg-res").innerHTML = ""; $("#lg-ver").innerHTML = ""; $("#lg-review").hidden = true; }
+  let vgen = 0; // a newer citation check (or switching cases) stops an older one from adding rows
+  function openCase(id) { vgen++; store.cur = id; persist(); blank(); write(store.cases[id].data || {}); paintCases(); paintVers(); track(); $("#lg-res").innerHTML = ""; $("#lg-ver").innerHTML = ""; $("#lg-review").hidden = true; }
   write(store.cases[store.cur].data || {}); paintCases();
   let st = 0; view.addEventListener("input", () => { clearTimeout(st); st = setTimeout(save, 400); });
   const caseObj = () => { const o = read(); return { system: o.system, state: o.state, county: o.county, court: o.court, caseNo: o.caseNo, type: o.type, judge: o.judge, name: o.name, role: o.role, other: o.other, otherCounsel: o.otherCounsel, charges: o.charges, status: o.status, address: o.address, contact: o.contact }; };
@@ -104,7 +105,7 @@
   });
   $("#lg-import").addEventListener("change", async (e) => {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
-    try { const o = JSON.parse(await f.text()); write(o); save(); say("Case file opened"); } catch (_) { say("That file isn't a saved case file."); }
+    try { const o = JSON.parse(await f.text()); if (!o || typeof o !== "object") throw 0; save(); const id = "c" + Date.now().toString(36); store.cases[id] = { data: o, updated: Date.now() }; openCase(id); persist(); say("Case file opened as a new case"); } catch (_) { say("That file isn't a saved case file."); }
   });
   // "Start a new case" now erases just this case (the others stay saved)
   $("#lg-clear").textContent = "Erase this case";
@@ -177,6 +178,14 @@
   /* ---------- earlier versions (last 8, this device only) ---------- */
   const HKEY = () => "mw_legal_versions_v1_" + store.cur;
   const vers = () => { try { return JSON.parse(localStorage.getItem(HKEY()) || "[]"); } catch (_) { return []; } };
+  // an AI draft that finished after you switched cases goes back to the case it was for (old draft kept in its history)
+  function saveToCase(cid, t, label) {
+    const c = store.cases[cid]; if (!c) { say("That case was erased, so the new draft wasn't saved."); return; }
+    const old = (c.data && c.data.draft) || "";
+    if (old.trim()) { try { const k = "mw_legal_versions_v1_" + cid, v = JSON.parse(localStorage.getItem(k) || "[]").filter((x) => x.text !== old); v.unshift({ at: Date.now(), label, text: old }); localStorage.setItem(k, JSON.stringify(v.slice(0, 8))); } catch (_) {} }
+    store.cases[cid] = { data: { ...(c.data || {}), draft: t }, updated: Date.now() }; persist(); paintCases();
+    say("Your new draft was saved in the case you started it from.");
+  }
   function keepVersion(label) { const t = el("draft").value; if (!t.trim()) return; const v = vers().filter((x) => x.text !== t); v.unshift({ at: Date.now(), label, text: t }); try { localStorage.setItem(HKEY(), JSON.stringify(v.slice(0, 8))); } catch (_) {} paintVers(); }
   function paintVers() { $("#lg-hist").innerHTML = '<option value="">Earlier versions</option>' + vers().map((v, i) => `<option value="${i}">${E(new Date(v.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))} · ${E(v.label)}</option>`).join(""); }
   paintVers();
@@ -199,13 +208,17 @@
     const o = read();
     if (!o.facts.trim()) { $("#lg-go-msg").textContent = "Fill in step 2 (what happened) first."; el("facts").focus(); return; }
     if (!o.relief.trim()) { $("#lg-go-msg").textContent = "Say what you want the court to do (step 2)."; el("relief").focus(); return; }
+    const cid = store.cur;
     const t = await callAI({ mode: "draft", docType: o.doc, case: caseObj(), facts: o.facts, relief: o.relief, issues: o.issues, instructions: o.instructions, research: chosen() }, e.currentTarget, $("#lg-go-msg"), "Meechie's AI is writing your " + o.doc + "... this can take a minute");
+    if (t && store.cur !== cid) { saveToCase(cid, t, "before new draft"); return; }
     if (t) { keepVersion("before new draft"); el("draft").value = t; keepVersion("AI draft: " + o.doc); save(); $("#lg-ver").innerHTML = ""; $("#lg-fact-out").hidden = true; $("#lg-draft-card").scrollIntoView({ behavior: "smooth", block: "start" }); verify(); }
   });
   $("#lg-revise").addEventListener("click", async (e) => {
     const ins = $("#lg-rev-ins").value.trim(); if (!ins) { $("#lg-tools-msg").textContent = "Type what to change, then tap Revise."; $("#lg-rev-ins").focus(); return; }
     if (!el("draft").value.trim()) { $("#lg-tools-msg").textContent = "Draft a document first."; return; }
+    const cid = store.cur;
     const t = await callAI({ mode: "revise", case: caseObj(), draft: el("draft").value, instructions: ins, research: chosen() }, e.currentTarget, $("#lg-tools-msg"), "Revising...");
+    if (t && store.cur !== cid) { saveToCase(cid, t, "before revise"); return; }
     if (t) { keepVersion("before revise"); el("draft").value = t; keepVersion("revised: " + ins.slice(0, 30)); $("#lg-rev-ins").value = ""; save(); verify(); }
   });
   $("#lg-suggest").addEventListener("click", async (e) => {
@@ -249,6 +262,7 @@
   const CITE_RE = /\b(\d{1,4})\s+(U\.\s?S\.|S\.\s?Ct\.|L\.\s?Ed\.(?:\s?2d)?|F\.(?:\s?(?:2d|3d|4th))?|F\.\s?Supp\.(?:\s?(?:2d|3d))?|F\.\s?App'?x|S\.E\.(?:2d)?|N\.E\.(?:2d|3d)?|N\.W\.(?:2d)?|S\.W\.(?:2d|3d)?|So\.(?:\s?(?:2d|3d))?|A\.(?:2d|3d)?|P\.(?:2d|3d)?|Cal\.\s?Rptr\.(?:\s?(?:2d|3d))?|N\.Y\.S\.(?:2d|3d)?|W\.\s?Va\.|Md\.|Pa\.|Va\.)\s+(\d{1,5})\b/g;
   const STAT_RE = /\b(\d{1,2})\s+U\.S\.C\.?\s*§+\s*([\d\w.-]+)/g;
   async function verify() {
+    const g = ++vgen;
     const text = el("draft").value, box = $("#lg-ver"); box.innerHTML = "";
     const cites = [...new Set([...text.matchAll(CITE_RE)].map((m) => (m[1] + " " + m[2].replace(/\s+/g, " ") + " " + m[3]).replace(/\s+/g, " ")))].slice(0, 25);
     const stats = [...new Set([...text.matchAll(STAT_RE)].map((m) => m[1] + "|" + m[2].replace(/[.,;:]$/, "")))].slice(0, 15);
@@ -257,7 +271,8 @@
     for (const c of cites) {
       const row = document.createElement("div"); row.className = "info"; row.innerHTML = `<span>⏳</span><span><b>${E(c)}</b> — checking the court database...</span>`; box.appendChild(row);
       try {
-        const j = await fetch(CL + "/api/rest/v4/search/?type=o&q=" + encodeURIComponent('citation:("' + c + '")')).then((r) => r.json());
+        const j = await fetch(CL + "/api/rest/v4/search/?type=o&q=" + encodeURIComponent('citation:("' + c + '")')).then((r) => { if (!r.ok) throw new Error("http " + r.status); return r.json(); });
+        if (g !== vgen) return;
         const hit = j.results && j.results[0];
         if (hit) {
           // what case name did the document put next to this citation?
@@ -267,8 +282,8 @@
           row.className = nameOk ? "ok" : "bad";
           row.innerHTML = `<span>${nameOk ? "✅" : "⚠️"}</span><span><b>${E(c)}</b> is real: <a href="${E(CL + hit.absolute_url)}" target="_blank" rel="noopener">${E(realName)}</a> (${E(hit.court_citation_string || hit.court || "")} ${E(String(hit.dateFiled || "").slice(0, 4))}).${nameOk ? " Read it to make sure it says what your document says." : " But the case name in your document doesn't match. Fix the name or the citation."}</span>`;
         } else { row.className = "bad"; row.innerHTML = `<span>❌</span><span><b>${E(c)}</b> NOT FOUND in the court database. It may be wrong or made up. Look it up before filing, or remove it.</span>`; }
-      } catch (_) { row.innerHTML = `<span>❔</span><span><b>${E(c)}</b> couldn't be checked right now. Try Verify again.</span>`; }
-      await new Promise((r) => setTimeout(r, 250));
+      } catch (_) { if (g !== vgen) return; row.innerHTML = `<span>❔</span><span><b>${E(c)}</b> couldn't be checked right now. Try Verify again.</span>`; }
+      await new Promise((r) => setTimeout(r, 250)); if (g !== vgen) return;
     }
     // every quote next to a citation: is that exact wording really in that case?
     const quotes = [];
@@ -283,11 +298,12 @@
     for (const q of quotes.filter((q) => !seenQ.has(q.probe) && seenQ.add(q.probe)).slice(0, 15)) {
       const row = document.createElement("div"); row.className = "info"; row.innerHTML = `<span>⏳</span><span>Checking the quote “${E(q.quote.slice(0, 80))}…”</span>`; box.appendChild(row);
       try {
-        const j = await fetch(CL + "/api/rest/v4/search/?type=o&q=" + encodeURIComponent('"' + q.probe + '" AND citation:("' + q.cite + '")')).then((r) => r.json());
+        const j = await fetch(CL + "/api/rest/v4/search/?type=o&q=" + encodeURIComponent('"' + q.probe + '" AND citation:("' + q.cite + '")')).then((r) => { if (!r.ok) throw new Error("http " + r.status); return r.json(); });
+        if (g !== vgen) return;
         if (j.count > 0) { row.className = "ok"; row.innerHTML = `<span>✅</span><span>Quote found word for word in ${E(q.cite)}: “${E(q.quote.slice(0, 120))}${q.quote.length > 120 ? "…" : ""}”</span>`; }
         else { row.className = "bad"; row.innerHTML = `<span>❌</span><span><b>Quote NOT IN THE CASE</b> ${E(q.cite)}: “${E(q.quote.slice(0, 120))}${q.quote.length > 120 ? "…" : ""}”. Those words aren't in that opinion. Remove the quote marks and describe the case in your own words, or find the real wording.</span>`; }
-      } catch (_) { row.innerHTML = `<span>❔</span><span>Couldn't check the quote “${E(q.quote.slice(0, 60))}…” right now.</span>`; }
-      await new Promise((r) => setTimeout(r, 300));
+      } catch (_) { if (g !== vgen) return; row.innerHTML = `<span>❔</span><span>Couldn't check the quote “${E(q.quote.slice(0, 60))}…” right now.</span>`; }
+      await new Promise((r) => setTimeout(r, 300)); if (g !== vgen) return;
     }
     const vh = (text.match(/\[VERIFY HOLDING\]/gi) || []).length;
     if (vh) { const row = document.createElement("div"); row.className = "bad"; row.innerHTML = `<span>📖</span><span>${vh} case${vh > 1 ? "s are" : " is"} marked [VERIFY HOLDING]. Open each case and make sure it really says what your document says, then delete the mark.</span>`; box.appendChild(row); }

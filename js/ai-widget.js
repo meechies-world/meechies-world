@@ -118,8 +118,8 @@ body.mw-editing #ai-fab{display:none!important}`;
     } catch (_) { pending = ""; }
   });
   fab.addEventListener("click", () => { panel.hidden = false; fab.hidden = true; draw(false); setTimeout(() => inp.focus(), 50); });
-  panel.querySelector("#ai-close").addEventListener("click", () => { panel.hidden = true; fab.hidden = false; });
-  chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; fab.hidden = false; return; } ask(b.textContent); });
+  panel.querySelector("#ai-close").addEventListener("click", () => { panel.hidden = true; sync(); });
+  chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; sync(); return; } ask(b.textContent); });
   panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} window.speechSynthesis?.cancel(); draw(false); inp.focus(); });
   log.addEventListener("click", async (e) => {
     const k = e.target.closest("[data-check-i]"); if (k) {

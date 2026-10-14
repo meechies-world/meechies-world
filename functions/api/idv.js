@@ -33,8 +33,13 @@ export async function onRequestGet({ request, env }) {
   const vs = await stripe(env, "identity/verification_sessions/" + id);
   if (!vs || !vs.id || !vs.metadata || vs.metadata.uid !== m.id) return json({ error: "not_found" }, 404);
   if (vs.status === "verified") { // record it on the member's profile (no ID details are stored)
-    await fetch(SUPABASE_URL + "/rest/v1/rpc/merge_doc", { method: "POST", headers: { apikey: SUPABASE_ANON, authorization: "Bearer " + m.token, "content-type": "application/json" },
-      body: JSON.stringify({ p_path: "members/" + m.id, p_patch: { idVerified: true, idVerifiedAt: Date.now() } }) }).catch(() => {});
+    // Only the server may set the badge (supabase/lockdown.sql), so this needs the SUPABASE_SERVICE_ROLE_KEY secret in Cloudflare.
+    // (Until that secret is added, it falls back to the member's own sign-in, which works only before lockdown.sql is run.)
+    const key = env.SUPABASE_SERVICE_ROLE_KEY;
+    const H = key ? { apikey: key, authorization: "Bearer " + key } : { apikey: SUPABASE_ANON, authorization: "Bearer " + m.token };
+    const w = await fetch(SUPABASE_URL + "/rest/v1/rpc/merge_doc", { method: "POST", headers: { ...H, "content-type": "application/json" },
+      body: JSON.stringify({ p_path: "members/" + m.id, p_patch: { idVerified: true, idVerifiedAt: Date.now() } }) }).catch(() => null);
+    return json({ status: vs.status, saved: !!(w && w.ok) });
   }
   return json({ status: vs.status });
 }

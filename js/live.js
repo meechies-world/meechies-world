@@ -179,7 +179,7 @@
     function playVid(lv, btn) {
       {
         box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === btn));
-        try { if (typeof media !== "undefined" && !media.paused) media.pause(); if (window.MW_LIVE && !MW_LIVE.paused) MW_LIVE.pause(); } catch (_) {}
+        try { if (window.MW_videoSound) MW_videoSound.start(); else if (typeof media !== "undefined" && !media.paused) media.pause(); if (window.MW_LIVE && !MW_LIVE.paused) MW_LIVE.pause(); } catch (_) {}
         const f = vidView.querySelector("#yt-frame"); f.classList.remove("tall");
         f.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(lv.dataset.vid)}?autoplay=1&rel=0" title="${E(lv.dataset.name)} live" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
         vidView.querySelector("#yt-now").innerHTML = `<b>${lv.dataset.movie ? "🎬" : "●"} ${E(lv.dataset.name)}</b><small>${lv.dataset.movie ? "Free movie" : "Live TV"}</small>`;
@@ -189,7 +189,7 @@
     function chanClick(e) {
       const b = e.target.closest("[data-ch]"); if (!b) return;
       box.querySelectorAll(".tv-ch").forEach((x) => x.classList.toggle("on", x === b));
-      try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
+      try { if (window.MW_videoSound) MW_videoSound.start(); else if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
       const f = vidView.querySelector("#yt-frame"); f.classList.remove("tall");
       f.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/live_stream?channel=${encodeURIComponent(b.dataset.ch)}&autoplay=1&rel=0" title="${E(b.dataset.name)} live" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
       vidView.querySelector("#yt-now").innerHTML = `<b>● ${E(b.dataset.name)}</b><small>Live TV</small>`;

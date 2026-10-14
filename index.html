@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791975285">
+<meta name="mw-build" content="1791978108">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -137,7 +137,7 @@ textarea{resize:vertical;min-height:90px}
 .act{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px}
 .act:hover{background:var(--panel-2);color:var(--text)}
 .act.on{color:var(--gold-hi)}
-.replies{display:grid;gap:8px}
+.replies{display:grid;gap:8px}.r-list{display:grid;gap:8px}.r-list:empty{display:none}
 .reply{background:var(--panel-2);border-radius:10px;padding:8px 12px;font-size:14px;overflow-wrap:anywhere}
 .reply b{color:var(--gold-hi);margin-right:6px}
 .reply-form{display:flex;gap:8px}
@@ -1950,8 +1950,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791975285"></script>
-<script src="js/platform.js?v=1791975285"></script>
+<script src="js/config.js?v=1791978108"></script>
+<script src="js/platform.js?v=1791978108"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2368,7 +2368,7 @@ function switchRoom(lobby,name){
 }
 // standalone room switching before sign-in
 $("#rooms").addEventListener("click",e=>{ if(wroom) return; const b=e.target.closest("[data-room]"); if(!b) return; $$("#rooms .chip").forEach(x=>x.setAttribute("aria-pressed",x===b)); roomName=b.dataset.room; paintRoom(); drawPeople(); });
-$("#scene").addEventListener("click",e=>{ if(w3d) return; const r=e.currentTarget.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
+$("#scene").addEventListener("click",e=>{ if(w3d && w3d!=="off") return; const r=e.currentTarget.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width, y=(e.clientY-r.top)/r.height;
   const rp=document.createElement("div"); rp.className="ripple"; rp.style.left=(x*100)+"%"; rp.style.top=(clampY(y)*100)+"%"; e.currentTarget.appendChild(rp); setTimeout(()=>rp.remove(),750);
   setMine({x:clampX(x),y:clampY(y),pose:mine.pose==="sit"?"stand":mine.pose}); });
 $("#emotes").addEventListener("click",e=>{ const b=e.target.closest("[data-pose]"); if(!b) return; setMine({pose:b.dataset.pose,poseAt:Date.now()}); if(b.dataset.pose==="wave") setTimeout(drawPeople,4100); });
@@ -2420,7 +2420,7 @@ function airNow(){
   for(let i=0;i<tracks.length;i++){ const d=slot(tracks[i]); if(t<d) return {i,offset:t,left:d-t}; t-=d; }
   return {i:0,offset:0,left:slot(tracks[0])};
 }
-function setCover(el,t){ if(t?.cover){ el.style.backgroundImage=`url("${t.cover}")`; el.innerHTML=""; } }
+function setCover(el,t){ if(safeImg(t?.cover)){ el.style.backgroundImage=`url("${t.cover}")`; el.innerHTML=""; } }
 function paintAir(){
   const a=airNow(), t=a&&tracks[a.i];
   $("#onair-flag").textContent = t ? "● ON AIR" : "● OFF AIR"; $("#onair-flag").classList.toggle("off",!t);
@@ -2433,7 +2433,7 @@ function renderTracks(){
   if(!tracks.length){ $("#tracks").innerHTML='<div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie\'s World shows up here.</div>'; paintAir(); return; }
   $("#tracks").innerHTML=tracks.map((t,i)=>`<div class="track ${mode==="library"&&curIdx===i?"current":""}">
     <button class="ibtn" type="button" data-play="${i}" aria-label="Play ${esc(t.title)}"><svg viewBox="0 0 24 24" fill="currentColor">${mode==="library"&&curIdx===i&&!media.paused?ICON_PAUSE:ICON_PLAY}</svg></button>
-    <div class="cv" style="${t.cover?`background-image:url('${t.cover}')`:""}"></div>
+    <div class="cv" style="${safeImg(t.cover)?`background-image:url('${esc(safeImg(t.cover))}')`:""}"></div>
     <div class="t"><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></div>
     <span class="d">${fmt(t.duration)}</span>
     <span class="ops">${isOwner?`<button class="act" data-onair="${i}">Play on air</button><button class="act" data-tdel="${t.id}">Delete</button>`:""}</span></div>`).join("");
@@ -2446,7 +2446,7 @@ function load(t,offset,autoplay){ return new Promise(res=>{ let done=false; cons
   media.onloadedmetadata=media.onerror=null; media.preload="auto"; media.src=trackUrl(t);
   media.onloadedmetadata=()=>{ if(offset) try{media.currentTime=Math.min(offset,(media.duration||offset)-0.5);}catch(e){} fin(); };
   media.onerror=()=>{ if(!document.hidden) toast("This track couldn't load."); fin(); };
-  if(autoplay){ media.play().catch(()=>{}); setTimeout(fin,4000); } else media.load(); }); }
+  if(autoplay) media.play().catch(()=>{}); else media.load(); setTimeout(fin,4000); }); }
 let playTok=0;
 async function tuneIn(afterEnd){ const tok=++playTok;
   let a=airNow(); if(a && afterEnd===true && a.i===curIdx) a={i:(curIdx+1)%tracks.length,offset:0}; // song file shorter than listed: move on instead of replaying
@@ -2570,7 +2570,7 @@ setInterval(()=>{
 })();
 $("#tracks").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.play) playLib(+b.dataset.play);
-  if(b.dataset.onair){ const i=+b.dataset.onair, before=tracks.slice(0,i).reduce((a,t)=>a+(t.duration||0),0);
+  if(b.dataset.onair){ const i=+b.dataset.onair, before=tracks.slice(0,i).reduce((a,t)=>a+slot(t),0);
     await setEpoch(Date.now()-before*1000); toast(tracks[i].title+" is on air now"); if(mode==="radio") tuneIn(); }
   if(b.dataset.tdel){ if(!b.dataset.confirm){ b.dataset.confirm="1"; b.textContent="Tap again"; return; }
     const t=tracks.find(x=>x.id===b.dataset.tdel); await db.doc("tracks/"+t.id).delete().catch(err=>toast(err.message||err.code)); assets?.delete(t.assetId).catch(()=>{}); toast("Track deleted"); }
@@ -3004,10 +3004,10 @@ $("#feed").addEventListener("click",async e=>{
 function subReplies(id){ if(replySubs[id]) return; replySubs[id]=db.collection("posts/"+id+"/replies").orderBy("createdAt","asc").limit(200).onSnapshot(s=>{replyCache[id]=s.docs.map(d=>d.data()); drawReplies(id);}, e=>console.warn(e)); }
 function drawReplies(id){
   const box=document.querySelector(`[data-rbox="${id}"]`); if(!box) return;
-  const draft=box.querySelector("input")?.value||"";
-  box.innerHTML=(replyCache[id]||[]).map(r=>`<div class="reply"><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)}</div>`).join("")+
-    `<form class="reply-form" data-rform="${id}"><input type="text" id="r-${id}" maxlength="500" placeholder="Write a comment"><button class="btn sm" type="submit">Reply</button></form>`;
-  box.querySelector("input").value=draft;
+  // only the list is redrawn, so someone else's new comment doesn't close your keyboard mid-typing
+  let list=box.querySelector(".r-list");
+  if(!list){ box.innerHTML=`<div class="r-list"></div><form class="reply-form" data-rform="${id}"><input type="text" id="r-${id}" maxlength="500" placeholder="Write a comment"><button class="btn sm" type="submit">Reply</button></form>`; list=box.querySelector(".r-list"); }
+  list.innerHTML=(replyCache[id]||[]).map(r=>`<div class="reply"><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)}</div>`).join("");
 }
 $("#feed").addEventListener("submit",async e=>{
   const f=e.target.closest("[data-rform]"); if(!f) return; e.preventDefault(); if(!needMember()) return;
@@ -3178,33 +3178,33 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791975285"></script>
-<script src="js/studio.js?v=1791975285"></script>
-<script src="js/owner.js?v=1791975285"></script>
-<script src="js/messages.js?v=1791975285"></script>
-<script src="js/videos.js?v=1791975285"></script>
-<script src="js/markets.js?v=1791975285"></script>
-<script src="js/legal.js?v=1791975285"></script>
-<script src="js/coin.js?v=1791975285"></script>
-<script src="js/preach.js?v=1791975285"></script>
-<script src="js/world3d.js?v=1791975285"></script>
-<script src="js/clips.js?v=1791975285"></script>
-<script src="js/dj.js?v=1791975285"></script>
-<script src="js/live.js?v=1791975285"></script>
-<script src="js/autotune.js?v=1791975285"></script>
-<script src="js/beatmaker.js?v=1791975285"></script>
-<script src="js/beatlab.js?v=1791975285"></script>
-<script src="js/friends.js?v=1791975285"></script>
-<script src="js/dating.js?v=1791975285"></script>
-<script src="js/books.js?v=1791975285"></script>
-<script src="js/social.js?v=1791975285"></script>
-<script src="js/jobs.js?v=1791975285"></script>
-<script src="js/golive.js?v=1791975285"></script>
-<script src="js/predict.js?v=1791975285"></script>
-<script src="js/people.js?v=1791975285"></script>
-<script src="js/originals.js?v=1791975285"></script>
-<script src="js/verify.js?v=1791975285"></script>
-<script src="js/visitors.js?v=1791975285"></script>
-<script src="js/ai-widget.js?v=1791975285"></script>
+<script src="js/appnav.js?v=1791978108"></script>
+<script src="js/studio.js?v=1791978108"></script>
+<script src="js/owner.js?v=1791978108"></script>
+<script src="js/messages.js?v=1791978108"></script>
+<script src="js/videos.js?v=1791978108"></script>
+<script src="js/markets.js?v=1791978108"></script>
+<script src="js/legal.js?v=1791978108"></script>
+<script src="js/coin.js?v=1791978108"></script>
+<script src="js/preach.js?v=1791978108"></script>
+<script src="js/world3d.js?v=1791978108"></script>
+<script src="js/clips.js?v=1791978108"></script>
+<script src="js/dj.js?v=1791978108"></script>
+<script src="js/live.js?v=1791978108"></script>
+<script src="js/autotune.js?v=1791978108"></script>
+<script src="js/beatmaker.js?v=1791978108"></script>
+<script src="js/beatlab.js?v=1791978108"></script>
+<script src="js/friends.js?v=1791978108"></script>
+<script src="js/dating.js?v=1791978108"></script>
+<script src="js/books.js?v=1791978108"></script>
+<script src="js/social.js?v=1791978108"></script>
+<script src="js/jobs.js?v=1791978108"></script>
+<script src="js/golive.js?v=1791978108"></script>
+<script src="js/predict.js?v=1791978108"></script>
+<script src="js/people.js?v=1791978108"></script>
+<script src="js/originals.js?v=1791978108"></script>
+<script src="js/verify.js?v=1791978108"></script>
+<script src="js/visitors.js?v=1791978108"></script>
+<script src="js/ai-widget.js?v=1791978108"></script>
 </body>
 </html>

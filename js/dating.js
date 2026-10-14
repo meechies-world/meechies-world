@@ -59,9 +59,15 @@
       .sort((a, b) => (sameCity(b[1]) - sameCity(a[1])) || (b[1].updatedAt || 0) - (a[1].updatedAt || 0)).map(([id]) => id);
   }
   function sameCity(x) { const c = (my()?.city || "").toLowerCase().split(",")[0].trim(); return c && (x.city || "").toLowerCase().includes(c) ? 1 : 0; }
-  const matches = () => L(ME()).liked.filter((id) => L(id).liked.includes(ME()) && profiles[id] && !L(ME()).blocked.includes(id));
+  const matches = () => L(ME()).liked.filter((id) => L(id).liked.includes(ME()) && profiles[id] && !L(ME()).blocked.includes(id) && !L(id).blocked.includes(ME()));
   const likedMe = () => Object.keys(likes).filter((id) => id !== ME() && L(id).liked.includes(ME()) && !L(ME()).liked.includes(id) && !L(ME()).passed.includes(id)).length;
 
+  // Your own likes/passes/blocks must be loaded before saving, or a save would wipe them (slow phone, or not in the first page of results).
+  async function ensureMine() {
+    if (likes[ME()]) return true;
+    try { const s = await DB().doc("datelikes/" + ME()).get(); const v = (s.exists && s.data()) || {}; if (!likes[ME()]) likes[ME()] = { liked: (v.liked || []).filter((i) => typeof i === "string"), passed: (v.passed || []).filter((i) => typeof i === "string"), blocked: (v.blocked || []).filter((i) => typeof i === "string") }; return true; }
+    catch (_) { say("Still loading. Try again in a moment."); return false; }
+  }
   async function saveLikes(patch) { const cur = L(ME()); const next = { liked: cur.liked, passed: cur.passed, blocked: cur.blocked, ...patch }; likes[ME()] = next; await DB().doc("datelikes/" + ME()).set(next).catch((e) => say(e.message || e.code)); }
 
   function render() {
@@ -99,7 +105,7 @@
   }
 
   function form(p) {
-    p = p || {}; const ph = (p.photos || []).filter(okUrl);
+    p = p || {}; const ph = draft(); // the photos you uploaded so far, even if you left and came back
     const handle = (typeof members !== "undefined" && members[ME()]?.handle) || "";
     return `<form class="dt-form" id="dt-form"><h3 style="margin:0">${my() ? "Edit your dating profile" : "Make your dating profile"}</h3>
       <div class="dt-photos" id="dt-photos">${[0, 1, 2, 3, 4, 5].map((i) => ph[i] ? `<div style="background-image:url('${E(ph[i])}')"><button type="button" data-rmph="${i}" aria-label="Remove photo">×</button></div>` : `<div>＋<input type="file" accept="image/*" data-addph="${i}" aria-label="Add photo"></div>`).join("")}</div>
@@ -156,16 +162,16 @@
     if (b.dataset.nav) { const card = root.querySelector("#dt-top"), id = card.dataset.id, x = profiles[id], n = (x.photos || []).filter(okUrl).length + (okUrl(x.video) ? 1 : 0); photoIdx[id] = Math.max(0, Math.min(n - 1, (photoIdx[id] || 0) + +b.dataset.nav)); render(); return; }
     if (b.dataset.like) return decide(b.dataset.like, true);
     if (b.dataset.pass) return decide(b.dataset.pass, false);
-    if (b.dataset.unmatch) { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Tap again"; return; } const c = L(ME()); await saveLikes({ liked: c.liked.filter((x) => x !== b.dataset.unmatch), passed: [...c.passed, b.dataset.unmatch] }); render(); return; }
+    if (b.dataset.unmatch) { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Tap again"; return; } if (!(await ensureMine())) return; const c = L(ME()); await saveLikes({ liked: c.liked.filter((x) => x !== b.dataset.unmatch), passed: [...c.passed, b.dataset.unmatch] }); render(); return; }
     if (b.dataset.menu) {
       const id = b.dataset.menu, what = prompt("Type REPORT to report this profile, or BLOCK to block them.", "BLOCK"); if (!what) return;
-      if (/block/i.test(what)) { const c = L(ME()); await saveLikes({ blocked: [...new Set([...c.blocked, id])] }); say("Blocked. You won't see each other."); render(); }
-      else if (/report/i.test(what)) { const why = prompt("What's wrong with this profile? (fake, underage, rude, scam...)") || ""; await DB().collection("reports").add({ from: ME(), target: id, kind: "dating", reason: why.slice(0, 300), createdAt: Date.now() }).catch(() => {}); const c = L(ME()); await saveLikes({ blocked: [...new Set([...c.blocked, id])] }); say("Thanks. Meechie will review it, and you won't see them again."); render(); }
+      if (/block/i.test(what)) { if (!(await ensureMine())) return; const c = L(ME()); await saveLikes({ blocked: [...new Set([...c.blocked, id])] }); say("Blocked. You won't see each other."); render(); }
+      else if (/report/i.test(what)) { const why = prompt("What's wrong with this profile? (fake, underage, rude, scam...)") || ""; await DB().collection("reports").add({ from: ME(), target: id, kind: "dating", reason: why.slice(0, 300), createdAt: Date.now() }).catch(() => {}); if (!(await ensureMine())) return; const c = L(ME()); await saveLikes({ blocked: [...new Set([...c.blocked, id])] }); say("Thanks. Meechie will review it, and you won't see them again."); render(); }
     }
   });
   async function decide(id, like) {
     const card = root.querySelector("#dt-top"); if (card) { card.style.transform = `translateX(${like ? 140 : -140}%) rotate(${like ? 18 : -18}deg)`; card.style.opacity = "0"; }
-    const c = L(ME());
+    if (!(await ensureMine())) { render(); return; } const c = L(ME());
     await saveLikes(like ? { liked: [...new Set([...c.liked, id])] } : { passed: [...new Set([...c.passed, id])] });
     if (like && L(id).liked.includes(ME())) matchPop(id);
     setTimeout(render, 220);

@@ -43,6 +43,10 @@
     const b = e.target.closest("[data-follow]"); if (!b) return; e.preventDefault();
     if (typeof needMember === "function" && !needMember()) return;
     const id = b.dataset.follow; if (id === ME()) return;
+    if (!follows[ME()]) { // your own follow list must be loaded first, or saving would wipe it
+      try { const r = await DB().doc("follows/" + ME()).get(); const l = r.exists && r.data() && r.data().list; if (!follows[ME()]) { follows[ME()] = Array.isArray(l) ? l.filter((i) => typeof i === "string") : []; window.MW_FOLLOWING = new Set(follows[ME()]); } }
+      catch (_) { say("Still loading. Try again in a moment."); return; }
+    }
     const s = new Set(window.MW_FOLLOWING); const was = s.has(id); was ? s.delete(id) : s.add(id);
     window.MW_FOLLOWING = s; paintFollowButtons(); paintBar();
     await setFollowing([...s]);

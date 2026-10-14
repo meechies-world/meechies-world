@@ -36,6 +36,12 @@
   const pending = () => [...mine()].filter((id) => !theyAdded(id) && MEM()[id]);
   window.MW_FRIENDS = { isFriend: (id) => mine().has(id) && theyAdded(id), list: friendsOf };
 
+  // your own list must be loaded before changing it, or saving would wipe your other friends
+  async function ensureMine() {
+    if (lists[ME()]) return true;
+    try { const s = await DB().doc("friends/" + ME()).get(); const v = (s.exists && s.data()) || {}; if (!lists[ME()]) lists[ME()] = Array.isArray(v.list) ? v.list.filter((i) => typeof i === "string") : []; return true; }
+    catch (_) { say("Still loading. Try again in a moment."); return false; }
+  }
   async function setList(arr) {
     const d = DB(); if (!d || !ME()) return;
     await d.doc("friends/" + ME()).set({ list: [...new Set(arr)].slice(0, 2000) }).catch((e) => say(e.message || e.code));
@@ -68,6 +74,7 @@
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.ftab) { tab = b.dataset.ftab; render(); return; }
     if (typeof needMember === "function" && (b.dataset.add || b.dataset.acc) && !needMember()) return;
+    if ((b.dataset.add || b.dataset.acc || b.dataset.unf) && !(await ensureMine())) return;
     const m = mine();
     if (b.dataset.add) { m.add(b.dataset.add); await setList([...m]); say("Friend request sent to " + HANDLE(b.dataset.add)); }
     if (b.dataset.acc) { m.add(b.dataset.acc); await setList([...m]); say("You and " + HANDLE(b.dataset.acc) + " are friends now!"); }
