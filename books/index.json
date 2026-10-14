@@ -1,0 +1,13 @@
+[
+ {
+  "id": "trump-investigative-biography",
+  "title": "Donald J. Trump: An Investigative Biography",
+  "author": "Meechie's World Inc",
+  "blurb": "Four indictments. Two impeachments. One felony conviction. And a comeback nobody saw coming. The paper trail of Donald J. Trump, from Queens to the second term, told from the public record.",
+  "cover": "img/books/trump-cover.jpg",
+  "pages": 173,
+  "free": true,
+  "src": "books/trump-investigative-biography.json",
+  "order": 1791651597000
+ }
+]

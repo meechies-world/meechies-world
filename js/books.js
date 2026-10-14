@@ -13,8 +13,19 @@
   const ME = () => (typeof me !== "undefined" ? me : null);
   const OWNER = () => typeof isOwner !== "undefined" && isOwner;
   const DB = () => (typeof db !== "undefined" ? db : null);
-  const okImg = (u) => /^(https:\/\/[^\s"'<>()]+|data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+)$/.test(u || "");
-  let books = [], open = null, page = 0, cache = {}, fontSize = 19;
+  const okImg = (u) => /^(https:\/\/[^\s"'<>()]+|data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+|img\/books\/[a-z0-9-]+\.(jpg|png|webp))$/.test(u || "");
+  let books = [], dbBooks = [], staticBooks = [], open = null, page = 0, cache = {}, fontSize = 19;
+  /* Books published as files in the site itself (books/index.json). They show on the shelf next to
+     books the owner uploads, and read in the same reader. */
+  const staticPages = {};
+  const mergeBooks = () => {
+    const titles = new Set(dbBooks.map((b) => String(b.title || "").toLowerCase()));
+    books = [...dbBooks, ...staticBooks.filter((b) => !titles.has(String(b.title || "").toLowerCase()))];
+    if (!open) shelf();
+  };
+  fetch("books/index.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : [])).then((list) => {
+    staticBooks = (Array.isArray(list) ? list : []).map((b) => ({ ...b, static: true })); mergeBooks();
+  }).catch(() => {});
   try { fontSize = +localStorage.getItem("mw_bk_fs") || 19; } catch (_) {}
 
   const css = document.createElement("style");
@@ -89,6 +100,11 @@
   }
   async function getPage(n) {
     const key = open.id + "_" + n; if (cache[key]) return cache[key];
+    if (open.static) {
+      if (!staticPages[open.id]) staticPages[open.id] = fetch(open.src).then((r) => r.json()).then((j) => j.html || []);
+      const all = await staticPages[open.id];
+      return (cache[key] = String(all[n] ?? "<p>(This page is missing.)</p>"));
+    }
     const s = await DB().doc("bookpages/" + key).get(); const html = s.exists ? String(s.data().html || "") : "<p>(This page is missing.)</p>";
     cache[key] = html; return html;
   }
@@ -99,7 +115,7 @@
     root.innerHTML = `<div class="bk-reader bk-shield" id="bk-shield">
       <div class="bk-top"><button class="btn ghost sm" type="button" data-shelf="1">← Books</button><b>${E(open.title)}</b>
         <button class="btn ghost sm" type="button" data-fs="-1" aria-label="Smaller text">A−</button><button class="btn ghost sm" type="button" data-fs="1" aria-label="Bigger text">A+</button>
-        ${OWNER() ? `<button class="act" type="button" data-delbook="${E(open.id)}">Delete book</button>` : ""}</div>
+        ${OWNER() && !open.static ? `<button class="act" type="button" data-delbook="${E(open.id)}">Delete book</button>` : ""}</div>
       <div class="bk-sheet"><div class="bk-orn" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         <div class="bk-head" aria-hidden="true"><span class="em"></span><small>MEECHIE'S WORLD INC • CONSCIENTIA</small><hr></div>
         <div class="bk-page" id="bk-page" style="font-size:${fontSize}px"><p style="opacity:.6">Loading page...</p></div>
@@ -223,9 +239,9 @@
   }
 
   async function init() {
-    if (!window.claude) return;
+    if (!window.claude) { shelf(); return; }
     const d = await claude.use("db"); if (!d) { shelf(); return; }
-    d.collection("books").orderBy("order", "desc").limit(50).onSnapshot((s) => { books = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!open) shelf(); }, () => {});
+    d.collection("books").orderBy("order", "desc").limit(50).onSnapshot((s) => { dbBooks = s.docs.map((x) => ({ id: x.id, ...x.data() })); mergeBooks(); }, () => {});
     new MutationObserver(() => { if (!view.hidden && !open) shelf(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
