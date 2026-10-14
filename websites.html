@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Websites by Meechie's World Inc</title>
+<meta name="description" content="Custom, mobile-friendly websites for small businesses, built by Meechie's World Inc. Free quote, no obligation.">
+<meta property="og:title" content="Websites by Meechie's World Inc">
+<meta property="og:description" content="Get your business online: a custom, mobile-friendly website with your hours, services, photos and a button to call or book. Free quote.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://meechies-world.pages.dev/img/og-4.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="robots" content="noai, noimageai">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800;900&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap">
+<style>
+:root{--ink:#0b0a08;--panel:#15130f;--panel2:#1d1a14;--line:#3a3223;--gold:#d4a843;--gold-hi:#f0cf78;--gold-lo:#8c6d26;--text:#f3ecdc;--muted:#a99f8b;--display:"Cinzel",Georgia,serif;--body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--ink);color:var(--text);font:17px/1.6 var(--body)}
+a{color:var(--gold-hi)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+header{position:sticky;top:0;z-index:5;background:rgba(11,10,8,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text)}
+.brand img{width:36px;height:36px}.brand b{font:800 15px/1 var(--display);letter-spacing:.06em}.brand small{display:block;font:600 9px/1.4 var(--body);letter-spacing:.2em;color:var(--gold)}
+header .cta{margin-left:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--gold);background:var(--gold);color:var(--ink);font:800 16px var(--body);padding:13px 22px;border-radius:999px;cursor:pointer;text-decoration:none}
+.btn.ghost{background:transparent;color:var(--gold-hi)}.btn.sm{padding:9px 16px;font-size:14px}
+.hero{padding:64px 0 40px;text-align:center;background:radial-gradient(ellipse 70% 60% at 50% 0,rgba(212,168,67,.18),transparent 70%)}
+.hero .eyebrow{font:700 13px var(--body);letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin:0}
+.hero h1{font:900 clamp(36px,6vw,64px)/1.05 var(--display);margin:14px 0 16px;background:linear-gradient(175deg,#fff3c9,#f0cf78 35%,#c9982f 60%,#f7e3a1 80%,#a7801f);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p.lead{font-size:clamp(17px,2.4vw,21px);max-width:40em;margin:0 auto 26px;color:#e6dcc4}
+.hero .acts{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero .note{margin:16px 0 0;color:var(--muted);font-size:14px}
+section{padding:46px 0}
+h2{font:800 clamp(26px,4vw,38px)/1.15 var(--display);margin:0 0 8px;text-align:center;color:var(--gold-hi)}
+.sub{text-align:center;color:var(--muted);margin:0 auto 28px;max-width:38em}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:20px}
+.card .ic{font-size:28px}.card h3{margin:8px 0 6px;font-size:18px}.card p{margin:0;color:var(--muted);font-size:15px}
+.pk{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.pk .card{display:flex;flex-direction:column}
+.pk .card.feat{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 20px 50px rgba(212,168,67,.12)}
+.pk h3{font:800 22px var(--display);color:var(--gold-hi);margin:0}
+.pk .for{color:var(--muted);font-size:14px;margin:4px 0 12px}
+.pk ul{margin:0 0 18px;padding-left:20px;flex:1}.pk li{margin:6px 0;font-size:15px}
+.badge{display:inline-block;font:800 11px var(--body);letter-spacing:.1em;background:var(--gold);color:var(--ink);border-radius:999px;padding:4px 10px;margin-bottom:8px}
+.shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.shots figure{margin:0;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000}
+.shots img{display:block;width:100%;height:auto}
+.shots figcaption{padding:10px 14px;font-size:14px;color:var(--muted);background:var(--panel)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;counter-reset:s}
+.steps .card{position:relative;padding-top:46px}
+.steps .card::before{counter-increment:s;content:counter(s);position:absolute;top:14px;left:20px;width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--ink);font:800 15px/28px var(--body);text-align:center}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;max-width:760px;margin:0 auto}
+label{display:grid;gap:6px;font-weight:700;font-size:14px}
+input,select,textarea{font:16px var(--body);padding:12px 13px;border-radius:10px;border:1px solid var(--line);background:#0b0a08;color:var(--text);width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--gold-hi);outline-offset:1px}
+.full{grid-column:1/-1}
+.sendrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.msg{color:var(--gold-hi);font-size:14px}
+.faq details{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 auto 10px;max-width:760px}
+.faq summary{font-weight:700;cursor:pointer}.faq p{color:var(--muted);margin:8px 0 0}
+footer{border-top:1px solid var(--line);padding:30px 0 40px;text-align:center;color:var(--muted);font-size:14px}
+footer img{width:110px;display:block;margin:0 auto 10px}
+@media (max-width:560px){header .brand small{display:none}.hero{padding-top:44px}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <a class="brand" href="/websites.html"><img src="/img/emblem.svg" alt=""><span><b>MEECHIE'S WORLD</b><small>INC · WEBSITES</small></span></a>
+  <a class="btn sm cta" href="#quote">Free quote</a>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <p class="eyebrow">Websites by Meechie's World Inc</p>
+  <h1>Get your business online</h1>
+  <p class="lead">Customers search online before they ever walk in. I build clean, mobile-friendly websites that show your services, hours and photos, and make it easy to call, book or buy.</p>
+  <div class="acts"><a class="btn" href="#quote">Get my free quote</a><a class="btn ghost" href="#work">See my work</a></div>
+  <p class="note">No obligation · Built for phones first · Set up so customers can find you on Google</p>
+</div></div>
+
+<section><div class="wrap">
+  <h2>What your website gets</h2>
+  <p class="sub">Everything a small business needs, set up for you. You don't have to touch any code.</p>
+  <div class="grid">
+    <div class="card"><div class="ic">📱</div><h3>Looks great on phones</h3><p>Most customers find you on their phone. Your site is built for small screens first.</p></div>
+    <div class="card"><div class="ic">📞</div><h3>Call, text &amp; book buttons</h3><p>One tap to call you, get directions, or book an appointment.</p></div>
+    <div class="card"><div class="ic">🔎</div><h3>Found on Google</h3><p>Set up with your business info so you show up when people search nearby.</p></div>
+    <div class="card"><div class="ic">📸</div><h3>Your photos &amp; services</h3><p>Show your work, your menu or your prices, and keep it all up to date.</p></div>
+    <div class="card"><div class="ic">🛍️</div><h3>Online store (optional)</h3><p>Sell products or take payments and deposits online.</p></div>
+    <div class="card"><div class="ic">🤝</div><h3>Help when you need it</h3><p>Need a change? Message me and I'll take care of it.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Pick what fits</h2>
+  <p class="sub">Every business is different, so every quote is free and made for you.</p>
+  <div class="pk">
+    <div class="card"><h3>Starter</h3><p class="for">For barbers, salons, food spots, contractors</p><ul><li>One-page site with your services, hours and photos</li><li>Call, text and directions buttons</li><li>Google-ready business info</li></ul><a class="btn ghost" href="#quote" data-pkg="Starter">Get a quote</a></div>
+    <div class="card feat"><span class="badge">MOST POPULAR</span><h3>Business</h3><p class="for">For growing businesses</p><ul><li>Multiple pages: home, services, gallery, about, contact</li><li>Online booking or request form</li><li>Reviews, map and social links</li><li>Your own .com address set up for you</li></ul><a class="btn" href="#quote" data-pkg="Business">Get a quote</a></div>
+    <div class="card"><h3>Store &amp; Custom</h3><p class="for">For selling online or something special</p><ul><li>Online store, payments or deposits</li><li>Members area, video, music, or custom features</li><li>Built like Meechie's World itself</li></ul><a class="btn ghost" href="#quote" data-pkg="Store / Custom">Get a quote</a></div>
+  </div>
+</div></section>
+
+<section id="work"><div class="wrap">
+  <h2>My work</h2>
+  <p class="sub">Meechie's World: a full community platform I built, with a 24/7 radio station, music studio, live markets, legal help, and its own coin page.</p>
+  <div class="shots">
+    <figure><img src="/img/work/home.jpg" alt="Meechie's World home page with the gold crest" loading="lazy"><figcaption>Branded home page with a custom gold crest</figcaption></figure>
+    <figure><img src="/img/work/radio.jpg" alt="Radio page" loading="lazy"><figcaption>24/7 radio station everyone hears in sync</figcaption></figure>
+    <figure><img src="/img/work/studio.jpg" alt="Music studio and beat maker" loading="lazy"><figcaption>A full beat maker and recording studio in the browser</figcaption></figure>
+    <figure><img src="/img/work/legal.jpg" alt="Legal Help page" loading="lazy"><figcaption>AI-powered legal document help</figcaption></figure>
+    <figure><img src="/img/work/coin.jpg" alt="Meechie's Coin page" loading="lazy"><figcaption>Launch page for a crypto coin</figcaption></figure>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>How it works</h2>
+  <p class="sub">Simple from start to finish.</p>
+  <div class="steps">
+    <div class="card"><h3>Tell me about your business</h3><p>Fill out the quick form below, or call or text me.</p></div>
+    <div class="card"><h3>Get your free quote</h3><p>I'll send you a price and a plan. No pressure, no obligation.</p></div>
+    <div class="card"><h3>I build it</h3><p>You see it before it goes live, and we make changes until you love it.</p></div>
+    <div class="card"><h3>You're online</h3><p>Customers find you, call you and book with you.</p></div>
+  </div>
+</div></section>
+
+<section id="quote"><div class="wrap">
+  <h2>Get your free quote</h2>
+  <p class="sub">Fill this out and send it to me by email or text. I'll get back to you fast.</p>
+  <form id="q">
+    <label>Your name<input name="name" required autocomplete="name"></label>
+    <label>Business name<input name="biz" required autocomplete="organization"></label>
+    <label>Phone<input name="phone" type="tel" autocomplete="tel" inputmode="tel"></label>
+    <label>Email<input name="email" type="email" autocomplete="email"></label>
+    <label>Type of business<input name="type" placeholder="Barbershop, restaurant, contractor..."></label>
+    <label>Package<select name="pkg"><option>Not sure yet</option><option>Starter</option><option>Business</option><option>Store / Custom</option></select></label>
+    <label class="full">What do you want on your website?<textarea name="need" rows="4" placeholder="Services, prices, photos, booking, online store..."></textarea></label>
+    <label class="full">Do you have a website or Facebook page now? <input name="now" placeholder="Paste a link, or say none"></label>
+    <div class="full sendrow"><button class="btn" type="submit" data-how="email">📧 Email my request</button><button class="btn ghost" type="submit" data-how="text">💬 Text my request</button><a class="btn ghost" href="tel:+17249706015">📞 Call (724) 970-6015</a></div>
+    <p class="full msg" id="qmsg" aria-live="polite"></p>
+  </form>
+</div></section>
+
+<section class="faq"><div class="wrap">
+  <h2>Questions</h2>
+  <details><summary>How much does a website cost?</summary><p>It depends on what you need, so every quote is free and made for your business. Send the form above and I'll give you a clear price before any work starts.</p></details>
+  <details><summary>How long does it take?</summary><p>A simple site is often ready within days. Bigger sites take longer, and I'll tell you the timeline with your quote.</p></details>
+  <details><summary>Can I get my own .com address?</summary><p>Yes. I can set up your own address (like yourbusiness.com) and connect it for you.</p></details>
+  <details><summary>Can I change things later?</summary><p>Yes. Message me any time you want to update prices, photos or hours.</p></details>
+</div></section>
+
+<footer><div class="wrap">
+  <img src="/img/crest.svg" alt="Meechie's World Inc crest">
+  <p><b>Meechie's World Inc</b> · Websites · Music &amp; Media · Legal Document Preparation</p>
+  <p><a href="mailto:meechiesworldinc@aol.com">meechiesworldinc@aol.com</a> · <a href="tel:+17249706015">(724) 970-6015</a></p>
+  <p><a href="/">Join the Meechie's World community</a> · <a href="/privacy.html">Privacy</a></p>
+</div></footer>
+
+<script>
+(function () {
+  const f = document.getElementById("q"), msg = document.getElementById("qmsg");
+  document.querySelectorAll("[data-pkg]").forEach((a) => a.addEventListener("click", () => { f.pkg.value = a.dataset.pkg; }));
+  let how = "email";
+  f.querySelectorAll("button[data-how]").forEach((b) => b.addEventListener("click", () => { how = b.dataset.how; }));
+  f.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(f).entries());
+    if (!d.phone && !d.email) { msg.textContent = "Add a phone number or email so I can reach you."; return; }
+    const body = ["Website quote request", "Name: " + d.name, "Business: " + d.biz, d.type && "Type: " + d.type, "Package: " + d.pkg,
+      d.phone && "Phone: " + d.phone, d.email && "Email: " + d.email, d.now && "Current site/Facebook: " + d.now, d.need && "What I want: " + d.need].filter(Boolean).join("\n");
+    if (how === "text") location.href = "sms:+17249706015?&body=" + encodeURIComponent(body);
+    else location.href = "mailto:meechiesworldinc@aol.com?subject=" + encodeURIComponent("Website quote: " + d.biz) + "&body=" + encodeURIComponent(body);
+    msg.textContent = "Your " + (how === "text" ? "text" : "email") + " app should open with your request filled in. Just tap Send. Thank you!";
+  });
+})();
+</script>
+</body>
+</html>
