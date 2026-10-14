@@ -32,14 +32,45 @@ export async function onRequestGet({ request, env }) {
   if (!/^vs_[A-Za-z0-9]+$/.test(id)) return json({ error: "bad_id" }, 400);
   const vs = await stripe(env, "identity/verification_sessions/" + id);
   if (!vs || !vs.id || !vs.metadata || vs.metadata.uid !== m.id) return json({ error: "not_found" }, 404);
-  if (vs.status === "verified") { // record it on the member's profile (no ID details are stored)
+  if (vs.status === "verified") {
     // Only the server may set the badge (supabase/lockdown.sql), so this needs the SUPABASE_SERVICE_ROLE_KEY secret in Cloudflare.
     // (Until that secret is added, it falls back to the member's own sign-in, which works only before lockdown.sql is run.)
     const key = env.SUPABASE_SERVICE_ROLE_KEY;
     const H = key ? { apikey: key, authorization: "Bearer " + key } : { apikey: SUPABASE_ANON, authorization: "Bearer " + m.token };
-    const w = await fetch(SUPABASE_URL + "/rest/v1/rpc/merge_doc", { method: "POST", headers: { ...H, "content-type": "application/json" },
-      body: JSON.stringify({ p_path: "members/" + m.id, p_patch: { idVerified: true, idVerifiedAt: Date.now() } }) }).catch(() => null);
+    // One account per person: a one-way fingerprint of the ID (country + type + document number, or name + birthday)
+    // is kept. The fingerprint can't be turned back into the ID. If the same ID was already used on another account,
+    // this account is not verified.
+    const fp = await fingerprint(env, vs).catch(() => null);
+    if (fp && key) {
+      const lock = "idlocks/" + fp;
+      const got = await fetch(SUPABASE_URL + "/rest/v1/docs?select=data&path=eq." + encodeURIComponent(lock), { headers: H }).then((r) => r.json()).catch(() => []);
+      const owner = Array.isArray(got) && got[0] && got[0].data && got[0].data.uid;
+      if (owner && owner !== m.id) {
+        await patch(H, m.id, { idVerified: false, idDuplicate: true, idDuplicateAt: Date.now() });
+        return json({ status: "duplicate" });
+      }
+      if (!owner) await fetch(SUPABASE_URL + "/rest/v1/rpc/set_doc", { method: "POST", headers: { ...H, "content-type": "application/json" },
+        body: JSON.stringify({ p_path: lock, p_coll: "idlocks", p_data: { uid: m.id, at: Date.now() } }) }).catch(() => null);
+    }
+    const w = await patch(H, m.id, { idVerified: true, idVerifiedAt: Date.now(), idDuplicate: false });
     return json({ status: vs.status, saved: !!(w && w.ok) });
   }
   return json({ status: vs.status });
+}
+
+const patch = (H, uid, p) => fetch(SUPABASE_URL + "/rest/v1/rpc/merge_doc", { method: "POST", headers: { ...H, "content-type": "application/json" },
+  body: JSON.stringify({ p_path: "members/" + uid, p_patch: p }) }).catch(() => null);
+
+// A salted SHA-256 of the ID details Stripe verified. Uses the document number when Stripe returns it, otherwise name + birthday.
+async function fingerprint(env, vs) {
+  const rid = vs.last_verification_report; if (!rid) return null;
+  const rep = await stripe(env, "identity/verification_reports/" + (typeof rid === "string" ? rid : rid.id) + "?expand[]=document.number&expand[]=document.dob");
+  const d = rep && rep.document; if (!d) return null;
+  const n = (x) => String(x || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const dob = d.dob ? [d.dob.year, d.dob.month, d.dob.day].join("-") : "";
+  const raw = d.number ? ["doc", n(d.issuing_country), n(d.type), n(d.number)].join("|") : (d.last_name && dob ? ["person", n(d.first_name), n(d.last_name), dob].join("|") : "");
+  if (!raw) return null;
+  const salt = env.ID_SALT || env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salt + "|" + raw));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
