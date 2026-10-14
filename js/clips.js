@@ -62,7 +62,7 @@ body.has-player #v-clips .rail{bottom:70px}`;
       el.querySelector(".snd").textContent = muted ? "🔇 Tap for sound" : "🔊";
       el.querySelector(".cap").innerHTML = `<b>@${E(HANDLE(p.authorId))}</b>${p.text ? `<p>${E(p.text)}</p>` : ""}`;
       el.querySelector(".rail").innerHTML = `<span>${AV(p.authorId)}</span>
-        <button type="button" class="${liked ? "on" : ""}" data-clike="${E(p.id)}" aria-label="Like"><span class="ic">♥</span>${(p.likes || []).length || ""}</button>
+        <button type="button" class="${liked ? "on" : ""}" data-clike="${E(p.id)}" aria-label="Like"><span class="ic">♥</span>${((p.likes || []).length >= (window.MW_SHOW_MIN || 25) || (typeof isOwner !== "undefined" && isOwner)) ? (p.likes || []).length || "" : ""}</button>
         <button type="button" data-ccom="${E(p.id)}" aria-label="Comments"><span class="ic">💬</span>${(+p.replyCount) || ""}</button>
         <button type="button" data-cshare="${E(p.id)}" aria-label="Share"><span class="ic">↗</span>Share</button>`;
       if (prev ? prev.nextSibling !== el : box.firstChild !== el) (prev ? prev.after(el) : box.prepend(el));
