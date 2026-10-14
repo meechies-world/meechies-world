@@ -8,11 +8,9 @@ const PREVIEW = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|Discordbot|Tele
 
 export async function onRequest(ctx) {
   const url = new URL(ctx.request.url);
-  // One address for everyone: www.meechiesworldinc.com → meechiesworldinc.com. Once the PRIMARY_DOMAIN setting is
-  // added in Cloudflare (value: meechiesworldinc.com), the old meechies-world.pages.dev address forwards there too.
-  const primary = (ctx.env && ctx.env.PRIMARY_DOMAIN) || "";
-  if (url.hostname === "www.meechiesworldinc.com" || (primary && url.hostname === "meechies-world.pages.dev" && !url.pathname.startsWith("/api/"))) {
-    return Response.redirect("https://" + (primary || "meechiesworldinc.com") + url.pathname + url.search, 301);
+  // www.meechiesworldinc.com → meechiesworldinc.com. meechies-world.pages.dev keeps working on its own (owner's choice).
+  if (url.hostname === "www.meechiesworldinc.com") {
+    return Response.redirect("https://meechiesworldinc.com" + url.pathname + url.search, 301);
   }
   const ua = ctx.request.headers.get("user-agent") || "";
   const allowed = url.pathname === "/robots.txt" || url.pathname.startsWith("/api/voice") || (PREVIEW.test(ua) && !/Applebot-Extended|GoogleOther|Google-Extended/i.test(ua));
