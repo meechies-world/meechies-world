@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1791978129">
+<meta name="mw-build" content="1791995285">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1950,8 +1950,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1791978129"></script>
-<script src="js/platform.js?v=1791978129"></script>
+<script src="js/config.js?v=1791995285"></script>
+<script src="js/platform.js?v=1791995285"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2653,10 +2653,10 @@ function renderFeatured(){
 }
 renderFeatured();
 
-/* Welcome song: when someone taps Enter, "Ain't Nobody Gone Be There For You" plays first, from the start.
+/* Welcome song: when someone taps Enter, "brotherhood" plays first, from the start.
    When it ends (with a crossfade on computers and Android), the live radio comes on right where the station is. */
-const INTRO_ID="rn33483912d2u1px";
-const introIdx=()=>{ let i=tracks.findIndex(t=>t.id===INTRO_ID); if(i<0) i=tracks.findIndex(t=>/ain'?t\s*no\s*body\s*gon/i.test(t.title||"")); return i; };
+const INTRO_ID="rn33055408ru9mn8"; // "brotherhood" plays first when people enter
+const introIdx=()=>{ let i=tracks.findIndex(t=>t.id===INTRO_ID); if(i<0) i=tracks.findIndex(t=>/^brotherhood$/i.test((t.title||"").trim())); return i; };
 async function playIntro(){
   const i=introIdx(); if(i<0) return false;
   const tok=++playTok; mode="intro"; curIdx=i; autoTried=true;
@@ -3178,33 +3178,33 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1791978129"></script>
-<script src="js/studio.js?v=1791978129"></script>
-<script src="js/owner.js?v=1791978129"></script>
-<script src="js/messages.js?v=1791978129"></script>
-<script src="js/videos.js?v=1791978129"></script>
-<script src="js/markets.js?v=1791978129"></script>
-<script src="js/legal.js?v=1791978129"></script>
-<script src="js/coin.js?v=1791978129"></script>
-<script src="js/preach.js?v=1791978129"></script>
-<script src="js/world3d.js?v=1791978129"></script>
-<script src="js/clips.js?v=1791978129"></script>
-<script src="js/dj.js?v=1791978129"></script>
-<script src="js/live.js?v=1791978129"></script>
-<script src="js/autotune.js?v=1791978129"></script>
-<script src="js/beatmaker.js?v=1791978129"></script>
-<script src="js/beatlab.js?v=1791978129"></script>
-<script src="js/friends.js?v=1791978129"></script>
-<script src="js/dating.js?v=1791978129"></script>
-<script src="js/books.js?v=1791978129"></script>
-<script src="js/social.js?v=1791978129"></script>
-<script src="js/jobs.js?v=1791978129"></script>
-<script src="js/golive.js?v=1791978129"></script>
-<script src="js/predict.js?v=1791978129"></script>
-<script src="js/people.js?v=1791978129"></script>
-<script src="js/originals.js?v=1791978129"></script>
-<script src="js/verify.js?v=1791978129"></script>
-<script src="js/visitors.js?v=1791978129"></script>
-<script src="js/ai-widget.js?v=1791978129"></script>
+<script src="js/appnav.js?v=1791995285"></script>
+<script src="js/studio.js?v=1791995285"></script>
+<script src="js/owner.js?v=1791995285"></script>
+<script src="js/messages.js?v=1791995285"></script>
+<script src="js/videos.js?v=1791995285"></script>
+<script src="js/markets.js?v=1791995285"></script>
+<script src="js/legal.js?v=1791995285"></script>
+<script src="js/coin.js?v=1791995285"></script>
+<script src="js/preach.js?v=1791995285"></script>
+<script src="js/world3d.js?v=1791995285"></script>
+<script src="js/clips.js?v=1791995285"></script>
+<script src="js/dj.js?v=1791995285"></script>
+<script src="js/live.js?v=1791995285"></script>
+<script src="js/autotune.js?v=1791995285"></script>
+<script src="js/beatmaker.js?v=1791995285"></script>
+<script src="js/beatlab.js?v=1791995285"></script>
+<script src="js/friends.js?v=1791995285"></script>
+<script src="js/dating.js?v=1791995285"></script>
+<script src="js/books.js?v=1791995285"></script>
+<script src="js/social.js?v=1791995285"></script>
+<script src="js/jobs.js?v=1791995285"></script>
+<script src="js/golive.js?v=1791995285"></script>
+<script src="js/predict.js?v=1791995285"></script>
+<script src="js/people.js?v=1791995285"></script>
+<script src="js/originals.js?v=1791995285"></script>
+<script src="js/verify.js?v=1791995285"></script>
+<script src="js/visitors.js?v=1791995285"></script>
+<script src="js/ai-widget.js?v=1791995285"></script>
 </body>
 </html>
