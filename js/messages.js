@@ -229,7 +229,7 @@
 .mx-msg{display:flex;align-items:flex-end;gap:7px;max-width:100%;position:relative}
 .mx-msg.end{margin-bottom:8px}.mx-msg.me{flex-direction:row-reverse}
 .mx-col{display:grid;max-width:min(72%,520px);position:relative}
-.mx-bub{background:#2a2418;color:var(--text);padding:8px 13px;border-radius:18px;overflow-wrap:anywhere;line-height:1.4;font-size:15px}
+.mx-bub{background:#2a2418;color:var(--text);padding:8px 13px;border-radius:18px;overflow-wrap:anywhere;line-height:1.4;font-size:15px;white-space:pre-wrap}
 .mx-msg.me .mx-bub{background:linear-gradient(135deg,#e2b54e,#c99a3a);color:#0b0a08}
 .mx-msg.me .mx-bub a{color:#0b0a08}.mx-bub a{color:var(--gold-hi)}
 .mx-bub.big{background:none!important;font-size:38px;padding:0 2px;line-height:1.15}
