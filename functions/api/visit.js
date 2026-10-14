@@ -59,7 +59,7 @@ export async function onRequestPost({ request, env }) {
     : `🔔 ${who} just came on Meechie's World (${device}).`;
   const r = await fetch("https://ntfy.sh/" + topic, {
     method: "POST", body: msg,
-    headers: { Title: kind === "joined" ? "New member" : kind === "contact" ? "New contact info" : "Someone's on your site", Tags: kind === "joined" ? "tada" : "eyes", Click: "https://meechies-world.pages.dev/", Priority: kind === "joined" ? "high" : "default" },
+    headers: { ...(env.NTFY_TOKEN ? { Authorization: "Bearer " + env.NTFY_TOKEN } : {}), Title: kind === "joined" ? "New member" : kind === "contact" ? "New contact info" : "Someone's on your site", Tags: kind === "joined" ? "tada" : "eyes", Click: "https://meechies-world.pages.dev/", Priority: kind === "joined" ? "high" : "default" },
   }).catch(() => null);
   return json({ ok: !!(r && r.ok), status: r ? r.status : 0, info: r && !r.ok ? (await r.text().catch(() => "")).slice(0, 200) : undefined });
 }
