@@ -27,7 +27,7 @@
 #bio-lock p{margin:0;color:#b9ad97;font:15px/1.45 var(--body,system-ui)}
 #bio-lock .go{display:inline-flex;gap:10px;align-items:center;justify-content:center;width:100%;font:800 17px var(--body,system-ui);padding:15px 18px;border-radius:999px;border:0;background:linear-gradient(180deg,#f0cf78,#c99a35);color:#0b0a08;cursor:pointer}
 #bio-lock .alt{background:none;border:0;color:#b9ad97;text-decoration:underline;cursor:pointer;font:14px var(--body,system-ui)}
-#bio-lock .msg{min-height:1.2em;color:#f0cf78;font-size:14px}
+#bio-lock .bio-m{background:none;border:0;padding:0;min-height:1.2em;color:#f0cf78;font-size:14px}
 #bio-offer{position:fixed;left:50%;bottom:calc(var(--tabbar,0px) + 150px);transform:translateX(-50%);z-index:10020;width:min(420px,calc(100% - 24px));display:grid;gap:10px;background:#12100c;border:1px solid var(--gold,#d4a843);border-radius:16px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
 #bio-offer b{font-size:16px}#bio-offer p{margin:0;color:var(--muted,#b9ad97);font-size:14px}
 #bio-offer .row{display:flex;gap:8px;justify-content:flex-end}`;
@@ -41,7 +41,7 @@
     if (document.getElementById("bio-lock")) return;
     const b = document.createElement("div"); b.id = "bio-lock"; b.setAttribute("role", "dialog"); b.setAttribute("aria-modal", "true"); b.setAttribute("aria-label", "Unlock Meechie's World");
     b.innerHTML = `<div class="in">${emblem()}<h3>Welcome back</h3><p>Unlock Meechie's World with ${label}.</p>
-      <button type="button" class="go" id="bio-go">${fingerIcon}<span>Unlock</span></button><p class="msg" id="bio-msg" aria-live="polite"></p>
+      <button type="button" class="go" id="bio-go">${fingerIcon}<span>Unlock</span></button><p class="bio-m" id="bio-msg" aria-live="polite"></p>
       <button type="button" class="alt" id="bio-pw">Sign in with my password instead</button></div>`;
     document.body.appendChild(b);
     document.documentElement.style.overflow = "hidden";
