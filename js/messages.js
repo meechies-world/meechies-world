@@ -261,12 +261,13 @@
 .dm-none{margin:auto;display:grid;gap:10px;justify-items:center;text-align:center;padding:24px;max-width:30em}
 .dm-dot{display:inline-block;margin-left:6px;background:#e5484d;color:#fff;border-radius:999px;font-size:11px;font-weight:800;padding:0 6px;line-height:16px}
 .dm-btn{margin-left:auto}
-#mx-fab{position:fixed;right:16px;bottom:76px;z-index:9996;width:54px;height:54px;border-radius:50%;border:1px solid var(--gold-hi,#f0cf78);background:linear-gradient(135deg,#e2b54e,#a87a22);color:#0b0a08;font-size:24px;cursor:pointer;box-shadow:0 10px 28px rgba(0,0,0,.55);display:grid;place-items:center}
+#mx-fab{position:fixed;right:16px;bottom:calc(var(--tabbar,0px) + 64px + env(safe-area-inset-bottom,0px));z-index:9996;width:54px;height:54px;border-radius:50%;border:1px solid var(--gold-hi,#f0cf78);background:linear-gradient(135deg,#e2b54e,#a87a22);color:#0b0a08;font-size:24px;cursor:pointer;box-shadow:0 10px 28px rgba(0,0,0,.55);display:grid;place-items:center}
+body.has-player #mx-fab{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-inset-bottom,0px))}
+#mx-fab svg{width:26px;height:26px}
 #mx-fab i{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:999px;background:#e5484d;color:#fff;font:800 11px/20px system-ui,sans-serif;font-style:normal;padding:0 5px;border:2px solid #0b0a08}
-body.has-player #mx-fab{bottom:calc(156px + env(safe-area-inset-bottom,0px))}
+
 body.mw-editing #mx-fab{display:none}
-@media (max-width:760px){.dm-app{grid-template-columns:1fr}.dm-app.has-thread .dm-side{display:none}.dm-app:not(.has-thread) .dm-thread{display:none}.dm-back{display:inline-block}.dm-thread{min-height:calc(100vh - 220px)}.mx-react-btn{opacity:.6}
-#mx-fab{bottom:calc(var(--tabbar,0px) + 76px + env(safe-area-inset-bottom,0px))}}`;
+@media (max-width:760px){.dm-app{grid-template-columns:1fr}.dm-app.has-thread .dm-side{display:none}.dm-app:not(.has-thread) .dm-thread{display:none}.dm-back{display:inline-block}.dm-thread{min-height:calc(100vh - 220px)}.mx-react-btn{opacity:.6}}`;
     document.head.appendChild(css);
     // the "active now" strip goes above the chat list
     const side = view.querySelector(".dm-side"); if (side && !side.querySelector(".mx-active")) { const a = document.createElement("div"); a.className = "mx-active"; side.querySelector(".dm-search").after(a); }
@@ -345,7 +346,7 @@ body.mw-editing #mx-fab{display:none}
 
   /* floating chat bubble on every page */
   function fab() {
-    const f = document.createElement("button"); f.id = "mx-fab"; f.type = "button"; f.setAttribute("aria-label", "Open Messenger"); f.innerHTML = '💬<i hidden></i>';
+    const f = document.createElement("button"); f.id = "mx-fab"; f.type = "button"; f.setAttribute("aria-label", "Open Messenger"); f.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.9 3 3 6.6 3 11.1c0 2.4 1.1 4.6 3 6.1V21l3.3-1.8c.9.2 1.8.4 2.7.4 5.1 0 9-3.6 9-8.1S17.1 3 12 3z" fill="#0b0a08"/><path d="M7.5 13.2 10.6 9.9l2 2 3.4-2-3.1 3.3-2-2z" fill="#e2b54e"/></svg><i hidden></i>';
     f.addEventListener("click", () => { if (typeof go === "function") go("messages"); });
     document.body.appendChild(f); paintDot(); paintFab();
   }
