@@ -74,13 +74,14 @@
     const msg = b.querySelector("#av-msg");
     b.querySelector("#av-later").addEventListener("click", () => { ls("mw_id_later", today()); b.remove(); });
     b.querySelector("#av-go").addEventListener("click", async (e) => {
-      e.currentTarget.disabled = true; msg.textContent = "Opening the secure ID check...";
+      const btn = e.currentTarget; // e.currentTarget is empty after the await below
+      btn.disabled = true; msg.textContent = "Opening the secure ID check...";
       try {
         const r = await fetch("/api/idv", { method: "POST", headers: { authorization: "Bearer " + tok() } }); const j = await r.json().catch(() => ({}));
         if (r.status === 501) { msg.textContent = "ID checks aren't switched on yet. You're all set for now. Thanks!"; ls("mw_id_later", today()); setTimeout(() => b.remove(), 2500); return; }
         if (!r.ok || !j.url) throw new Error(j.detail || "Couldn't start the ID check.");
         ls("mw_idv_session", j.id); location.href = j.url;
-      } catch (err) { msg.textContent = (err && err.message) || "Couldn't start the ID check. Try again."; e.currentTarget.disabled = false; }
+      } catch (err) { msg.textContent = (err && err.message) || "Couldn't start the ID check. Try again."; btn.disabled = false; }
     });
   }
   async function checkId() {

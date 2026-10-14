@@ -310,17 +310,21 @@ body.mw-editing #mx-fab{display:none}
       } catch (err) { say("Couldn't send the photo: " + (err.message || err)); }
     });
     /* walkie-talkie: hold the 📻 button, talk, let go */
-    let rec = null, chunks = [], stream = null, t0 = 0;
+    let rec = null, chunks = [], stream = null, t0 = 0, held = false;
     const wBtn = () => document.getElementById("dm-walkie");
     view.addEventListener("pointerdown", async (e) => {
       if (!e.target.closest("#dm-walkie") || rec || !other) return; e.preventDefault();
+      held = true;
       try { stream = stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); }
-      catch (_) { say("Allow the microphone to use the walkie-talkie."); return; }
+      catch (_) { held = false; say("Allow the microphone to use the walkie-talkie."); return; }
+      // let go while the microphone permission was being asked: don't start recording (it would send on the next tap anywhere)
+      if (!held || rec) { if (!rec) { try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {} stream = null; } if (!held) say("Microphone ready. Hold the 📻 button while you talk."); return; }
       const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((x) => window.MediaRecorder && MediaRecorder.isTypeSupported(x)) || "";
       rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined); chunks = []; rec.ondataavailable = (ev) => ev.data.size && chunks.push(ev.data);
       rec.start(); t0 = Date.now(); wBtn()?.classList.add("on"); const i = document.getElementById("dm-in"); if (i) i.placeholder = "Talking... let go to send";
     });
     const release = async () => {
+      held = false;
       if (!rec) return; const r = rec; rec = null; wBtn()?.classList.remove("on");
       const i = document.getElementById("dm-in"); if (i) i.placeholder = "Aa";
       await new Promise((res) => { r.onstop = res; try { r.stop(); } catch (_) { res(); } });

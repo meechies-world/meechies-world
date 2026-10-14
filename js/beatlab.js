@@ -295,7 +295,7 @@
   $("#bl-hq").addEventListener("change", () => { if (inStream) openInput(true); });
   $("#bl-gain").addEventListener("input", (e) => { if (inGain) inGain.gain.value = +e.target.value; });
   $("#bl-mon").addEventListener("change", (e) => { if (e.target.checked) say("Use headphones, or you'll get loud feedback."); if (inMon) inMon.gain.value = e.target.checked ? 1 : 0; else if (e.target.checked) openInput(); });
-  $("#bl-test").addEventListener("click", async (e) => { if (inStream && !recording) { closeInput(); e.currentTarget.textContent = "Test mic"; $("#bl-st").textContent = "Mic test off."; return; } if (await openInput()) { e.currentTarget.textContent = "Stop test"; } });
+  $("#bl-test").addEventListener("click", async (e) => { if (inStream && !recording) { closeInput(); e.currentTarget.textContent = "Test mic"; $("#bl-st").textContent = "Mic test off."; return; } const b = e.currentTarget; if (await openInput()) { b.textContent = "Stop test"; } });
   if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener("devicechange", async () => { await listMics(); if (inStream) openInput(true); say("Mic change detected"); });
 
   async function startRec() {
