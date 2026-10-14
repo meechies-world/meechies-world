@@ -31,6 +31,18 @@ hosted free on **Cloudflare Pages**.
    promote/pin, delete anything).
 8. Optional: Cloudflare → your Pages project → **Custom domains** → add `meechiesworld.com`.
 
+## Security setup (Oct 2026)
+
+1. Supabase → **SQL Editor** → New query → paste `supabase/lockdown.sql` → **Run** (safe to run again). It keeps the
+   ID-verified badge, the phone-alert channel and dating reports private, and adds fair-use limits for the AI.
+2. Cloudflare → Pages → meechies-world → **Settings → Variables and Secrets** → add these as **secrets**:
+   - `SUPABASE_SERVICE_ROLE_KEY` — Supabase → Project Settings → API → the **service_role** key (starts with `eyJ`). Never put it in the code.
+   - `NTFY_TOKEN` — an access token from your ntfy.sh account (so phone alerts sent by the site's server aren't rate-limited).
+   - `TWILIO_AUTH_TOKEN` — only if you use the AI phone line (Twilio console → Account → Auth Token). Without it, callers are rate-limited.
+3. After running the SQL, open the 👁 visitors button on the site and make a **new** alert channel (the old name was readable by members),
+   then subscribe to the new one in the ntfy app.
+4. Optional: Supabase → Authentication → Email → turn **on** "Confirm email" to slow down fake accounts.
+
 ## Not on yet
 - AI assistant and AI look-alike matching (needs an AI API key and a small server function).
 - Face verification, passkey login, end-to-end encrypted DMs, paid coins, in-site video live.

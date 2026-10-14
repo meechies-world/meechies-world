@@ -5,6 +5,8 @@
 --  3) Only Meechie can mark a clothing design "Selected for the store".
 --  4) Reports (dating "report this profile") can only be read by Meechie and the person who sent it.
 --  5) The latest list of which collections members may create (same as follows.sql), so re-running an old file can't undo it.
+--  6) The phone-alert channel name is private to Meechie (so nobody can send fake alerts to his phone).
+--  7) Fair-use limits for the AI, the phone line and visitor alerts (Meechie is never limited).
 
 -- 1-3: keep protected fields as they were unless Meechie or the server changes them.
 -- (Fields are silently kept, not refused, so normal profile saves never fail.)
@@ -80,3 +82,40 @@ language sql stable as $$
        else true
      end
 $$;
+
+-- 6) The phone-alert channel (site/alerts) can only be read by Meechie. Alerts are sent by the site's server.
+drop policy if exists "read members only" on public.docs;
+create policy "read members only" on public.docs for select to authenticated
+  using ((coll <> 'reports' or owner = auth.uid() or public.is_admin())
+     and (path <> 'site/alerts' or public.is_admin()));
+
+-- 7) Fair-use limits (AI, phone line, visitor alerts). Meechie is never limited.
+create table if not exists public.usage (k text not null, at timestamptz not null default now());
+create index if not exists usage_k_at on public.usage (k, at);
+alter table public.usage enable row level security; -- no policies: only the function below touches it
+
+create or replace function public.take(p_key text, p_window int, p_max int) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare v_k text; n int;
+begin
+  if p_window < 1 or p_window > 86400 or p_max < 1 or p_max > 1000 or p_key !~ '^[A-Za-z0-9:._+-]{1,120}$' then return false; end if;
+  if coalesce(auth.jwt()->>'role', '') = 'service_role' then
+    v_k := 'srv:' || p_key;
+  elsif auth.uid() is null then
+    return false;
+  elsif public.is_admin() then
+    return true;
+  elsif p_key not in ('ai', 'ai-day', 'verify', 'verify-day', 'legal', 'legal-day', 'legal-claude', 'legal-claude-day') then
+    return false;
+  else
+    v_k := auth.uid()::text || ':' || p_key;
+  end if;
+  perform pg_advisory_xact_lock(hashtext(v_k));
+  select count(*) into n from public.usage u where u.k = v_k and u.at > now() - make_interval(secs => p_window);
+  if n >= p_max then return false; end if;
+  insert into public.usage (k) values (v_k);
+  if random() < 0.01 then delete from public.usage where at < now() - interval '2 days'; end if;
+  return true;
+end $$;
+revoke all on function public.take(text, int, int) from public, anon;
+grant execute on function public.take(text, int, int) to authenticated, service_role;

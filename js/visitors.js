@@ -12,21 +12,12 @@
   const ready = () => typeof db !== "undefined" && db && typeof me !== "undefined";
   const tok = () => (window.MW && MW.session && MW.session() && MW.session().access_token) || "";
 
-  // Alerts go straight from the visitor's browser to the owner's ntfy channel (free; Cloudflare's shared servers hit ntfy's daily limit).
-  // Visitors on the sign-up screen can't read the channel, so those go through the site's server (/api/visit) instead.
-  const device = () => /iPhone|iPad/i.test(navigator.userAgent) ? "iPhone" : /Android/i.test(navigator.userAgent) ? "Android phone" : /Mobi/i.test(navigator.userAgent) ? "phone" : "computer";
+  // Every alert goes through the site's server (/api/visit), which checks it's real before it reaches the owner's phone.
+  // Nobody's browser ever sees the alert channel, so nobody can send fake alerts to it.
   async function ping(kind) {
-    const t = tok();
-    if (kind === "gate" || !t) { if (kind === "gate") fetch("/api/visit", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind }), keepalive: true }).catch(() => {}); return; }
     if (typeof isOwner !== "undefined" && isOwner) return; // your own visits aren't announced
-    let al = null; try { const d = await db.doc("site/alerts").get(); al = d.exists ? d.data() : null; } catch (_) {}
-    if (!al || al.off || !/^[A-Za-z0-9_-]{12,64}$/.test(al.topic || "")) return;
-    const who = (typeof profileMe !== "undefined" && profileMe && profileMe.handle) || ls("mw_join_name") || "A member";
-    const msg = kind === "contact" ? "📇 " + who + " just sent you their contact info. Open Messages on the site to see it."
-      : kind === "joined" ? "🎉 New member: " + who + " just made an account on Meechie's World (" + device() + ")."
-      : "🔔 " + who + " just came on Meechie's World (" + device() + ").";
-    fetch("https://ntfy.sh/" + al.topic, { method: "POST", body: msg, keepalive: true,
-      headers: { Title: kind === "joined" ? "New member" : kind === "contact" ? "New contact info" : "Someone's on your site", Tags: kind === "joined" ? "tada" : kind === "contact" ? "card_index" : "eyes", Click: "https://meechies-world.pages.dev/" } }).catch(() => {});
+    const t = tok();
+    fetch("/api/visit", { method: "POST", keepalive: true, headers: { "content-type": "application/json", ...(t ? { authorization: "Bearer " + t } : {}) }, body: JSON.stringify({ kind: t ? kind : "gate" }) }).catch(() => {});
   }
   window.MW_VISIT = ping;
   // the owner's visit lets the site's server learn the alert channel (for sign-up screen alerts)

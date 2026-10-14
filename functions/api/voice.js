@@ -1,9 +1,9 @@
 // Meechie's AI phone line. Point a Twilio phone number's "A call comes in" webhook (HTTP POST) at
 //   https://meechies-world.pages.dev/api/voice
 // Optional Cloudflare secrets/vars:
-//   TWILIO_AUTH_TOKEN  - checks that calls really come from Twilio (recommended)
+//   TWILIO_AUTH_TOKEN  - checks that calls really come from Twilio (recommended; without it, callers are rate-limited)
 //   FORWARD_TO         - phone number to connect callers who ask for Meechie, e.g. +17245551234
-import { answer } from "../../lib/brain.js";
+import { answer, take } from "../../lib/brain.js";
 
 const xml = (body) => new Response(`<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`, { headers: { "content-type": "text/xml; charset=utf-8", "cache-control": "no-store" } });
 const X = (s) => String(s ?? "").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&apos;" }[c]));
@@ -29,6 +29,11 @@ export async function onRequest({ request, env }) {
   let params = {};
   if (request.method === "POST") { try { const f = await request.formData(); for (const [k, v] of f) params[k] = String(v); } catch (_) { return new Response("Bad request", { status: 400 }); } }
   if (!(await validTwilio(request, params, env.TWILIO_AUTH_TOKEN))) return new Response("Forbidden", { status: 403 });
+  if (!env.TWILIO_AUTH_TOKEN) { // without the Twilio check anyone could call this address, so cap it: 40 steps an hour per caller, 400 in total
+    const from = String(params.From || request.headers.get("cf-connecting-ip") || "x").replace(/[^0-9A-Za-z+.:-]/g, "").slice(0, 60) || "x";
+    if ((await take(env, null, "voice:" + from, 3600, 40)) === false || (await take(env, null, "voice-all", 3600, 400)) === false)
+      return xml(`<Say ${VOICE}>Sorry, the line is very busy right now. Please call back later. Goodbye.</Say><Hangup/>`);
+  }
 
   const self = url.origin + url.pathname;
   // short call memory travels in the URL (last few turns)

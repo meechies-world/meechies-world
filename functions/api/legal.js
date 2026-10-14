@@ -1,7 +1,7 @@
 // Legal Help: Meechie's AI drafts court papers for people representing themselves (pro se),
 // reviews drafts, revises them, and answers legal-information questions.
 // Signed-in members only. Case details are sent only for the request and are not stored here.
-import { runModel, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { runModel, take, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const cut = (v, n) => String(v ?? "").replace(/\u0000/g, "").slice(0, n);
 
@@ -156,6 +156,10 @@ export async function onRequestPost({ request, env }) {
   let b; try { b = await request.json(); } catch (_) { return json({ error: "bad_request" }, 400); }
   if (!b || typeof b !== "object") return json({ error: "bad_request" }, 400);
   const mode = ["draft", "revise", "review", "ask", "suggest", "factcheck"].includes(b.mode) ? b.mode : "draft";
+  // fair-use limits per member: 30 AI requests an hour / 120 a day; the paid Claude fact-check 8 an hour / 25 a day
+  if ((await take(env, token, "legal", 3600, 30)) === false || (await take(env, token, "legal-day", 86400, 120)) === false)
+    return json({ error: "limit", message: "You've used Legal Help's AI a lot today. Your case is saved here. Take a break and try again later." }, 429);
+  const claudeOk = mode !== "factcheck" || ((await take(env, token, "legal-claude", 3600, 8)) !== false && (await take(env, token, "legal-claude-day", 86400, 25)) !== false);
   const research = (Array.isArray(b.research) ? b.research : []).slice(0, 10).map((r, i) =>
     `[${i + 1}] ${cut(r.name, 160)}, ${cut(r.cite, 80)} (${cut(r.court, 80)} ${cut(r.year, 8)})${r.snippet ? "\n    Passage from the opinion: " + cut(r.snippet, 700) : ""}`).join("\n");
   const R = research ? "\n\nRESEARCH (real cases from the CourtListener court database; use the ones that truly fit):\n" + research : "\n\nRESEARCH: none provided. Only cite Supreme Court cases you are certain of; otherwise use [CITATION NEEDED]." + "\n\n" + TRUSTED;
@@ -168,7 +172,7 @@ export async function onRequestPost({ request, env }) {
   } else if (mode === "factcheck") {
     system = FACTCHECK; max = 2200; effort = "medium";
     user = "Their case:\n" + caseBlock(b.case) + "\nAutomatic citation check results (from the CourtListener court database):\n" + cut(b.checks, 6000) + "\n\nDocument to fact-check:\n" + cut(b.draft, 24000) + R;
-    if (env.ANTHROPIC_API_KEY) { // ask Claude to double-check, with web search
+    if (env.ANTHROPIC_API_KEY && claudeOk) { // ask Claude to double-check, with web search (over the limit: the free AI does it instead)
       const c = await claude(env, system, user);
       if (c) return json({ text: c, model: "claude" });
     }

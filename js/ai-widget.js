@@ -128,7 +128,7 @@ body.mw-editing #ai-fab{display:none!important}`;
       try {
         const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + MW.session().access_token }, body: JSON.stringify({ verify: { question: q ? q.content : "", answer: m.content } }) });
         const j = await r.json().catch(() => ({}));
-        m.check = r.ok && j.text ? (j.by === "claude" ? "Double-checked by Claude:\n" : "Double-checked by a second AI:\n") + j.text + (j.sources && j.sources.length ? "\nSources: " + j.sources.map((x) => x.url).join("  ") : "") : "Couldn't double-check right now. Try again in a minute.";
+        m.check = r.ok && j.text ? (j.by === "claude" ? "Double-checked by Claude:\n" : "Double-checked by a second AI:\n") + j.text + (j.sources && j.sources.length ? "\nSources: " + j.sources.map((x) => x.url).join("  ") : "") : j.error === "limit" && j.message ? j.message : "Couldn't double-check right now. Try again in a minute.";
       } catch (_) { m.check = "Couldn't double-check right now."; }
       try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((x) => ({ role: x.role, content: x.content, ...(x.check ? { check: x.check } : {}) })))); } catch (_) {}
       draw(false); return;

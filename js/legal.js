@@ -199,7 +199,7 @@
     try {
       const r = await fetch("/api/legal", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok() }, body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j.text) { msgEl.textContent = j.error === "busy" ? "The AI is busy right now. Wait a minute and try again." : j.error === "sign_in" ? "Sign in first." : "Couldn't finish. Try again."; return null; }
+      if (!r.ok || !j.text) { msgEl.textContent = j.error === "limit" && j.message ? j.message : j.error === "busy" ? "The AI is busy right now. Wait a minute and try again." : j.error === "sign_in" ? "Sign in first." : "Couldn't finish. Try again."; return null; }
       msgEl.textContent = "Done."; return j.text;
     } catch (_) { msgEl.textContent = "Couldn't connect. Check your internet and try again."; return null; }
     finally { clearInterval(tick); btn.classList.remove("busy"); }
