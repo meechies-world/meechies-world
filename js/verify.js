@@ -29,7 +29,8 @@
   let secs = +(ls("mw_signed_secs") || 0);
   const t = setInterval(() => {
     if (!ready() || owner() || document.hidden || document.documentElement.classList.contains("gated")) return;
-    if (profileMe.ageVerified && (profileMe.idVerified || ls("mw_id_later") === today())) { clearInterval(t); return; }
+    if (profileMe.idDuplicate) { clearInterval(t); dupe(); return; }
+    if (profileMe.ageVerified && (profileMe.idVerified || ls("mw_id_off") === "1")) { clearInterval(t); return; }
     secs++; if (secs % 10 === 0) ls("mw_signed_secs", String(secs));
     if (secs < 180) return; // 3 minutes signed in
     if (document.querySelector("dialog[open], #ct-box, #av-box")) return; // wait until they're not busy
@@ -70,24 +71,31 @@
       <p>Take a photo of your driver's license, state ID or passport, plus a quick selfie. It's done on Stripe's secure page, and Meechie's World never sees or stores your ID, only that you're verified.</p>
       <p class="msg" id="av-msg" aria-live="polite"></p>
       <button class="btn" type="button" id="av-go">🪪 Verify my ID</button>
-      <button class="later" type="button" id="av-later">Remind me tomorrow</button>`);
+      <p style="font-size:12.5px">One account per person: each ID can only be used on one Meechie's World account.</p>
+      <button class="later" type="button" id="av-later">Sign out</button>`);
     const msg = b.querySelector("#av-msg");
-    b.querySelector("#av-later").addEventListener("click", () => { ls("mw_id_later", today()); b.remove(); });
+    b.querySelector("#av-later").addEventListener("click", () => window.MW?.signOut?.());
     b.querySelector("#av-go").addEventListener("click", async (e) => {
       const btn = e.currentTarget; // e.currentTarget is empty after the await below
       btn.disabled = true; msg.textContent = "Opening the secure ID check...";
       try {
         const r = await fetch("/api/idv", { method: "POST", headers: { authorization: "Bearer " + tok() } }); const j = await r.json().catch(() => ({}));
-        if (r.status === 501) { msg.textContent = "ID checks aren't switched on yet. You're all set for now. Thanks!"; ls("mw_id_later", today()); setTimeout(() => b.remove(), 2500); return; }
+        if (r.status === 501) { msg.textContent = "ID checks aren't switched on yet. You're all set for now. Thanks!"; ls("mw_id_off", "1"); setTimeout(() => b.remove(), 2500); return; }
         if (!r.ok || !j.url) throw new Error(j.detail || "Couldn't start the ID check.");
         ls("mw_idv_session", j.id); location.href = j.url;
       } catch (err) { msg.textContent = (err && err.message) || "Couldn't start the ID check. Try again."; btn.disabled = false; }
     });
   }
+  function dupe() {
+    box(`<h3 id="av-t">This ID already has an account</h3><p>Each person can have only one Meechie's World account, and this ID is already verified on another one. Please sign in to your other account. If you think this is a mistake, message Meechie.</p>
+      <button class="btn" type="button" id="av-out">OK</button>`).querySelector("#av-out").addEventListener("click", () => window.MW?.signOut?.());
+    setTimeout(() => window.MW?.signOut?.(), 12000);
+  }
   async function checkId() {
     const id = ls("mw_idv_session"); if (!id || !tok()) return;
     try {
       const j = await fetch("/api/idv?id=" + encodeURIComponent(id), { headers: { authorization: "Bearer " + tok() } }).then((r) => r.json());
+      if (j.status === "duplicate") { dupe(); return; }
       if (j.status === "verified") { say("✅ Your ID is verified. Thank you!"); if (typeof profileMe !== "undefined" && profileMe) profileMe.idVerified = true; }
       else if (j.status === "processing") say("Your ID is being checked. This usually takes a minute.");
       else if (j.status === "requires_input") say("The ID check didn't go through. You can try again later.");
