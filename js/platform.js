@@ -22,6 +22,11 @@
     if (!sb) return;
     const { data } = await sb.auth.getSession();
     session = data.session;
+    // A saved sign-in whose hourly token is being renewed can come back empty for a moment:
+    // try renewing it before treating the person as signed out.
+    if (!session && Object.keys(localStorage).some((k) => /^sb-.*-auth-token$/.test(k) && localStorage.getItem(k))) {
+      try { const r = await Promise.race([sb.auth.refreshSession(), new Promise((res) => setTimeout(() => res({}), 6000))]); if (r && r.data && r.data.session) session = r.data.session; } catch (_) {}
+    }
     if (session) {
       const r = await sb.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
       adminFlag = !!r.data;
@@ -33,7 +38,15 @@
     const next = s?.user?.id || null;
     sessionReady.then(() => {
       const cur = session?.user?.id || null;
-      if (evt !== "PASSWORD_RECOVERY" && next !== cur && (evt === "SIGNED_IN" || evt === "SIGNED_OUT")) setTimeout(() => location.reload(), 50);
+      if (evt !== "PASSWORD_RECOVERY" && next !== cur && (evt === "SIGNED_IN" || evt === "SIGNED_OUT")) {
+        // double-check before reloading: a token renewal can briefly look like signing out
+        setTimeout(async () => {
+          let still = null; try { still = (await sb.auth.getSession()).data.session; } catch (_) {}
+          const now = still?.user?.id || null;
+          if (now === cur) { if (still) session = still; return; } // same person as before: nothing changed
+          location.reload();
+        }, 1500);
+      }
       else if (s && next === cur) session = s; // keep the fresh token after auto-refresh
       if (evt === "PASSWORD_RECOVERY") { session = s; window.MW.recovery = true; if (typeof window.MW.onRecovery === "function") window.MW.onRecovery(); }
     });
