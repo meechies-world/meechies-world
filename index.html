@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1792000147">
+<meta name="mw-build" content="1792000204">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1950,8 +1950,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1792000147"></script>
-<script src="js/platform.js?v=1792000147"></script>
+<script src="js/config.js?v=1792000204"></script>
+<script src="js/platform.js?v=1792000204"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2864,7 +2864,7 @@ function renderWardrobe(){
   if(!wardrobe.length) return;
   $("#wardrobe").innerHTML=wardrobe.map(w=>{ const liked=(w.likes||[]).includes(me);
     return `<div class="fit"><div class="fit-stage">${avatarSVG({...look,...w.fit,photo:false},"stand","")}</div><b>${esc(handleOf(w.authorId))}'s fit</b>
-    <div class="fit-acts"><button class="btn sm" type="button" data-try="${w.id}">Try on</button><button class="act ${liked?"on":""}" type="button" data-wlike="${w.id}">♥ ${(w.likes||[]).length||""}</button>${(w.authorId===me||isOwner)?`<button class="act" type="button" data-wdel="${w.id}">Delete</button>`:""}</div></div>`; }).join("");
+    <div class="fit-acts"><button class="btn sm" type="button" data-try="${w.id}">Try on</button><button class="act ${liked?"on":""}" type="button" data-wlike="${w.id}">♥ ${((w.likes||[]).length<(window.MW_SHOW_MIN||25)&&!isOwner)?"":(w.likes||[]).length||""}</button>${(w.authorId===me||isOwner)?`<button class="act" type="button" data-wdel="${w.id}">Delete</button>`:""}</div></div>`; }).join("");
 }
 $("#wardrobe").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.try){ const w=wardrobe.find(x=>x.id===b.dataset.try); Object.assign(look,w.fit); drawBuilder(); setMine({look:{...look}}); try{localStorage.setItem("mw-look",JSON.stringify(look));}catch(_){} toast("You're wearing it. Head to the Virtual World."); }
@@ -2967,8 +2967,12 @@ function renderFeed(){
   const keep=new Set(list.map(p=>p.id));
   for(const [id,el] of postEls) if(!keep.has(id)){ el.remove(); postEls.delete(id); }
   let prev=null;
+  // 🔥 Trending: the 3 posts from the last 7 days with the most real likes and comments
+  const wk=Date.now()-7*864e5, sc=p=>(p.likes||[]).length+2*(+p.replyCount||0);
+  const trend=new Set(posts.filter(p=>(p.createdAt||0)>wk&&sc(p)>=3).sort((a,b)=>sc(b)-sc(a)).slice(0,3).map(p=>p.id));
   list.forEach(p=>{
     const liked=(p.likes||[]).includes(me);
+    const lc=(p.likes||[]).length, showLc=lc&&(lc>=(window.MW_SHOW_MIN||25)||isOwner); // small counts stay hidden until they're worth showing
     const shop=shopLinks(members[p.authorId]||{})[0];
     let el=postEls.get(p.id);
     if(!el){ el=document.createElement("article"); el.innerHTML='<div class="post-body"></div><div class="post-actions"></div><div class="replies" hidden></div>'; el.querySelector(".replies").dataset.rbox=p.id; postEls.set(p.id,el); }
@@ -2982,8 +2986,10 @@ function renderFeed(){
       ${/^https:\/\//.test(p.audio||"")?`<audio class="aud" src="${esc(p.audio)}" controls preload="none" style="width:100%;margin-top:8px"></audio>`:""}`; }
     const ws=el.querySelector(".who small"); if(ws) ws.textContent=ago(p.createdAt);
     el.querySelector(".post-actions").innerHTML=`
-        <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">♥ ${(p.likes||[]).length||""} Like</button>
+        ${trend.has(p.id)?`<span class="trend-badge">🔥 Trending</span>`:""}
+        <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">♥ ${showLc?lc:""} Like</button>
         <button class="act" data-replies="${esc(p.id)}">💬 ${(+p.replyCount)||""} Comment</button>
+        <button class="act" data-share="${esc(p.id)}">↗ Share</button>
         ${p.authorId!==me?`<button class="act" data-giftto="${esc(p.authorId)}">🎁 Gift</button>`:""}
         ${isOwner?`<button class="act" data-sponsor="${esc(p.id)}">${p.sponsored?"Unpin":"Pin as promoted"}</button>`:""}
         ${(p.authorId===me||isOwner)?`<button class="act" data-del="${esc(p.id)}">Delete</button>`:""}`;
@@ -2996,6 +3002,7 @@ $("#feed").addEventListener("click",async e=>{
   const t=e.target.closest("button"); if(!t) return;
   if(t.dataset.like){ if(!needMember())return; const p=posts.find(x=>x.id===t.dataset.like); const s=new Set(p.likes||[]); s.has(me)?s.delete(me):s.add(me);
     db.doc("posts/"+p.id).update({likes:[...s]}).catch(err=>toast(err.message||err.code)); }
+  if(t.dataset.share){ window.MW_share && MW_share((posts.find(x=>x.id===t.dataset.share)||{}).text||"", "#community"); return; }
   if(t.dataset.giftto){ openGift(t.dataset.giftto); return; }
   if(t.dataset.replies){ const id=t.dataset.replies; if(openReplies.has(id)) openReplies.delete(id); else { openReplies.add(id); subReplies(id);} renderFeed(); }
   if(t.dataset.sponsor){ const p=posts.find(x=>x.id===t.dataset.sponsor); db.doc("posts/"+p.id).update({sponsored:!p.sponsored}).catch(err=>toast(err.message||err.code)); }
@@ -3178,34 +3185,35 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792000147"></script>
-<script src="js/studio.js?v=1792000147"></script>
-<script src="js/owner.js?v=1792000147"></script>
-<script src="js/messages.js?v=1792000147"></script>
-<script src="js/videos.js?v=1792000147"></script>
-<script src="js/markets.js?v=1792000147"></script>
-<script src="js/legal.js?v=1792000147"></script>
-<script src="js/coin.js?v=1792000147"></script>
-<script src="js/preach.js?v=1792000147"></script>
-<script src="js/world3d.js?v=1792000147"></script>
-<script src="js/clips.js?v=1792000147"></script>
-<script src="js/dj.js?v=1792000147"></script>
-<script src="js/live.js?v=1792000147"></script>
-<script src="js/autotune.js?v=1792000147"></script>
-<script src="js/beatmaker.js?v=1792000147"></script>
-<script src="js/beatlab.js?v=1792000147"></script>
-<script src="js/friends.js?v=1792000147"></script>
-<script src="js/dating.js?v=1792000147"></script>
-<script src="js/books.js?v=1792000147"></script>
-<script src="js/social.js?v=1792000147"></script>
-<script src="js/jobs.js?v=1792000147"></script>
-<script src="js/golive.js?v=1792000147"></script>
-<script src="js/predict.js?v=1792000147"></script>
-<script src="js/people.js?v=1792000147"></script>
-<script src="js/originals.js?v=1792000147"></script>
-<script src="js/verify.js?v=1792000147"></script>
-<script src="js/biolock.js?v=1792000147"></script>
-<script src="js/visitors.js?v=1792000147"></script>
-<script src="js/ai-widget.js?v=1792000147"></script>
+<script src="js/appnav.js?v=1792000204"></script>
+<script src="js/studio.js?v=1792000204"></script>
+<script src="js/owner.js?v=1792000204"></script>
+<script src="js/messages.js?v=1792000204"></script>
+<script src="js/videos.js?v=1792000204"></script>
+<script src="js/markets.js?v=1792000204"></script>
+<script src="js/legal.js?v=1792000204"></script>
+<script src="js/coin.js?v=1792000204"></script>
+<script src="js/preach.js?v=1792000204"></script>
+<script src="js/world3d.js?v=1792000204"></script>
+<script src="js/clips.js?v=1792000204"></script>
+<script src="js/dj.js?v=1792000204"></script>
+<script src="js/live.js?v=1792000204"></script>
+<script src="js/autotune.js?v=1792000204"></script>
+<script src="js/beatmaker.js?v=1792000204"></script>
+<script src="js/beatlab.js?v=1792000204"></script>
+<script src="js/friends.js?v=1792000204"></script>
+<script src="js/dating.js?v=1792000204"></script>
+<script src="js/books.js?v=1792000204"></script>
+<script src="js/social.js?v=1792000204"></script>
+<script src="js/jobs.js?v=1792000204"></script>
+<script src="js/golive.js?v=1792000204"></script>
+<script src="js/predict.js?v=1792000204"></script>
+<script src="js/people.js?v=1792000204"></script>
+<script src="js/originals.js?v=1792000204"></script>
+<script src="js/verify.js?v=1792000204"></script>
+<script src="js/biolock.js?v=1792000204"></script>
+<script src="js/engage.js?v=1792000204"></script>
+<script src="js/visitors.js?v=1792000204"></script>
+<script src="js/ai-widget.js?v=1792000204"></script>
 </body>
 </html>
