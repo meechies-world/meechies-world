@@ -136,8 +136,9 @@ body.mw-editing #ai-fab{display:none!important}`;
     const c = e.target.closest("[data-copy-i]"); if (!c) return; const m = hist[+c.dataset.copyI]; if (m) navigator.clipboard?.writeText(m.content).then(() => { c.textContent = "Copied ✓"; setTimeout(() => (c.textContent = "Copy"), 1500); }).catch(() => {}); });
   panel.querySelector("#ai-form2").addEventListener("submit", (e) => { e.preventDefault(); let q = inp.value; if (!q.trim() && pending) q = "What is in this picture?"; inp.value = ""; ask(q); });
   // hide the bubble on the Contact page, which already has the full AI box
-  const contact = document.getElementById("v-contact");
-  const sync = () => { if (panel.hidden) fab.hidden = !!(contact && !contact.hidden); };
-  if (contact) new MutationObserver(sync).observe(contact, { attributes: true, attributeFilter: ["hidden"] });
+  const contact = document.getElementById("v-contact"), msgs = document.getElementById("v-messages");
+  // also hidden in Messenger, where it would cover the Send button
+  const sync = () => { if (panel.hidden) fab.hidden = !!(contact && !contact.hidden) || !!(msgs && !msgs.hidden); };
+  [contact, msgs].forEach((v) => v && new MutationObserver(sync).observe(v, { attributes: true, attributeFilter: ["hidden"] }));
   sync();
 })();
