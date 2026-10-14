@@ -152,6 +152,7 @@
     const prevIn = document.getElementById("dm-in"), keep = prevIn && thread.dataset.with === other, draft = keep ? prevIn.value : "", hadFocus = keep && document.activeElement === prevIn;
     const box0 = document.getElementById("dm-msgs"), atBottom = !keep || !box0 || box0.scrollHeight - box0.scrollTop - box0.clientHeight < 80, oldTop = box0 ? box0.scrollTop : 0;
     thread.dataset.with = other;
+    const openPick = keep ? document.querySelector(".mx-pick")?.dataset.for : null; // keep an open reaction picker through a refresh
     const pair = all.filter((r) => (r.sender === uid && r.recipient === other) || (r.sender === other && r.recipient === uid)).slice().reverse();
     // reactions: the latest reaction from each person on each message
     const reacts = {}; pair.filter((r) => isReact(r.body)).forEach((r) => { const m = REACT_RE.exec(r.body); (reacts[m[1]] = reacts[m[1]] || {})[r.sender] = m[2]; });
@@ -184,6 +185,7 @@
   <button class="mx-send" type="submit" id="mx-send" aria-label="Send">👍</button></form>`;
     const box = document.getElementById("dm-msgs"); if (box) box.scrollTop = atBottom ? box.scrollHeight : oldTop;
     const ni = document.getElementById("dm-in"); if (ni && draft) ni.value = draft; if (ni && hadFocus) ni.focus();
+    if (openPick) { const col = view.querySelector(`.mx-msg[data-mid="${CSS.escape(String(openPick))}"] .mx-col`); if (col) { const pk = document.createElement("div"); pk.className = "mx-pick"; pk.dataset.for = openPick; pk.innerHTML = REACTS.map((r) => `<button type="button" data-rx="${r}">${r}</button>`).join(""); col.appendChild(pk); } }
     paintSend(); markRead();
   }
   function paintSend() { const i = document.getElementById("dm-in"), s = document.getElementById("mx-send"); if (i && s) { const has = !!i.value.trim(); s.textContent = has ? "➤" : "👍"; s.classList.toggle("go", has); s.setAttribute("aria-label", has ? "Send" : "Send a thumbs up"); } }
