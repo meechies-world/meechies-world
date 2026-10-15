@@ -67,6 +67,7 @@
 .bk-nav input[type=range]{flex:1;accent-color:var(--gold)}
 .bk-shield.blur .bk-page{filter:blur(14px)}
 .bk-lock{text-align:center;padding:40px 20px;display:grid;gap:12px;justify-items:center}
+.bk-listen{margin:0;text-align:center}
 .bk-admin{border:1px dashed var(--gold-lo);border-radius:14px;padding:14px;display:grid;gap:8px}
 .bk-admin input,.bk-admin textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}
 @media print{#v-books{display:none!important}body::after{content:"Printing is turned off for Meechie's World books.";display:block;padding:40px;font:20px sans-serif}}`;
@@ -83,6 +84,7 @@
   function shelf() {
     const own = OWNER();
     root.innerHTML = `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
+      books.filter((b) => /^[a-z0-9-]+\.html$/.test(b.media || "")).map((b) => `<p class="bk-listen"><a class="btn" href="${E(b.media)}">🎧 Listen to &amp; watch “${E(String(b.title).split(":")[0])}”</a></p>`).join("") +
       (own ? `<div class="bk-admin"><b>Owner: publish a book</b>
         <input type="text" id="bk-t" maxlength="120" placeholder="Book title">
         <input type="text" id="bk-a" maxlength="80" placeholder="Author" value="Meechie's World Inc">
@@ -115,6 +117,7 @@
     root.innerHTML = `<div class="bk-reader bk-shield" id="bk-shield">
       <div class="bk-top"><button class="btn ghost sm" type="button" data-shelf="1">← Books</button><b>${E(open.title)}</b>
         <button class="btn ghost sm" type="button" data-fs="-1" aria-label="Smaller text">A−</button><button class="btn ghost sm" type="button" data-fs="1" aria-label="Bigger text">A+</button>
+        ${/^[a-z0-9-]+\.html$/.test(open.media || "") ? `<a class="btn ghost sm" href="${E(open.media)}">🎧 Listen</a>` : ""}
         ${OWNER() && !open.static ? `<button class="act" type="button" data-delbook="${E(open.id)}">Delete book</button>` : ""}</div>
       <div class="bk-sheet"><div class="bk-orn" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         <div class="bk-head" aria-hidden="true"><span class="em"></span><small>MEECHIE'S WORLD INC • CONSCIENTIA</small><hr></div>
