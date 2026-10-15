@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Pyramids of Egypt — Meechie's World Inc</title>
+<meta name="description" content="A 300-page book on how the pyramids of Egypt were built, what they were for, and the myths around them. A Meechie's World Inc publication. Free PDF download.">
+<style>
+  :root{
+    --bg:#0e0e0e; --panel:#161616; --ink:#f3efe4; --muted:#a8a293; --gold:#c9a13b; --gold-d:#8c6d1f; --line:#2a2a2a;
+  }
+  :root[data-theme="light"]{
+    --bg:#faf7ee; --panel:#ffffff; --ink:#151515; --muted:#5f5a4c; --gold:#9a7418; --gold-d:#7a5a10; --line:#e4dcc6;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#faf7ee; --panel:#ffffff; --ink:#151515; --muted:#5f5a4c; --gold:#9a7418; --gold-d:#7a5a10; --line:#e4dcc6;
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Georgia,"Times New Roman",serif;line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:var(--gold)}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px}
+  header.top{border-bottom:2px solid var(--gold);padding:14px 0}
+  header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--ink)}
+  .brand svg{width:44px;height:44px}
+  .brand b{font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;letter-spacing:.14em;font-size:.82rem;text-transform:uppercase}
+  .brand small{display:block;font-family:system-ui,sans-serif;font-size:.62rem;letter-spacing:.28em;color:var(--muted);text-transform:uppercase}
+  nav a{font-family:system-ui,sans-serif;font-size:.85rem;text-decoration:none;margin-left:16px;color:var(--muted)}
+  nav a:hover{color:var(--gold)}
+  .hero{padding:48px 0 36px;display:grid;grid-template-columns:300px 1fr;gap:48px;align-items:center}
+  .cover{aspect-ratio:2/3;background:#0b0b0b;border:2px solid var(--gold);outline:1px solid var(--gold);outline-offset:-9px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px 22px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+  .cover svg{width:150px;height:150px;margin-bottom:6px}
+  .cover .pub{font-family:system-ui,sans-serif;font-size:.55rem;letter-spacing:.3em;color:#c9a13b;text-transform:uppercase}
+  .cover hr{width:70%;border:0;border-top:1px solid #c9a13b;margin:12px 0}
+  .cover h2{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#fff;font-size:1.65rem;line-height:1.15;margin:4px 0 10px;letter-spacing:.04em}
+  .cover p{font-style:italic;color:#c9a13b;font-size:.82rem;margin:0}
+  .cover .foot{margin-top:auto;font-family:system-ui,sans-serif;font-size:.6rem;letter-spacing:.18em;color:#fff;text-transform:uppercase}
+  .eyebrow{font-family:system-ui,sans-serif;font-size:.75rem;letter-spacing:.22em;color:var(--gold);text-transform:uppercase;margin:0 0 8px}
+  h1{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;font-size:clamp(2rem,5vw,3.2rem);line-height:1.1;margin:0 0 12px}
+  .sub{font-style:italic;color:var(--gold);font-size:1.15rem;margin:0 0 20px}
+  .lead{color:var(--muted);max-width:56ch}
+  .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+  .btn{display:inline-block;font-family:system-ui,sans-serif;font-weight:600;font-size:.95rem;text-decoration:none;padding:12px 22px;border:2px solid var(--gold);color:#111;background:var(--gold)}
+  .btn.alt{background:transparent;color:var(--gold)}
+  .btn:hover{filter:brightness(1.1)}
+  .facts{display:flex;gap:28px;flex-wrap:wrap;margin-top:22px;font-family:system-ui,sans-serif;font-size:.82rem;color:var(--muted)}
+  .facts b{display:block;color:var(--ink);font-size:1.15rem}
+  section{padding:36px 0;border-top:1px solid var(--line)}
+  h3{font-family:system-ui,sans-serif;font-size:1.15rem;margin:0 0 6px}
+  .rule{width:56px;height:3px;background:var(--gold);margin:0 0 20px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--gold);padding:18px}
+  .card h4{font-family:system-ui,sans-serif;margin:0 0 6px;font-size:.95rem}
+  .card p{margin:0;color:var(--muted);font-size:.95rem}
+  .toc{columns:2 320px;column-gap:40px}
+  .toc h4{font-family:system-ui,sans-serif;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin:18px 0 6px;break-after:avoid}
+  .toc ol,.toc ul{margin:0;padding-left:1.3em}
+  .toc li{margin:2px 0;font-size:.95rem;break-inside:avoid}
+  footer{border-top:2px solid var(--gold);padding:26px 0 40px;color:var(--muted);font-family:system-ui,sans-serif;font-size:.82rem;text-align:center}
+  footer .name{color:var(--ink);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+  footer .tag{color:var(--gold);font-style:italic;font-family:Georgia,serif}
+  @media (max-width:760px){
+    .hero{grid-template-columns:1fr;gap:28px;padding-top:30px}
+    .cover{max-width:300px;margin:0 auto}
+    nav{display:none}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" id="top">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <g fill="none" stroke="#c9a13b" stroke-width="2.2" stroke-linejoin="round">
+          <path d="M50 8 L90 70 L10 70 Z"/>
+          <path d="M33 45 H67 M41 29 H59" stroke-width="1"/>
+          <path d="M30 40 Q50 27 70 40 Q50 53 30 40 Z" fill="#0e0e0e"/>
+          <path d="M50 74 Q36 69 12 72 L12 90 Q36 87 50 92 Z M50 74 Q64 69 88 72 L88 90 Q64 87 50 92 Z" fill="#0e0e0e"/>
+        </g>
+        <circle cx="50" cy="40" r="5" fill="#c9a13b"/><circle cx="50" cy="40" r="2" fill="#111"/>
+      </svg>
+      <span><b>Meechie's World Inc</b><small>Conscientia</small></span>
+    </a>
+    <nav><a href="#about">About</a><a href="#inside">Inside the book</a><a href="#contents">Contents</a><a href="#publisher">Publisher</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="hero">
+    <div class="cover" role="img" aria-label="Book cover: The Pyramids of Egypt">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <g fill="none" stroke="#c9a13b" stroke-width="1.6" stroke-linejoin="round">
+          <path d="M50 8 L90 70 L10 70 Z" fill="#0b0b0b"/>
+          <path d="M33 45 H67 M41 29 H59" stroke-width=".8"/>
+          <path d="M30 40 Q50 27 70 40 Q50 53 30 40 Z" fill="#fff"/>
+          <path d="M50 74 Q36 69 12 72 L12 90 Q36 87 50 92 Z M50 74 Q64 69 88 72 L88 90 Q64 87 50 92 Z" fill="#fff"/>
+        </g>
+        <circle cx="50" cy="40" r="5" fill="#c9a13b"/><circle cx="50" cy="40" r="2" fill="#111"/>
+      </svg>
+      <div class="pub">Meechie's World Inc • Conscientia</div>
+      <hr>
+      <h2>THE PYRAMIDS<br>OF EGYPT</h2>
+      <p>How They Were Built, What They Were For,<br>and the Myths Around Them</p>
+      <div class="foot">A Meechie's World Inc Publication</div>
+    </div>
+
+    <div>
+      <p class="eyebrow">New book • First edition, October 2026</p>
+      <h1>The Pyramids of Egypt</h1>
+      <p class="sub">How They Were Built, What They Were For, and the Myths Around Them</p>
+      <p class="lead">A 300-page guide to the biggest building project of the ancient world: the engineering, the workers, the religion, and the claims about lost machines, aliens, and secret codes, with the evidence behind each. It includes the newest discoveries through late 2025.</p>
+      <div class="btns">
+        <a class="btn" href="pyramids-of-egypt.pdf" download>Download the book (PDF)</a> <a class="btn alt" href="/#books">Read it on Meechie's World</a>
+        <a class="btn alt" href="#contents">See the contents</a>
+      </div>
+      <div class="facts">
+        <div><b>300</b>pages</div>
+        <div><b>23</b>chapters</div>
+        <div><b>4</b>appendices</div>
+        <div><b>PDF</b>free download</div>
+      </div>
+    </div>
+  </div>
+
+  <section id="about">
+    <h3>About the book</h3><div class="rule"></div>
+    <p>Almost everyone who sees the Great Pyramid asks the same questions. How was it built? What was it for? And who was really behind it? This book answers all three with evidence: the quarries, the tools, the harbor, the bakeries, the workers' tombs, and a logbook written on papyrus by a boat foreman named Merer more than 4,500 years ago.</p>
+    <p>It also gives a fair hearing to the popular theories, including the "Giza Power Plant," ancient astronauts, the Orion correlation, and "pyramid power," and sets each claim beside the evidence, so you can judge for yourself.</p>
+  </section>
+
+  <section id="inside">
+    <h3>Inside the book</h3><div class="rule"></div>
+    <div class="grid">
+      <div class="card"><h4>How they were built</h4><p>Surveying, quarrying, sledges and wet sand, boats, ramps, and the arithmetic of the work, worked out step by step.</p></div>
+      <div class="card"><h4>Who built them</h4><p>Not slaves: a fed, housed, and honored workforce, the town they lived in, and a day on the plateau reconstructed from the evidence.</p></div>
+      <div class="card"><h4>What they were for</h4><p>Kingship, the afterlife, the Pyramid Texts, and the temples, boats, and priests of each pyramid complex.</p></div>
+      <div class="card"><h4>Myths, tested</h4><p>Power plants, aliens, secret numbers, and lost civilizations: what is claimed, where it came from, and what the evidence says.</p></div>
+      <div class="card"><h4>The frontier</h4><p>Cosmic-ray scans, a buried branch of the Nile, new voids in Menkaure's pyramid, and how to read a pyramid headline.</p></div>
+      <div class="card"><h4>Quick reference</h4><p>A timeline, tables of the major pyramids, a glossary, and a reading list for going deeper.</p></div>
+    </div>
+  </section>
+
+  <section id="contents">
+    <h3>Contents</h3><div class="rule"></div>
+    <div class="toc">
+      <h4>Preface</h4>
+      <ul><li>A Question Four and a Half Thousand Years Old</li></ul>
+      <h4>Part 1 · The Land and the Idea</h4>
+      <ol start="1"><li>The Gift of the Nile</li><li>The Step Pyramid: Imhotep's Stone Revolution</li><li>Why Build a Pyramid? Sun, Stars, and the Dead King</li></ol>
+      <h4>Part 2 · The Age of the Great Pyramids</h4>
+      <ol start="4"><li>Sneferu's Experiments: Collapse, Bend, and Success</li><li>Khufu and the Great Pyramid</li><li>The Giza Plateau: Khafre, Menkaure, and the Sphinx</li><li>The Later Old Kingdom: Smaller Pyramids, Sacred Texts, and Collapse</li><li>Pyramids After the Old Kingdom: Revival, Decline, and the Nubian Kings</li></ol>
+      <h4>Part 3 · How They Were Built</h4>
+      <ol start="9"><li>Surveying and Planning: Squares, Levels, and True North</li><li>Quarrying: Limestone, Granite, and Copper Chisels</li><li>Moving Stone: Sledges, Wet Sand, Boats, and a Logbook</li><li>Raising the Blocks: Ramps, Levers, and the Great Debate</li><li>The Workforce: Who Really Built the Pyramids</li><li>Energy and Effort: The Numbers Behind the Pyramid</li><li>Inside the Great Pyramid: Shafts, Voids, and Hidden Doors</li></ol>
+      <ul><li><em>Interlude: A Day on the Plateau</em></li></ul>
+      <h4>Part 4 · Life, Death, and Belief</h4>
+      <ol start="16"><li>The Pyramid Complex: Temples, Causeways, Boats, and Priests</li><li>Burial and the Afterlife: Mummies, Spells, and the King's Journey</li><li>Robbers, Restorers, and Rediscovery</li></ol>
+      <h4>Part 5 · Myths, Mysteries, and Modern Science</h4>
+      <ol start="19"><li>Machines, Chemicals, and the "Power Plant" Theory</li><li>Ancient Astronauts and "Impossible" Imagery</li><li>Star Maps, Secret Numbers, and "Pyramid Power"</li><li>The Frontier: What Science Is Finding Now</li><li>Questions People Ask</li></ol>
+      <ul><li><em>Epilogue: What the Pyramids Teach</em></li></ul>
+      <h4>Appendices</h4>
+      <ul><li>A · A Timeline of the Pyramids and Their Study</li><li>B · The Pyramids at a Glance</li><li>C · Glossary</li><li>D · Further Reading and Sources</li></ul>
+    </div>
+    <div class="btns"><a class="btn" href="pyramids-of-egypt.pdf" download>Download the book (PDF)</a></div>
+  </section>
+
+  <section id="publisher">
+    <h3>Publisher</h3><div class="rule"></div>
+    <p><strong>Meechie's World Inc</strong> publishes books, and offers creative and business services, under the Conscientia emblem: an all-seeing eye in a pyramid over an open book.</p>
+    <p>Questions or permissions: <a href="mailto:meechiesworldinc@aol.com">meechiesworldinc@aol.com</a></p>
+    <p style="color:var(--muted);font-size:.9rem">This book is a general introduction and was prepared with the assistance of artificial intelligence. It draws on the published scholarship listed in the appendix, and claims should be checked against those sources before being cited in academic work.</p>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="name">Meechie's World Inc</div>
+    <div class="tag">Conscientia</div>
+    <div style="margin-top:8px">© 2026 Meechie's World Inc. All rights reserved.</div>
+  </div>
+</footer>
+</body>
+</html>
