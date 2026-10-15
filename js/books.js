@@ -14,6 +14,15 @@
   const OWNER = () => typeof isOwner !== "undefined" && isOwner;
   const DB = () => (typeof db !== "undefined" ? db : null);
   const okImg = (u) => /^(https:\/\/[^\s"'<>()]+|data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+|img\/books\/[a-z0-9-]+\.(jpg|png|webp))$/.test(u || "");
+  /* Paid eBooks sold through the Meechie's World Shopify store: the card opens a buy panel instead of the reader. */
+  const okBuy = (u) => /^https:\/\/meechiesworldinc\.myshopify\.com\/[^\s"'<>]*$/.test(u || "");
+  function buyPanel(b) {
+    root.innerHTML = `<div class="bk-buy"><button class="btn ghost sm" type="button" data-shelf="1">← Books</button>
+      <div class="bk-buy-in"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div>
+      <div><p class="eyebrow">eBook · ${b.pages || 0} pages · PDF</p><h3>${E(b.title)}</h3><p class="muted">${E(b.blurb || "")}</p>
+      <p><a class="btn" href="${E(b.buy)}" target="_blank" rel="noopener">Buy &amp; download · ${E(b.price || "")}</a>${okBuy(b.url) ? ` <a class="btn ghost" href="${E(b.url)}" target="_blank" rel="noopener">Details</a>` : ""}</p>
+      <small class="muted">Secure checkout by Shopify. Your download link appears right after you pay and is emailed to you.</small></div></div></div>`;
+  }
   let books = [], dbBooks = [], staticBooks = [], open = null, page = 0, cache = {}, fontSize = 19;
   /* Books published as files in the site itself (books/index.json). They show on the shelf next to
      books the owner uploads, and read in the same reader. */
@@ -68,6 +77,8 @@
 .bk-shield.blur .bk-page{filter:blur(14px)}
 .bk-lock{text-align:center;padding:40px 20px;display:grid;gap:12px;justify-items:center}
 .bk-listen{margin:0;text-align:center}
+.bk-buy{display:grid;gap:14px}.bk-buy>.btn{justify-self:start}.bk-buy-in{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:22px;align-items:start}.bk-buy-in h3{margin:.2em 0 .5em}
+@media (max-width:640px){.bk-buy-in{grid-template-columns:1fr}.bk-buy-in .bk-cover{max-width:220px}}
 .bk-admin{border:1px dashed var(--gold-lo);border-radius:14px;padding:14px;display:grid;gap:8px}
 .bk-admin input,.bk-admin textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}
 @media print{#v-books{display:none!important}body::after{content:"Printing is turned off for Meechie's World books.";display:block;padding:40px;font:20px sans-serif}}`;
@@ -83,7 +94,7 @@
 
   function shelf() {
     const own = OWNER();
-    root.innerHTML = `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
+    root.innerHTML = `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages${okBuy(b.buy) && b.price ? " · " + E(b.price) : ""}</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
       books.filter((b) => /^[a-z0-9-]+\.html$/.test(b.media || "")).map((b) => `<p class="bk-listen"><a class="btn" href="${E(b.media)}">🎧 Listen to &amp; watch “${E(String(b.title).split(":")[0])}”</a></p>`).join("") +
       (own ? `<div class="bk-admin"><b>Owner: publish a book</b>
         <input type="text" id="bk-t" maxlength="120" placeholder="Book title">
@@ -96,6 +107,7 @@
   }
   async function readerOpen(id) {
     open = books.find((b) => b.id === id); if (!open) return;
+    if (okBuy(open.buy) && !open.src) { buyPanel(open); return; }
     if (!ME()) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to read Meechie's books."); return; }
     try { page = Math.min(open.pages - 1, +(localStorage.getItem("mw_bk_" + id) || 0)); } catch (_) { page = 0; }
     render();
