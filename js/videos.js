@@ -54,7 +54,7 @@
       return `<article class="yt-card ${current && current.id === v.id ? "on" : ""}">
   <button type="button" class="yt-thumb${v.tt ? " tt" : ""}" data-play="${v.id}" aria-label="Play ${E(v.title)}">${pic(v)}${v.tt ? '<span class="badge yt-src">TikTok</span>' : ""}<span class="yt-pl">▶</span>${v.featured ? '<span class="badge yt-feat">Featured</span>' : ""}</button>
   <div class="yt-meta"><b>${E(v.title)}</b><small>${E(who(v.authorId))}${v.note ? " · " + E(v.note) : ""}</small>
-  <div class="yt-acts"><button type="button" class="act" data-like="${v.id}">${liked ? "❤️" : "🤍"} ${(v.likes || []).length}</button><button type="button" class="act" data-share="${v.id}">Share</button>${owner ? `<button type="button" class="act" data-feat="${v.id}">${v.featured ? "Unfeature" : "Feature"}</button>` : ""}${(v.authorId === meId || owner) ? `<button type="button" class="act" data-del="${v.id}">Delete</button>` : ""}</div></div></article>`;
+  <div class="yt-acts"><button type="button" class="act" data-like="${v.id}">${liked ? "❤️" : "🤍"}${((v.likes || []).length >= (window.MW_SHOW_MIN || 25) || owner) && (v.likes || []).length ? " " + (v.likes || []).length : ""}</button><button type="button" class="act" data-share="${v.id}">Share</button>${owner ? `<button type="button" class="act" data-feat="${v.id}">${v.featured ? "Unfeature" : "Feature"}</button>` : ""}${(v.authorId === meId || owner) ? `<button type="button" class="act" data-del="${v.id}">Delete</button>` : ""}</div></div></article>`;
     }).join("") : `<div class="empty">No videos yet. Paste a YouTube or TikTok link above to share the first one.</div>`;
     if (!current && list.length) {
       const v = list[0]; current = v;
