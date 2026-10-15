@@ -29,6 +29,7 @@
   let secs = +(ls("mw_signed_secs") || 0);
   const t = setInterval(() => {
     if (!ready() || owner() || document.hidden || document.documentElement.classList.contains("gated")) return;
+    if (profileMe.under18) { clearInterval(t); box(`<h3 id="av-t">Sorry, you must be 18 or older</h3><p>Meechie's World is for adults only. We've signed you out.</p>`); setTimeout(() => window.MW?.signOut?.(), 3500); return; }
     if (profileMe.idDuplicate) { clearInterval(t); dupe(); return; }
     if (profileMe.ageVerified && (profileMe.idVerified || ls("mw_id_off") === "1")) { clearInterval(t); return; }
     secs++; if (secs % 10 === 0) ls("mw_signed_secs", String(secs));

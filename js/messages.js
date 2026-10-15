@@ -140,7 +140,7 @@
     let items = "";
     if (q.trim()) {
       const t = q.trim().toLowerCase();
-      const found = Object.keys(ms).filter((id) => id !== uid && (ms[id].handle || "").toLowerCase().includes(t)).slice(0, 15);
+      const found = Object.keys(ms).filter((id) => id !== uid && String(ms[id].handle || "").toLowerCase().includes(t)).slice(0, 15);
       items = found.length ? found.map((id) => `<button type="button" class="dm-row" data-open="${E(id)}">${av(id)}<span class="dm-t"><b>${E(ms[id].handle)}</b><small>${E(ms[id].bio || "Member")}</small></span></button>`).join("") : `<p class="muted" style="margin:10px 4px">No member found with that name.</p>`;
     } else {
       const cs = convos();
