@@ -1,5 +1,16 @@
 [
   {
+    "id": "pyramids-of-egypt",
+    "title": "The Pyramids of Egypt: How They Were Built, What They Were For, and the Myths Around Them",
+    "author": "Meechie's World Inc",
+    "blurb": "Who really built the pyramids, how the stones were cut, moved and raised, what they were for, and what the latest discoveries show. 300 pages, with the myths checked against the evidence. Free PDF on the book's page.",
+    "cover": "img/books/pyramids-cover.jpg",
+    "pages": 300,
+    "free": true,
+    "src": "books/pyramids-of-egypt.json",
+    "order": 1792100000001
+  },
+  {
     "id": "from-harlem-to-fort-dix",
     "title": "From Harlem to Fort Dix: The Rise, the Reign, and the Reckoning of Sean \"Diddy\" Combs",
     "author": "Meechie's World Inc",
