@@ -11,6 +11,17 @@
   const DB = () => (typeof db !== "undefined" ? db : null);
   const COLORS = [["gold", "#d4a843"], ["royal", "#7b4fd6"], ["red", "#d64545"], ["blue", "#3d7fe0"], ["green", "#2fa866"], ["pink", "#e0559a"], ["white", "#e8e4da"]];
   const JOBS = ["Barber / cosmetology", "Legal document preparation", "Music / studio / DJ", "Websites / design / video", "Shop / sales / shipping", "Remodeling / handyman", "Other"];
+  const SOC = [["facebook", "Facebook", "facebook.com/yourname"], ["snapchat", "Snapchat", "@username"], ["instagram", "Instagram", "@username"], ["tiktok", "TikTok", "@username"], ["youtube", "YouTube", "@channel"], ["x", "X (Twitter)", "@username"], ["whatsapp", "WhatsApp", "phone with area code"], ["cashapp", "Cash App", "$cashtag"]];
+  const BASE = { facebook: "https://facebook.com/", snapchat: "https://snapchat.com/add/", instagram: "https://instagram.com/", tiktok: "https://tiktok.com/@", youtube: "https://youtube.com/@", x: "https://x.com/", whatsapp: "https://wa.me/", cashapp: "https://cash.app/$" };
+  // turn "@name", "name" or a full link into a safe link for that app
+  function socUrl(k, v) {
+    v = String(v || "").trim(); if (!v) return "";
+    if (/^https:\/\//i.test(v)) { try { const u = new URL(v); return u.protocol === "https:" ? u.href : ""; } catch (_) { return ""; } }
+    if (k === "whatsapp") { const d = v.replace(/\D/g, ""); return d.length >= 10 ? BASE.whatsapp + (d.length === 10 ? "1" + d : d) : ""; }
+    v = v.replace(/^(https?:\/\/)?(www\.)?[a-z.]*\.(com|me|app)\/(add\/|@)?/i, "").replace(/^[@$]/, "").replace(/[^\w.\-]/g, "");
+    return v ? BASE[k] + v : "";
+  }
+  window.MW_socUrl = socUrl;
   let photo = "", color = "gold", busy = false;
 
   const css = document.createElement("style");
@@ -32,6 +43,7 @@
 #ps-dlg .hint{color:var(--muted,#bbb);font-size:12px;font-weight:400}
 .ps-job{border:1px solid var(--line,#333);border-radius:14px;padding:12px;display:grid;gap:10px}
 .ps-job[hidden]{display:none}
+.ps-soc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ps-soc label{font-size:13px!important}@media (max-width:480px){.ps-soc{grid-template-columns:1fr}}
 .ps-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}`;
   document.head.appendChild(css);
 
@@ -45,6 +57,8 @@
 <label>Phone number <input type="tel" id="ps-phone" maxlength="20" placeholder="(724) 555-0123" autocomplete="tel"></label>
 <label class="chk"><input type="checkbox" id="ps-phone-pub"> <span>Show my phone number on my profile<br><span class="hint">Off by default, and then only you can see it. If you turn it on, anyone who visits can see it.</span></span></label>
 <label>Website <input type="url" id="ps-web" maxlength="300" placeholder="https://yourwebsite.com" autocomplete="url"></label>
+<div style="display:grid;gap:8px"><b style="font-size:14px">🔗 Connect your apps <span class="hint">(your username or link)</span></b>
+<div class="ps-soc">${SOC.map(([k, n, ph]) => `<label>${n}<input type="text" id="pss-${k}" maxlength="120" placeholder="${ph}" autocomplete="off"></label>`).join("")}</div></div>
 <label class="chk"><input type="checkbox" id="ps-wantjob"> <span>💼 I'd like to apply for a job with Meechie's World Inc</span></label>
 <div class="ps-job" id="ps-job" hidden>
   <label>Your full name <input type="text" id="pj-name" maxlength="80" autocomplete="name"></label>
@@ -89,7 +103,8 @@
     try {
       // member profiles can be read by anyone, so a hidden phone number is kept in the member's private account instead
       const pub = d.querySelector("#ps-phone-pub").checked && !!phone;
-      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, color, setupDone: true };
+      const socials = {}; SOC.forEach(([k]) => { const raw = v("pss-" + k).slice(0, 120); if (raw && socUrl(k, raw)) socials[k] = raw; });
+      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, setupDone: true };
       if (photo) upd.photo = photo;
       await DB().doc("members/" + ME()).update(upd);
       try { if (window.MW && MW.sb) await MW.sb.auth.updateUser({ data: { phone_private: phone } }); } catch (_) {}
@@ -110,7 +125,7 @@
     const d = dialog(), p = P();
     photo = p.photo || ""; color = p.color || "gold";
     let priv = ""; try { priv = MW.session()?.user?.user_metadata?.phone_private || ""; } catch (_) {}
-    d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || "";
+    d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || ""; SOC.forEach(([k]) => { d.querySelector("#pss-" + k).value = (p.socials && p.socials[k]) || ""; });
     d.querySelector("#ps-wantjob").checked = false; d.querySelector("#ps-job").hidden = true;
     d._paint(); if (!d.open) d.showModal();
   }
@@ -119,7 +134,7 @@
   // "Design my profile" button inside Edit profile
   const pf = document.getElementById("profile-form");
   if (pf && !pf.querySelector("#ps-open")) {
-    const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost"; b.id = "ps-open"; b.textContent = "🎨 Photo, phone, website & job application";
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost"; b.id = "ps-open"; b.textContent = "🎨 Photo, phone, website, apps & job application";
     b.addEventListener("click", () => { document.getElementById("profile-dialog")?.close(); open(); });
     pf.querySelector("h3").after(b);
   }
@@ -134,7 +149,6 @@
     if (later) return clearInterval(t);
     const en = document.getElementById("enter");
     if ((en && !en.hidden) || document.getElementById("wv-box") || document.getElementById("mw-choices") || document.querySelector("dialog[open]") || document.documentElement.classList.contains("gated")) return;
-    if (p.joinedAt && Date.now() - p.joinedAt > 3 * 864e5 && !p.phone && !p.website && p.photo) return clearInterval(t); // older members with a photo: don't nag
     clearInterval(t); setTimeout(open, 1500);
   }, 2000);
 })();
