@@ -17,6 +17,7 @@
   css.textContent = `
 #pp{position:fixed;inset:0;z-index:9990;background:var(--ink,#0b0a08);overflow:auto;overscroll-behavior:contain}
 #pp[hidden]{display:none}
+body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-pill,body.pp-open #mw-show,body.pp-open #mw-show-pill,body.pp-open #mx-heads{display:none!important}
 .pp-wrap{max-width:900px;margin:0 auto;padding-bottom:calc(var(--tabbar,0px) + 90px)}
 .pp-close{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(11,10,8,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line,#333)}
 .pp-close button{background:none;border:0;color:var(--gold-hi,#f0cf78);font-size:22px;cursor:pointer}
@@ -70,6 +71,7 @@
       m.joinedAt && ["🗓️", "Joined " + new Date(m.joinedAt).toLocaleDateString([], { month: "long", year: "numeric" })],
     ].filter(Boolean);
     const introCard = `<div class="pp-card pp-intro"><h3>Intro</h3>${intro.map(([i, t]) => `<div><span>${i}</span><span>${t}</span></div>`).join("") || `<p class="muted" style="margin:0">${mine ? "Add your work, school and city in Edit profile." : "Nothing here yet."}</p>`}
+      ${Array.isArray(m.interests) && m.interests.length ? `<b style="font-size:14px">Into</b><div class="pp-apps">${m.interests.slice(0, 22).map((x) => `<span style="border:1px solid var(--line,#333);border-radius:999px;padding:5px 11px;font-size:13px">${E(x)}</span>`).join("")}</div>` : ""}
       ${apps(m) ? `<b style="font-size:14px">Apps</b><div class="pp-apps">${apps(m)}</div>` : ""}</div>`;
     const photoCard = `<div class="pp-card"><h3>Photos</h3>${photos.length ? `<div class="pp-grid">${photos.slice(0, 9).map((p) => `<img src="${E(p.photo)}" alt="" loading="lazy" data-ppimg>`).join("")}</div>` : `<p class="muted" style="margin:0">No photos yet.</p>`}</div>`;
     const friendCard = `<div class="pp-card"><h3>Friends <small class="muted" style="font-weight:600">${friends.length}</small></h3>${friends.length ? `<div class="pp-fr">${friends.slice(0, 9).map((f) => `<button type="button" data-profile="${E(f)}">${sq(f)}<span>${E((MEM()[f] || {}).handle || "Member")}</span></button>`).join("")}</div>` : `<p class="muted" style="margin:0">No friends yet.</p>`}</div>`;
@@ -94,10 +96,10 @@ ${main}</div>`;
     uid = id; tab = "posts";
     let box = document.getElementById("pp");
     if (!box) { box = document.createElement("div"); box.id = "pp"; box.setAttribute("role", "dialog"); box.setAttribute("aria-label", "Profile"); document.body.appendChild(box); wire(box); }
-    box.hidden = false; box.scrollTop = 0; document.documentElement.style.overflow = "hidden"; paint();
+    box.hidden = false; box.scrollTop = 0; document.documentElement.style.overflow = "hidden"; document.body.classList.add("pp-open"); paint();
     try { history.pushState({ pp: id }, "", "#u/" + id); } catch (_) {}
   }
-  function close() { const b = document.getElementById("pp"); if (b) b.hidden = true; document.documentElement.style.overflow = ""; uid = null; if (/^#u\//.test(location.hash)) try { history.back(); } catch (_) {} }
+  function close() { const b = document.getElementById("pp"); if (b) b.hidden = true; document.documentElement.style.overflow = ""; document.body.classList.remove("pp-open"); uid = null; if (/^#u\//.test(location.hash)) try { history.back(); } catch (_) {} }
   function wire(box) {
     box.addEventListener("click", async (e) => {
       const t = e.target.closest("[data-pptab]"); if (t) { tab = t.dataset.pptab; paint(); return; }
@@ -110,10 +112,10 @@ ${main}</div>`;
       if (k === "unf") { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Tap again to remove"; return; } await MW_FRIENDS.remove(uid); paint(); }
     });
   }
-  window.addEventListener("popstate", () => { const b = document.getElementById("pp"); if (b && !b.hidden && !/^#u\//.test(location.hash)) { b.hidden = true; document.documentElement.style.overflow = ""; uid = null; } });
+  window.addEventListener("popstate", () => { const b = document.getElementById("pp"); if (b && !b.hidden && !/^#u\//.test(location.hash)) { b.hidden = true; document.documentElement.style.overflow = ""; document.body.classList.remove("pp-open"); uid = null; } });
   // Messages from the profile page close it first
   document.addEventListener("click", (e) => {
-    const dm = e.target.closest("#pp [data-dm]"); if (dm) { const b = document.getElementById("pp"); if (b) b.hidden = true; document.documentElement.style.overflow = ""; return; }
+    const dm = e.target.closest("#pp [data-dm]"); if (dm) { const b = document.getElementById("pp"); if (b) b.hidden = true; document.documentElement.style.overflow = ""; document.body.classList.remove("pp-open"); return; }
     if (e.target.closest("#me-av, #me-handle, [data-myprofile]")) { e.preventDefault(); if (ME()) open(ME()); return; }
     const p = e.target.closest("[data-profile], .avatar[data-uid], .post-head .who b");
     if (!p || e.target.closest("button[data-dm],button[data-add],button[data-acc]")) return;
