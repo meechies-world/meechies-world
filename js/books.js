@@ -28,8 +28,9 @@
      books the owner uploads, and read in the same reader. */
   const staticPages = {};
   const mergeBooks = () => {
-    const titles = new Set(dbBooks.map((b) => String(b.title || "").toLowerCase()));
-    books = [...dbBooks, ...staticBooks.filter((b) => !titles.has(String(b.title || "").toLowerCase()))];
+    const key = (b) => String(b.title || "").split(":")[0].trim().toLowerCase();
+    const staticKeys = new Set(staticBooks.map(key));
+    books = [...dbBooks.filter((b) => !staticKeys.has(key(b))), ...staticBooks];
     if (!open) shelf();
   };
   fetch("books/index.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : [])).then((list) => {
