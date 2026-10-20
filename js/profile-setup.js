@@ -29,7 +29,7 @@
   }
   window.MW_socUrl = socUrl;
   const socBox = ([k, n, ph]) => `<label>${n}<input type="text" id="pss-${k}" maxlength="120" placeholder="${ph}" autocomplete="off"></label>`;
-  let photo = "", color = "gold", busy = false;
+  let photo = "", cover = "", color = "gold", busy = false;
 
   const css = document.createElement("style");
   css.textContent = `
@@ -52,6 +52,7 @@
 .ps-job[hidden]{display:none}
 .ps-soc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ps-soc label{font-size:13px!important}@media (max-width:480px){.ps-soc{grid-template-columns:1fr}}
 .ps-more summary{cursor:pointer;color:var(--gold-hi,#f0cf78);font-weight:700;font-size:14px;margin:4px 0 8px}
+.ps-cov{display:block;height:70px;border-radius:10px;background:#241d10 center/cover;border:1px solid var(--line,#333)}
 .ps-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}`;
   document.head.appendChild(css);
 
@@ -62,6 +63,10 @@
 <h3>🎨 Design your profile</h3><p class="lead">Make it yours. Everything here is optional, and you can change it later in Edit profile.</p>
 <div class="ps-top"><label class="ps-pic" id="ps-pic" aria-label="Add a profile picture"><span id="ps-ini"></span><small>📷 Photo</small><input type="file" accept="image/*" id="ps-file"></label>
 <div style="display:grid;gap:8px"><b style="font-size:14px">Profile color</b><div class="ps-colors" id="ps-colors">${COLORS.map(([n, h]) => `<button type="button" data-col="${n}" style="background:${h}" aria-label="${n}"></button>`).join("")}</div></div></div>
+<label>Cover photo <span class="hint">(the wide picture across the top of your profile)</span><input type="file" accept="image/*" id="ps-cover-f"><span class="ps-cov" id="ps-cov"></span></label>
+<div class="ps-soc"><label>Works at<input type="text" id="ps-work" maxlength="80" placeholder="Company or job"></label><label>Went to school at<input type="text" id="ps-school" maxlength="80" placeholder="School"></label>
+<label>Lives in<input type="text" id="ps-city" maxlength="60" placeholder="City, State"></label><label>From<input type="text" id="ps-home" maxlength="60" placeholder="Hometown"></label>
+<label>Relationship<select id="ps-rel"><option value="">Don't show</option><option>Single</option><option>In a relationship</option><option>Engaged</option><option>Married</option><option>It's complicated</option></select></label></div>
 <label>Phone number <input type="tel" id="ps-phone" maxlength="20" placeholder="(724) 555-0123" autocomplete="tel"></label>
 <label class="chk"><input type="checkbox" id="ps-phone-pub"> <span>Show my phone number on my profile<br><span class="hint">Off by default, and then only you can see it. If you turn it on, anyone who visits can see it.</span></span></label>
 <label>Website <input type="url" id="ps-web" maxlength="300" placeholder="https://yourwebsite.com" autocomplete="url"></label>
@@ -83,7 +88,7 @@
     const paint = () => { const pic = d.querySelector("#ps-pic"); pic.style.backgroundImage = photo ? `url("${photo.replace(/"/g, "")}")` : ""; d.querySelector("#ps-ini").textContent = photo ? "" : ((P()?.handle || "?").trim()[0] || "?").toUpperCase();
       const hex = (COLORS.find((c) => c[0] === color) || COLORS[0])[1]; pic.style.setProperty("--ps", hex);
       d.querySelectorAll("[data-col]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.col === color))); };
-    d._paint = paint;
+    d._paint = () => { paint(); d.querySelector("#ps-cov").style.backgroundImage = cover ? `url("${cover.replace(/"/g, "")}")` : ""; };
     d.querySelector("#ps-colors").addEventListener("click", (e) => { const b = e.target.closest("[data-col]"); if (b) { color = b.dataset.col; paint(); } });
     d.querySelector("#ps-wantjob").addEventListener("change", (e) => { d.querySelector("#ps-job").hidden = !e.target.checked; });
     d.querySelector("#ps-file").addEventListener("change", async (e) => {
@@ -91,9 +96,15 @@
       say("Adding your photo…");
       try {
         const dataUrl = typeof compress === "function" ? await compress(f, 600) : await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
-        photo = dataUrl; paint();
-        if (window.MW && MW.uploadMedia) { const blob = await (await fetch(dataUrl)).blob(); const up = await MW.uploadMedia(blob, { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) photo = up.url; paint(); }
+        photo = dataUrl; d._paint();
+        if (window.MW && MW.uploadMedia) { const blob = await (await fetch(dataUrl)).blob(); const up = await MW.uploadMedia(blob, { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) photo = up.url; d._paint(); }
       } catch (err) { say("Couldn't add the photo: " + (err.message || err)); }
+    });
+    d.querySelector("#ps-cover-f").addEventListener("change", async (e) => {
+      const f = e.target.files[0]; e.target.value = ""; if (!f) return; say("Adding your cover photo…");
+      try { const dataUrl = typeof compress === "function" ? await compress(f, 1400) : ""; if (!dataUrl) return; cover = dataUrl; d._paint();
+        if (window.MW && MW.uploadMedia) { const up = await MW.uploadMedia(await (await fetch(dataUrl)).blob(), { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) cover = up.url; d._paint(); }
+      } catch (err) { say("Couldn't add the cover photo: " + (err.message || err)); }
     });
     d.querySelector("#ps-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_ps_later", "1"); } catch (_) {} d.close(); });
     d.querySelector("#ps-form").addEventListener("submit", save);
@@ -113,7 +124,8 @@
       // member profiles can be read by anyone, so a hidden phone number is kept in the member's private account instead
       const pub = d.querySelector("#ps-phone-pub").checked && !!phone;
       const socials = {}; SOC.forEach(([k]) => { const raw = v("pss-" + k).slice(0, 120); if (raw && socUrl(k, raw)) socials[k] = raw; });
-      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, setupDone: true };
+      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, setupDone: true };
+      if (cover && /^https:\/\//.test(cover)) upd.cover = cover;
       if (photo) upd.photo = photo;
       await DB().doc("members/" + ME()).update(upd);
       try { if (window.MW && MW.sb) await MW.sb.auth.updateUser({ data: { phone_private: phone } }); } catch (_) {}
@@ -132,9 +144,10 @@
   function open() {
     if (!ME() || !P()) { if (typeof openAuth === "function") openAuth("signup"); return; }
     const d = dialog(), p = P();
-    photo = p.photo || ""; color = p.color || "gold";
+    photo = p.photo || ""; cover = p.cover || ""; color = p.color || "gold";
     let priv = ""; try { priv = MW.session()?.user?.user_metadata?.phone_private || ""; } catch (_) {}
-    d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || ""; SOC.forEach(([k]) => { d.querySelector("#pss-" + k).value = (p.socials && p.socials[k]) || ""; });
+    d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || ""; d.querySelector("#ps-work").value = p.work || ""; d.querySelector("#ps-school").value = p.school || ""; d.querySelector("#ps-city").value = p.city || ""; d.querySelector("#ps-home").value = p.hometown || ""; d.querySelector("#ps-rel").value = p.relationship || "";
+    SOC.forEach(([k]) => { d.querySelector("#pss-" + k).value = (p.socials && p.socials[k]) || ""; });
     d.querySelector("#ps-wantjob").checked = false; d.querySelector("#ps-job").hidden = true;
     d._paint(); if (!d.open) d.showModal();
   }
