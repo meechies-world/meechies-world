@@ -17,7 +17,8 @@
       const r = await fetch(c.SUPABASE_URL + "/auth/v1/settings", { headers: { apikey: c.SUPABASE_ANON_KEY } }).then((x) => x.json());
       const on = Object.entries(r.external || {}).filter(([k, v]) => v === true && LABEL[k] && k !== "twitter").map(([k]) => k);
       // the settings list doesn't include the newer X (OAuth 2.0) sign-in, so ask for it directly: a redirect means it's switched on
-      if (!on.includes("x")) { const t = await fetch(c.SUPABASE_URL + "/auth/v1/authorize?provider=x&redirect_to=" + encodeURIComponent(location.origin + "/"), { redirect: "manual", headers: { apikey: c.SUPABASE_ANON_KEY } }).catch(() => null); if (t && (t.type === "opaqueredirect" || (t.status >= 300 && t.status < 400))) on.push("x"); }
+      // X sign-in is set up but X refuses it for now (pay-per-use account with no credits); set MW_CONFIG.X_LOGIN = true to show it
+      if (c.X_LOGIN && !on.includes("x")) { const t = await fetch(c.SUPABASE_URL + "/auth/v1/authorize?provider=x&redirect_to=" + encodeURIComponent(location.origin + "/"), { redirect: "manual", headers: { apikey: c.SUPABASE_ANON_KEY } }).catch(() => null); if (t && (t.type === "opaqueredirect" || (t.status >= 300 && t.status < 400))) on.push("x"); }
       return on;
     } catch (_) { return []; }
   }
