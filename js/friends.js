@@ -13,7 +13,7 @@
   const MEM = () => (typeof members !== "undefined" ? members : {});
   const HANDLE = (id) => (typeof handleOf === "function" ? handleOf(id) : "Member");
   const AV = (id) => (typeof avatarOf === "function" ? avatarOf(id) : "");
-  let lists = {}, q = "", tab = "friends";
+  let lists = {}, q = "", tab = "friends", emailQ = "", emailHits = null;
 
   const css = document.createElement("style");
   css.textContent = `
@@ -63,8 +63,10 @@
     if (tab === "friends") body = fr.length ? `<div class="fr-grid">${fr.map((id) => card(id, `<button class="btn sm" type="button" data-dm="${E(id)}">Message</button><button class="btn ghost sm" type="button" data-dm="${E(id)}" title="Hold 📻 in the chat to talk">📻 Walkie</button><button class="act" type="button" data-unf="${E(id)}">Unfriend</button>`)).join("")}</div>` : `<div class="empty"><h3>No friends yet</h3><p>Tap Find people to add some. Friends can walkie-talkie each other: open a chat and hold 📻 to talk.</p></div>`;
     if (tab === "requests") body = (rq.length ? `<h3 class="sub-h">Friend requests</h3><div class="fr-grid">${rq.map((id) => card(id, `<button class="btn sm" type="button" data-acc="${E(id)}">Accept</button><button class="act" type="button" data-ign="${E(id)}">Ignore</button>`)).join("")}</div>` : `<div class="empty"><h3>No new requests</h3></div>`) + (pd.length ? `<h3 class="sub-h" style="margin-top:20px">Requests you sent</h3><div class="fr-grid">${pd.map((id) => card(id, `<span class="muted" style="font-size:13px">Waiting...</span><button class="act" type="button" data-unf="${E(id)}">Cancel</button>`)).join("")}</div>` : "");
     if (tab === "find") {
-      const all = Object.entries(MEM()).filter(([id, x]) => id !== ME() && x && x.handle && (!q || String(x.handle).toLowerCase().includes(q) || String(x.bio || "").toLowerCase().includes(q))).slice(0, 60);
-      body = `<form class="fr-search" id="fr-sf"><input type="search" id="fr-q" placeholder="Search by name or what they do" value="${E(q)}" aria-label="Search members"><button class="btn sm" type="submit">Search</button></form><div class="fr-grid" style="margin-top:12px">${all.map(([id]) => card(id, window.MW_FRIENDS.isFriend(id) ? `<span class="muted" style="font-size:13px">✓ Friends</span><button class="btn ghost sm" type="button" data-dm="${E(id)}">Message</button>` : m.has(id) ? `<span class="muted" style="font-size:13px">Request sent</span>` : theyAdded(id) ? `<button class="btn sm" type="button" data-acc="${E(id)}">Accept request</button>` : `<button class="btn sm" type="button" data-add="${E(id)}">＋ Add friend</button>`)).join("") || '<p class="muted">Nobody found.</p>'}</div>`;
+      const byEmail = window.MW_emailFind && MW_emailFind.isEmail(q);
+      if (byEmail && emailQ !== q) { emailQ = q; emailHits = null; MW_emailFind.find(q).then((ids) => { if (emailQ === q) { emailHits = ids; render(); } }); }
+      const all = Object.entries(MEM()).filter(([id, x]) => id !== ME() && x && x.handle && (byEmail ? (emailHits || []).includes(id) : (!q || String(x.handle).toLowerCase().includes(q) || String(x.bio || "").toLowerCase().includes(q)))).slice(0, 60);
+      body = `<form class="fr-search" id="fr-sf"><input type="search" id="fr-q" placeholder="Search by name, what they do, or their email" value="${E(q)}" aria-label="Search members"><button class="btn sm" type="submit">Search</button></form><div class="fr-grid" style="margin-top:12px">${all.map(([id]) => card(id, window.MW_FRIENDS.isFriend(id) ? `<span class="muted" style="font-size:13px">✓ Friends</span><button class="btn ghost sm" type="button" data-dm="${E(id)}">Message</button>` : m.has(id) ? `<span class="muted" style="font-size:13px">Request sent</span>` : theyAdded(id) ? `<button class="btn sm" type="button" data-acc="${E(id)}">Accept request</button>` : `<button class="btn sm" type="button" data-add="${E(id)}">＋ Add friend</button>`)).join("") || '<p class="muted">Nobody found.</p>'}</div>`;
     }
     if (tab === "feed") {
       const ids = new Set(fr); const ps = (typeof posts !== "undefined" ? posts : []).filter((p) => ids.has(p.authorId)).slice(0, 40);
