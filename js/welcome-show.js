@@ -9,15 +9,15 @@
 
   const css = document.createElement("style");
   css.textContent = `
-#mw-show{position:fixed;left:14px;bottom:calc(var(--tabbar,0px) + 16px + env(safe-area-inset-bottom,0px));z-index:9995;width:160px;aspect-ratio:9/16;border-radius:16px;overflow:hidden;border:2px solid var(--gold,#d4a843);background:#000;box-shadow:0 16px 40px rgba(0,0,0,.6);transition:width .25s}
-body.has-player #mw-show{bottom:calc(var(--tabbar,0px) + 92px + env(safe-area-inset-bottom,0px))}
+#mw-show{position:fixed;left:14px;bottom:calc(var(--tabbar,0px) + 76px + env(safe-area-inset-bottom,0px));z-index:9995;width:160px;aspect-ratio:9/16;border-radius:16px;overflow:hidden;border:2px solid var(--gold,#d4a843);background:#000;box-shadow:0 16px 40px rgba(0,0,0,.6);transition:width .25s}
+body.has-player #mw-show{bottom:calc(var(--tabbar,0px) + 150px + env(safe-area-inset-bottom,0px))}
 #mw-show.big{width:min(300px,62vw)}
 #mw-show video{width:100%;height:100%;object-fit:cover;display:block}
 #mw-show .ctl{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;gap:4px;padding:6px;background:linear-gradient(#000a,#0000)}
 #mw-show .ctl button{width:30px;height:30px;border-radius:50%;border:1px solid #fff4;background:#000a;color:#fff;font-size:14px;cursor:pointer;display:grid;place-items:center;padding:0}
 #mw-show .tap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);border:1px solid var(--gold-hi,#f0cf78);background:#000c;color:#fff;font:700 12px var(--body,system-ui);padding:6px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
 #mw-show .n{position:absolute;right:7px;bottom:7px;background:#000b;color:#fff;border-radius:999px;padding:2px 7px;font:700 10px var(--body,system-ui)}
-#mw-show-pill{position:fixed;left:14px;bottom:calc(var(--tabbar,0px) + 16px + env(safe-area-inset-bottom,0px));z-index:9995;border:1px solid var(--gold,#d4a843);background:#14110b;color:var(--gold-hi,#f0cf78);font:700 13px var(--body,system-ui);padding:9px 14px;border-radius:999px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#mw-show-pill{position:fixed;left:14px;bottom:calc(var(--tabbar,0px) + 76px + env(safe-area-inset-bottom,0px));z-index:9995;border:1px solid var(--gold,#d4a843);background:#14110b;color:var(--gold-hi,#f0cf78);font:700 13px var(--body,system-ui);padding:9px 14px;border-radius:999px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 body.has-player #mw-show-pill{bottom:calc(var(--tabbar,0px) + 92px + env(safe-area-inset-bottom,0px))}
 #mw-choices{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 70px);z-index:9998;width:min(440px,calc(100vw - 24px));background:linear-gradient(180deg,#1f1a10,#13110c);border:1px solid var(--gold-lo,#8a6a2a);border-radius:20px;box-shadow:0 22px 50px rgba(0,0,0,.65);padding:16px 16px 14px;animation:mwCh .45s cubic-bezier(.2,1.4,.4,1)}
 @keyframes mwCh{from{opacity:0;transform:translate(-50%,-20px) scale(.95)}to{opacity:1;transform:translate(-50%,0)}}

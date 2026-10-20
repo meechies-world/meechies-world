@@ -42,7 +42,9 @@
   const photoUrl = (b) => (PHOTO_RE.exec(b || "") || [])[1] || "";
   const isReact = (b) => REACT_RE.test(b || "");
   const preview = (r) => { const b = r.body; if (voiceUrl(b)) return "🎙️ Voice message"; if (photoUrl(b)) return "📷 Photo"; const m = REACT_RE.exec(b || ""); if (m) return "Reacted " + m[2] + " to a message"; return b; };
-  const linkify = (t) => E(t).replace(/(^|\s)(https:\/\/[^\s<]+)/g, (m, p, u) => `${p}<a href="${u}" target="_blank" rel="noopener nofollow">${u.length > 48 ? u.slice(0, 46) + "…" : u}</a>`);
+  const linkify = (t) => E(t).replace(/(^|\s)(https:\/\/[^\s<]+)/g, (m, p, u) => `${p}<a href="${u}" target="_blank" rel="noopener nofollow">${u.length > 48 ? u.slice(0, 46) + "…" : u}</a>`)
+    // phone numbers in a message can be tapped to call
+    .replace(/(^|[\s(:])(\+?1?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})(?=$|[\s.,!?)])/g, (m, p, n) => `${p}<a href="tel:${n.replace(/[^\d+]/g, "")}">📞 ${n}</a>`);
 
   /* walkie-talkie voice notes from friends play right away */
   const bootAt = Date.now(); const heard = new Set();
