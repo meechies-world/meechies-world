@@ -48,7 +48,7 @@
   }
   function card(id, acts) {
     const m = MEM()[id] || {};
-    return `<div class="fr-card">${AV(id)}<span><b>${E(m.handle || "Member")}</b><small>${E(m.bio || "Member")}</small></span><div class="acts">${acts}</div></div>`;
+    return `<div class="fr-card">${AV(id)}<span><b>${E(m.handle || "Member")}</b><small>${E(m.bio || "Member")}</small>${/^https?:\/\/[^\s"<>]+$/i.test(m.website || "") ? `<small><a href="${E(m.website)}" target="_blank" rel="noopener nofollow ugc">🌐 ${E(String(m.website).replace(/^https?:\/\/(www\.)?/i, "").slice(0, 40))}</a></small>` : ""}${m.phonePublic && m.phone ? `<small><a href="tel:${E(String(m.phone).replace(/[^\d+]/g, ""))}">📞 ${E(m.phone)}</a></small>` : ""}</span><div class="acts">${acts}</div></div>`;
   }
   function render() {
     if (!ME()) { root.innerHTML = `<div class="empty"><h3>Sign in to add friends</h3><button class="btn" type="button" data-auth="signup" style="margin-top:12px">Join free</button></div>`; return; }
