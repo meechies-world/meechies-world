@@ -5,7 +5,7 @@
  *  - Everything else (including "Join us") shows as a swipeable row on Home and Videos ([data-originals]).
  * Videos stream from Supabase storage (so iPhones can play them); the site's own copies are the backup. */
 (function () {
-  const SB = "https://yjouaysczttqbytksejq.supabase.co/storage/v1/object/public/media/9c4f7de6-bd82-46f9-88af-7fac069fe0e9/";
+  const SB = "/m/media/9c4f7de6-bd82-46f9-88af-7fac069fe0e9/";
   const SIGNUP = { src: SB + "8e5b60225eca435aa5a4.mp4", local: "/media/promo/signup.mp4", poster: "/media/promo/signup.jpg" };
   const WELCOME = { src: SB + "f17f7218dda844dfba65.mp4", local: "/media/promo/welcome.mp4", poster: "/media/promo/welcome.jpg" };
   const DATING = { src: SB + "78e447b06fb049edb036.mp4", local: "/media/promo/dating.mp4", poster: "/media/promo/dating.jpg" };
