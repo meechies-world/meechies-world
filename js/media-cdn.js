@@ -42,7 +42,7 @@
     new MutationObserver((ms) => {
       for (const m of ms) {
         if (m.type === "attributes") scan(m.target, false);
-        else m.addedNodes.forEach(scan);
+        else m.addedNodes.forEach((n) => scan(n, true));
       }
     }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src", "poster", "href", "style"] });
   };
