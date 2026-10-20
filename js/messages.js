@@ -202,6 +202,7 @@
     if (!body || !to) return false;
     const { error } = await sb.from("dms").insert({ recipient: to, body });
     if (error) { say("Could not send: " + error.message); return false; }
+    if (window.MW_pushNotify && !/^⟦react:/.test(body)) MW_pushNotify(to);
     load(); return true;
   }
 
