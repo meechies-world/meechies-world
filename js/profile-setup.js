@@ -11,12 +11,18 @@
   const DB = () => (typeof db !== "undefined" ? db : null);
   const COLORS = [["gold", "#d4a843"], ["royal", "#7b4fd6"], ["red", "#d64545"], ["blue", "#3d7fe0"], ["green", "#2fa866"], ["pink", "#e0559a"], ["white", "#e8e4da"]];
   const JOBS = ["Barber / cosmetology", "Legal document preparation", "Music / studio / DJ", "Websites / design / video", "Shop / sales / shipping", "Remodeling / handyman", "Other"];
-  const SOC = [["facebook", "Facebook", "facebook.com/yourname"], ["snapchat", "Snapchat", "@username"], ["instagram", "Instagram", "@username"], ["tiktok", "TikTok", "@username"], ["youtube", "YouTube", "@channel"], ["x", "X (Twitter)", "@username"], ["whatsapp", "WhatsApp", "phone with area code"], ["cashapp", "Cash App", "$cashtag"]];
-  const BASE = { facebook: "https://facebook.com/", snapchat: "https://snapchat.com/add/", instagram: "https://instagram.com/", tiktok: "https://tiktok.com/@", youtube: "https://youtube.com/@", x: "https://x.com/", whatsapp: "https://wa.me/", cashapp: "https://cash.app/$" };
+  const SOC = [["facebook", "Facebook", "facebook.com/yourname"], ["snapchat", "Snapchat", "@username"], ["instagram", "Instagram", "@username"], ["tiktok", "TikTok", "@username"], ["youtube", "YouTube", "@channel"], ["x", "X (Twitter)", "@username"], ["whatsapp", "WhatsApp", "phone with area code"], ["cashapp", "Cash App", "$cashtag"],
+    ["threads", "Threads", "@username"], ["linkedin", "LinkedIn", "linkedin.com/in/you"], ["spotify", "Spotify", "paste your Spotify link"], ["soundcloud", "SoundCloud", "username"],
+    ["applemusic", "Apple Music", "paste your Apple Music link"], ["twitch", "Twitch", "username"], ["kick", "Kick", "username"], ["discord", "Discord", "paste your invite link"],
+    ["telegram", "Telegram", "@username"], ["pinterest", "Pinterest", "username"], ["reddit", "Reddit", "u/username"], ["venmo", "Venmo", "@username"],
+    ["paypal", "PayPal", "paypal.me/you"], ["linktree", "Linktree", "username"], ["patreon", "Patreon", "username"], ["other", "Any other app", "paste the link"]];
+  const BASE = { facebook: "https://facebook.com/", snapchat: "https://snapchat.com/add/", instagram: "https://instagram.com/", tiktok: "https://tiktok.com/@", youtube: "https://youtube.com/@", x: "https://x.com/", whatsapp: "https://wa.me/", cashapp: "https://cash.app/$", threads: "https://threads.net/@", linkedin: "https://linkedin.com/in/", soundcloud: "https://soundcloud.com/", twitch: "https://twitch.tv/", kick: "https://kick.com/", telegram: "https://t.me/", pinterest: "https://pinterest.com/", reddit: "https://reddit.com/user/", venmo: "https://venmo.com/u/", paypal: "https://paypal.me/", linktree: "https://linktr.ee/", patreon: "https://patreon.com/" };
+  const LINK_ONLY = new Set(["spotify", "applemusic", "discord", "other"]); // these need a full https:// link
   // turn "@name", "name" or a full link into a safe link for that app
   function socUrl(k, v) {
     v = String(v || "").trim(); if (!v) return "";
     if (/^https:\/\//i.test(v)) { try { const u = new URL(v); return u.protocol === "https:" ? u.href : ""; } catch (_) { return ""; } }
+    if (LINK_ONLY.has(k)) return "";
     if (k === "whatsapp") { const d = v.replace(/\D/g, ""); return d.length >= 10 ? BASE.whatsapp + (d.length === 10 ? "1" + d : d) : ""; }
     v = v.replace(/^(https?:\/\/)?(www\.)?[a-z.]*\.(com|me|app)\/(add\/|@)?/i, "").replace(/^[@$]/, "").replace(/[^\w.\-]/g, "");
     return v ? BASE[k] + v : "";
