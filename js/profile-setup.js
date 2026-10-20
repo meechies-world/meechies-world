@@ -77,6 +77,7 @@
 <div style="display:grid;gap:8px"><b style="font-size:14px">🔗 Connect your apps <span class="hint">(your username or link)</span></b>
 <div class="ps-soc">${SOC.slice(0, 8).map(socBox).join("")}</div>
 <details class="ps-more"><summary>➕ More apps (${SOC.length - 8})</summary><div class="ps-soc">${SOC.slice(8).map(socBox).join("")}</div></details></div>
+<label class="chk"><input type="checkbox" id="ps-emailfind" checked> <span>🔎 Let people find me by my email<br><span class="hint">Only someone who types your exact email can find you. Your email is never shown.</span></span></label>
 <label class="chk"><input type="checkbox" id="ps-wantjob"> <span>💼 I'd like to apply for a job with Meechie's World Inc</span></label>
 <div class="ps-job" id="ps-job" hidden>
   <label>Your full name <input type="text" id="pj-name" maxlength="80" autocomplete="name"></label>
@@ -129,7 +130,8 @@
       // member profiles can be read by anyone, so a hidden phone number is kept in the member's private account instead
       const pub = d.querySelector("#ps-phone-pub").checked && !!phone;
       const socials = {}; SOC.forEach(([k]) => { const raw = v("pss-" + k).slice(0, 120); if (raw && socUrl(k, raw)) socials[k] = raw; });
-      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, interests: [...picked].slice(0, 22), setupDone: true };
+      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, interests: [...picked].slice(0, 22), emailFind: d.querySelector("#ps-emailfind").checked, setupDone: true };
+      if (!upd.emailFind) upd.emailHash = "";
       if (cover && /^https:\/\//.test(cover)) upd.cover = cover;
       if (photo) upd.photo = photo;
       await DB().doc("members/" + ME()).update(upd);
@@ -149,7 +151,7 @@
   function open() {
     if (!ME() || !P()) { if (typeof openAuth === "function") openAuth("signup"); return; }
     const d = dialog(), p = P();
-    photo = p.photo || ""; cover = p.cover || ""; picked = new Set(Array.isArray(p.interests) ? p.interests : []); d.querySelectorAll("[data-int]").forEach((b) => b.setAttribute("aria-pressed", String(picked.has(b.dataset.int)))); color = p.color || "gold";
+    photo = p.photo || ""; cover = p.cover || ""; d.querySelector("#ps-emailfind").checked = p.emailFind !== false; picked = new Set(Array.isArray(p.interests) ? p.interests : []); d.querySelectorAll("[data-int]").forEach((b) => b.setAttribute("aria-pressed", String(picked.has(b.dataset.int)))); color = p.color || "gold";
     let priv = ""; try { priv = MW.session()?.user?.user_metadata?.phone_private || ""; } catch (_) {}
     d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || ""; d.querySelector("#ps-work").value = p.work || ""; d.querySelector("#ps-school").value = p.school || ""; d.querySelector("#ps-city").value = p.city || ""; d.querySelector("#ps-home").value = p.hometown || ""; d.querySelector("#ps-rel").value = p.relationship || "";
     SOC.forEach(([k]) => { d.querySelector("#pss-" + k).value = (p.socials && p.socials[k]) || ""; });
