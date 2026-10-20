@@ -15,9 +15,9 @@
     ["threads", "Threads", "@username"], ["linkedin", "LinkedIn", "linkedin.com/in/you"], ["spotify", "Spotify", "paste your Spotify link"], ["soundcloud", "SoundCloud", "username"],
     ["applemusic", "Apple Music", "paste your Apple Music link"], ["twitch", "Twitch", "username"], ["kick", "Kick", "username"], ["discord", "Discord", "paste your invite link"],
     ["telegram", "Telegram", "@username"], ["pinterest", "Pinterest", "username"], ["reddit", "Reddit", "u/username"], ["venmo", "Venmo", "@username"],
-    ["paypal", "PayPal", "paypal.me/you"], ["linktree", "Linktree", "username"], ["patreon", "Patreon", "username"], ["other", "Any other app", "paste the link"]];
-  const BASE = { facebook: "https://facebook.com/", snapchat: "https://snapchat.com/add/", instagram: "https://instagram.com/", tiktok: "https://tiktok.com/@", youtube: "https://youtube.com/@", x: "https://x.com/", whatsapp: "https://wa.me/", cashapp: "https://cash.app/$", threads: "https://threads.net/@", linkedin: "https://linkedin.com/in/", soundcloud: "https://soundcloud.com/", twitch: "https://twitch.tv/", kick: "https://kick.com/", telegram: "https://t.me/", pinterest: "https://pinterest.com/", reddit: "https://reddit.com/user/", venmo: "https://venmo.com/u/", paypal: "https://paypal.me/", linktree: "https://linktr.ee/", patreon: "https://patreon.com/" };
-  const LINK_ONLY = new Set(["spotify", "applemusic", "discord", "other"]); // these need a full https:// link
+    ["paypal", "PayPal", "paypal.me/you"], ["linktree", "Linktree", "username"], ["patreon", "Patreon", "username"], ["bluesky", "Bluesky", "name.bsky.social"], ["tumblr", "Tumblr", "username"], ["vimeo", "Vimeo", "username"], ["rumble", "Rumble", "channel name"], ["lemon8", "Lemon8", "@username"], ["triller", "Triller", "@username"], ["audiomack", "Audiomack", "artist name"], ["bandcamp", "Bandcamp", "artist name"], ["substack", "Substack", "name"], ["medium", "Medium", "@username"], ["etsy", "Etsy", "shop name"], ["depop", "Depop", "username"], ["poshmark", "Poshmark", "closet name"], ["truthsocial", "Truth Social", "@username"], ["mastodon", "Mastodon", "paste your profile link"], ["signal", "Signal", "paste your Signal link"], ["tidal", "Tidal", "paste your Tidal link"], ["amazonmusic", "Amazon Music", "paste your link"], ["clubhouse", "Clubhouse", "@username"], ["bereal", "BeReal", "username"], ["messenger", "Facebook Messenger", "username"], ["onlinestore", "Your online store", "paste the link"], ["other", "Any other app", "paste the link"]];
+  const BASE = { facebook: "https://facebook.com/", snapchat: "https://snapchat.com/add/", instagram: "https://instagram.com/", tiktok: "https://tiktok.com/@", youtube: "https://youtube.com/@", x: "https://x.com/", whatsapp: "https://wa.me/", cashapp: "https://cash.app/$", threads: "https://threads.net/@", linkedin: "https://linkedin.com/in/", soundcloud: "https://soundcloud.com/", twitch: "https://twitch.tv/", kick: "https://kick.com/", telegram: "https://t.me/", pinterest: "https://pinterest.com/", reddit: "https://reddit.com/user/", venmo: "https://venmo.com/u/", paypal: "https://paypal.me/", linktree: "https://linktr.ee/", patreon: "https://patreon.com/", bluesky: "https://bsky.app/profile/", tumblr: "https://tumblr.com/", vimeo: "https://vimeo.com/", rumble: "https://rumble.com/c/", lemon8: "https://www.lemon8-app.com/@", triller: "https://triller.co/@", audiomack: "https://audiomack.com/", bandcamp: "https://{v}.bandcamp.com", substack: "https://{v}.substack.com", medium: "https://medium.com/@", etsy: "https://etsy.com/shop/", depop: "https://depop.com/", poshmark: "https://poshmark.com/closet/", truthsocial: "https://truthsocial.com/@", clubhouse: "https://clubhouse.com/@", bereal: "https://bere.al/", messenger: "https://m.me/" };
+  const LINK_ONLY = new Set(["spotify", "applemusic", "discord", "other", "mastodon", "signal", "tidal", "amazonmusic", "onlinestore"]); // these need a full https:// link
   // turn "@name", "name" or a full link into a safe link for that app
   function socUrl(k, v) {
     v = String(v || "").trim(); if (!v) return "";
@@ -25,9 +25,10 @@
     if (LINK_ONLY.has(k)) return "";
     if (k === "whatsapp") { const d = v.replace(/\D/g, ""); return d.length >= 10 ? BASE.whatsapp + (d.length === 10 ? "1" + d : d) : ""; }
     v = v.replace(/^(https?:\/\/)?(www\.)?[a-z.]*\.(com|me|app)\/(add\/|@)?/i, "").replace(/^[@$]/, "").replace(/[^\w.\-]/g, "");
-    return v ? BASE[k] + v : "";
+    return v ? (BASE[k].includes("{v}") ? BASE[k].replace("{v}", v) : BASE[k] + v) : "";
   }
   window.MW_socUrl = socUrl;
+  const socBox = ([k, n, ph]) => `<label>${n}<input type="text" id="pss-${k}" maxlength="120" placeholder="${ph}" autocomplete="off"></label>`;
   let photo = "", color = "gold", busy = false;
 
   const css = document.createElement("style");
@@ -50,6 +51,7 @@
 .ps-job{border:1px solid var(--line,#333);border-radius:14px;padding:12px;display:grid;gap:10px}
 .ps-job[hidden]{display:none}
 .ps-soc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ps-soc label{font-size:13px!important}@media (max-width:480px){.ps-soc{grid-template-columns:1fr}}
+.ps-more summary{cursor:pointer;color:var(--gold-hi,#f0cf78);font-weight:700;font-size:14px;margin:4px 0 8px}
 .ps-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}`;
   document.head.appendChild(css);
 
@@ -64,7 +66,8 @@
 <label class="chk"><input type="checkbox" id="ps-phone-pub"> <span>Show my phone number on my profile<br><span class="hint">Off by default, and then only you can see it. If you turn it on, anyone who visits can see it.</span></span></label>
 <label>Website <input type="url" id="ps-web" maxlength="300" placeholder="https://yourwebsite.com" autocomplete="url"></label>
 <div style="display:grid;gap:8px"><b style="font-size:14px">🔗 Connect your apps <span class="hint">(your username or link)</span></b>
-<div class="ps-soc">${SOC.map(([k, n, ph]) => `<label>${n}<input type="text" id="pss-${k}" maxlength="120" placeholder="${ph}" autocomplete="off"></label>`).join("")}</div></div>
+<div class="ps-soc">${SOC.slice(0, 8).map(socBox).join("")}</div>
+<details class="ps-more"><summary>➕ More apps (${SOC.length - 8})</summary><div class="ps-soc">${SOC.slice(8).map(socBox).join("")}</div></details></div>
 <label class="chk"><input type="checkbox" id="ps-wantjob"> <span>💼 I'd like to apply for a job with Meechie's World Inc</span></label>
 <div class="ps-job" id="ps-job" hidden>
   <label>Your full name <input type="text" id="pj-name" maxlength="80" autocomplete="name"></label>
