@@ -15,7 +15,10 @@
     try {
       const c = window.MW_CONFIG || {};
       const r = await fetch(c.SUPABASE_URL + "/auth/v1/settings", { headers: { apikey: c.SUPABASE_ANON_KEY } }).then((x) => x.json());
-      return Object.entries(r.external || {}).filter(([k, v]) => v === true && LABEL[k]).map(([k]) => k);
+      const on = Object.entries(r.external || {}).filter(([k, v]) => v === true && LABEL[k] && k !== "twitter").map(([k]) => k);
+      // the settings list doesn't include the newer X (OAuth 2.0) sign-in, so ask for it directly: a redirect means it's switched on
+      if (!on.includes("x")) { const t = await fetch(c.SUPABASE_URL + "/auth/v1/authorize?provider=x&redirect_to=" + encodeURIComponent(location.origin + "/"), { redirect: "manual", headers: { apikey: c.SUPABASE_ANON_KEY } }).catch(() => null); if (t && (t.type === "opaqueredirect" || (t.status >= 300 && t.status < 400))) on.push("x"); }
+      return on;
     } catch (_) { return []; }
   }
   function go(p, msgEl) {
