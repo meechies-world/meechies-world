@@ -44,7 +44,7 @@ drop policy if exists "delete own" on public.docs;
 create policy "read all"         on public.docs for select using (true);
 create policy "insert own"       on public.docs for insert with check (owner = auth.uid() and public.path_allowed(path, coll) and octet_length(data::text) < 400000);
 create policy "update signed in" on public.docs for update using (auth.uid() is not null) with check (octet_length(data::text) < 400000);
-create policy "delete own"       on public.docs for delete using (owner = auth.uid() or public.is_admin());
+create policy "delete own"       on public.docs for delete using ((owner = auth.uid() and coll <> 'members') or public.is_admin()); -- members can't delete their own member profile (see lockdown.sql)
 
 -- Members may only change likes/votes/counters on other people's things.
 create or replace function public.docs_guard() returns trigger

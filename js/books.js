@@ -116,7 +116,7 @@
   async function getPage(n) {
     const key = open.id + "_" + n; if (cache[key]) return cache[key];
     if (open.static) {
-      if (!staticPages[open.id]) staticPages[open.id] = fetch(open.src).then((r) => r.json()).then((j) => j.html || []);
+      const bid = open.id; if (!staticPages[bid]) staticPages[bid] = fetch(open.src).then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then((j) => j.html || []).catch((e) => { delete staticPages[bid]; throw e; });
       const all = await staticPages[open.id];
       return (cache[key] = String(all[n] ?? "<p>(This page is missing.)</p>"));
     }
@@ -138,7 +138,8 @@
         <div class="bk-foot"><span>Page ${page + 1}</span><hr></div></div>
       <div class="bk-wm" aria-hidden="true">${Array(30).fill(`<span>${E(stamp)}</span>`).join("")}</div>
       <div class="bk-nav"><button class="btn sm" type="button" data-pg="-1">‹ Back</button><input type="range" min="1" max="${open.pages}" value="${page + 1}" id="bk-range" aria-label="Page"><span id="bk-num">${page + 1} / ${open.pages}</span><button class="btn sm" type="button" data-pg="1">Next ›</button></div></div>`;
-    const want = page, book = open; const html = await getPage(want);
+    const want = page, book = open; let html;
+    try { html = await getPage(want); } catch (_) { html = "<p>Couldn't load this page. Check your connection and tap Next or Back to try again.</p>"; }
     if (want !== page || book !== open) return; // you turned the page again while this one loaded
     const pg = root.querySelector("#bk-page"); if (!pg) return;
     pg.innerHTML = html; // pages are written by the owner's upload and cleaned below before saving

@@ -7,6 +7,7 @@
 --  5) The latest list of which collections members may create (same as follows.sql), so re-running an old file can't undo it.
 --  6) The phone-alert channel name is private to Meechie (so nobody can send fake alerts to his phone).
 --  7) Fair-use limits for the AI, the phone line and visitor alerts (Meechie is never limited).
+--  8) Members can't delete their own member profile (that would wipe the under-18 block).
 
 -- 1-3: keep protected fields as they were unless Meechie or the server changes them.
 -- (Fields are silently kept, not refused, so normal profile saves never fail.)
@@ -119,3 +120,9 @@ begin
 end $$;
 revoke all on function public.take(text, int, int) from public, anon;
 grant execute on function public.take(text, int, int) to authenticated, service_role;
+
+-- 8) Members can't delete their own member profile (deleting and re-creating it would wipe the under-18 block).
+--    Meechie can still delete any doc. Members can still delete their other things (posts, jobs, dating profile...).
+drop policy if exists "delete own" on public.docs;
+create policy "delete own" on public.docs for delete
+  using ((owner = auth.uid() and coll <> 'members') or public.is_admin());

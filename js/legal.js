@@ -84,6 +84,7 @@
     const id = "c" + Date.now().toString(36); store = { cur: id, cases: { [id]: { data: old || {}, updated: Date.now() } } };
   }
   if (!store.cases[store.cur]) store.cur = Object.keys(store.cases)[0];
+  try { const ov = localStorage.getItem("mw_legal_versions_v1"); if (ov) { const nk = "mw_legal_versions_v1_" + Object.keys(store.cases)[0]; if (!localStorage.getItem(nk)) localStorage.setItem(nk, ov); localStorage.removeItem("mw_legal_versions_v1"); } } catch (_) {} // bring over the saved versions from before there were several cases
   const titleOf = (d) => (d && (d.caseNo || d.name || d.doc)) ? [d.name, d.caseNo, d.doc].filter(Boolean).join(" · ").slice(0, 60) : "Untitled case";
   function persist() { try { localStorage.setItem(CKEY, JSON.stringify(store)); } catch (_) {} }
   function save() { store.cases[store.cur] = { data: read(), updated: Date.now() }; persist(); paintCases(); track(); }

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="mw-build" content="1792506687">
+<meta name="mw-build" content="1792508384">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1959,8 +1959,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1792506687"></script>
-<script src="js/platform.js?v=1792506687"></script>
+<script src="js/config.js?v=1792508384"></script>
+<script src="js/platform.js?v=1792508384"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2692,7 +2692,10 @@ async function playIntro(){
       if(mode==="radio" && !media.paused) return;
       if(!autoTried) autoRadio(); else tuneIn(); },250);
     // Meechie's welcome video plays first (full screen, with sound), then the welcome song
-    if(window.MW_welcome && !document.documentElement.classList.contains("gated")){ try{ if(!media.paused) media.pause(); }catch(_){} window._welcomeOn=true; MW_welcome(()=>{ window._welcomeOn=false; startAudio(); }); }
+    if(window.MW_welcome && !document.documentElement.classList.contains("gated")){ try{ if(!media.paused) media.pause(); }catch(_){}
+      // iPhone only lets the player make sound later if it was started during this tap: start it silently now, the welcome song plays after the video
+      if(IOS && media.paused && mode!=="radio"){ const ii=introIdx(); if(ii>=0){ try{ media.src=trackUrl(tracks[ii]); media.muted=true; const un=()=>{ media.muted=false; }; const p=media.play(); if(p&&p.then) p.then(()=>{ if(window._welcomeOn) media.pause(); un(); },un); else { media.pause(); un(); } }catch(_){ media.muted=false; } } }
+      window._welcomeOn=true; MW_welcome(()=>{ window._welcomeOn=false; startAudio(); }); }
     else startAudio();
   });
   mute.addEventListener("click",()=>{ snoozeRadio(); if(mode==="radio" && !media.paused) media.pause(); close(); });
@@ -3203,35 +3206,35 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792506687"></script>
-<script src="js/studio.js?v=1792506687"></script>
-<script src="js/owner.js?v=1792506687"></script>
-<script src="js/messages.js?v=1792506687"></script>
-<script src="js/videos.js?v=1792506687"></script>
-<script src="js/markets.js?v=1792506687"></script>
-<script src="js/legal.js?v=1792506687"></script>
-<script src="js/coin.js?v=1792506687"></script>
-<script src="js/preach.js?v=1792506687"></script>
-<script src="js/world3d.js?v=1792506687"></script>
-<script src="js/clips.js?v=1792506687"></script>
-<script src="js/dj.js?v=1792506687"></script>
-<script src="js/live.js?v=1792506687"></script>
-<script src="js/autotune.js?v=1792506687"></script>
-<script src="js/beatmaker.js?v=1792506687"></script>
-<script src="js/beatlab.js?v=1792506687"></script>
-<script src="js/friends.js?v=1792506687"></script>
-<script src="js/dating.js?v=1792506687"></script>
-<script src="js/books.js?v=1792506687"></script>
-<script src="js/social.js?v=1792506687"></script>
-<script src="js/jobs.js?v=1792506687"></script>
-<script src="js/golive.js?v=1792506687"></script>
-<script src="js/predict.js?v=1792506687"></script>
-<script src="js/people.js?v=1792506687"></script>
-<script src="js/originals.js?v=1792506687"></script>
-<script src="js/verify.js?v=1792506687"></script>
-<script src="js/biolock.js?v=1792506687"></script>
-<script src="js/engage.js?v=1792506687"></script>
-<script src="js/visitors.js?v=1792506687"></script>
-<script src="js/ai-widget.js?v=1792506687"></script>
+<script src="js/appnav.js?v=1792508384"></script>
+<script src="js/studio.js?v=1792508384"></script>
+<script src="js/owner.js?v=1792508384"></script>
+<script src="js/messages.js?v=1792508384"></script>
+<script src="js/videos.js?v=1792508384"></script>
+<script src="js/markets.js?v=1792508384"></script>
+<script src="js/legal.js?v=1792508384"></script>
+<script src="js/coin.js?v=1792508384"></script>
+<script src="js/preach.js?v=1792508384"></script>
+<script src="js/world3d.js?v=1792508384"></script>
+<script src="js/clips.js?v=1792508384"></script>
+<script src="js/dj.js?v=1792508384"></script>
+<script src="js/live.js?v=1792508384"></script>
+<script src="js/autotune.js?v=1792508384"></script>
+<script src="js/beatmaker.js?v=1792508384"></script>
+<script src="js/beatlab.js?v=1792508384"></script>
+<script src="js/friends.js?v=1792508384"></script>
+<script src="js/dating.js?v=1792508384"></script>
+<script src="js/books.js?v=1792508384"></script>
+<script src="js/social.js?v=1792508384"></script>
+<script src="js/jobs.js?v=1792508384"></script>
+<script src="js/golive.js?v=1792508384"></script>
+<script src="js/predict.js?v=1792508384"></script>
+<script src="js/people.js?v=1792508384"></script>
+<script src="js/originals.js?v=1792508384"></script>
+<script src="js/verify.js?v=1792508384"></script>
+<script src="js/biolock.js?v=1792508384"></script>
+<script src="js/engage.js?v=1792508384"></script>
+<script src="js/visitors.js?v=1792508384"></script>
+<script src="js/ai-widget.js?v=1792508384"></script>
 </body>
 </html>

@@ -176,7 +176,7 @@
     const st = Date.now() < theyTypeUntil ? "typing…" : online.has(other) ? "Active now" : "";
     thread.innerHTML = `<div class="dm-head"><button type="button" class="act dm-back" data-back aria-label="Back to chats">←</button>${av(other, "md")}<div class="mx-who"><b>${E(handle(other))}</b><small id="mx-status">${st}</small></div></div>
 <div class="dm-msgs" id="dm-msgs">${msgs.length ? html : `<div class="mx-hello">${av(other, "lg")}<b>${E(handle(other))}</b><span class="muted">Say hello 👋</span></div>`}
-<div class="mx-msg end" id="mx-typing" hidden>${av(other, "sm")}<div class="mx-col"><div class="mx-bub dots"><i></i><i></i><i></i></div></div></div></div>
+<div class="mx-msg end" id="mx-typing"${Date.now() < theyTypeUntil ? "" : " hidden"}>${av(other, "sm")}<div class="mx-col"><div class="mx-bub dots"><i></i><i></i><i></i></div></div></div></div>
 <div class="mx-emoji" id="mx-emoji" hidden>${["😀", "😂", "😍", "🥰", "😎", "🔥", "💯", "🙏", "👏", "💪", "🎶", "👑", "💰", "😢", "😡", "❤️"].map((e) => `<button type="button" data-emo="${e}">${e}</button>`).join("")}</div>
 <form class="dm-form" id="dm-form">
   <label class="mx-tool" title="Send a photo" aria-label="Send a photo">📷<input type="file" accept="image/*" id="mx-photo" hidden></label>
