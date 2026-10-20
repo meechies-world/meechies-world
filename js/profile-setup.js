@@ -133,7 +133,7 @@
     let later = false; try { later = sessionStorage.getItem("mw_ps_later") === "1"; } catch (_) {}
     if (later) return clearInterval(t);
     const en = document.getElementById("enter");
-    if ((en && !en.hidden) || document.getElementById("wv-box") || document.querySelector("dialog[open]") || document.documentElement.classList.contains("gated")) return;
+    if ((en && !en.hidden) || document.getElementById("wv-box") || document.getElementById("mw-choices") || document.querySelector("dialog[open]") || document.documentElement.classList.contains("gated")) return;
     if (p.joinedAt && Date.now() - p.joinedAt > 3 * 864e5 && !p.phone && !p.website && p.photo) return clearInterval(t); // older members with a photo: don't nag
     clearInterval(t); setTimeout(open, 1500);
   }, 2000);
