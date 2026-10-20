@@ -29,6 +29,8 @@
   }
   window.MW_socUrl = socUrl;
   const socBox = ([k, n, ph]) => `<label>${n}<input type="text" id="pss-${k}" maxlength="120" placeholder="${ph}" autocomplete="off"></label>`;
+  const INTERESTS = ["🎤 Hip-hop & rap", "🎶 R&B & soul", "🙏 Gospel", "🎧 Making beats", "🎬 Movies & TV", "📺 Live TV", "📚 Books", "👗 Fashion & clothes", "💇 Hair & nails", "💈 Barber", "⚖️ Legal help", "💼 Business & money", "🪙 Crypto", "🎮 Games", "🏀 Sports", "🍳 Cooking", "💻 Tech & AI", "🌍 History & Egypt", "❤️ Dating", "👨‍👩‍👧 Family", "🛠️ Remodeling", "✈️ Travel"];
+  let picked = new Set();
   let photo = "", cover = "", color = "gold", busy = false;
 
   const css = document.createElement("style");
@@ -53,6 +55,7 @@
 .ps-soc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ps-soc label{font-size:13px!important}@media (max-width:480px){.ps-soc{grid-template-columns:1fr}}
 .ps-more summary{cursor:pointer;color:var(--gold-hi,#f0cf78);font-weight:700;font-size:14px;margin:4px 0 8px}
 .ps-cov{display:block;height:70px;border-radius:10px;background:#241d10 center/cover;border:1px solid var(--line,#333)}
+.ps-int{display:flex;flex-wrap:wrap;gap:6px}.ps-int button{border:1px solid var(--line,#444);background:#1d1810;color:var(--text,#fff);border-radius:999px;padding:6px 11px;font:600 13px var(--body,system-ui);cursor:pointer}.ps-int button[aria-pressed=true]{background:var(--gold,#d4a843);color:#0b0a08;border-color:var(--gold-hi,#f0cf78)}
 .ps-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}`;
   document.head.appendChild(css);
 
@@ -67,6 +70,7 @@
 <div class="ps-soc"><label>Works at<input type="text" id="ps-work" maxlength="80" placeholder="Company or job"></label><label>Went to school at<input type="text" id="ps-school" maxlength="80" placeholder="School"></label>
 <label>Lives in<input type="text" id="ps-city" maxlength="60" placeholder="City, State"></label><label>From<input type="text" id="ps-home" maxlength="60" placeholder="Hometown"></label>
 <label>Relationship<select id="ps-rel"><option value="">Don't show</option><option>Single</option><option>In a relationship</option><option>Engaged</option><option>Married</option><option>It's complicated</option></select></label></div>
+<div style="display:grid;gap:8px"><b style="font-size:14px">⭐ What are you into? <span class="hint">(pick all you like, so Meechie can make more of it)</span></b><div class="ps-int" id="ps-int">${INTERESTS.map((x) => `<button type="button" data-int="${E(x)}" aria-pressed="false">${E(x)}</button>`).join("")}</div></div>
 <label>Phone number <input type="tel" id="ps-phone" maxlength="20" placeholder="(724) 555-0123" autocomplete="tel"></label>
 <label class="chk"><input type="checkbox" id="ps-phone-pub"> <span>Show my phone number on my profile<br><span class="hint">Off by default, and then only you can see it. If you turn it on, anyone who visits can see it.</span></span></label>
 <label>Website <input type="url" id="ps-web" maxlength="300" placeholder="https://yourwebsite.com" autocomplete="url"></label>
@@ -89,6 +93,7 @@
       const hex = (COLORS.find((c) => c[0] === color) || COLORS[0])[1]; pic.style.setProperty("--ps", hex);
       d.querySelectorAll("[data-col]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.col === color))); };
     d._paint = () => { paint(); d.querySelector("#ps-cov").style.backgroundImage = cover ? `url("${cover.replace(/"/g, "")}")` : ""; };
+    d.querySelector("#ps-int").addEventListener("click", (e) => { const b = e.target.closest("[data-int]"); if (!b) return; const x = b.dataset.int; picked.has(x) ? picked.delete(x) : picked.add(x); b.setAttribute("aria-pressed", String(picked.has(x))); });
     d.querySelector("#ps-colors").addEventListener("click", (e) => { const b = e.target.closest("[data-col]"); if (b) { color = b.dataset.col; paint(); } });
     d.querySelector("#ps-wantjob").addEventListener("change", (e) => { d.querySelector("#ps-job").hidden = !e.target.checked; });
     d.querySelector("#ps-file").addEventListener("change", async (e) => {
@@ -124,7 +129,7 @@
       // member profiles can be read by anyone, so a hidden phone number is kept in the member's private account instead
       const pub = d.querySelector("#ps-phone-pub").checked && !!phone;
       const socials = {}; SOC.forEach(([k]) => { const raw = v("pss-" + k).slice(0, 120); if (raw && socUrl(k, raw)) socials[k] = raw; });
-      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, setupDone: true };
+      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, interests: [...picked].slice(0, 22), setupDone: true };
       if (cover && /^https:\/\//.test(cover)) upd.cover = cover;
       if (photo) upd.photo = photo;
       await DB().doc("members/" + ME()).update(upd);
@@ -144,7 +149,7 @@
   function open() {
     if (!ME() || !P()) { if (typeof openAuth === "function") openAuth("signup"); return; }
     const d = dialog(), p = P();
-    photo = p.photo || ""; cover = p.cover || ""; color = p.color || "gold";
+    photo = p.photo || ""; cover = p.cover || ""; picked = new Set(Array.isArray(p.interests) ? p.interests : []); d.querySelectorAll("[data-int]").forEach((b) => b.setAttribute("aria-pressed", String(picked.has(b.dataset.int)))); color = p.color || "gold";
     let priv = ""; try { priv = MW.session()?.user?.user_metadata?.phone_private || ""; } catch (_) {}
     d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || ""; d.querySelector("#ps-work").value = p.work || ""; d.querySelector("#ps-school").value = p.school || ""; d.querySelector("#ps-city").value = p.city || ""; d.querySelector("#ps-home").value = p.hometown || ""; d.querySelector("#ps-rel").value = p.relationship || "";
     SOC.forEach(([k]) => { d.querySelector("#pss-" + k).value = (p.socials && p.socials[k]) || ""; });
