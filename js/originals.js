@@ -13,6 +13,7 @@
     ["c32d30b697824b44aa60", "mw-1"], ["0fb7db9bc08a4140ab11", "mw-2"], ["21545b26ee8b41b9aa83", "mw-3"], ["cd1c5c148ee4425196d8", "mw-4"],
     ["414400b86f194364986b", "mw-5"], ["3cd44e04305d45368ce7", "mw-6"], ["b53436a297bc4fd9a781", "mw-7"],
   ].map(([id, n]) => ({ src: SB + id + ".mp4", local: "/media/promo/" + n + ".mp4", poster: "/media/promo/" + n + ".jpg" }));
+  window.MW_ORIGINALS = VIDS;
   const vid = (v, attrs) => `<video ${attrs} poster="${v.poster}" playsinline preload="metadata"><source src="${v.src}" type="video/mp4"><source src="${v.local}" type="video/mp4"></video>`;
 
   const css = document.createElement("style");

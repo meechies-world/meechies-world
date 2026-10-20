@@ -16,6 +16,8 @@
   const sb = MW.sb;
   let seenIds = null, uid = null, all = [], other = null, q = "", timer = null, started = false;
   let typingCh = null, typingWith = null, theyTypeUntil = 0, lastTypeSent = 0, pickFor = null;
+  let mini = null, heads = []; const fresh = [];
+  try { heads = JSON.parse(sessionStorage.getItem("mx_heads") || "[]").filter((x) => typeof x === "string").slice(0, 4); } catch (_) {}
 
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const mem = (id) => (typeof members !== "undefined" && members[id]) || {};
@@ -82,9 +84,12 @@
       if (prevIds.has(r.id) || r.recipient !== uid || r.sender === uid) return;
       if (r.sender === other && !view.hidden && !document.hidden) { theyTypeUntil = 0; return; } // you're looking at it
       if (isReact(r.body)) return;
+      if (mini === r.sender && !document.hidden) return; // its chat window is open
       pop(); if (window.MW_NOTIFY) MW_NOTIFY("New message from " + handle(r.sender), String(preview(r)).slice(0, 80));
+      fresh.push(r);
     });
     all = data || []; paintDot(); autoPlayVoices(); if (!view.hidden) render();
+    fresh.forEach(popIn); fresh.length = 0; paintHeads(); if (mini) paintMini();
   }
   function later() { clearTimeout(timer); timer = setTimeout(load, 200); }
 
@@ -191,9 +196,9 @@
   function paintSend() { const i = document.getElementById("dm-in"), s = document.getElementById("mx-send"); if (i && s) { const has = !!i.value.trim(); s.textContent = has ? "➤" : "👍"; s.classList.toggle("go", has); s.setAttribute("aria-label", has ? "Send" : "Send a thumbs up"); } }
 
   function open(id) { other = id; q = ""; const s = view.querySelector(".dm-search"); if (s) s.value = ""; if (typeof go === "function") go("messages"); render(); setTimeout(() => { const i = document.getElementById("dm-in"); if (i) i.focus(); }, 50); }
-  async function send(body) {
-    if (!body || !other) return false;
-    const { error } = await sb.from("dms").insert({ recipient: other, body });
+  async function send(body, to = other) {
+    if (!body || !to) return false;
+    const { error } = await sb.from("dms").insert({ recipient: to, body });
     if (error) { say("Could not send: " + error.message); return false; }
     load(); return true;
   }
@@ -356,14 +361,119 @@ body.mw-editing #mx-fab{display:none}
     f.addEventListener("click", () => { if (typeof go === "function") go("messages"); });
     document.body.appendChild(f); paintDot(); paintFab();
   }
-  function paintFab() { const f = document.getElementById("mx-fab"); if (f) f.hidden = !uid || !view.hidden; }
+  function paintFab() { const f = document.getElementById("mx-fab"); if (f) f.hidden = !uid || !view.hidden; paintHeads(); if (!view.hidden && mini) closeMini(); }
+
+  /* ---------- Facebook-style chat heads, pop-up preview card and mini chat windows ---------- */
+  const saveHeads = () => { try { sessionStorage.setItem("mx_heads", JSON.stringify(heads)); } catch (_) {} };
+  const unreadFrom = (id) => all.filter((r) => r.sender === id && r.recipient === uid && !r.read_at && !isReact(r.body)).length;
+  function addHead(id) { heads = [id, ...heads.filter((h) => h !== id)].slice(0, 4); saveHeads(); }
+  function paintHeads() {
+    let box = document.getElementById("mx-heads");
+    if (!box) { box = document.createElement("div"); box.id = "mx-heads"; document.body.appendChild(box); }
+    box.hidden = !uid || !view.hidden || !heads.length;
+    box.innerHTML = heads.map((id) => { const n = unreadFrom(id);
+      return `<div class="mx-head${mini === id ? " on" : ""}"><button type="button" class="mx-head-b" data-head="${E(id)}" title="${E(handle(id))}" aria-label="Chat with ${E(handle(id))}">${av(id)}${n ? `<i>${n > 9 ? "9+" : n}</i>` : ""}</button><button type="button" class="mx-head-x" data-headx="${E(id)}" aria-label="Close chat head">×</button></div>`; }).join("");
+  }
+  function popIn(r) {
+    const id = r.sender; addHead(id);
+    let card = document.getElementById("mx-pop");
+    if (!card) { card = document.createElement("div"); card.id = "mx-pop"; card.setAttribute("role", "status"); document.body.appendChild(card); }
+    card.dataset.from = id;
+    card.innerHTML = `<button type="button" class="mx-pop-x" data-popx aria-label="Dismiss">×</button>
+<button type="button" class="mx-pop-main" data-head="${E(id)}">${av(id, "md")}<span><b>${E(handle(id))}</b><small>${E(String(preview(r)).slice(0, 90))}</small></span></button>
+<form class="mx-pop-reply" data-popreply="${E(id)}"><input type="text" maxlength="2000" placeholder="Reply to ${E(handle(id).split(" ")[0])}…" aria-label="Quick reply" autocomplete="off"><button type="submit" aria-label="Send">➤</button></form>`;
+    card.hidden = false; card.classList.remove("in"); void card.offsetWidth; card.classList.add("in");
+    clearTimeout(card._t); const hide = () => { if (!card.matches(":hover,:focus-within")) card.hidden = true; else card._t = setTimeout(hide, 3000); };
+    card._t = setTimeout(hide, 8000);
+  }
+  function openMini(id) {
+    if (!view.hidden) { open(id); return; }
+    if (window.innerWidth < 520) { open(id); return; } // phones: full Messenger is easier to use
+    mini = id; addHead(id);
+    const p = document.getElementById("mx-pop"); if (p && p.dataset.from === id) p.hidden = true;
+    paintMini(true); paintHeads(); markMiniRead();
+    setTimeout(() => document.querySelector("#mx-mini input")?.focus(), 30);
+  }
+  function closeMini() { mini = null; const w = document.getElementById("mx-mini"); if (w) w.hidden = true; paintHeads(); }
+  async function markMiniRead() {
+    if (!mini || document.hidden || !unreadFrom(mini)) return;
+    await sb.from("dms").update({ read_at: new Date().toISOString() }).eq("recipient", uid).eq("sender", mini).is("read_at", null);
+    all.forEach((r) => { if (r.sender === mini && r.recipient === uid && !r.read_at) r.read_at = new Date().toISOString(); });
+    paintDot(); paintHeads();
+  }
+  function paintMini(first) {
+    let w = document.getElementById("mx-mini");
+    if (!w) { w = document.createElement("div"); w.id = "mx-mini"; document.body.appendChild(w); }
+    if (!mini) { w.hidden = true; return; }
+    const box0 = w.querySelector(".mm-msgs"), atBottom = first || !box0 || box0.scrollHeight - box0.scrollTop - box0.clientHeight < 60;
+    const draft = w.querySelector("input")?.value || "", focused = document.activeElement && w.contains(document.activeElement);
+    const msgs = all.filter((r) => ((r.sender === uid && r.recipient === mini) || (r.sender === mini && r.recipient === uid)) && !isReact(r.body)).slice(0, 40).reverse();
+    w.innerHTML = `<div class="mm-head">${av(mini, "sm")}<b>${E(handle(mini))}</b><small>${onlineIds().has(mini) ? "Active now" : ""}</small>
+<button type="button" data-mmfull title="Open in Messenger" aria-label="Open in Messenger">⤢</button><button type="button" data-mmclose aria-label="Close chat">×</button></div>
+<div class="mm-msgs">${msgs.length ? msgs.map((r) => `<div class="mx-msg ${r.sender === uid ? "me" : ""} end">${r.sender !== uid ? av(r.sender, "sm") : ""}<div class="mx-col">${bubble(r)}</div></div>`).join("") : `<p class="muted" style="text-align:center;margin:auto">Say hello 👋</p>`}</div>
+<form class="mm-form" data-mmform><input type="text" maxlength="2000" placeholder="Aa" aria-label="Message" autocomplete="off"><button type="submit" aria-label="Send">➤</button></form>`;
+    w.hidden = false;
+    const i = w.querySelector("input"); if (draft) i.value = draft; if (focused) i.focus();
+    const b = w.querySelector(".mm-msgs"); if (atBottom) b.scrollTop = b.scrollHeight;
+    markMiniRead();
+  }
+  function wireHeads() {
+    document.addEventListener("click", (e) => {
+      const h = e.target.closest("[data-head]"); if (h) { e.preventDefault(); const id = h.dataset.head; if (mini === id && h.classList.contains("mx-head-b")) closeMini(); else openMini(id); return; }
+      const x = e.target.closest("[data-headx]"); if (x) { heads = heads.filter((id) => id !== x.dataset.headx); saveHeads(); if (mini === x.dataset.headx) closeMini(); paintHeads(); return; }
+      if (e.target.closest("[data-popx]")) { document.getElementById("mx-pop").hidden = true; return; }
+      if (e.target.closest("[data-mmclose]")) { closeMini(); return; }
+      if (e.target.closest("[data-mmfull]")) { const id = mini; closeMini(); open(id); return; }
+    });
+    document.addEventListener("submit", async (e) => {
+      const f = e.target.closest("[data-popreply],[data-mmform]"); if (!f) return; e.preventDefault();
+      const to = f.dataset.popreply || mini, i = f.querySelector("input"), body = i.value.trim(); if (!body || !to) return;
+      i.value = ""; const ok = await send(body, to);
+      if (!ok) { i.value = body; return; }
+      if (f.dataset.popreply) { document.getElementById("mx-pop").hidden = true; say("Sent to " + handle(to)); await markReadFrom(to); }
+    });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) markMiniRead(); });
+    const css = document.createElement("style");
+    css.textContent = `
+#mx-heads{position:fixed;right:16px;bottom:calc(var(--tabbar,0px) + 128px + env(safe-area-inset-bottom,0px));z-index:9996;display:flex;flex-direction:column-reverse;gap:10px}
+body.has-player #mx-heads{bottom:calc(var(--tabbar,0px) + 204px + env(safe-area-inset-bottom,0px))}
+.mx-head{position:relative}.mx-head-b{background:none;border:0;padding:0;cursor:pointer;position:relative;display:block;animation:mxHead .35s cubic-bezier(.2,1.6,.4,1)}
+.mx-head-b .mx-av{width:54px;height:54px;box-shadow:0 8px 22px rgba(0,0,0,.55);border:2px solid var(--gold,#e2b54e)}
+.mx-head.on .mx-av{box-shadow:0 0 0 3px var(--gold-hi,#f0cf78),0 8px 22px rgba(0,0,0,.55)}
+.mx-head-b>i{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:999px;background:#e5484d;color:#fff;font:800 11px/20px system-ui,sans-serif;font-style:normal;padding:0 5px;border:2px solid #0b0a08;text-align:center}
+.mx-head-x{position:absolute;left:-6px;top:-6px;width:20px;height:20px;border-radius:50%;border:0;background:#2a2418;color:#fff;font-size:13px;line-height:20px;cursor:pointer;opacity:0;transition:opacity .15s}
+.mx-head:hover .mx-head-x,.mx-head:focus-within .mx-head-x{opacity:1}
+@media (hover:none){.mx-head-x{opacity:.85}}
+@keyframes mxHead{from{transform:scale(.2);opacity:0}to{transform:none;opacity:1}}
+#mx-pop{position:fixed;right:16px;top:calc(env(safe-area-inset-top,0px) + 14px);z-index:9999;width:min(340px,calc(100vw - 32px));background:linear-gradient(180deg,#1f1a10,#13110c);border:1px solid var(--gold-lo,#8a6a2a);border-radius:18px;box-shadow:0 18px 44px rgba(0,0,0,.6);padding:10px;display:grid;gap:8px}
+#mx-pop.in{animation:mxPop .4s cubic-bezier(.2,1.4,.4,1)}@keyframes mxPop{from{transform:translateY(-24px) scale(.94);opacity:0}to{transform:none;opacity:1}}
+.mx-pop-main{display:flex;gap:10px;align-items:center;background:none;border:0;color:var(--text,#fff);text-align:left;cursor:pointer;font:inherit;padding:2px 22px 2px 2px}
+.mx-pop-main span{display:grid;min-width:0}.mx-pop-main small{color:var(--muted,#aaa);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mx-pop-x{position:absolute;right:8px;top:6px;background:none;border:0;color:var(--muted,#aaa);font-size:20px;cursor:pointer}
+.mx-pop-reply,.mm-form{display:flex;gap:6px}.mx-pop-reply input,.mm-form input{flex:1;min-width:0;background:var(--ink,#0b0a08);border:1px solid var(--line,#333);border-radius:999px;padding:9px 13px;color:var(--text,#fff);font:inherit}
+.mx-pop-reply button,.mm-form button{width:38px;height:38px;flex:none;border-radius:50%;border:0;background:var(--gold,#e2b54e);color:#0b0a08;font-size:16px;cursor:pointer}
+#mx-mini{position:fixed;right:84px;bottom:calc(var(--tabbar,0px) + 16px + env(safe-area-inset-bottom,0px));z-index:9997;width:330px;height:min(440px,calc(100vh - 120px));background:linear-gradient(180deg,#17130c,#0f0d09);border:1px solid var(--gold-lo,#8a6a2a);border-radius:16px 16px 12px 12px;box-shadow:0 20px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden;animation:mxPop .3s ease-out}
+#mx-mini[hidden]{display:none}
+.mm-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line,#333);background:#1d1810}
+.mm-head b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mm-head small{color:#31d158;font-size:11px}
+.mm-head button{background:none;border:0;color:var(--gold-hi,#f0cf78);font-size:18px;cursor:pointer;padding:2px 6px}
+.mm-msgs{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:2px}.mm-msgs .mx-col{max-width:80%}.mm-msgs .mx-bub{font-size:14px;padding:7px 11px}
+.mm-msgs .mx-photo img{max-width:180px}.mm-form{padding:8px;border-top:1px solid var(--line,#333)}
+body.mw-editing #mx-heads,body.mw-editing #mx-mini{display:none}`;
+    document.head.appendChild(css);
+  }
+  async function markReadFrom(id) {
+    await sb.from("dms").update({ read_at: new Date().toISOString() }).eq("recipient", uid).eq("sender", id).is("read_at", null);
+    all.forEach((r) => { if (r.sender === id && r.recipient === uid && !r.read_at) r.read_at = new Date().toISOString(); });
+    paintDot(); paintHeads();
+  }
 
   async function init() {
     await MW.sessionReady;
     const s = MW.session(); uid = s && s.user ? s.user.id : null;
     build(); if (!uid) { render(); return; }
-    fab();
-    await load();
+    fab(); wireHeads();
+    await load(); paintHeads();
     sb.channel("dms-live").on("postgres_changes", { event: "*", schema: "public", table: "dms" }, later).subscribe();
     started = true; setInterval(() => { if (!document.hidden) load(); }, 45000);
     // keep "active now" dots fresh

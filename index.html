@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/media-cdn.js?v=1792508750"></script>
-<meta name="mw-build" content="1792508750">
+<script src="js/media-cdn.js?v=1792509037"></script>
+<meta name="mw-build" content="1792509037">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1960,8 +1960,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1792508750"></script>
-<script src="js/platform.js?v=1792508750"></script>
+<script src="js/config.js?v=1792509037"></script>
+<script src="js/platform.js?v=1792509037"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -2599,6 +2599,7 @@ function showRadioNote(){
   document.body.appendChild(n);
 }
 async function autoRadio(){
+  if(window.MW_show) return; // owner: music only starts when people pick it (the videos play first)
   if(autoTried || !tracks.length || radioSnoozed() || (window.MW_SITE && window.MW_SITE.autoplay===false)) return;
   { const en=document.getElementById("enter"); if(en && !en.hidden && !en.classList.contains("out")) return; } // wait for the Enter button
   if(document.documentElement.classList.contains("gated")) return; // not signed in yet
@@ -2687,6 +2688,10 @@ async function playIntro(){
     try{ sessionStorage.removeItem("mw_radio_off"); }catch(_){}
     hideRadioNote();
     if(window.MW_SITE && window.MW_SITE.autoplay===false) return;
+    // owner: the welcome video, then Meechie's videos keep playing; music only when people pick it
+    if(window.MW_show){ autoTried=true; const sh=()=>MW_show.start();
+      if(window.MW_welcome && !document.documentElement.classList.contains("gated")){ try{ if(!media.paused) media.pause(); }catch(_){} window._welcomeOn=true; MW_welcome(()=>{ window._welcomeOn=false; sh(); }); } else sh();
+      return; }
     if(!tracks.length){ window._introPending=true; if(window.MW_welcome && !document.documentElement.classList.contains("gated")){ window._welcomeOn=true; MW_welcome(()=>{ window._welcomeOn=false; if(tracks.length && window._introPending){ window._introPending=false; playIntro().then(ok=>{ if(!ok && !autoTried) autoRadio(); }); } }); } return; } // the welcome song starts as soon as the songs arrive
     const startAudio=()=>setTimeout(async()=>{ if(mode && !media.paused && mode!=="radio") return;
       if(await playIntro()) return;                 // the welcome song first, then the live radio
@@ -3207,35 +3212,37 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792508750"></script>
-<script src="js/studio.js?v=1792508750"></script>
-<script src="js/owner.js?v=1792508750"></script>
-<script src="js/messages.js?v=1792508750"></script>
-<script src="js/videos.js?v=1792508750"></script>
-<script src="js/markets.js?v=1792508750"></script>
-<script src="js/legal.js?v=1792508750"></script>
-<script src="js/coin.js?v=1792508750"></script>
-<script src="js/preach.js?v=1792508750"></script>
-<script src="js/world3d.js?v=1792508750"></script>
-<script src="js/clips.js?v=1792508750"></script>
-<script src="js/dj.js?v=1792508750"></script>
-<script src="js/live.js?v=1792508750"></script>
-<script src="js/autotune.js?v=1792508750"></script>
-<script src="js/beatmaker.js?v=1792508750"></script>
-<script src="js/beatlab.js?v=1792508750"></script>
-<script src="js/friends.js?v=1792508750"></script>
-<script src="js/dating.js?v=1792508750"></script>
-<script src="js/books.js?v=1792508750"></script>
-<script src="js/social.js?v=1792508750"></script>
-<script src="js/jobs.js?v=1792508750"></script>
-<script src="js/golive.js?v=1792508750"></script>
-<script src="js/predict.js?v=1792508750"></script>
-<script src="js/people.js?v=1792508750"></script>
-<script src="js/originals.js?v=1792508750"></script>
-<script src="js/verify.js?v=1792508750"></script>
-<script src="js/biolock.js?v=1792508750"></script>
-<script src="js/engage.js?v=1792508750"></script>
-<script src="js/visitors.js?v=1792508750"></script>
-<script src="js/ai-widget.js?v=1792508750"></script>
+<script src="js/appnav.js?v=1792509037"></script>
+<script src="js/studio.js?v=1792509037"></script>
+<script src="js/owner.js?v=1792509037"></script>
+<script src="js/messages.js?v=1792509037"></script>
+<script src="js/videos.js?v=1792509037"></script>
+<script src="js/markets.js?v=1792509037"></script>
+<script src="js/legal.js?v=1792509037"></script>
+<script src="js/coin.js?v=1792509037"></script>
+<script src="js/preach.js?v=1792509037"></script>
+<script src="js/world3d.js?v=1792509037"></script>
+<script src="js/clips.js?v=1792509037"></script>
+<script src="js/dj.js?v=1792509037"></script>
+<script src="js/live.js?v=1792509037"></script>
+<script src="js/autotune.js?v=1792509037"></script>
+<script src="js/beatmaker.js?v=1792509037"></script>
+<script src="js/beatlab.js?v=1792509037"></script>
+<script src="js/friends.js?v=1792509037"></script>
+<script src="js/dating.js?v=1792509037"></script>
+<script src="js/books.js?v=1792509037"></script>
+<script src="js/social.js?v=1792509037"></script>
+<script src="js/jobs.js?v=1792509037"></script>
+<script src="js/golive.js?v=1792509037"></script>
+<script src="js/predict.js?v=1792509037"></script>
+<script src="js/people.js?v=1792509037"></script>
+<script src="js/originals.js?v=1792509037"></script>
+<script src="js/welcome-show.js?v=1792509037"></script>
+<script src="js/profile-setup.js?v=1792509037"></script>
+<script src="js/verify.js?v=1792509037"></script>
+<script src="js/biolock.js?v=1792509037"></script>
+<script src="js/engage.js?v=1792509037"></script>
+<script src="js/visitors.js?v=1792509037"></script>
+<script src="js/ai-widget.js?v=1792509037"></script>
 </body>
 </html>
