@@ -15,7 +15,7 @@ revoke execute on function public.rls_auto_enable() from public, anon, authentic
 
 -- 3. Same rules, checked once per query instead of once per row (speed fix)
 alter policy "update signed in" on public.docs using ((select auth.uid()) is not null) with check (octet_length((data)::text) < 400000);
-alter policy "delete own" on public.docs using ((owner = (select auth.uid())) or (select public.is_admin()));
+alter policy "delete own" on public.docs using (((owner = (select auth.uid())) and coll <> 'members') or (select public.is_admin())); -- members can't delete their own member profile (keeps the under-18 block)
 alter policy "insert own" on public.docs with check ((owner = (select auth.uid())) and public.path_allowed(path, coll) and public.docs_insert_ok(path, coll, data) and (octet_length((data)::text) < 400000));
 alter policy "dm mark read" on public.dms using (recipient = (select auth.uid())) with check (recipient = (select auth.uid()));
 alter policy "dm read own" on public.dms using (((select auth.uid()) = sender) or ((select auth.uid()) = recipient));
