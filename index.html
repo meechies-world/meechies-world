@@ -3311,7 +3311,9 @@ async function loadShopify(){
   try{ const r=await fetch("/api/shopify"); const j=await r.json(); const ps=(j.products||[]).filter(p=>/^https:\/\//.test(p.url));
     if(!ps.length) throw new Error("empty");
     ps.sort((a,b)=>(b.digital?1:0)-(a.digital?1:0)); // eBooks first
+    window.MW_SHOPIFY=ps;
     $("#shopify-grid").innerHTML=ps.map(p=>`<a class="prod" href="${esc(p.digital&&p.buy?p.buy:p.url)}" target="_blank" rel="noopener">${p.img?`<img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy">`:`<div class="prod-ph">${esc(p.title)}</div>`}<b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">${p.digital?"Buy &amp; download →":"Shop now →"}</span></a>`).join("");
+    window.MW_shopGifts?.decorate();
   }catch(_){ $("#shopify-grid").innerHTML='<div class="empty">Tap the button below to see everything in the store.</div>'; }
 }
 new MutationObserver(()=>{ if(!$("#v-shop").hidden) loadShop(); }).observe($("#v-shop"),{attributes:true,attributeFilter:["hidden"]});
@@ -3357,6 +3359,7 @@ boot();
 <script src="js/books.js?v=1792580555"></script>
 <script src="js/social.js?v=1792580555"></script>
 <script src="js/jobs.js?v=1792580555"></script>
+<script src="js/shop-gift.js?v=1792600603"></script>
 <script src="js/coins.js?v=1792599801"></script>
 <script src="js/golive.js?v=1792599801"></script>
 <script src="js/predict.js?v=1792580555"></script>

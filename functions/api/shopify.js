@@ -18,12 +18,14 @@ const toItem = (p) => {
     buy: vs.length === 1 ? STORE + "/cart/" + vs[0].id + ":1" : "",
     digital,
     type: String(p.product_type || ""),
+    // sizes / options, so a member can pick one when gifting the item
+    variants: vs.filter((v) => v.available !== false).slice(0, 40).map((v) => ({ id: String(v.id), title: String(v.title || ""), price: v.price, ship: v.requires_shipping !== false })),
   };
 };
 
 export async function onRequestGet({ request }) {
   const cache = caches.default;
-  const key = new Request(new URL("/api/shopify?v=1", request.url).toString());
+  const key = new Request(new URL("/api/shopify?v=2", request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
 
