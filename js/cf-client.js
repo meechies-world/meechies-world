@@ -49,18 +49,20 @@
 
   /* ---------- live refresh: one light check every few seconds while the page is open ---------- */
   const watchers = new Set();
-  let seq = 0, polling = false, pollTimer = null;
+  let seq = null, polling = false, pollTimer = null;
   async function poll() {
     pollTimer = null;
     if (!watchers.size) { polling = false; return; }
     if (!document.hidden) {
       try {
-        const r = await fetch(API + "changes?since=" + seq, { headers: headers(), cache: "no-store" });
+        const r = await fetch(API + "changes" + (seq === null ? "" : "?since=" + seq), { headers: headers(), cache: "no-store" });
         const j = await r.json();
-        if (seq && Array.isArray(j.rows) && j.rows.length) {
+        if (seq !== null && Array.isArray(j.rows) && j.rows.length) {
           for (const row of j.rows) watchers.forEach((w) => { if (w.table === row.tbl) { try { w.cb(row.tbl === "docs" ? { new: { path: row.path, coll: row.coll } } : { new: {} }); } catch (_) {} } });
         }
-        if (typeof j.seq === "number") seq = j.seq;
+        // first check: remember where we are, and refresh once in case something changed while the page was starting
+        if (seq === null && typeof j.seq === "number") { seq = j.seq; watchers.forEach((w) => { try { w.cb({ new: {} }); } catch (_) {} }); }
+        else if (typeof j.seq === "number" && j.seq > seq) seq = j.seq;
       } catch (_) {}
     }
     pollTimer = setTimeout(poll, document.hidden ? 30000 : 6000);

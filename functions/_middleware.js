@@ -6,7 +6,11 @@
 const AI_BOTS = /GPTBot|ChatGPT|OAI-SearchBot|ClaudeBot|Claude-User|Claude-SearchBot|Claude-Web|anthropic|Google-Extended|GoogleOther|Applebot-Extended|PerplexityBot|Perplexity-User|CCBot|Bytespider|Amazonbot|meta-externalagent|meta-externalfetcher|FacebookBot|cohere|Diffbot|YouBot|DuckAssistBot|MistralAI|AI2Bot|Ai2Bot|ImagesiftBot|Omgili|Timpibot|img2dataset|PanguBot|Kangaroo Bot|Webzio|iaskspider|Scrapy|python-requests|python-urllib|aiohttp|httpx|Go-http-client|node-fetch|axios\/|okhttp|libwww-perl|Java\/|curl\/|Wget|HTTrack|Firecrawl|Apify|scrapingbee|ScraperAPI|Crawl4AI|SemrushBot|AhrefsBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Barkrowler/i;
 const PREVIEW = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|Discordbot|TelegramBot|Slackbot|LinkedInBot|Pinterest|SkypeUriPreview|iMessage|Googlebot|bingbot|DuckDuckBot|Applebot\//i;
 
+import { install } from "../lib/sbshim.js";
+let ENV = null; install(() => ENV); // server helpers read the new free database once the move is done (lib/sbshim.js)
+
 export async function onRequest(ctx) {
+  ENV = ctx.env;
   const url = new URL(ctx.request.url);
   // www.meechiesworldinc.com → meechiesworldinc.com. meechies-world.pages.dev keeps working on its own (owner's choice).
   if (url.hostname === "www.meechiesworldinc.com") {

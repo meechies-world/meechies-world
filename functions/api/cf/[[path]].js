@@ -243,11 +243,11 @@ async function rpc(request, env) {
 
 /* ---------------- live refresh: "what changed since N?" ---------------- */
 async function changes(request, env) {
-  const since = Math.max(0, +new URL(request.url).searchParams.get("since") || 0);
+  const raw = new URL(request.url).searchParams.get("since"); const since = raw === null || raw === "" ? -1 : Math.max(0, +raw || 0);
   const me = await userFrom(request, env), uid = (me && me.id) || "-";
   const top = await env.DB.prepare("select max(seq) s from changes").first();
   const last = (top && top.s) || 0;
-  if (!since || since >= last) return json({ seq: last, rows: [] });
+  if (since < 0 || since >= last) return json({ seq: last, rows: [] }); // first check just says where things are
   const { results } = await env.DB.prepare("select seq, tbl, path, coll from changes where seq > ? and (tbl <> 'dms' or a = ? or b = ?) order by seq limit 200").bind(since, uid, uid).all();
   return json({ seq: last, rows: results });
 }
