@@ -349,13 +349,15 @@
     w.document.write(`<!doctype html><meta charset="utf-8"><title>${E(el("doc").value)}</title><style>body{font:12pt/2 "Times New Roman",Times,serif;margin:1in;white-space:pre-wrap;color:#000}@page{margin:1in}</style><body>${E(txt)}</body>`);
     w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
   });
-  /* ---------- hire Meechie: $50 per document ---------- */
+  /* ---------- paid document preparation: $20 case processing + $20 per delivered document ---------- */
   $("#lg-hire-go").addEventListener("click", async (e) => { const btn = e.currentTarget;
     const msg = $("#lg-hire-msg"), o = read(), n = +$("#lg-hire-n").value || 1, how = $("#lg-hire-how").value.trim();
     if (!tok()) { if (typeof openAuth === "function") openAuth("signin"); return; }
     if (!how) { msg.textContent = "Add the best way to reach you."; $("#lg-hire-how").focus(); return; }
     if (!o.facts.trim()) { msg.textContent = "Fill in step 2 (what happened) so Meechie knows the case."; el("facts").focus(); return; }
-    const lines = ["⚖️ LEGAL DOCUMENT REQUEST — " + n + " document" + (n > 1 ? "s" : "") + " ($" + n * 50 + ")",
+    const deliveryTotal = n * 20, requestTotal = 20 + deliveryTotal;
+    const lines = ["⚖️ LEGAL DOCUMENT REQUEST — " + n + " document" + (n > 1 ? "s" : "") + " (estimated total $" + requestTotal + ")",
+      "Fee stages: $20 case-processing fee after intake; $20 per document ($" + deliveryTotal + " delivery total) when the prepared document is ready.",
       "Document: " + o.doc, o.name && "Name: " + o.name + (o.role ? " (" + o.role + ")" : ""),
       [o.court, o.county, o.state].filter(Boolean).length && "Court: " + [o.court, o.county, o.state].filter(Boolean).join(", ") + " (" + o.system + ")",
       o.caseNo && "Case no.: " + o.caseNo, o.judge && "Judge: " + o.judge, o.other && "Other side: " + o.other + (o.otherCounsel ? " — " + o.otherCounsel : ""),
@@ -368,9 +370,19 @@
       if (!owner) throw new Error("Couldn't reach Meechie right now.");
       const r = await MW.sb.from("dms").insert({ recipient: owner, body: lines }); if (r.error) throw r.error;
       try { window.MW_VISIT && MW_VISIT("contact"); } catch (_) {}
-      const pay = view.querySelector('[data-pay="legal"]'); const canPay = pay && !pay.hidden && /^https:/.test(pay.href);
-      msg.textContent = "Sent! Meechie will reach out." + (canPay ? " Tap Pay to pay $" + n * 50 + " (set the quantity to " + n + " at checkout)." : " He'll send you how to pay.");
+      msg.textContent = "Request sent privately. The intended fees are $20 to process your case, then $20 per document when it is ready. No payment was collected here; secure checkout must be connected before either fee can be charged.";
     } catch (err) { msg.textContent = (err && err.message) || "Couldn't send. Try again."; }
     finally { btn.classList.remove("busy"); }
   });
+  /* Fee preview: one case-processing fee plus a delivery fee for each document. */
+  const feeCount = $("#lg-hire-n"), feeTotal = $("#lg-fee-total"), feeBreakdown = $("#lg-fee-breakdown");
+  function updateLegalFeePreview() {
+    if (!feeCount || !feeTotal || !feeBreakdown) return;
+    const count = Math.max(1, Math.min(5, Number(feeCount.value) || 1));
+    const delivery = count * 20, total = 20 + delivery;
+    feeTotal.textContent = "$" + total;
+    feeBreakdown.textContent = "$20 processing + $" + delivery + " for " + count + " document" + (count === 1 ? "" : "s");
+  }
+  feeCount?.addEventListener("change", updateLegalFeePreview);
+  updateLegalFeePreview();
 })();
