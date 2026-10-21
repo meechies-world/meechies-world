@@ -1013,6 +1013,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <a href="#messages" data-go="messages">Messages<span class="dm-dot" hidden></span></a>
       <a href="#games" data-go="games">Games</a>
       <a href="#creators" data-go="creators">Creators</a>
+      <a href="#exclusives" data-go="exclusives">✨ Exclusives</a>
       <a href="#jobs" data-go="jobs">Jobs</a>
       <a href="#ads" data-go="ads">Ad Board</a>
       <a href="#promote" data-go="promote">Promote</a>
@@ -1300,6 +1301,38 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 
 <section class="view" data-theme="predict" id="v-predict" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Free game · no money</p><h2>Predictions</h2></div><p class="muted">Call the game before it happens. Use free points, win a share of the pot, climb the leaderboard.</p></div><div id="pr-root"></div></div></section>
 <section class="view" data-theme="live" id="v-live" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Go live · watch · gift · battle</p><h2>Live</h2></div><p class="muted">Go live from your phone or computer camera. Viewers chat and send gifts, and two hosts can battle for 3 minutes. The most gift points wins.</p></div><div id="gl-root"></div></div></section>
+
+<section class="view" data-theme="exclusives" id="v-exclusives" hidden>
+  <style>
+    #v-exclusives .exclusive-hero{position:relative;overflow:hidden;border:1px solid rgba(218,177,78,.42);border-radius:22px;padding:clamp(24px,5vw,52px);background:radial-gradient(ellipse at 85% 5%,rgba(194,150,45,.22),transparent 42%),linear-gradient(135deg,#17140e,#080808 70%);box-shadow:0 18px 55px rgba(0,0,0,.28)}
+    #v-exclusives .exclusive-hero h2{font-family:Cinzel,serif;font-size:clamp(34px,6vw,60px);line-height:1.05;max-width:760px;margin:8px 0 16px;color:#f2d17b}
+    #v-exclusives .exclusive-hero p{max-width:700px;line-height:1.7}
+    #v-exclusives .exclusive-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:22px 0}
+    #v-exclusives .exclusive-card{border:1px solid rgba(218,177,78,.25);border-radius:18px;padding:22px;background:linear-gradient(160deg,rgba(255,255,255,.045),rgba(255,255,255,.015));min-width:0}
+    #v-exclusives .exclusive-icon{width:52px;height:52px;display:grid;place-items:center;border-radius:15px;background:rgba(218,177,78,.12);border:1px solid rgba(218,177,78,.28);font-size:25px;margin-bottom:15px}
+    #v-exclusives .exclusive-card h3{font-family:Cinzel,serif;color:#f2d17b;margin:0 0 9px;font-size:18px}
+    #v-exclusives .exclusive-card p{line-height:1.6}
+    #v-exclusives .exclusive-note{border-left:3px solid #cba64b;padding:12px 16px;background:rgba(203,166,75,.07);border-radius:0 10px 10px 0}
+    @media(max-width:760px){#v-exclusives .exclusive-grid{grid-template-columns:1fr}#v-exclusives .exclusive-hero{padding:22px}}
+  </style>
+  <div class="wrap">
+    <div class="exclusive-hero">
+      <p class="eyebrow">Premium creator community</p>
+      <h2>MEECHIES<br>EXCLUSIVES</h2>
+      <p class="muted">Get closer to the creators you follow. Discover member-only updates, behind-the-scenes posts, creator fan clubs, virtual gifts, and live moments—all in Meechies World's signature black-and-gold style.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:22px">
+        <a class="btn" href="#creators" data-go="creators">Explore Creators</a>
+        <a class="btn ghost" href="#live" data-go="live">Watch Live &amp; Battles</a>
+      </div>
+    </div>
+    <div class="exclusive-grid">
+      <article class="exclusive-card"><div class="exclusive-icon" aria-hidden="true">⭐</div><h3>Creator Fan Clubs</h3><p class="muted">Follow your favorite personalities and discover their community, updates, and premium offerings.</p><a class="btn ghost sm" href="#creators" data-go="creators">Meet Creators →</a></article>
+      <article class="exclusive-card"><div class="exclusive-icon" aria-hidden="true">🔒</div><h3>Exclusive Posts</h3><p class="muted">A dedicated home for subscriber-only photos, videos, and behind-the-scenes content.</p><a class="btn ghost sm" href="#clips" data-go="clips">Explore Clips →</a></article>
+      <article class="exclusive-card"><div class="exclusive-icon" aria-hidden="true">🎁</div><h3>Gifts &amp; Live Battles</h3><p class="muted">Celebrate creators with virtual gifts and bring the energy to head-to-head live battles.</p><a class="btn ghost sm" href="#live" data-go="live">Visit Live →</a></article>
+    </div>
+    <div class="exclusive-note muted"><strong style="color:#f2d17b">For creators:</strong> Meechies Exclusives is designed to support fan communities, premium content, and creator earnings. Paid subscriptions, gift checkout, and payouts need secure payment and creator-payout setup before transactions can go live.</div>
+  </div>
+</section>
 
 <section class="view" data-theme="jobs" id="v-jobs" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Work & hiring</p><h2>Jobs</h2></div><p class="muted">Companies post jobs and find workers. Workers list their skills and get hired. Message each other right here.</p></div><div id="jb-root"></div></div></section>
 
@@ -1991,7 +2024,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","chat","messages","ads","promote","contact"];
+const VIEWS=["live","predict","jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
