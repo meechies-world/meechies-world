@@ -14,7 +14,7 @@
   const HANDLE = (id) => { const h = typeof handleOf === "function" ? handleOf(id) : "Member"; if (h !== "Member") return h; const l = lives.find((x) => x.id === id); return l && l.host ? "Meechie" : (id === ME() && typeof isOwner !== "undefined" && isOwner ? "Meechie" : h); };
   const ICE = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302", "stun:stun.cloudflare.com:3478"] }] };
   const VAL = { rose: 1, mic: 5, gold: 10, fire: 20, crown: 50, diamond: 100 };
-  const EMO = { rose: "🌹", mic: "🎤", gold: "🪙", crown: "👑", fire: "🔥", diamond: "💎" };
+  const EMO = { rose: "🌹", heart: "💛", mic: "🎤", gg: "👏", gold: "🪙", fire: "🔥", crown: "👑", cash: "💵", diamond: "💎", chain: "⛓️", moneygun: "💸", lion: "🦁", ride: "🚘", jet: "🛩️", mansion: "🏰", world: "🌍" };
   const MAX_VIEWERS = 12;
   const myPeer = Math.random().toString(36).slice(2, 12);
   let lives = [], battles = [], hosting = null, watching = {}, chatLog = [], titleDraft = "", shellKey = "", statusMsg = "";
@@ -311,28 +311,75 @@
   }
   function stopWatch(id) { const w = watching[id]; if (!w) return; try { w.room.emit("bye", { from: myPeer }); w.pc.close(); w.room.leave(); } catch (_) {} delete watching[id]; if (!Object.keys(watching).length) window.MW_videoSound?.end(); shellKey = ""; render(); }
 
-  /* ---------- battles ---------- */
+  /* ---------- battles (TikTok-style) ----------
+   * Two hosts, 1/3/5 minutes. Points = coins of paid gifts sent to each side during the battle.
+   * Shows each side's top 3 gifters, the MVP, a 🔥 final-30-seconds rush, a winner screen and a Rematch button. */
+  const QUICK = [["rose", "🌹", 1], ["fire", "🔥", 25], ["crown", "👑", 50], ["diamond", "💎", 199]];
+  const battleGifts = (b, uid) => (typeof giftLog !== "undefined" ? giftLog : []).filter((g) => g.paid && g.to === uid && g.createdAt >= b.start && g.createdAt <= b.end);
+  const tops = (list) => { const m = {}; list.forEach((g) => (m[g.from] = (m[g.from] || 0) + (g.coins || 0))); return Object.entries(m).sort((a, z) => z[1] - a[1]); };
+  const av = (id) => (typeof avatarOf === "function" ? avatarOf(id) : "");
+  const bcss = document.createElement("style");
+  bcss.textContent = `.bt{border-radius:18px;padding:14px;display:grid;gap:10px;background:linear-gradient(165deg,rgba(30,10,12,.95),rgba(8,10,30,.95));border:1px solid rgba(255,224,138,.45);position:relative;overflow:hidden}
+.bt .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;font:800 15px system-ui}
+.bt .clock{font:900 18px system-ui;color:#fff;background:rgba(0,0,0,.45);border-radius:999px;padding:4px 12px}
+.bt .clock.rush{color:#ffd76a;animation:btPulse .8s infinite}@keyframes btPulse{50%{transform:scale(1.12)}}
+.bt .bar{height:28px;border-radius:999px;overflow:hidden;display:flex;font:900 13px system-ui;box-shadow:inset 0 0 0 1px rgba(255,255,255,.2)}
+.bt .bar i{display:flex;align-items:center;padding:0 10px;color:#fff;font-style:normal;transition:flex-grow .6s;min-width:46px}
+.bt .bar .a{background:linear-gradient(90deg,#ff3b5c,#ff7a59);justify-content:flex-start}.bt .bar .b{background:linear-gradient(90deg,#3b82f6,#38bdf8);justify-content:flex-end}
+.bt .sides{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bt .side{display:grid;gap:6px;align-content:start;min-width:0}.bt .side h4{margin:0;font:800 14px system-ui;display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap}
+.bt .side.a h4{color:#ff8a9a}.bt .side.b h4{color:#8ec5ff;justify-content:flex-end}
+.bt .side h4 .avatar{width:28px;height:28px;margin:0;flex:none}
+.bt .gifters{display:flex;gap:4px}.bt .side.b .gifters{justify-content:flex-end}
+.bt .gifters span{position:relative}.bt .gifters .avatar{width:30px;height:30px;margin:0}.bt .gifters b{position:absolute;bottom:-4px;right:-4px;background:#ffd76a;color:#130e04;border-radius:999px;font:900 9px system-ui;padding:1px 4px}
+.bt .qg{display:flex;gap:4px;flex-wrap:wrap}.bt .side.b .qg{justify-content:flex-end}
+.bt .qg button{border:0;border-radius:12px;background:rgba(255,255,255,.12);color:#fff;font:800 12px system-ui;padding:6px 8px;cursor:pointer}.bt .qg button:active{transform:scale(.92)}
+.bt .mvp{font:700 13px system-ui;color:#ffe08a;text-align:center}
+.bt .win{position:absolute;inset:0;display:grid;place-items:center;text-align:center;background:radial-gradient(70% 60% at 50% 45%,rgba(255,200,90,.35),rgba(0,0,0,.82));animation:btIn .5s ease-out}
+@keyframes btIn{from{opacity:0;transform:scale(1.1)}}.bt .win b{display:block;font:400 clamp(30px,8vw,48px)/1.05 var(--brush,system-ui);color:#ffe08a;text-shadow:0 0 18px rgba(255,190,60,.8)}
+.bt .win .crown{font-size:56px;animation:btCrown 1.4s ease-in-out infinite}@keyframes btCrown{50%{transform:translateY(-6px) rotate(-6deg)}}`;
+  document.head.appendChild(bcss);
+  let lastWin = "";
   function paintBattle() {
     const el = root.querySelector("#gl-battlebox"); if (!el) return;
     const ids = [hosting ? ME() : null, ...Object.keys(watching)].filter(Boolean);
     const b = ids.map(myBattle).find(Boolean);
+    window.MW_BATTLE_ID = b && Date.now() < b.end ? b.id : "";
     if (!b) { el.innerHTML = ""; return; }
-    const sa = giftScore(b.a, b.start, b.end), sb = giftScore(b.b, b.start, b.end), left = Math.max(0, Math.ceil((b.end - Date.now()) / 1000));
-    const done = left === 0, win = sa === sb ? "It's a tie!" : (sa > sb ? HANDLE(b.a) : HANDLE(b.b)) + " wins! 🏆";
-    el.innerHTML = `<div class="gl-battle"><b>⚔️ Battle: ${E(HANDLE(b.a))} vs ${E(HANDLE(b.b))} · ${done ? E(win) : left + "s left"}</b>
-      <div class="gl-score"><i class="a" style="flex-grow:${sa + 1}">${sa}</i><i class="b" style="flex-grow:${sb + 1}">${sb}</i></div>
-      ${!done ? `<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-giftlive="${E(b.a)}">🎁 Gift ${E(HANDLE(b.a))}</button><button class="btn sm" type="button" data-giftlive="${E(b.b)}" style="background:#3b82f6;color:#fff">🎁 Gift ${E(HANDLE(b.b))}</button>${!watching[b.a] && b.a !== ME() ? `<button class="btn ghost sm" type="button" data-watch="${E(b.a)}">Watch ${E(HANDLE(b.a))}</button>` : ""}${!watching[b.b] && b.b !== ME() ? `<button class="btn ghost sm" type="button" data-watch="${E(b.b)}">Watch ${E(HANDLE(b.b))}</button>` : ""}</div>` : ""}</div>`;
+    const ga = battleGifts(b, b.a), gb = battleGifts(b, b.b);
+    const sa = ga.reduce((n, g) => n + (g.coins || 0), 0), sb = gb.reduce((n, g) => n + (g.coins || 0), 0);
+    const left = Math.max(0, Math.ceil((b.end - Date.now()) / 1000)), done = left === 0;
+    const all = tops([...ga, ...gb]), mvp = all[0];
+    const side = (k, uid, list) => `<div class="side ${k}"><h4>${k === "a" ? av(uid) : ""}${E(HANDLE(uid))}${k === "b" ? av(uid) : ""}</h4>
+      <div class="gifters">${tops(list).slice(0, 3).map(([id, c], i) => `<span title="${E(HANDLE(id))}: ${c} coins">${av(id)}<b>${i + 1}</b></span>`).join("") || `<small class="muted">No gifts yet</small>`}</div>
+      ${done ? "" : uid === ME() ? `<small class="muted">${k === "a" ? "" : ""}Your side · ask your fans for gifts!</small>` : `<div class="qg">${QUICK.map(([kd, e, c]) => `<button type="button" data-bq="${kd}" data-bto="${E(uid)}" title="${c} coins">${e} ${c}</button>`).join("")}<button type="button" data-giftlive="${E(uid)}">🎁 More</button></div>`}</div>`;
+    const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
+    let win = "";
+    if (done) {
+      const w = sa === sb ? null : sa > sb ? b.a : b.b;
+      win = `<div class="win"><div><div class="crown">${w ? "👑" : "🤝"}</div><b>${w ? E(HANDLE(w)) + " wins!" : "It's a tie!"}</b><div style="color:#fff;margin-top:6px">${sa.toLocaleString()} – ${sb.toLocaleString()}${mvp ? ` · MVP: ${E(HANDLE(mvp[0]))}` : ""}</div>${(b.a === ME() || b.b === ME()) ? `<button class="btn" type="button" data-rematch="${E(b.a === ME() ? b.b : b.a)}" style="margin-top:12px">⚔️ Rematch</button>` : ""}</div></div>`;
+      if (lastWin !== b.id && Date.now() - b.end < 20000) { lastWin = b.id; try { if (window.MW_GIFTS && w) MW_GIFTS.fx("crown", w); } catch (_) {} }
+    }
+    el.innerHTML = `<div class="bt"><div class="hd"><span>⚔️ BATTLE</span><span class="clock${!done && left <= 30 ? " rush" : ""}">${done ? "Done" : (left <= 30 ? "🔥 " : "") + mm + ":" + ss}</span></div>
+      <div class="bar"><i class="a" style="flex-grow:${sa + 1}">${sa.toLocaleString()}</i><i class="b" style="flex-grow:${sb + 1}">${sb.toLocaleString()}</i></div>
+      <div class="sides">${side("a", b.a, ga)}${side("b", b.b, gb)}</div>
+      ${mvp && !done ? `<div class="mvp">⭐ MVP so far: ${E(HANDLE(mvp[0]))} (${mvp[1].toLocaleString()} coins)</div>` : ""}
+      ${!done && ((!watching[b.a] && b.a !== ME()) || (!watching[b.b] && b.b !== ME())) ? `<div style="display:flex;gap:6px;justify-content:center">${!watching[b.a] && b.a !== ME() ? `<button class="btn ghost sm" type="button" data-watch="${E(b.a)}">Watch ${E(HANDLE(b.a))}</button>` : ""}${!watching[b.b] && b.b !== ME() ? `<button class="btn ghost sm" type="button" data-watch="${E(b.b)}">Watch ${E(HANDLE(b.b))}</button>` : ""}</div>` : ""}
+      ${win}</div>`;
   }
   setInterval(() => { if (!view.hidden) paintBattle(); }, 1000);
-  async function startBattle() {
+  async function startBattle(oppId) {
     const others = lives.filter((l) => isLive(l) && l.id !== ME());
     if (!others.length) { say("Nobody else is live to battle right now."); return; }
-    const name = prompt("Battle who? Type their name:\n" + others.map((l) => "• " + HANDLE(l.id)).join("\n"), HANDLE(others[0].id)); if (!name) return;
-    const opp = others.find((l) => HANDLE(l.id).toLowerCase() === name.trim().toLowerCase()); if (!opp) { say("They're not live right now."); return; }
+    let opp = oppId ? others.find((l) => l.id === oppId) : null;
+    if (!opp) { const name = prompt("Battle who? Type their name:\n" + others.map((l) => "• " + HANDLE(l.id)).join("\n"), HANDLE(others[0].id)); if (!name) return; opp = others.find((l) => HANDLE(l.id).toLowerCase() === name.trim().toLowerCase()); }
+    if (!opp) { say("They're not live right now."); return; }
+    const mins = +prompt("How long? Type 1, 3 or 5 (minutes)", "3"); const len = [1, 3, 5].includes(mins) ? mins : 3;
     const start = Date.now();
-    await DB().collection("battles").add({ authorId: ME(), a: ME(), b: opp.id, start, end: start + 180000, createdAt: start }).catch((e) => say(e.message || e.code));
-    say("Battle on! 3 minutes. Most gift points wins.");
+    await DB().collection("battles").add({ authorId: ME(), a: ME(), b: opp.id, start, end: start + len * 60000, createdAt: start }).catch((e) => say(e.message || e.code));
+    say(`Battle on! ${len} minute${len > 1 ? "s" : ""}. Most gift points wins. ⚔️`);
   }
+  window.MW_LIVE_IDS = () => [hosting ? ME() : null, ...Object.keys(watching)].filter(Boolean);
 
   /* ---------- clicks ---------- */
   root.addEventListener("click", (e) => {
@@ -342,6 +389,8 @@
     if (b.id === "gl-end") return endLive();
     if (b.id === "gl-flip") return flip();
     if (b.id === "gl-battle") return startBattle();
+    if (b.dataset.rematch) return startBattle(b.dataset.rematch);
+    if (b.dataset.bq) { if (!window.MW_GIFTS) return; b.disabled = true; MW_GIFTS.quick(b.dataset.bto, b.dataset.bq, window.MW_BATTLE_ID).then((ok) => { b.disabled = false; if (ok) { const r = b.dataset.bto === ME() ? hosting && hosting.room : (watching[b.dataset.bto] || {}).room; if (r) r.emit("gift", { uid: ME(), kind: b.dataset.bq }); fly(b.dataset.bto, b.dataset.bq); paintBattle(); } }); return; }
     if (b.dataset.watch) return watching[b.dataset.watch] ? stopWatch(b.dataset.watch) : watch(b.dataset.watch);
     if (b.dataset.giftlive) {
       const to = b.dataset.giftlive; if (typeof openGift !== "function") return;
