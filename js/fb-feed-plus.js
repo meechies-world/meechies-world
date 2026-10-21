@@ -115,7 +115,7 @@
     if (!pymkEl) { pymkEl = document.createElement("div"); pymkEl.className = "fbx-pymk"; }
     const sig = ids.join(","); if (pymkEl._sig !== sig) {
       pymkEl._sig = sig;
-      pymkEl.innerHTML = `<h4>People you may know</h4><div class="row">${ids.map((id) => { const m = mem[id], ph = /^https:\/\//.test(m.photo || "") ? m.photo : ""; return `<div class="c"><div class="ph" data-fbx-prof="${esc(id)}" style="${ph ? `background-image:url('${esc(ph)}')` : ""}">${ph ? "" : "👤"}</div><b>${esc(m.handle)}</b><button type="button" data-fbx-add="${esc(id)}">Add friend</button></div>`; }).join("")}</div>`;
+      pymkEl.innerHTML = `<h4>People you may know</h4><div class="row">${ids.map((id) => { const m = mem[id], ph = typeof safeImg === "function" ? safeImg(m.photo) : ""; return `<div class="c"><div class="ph" data-fbx-prof="${esc(id)}" style="${ph ? `background-image:url('${esc(ph)}')` : ""}">${ph ? "" : "👤"}</div><b>${esc(m.handle)}</b><button type="button" data-fbx-add="${esc(id)}">Add friend</button></div>`; }).join("")}</div>`;
     }
     const posts = feed.querySelectorAll("article.post"), after = posts[1] || posts[0];
     if (after && pymkEl.previousElementSibling !== after) after.after(pymkEl);

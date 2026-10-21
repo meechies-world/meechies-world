@@ -21,7 +21,7 @@ export async function onRequest({ request, params, env }) {
     const raw = (Array.isArray(params.path) ? params.path : [params.path || ""]).join("/");
     const got = await env.MEDIA.getWithMetadata(raw, { type: "stream" });
     if (got && got.value) {
-      const h = new Headers({ "content-type": (got.metadata && got.metadata.type) || "application/octet-stream", "cache-control": "public, max-age=31536000, immutable", "accept-ranges": "bytes", "access-control-allow-origin": "*" });
+      const h = new Headers({ "content-type": (got.metadata && got.metadata.type) || "application/octet-stream", "cache-control": "public, max-age=31536000, immutable", "accept-ranges": "bytes", "access-control-allow-origin": "*", "x-content-type-options": "nosniff", "content-security-policy": "sandbox; default-src 'none'" }); // members' files can't run code if opened directly
       if (got.metadata && got.metadata.size) h.set("content-length", String(got.metadata.size));
       const full = new Response(got.value, { status: 200, headers: h });
       try { await cache.put(asKey(false), full.clone()); if (range) res = await cache.match(asKey(true)); } catch (_) {}

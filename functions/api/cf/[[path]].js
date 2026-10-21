@@ -171,6 +171,8 @@ async function rest(request, env) {
       const cols = String(q.select || "path,data").split(",").map((c) => c.trim()).filter((c) => DOC_COLS.includes(c));
       const where = [], args = [];
       for (const c of ["coll", "path", "owner"]) { const v = f(c); if (v !== undefined) { where.push(c + " = ?"); args.push(String(v)); } }
+      // reports are private to the sender and Meechie; the phone-alert channel only to Meechie (same as the old database)
+      if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'"); args.push(uid || "-"); }
       const W = where.length ? " where " + where.join(" and ") : "";
       if (q.count && q.head) { const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: r ? r.n : 0, error: null }); }
       let order = " order by created_at asc";
@@ -304,7 +306,7 @@ async function upload(parts, request, env) {
   if (request.method === "DELETE") { await env.MEDIA.delete(key); return json({ error: null }); }
   if (request.method !== "POST" && request.method !== "PUT") return err("Not allowed", 405);
   const type = request.headers.get("content-type") || "application/octet-stream";
-  if (!/^(audio|image|video)\//.test(type) && bucket === "media") return err("That file type isn't supported.");
+  if (bucket === "media" && (!/^(audio|image|video)\//i.test(type) || /svg|xml|html|javascript/i.test(type))) return err("That file type isn't supported."); // no SVG/HTML: they could run code on the site
   const len = +request.headers.get("content-length") || 0; if (len > MAX) return err("That file is over 25 MB. Post a shorter clip.", 413);
   if (!(await take(env, "up:" + me.id, 86400, 60))) return err("Upload limit reached for today. Try again tomorrow.", 429, "rate_limited");
   const buf = await request.arrayBuffer(); if (buf.byteLength > MAX) return err("That file is over 25 MB. Post a shorter clip.", 413);

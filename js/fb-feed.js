@@ -133,7 +133,7 @@ body[data-view=community]{background:#18191a}
       if (!img && !vid) return null;
       const name = (el.querySelector(".who b") || {}).textContent || "";
       const av = el.querySelector(".post-head .avatar");
-      return { el, name, av: av ? av.outerHTML : "", bg: img ? img.src : "", vid: vid ? vid.src : "" };
+      return { el, name, av: av ? av.outerHTML : "", bg: img && typeof safeImg === "function" ? safeImg(img.src) : "", vid: vid ? vid.src : "" };
     }).filter(Boolean).slice(0, 12);
     const seen = new Set(); const uniq = items.filter((s) => (seen.has(s.name) ? false : seen.add(s.name)));
     stories.innerHTML = `<button type="button" class="fb-story make" data-fb="photo"><div class="top">📷</div><span class="plus">+</span><b>Create story</b></button>` +

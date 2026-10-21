@@ -8,7 +8,7 @@
   window.MW_screenClear = function (self) {
     if (document.querySelector("dialog[open]")) return false;
     const en = document.getElementById("enter"); if (en && !en.hidden && getComputedStyle(en).display !== "none") return false;
-    for (const id of CARDS) { if (id === self) continue; const el = document.getElementById(id); if (el && !el.hidden && el.offsetParent !== null) return false; }
+    for (const id of CARDS) { if (id === self) continue; const el = document.getElementById(id); if (el && !el.hidden && getComputedStyle(el).display !== "none" && el.getClientRects().length) return false; /* offsetParent is always null for fixed cards */ }
     return true;
   };
 

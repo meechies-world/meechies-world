@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/media-cdn.js?v=1792563486"></script>
-<meta name="mw-build" content="1792569601">
+<script src="js/media-cdn.js?v=1792580555"></script>
+<meta name="mw-build" content="1792580555">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc. — Conscientia</title>
 <meta name="description" content="Meechie's World Inc. — music, media, AI, artist development, legal document preparation, creator exclusives, books, apparel, and a community built to grow together.">
@@ -163,16 +163,6 @@ aside.side{display:grid;gap:18px;position:sticky;top:calc(env(safe-area-inset-to
 .steps li::before{counter-increment:s;content:counter(s);flex:none;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--gold-lo);color:var(--gold-hi);font:600 12px var(--mono)}
 .steps li.done{color:var(--text)}
 .steps li.done::before{content:"✓";background:var(--gold);color:var(--ink);border-color:var(--gold)}
-
-/* pictures in comments: tap 📷, pick a photo, it uploads, then Reply */
-$("#feed").addEventListener("change",async e=>{
-  const inp=e.target; if(!inp.matches('.r-pic input[type="file"]')) return; const f=inp.closest("[data-rform]"), file=inp.files&&inp.files[0]; inp.value=""; if(!f||!file) return; if(!needMember()) return;
-  const pv=f.nextElementSibling; pv.hidden=false; pv.innerHTML='<span class="muted">Adding your picture…</span>';
-  try{ const small=await compress(file,1280); const blob=await (await fetch(small)).blob(); const up=await MW.uploadMedia(blob,{type:"image/jpeg",ext:"jpg"}); if(!up||!/^https:\/\//.test(up.url)) throw new Error("upload failed");
-    f._photo=up.url; pv.innerHTML=`<img src="${esc(up.url)}" alt=""><button type="button" class="act" data-rpx>✕ Remove</button>`; f.querySelector('input[type="text"]').focus(); }
-  catch(err){ pv.innerHTML=""; pv.hidden=true; toast("Couldn't add the picture: "+(err.message||err)); }
-});
-$("#feed").addEventListener("click",e=>{ const x=e.target.closest("[data-rpx]"); if(!x) return; const pv=x.closest(".r-prev"), f=pv.previousElementSibling; if(f) f._photo=""; pv.hidden=true; pv.innerHTML=""; });
 
 /* Chat + walkie */
 .chat{display:grid;grid-template-columns:220px minmax(0,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:540px;background:var(--panel)}
@@ -2065,11 +2055,11 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1792563486"></script>
-<script src="js/outage.js?v=1792563486"></script>
-<script src="js/float-layout.js?v=1792565198"></script>
-<script src="js/cf-client.js?v=1792565198"></script>
-<script src="js/platform.js?v=1792563486"></script>
+<script src="js/config.js?v=1792580555"></script>
+<script src="js/outage.js?v=1792580555"></script>
+<script src="js/float-layout.js?v=1792580555"></script>
+<script src="js/cf-client.js?v=1792580555"></script>
+<script src="js/platform.js?v=1792580555"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -3150,6 +3140,16 @@ $("#feed").addEventListener("submit",async e=>{
   catch(err){ toast(err.message||err.code); }
 });
 
+/* pictures in comments: tap 📷, pick a photo, it uploads, then Reply */
+$("#feed").addEventListener("change",async e=>{
+  const inp=e.target; if(!inp.matches('.r-pic input[type="file"]')) return; const f=inp.closest("[data-rform]"), file=inp.files&&inp.files[0]; inp.value=""; if(!f||!file) return; if(!needMember()) return;
+  const pv=f.nextElementSibling; pv.hidden=false; pv.innerHTML='<span class="muted">Adding your picture…</span>';
+  try{ const small=await compress(file,1280); const blob=await (await fetch(small)).blob(); const up=await MW.uploadMedia(blob,{type:"image/jpeg",ext:"jpg"}); if(!up||!/^https:\/\//.test(up.url)) throw new Error("upload failed");
+    f._photo=up.url; pv.innerHTML=`<img src="${esc(up.url)}" alt=""><button type="button" class="act" data-rpx>✕ Remove</button>`; f.querySelector('input[type="text"]').focus(); }
+  catch(err){ pv.innerHTML=""; pv.hidden=true; toast("Couldn't add the picture: "+(err.message||err)); }
+});
+$("#feed").addEventListener("click",e=>{ const x=e.target.closest("[data-rpx]"); if(!x) return; const pv=x.closest(".r-prev"), f=pv.previousElementSibling; if(f) f._photo=""; pv.hidden=true; pv.innerHTML=""; });
+
 /* Chat + walkie */
 let channel="lounge", chUnsub=null, msgs=[], room=null;
 function subChannel(ch){ chUnsub?.(); channel=ch; msgs=[]; renderMsgs();
@@ -3327,44 +3327,44 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792565198"></script>
-<script src="js/fb-feed.js?v=1792565198"></script>
-<script src="js/fb-feed-plus.js?v=1792563486"></script>
-<script src="js/studio.js?v=1792563486"></script>
-<script src="js/owner.js?v=1792563486"></script>
-<script src="js/site-coder-ui.js?v=1792563486"></script>
-<script src="js/messages.js?v=1792563486"></script>
-<script src="js/videos.js?v=1792563486"></script>
-<script src="js/markets.js?v=1792563486"></script>
-<script src="js/legal.js?v=1792569601"></script>
-<script src="js/coin.js?v=1792563486"></script>
-<script src="js/preach.js?v=1792563486"></script>
-<script src="js/world3d.js?v=1792563486"></script>
-<script src="js/clips.js?v=1792563486"></script>
-<script src="js/dj.js?v=1792563486"></script>
-<script src="js/live.js?v=1792563486"></script>
-<script src="js/autotune.js?v=1792563486"></script>
-<script src="js/beatmaker.js?v=1792563486"></script>
-<script src="js/beatlab.js?v=1792563486"></script>
-<script src="js/friends.js?v=1792565198"></script>
-<script src="js/dating.js?v=1792563486"></script>
-<script src="js/books.js?v=1792563486"></script>
-<script src="js/social.js?v=1792563486"></script>
-<script src="js/jobs.js?v=1792565198"></script>
-<script src="js/golive.js?v=1792563486"></script>
-<script src="js/predict.js?v=1792563486"></script>
-<script src="js/people.js?v=1792563486"></script>
-<script src="js/originals.js?v=1792563486"></script>
-<script src="js/welcome-show.js?v=1792563486"></script>
-<script src="js/profile-setup.js?v=1792565198"></script>
-<script src="js/profile-page.js?v=1792565198"></script>
-<script src="js/social-login.js?v=1792563486"></script>
-<script src="js/push.js?v=1792563486"></script>
-<script src="js/email-find.js?v=1792563486"></script>
-<script src="js/verify.js?v=1792563486"></script>
-<script src="js/biolock.js?v=1792563486"></script>
-<script src="js/engage.js?v=1792563486"></script>
-<script src="js/visitors.js?v=1792563486"></script>
-<script src="js/ai-widget.js?v=1792563486"></script>
+<script src="js/appnav.js?v=1792580555"></script>
+<script src="js/fb-feed.js?v=1792580555"></script>
+<script src="js/fb-feed-plus.js?v=1792580555"></script>
+<script src="js/studio.js?v=1792580555"></script>
+<script src="js/owner.js?v=1792580555"></script>
+<script src="js/site-coder-ui.js?v=1792580555"></script>
+<script src="js/messages.js?v=1792580555"></script>
+<script src="js/videos.js?v=1792580555"></script>
+<script src="js/markets.js?v=1792580555"></script>
+<script src="js/legal.js?v=1792580555"></script>
+<script src="js/coin.js?v=1792580555"></script>
+<script src="js/preach.js?v=1792580555"></script>
+<script src="js/world3d.js?v=1792580555"></script>
+<script src="js/clips.js?v=1792580555"></script>
+<script src="js/dj.js?v=1792580555"></script>
+<script src="js/live.js?v=1792580555"></script>
+<script src="js/autotune.js?v=1792580555"></script>
+<script src="js/beatmaker.js?v=1792580555"></script>
+<script src="js/beatlab.js?v=1792580555"></script>
+<script src="js/friends.js?v=1792580555"></script>
+<script src="js/dating.js?v=1792580555"></script>
+<script src="js/books.js?v=1792580555"></script>
+<script src="js/social.js?v=1792580555"></script>
+<script src="js/jobs.js?v=1792580555"></script>
+<script src="js/golive.js?v=1792580555"></script>
+<script src="js/predict.js?v=1792580555"></script>
+<script src="js/people.js?v=1792580555"></script>
+<script src="js/originals.js?v=1792580555"></script>
+<script src="js/welcome-show.js?v=1792580555"></script>
+<script src="js/profile-setup.js?v=1792580555"></script>
+<script src="js/profile-page.js?v=1792580555"></script>
+<script src="js/social-login.js?v=1792580555"></script>
+<script src="js/push.js?v=1792580555"></script>
+<script src="js/email-find.js?v=1792580555"></script>
+<script src="js/verify.js?v=1792580555"></script>
+<script src="js/biolock.js?v=1792580555"></script>
+<script src="js/engage.js?v=1792580555"></script>
+<script src="js/visitors.js?v=1792580555"></script>
+<script src="js/ai-widget.js?v=1792580555"></script>
 </body>
 </html>
