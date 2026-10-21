@@ -188,7 +188,7 @@ async function rest(request, env) {
       const rows = Array.isArray(q.values) ? q.values : [q.values];
       if (rows.length !== 1) return err("One at a time.");
       const r = rows[0] || {}, path = String(r.path || ""), coll = String(r.coll || "");
-      if (coll === "gifts" && env.STRIPE_SECRET_KEY) throw new RuleError("Gifts are sent with coins now. Update the page and try again."); // paid gifts only come from /api/coins/gift
+      if (coll === "gifts") throw new RuleError("Gifts are paid with coins. Update the page and try again."); // gifts only come from /api/coins/gift (paid)
       checkInsert(path, coll, r.data, uid, await isAdmin(env, uid));
       const now = new Date().toISOString();
       const res = await env.DB.batch([
@@ -261,7 +261,7 @@ async function rpc(request, env) {
     if (!row) {
       if (name === "merge_doc") return err("That item no longer exists.", 404, "not_found");
       const coll = String(args.p_coll || "");
-      if (coll === "gifts" && env.STRIPE_SECRET_KEY) throw new RuleError("Gifts are sent with coins now.");
+      if (coll === "gifts") throw new RuleError("Gifts are paid with coins.");
       checkInsert(path, coll, args.p_data, uid, admin);
       await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(args.p_data), now, now), change(env, "docs", path, coll)]);
       return json({ data: null, error: null });

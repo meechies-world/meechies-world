@@ -40,8 +40,10 @@
 
   async function load() {
     try { const r = await fetch("/api/coins/info").then((x) => x.json()); C.info = r; C.paid = !!r.paid; } catch (_) {}
-    if (C.paid) { prices(); await refresh(); }
+    prices(); if (C.paid) await refresh(); else closedBar();
   }
+  // shop not open yet: say so in the gift box instead of letting anyone send a free gift
+  function closedBar() { const el = $("#coin-bar"); if (!el) return; el.hidden = false; el.innerHTML = `<div class="row"><span>🪙 Gifts are bought with coins.</span></div><small class="muted">The coin shop opens very soon. Gifts can't be sent for free.</small>`; const sb = document.querySelector('#gift-form button[type="submit"]'); if (sb) { sb.disabled = true; sb.textContent = "Coin shop opening soon"; } }
   async function refresh() { if (!tok()) return; const r = await api("me"); if (r.ok) { C.me = r.j; C.coins = r.j.coins || 0; bar(); } }
   function prices() {
     const g = C.info && C.info.gifts; if (!g) return;
@@ -63,7 +65,7 @@ ${showPacks ? `<small class="muted">Pick a pack. You'll pay securely with Stripe
   async function send(to, kind, note) {
     const r = await api("gift", { to, kind, note, context: location.hash.slice(1, 20) });
     if (r.status === 402) { bar(true); say("You need more coins for that gift. Pick a pack below."); return false; }
-    if (r.status === 409) { C.paid = false; return true; } // shop switched off: fall back to free
+    if (r.status === 409) { C.paid = false; say("Gifts are bought with coins. The coin shop opens very soon!"); return false; }
     if (!r.ok) { say(r.j.error || "Couldn't send the gift."); return false; }
     C.coins = r.j.coins; bar(); return "paid";
   }
@@ -120,6 +122,6 @@ ${open.length ? open.map((c) => `<div class="p"><span><b>${E(c.name || "Member")
   if (location.hash === "#coins") setTimeout(openWallet, 1500);
   // keep the balance fresh whenever the gift box opens
   const gd = document.getElementById("gift-dialog");
-  if (gd) new MutationObserver(() => { if (gd.open && C.paid) { prices(); refresh(); } }).observe(gd, { attributes: true, attributeFilter: ["open"] });
+  if (gd) new MutationObserver(() => { if (!gd.open) return; prices(); if (C.paid) refresh(); else closedBar(); }).observe(gd, { attributes: true, attributeFilter: ["open"] });
   setTimeout(load, 1200);
 })();
