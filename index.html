@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script src="js/media-cdn.js?v=1792543362"></script>
-<meta name="mw-build" content="1792543362">
+<script src="js/media-cdn.js?v=1792543381"></script>
+<meta name="mw-build" content="1792543381">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World</title>
 <meta name="description" content="Meechie's World Inc: music, media, websites, AI, legal document prep, apparel, books, and a free community with radio, a virtual world, games, and creators.">
@@ -1960,9 +1960,9 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1792543362"></script>
-<script src="js/outage.js?v=1792543362"></script>
-<script src="js/platform.js?v=1792543362"></script>
+<script src="js/config.js?v=1792543381"></script>
+<script src="js/outage.js?v=1792543381"></script>
+<script src="js/platform.js?v=1792543381"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -3153,7 +3153,7 @@ $("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"s
     $("#gt-msg").textContent="You're in. Loading..."; // the page reloads into the site
   });
   // a saved sign-in turned out to be expired: show the gate after all
-  (window.MW?.sessionReady||Promise.resolve()).then(()=>{ const s=window.MW?.session?.(); if(!s && window.MW?.ready && !/[?&#](code=|access_token=|type=recovery)/.test(location.href)){ document.documentElement.classList.add("gated"); g.hidden=false; const en=$("#enter"); if(en) en.hidden=true; } });
+  (window.MW?.sessionReady||Promise.resolve()).then(()=>{ const s=window.MW?.session?.(); if(!s && !window.MW_OUTAGE && window.MW?.ready && !/[?&#](code=|access_token=|type=recovery)/.test(location.href)){ document.documentElement.classList.add("gated"); g.hidden=false; const en=$("#enter"); if(en) en.hidden=true; } });
 })();
 
 function showRecovery(){ try{sessionStorage.setItem("mw_recovery","1");}catch(_){} const d=$("#pw-dialog"); if(!d.open) d.showModal(); }
@@ -3213,41 +3213,41 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792543362"></script>
-<script src="js/studio.js?v=1792543362"></script>
-<script src="js/owner.js?v=1792543362"></script>
-<script src="js/messages.js?v=1792543362"></script>
-<script src="js/videos.js?v=1792543362"></script>
-<script src="js/markets.js?v=1792543362"></script>
-<script src="js/legal.js?v=1792543362"></script>
-<script src="js/coin.js?v=1792543362"></script>
-<script src="js/preach.js?v=1792543362"></script>
-<script src="js/world3d.js?v=1792543362"></script>
-<script src="js/clips.js?v=1792543362"></script>
-<script src="js/dj.js?v=1792543362"></script>
-<script src="js/live.js?v=1792543362"></script>
-<script src="js/autotune.js?v=1792543362"></script>
-<script src="js/beatmaker.js?v=1792543362"></script>
-<script src="js/beatlab.js?v=1792543362"></script>
-<script src="js/friends.js?v=1792543362"></script>
-<script src="js/dating.js?v=1792543362"></script>
-<script src="js/books.js?v=1792543362"></script>
-<script src="js/social.js?v=1792543362"></script>
-<script src="js/jobs.js?v=1792543362"></script>
-<script src="js/golive.js?v=1792543362"></script>
-<script src="js/predict.js?v=1792543362"></script>
-<script src="js/people.js?v=1792543362"></script>
-<script src="js/originals.js?v=1792543362"></script>
-<script src="js/welcome-show.js?v=1792543362"></script>
-<script src="js/profile-setup.js?v=1792543362"></script>
-<script src="js/profile-page.js?v=1792543362"></script>
-<script src="js/social-login.js?v=1792543362"></script>
-<script src="js/push.js?v=1792543362"></script>
-<script src="js/email-find.js?v=1792543362"></script>
-<script src="js/verify.js?v=1792543362"></script>
-<script src="js/biolock.js?v=1792543362"></script>
-<script src="js/engage.js?v=1792543362"></script>
-<script src="js/visitors.js?v=1792543362"></script>
-<script src="js/ai-widget.js?v=1792543362"></script>
+<script src="js/appnav.js?v=1792543381"></script>
+<script src="js/studio.js?v=1792543381"></script>
+<script src="js/owner.js?v=1792543381"></script>
+<script src="js/messages.js?v=1792543381"></script>
+<script src="js/videos.js?v=1792543381"></script>
+<script src="js/markets.js?v=1792543381"></script>
+<script src="js/legal.js?v=1792543381"></script>
+<script src="js/coin.js?v=1792543381"></script>
+<script src="js/preach.js?v=1792543381"></script>
+<script src="js/world3d.js?v=1792543381"></script>
+<script src="js/clips.js?v=1792543381"></script>
+<script src="js/dj.js?v=1792543381"></script>
+<script src="js/live.js?v=1792543381"></script>
+<script src="js/autotune.js?v=1792543381"></script>
+<script src="js/beatmaker.js?v=1792543381"></script>
+<script src="js/beatlab.js?v=1792543381"></script>
+<script src="js/friends.js?v=1792543381"></script>
+<script src="js/dating.js?v=1792543381"></script>
+<script src="js/books.js?v=1792543381"></script>
+<script src="js/social.js?v=1792543381"></script>
+<script src="js/jobs.js?v=1792543381"></script>
+<script src="js/golive.js?v=1792543381"></script>
+<script src="js/predict.js?v=1792543381"></script>
+<script src="js/people.js?v=1792543381"></script>
+<script src="js/originals.js?v=1792543381"></script>
+<script src="js/welcome-show.js?v=1792543381"></script>
+<script src="js/profile-setup.js?v=1792543381"></script>
+<script src="js/profile-page.js?v=1792543381"></script>
+<script src="js/social-login.js?v=1792543381"></script>
+<script src="js/push.js?v=1792543381"></script>
+<script src="js/email-find.js?v=1792543381"></script>
+<script src="js/verify.js?v=1792543381"></script>
+<script src="js/biolock.js?v=1792543381"></script>
+<script src="js/engage.js?v=1792543381"></script>
+<script src="js/visitors.js?v=1792543381"></script>
+<script src="js/ai-widget.js?v=1792543381"></script>
 </body>
 </html>
