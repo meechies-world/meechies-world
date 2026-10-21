@@ -22,10 +22,11 @@
   }
   window.MW_guestMode = guest;
   async function probe() {
-    if (!c.SUPABASE_URL) return;
+    if (!c.SUPABASE_URL && c.BACKEND !== "cf") return;
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 7000);
     try {
-      const r = await fetch(c.SUPABASE_URL + "/auth/v1/health", { headers: { apikey: c.SUPABASE_ANON_KEY || "" }, signal: ctl.signal, cache: "no-store" });
+      const r = c.BACKEND === "cf" ? await fetch("/api/cf/health", { signal: ctl.signal, cache: "no-store" })
+        : await fetch(c.SUPABASE_URL + "/auth/v1/health", { headers: { apikey: c.SUPABASE_ANON_KEY || "" }, signal: ctl.signal, cache: "no-store" });
       if (!r.ok) guest("auth " + r.status);
     } catch (e) { guest("auth unreachable"); }
     clearTimeout(t);

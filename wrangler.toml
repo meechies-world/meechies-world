@@ -4,3 +4,13 @@ pages_build_output_dir = "."
 
 [ai]
 binding = "AI"
+
+# Meechie's World's own free sign-in + database (Cloudflare D1) and file storage (Workers KV)
+[[d1_databases]]
+binding = "DB"
+database_name = "meechies-world-db"
+database_id = "239edbe9-4ae7-462e-ac4a-ecd2c2342a77"
+
+[[kv_namespaces]]
+binding = "MEDIA"
+id = "4c6c12f437f74296b33c17b9ad441473"

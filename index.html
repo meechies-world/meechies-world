@@ -962,7 +962,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script>
 /* Members only: anyone not signed in sees this sign-up screen instead of the site. It shows before the page paints.
    (The member data itself is also locked to signed-in accounts on the database side.) */
-(function(){ var signed=false; try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^sb-.*-auth-token$/.test(k) && localStorage.getItem(k)){ signed=true; break; } } }catch(_){}
+(function(){ var signed=false; try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if((/^sb-.*-auth-token$/.test(k) || k==="mw-cf-session") && localStorage.getItem(k) && localStorage.getItem(k)!=="null"){ signed=true; break; } } }catch(_){}
   if(/[?&#](code=|access_token=|type=recovery)/.test(location.href)) signed=true; // coming back from Facebook or a password-reset link
   if(!signed){ document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true; }
 })();
@@ -1963,7 +1963,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/config.js?v=1792544136"></script>
 <script src="js/outage.js?v=1792544136"></script>
 <script src="js/float-layout.js?v=1792544136"></script>
-<script src="js/platform.js?v=1792544136"></script>
+<script src="js/cf-client.js?v=1792544200"></script>
+<script src="js/platform.js?v=1792544200"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
