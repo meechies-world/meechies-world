@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="lux">
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1792580555"></script>
@@ -26,7 +26,7 @@
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Meechie's World Inc","url":"https://meechiesworldinc.com/","logo":"https://meechiesworldinc.com/img/icon-512.png","email":"meechiesworldinc@aol.com","sameAs":["https://www.tiktok.com/@meechiesworldinc","https://www.snapchat.com/add/elpesidentay","https://meechiesworld-inc.printify.me"]}</script>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Kaushan+Script&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
 /* Layout: black-and-gold house style. Sticky crest bar, tabbed sections (Home, Services, Community, Chat, Ad Board, Promote, Contact), one column on phones. */
 :root{
@@ -846,6 +846,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 @media(max-width:640px){#v-home .hero{padding:28px 16px;border-radius:20px}.mw-launchpad-head{display:block}.mw-launchpad-head>p{margin-top:10px}.mw-path-grid{grid-template-columns:1fr}.mw-path{display:grid;grid-template-columns:92px 1fr}.mw-path-art{height:100%;min-height:148px;border-bottom:0;border-right:1px solid rgba(216,180,90,.16)}.mw-path-art:before{width:50px;height:50px}.mw-path-art:after{width:34px;height:34px}.mw-path-copy{padding:14px}.mw-path-copy b{font-size:18px}#v-legal .lg-fee-steps{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.mw-path{transition:none}.mw-path:hover{transform:none}}
 </style>
+<link rel="stylesheet" href="css/lux.css?v=1792600365">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -1058,6 +1059,17 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <!-- HOME -->
 <section class="view" id="v-home">
   <div class="wrap">
+    <div class="lux-hero">
+      <div class="crestimg" role="img" aria-label="Meechie with a gold crown, globe and city skyline: Meechies World Inc, More than clothing, it's a movement"></div>
+      <div class="txt">
+        <p class="eyebrow" style="justify-content:center">Ideas · Business · Legacy</p>
+        <h1 class="lux-foil">Meechies World</h1>
+        <div class="inc">INC.</div>
+        <div class="tag">Same Vision · Bigger Moves</div>
+        <div class="pillars"><span>Business</span><span>Mindset</span><span>Wealth</span><span>Family</span><span>Community</span></div>
+        <div class="ctas"><a class="btn" href="#community" data-go="community">Join Meechie's Book free</a><a class="btn ghost" href="#shop" data-go="shop">Shop the movement</a><a class="btn ghost" href="#services" data-go="services">Our services</a></div>
+      </div>
+    </div>
     <div class="feat-vid" id="feat-vid">
       <!-- Streams from Supabase storage, which sends the video in pieces (iPhones won't play it otherwise). The site's own copy is the backup. -->
       <video id="fv" poster="/media/the-world-gone-be.jpg" playsinline muted loop preload="metadata">
@@ -1088,6 +1100,10 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <span>Music Production</span><span>Recording</span><span>Music Videos</span><span>Commercials</span><span>Artist Development</span><span>Websites</span><span>AI &amp; Code</span><span>Legal Document Prep</span><span>Apparel</span><span>Books</span><span>Remodeling</span><span>Security</span>
       <span>Music Production</span><span>Recording</span><span>Music Videos</span><span>Commercials</span><span>Artist Development</span><span>Websites</span><span>AI &amp; Code</span><span>Legal Document Prep</span><span>Apparel</span><span>Books</span><span>Remodeling</span><span>Security</span>
     </div></div>
+    <div class="lux-wall">
+      <div class="head"><div><p class="eyebrow">Meechies World Inc</p><h2 class="lux-foil">The Movement</h2></div></div>
+      <div class="lux-strip"><a href="#shop" data-go="shop" style="background-image:url('/img/lux/p-movement.webp')" aria-label="Shop the gear"><span>Shop the gear</span></a><a href="#videos" data-go="videos" style="background-image:url('/img/lux/p-vision.webp')" aria-label="Watch"><span>Watch</span></a><a href="#jobs" data-go="jobs" style="background-image:url('/img/lux/p-dreams.webp')" aria-label="Join the team"><span>Join the team</span></a><a href="#services" data-go="services" style="background-image:url('/img/lux/p-build.webp')" aria-label="Build with us"><span>Build with us</span></a><a href="#books" data-go="books" style="background-image:url('/img/lux/p-faith.webp')" aria-label="Read the books"><span>Read the books</span></a><a href="#community" data-go="community" style="background-image:url('/img/lux/p-global.webp')" aria-label="Meechie's Book"><span>Meechie's Book</span></a><a href="#services" data-go="services" style="background-image:url('/img/lux/p-money.webp')" aria-label="Get to work"><span>Get to work</span></a><a href="#services" data-go="services" style="background-image:url('/img/lux/p-legacy.webp')" aria-label="Our services"><span>Our services</span></a><a href="#jobs" data-go="jobs" style="background-image:url('/img/lux/p-real.webp')" aria-label="Opportunities"><span>Opportunities</span></a><a href="#shop" data-go="shop" style="background-image:url('/img/lux/p-support.webp')" aria-label="Support small business"><span>Support small business</span></a></div>
+    </div>
     <div class="stats">
       <div><b>9</b><span>Divisions</span></div>
       <div><b>$0</b><span>To join and chat</span></div>
@@ -1159,6 +1175,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <!-- SERVICES -->
 <section class="view" data-theme="services" id="v-services" hidden>
   <div class="wrap">
+    <div class="lux-banner"><img src="/img/lux/eight-ways.webp" alt="Meechie's World Inc: 8 ways to diversify revenue. Music and studio, media and AI, promotion and artist development, websites code and AI, document preparation, apparel and merch, books and digital products, community and platform." loading="lazy" width="1100" height="1100"></div>
     <div class="section-head">
       <div><p class="eyebrow">Services</p><h2>What we do</h2></div>
       <p class="muted">Every service starts at $50. Message us on TikTok or Snapchat, or email, with what you need and we'll quote it.</p>
@@ -1195,6 +1212,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <!-- COMMUNITY -->
 <section class="view" data-theme="shop" id="v-shop" hidden>
   <div class="wrap">
+    <div class="lux-banner"><img src="/img/lux/shirt-promo.webp" alt="Meechies World Inc t-shirt: More than clothing, it's a movement. Premium quality, durable comfort, built for dreamers, limited supply." loading="lazy" width="800" height="1421"></div>
     <div class="section-head">
       <div><p class="eyebrow">Books, fashion &amp; more</p><h2>Meechie's World Store</h2></div>
       <p class="muted">eBooks download right after you pay. Tap any item to see details and check out securely with Shopify.</p>
@@ -1375,7 +1393,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   </div>
 </section>
 
-<section class="view" data-theme="jobs" id="v-jobs" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Work & hiring</p><h2>Jobs</h2></div><p class="muted">Companies post jobs and find workers. Workers list their skills and get hired. Message each other right here.</p></div><div id="jb-root"></div></div></section>
+<section class="view" data-theme="jobs" id="v-jobs" hidden><div class="wrap"><div class="lux-banner"><img src="/img/lux/hiring.webp" alt="We're hiring! Join the Meechies World team: call businesses, bring us clients, get paid. Work from home, flexible hours." loading="lazy" width="1000" height="1499"></div><div class="section-head"><div><p class="eyebrow">Work & hiring</p><h2>Jobs</h2></div><p class="muted">Companies post jobs and find workers. Workers list their skills and get hired. Message each other right here.</p></div><div id="jb-root"></div></div></section>
 
 <section class="view" data-theme="friends" id="v-friends" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Your people</p><h2>Friends</h2></div><p class="muted">Add friends, accept requests, and see what your friends are posting.</p></div><div id="fr-root"></div></div></section>
 
@@ -3333,7 +3351,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792599801"></script>
+<script src="js/appnav.js?v=1792600365"></script>
 <script src="js/fb-feed.js?v=1792580555"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/studio.js?v=1792580555"></script>
