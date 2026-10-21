@@ -185,3 +185,11 @@ html.lux #mw-stats b{color:#ffe08a}
   html.lux .lux-hero .crestimg{width:min(300px,78vw)}
   html.lux .lux-hero .ctas .btn{flex:1 1 100%;text-align:center}
 }
+
+/* Meechie's Book post header: compact Follow / Message buttons on one line */
+html.lux #v-community .post-head{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+html.lux #v-community .post-head .who{min-width:0;flex:1}
+html.lux #v-community .post-head .who b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+html.lux #v-community .post-head .who small{white-space:nowrap}
+html.lux #v-community .post-head .btn.sm{margin-left:auto !important;padding:6px 12px !important;font-size:11px !important;letter-spacing:.03em !important;white-space:nowrap;min-height:0;line-height:1.2;box-shadow:0 3px 10px rgba(255,180,60,.2) !important}
+html.lux #v-community .post-head .act{white-space:nowrap;font-size:13px}

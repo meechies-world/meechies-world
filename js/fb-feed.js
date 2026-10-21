@@ -128,6 +128,7 @@ body[data-view=community]{background:#18191a}
 <div class="r2"><button type="button" data-fb="live"><span style="color:#f3425f">🎥</span>Live video</button><button type="button" data-fb="photo"><span style="color:#45bd62">🖼️</span>Photo/video</button><button type="button" data-fb="feel"><span style="color:#f7b928">😊</span>Feeling</button></div>`;
   }
   function paintStories() {
+    if (window.MW_REAL_STORIES) return; // js/stories.js draws real 24-hour stories here
     const items = [...view.querySelectorAll("#feed .post")].map((el) => {
       const img = el.querySelector("img.photo"), vid = el.querySelector("video.vid");
       if (!img && !vid) return null;
