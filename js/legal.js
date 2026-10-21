@@ -1,8 +1,10 @@
 /* Legal Help: tools for people representing themselves (pro se).
- *  1. Your case (kept only on this device — never posted to the site)
- *  2. What happened + what you want the court to do
- *  3. Pick the document -> find real case law (CourtListener, free) -> Meechie's AI drafts it (/api/legal)
- *  4. Verify every citation against the court database, AI review, revise, download a court-format PDF
+ *  1. Draft your case details locally on this device.
+ *  2. What happened + what you want the court to do.
+ *  3. Pick the document -> find real case law (CourtListener, free) -> Meechie's AI drafts it (/api/legal).
+ *  4. Verify every citation against the court database, AI review, revise, download a court-format PDF.
+ *  5. If the user requests paid preparation, explain that the submitted case details are sent privately to Meechie.
+ * Paid workflow target: $20 case processing after intake + $20 per document when ready. Checkout is not active until secure payment processing is connected.
  * Legal document preparation, not legal advice. */
 (function () {
   const view = document.getElementById("v-legal"); if (!view) return;
