@@ -31,7 +31,8 @@
   const socBox = ([k, n, ph]) => `<label>${n}<input type="text" id="pss-${k}" maxlength="120" placeholder="${ph}" autocomplete="off"></label>`;
   const INTERESTS = ["🎤 Hip-hop & rap", "🎶 R&B & soul", "🙏 Gospel", "🎧 Making beats", "🎬 Movies & TV", "📺 Live TV", "📚 Books", "👗 Fashion & clothes", "💇 Hair & nails", "💈 Barber", "⚖️ Legal help", "💼 Business & money", "🪙 Crypto", "🎮 Games", "🏀 Sports", "🍳 Cooking", "💻 Tech & AI", "🌍 History & Egypt", "❤️ Dating", "👨‍👩‍👧 Family", "🛠️ Remodeling", "✈️ Travel"];
   let picked = new Set();
-  let photo = "", pics = [], cover = "", color = "gold", busy = false;
+  let photo = "", pics = [], cover = "", color = "gold", busy = false, intro = "", albums = [];
+  const MAXALB = 10, MAXALBPICS = 30; // up to 10 albums, 30 album photos in all
 
   const css = document.createElement("style");
   css.textContent = `
@@ -56,7 +57,18 @@
 .ps-more summary{cursor:pointer;color:var(--gold-hi,#f0cf78);font-weight:700;font-size:14px;margin:4px 0 8px}
 .ps-cov{display:block;height:70px;border-radius:10px;background:#241d10 center/cover;border:1px solid var(--line,#333)}
 .ps-int{display:flex;flex-wrap:wrap;gap:6px}.ps-int button{border:1px solid var(--line,#444);background:#1d1810;color:var(--text,#fff);border-radius:999px;padding:6px 11px;font:600 13px var(--body,system-ui);cursor:pointer}.ps-int button[aria-pressed=true]{background:var(--gold,#d4a843);color:#0b0a08;border-color:var(--gold-hi,#f0cf78)}
-.ps-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}`;
+.ps-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.ps-meter{display:grid;gap:6px;border:1px solid var(--line,#333);border-radius:14px;padding:10px 12px;background:#0f0c08}
+.ps-meter .bar{height:10px;border-radius:999px;background:#2a2316;overflow:hidden}.ps-meter .bar i{display:block;height:100%;background:linear-gradient(90deg,#b8862b,#f0cf78);border-radius:999px;transition:width .3s}
+.ps-meter b{font-size:14px}.ps-meter small{color:var(--muted,#bbb);font-size:12px;line-height:1.4}
+.ps-vid{display:grid;gap:6px}.ps-vid video{width:100%;max-height:240px;border-radius:12px;background:#000}
+.ps-alb{border:1px solid var(--line,#333);border-radius:12px;padding:10px;display:grid;gap:8px}
+.ps-alb .row{display:flex;gap:6px;align-items:center}.ps-alb .row input{flex:1}
+.ps-alb .ph{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px}
+.ps-alb .ph div{position:relative;aspect-ratio:1;border-radius:8px;background:#1d1810 center/cover}
+.ps-alb .ph .x{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:0;background:#000c;color:#fff;font:700 11px system-ui;cursor:pointer;padding:0}
+.ps-alb .add{position:relative;aspect-ratio:1;border-radius:8px;border:1px dashed #6b5a35;display:grid;place-items:center;color:#a99f8b;font:700 20px system-ui;cursor:pointer}
+.ps-alb .add input{position:absolute;inset:0;opacity:0;cursor:pointer}`;
   document.head.appendChild(css);
 
   function dialog() {
@@ -64,15 +76,26 @@
     d = document.createElement("dialog"); d.id = "ps-dlg";
     d.innerHTML = `<form id="ps-form">
 <h3>🎨 Design your profile</h3><p class="lead">Start with your <b>profile picture</b> and <b>phone number</b> so friends know it's you. You can change anything later in Edit profile.</p>
+<div class="ps-meter" id="ps-meter" aria-live="polite"></div>
 <div class="ps-top"><label class="ps-pic" id="ps-pic" aria-label="Add a profile picture"><span id="ps-ini"></span><small>📷 Photo</small><input type="file" accept="image/*" id="ps-file"></label>
 <div style="display:grid;gap:8px"><b style="font-size:14px">Profile color</b><div class="ps-colors" id="ps-colors">${COLORS.map(([n, h]) => `<button type="button" data-col="${n}" style="background:${h}" aria-label="${n}"></button>`).join("")}</div></div></div>
 <div style="display:grid;gap:6px"><b style="font-size:14px">📷 Profile pictures <span class="hint">(at least 1, up to 5; tap one to make it your main picture)</span></b><div id="ps-pics"></div></div>
 <label>📱 Phone number <input type="tel" id="ps-phone" maxlength="20" placeholder="(724) 555-0123" autocomplete="tel"></label>
 <label class="chk"><input type="checkbox" id="ps-phone-pub"> <span>Show my phone number on my profile<br><span class="hint">Off by default, and then only you can see it. If you turn it on, anyone who visits can see it.</span></span></label>
 <label>Cover photo <span class="hint">(the wide picture across the top of your profile)</span><input type="file" accept="image/*" id="ps-cover-f"><span class="ps-cov" id="ps-cov"></span></label>
+<div class="ps-vid"><b style="font-size:14px">🎥 Intro video <span class="hint">(a short clip that plays on your profile, under about 1 minute)</span></b><div id="ps-vid-box"></div>
+<label class="btn ghost sm" style="position:relative;justify-self:start;cursor:pointer;display:inline-flex;gap:6px;align-items:center">📹 <span id="ps-vid-lbl">Add intro video</span><input type="file" accept="video/*" id="ps-vid-f" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
+<div style="display:grid;gap:8px"><b style="font-size:14px">📁 Photo albums <span class="hint">(up to ${MAXALB} albums, ${MAXALBPICS} photos in all)</span></b><div id="ps-albums" style="display:grid;gap:8px"></div>
+<button class="btn ghost sm" type="button" id="ps-alb-new" style="justify-self:start">＋ New album</button></div>
 <div class="ps-soc"><label>Works at<input type="text" id="ps-work" maxlength="80" placeholder="Company or job"></label><label>Went to school at<input type="text" id="ps-school" maxlength="80" placeholder="School"></label>
 <label>Lives in<input type="text" id="ps-city" maxlength="60" placeholder="City, State"></label><label>From<input type="text" id="ps-home" maxlength="60" placeholder="Hometown"></label>
-<label>Relationship<select id="ps-rel"><option value="">Don't show</option><option>Single</option><option>In a relationship</option><option>Engaged</option><option>Married</option><option>It's complicated</option></select></label></div>
+<label>Relationship<select id="ps-rel"><option value="">Don't show</option><option>Single</option><option>In a relationship</option><option>Engaged</option><option>Married</option><option>It's complicated</option></select></label>
+<label>Job title<input type="text" id="ps-title" maxlength="60" placeholder="e.g. Barber, Owner, Artist"></label><label>College<input type="text" id="ps-college" maxlength="80" placeholder="College or trade school"></label>
+<label>High school<input type="text" id="ps-hs" maxlength="80" placeholder="High school"></label><label>Languages<input type="text" id="ps-lang" maxlength="80" placeholder="English, Spanish…"></label>
+<label>Pronouns <span class="hint">(optional)</span><input type="text" id="ps-pron" maxlength="20" placeholder="he/him, she/her…"></label>
+<label>Birthday<input type="date" id="ps-bday" max="${new Date().toISOString().slice(0, 10)}"></label></div>
+<label class="chk"><input type="checkbox" id="ps-bday-pub"> <span>Show my birthday (month and day only) on my profile<br><span class="hint">Your birth year is never shown. Off = only you know it.</span></span></label>
+<label>About me <span class="hint">(tell people who you are)</span><textarea id="ps-about" rows="3" maxlength="600" placeholder="A few lines about you, what you do and what you're about"></textarea></label>
 <div style="display:grid;gap:8px"><b style="font-size:14px">⭐ What are you into? <span class="hint">(pick all you like, so Meechie can make more of it)</span></b><div class="ps-int" id="ps-int">${INTERESTS.map((x) => `<button type="button" data-int="${E(x)}" aria-pressed="false">${E(x)}</button>`).join("")}</div></div>
 <label>Website <input type="url" id="ps-web" maxlength="300" placeholder="https://yourwebsite.com" autocomplete="url"></label>
 <div style="display:grid;gap:8px"><b style="font-size:14px">🔗 Connect your apps <span class="hint">(your username or link)</span></b>
@@ -94,9 +117,44 @@
     const paint = () => { const pic = d.querySelector("#ps-pic"); pic.style.backgroundImage = photo ? `url("${photo.replace(/"/g, "")}")` : ""; d.querySelector("#ps-ini").textContent = photo ? "" : ((P()?.handle || "?").trim()[0] || "?").toUpperCase();
       const hex = (COLORS.find((c) => c[0] === color) || COLORS[0])[1]; pic.style.setProperty("--ps", hex);
       d.querySelectorAll("[data-col]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.col === color))); };
-    const drawPics = picStrip(d.querySelector("#ps-pics"), () => pics, (a) => { pics = a; photo = a[0] || ""; paint(); });
-    d._paint = () => { paint(); drawPics(); d.querySelector("#ps-cov").style.backgroundImage = cover ? `url("${cover.replace(/"/g, "")}")` : ""; };
-    d.querySelector("#ps-int").addEventListener("click", (e) => { const b = e.target.closest("[data-int]"); if (!b) return; const x = b.dataset.int; picked.has(x) ? picked.delete(x) : picked.add(x); b.setAttribute("aria-pressed", String(picked.has(x))); });
+    const drawPics = picStrip(d.querySelector("#ps-pics"), () => pics, (a) => { pics = a; photo = a[0] || ""; paint(); if (d._meter) d._meter(); });
+    d._paint = () => { paint(); drawPics(); d.querySelector("#ps-cov").style.backgroundImage = cover ? `url("${cover.replace(/"/g, "")}")` : ""; drawVid(); drawAlbums(); meter(); };
+    const drawVid = () => { d.querySelector("#ps-vid-box").innerHTML = intro ? `<video src="${E(intro)}#t=0.1" controls playsinline preload="metadata"></video><button class="btn ghost sm" type="button" id="ps-vid-x" style="justify-self:start">✕ Remove video</button>` : ""; d.querySelector("#ps-vid-lbl").textContent = intro ? "Change intro video" : "Add intro video"; };
+    const albCount = () => albums.reduce((n, a) => n + a.photos.length, 0);
+    const drawAlbums = () => {
+      d.querySelector("#ps-albums").innerHTML = albums.map((a, i) => `<div class="ps-alb" data-alb="${i}"><div class="row"><input type="text" data-albname="${i}" maxlength="40" value="${E(a.name)}" placeholder="Album name"><button class="btn ghost sm" type="button" data-albdel="${i}">Delete</button></div>
+<div class="ph">${a.photos.map((u, j) => `<div style="background-image:url('${E(safe(u))}')"><button type="button" class="x" data-albx="${i}:${j}" aria-label="Remove">✕</button></div>`).join("")}${albCount() < MAXALBPICS ? `<label class="add" aria-label="Add photos">＋<input type="file" accept="image/*" multiple data-albadd="${i}"></label>` : ""}</div></div>`).join("");
+      d.querySelector("#ps-alb-new").hidden = albums.length >= MAXALB;
+    };
+    const meter = () => { const sc = score(current(), true); d.querySelector("#ps-meter").innerHTML = `<b>Profile ${sc.pct}% complete${sc.pct === 100 ? " 🏆" : ""}</b><div class="bar"><i style="width:${sc.pct}%"></i></div>${sc.missing.length ? `<small>Still to add: ${sc.missing.map(E).join(" · ")}</small>` : `<small>Your profile is complete. Looking good!</small>`}`; };
+    d._meter = meter;
+    d.querySelector("#ps-form").addEventListener("input", () => meter());
+    d.querySelector("#ps-vid-f").addEventListener("change", async (e) => {
+      const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+      if (!(window.MW && MW.uploadVideo)) { say("Video upload isn't ready yet."); return; }
+      const lbl = d.querySelector("#ps-vid-lbl"); lbl.textContent = "Uploading… 0%";
+      try { const up = await MW.uploadVideo(f, (x) => { lbl.textContent = "Uploading… " + Math.round(x * 100) + "%"; }); if (!up || !/^https:\/\//.test(up.url)) throw new Error("Upload failed"); intro = up.url; say("Intro video added. Tap Save to keep it."); }
+      catch (err) { say("Couldn't add the video: " + (err.message || err)); }
+      d._paint();
+    });
+    d.querySelector("#ps-alb-new").addEventListener("click", () => { if (albums.length >= MAXALB) return; albums.push({ name: "", photos: [] }); d._paint(); const ins = d.querySelectorAll("[data-albname]"); if (ins.length) ins[ins.length - 1].focus(); });
+    const albBox = d.querySelector("#ps-albums");
+    albBox.addEventListener("input", (e) => { const i = e.target.dataset.albname; if (i !== undefined && albums[+i]) albums[+i].name = e.target.value.slice(0, 40); });
+    albBox.addEventListener("click", (e) => {
+      const del = e.target.closest("[data-albdel]"); if (del) { const b = del; if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = "Tap again"; return; } albums.splice(+b.dataset.albdel, 1); d._paint(); return; }
+      const x = e.target.closest("[data-albx]"); if (x) { const [i, j] = x.dataset.albx.split(":").map(Number); albums[i].photos.splice(j, 1); d._paint(); }
+    });
+    albBox.addEventListener("change", async (e) => {
+      const i = e.target.dataset.albadd; if (i === undefined) return; const files = [...(e.target.files || [])]; e.target.value = "";
+      for (const f of files) {
+        if (albCount() >= MAXALBPICS) { say("That's the most album photos (" + MAXALBPICS + ")."); break; }
+        say("Adding your picture…");
+        try { const url = await readPhoto(f, 1280); if (!/^https:\/\//.test(url)) throw new Error("Upload failed, try again."); albums[+i].photos.push(url); d._paint(); }
+        catch (err) { say("Couldn't add the picture: " + (err.message || err)); }
+      }
+    });
+    d.addEventListener("click", (e) => { if (e.target.id === "ps-vid-x") { intro = ""; d._paint(); } });
+    d.querySelector("#ps-int").addEventListener("click", (e) => { const b = e.target.closest("[data-int]"); if (!b) return; const x = b.dataset.int; picked.has(x) ? picked.delete(x) : picked.add(x); b.setAttribute("aria-pressed", String(picked.has(x))); if (d._meter) d._meter(); });
     d.querySelector("#ps-colors").addEventListener("click", (e) => { const b = e.target.closest("[data-col]"); if (b) { color = b.dataset.col; paint(); } });
     d.querySelector("#ps-wantjob").addEventListener("change", (e) => { d.querySelector("#ps-job").hidden = !e.target.checked; });
     d.querySelector("#ps-file").addEventListener("change", async (e) => {
@@ -124,6 +182,7 @@
     if (web && !/^https?:\/\/[^\s]+\.[^\s]+$/i.test(web)) { say("That website doesn't look right."); return; }
     const phone = v("ps-phone").replace(/[^\d+()\-.\s]/g, "").slice(0, 20);
     const want = d.querySelector("#ps-wantjob").checked;
+    const bday = v("ps-bday"), bdayPub = d.querySelector("#ps-bday-pub").checked;
     if (!pics.length) { say("Add at least 1 profile picture (tap the circle)."); return; }
     if (phone && phone.replace(/\D/g, "").length < 10) { say("Put in your full phone number with area code."); return; }
     if (want && (!v("pj-name") || !v("pj-exp"))) { say("Add your name and experience for the job application."); return; }
@@ -132,12 +191,15 @@
       // member profiles can be read by anyone, so a hidden phone number is kept in the member's private account instead
       const pub = d.querySelector("#ps-phone-pub").checked && !!phone;
       const socials = {}; SOC.forEach(([k]) => { const raw = v("pss-" + k).slice(0, 120); if (raw && socUrl(k, raw)) socials[k] = raw; });
-      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, interests: [...picked].slice(0, 22), emailFind: d.querySelector("#ps-emailfind").checked, setupDone: true };
+      const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, interests: [...picked].slice(0, 22), emailFind: d.querySelector("#ps-emailfind").checked, setupDone: true,
+        title: v("ps-title"), college: v("ps-college"), highschool: v("ps-hs"), languages: v("ps-lang"), pronouns: v("ps-pron"), about: v("ps-about").slice(0, 600),
+        birthday: bdayPub && /^\d{4}-\d{2}-\d{2}$/.test(bday) ? bday.slice(5) : "", // month-day only; the year is never public
+        introVideo: /^https:\/\//.test(intro) ? intro : "", albums: cleanAlbums() };
       if (!upd.emailFind) upd.emailHash = "";
       if (cover && /^https:\/\//.test(cover)) upd.cover = cover;
       Object.assign(upd, picsUpd(pics));
       await DB().doc("members/" + ME()).update(upd);
-      try { if (window.MW && MW.sb) await MW.sb.auth.updateUser({ data: { phone_private: phone } }); } catch (_) {}
+      try { if (window.MW && MW.sb) await MW.sb.auth.updateUser({ data: { phone_private: phone, birthday_private: bday } }); } catch (_) {}
       if (want && ME() !== OWNER_ID && window.MW && MW.sb) {
         const body = ["📝 JOB APPLICATION — Meechie's World Inc", "Name: " + v("pj-name"), "Handle: " + (P()?.handle || ""), "Phone: " + (phone || "—"), "Email: " + (v("pj-email") || "—"),
           "Job wanted: " + v("pj-pos"), "Experience: " + v("pj-exp"), "Available: " + (v("pj-when") || "—")].join("\n").slice(0, 2000);
@@ -158,13 +220,41 @@
     d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || ""; d.querySelector("#ps-work").value = p.work || ""; d.querySelector("#ps-school").value = p.school || ""; d.querySelector("#ps-city").value = p.city || ""; d.querySelector("#ps-home").value = p.hometown || ""; d.querySelector("#ps-rel").value = p.relationship || "";
     SOC.forEach(([k]) => { d.querySelector("#pss-" + k).value = (p.socials && p.socials[k]) || ""; });
     d.querySelector("#ps-wantjob").checked = false; d.querySelector("#ps-job").hidden = true;
+    let privB = ""; try { privB = MW.session()?.user?.user_metadata?.birthday_private || ""; } catch (_) {}
+    d.querySelector("#ps-title").value = p.title || ""; d.querySelector("#ps-college").value = p.college || ""; d.querySelector("#ps-hs").value = p.highschool || ""; d.querySelector("#ps-lang").value = p.languages || ""; d.querySelector("#ps-pron").value = p.pronouns || ""; d.querySelector("#ps-about").value = p.about || "";
+    d.querySelector("#ps-bday").value = /^\d{4}-\d{2}-\d{2}$/.test(privB) ? privB : ""; d.querySelector("#ps-bday-pub").checked = !!p.birthday;
+    intro = /^https:\/\//.test(p.introVideo || "") ? p.introVideo : "";
+    albums = (Array.isArray(p.albums) ? p.albums : []).slice(0, MAXALB).map((a) => ({ name: String((a && a.name) || "").slice(0, 40), photos: (a && Array.isArray(a.photos) ? a.photos : []).filter((u) => safe(u)) }));
     d._paint(); if (!d.open) d.showModal();
   }
+  const safe = (u) => (typeof safeImg === "function" ? safeImg(u) : (/^https:\/\/[^\s"'()<>\\]+$/i.test(String(u || "")) ? String(u) : ""));
+  function cleanAlbums() { let n = 0; return albums.map((a) => ({ name: (a.name || "").trim().slice(0, 40) || "Album", photos: a.photos.filter((u) => safe(u) && n++ < MAXALBPICS) })).filter((a) => a.photos.length).slice(0, MAXALB); }
+  // what the form currently holds, in the same shape as a saved profile (for the live meter)
+  function current() {
+    const d = document.getElementById("ps-dlg"), p = P() || {}; if (!d) return p; const v = (id) => (d.querySelector("#" + id)?.value || "").trim();
+    return { ...p, photo: pics[0] || "", photos: pics, cover, introVideo: intro, albums, about: v("ps-about"), city: v("ps-city"), hometown: v("ps-home"), work: v("ps-work"), title: v("ps-title"), school: v("ps-school"), college: v("ps-college"), highschool: v("ps-hs"),
+      interests: [...picked], website: v("ps-web"), socials: Object.fromEntries(SOC.map(([k]) => [k, v("pss-" + k)]).filter(([, x]) => x)), _phone: v("ps-phone"), _bday: v("ps-bday") };
+  }
+  /* How complete a profile is: 10 things, 10% each. Shared with the profile page (MW_profileScore). */
+  function score(p, mine) {
+    p = p || {}; const has = (x) => typeof x === "string" ? !!x.trim() : !!x;
+    const ph = (Array.isArray(p.photos) ? p.photos : []).filter(Boolean);
+    const items = [
+      ["a profile picture", has(p.photo)], ["3 or more pictures", ph.length >= 3], ["a cover photo", has(p.cover)],
+      ["About me", has(p.about) || has(p.bio)], ["where you live", has(p.city) || has(p.hometown)], ["work or school", has(p.work) || has(p.title) || has(p.school) || has(p.college) || has(p.highschool)],
+      ["3 or more interests", Array.isArray(p.interests) && p.interests.length >= 3], ["an intro video", has(p.introVideo)],
+      ["a photo album", Array.isArray(p.albums) && p.albums.some((a) => a && Array.isArray(a.photos) && a.photos.length)],
+      [mine ? "your phone or apps" : "apps or website", has(p.website) || (p.socials && Object.values(p.socials).some(has)) || (mine && (has(p._phone) || has(p.phone) || has(privPhone())))],
+    ];
+    const done = items.filter((x) => x[1]).length;
+    return { pct: done * 10, missing: items.filter((x) => !x[1]).map((x) => x[0]) };
+  }
+  window.MW_profileScore = score;
   // the picture from Google / Facebook sign-in, if they used one
   function signInPhoto() { try { const u = MW.session()?.user?.user_metadata?.avatar_url || ""; return /^https:\/\//.test(u) ? u : ""; } catch (_) { return ""; } }
   function privPhone() { try { return MW.session()?.user?.user_metadata?.phone_private || ""; } catch (_) { return ""; } }
-  async function readPhoto(f) {
-    const dataUrl = typeof compress === "function" ? await compress(f, 600) : await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
+  async function readPhoto(f, max) {
+    const dataUrl = typeof compress === "function" ? await compress(f, max || 600) : await new Promise((r) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
     if (window.MW && MW.uploadMedia) { try { const up = await MW.uploadMedia(await (await fetch(dataUrl)).blob(), { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) return up.url; } catch (_) {} }
     return dataUrl;
   }
