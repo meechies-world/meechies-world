@@ -34,7 +34,14 @@ export async function onRequest(ctx) {
 
 /* ---------------- accounts ---------------- */
 async function auth(what, request, env) {
-  const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
+  let body = {};
+  if (what === "google-redirect") {
+    // Google's full-page sign-in (no pop-up window): Google posts the sign-in back here as a form
+    const f = await request.formData().catch(() => null);
+    const cookie = (request.headers.get("cookie") || "").match(/(?:^|;\s*)g_csrf_token=([^;]+)/);
+    if (!f || !cookie || f.get("g_csrf_token") !== cookie[1]) return new Response("Sign-in expired. Go back and try again.", { status: 400 });
+    body = { credential: f.get("credential") };
+  } else if (request.method === "POST") body = await request.json().catch(() => ({}));
   if (what === "settings") return json({ google: GOOGLE_CLIENT_ID(env) || null });
 
   if (what === "signup") {
@@ -60,10 +67,10 @@ async function auth(what, request, env) {
     return json({ data: { user: session.user, session }, error: null });
   }
 
-  if (what === "google") {
+  if (what === "google" || what === "google-redirect") {
     const cid = GOOGLE_CLIENT_ID(env); if (!cid) return err("Google sign-in isn't set up yet.", 501);
     const g = await verifyGoogle(body.credential, cid);
-    if (!g) return err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
+    if (!g) return what === "google-redirect" ? new Response("Google sign-in didn't work. Go back and try again.", { status: 401 }) : err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
     const email = String(g.email || "").toLowerCase();
     const link = await env.DB.prepare("select v from kv where k = ?").bind("gsub:" + g.sub).first();
     let u = link ? await env.DB.prepare("select * from users where id = ?").bind(link.v).first() : null;
@@ -90,6 +97,10 @@ async function auth(what, request, env) {
       u = await env.DB.prepare("select * from users where id = ?").bind(id).first();
     }
     const session = await newSession(env, u);
+    if (what === "google-redirect") {
+      const data = JSON.stringify(session).replace(/</g, "\\u003c");
+      return new Response(`<!doctype html><meta charset="utf-8"><title>Signing in…</title><body style="background:#0b0a08;color:#f0cf78;font:600 16px system-ui;display:grid;place-items:center;height:100vh">Signing you in…<script>try{localStorage.setItem("mw-cf-session",${JSON.stringify(data)})}catch(e){}location.replace("/")</script>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer" } });
+    }
     return json({ data: { user: session.user, session }, error: null });
   }
 
