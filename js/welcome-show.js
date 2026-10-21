@@ -21,6 +21,7 @@ body.has-player #mw-show{bottom:calc(var(--tabbar,0px) + 150px + env(safe-area-i
 body.has-player #mw-show-pill{bottom:calc(var(--tabbar,0px) + 92px + env(safe-area-inset-bottom,0px))}
 #mw-choices{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 70px);z-index:9998;width:min(440px,calc(100vw - 24px));background:linear-gradient(180deg,#1f1a10,#13110c);border:1px solid var(--gold-lo,#8a6a2a);border-radius:20px;box-shadow:0 22px 50px rgba(0,0,0,.65);padding:16px 16px 14px;animation:mwCh .45s cubic-bezier(.2,1.4,.4,1)}
 @keyframes mwCh{from{opacity:0;transform:translate(-50%,-20px) scale(.95)}to{opacity:1;transform:translate(-50%,0)}}
+#mw-choices{max-height:calc(100vh - 160px);overflow:auto}
 #mw-choices h3{margin:0 26px 4px 0;font:800 18px var(--display,var(--body,system-ui));color:var(--gold-hi,#f0cf78)}
 #mw-choices p{margin:0 0 10px;color:var(--muted,#bbb);font-size:14px;line-height:1.4}
 #mw-choices .x{position:absolute;right:10px;top:8px;background:none;border:0;color:var(--muted,#bbb);font-size:22px;cursor:pointer}
@@ -80,18 +81,26 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
     v.play().catch(() => { v.muted = true; paintTap(); v.play().catch(() => {}); });
   }
 
+  /* "Message Meechie directly": shows once his number is set in MW_CONFIG.OWNER_PHONE */
+  function ownerPhone() {
+    const raw = String((window.MW_CONFIG || {}).OWNER_PHONE || "").trim(); const d = raw.replace(/[^\d+]/g, "");
+    if (d.replace(/\D/g, "").length < 10) return "";
+    return `<div class="legal"><b>📱 Want to talk to Meechie?</b><p>Text or call him directly at <a href="tel:${d}" style="color:var(--gold-hi,#f0cf78);font-weight:800">${raw.replace(/[<>&"]/g, "")}</a>.</p>
+<div class="chips"><a class="main" href="sms:${d}" style="text-decoration:none;border:1px solid #f0cf78;background:linear-gradient(135deg,#e2b54e,#c99a3a);color:#0b0a08;font:700 14px var(--body,system-ui);padding:9px 13px;border-radius:999px">💬 Text Meechie</a><a href="tel:${d}" style="text-decoration:none;border:1px solid var(--gold,#d4a843);background:#1d1810;color:var(--text,#fff);font:700 14px var(--body,system-ui);padding:9px 13px;border-radius:999px">📞 Call</a></div></div>`;
+  }
   function choices() {
     if ($("#mw-choices")) return;
     const c = document.createElement("div"); c.id = "mw-choices"; c.setAttribute("role", "dialog"); c.setAttribute("aria-label", "What would you like to do?");
     c.innerHTML = `<button type="button" class="x" aria-label="Close">×</button>
 <h3>Welcome to Meechie's World 👑</h3>
-<p>Enjoy the videos. Want music? Pick what you'd like to do:</p>
+<p>Enjoy the videos. There's a lot waiting for you: Meechie's own <b>books</b>, original <b>Meechie's World gear</b> in the shop, <b>dating</b> to meet someone new, music and more. Pick one:</p>
 <div class="chips">
   <button type="button" class="main" data-c="gbr">🎧 Listen to GRANT BOY RECORDS</button>
   <button type="button" data-c="stations">📻 Pick a different radio station</button>
-  <button type="button" data-c="shop">🛍️ Shop</button>
-  <button type="button" data-c="books">📚 Read a book</button>
-</div>
+  <button type="button" data-c="books">📚 Read Meechie's books</button>
+  <button type="button" data-c="shop">🛍️ Shop original gear</button>
+  <button type="button" data-c="dating">💘 Dating (18+)</button>
+</div>${ownerPhone()}
 <div class="legal"><b>⚖️ Need legal help? Criminal or civil?</b>
 <p>We help you fight your case and file against anyone who violated your rights. No one is above the law.</p>
 <div class="chips"><button type="button" data-c="criminal">🛡️ Criminal case</button><button type="button" data-c="civil">📄 Civil case / sue someone</button></div></div>`;
@@ -106,6 +115,7 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
       else if (k === "stations") { pause(true); go("liveradio"); }
       else if (k === "shop") go("shop");
       else if (k === "books") go("books");
+      else if (k === "dating") go("dating");
       else { go("legal"); try { sessionStorage.setItem("mw_legal_kind", k); } catch (_) {} const v = document.getElementById("v-legal"); if (v) setTimeout(() => v.scrollIntoView({ behavior: "smooth", block: "start" }), 120); }
     });
   }
