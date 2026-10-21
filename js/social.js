@@ -88,6 +88,7 @@
   const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   function showInstall() {
     if (standalone() || document.getElementById("mw-install")) return;
+    if (window.MW_screenClear && !window.MW_screenClear("mw-install")) return;
     try { if (+localStorage.getItem("mw_inst_skip") > Date.now()) return; } catch (_) {}
     const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
     if (!deferred && !ios) return;
@@ -97,7 +98,8 @@
     d.querySelector("#mw-inst-x").onclick = () => { d.remove(); try { localStorage.setItem("mw_inst_skip", Date.now() + 3 * 864e5); } catch (_) {} };
     const go2 = d.querySelector("#mw-inst-go"); if (go2) go2.onclick = async () => { d.remove(); if (deferred) { deferred.prompt(); try { await deferred.userChoice; } catch (_) {} deferred = null; } };
   }
-  setTimeout(showInstall, 6000);
+  /* wait until nothing else is on screen (welcome, profile setup, other pop-ups), so cards never pile up */
+  (function waitClear(n) { if (window.MW_screenClear && !window.MW_screenClear()) { if (n < 40) setTimeout(() => waitClear(n + 1), 15000); return; } showInstall(); })(0);
   if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 
   /* ---------- quiet error reporting (the owner sees these and they get fixed) ---------- */

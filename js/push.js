@@ -52,6 +52,7 @@
     if (ok && Notification.permission === "denied") return clearInterval(t);
     const en = document.getElementById("enter"); if (en && !en.hidden) return;
     if (document.getElementById("wv-box") || document.getElementById("mw-choices") || document.querySelector("dialog[open]")) return;
+    if (window.MW_screenClear && !window.MW_screenClear("mw-push-ask")) return;
     clearInterval(t); setTimeout(ask, 4000);
   }, 3000);
   document.addEventListener("click", (e) => { if (e.target.closest("[data-push-on]")) { e.preventDefault(); turnOn(); } });

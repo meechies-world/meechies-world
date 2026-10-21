@@ -12,10 +12,10 @@
     const add = () => {
       if (document.getElementById("mw-outage")) return;
       const b = document.createElement("div"); b.id = "mw-outage"; b.setAttribute("role", "status");
-      b.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:100002;background:#2a2010;color:#f0cf78;border-bottom:1px solid #8a6a2a;font:600 14px system-ui,sans-serif;padding:9px 40px 9px 14px;text-align:center";
-      b.innerHTML = "⚠️ Sign-in is temporarily unavailable. You can still look around Meechie's World — your messages, posts and saved stuff will be back as soon as it's fixed. <button type='button' aria-label='Dismiss' style='position:absolute;right:8px;top:5px;background:none;border:0;color:#f0cf78;font-size:20px;cursor:pointer'>×</button>";
+      b.style.cssText = "position:relative;z-index:21;background:#2a2010;color:#f0cf78;border-bottom:1px solid #8a6a2a;font:600 13px/1.3 system-ui,sans-serif;padding:7px 38px 7px 12px;text-align:center";
+      b.innerHTML = "⚠️ Sign-in is down for a bit. You can still look around; your saved stuff comes back once it's fixed. <button type='button' aria-label='Dismiss' style='position:absolute;right:6px;top:2px;background:none;border:0;color:#f0cf78;font-size:20px;cursor:pointer'>×</button>";
       b.querySelector("button").onclick = () => b.remove();
-      document.body.appendChild(b);
+      document.body.insertBefore(b, document.body.firstChild); /* sits above the menu bar, never on top of it */
     };
     if (document.body) add(); else document.addEventListener("DOMContentLoaded", add);
     try { console.warn("[MW] outage mode:", reason); } catch (_) {}

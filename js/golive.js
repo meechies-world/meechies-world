@@ -176,7 +176,8 @@
       m.querySelector("#gl-perm-ok").onclick = async () => { if (await requestCam(false)) say("You're all set! 🎉"); else { const st2 = await camState(); if (st2 === "denied") permModal("denied"); else m.hidden = true; } };
     });
   }
-  setTimeout(siteAsk, 5000);
+  /* no longer pops up on its own: the camera is asked for only when someone uses Live, Studio, voice or the AI (it was covering the whole phone screen) */
+  void siteAsk;
 
   async function autoAsk() {
     if (askedThisVisit || hosting || !ME() || view.hidden) return;
