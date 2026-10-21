@@ -22,7 +22,8 @@
   async function gisInit(msgEl) {
     await loadGIS();
     if (gisInit.done) return; gisInit.done = true;
-    google.accounts.id.initialize({ client_id: gid, ux_mode: "popup", callback: async (resp) => {
+    // full-page sign-in (no pop-up window): pop-ups are blocked in many phone browsers and in-app browsers
+    google.accounts.id.initialize({ client_id: gid, ux_mode: "redirect", login_uri: location.origin + "/api/cf/auth/google-redirect", callback: async (resp) => {
       const m = msgEl || document.getElementById("auth-msg") || document.getElementById("gt-msg"); if (m) m.textContent = "Signing you in…";
       const r = await MW.sb.auth.signInWithIdToken({ provider: "google", token: resp.credential });
       if (r.error) { if (m) m.textContent = r.error.message; return; }

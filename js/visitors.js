@@ -126,7 +126,7 @@ body.has-player #vz-pill{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-i
     const t = setInterval(() => {
       if (document.hidden || gated()) return;
       if (++secs < 60) return;
-      if (document.querySelector("dialog[open], #ct-box, #vz-sheet") || (typeof profileMe !== "undefined" && !profileMe)) { secs = 50; return; } // wait until they're not in the middle of something
+      if (document.querySelector("dialog[open], #ct-box, #vz-sheet") || (window.MW_screenClear && !window.MW_screenClear("ct-box")) || (typeof profileMe !== "undefined" && !profileMe)) { secs = 50; return; } // wait until they're not in the middle of something
       if (typeof profileMe !== "undefined" && profileMe && profileMe.contactShared) { ls("mw_contact_done", "1"); clearInterval(t); return; }
       clearInterval(t); showContact();
     }, 1000);
