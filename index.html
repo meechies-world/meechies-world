@@ -940,6 +940,38 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 @media(max-width:640px){#v-home .hero{padding:28px 16px;border-radius:20px}.mw-launchpad-head{display:block}.mw-launchpad-head>p{margin-top:10px}.mw-path-grid{grid-template-columns:1fr}.mw-path{display:grid;grid-template-columns:92px 1fr}.mw-path-art{height:100%;min-height:148px;border-bottom:0;border-right:1px solid rgba(216,180,90,.16)}.mw-path-art:before{width:50px;height:50px}.mw-path-art:after{width:34px;height:34px}.mw-path-copy{padding:14px}.mw-path-copy b{font-size:18px}#v-legal .lg-fee-steps{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.mw-path{transition:none}.mw-path:hover{transform:none}}
 </style>
+
+<style id="mw-poster-edition">
+:root{--ink:#070706;--panel:#11100c;--panel-2:#19160f;--line:#4a3a1d;--gold:#d4a843;--gold-hi:#ffe7a0;--gold-lo:#8c6d26;--text:#fff8e9;--muted:#b8ad96}
+body{background:radial-gradient(ellipse at 50% -12%,rgba(212,168,67,.16),transparent 42rem),radial-gradient(ellipse at 100% 38%,rgba(212,168,67,.045),transparent 32rem),#070706}
+section.view[data-theme]{--gold:#d4a843!important;--gold-hi:#ffe7a0!important;--gold-lo:#8c6d26!important;--panel:#11100c!important;--panel-2:#19160f!important;--line:#4a3a1d!important;--sec-accent:#d4a843!important;--sec-bg:radial-gradient(ellipse 82% 380px at 50% 0,rgba(212,168,67,.13),transparent 72%),#090907!important;background:var(--sec-bg)!important}
+body[data-view]{--sec-accent:#d4a843!important}
+section.view[data-theme] .card,section.view[data-theme] .post,section.view[data-theme] .tier,section.view[data-theme] .ad,section.view[data-theme] .div,section.view[data-theme] .prod,section.view[data-theme] .social{border-color:rgba(212,168,67,.25)}
+section.view[data-theme] .section-head h2{background:linear-gradient(175deg,#fff5cf 0%,#f0cf78 34%,#c9982f 60%,#ffe7a0 82%,#8c6d26 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+#v-legal .lg-fee-num{background:rgba(212,168,67,.12)!important;border-color:var(--gold-lo)!important;color:var(--gold-hi)!important}
+#v-legal .lg-fee-total{background:rgba(212,168,67,.055)!important}
+#v-legal .lg-fee-setup{background:rgba(212,168,67,.06)!important}
+.mw-collection{margin:58px 0 36px;padding:clamp(18px,3vw,34px);border:1px solid rgba(212,168,67,.38);border-radius:24px;background:radial-gradient(ellipse at 50% 0,rgba(212,168,67,.13),transparent 60%),linear-gradient(145deg,#151109,#080807 65%,#110e08);box-shadow:0 22px 60px rgba(0,0,0,.34);position:relative;overflow:hidden}
+.mw-collection:before{content:"";position:absolute;inset:8px;border:1px solid rgba(212,168,67,.14);border-radius:18px;pointer-events:none}
+.mw-collection-head{position:relative;display:grid;justify-items:center;text-align:center;gap:8px;margin-bottom:24px}
+.mw-collection-head h2{font:900 clamp(28px,4.4vw,48px)/1.1 var(--display,Georgia,serif);background:linear-gradient(175deg,#fff5cf,#f0cf78 35%,#c9982f 62%,#ffe7a0 84%,#8c6d26);-webkit-background-clip:text;background-clip:text;color:transparent}
+.mw-collection-head p{max-width:620px;margin:0;color:#c4b99f}
+.mw-collection-grid{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.mw-poster{min-width:0;aspect-ratio:4/5;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:10px;overflow:hidden;padding:18px 12px 15px;text-align:center;text-decoration:none;color:var(--text);border:1px solid rgba(212,168,67,.55);border-radius:14px;background:radial-gradient(ellipse at 50% 36%,rgba(212,168,67,.18),transparent 48%),linear-gradient(145deg,#201809,#080807 72%);box-shadow:inset 0 0 0 4px rgba(212,168,67,.035),0 12px 26px rgba(0,0,0,.28);transition:transform .2s,border-color .2s,box-shadow .2s}
+.mw-poster:before{content:"";position:absolute;inset:6px;border:1px solid rgba(255,231,160,.28);pointer-events:none;border-radius:9px}
+.mw-poster:after{content:"";position:absolute;width:125%;height:1px;top:14%;background:linear-gradient(90deg,transparent,rgba(255,231,160,.5),transparent);transform:rotate(-35deg);pointer-events:none}
+.mw-poster:hover{transform:translateY(-4px);border-color:var(--gold-hi);box-shadow:0 18px 32px rgba(0,0,0,.4),0 0 24px rgba(212,168,67,.1)}
+.mw-poster .mp-top{font:600 9px/1.4 var(--mono,monospace);letter-spacing:.19em;color:var(--gold-hi);text-transform:uppercase;position:relative}
+.mw-poster .mp-icon{font:400 clamp(36px,4.4vw,56px)/1 Georgia,serif;color:var(--gold-hi);text-shadow:0 0 18px rgba(212,168,67,.34);position:relative}
+.mw-poster b{font:900 clamp(14px,1.7vw,20px)/1.12 var(--display,Georgia,serif);letter-spacing:.035em;color:#ffe7a0;position:relative;text-wrap:balance}
+.mw-poster small{font:600 8px/1.4 var(--mono,monospace);letter-spacing:.14em;color:#c4b48a;position:relative}
+.mw-poster:nth-child(4n+2){background:radial-gradient(ellipse at 50% 36%,rgba(212,168,67,.12),transparent 48%),linear-gradient(145deg,#0b0a08,#211807 72%)}
+.mw-poster:nth-child(4n+3){background:radial-gradient(ellipse at 50% 36%,rgba(212,168,67,.16),transparent 48%),linear-gradient(145deg,#17120a,#090807 72%)}
+.mw-collection-foot{position:relative;display:flex;justify-content:center;margin-top:22px}
+@media(max-width:900px){.mw-collection-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.mw-poster{padding:14px 8px 12px}}
+@media(max-width:640px){.mw-collection{margin:38px 0 24px;padding:14px}.mw-collection-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mw-poster{aspect-ratio:4/4.8;padding:16px 10px 12px}.mw-poster .mp-icon{font-size:42px}.mw-poster b{font-size:15px}.mw-poster .mp-top{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.mw-poster{transition:none}.mw-poster:hover{transform:none}}
+</style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -1200,6 +1232,34 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <a class="mw-path mw-path-exclusive" href="#exclusives" data-go="exclusives"><span class="mw-path-art" aria-hidden="true"><span>♛</span></span><span class="mw-path-copy"><small>CREATOR MEMBERSHIPS</small><b>Meechies Exclusives</b><em>Explore creator fan clubs and premium content experiences.</em><strong>Explore Exclusives ↗</strong></span></a>
       </div>
     </div>
+
+
+    <section class="mw-collection" aria-labelledby="mw-collection-title">
+      <div class="mw-collection-head">
+        <p class="eyebrow">The signature artwork series</p>
+        <h2 id="mw-collection-title">Built in Gold. Made for Greatness.</h2>
+        <p>Sixteen statements. One world. A collection inspired by vision, discipline, leadership, legacy, and building something that lasts.</p>
+      </div>
+      <div class="mw-collection-grid">
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 01</span><span class="mp-icon">♛</span><b>Original Vision</b><small>PLAN · EXECUTE · WIN</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 02</span><span class="mp-icon">✦</span><b>Dreams &amp; Discipline</b><small>BUILD YOUR EMPIRE</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 03</span><span class="mp-icon">◇</span><b>Luxury Life</b><small>EXCELLENCE IN MOTION</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 04</span><span class="mp-icon">♜</span><b>King Mindset</b><small>LEAD WITH PURPOSE</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 05</span><span class="mp-icon">◎</span><b>Global Vision</b><small>GLOBAL NOT LOCAL</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 06</span><span class="mp-icon">♔</span><b>The Leader</b><small>SET THE STANDARD</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 07</span><span class="mp-icon">＄</span><b>Money Moves</b><small>MAKE EVERY MOVE COUNT</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 08</span><span class="mp-icon">∞</span><b>Legacy</b><small>BUILT TO OUTLAST</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 09</span><span class="mp-icon">▥</span><b>City Opportunity</b><small>SEE THE OPENING</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 10</span><span class="mp-icon">✧</span><b>Support Small Business</b><small>GROW TOGETHER</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 11</span><span class="mp-icon">⚒</span><b>Hustle Mode</b><small>STAY IN MOTION</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 12</span><span class="mp-icon">⌖</span><b>Strategy Wins</b><small>MOVE WITH INTENTION</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 13</span><span class="mp-icon">♧</span><b>The Brotherhood</b><small>LOYALTY · RESPECT</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 14</span><span class="mp-icon">✈</span><b>Travel the World</b><small>THINK BEYOND BORDERS</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 15</span><span class="mp-icon">◈</span><b>Worldwide Family</b><small>ONE WORLD · ONE FAMILY</small></a>
+        <a class="mw-poster" href="#shop" data-go="shop"><span class="mp-top">Meechie's World · 16</span><span class="mp-icon">↗</span><b>Dream · Build · Grow</b><small>YOUR NEXT CHAPTER</small></a>
+      </div>
+      <div class="mw-collection-foot"><a class="btn ghost" href="#shop" data-go="shop">Explore the Meechie's World Store ↗</a></div>
+    </section>
 
     <div class="card tt-box" style="margin-top:56px">
       <div class="tt-head"><div><p class="eyebrow" style="margin:0">Only on Meechie's World</p><h3 style="margin:2px 0 0">Meechie's World Originals</h3></div></div>
