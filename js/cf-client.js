@@ -52,11 +52,16 @@
   let seq = null, polling = false, pollTimer = null;
   async function poll() {
     pollTimer = null;
-    if (!watchers.size) { polling = false; return; }
-    if (!document.hidden) {
+    if (!watchers.size && !roomsOpen.size) { polling = false; return; }
+    const hot = [...roomsOpen.values()].some((c) => c.hot());
+    if (!document.hidden || hot) {
       try {
-        const r = await fetch(API + "changes" + (seq === null ? "" : "?since=" + seq), { headers: headers(), cache: "no-store" });
+        const rbody = roomsBody();
+        const r = rbody
+          ? await fetch(API + "changes", { method: "POST", headers: { ...headers(), "content-type": "application/json" }, body: JSON.stringify({ since: seq === null ? "" : seq, rooms: rbody }), cache: "no-store" })
+          : await fetch(API + "changes" + (seq === null ? "" : "?since=" + seq), { headers: headers(), cache: "no-store" });
         const j = await r.json();
+        if (j.rooms) roomsIn(j.rooms);
         if (seq !== null && Array.isArray(j.rows) && j.rows.length) {
           for (const row of j.rows) watchers.forEach((w) => { if (w.table === row.tbl) { try { w.cb(row.tbl === "docs" ? { new: { path: row.path, coll: row.coll } } : { new: {} }); } catch (_) {} } });
         }
@@ -65,47 +70,83 @@
         else if (typeof j.seq === "number" && j.seq > seq) seq = j.seq;
       } catch (_) {}
     }
-    pollTimer = setTimeout(poll, document.hidden ? 30000 : 6000);
+    // every 6 s normally; every 1.5 s while you're in a Live/battle/game room (so video connects fast); slow when hidden
+    const fast = [...roomsOpen.values()].some((c) => c.hot());
+    pollTimer = setTimeout(poll, fast ? 1500 : document.hidden ? 30000 : 6000);
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && polling && pollTimer) { clearTimeout(pollTimer); poll(); } });
   function startPolling() { if (polling) return; polling = true; poll(); }
+  const kick = () => { if (!polling) return startPolling(); if (pollTimer) { clearTimeout(pollTimer); pollTimer = setTimeout(poll, 120); } };
 
-  // Live rooms, presence and typing: use Supabase's live channels if they work; otherwise quietly do nothing.
-  let rt = null;
-  function realtime() {
-    if (rt !== null) return rt;
-    try { rt = window.supabase && cfg.SUPABASE_URL ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }) : false; } catch (_) { rt = false; }
-    return rt;
+  /* ---------- live rooms (free, on our own Cloudflare database) ----------
+   * Same shape as Supabase realtime channels: presence (track/untrack/presenceState + "sync" events) and broadcast
+   * (send/on). Everything rides along with the regular check above. */
+  const roomsOpen = new Map(); // name -> room
+  function roomsBody() {
+    if (!roomsOpen.size) return null; const b = {};
+    for (const [name, c] of roomsOpen) b[name] = c.out();
+    return b;
   }
-  // when Supabase is over its free limit (402) its live channels can't connect and would retry forever,
-  // slowing phones down; check once and switch them off for this visit
-  try {
-    fetch(cfg.SUPABASE_URL + "/rest/v1/", { headers: { apikey: cfg.SUPABASE_ANON_KEY } }).then((r) => {
-      if (r.status !== 402 && r.status < 500) return;
-      const old = rt; rt = false; window.MW_RT_DOWN = true;
-      try { if (old) { old.removeAllChannels(); old.realtime && old.realtime.disconnect(); } } catch (_) {}
-    }).catch(() => {});
-  } catch (_) {}
+  function roomsIn(all) { for (const [name, data] of Object.entries(all)) { const c = roomsOpen.get(name); if (c) c.in(data); } }
+  function cfRoom(name, opts) {
+    const key = (opts && opts.config && opts.config.presence && opts.config.presence.key) || ("p" + Math.random().toString(36).slice(2, 12));
+    const peer = String(key).replace(/[^\w-]/g, "").slice(0, 60).padEnd(4, "x");
+    const handlers = { presence: [], broadcast: {} };
+    let mine = undefined, dirty = false, lastSent = 0, since = 0, gotFirst = false, state = {}, outbox = [], left = false, subscribed = false;
+    const room = {
+      hot: () => subscribed && name !== "room:lobby" && Object.keys(handlers.broadcast).length > 0,
+      out() {
+        if (left) { roomsOpen.delete(name); return { peer, leave: true }; }
+        const o = { peer, since };
+        if (mine !== undefined && (dirty || Date.now() - lastSent > 25000)) { o.p = mine; dirty = false; lastSent = Date.now(); }
+        if (outbox.length) { o.send = outbox.splice(0, 30); }
+        return o;
+      },
+      in(d) {
+        // who's here
+        const next = {}; (d.peers || []).forEach((x) => { next[x.peer] = [x.p || {}]; });
+        const changed = JSON.stringify(next) !== JSON.stringify(state); state = next;
+        if (changed || !gotFirst) handlers.presence.forEach((h) => { try { h({}); } catch (_) {} });
+        // messages since last time (skip our own, and anything from before we joined)
+        if (!gotFirst) { since = d.last || 0; gotFirst = true; return; }
+        for (const m of d.msgs || []) { since = Math.max(since, m.id); if (m.peer === peer) continue; (handlers.broadcast[m.ev] || []).forEach((fn) => { try { fn({ event: m.ev, payload: m.payload }); } catch (_) {} }); }
+        if (d.last > since && !(d.msgs || []).length) since = d.last;
+      },
+    };
+    const ch = {
+      on(type, filter, cb) {
+        if (type === "presence") handlers.presence.push(cb);
+        else if (type === "broadcast") { const ev = (filter && filter.event) || "*"; (handlers.broadcast[ev] = handlers.broadcast[ev] || []).push(cb); }
+        return ch;
+      },
+      subscribe(cb) { subscribed = true; roomsOpen.set(name, room); kick(); if (cb) setTimeout(() => cb("SUBSCRIBED"), 0); return ch; },
+      presenceState: () => state,
+      track(p) { mine = p; dirty = true; kick(); return Promise.resolve("ok"); },
+      untrack() { mine = undefined; left = true; kick(); return Promise.resolve("ok"); },
+      send(m) { if (m && m.type === "broadcast" && m.event) { outbox.push({ ev: m.event, payload: m.payload }); kick(); } return Promise.resolve("ok"); },
+      _unwatch() { left = true; kick(); },
+    };
+    return ch;
+  }
+
+  // table changes come from the regular check; presence and broadcast use our own free live rooms (cfRoom)
   function channel(name, opts) {
-    const tableWatch = [];
-    let inner = null; const r = realtime();
-    try { if (r) inner = r.channel(name, opts); } catch (_) { inner = null; }
+    const tableWatch = []; let inner = null; const getInner = () => (inner = inner || cfRoom(name, opts));
     const ch = {
       on(type, filter, cb) {
         if (type === "postgres_changes") { tableWatch.push({ table: filter && filter.table, cb }); return ch; }
-        if (inner) try { inner.on(type, filter, cb); } catch (_) {}
-        return ch;
+        getInner().on(type, filter, cb); return ch;
       },
       subscribe(cb) {
         tableWatch.forEach((w) => watchers.add(w)); if (tableWatch.length) startPolling();
-        if (inner) { try { inner.subscribe(cb); } catch (_) { cb && cb("SUBSCRIBED"); } } else if (cb) setTimeout(() => cb("SUBSCRIBED"), 0);
+        if (inner) inner.subscribe(cb); else if (cb) setTimeout(() => cb("SUBSCRIBED"), 0);
         return ch;
       },
-      presenceState: () => { try { return inner ? inner.presenceState() : {}; } catch (_) { return {}; } },
-      track: (p) => (inner ? inner.track(p).catch(() => {}) : Promise.resolve()),
-      untrack: () => (inner ? inner.untrack().catch(() => {}) : Promise.resolve()),
-      send: (m) => (inner ? inner.send(m).catch(() => {}) : Promise.resolve()),
-      _unwatch() { tableWatch.forEach((w) => watchers.delete(w)); try { if (inner && r) r.removeChannel(inner); } catch (_) {} },
+      presenceState: () => (inner ? inner.presenceState() : {}),
+      track: (p) => getInner().track(p),
+      untrack: () => (inner ? inner.untrack() : Promise.resolve()),
+      send: (m) => getInner().send(m),
+      _unwatch() { tableWatch.forEach((w) => watchers.delete(w)); if (inner) inner._unwatch(); },
     };
     return ch;
   }

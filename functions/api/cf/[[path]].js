@@ -285,9 +285,44 @@ async function rpc(request, env) {
 }
 
 /* ---------------- live refresh: "what changed since N?" ---------------- */
+/* Live rooms ride along with the regular "anything new?" check (one request instead of two):
+ * the phone says which rooms it's in, its "presence" (who it is, what it's doing) and any messages to send;
+ * it gets back who else is in each room and the messages since last time. Used for Live video set-up,
+ * battles, games and "online now" — free, no Supabase needed. */
+const ROOM_RE = /^[\w:.-]{1,80}$/, PEER_RE = /^[\w-]{4,64}$/;
+async function rooms(env, uid, R) {
+  const out = {}, now = Date.now(), st = [];
+  const list = Object.entries(R && typeof R === "object" ? R : {}).filter(([n, r]) => ROOM_RE.test(n) && r && PEER_RE.test(String(r.peer || ""))).slice(0, 8);
+  for (const [name, r] of list) {
+    if (r.leave) { st.push(env.DB.prepare("delete from room_peers where room = ? and peer = ?").bind(name, r.peer)); continue; }
+    if (r.p !== undefined) { const p = JSON.stringify(r.p ?? {}); if (p.length <= 2000) st.push(env.DB.prepare("insert into room_peers (room, peer, uid, p, at) values (?,?,?,?,?) on conflict(room, peer) do update set uid = excluded.uid, p = excluded.p, at = excluded.at").bind(name, r.peer, uid, p, now)); }
+    for (const m of (Array.isArray(r.send) ? r.send : []).slice(0, 30)) {
+      const ev = String(m.ev || ""), payload = JSON.stringify(m.payload ?? null);
+      if (/^[\w.-]{1,40}$/.test(ev) && payload.length <= 16000) st.push(env.DB.prepare("insert into room_msgs (room, peer, ev, payload, at) values (?,?,?,?,?)").bind(name, r.peer, ev, payload, now));
+    }
+  }
+  if (st.length) await env.DB.batch(st);
+  if (Math.random() < 0.03) await env.DB.batch([env.DB.prepare("delete from room_msgs where at < ?").bind(now - 120000), env.DB.prepare("delete from room_peers where at < ?").bind(now - 120000)]);
+  for (const [name, r] of list) {
+    if (r.leave) continue;
+    const peers = (await env.DB.prepare("select peer, uid, p from room_peers where room = ? and at > ? limit 300").bind(name, now - 45000).all()).results || [];
+    const since = Math.max(0, +r.since || 0);
+    const top = (await env.DB.prepare("select max(id) m from room_msgs where room = ?").bind(name).first()) || {};
+    const msgs = since ? ((await env.DB.prepare("select id, peer, ev, payload from room_msgs where room = ? and id > ? and at > ? order by id limit 100").bind(name, since, now - 120000).all()).results || []) : [];
+    out[name] = { peers: peers.map((x) => ({ peer: x.peer, uid: x.uid, p: JSON.parse(x.p || "{}") })), msgs: msgs.map((m) => ({ id: m.id, peer: m.peer, ev: m.ev, payload: JSON.parse(m.payload || "null") })), last: top.m || 0 };
+  }
+  return out;
+}
 async function changes(request, env) {
-  const raw = new URL(request.url).searchParams.get("since"); const since = raw === null || raw === "" ? -1 : Math.max(0, +raw || 0);
+  const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
+  const raw = body.since !== undefined ? body.since : new URL(request.url).searchParams.get("since"); const since = raw === null || raw === undefined || raw === "" ? -1 : Math.max(0, +raw || 0);
   const me = await userFrom(request, env), uid = (me && me.id) || "-";
+  const roomOut = body.rooms ? await rooms(env, me ? me.id : null, body.rooms) : undefined;
+  const res = await changesRows(env, since, uid);
+  if (roomOut) { const j = await res.json(); j.rooms = roomOut; return json(j); }
+  return res;
+}
+async function changesRows(env, since, uid) {
   const top = await env.DB.prepare("select max(seq) s from changes").first();
   const last = (top && top.s) || 0;
   if (since < 0 || since >= last) return json({ seq: last, rows: [] }); // first check just says where things are
