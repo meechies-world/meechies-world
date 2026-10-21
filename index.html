@@ -1034,6 +1034,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <a href="#books" data-go="books">Books</a>
       <a href="#friends" data-go="friends">Friends</a>
       <a href="#dating" data-go="dating">Dating</a>
+      <a href="#fans" data-go="fans">🔞 Meechie's Fans</a>
       <a href="#videos" data-go="videos">Videos</a>
       <a href="#preach" data-go="preach">ASAP Preach</a>
       <a href="#markets" data-go="markets">Markets</a>
@@ -1397,6 +1398,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 
 <section class="view" data-theme="friends" id="v-friends" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Your people</p><h2>Friends</h2></div><p class="muted">Add friends, accept requests, and see what your friends are posting.</p></div><div id="fr-root"></div></div></section>
 
+<section class="view" data-theme="fans" id="v-fans" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">18+ only · verified creators</p><h2>Meechie's Fans</h2></div><p class="muted">Subscribe to your favorite creators, unlock exclusive posts, and tip. Creators: sell your content and keep 40% of every sale.</p></div><div id="fans-root"></div><p class="muted" style="font-size:12px;margin-top:24px">All creators are verified adults (18+) with ID and consent records kept on file as required by 18 U.S.C. § 2257. Report anything that looks wrong and it's hidden right away.</p></div></section>
 <section class="view" data-theme="dating" id="v-dating" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">18+ only</p><h2>Dating</h2></div><p class="muted">Make a dating profile with your photos and a video, swipe, and when you both like each other it's a match and you can message.</p></div><div id="dt-root"></div></div></section>
 
 <section class="view" data-theme="clips" id="v-clips" hidden>
@@ -2090,7 +2092,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
+const VIEWS=["live","predict","jobs","fans","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -3354,7 +3356,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792600365"></script>
+<script src="js/appnav.js?v=1792602872"></script>
 <script src="js/fb-feed.js?v=1792607145"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/stories.js?v=1792607566"></script>
@@ -3381,6 +3383,7 @@ boot();
 <script src="js/social.js?v=1792580555"></script>
 <script src="js/jobs.js?v=1792580555"></script>
 <script src="js/shop-gift.js?v=1792600603"></script>
+<script src="js/fans.js?v=1792602872"></script>
 <script src="js/coins.js?v=1792607145"></script>
 <script src="js/golive.js?v=1792599801"></script>
 <script src="js/predict.js?v=1792580555"></script>
