@@ -99,7 +99,7 @@
     const go2 = d.querySelector("#mw-inst-go"); if (go2) go2.onclick = async () => { d.remove(); if (deferred) { deferred.prompt(); try { await deferred.userChoice; } catch (_) {} deferred = null; } };
   }
   /* wait until nothing else is on screen (welcome, profile setup, other pop-ups), so cards never pile up */
-  (function waitClear(n) { if (window.MW_screenClear && !window.MW_screenClear()) { if (n < 40) setTimeout(() => waitClear(n + 1), 15000); return; } showInstall(); })(0);
+  setTimeout(function waitClear(n) { if (window.MW_screenClear && !window.MW_screenClear()) { if (n < 40) setTimeout(() => waitClear(n + 1), 15000); return; } showInstall(); }, 45000, 0); /* first offer 45s in, not the moment people land */
   if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 
   /* ---------- quiet error reporting (the owner sees these and they get fixed) ---------- */
