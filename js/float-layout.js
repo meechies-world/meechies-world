@@ -12,7 +12,7 @@
     return true;
   };
 
-  const FLOATS = ["ai-fab", "mx-fab", "mw-fab", "vz-pill", "mx-heads", "mw-show"];
+  const FLOATS = ["ai-fab", "mx-fab", "mw-fab", "vz-pill", "mx-heads", "mw-show", "mw-show-pill"];
   const KEY = "mw_float_pos";
   let pos = {}; try { pos = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (_) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch (_) {} };
@@ -77,7 +77,34 @@
   (document.head || document.documentElement).appendChild(css);
   const go = () => { scan(); new MutationObserver(scan).observe(document.body, { childList: true }); };
   if (document.body) go(); else document.addEventListener("DOMContentLoaded", go);
-  addEventListener("resize", () => { for (const id of FLOATS) { const el = document.getElementById(id); if (el && pos[id]) place(el); } });
+  addEventListener("resize", () => { for (const id of FLOATS) { const el = document.getElementById(id); if (el && pos[id]) place(el); } tidy(); });
+
+  /* Tidy corners: the little floating buttons line up neatly in two stacks (left and right) above the
+   * music player and the bottom tabs, so none of them ever sit on top of each other.
+   * A button someone dragged to their own spot stays where they put it. */
+  const STACKS = { right: ["ai-fab", "mx-fab"], left: ["mw-fab", "mw-show-pill", "vz-pill"] };
+  const shown = (el) => { if (!el || el.hidden) return false; const s = getComputedStyle(el); return s.display !== "none" && s.visibility !== "hidden" && el.offsetWidth > 0; };
+  function tidy() {
+    // "0 on now" adds nothing; only show the viewer count when someone is actually here
+    const vz = document.getElementById("vz-pill");
+    if (vz) { const zero = /(^|\D)0 on now/.test(vz.textContent || ""); vz.style.setProperty("display", zero ? "none" : "", zero ? "important" : ""); }
+    let floor = 12;
+    const tab = document.querySelector(".apptab"); if (shown(tab)) floor += tab.offsetHeight;
+    const pb = document.querySelector(".player-bar"); if (shown(pb)) { const r = pb.getBoundingClientRect(); if (r.top < innerHeight) floor = Math.max(floor, innerHeight - r.top + 12); }
+    for (const side of ["left", "right"]) {
+      let y = floor;
+      for (const id of STACKS[side]) {
+        const el = document.getElementById(id); if (!shown(el) || pos[id] || el.classList.contains("mw-dragging")) continue;
+        el.style.setProperty("bottom", y + "px", "important"); el.style.setProperty("top", "auto", "important");
+        el.style.setProperty(side, (innerWidth < 600 ? 12 : 16) + "px", "important"); el.style.setProperty(side === "left" ? "right" : "left", "auto", "important");
+        el.style.setProperty("transform", "none", "important");
+        y += el.offsetHeight + 10;
+      }
+    }
+  }
+  window.MW_tidyFloats = tidy;
+  setInterval(tidy, 1200); setTimeout(tidy, 300);
+  const _reset = window.MW_resetFloats; window.MW_resetFloats = () => { _reset(); tidy(); };
   // "Reset buttons" link anywhere: <button data-reset-floats>
   document.addEventListener("click", (e) => { if (e.target.closest("[data-reset-floats]")) { e.preventDefault(); window.MW_resetFloats(); } });
 })();

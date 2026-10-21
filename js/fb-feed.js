@@ -92,7 +92,7 @@ body[data-view=community]{background:#18191a}
 
   // top strip
   const top = document.createElement("div"); top.id = "fb-top";
-  top.innerHTML = `<span class="wm">meechie's world</span>
+  top.innerHTML = `<span class="wm">meechie's book</span>
 <button type="button" data-fb="search" aria-label="Search people">🔍</button>
 <button type="button" data-fb="msgs" aria-label="Messenger">💬<i hidden></i></button>
 <button type="button" data-fb="me" aria-label="My profile">👤</button>`;
@@ -172,7 +172,86 @@ body[data-view=community]{background:#18191a}
   let t = null; const repaint = () => { clearTimeout(t); t = setTimeout(() => { paintStories(); paintBadge(); }, 300); };
   const feed = $("#feed"); if (feed) new MutationObserver(repaint).observe(feed, { childList: true });
   const dot = document.querySelector(".dm-dot"); if (dot) new MutationObserver(paintBadge).observe(dot, { attributes: true });
-  const paintAll = () => { paintLeft(); paintMind(); paintStories(); paintBadge(); };
+  /* Facebook-style tab row: Home · Friends · Video · Marketplace · Notifications · Menu */
+  const tcss = document.createElement("style");
+  tcss.textContent = `#fb-tabs{display:flex;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:-14px calc(-1 * clamp(16px,3.2vw,56px)) 14px;padding:0 clamp(16px,3.2vw,56px);position:relative;z-index:14}
+#fb-tabs button{flex:1;max-width:120px;height:48px;border:0;border-bottom:3px solid transparent;background:none;color:var(--fb-mute);font-size:21px;cursor:pointer;position:relative;display:grid;place-items:center;border-radius:0}
+#fb-tabs button:hover{background:var(--fb-hover)}
+#fb-tabs button[aria-pressed=true]{color:var(--fb-blue);border-bottom-color:var(--fb-blue)}
+#fb-tabs button i{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 5px}
+#fb-tabs button small{position:absolute;bottom:3px;left:0;right:0;font:600 10px system-ui;color:inherit}
+@media(min-width:761px){#fb-tabs{justify-content:center}#fb-tabs button small{display:none}}
+@media(max-width:760px){#fb-tabs{margin:-8px 0 8px;padding:0}}
+#fb-notes{background:var(--fb-card);border-radius:10px;margin-bottom:14px;padding:10px 8px;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+#fb-notes[hidden]{display:none}
+#fb-notes h3{margin:4px 8px 8px;color:var(--fb-text);font:700 22px system-ui}
+#fb-notes .n{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;color:var(--fb-text);padding:8px;border-radius:8px;font:400 14px/1.3 system-ui;cursor:pointer}
+#fb-notes .n:hover{background:var(--fb-hover)}
+#fb-notes .n.new{background:rgba(45,136,255,.12)}
+#fb-notes .n .avatar{width:48px;height:48px;margin:0;flex:none}
+#fb-notes .n .e{font-size:22px;flex:none;width:48px;text-align:center}
+#fb-notes .n small{display:block;color:var(--fb-mute);font-size:12px;margin-top:2px}
+#fb-notes .empty{color:var(--fb-mute);padding:16px 8px;text-align:center}
+@media(max-width:760px){#fb-notes{border-radius:0}}`;
+  document.head.appendChild(tcss);
+  const tabs = document.createElement("div"); tabs.id = "fb-tabs"; tabs.setAttribute("role", "tablist");
+  tabs.innerHTML = [["home", "🏠", "Home"], ["friends", "👥", "Friends"], ["video", "📺", "Video"], ["market", "🛍️", "Marketplace"], ["notes", "🔔", "Notifications"], ["menu", "☰", "Menu"]]
+    .map(([k, ic, n]) => `<button type="button" data-fbt="${k}" aria-label="${n}" aria-pressed="${k === "home"}">${ic}<i hidden></i><small>${n}</small></button>`).join("");
+  top.after(tabs);
+  const notes = document.createElement("div"); notes.id = "fb-notes"; notes.hidden = true;
+  main.prepend(notes);
+  const NAME = (id) => { try { return typeof handleOf === "function" ? handleOf(id) : "Someone"; } catch (_) { return "Someone"; } };
+  const AV = (id) => { try { return typeof avatarOf === "function" ? avatarOf(id) : ""; } catch (_) { return ""; } };
+  const SEEN = "mw_fb_seen";
+  const seenSet = () => { try { return new Set(JSON.parse(localStorage.getItem(SEEN) || "[]")); } catch (_) { return new Set(); } };
+  function noteList() {
+    const id = myId(); if (!id) return [];
+    const out = [], P = (() => { try { return typeof posts !== "undefined" ? posts : []; } catch (_) { return []; } })();
+    try { (window.MW_FRIENDS && MW_FRIENDS.requests ? MW_FRIENDS.requests() : []).forEach((u) => out.push({ k: "f:" + u, who: u, html: `<b>${esc(NAME(u))}</b> sent you a friend request.`, sub: "Tap to accept", go: "friends" })); } catch (_) {}
+    P.filter((p) => p.authorId === id).slice(0, 40).forEach((p) => {
+      const snip = esc(String(p.text || (p.photo ? "your photo" : p.video ? "your video" : "your post")).slice(0, 50));
+      const r = p.reacts && typeof p.reacts === "object" ? Object.entries(p.reacts).filter(([u, e]) => u !== id && e) : [];
+      const likers = Array.isArray(p.likes) ? p.likes.filter((u) => u !== id && !(p.reacts && p.reacts[u])) : [];
+      r.forEach(([u, e]) => out.push({ k: "r:" + p.id + ":" + u, who: u, emo: e, html: `<b>${esc(NAME(u))}</b> reacted ${esc(e)} to your post: “${snip}”`, post: p.id }));
+      likers.forEach((u) => out.push({ k: "r:" + p.id + ":" + u, who: u, emo: "👍", html: `<b>${esc(NAME(u))}</b> liked your post: “${snip}”`, post: p.id }));
+      if (p.replyCount > 0) out.push({ k: "c:" + p.id + ":" + p.replyCount, emo: "💬", html: `<b>${p.replyCount} comment${p.replyCount > 1 ? "s" : ""}</b> on your post: “${snip}”`, post: p.id });
+    });
+    return out.slice(0, 60);
+  }
+  function paintTabs() {
+    const list = noteList(), seen = seenSet(), fresh = list.filter((n) => !seen.has(n.k)).length;
+    const bell = tabs.querySelector("[data-fbt=notes] i"); bell.hidden = !fresh; bell.textContent = fresh > 9 ? "9+" : fresh;
+    let rq = 0; try { rq = window.MW_FRIENDS && MW_FRIENDS.requests ? MW_FRIENDS.requests().length : 0; } catch (_) {}
+    const fr = tabs.querySelector("[data-fbt=friends] i"); fr.hidden = !rq; fr.textContent = rq;
+    if (!notes.hidden) paintNotes();
+  }
+  function paintNotes() {
+    const list = noteList(), seen = seenSet();
+    notes.innerHTML = `<h3>Notifications</h3>` + (myId() ? (list.length ? list.map((n, i) => `<button type="button" class="n${seen.has(n.k) ? "" : " new"}" data-note="${i}">${n.who ? AV(n.who) : `<span class="e">${n.emo || "🔔"}</span>`}<span>${n.html}${n.sub ? `<small>${esc(n.sub)}</small>` : ""}</span></button>`).join("") : `<div class="empty">Nothing yet. When people react to or comment on your posts, it shows up here.</div>`) : `<div class="empty">Sign in to see your notifications.</div>`);
+    notes._list = list;
+  }
+  function markSeen() { try { const s = seenSet(); noteList().forEach((n) => s.add(n.k)); localStorage.setItem(SEEN, JSON.stringify([...s].slice(-600))); } catch (_) {} }
+  function setTab(k) { tabs.querySelectorAll("[data-fbt]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fbt === k))); }
+  tabs.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-fbt]"); if (!b) return; const k = b.dataset.fbt;
+    if (k === "home") { notes.hidden = true; setTab("home"); view.scrollIntoView({ behavior: "smooth" }); }
+    else if (k === "notes") { if (notes.hidden) { paintNotes(); notes.hidden = false; setTab("notes"); setTimeout(() => { markSeen(); paintTabs(); }, 1500); } else { notes.hidden = true; setTab("home"); } }
+    else if (k === "friends") go("friends");
+    else if (k === "video") go("videos");
+    else if (k === "market") go("shop");
+    else if (k === "menu") { const m = document.getElementById("hdr-menu") || document.getElementById("app-more"); if (m) m.click(); }
+  });
+  notes.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-note]"); if (!b || !notes._list) return; const n = notes._list[+b.dataset.note]; if (!n) return;
+    if (n.go) { go(n.go); return; }
+    notes.hidden = true; setTab("home");
+    const el = n.post && (document.querySelector(`#feed [data-id="${n.post}"]`) || document.querySelector(`#feed [data-rbox="${n.post}"]`)?.closest(".post"));
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+  document.addEventListener("mw-posts", paintTabs);
+  setInterval(paintTabs, 8000);
+
+  const paintAll = () => { paintLeft(); paintMind(); paintStories(); paintBadge(); paintTabs(); };
   paintAll();
   // repaint names/photos once the signed-in profile loads, and whenever the Feed is opened
   new MutationObserver(() => { if (!view.hidden) paintAll(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });

@@ -77,6 +77,15 @@
     try { rt = window.supabase && cfg.SUPABASE_URL ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }) : false; } catch (_) { rt = false; }
     return rt;
   }
+  // when Supabase is over its free limit (402) its live channels can't connect and would retry forever,
+  // slowing phones down; check once and switch them off for this visit
+  try {
+    fetch(cfg.SUPABASE_URL + "/rest/v1/", { headers: { apikey: cfg.SUPABASE_ANON_KEY } }).then((r) => {
+      if (r.status !== 402 && r.status < 500) return;
+      const old = rt; rt = false; window.MW_RT_DOWN = true;
+      try { if (old) { old.removeAllChannels(); old.realtime && old.realtime.disconnect(); } } catch (_) {}
+    }).catch(() => {});
+  } catch (_) {}
   function channel(name, opts) {
     const tableWatch = [];
     let inner = null; const r = realtime();

@@ -45,6 +45,7 @@
         <h3>${E(x.title)}</h3>${x.company ? `<span class="co">${E(x.company)}</span>` : `<span class="co">${E(who(x.authorId))}</span>`}
         <div class="tags">${[x.location && "📍 " + x.location, x.pay && "💵 " + x.pay, x.type && "🕒 " + x.type].filter(Boolean).map((t) => `<span>${E(t)}</span>`).join("")}</div>
         ${x.skills ? `<div class="tags">${String(x.skills).split(/,\s*/).slice(0, 8).map((t) => `<span>${E(t)}</span>`).join("")}</div>` : ""}
+        ${(Array.isArray(x.photos) ? x.photos : []).filter((u) => /^https:\/\//.test(u)).length ? `<div style="display:flex;gap:6px;overflow-x:auto">${x.photos.filter((u) => /^https:\/\//.test(u)).slice(0, 4).map((u) => `<img src="${E(u)}" alt="" loading="lazy" style="width:120px;height:120px;object-fit:cover;border-radius:10px;flex:none">`).join("")}</div>` : ""}
         <p>${E(x.desc)}</p>
         <div class="acts"><small class="muted">${E(ago2(x.createdAt))} · by ${E(who(x.authorId))}</small><span style="flex:1"></span>
           ${x.authorId !== ME() ? `<button class="btn sm" type="button" data-dm="${E(x.authorId)}">${tab === "job" ? "Apply / Message" : "Hire / Message"}</button>` : ""}
@@ -61,6 +62,8 @@
       <div class="row"><input id="jf-pay" maxlength="60" placeholder="${job ? "Pay (e.g. $18/hr)" : "Your rate (e.g. $50/job)"}"><select id="jf-type"><option>Full time</option><option>Part time</option><option>Gig / one-time</option><option>Contract</option><option>Remote</option></select></div>
       <input id="jf-skills" maxlength="160" placeholder="${job ? "Skills wanted, separated by commas" : "Your skills, separated by commas"}">
       <textarea id="jf-desc" maxlength="1500" rows="5" required placeholder="${job ? "What the job is, hours, and how to apply" : "Your experience and when you're available"}"></textarea>
+      <label style="display:grid;gap:5px;font-weight:700;font-size:14px">📷 Pictures <span class="muted" style="font-weight:400;font-size:12px">(optional, up to 4: your logo, your work, the job site)</span><input type="file" id="jf-pics" accept="image/*" multiple></label>
+      <div id="jf-prev" style="display:flex;gap:6px;flex-wrap:wrap"></div>
       <small class="muted">Never send money to get a job, and never share your Social Security number in messages.</small>
       <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" type="button" id="jf-cancel">Cancel</button><button class="btn" type="submit">Post</button></div></form>`;
   }
@@ -68,17 +71,24 @@
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.jtab) { tab = b.dataset.jtab; formOpen = false; render(); return; }
     if (b.id === "jb-new") { if (typeof needMember === "function" && !needMember()) return; formOpen = true; render(); root.querySelector("#jf-title").focus(); return; }
-    if (b.id === "jf-cancel") { formOpen = false; render(); return; }
+    if (b.id === "jf-cancel") { jfPics = []; formOpen = false; render(); return; }
     if (b.dataset.jsp) { const x = items.find((i) => i.id === b.dataset.jsp); DB().doc("jobs/" + x.id).update({ sponsored: !x.sponsored }).catch((er) => say(er.message || er.code)); return; }
     if (b.dataset.jdel) { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Tap again"; return; } DB().doc("jobs/" + b.dataset.jdel).delete().catch((er) => say(er.message || er.code)); return; }
+  });
+  let jfPics = [];
+  root.addEventListener("change", async (e) => {
+    if (e.target.id !== "jf-pics") return; const files = [...e.target.files].slice(0, 4 - jfPics.length); e.target.value = ""; if (!files.length) return;
+    say("Adding your pictures…");
+    for (const f of files) { try { const small = typeof compress === "function" ? await compress(f, 1280) : null; const blob = small ? await (await fetch(small)).blob() : f; const up = await MW.uploadMedia(blob, { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) jfPics.push(up.url); } catch (er) { say("Couldn't add a picture: " + (er.message || er)); } }
+    const pv = root.querySelector("#jf-prev"); if (pv) pv.innerHTML = jfPics.map((u) => `<img src="${E(u)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`).join("");
   });
   root.addEventListener("input", (e) => { if (e.target.id === "jb-q") { q = e.target.value.trim().toLowerCase(); clearTimeout(root._t); root._t = setTimeout(render, 250); } });
   root.addEventListener("submit", async (e) => {
     if (e.target.id !== "jb-form") return; e.preventDefault();
     const v = (id) => root.querySelector("#" + id).value.trim();
     try {
-      await DB().collection("jobs").add({ authorId: ME(), kind: tab, title: v("jf-title").slice(0, 90), company: v("jf-co").slice(0, 80), location: v("jf-loc").slice(0, 80), pay: v("jf-pay").slice(0, 60), type: v("jf-type"), skills: v("jf-skills").slice(0, 160), desc: v("jf-desc").slice(0, 1500), sponsored: false, createdAt: Date.now() });
-      formOpen = false; render(); say(tab === "job" ? "Your job is posted" : "You're listed for hire");
+      await DB().collection("jobs").add({ authorId: ME(), kind: tab, title: v("jf-title").slice(0, 90), company: v("jf-co").slice(0, 80), location: v("jf-loc").slice(0, 80), pay: v("jf-pay").slice(0, 60), type: v("jf-type"), skills: v("jf-skills").slice(0, 160), desc: v("jf-desc").slice(0, 1500), photos: jfPics.slice(0, 4), sponsored: false, createdAt: Date.now() });
+      jfPics = []; formOpen = false; render(); say(tab === "job" ? "Your job is posted" : "You're listed for hire");
     } catch (er) { say("Couldn't post: " + (er.message || er.code)); }
   });
   async function init() {

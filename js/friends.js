@@ -34,7 +34,7 @@
   const friendsOf = () => { const m = mine(); return [...m].filter((id) => theyAdded(id) && MEM()[id]); };
   const requests = () => Object.keys(lists).filter((id) => id !== ME() && (lists[id] || []).includes(ME()) && !mine().has(id) && MEM()[id]);
   const pending = () => [...mine()].filter((id) => !theyAdded(id) && MEM()[id]);
-  window.MW_FRIENDS = { isFriend: (id) => mine().has(id) && theyAdded(id), list: friendsOf,
+  window.MW_FRIENDS = { isFriend: (id) => mine().has(id) && theyAdded(id), list: friendsOf, requests,
     // for profile pages
     status: (id) => (mine().has(id) && theyAdded(id) ? "friends" : mine().has(id) ? "sent" : theyAdded(id) ? "request" : "none"),
     of: (uid) => Object.keys(lists).filter((x) => x !== uid && (lists[uid] || []).includes(x) && (lists[x] || []).includes(uid) && MEM()[x]),

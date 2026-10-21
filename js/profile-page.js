@@ -58,7 +58,10 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
     const box = document.getElementById("pp"); if (!box || !uid) return;
     const m = MEM()[uid] || {}, mine = uid === ME(), c = COL[m.color] || COL.gold, F = window.MW_FRIENDS;
     const friends = F && F.of ? F.of(uid) : [], st = F && F.status ? F.status(uid) : "none";
-    const ps = POSTS().filter((p) => p.authorId === uid), photos = ps.filter((p) => img(p.photo)).slice(0, 30);
+    const ps = POSTS().filter((p) => p.authorId === uid);
+    // their profile pictures (up to 5) first, then photos from their posts
+    const profPics = (Array.isArray(m.photos) ? m.photos : []).filter((u) => typeof u === "string" && img(u)).slice(0, 5).map((u) => ({ photo: u }));
+    const photos = [...profPics, ...ps.filter((p) => img(p.photo) && !profPics.some((q) => q.photo === p.photo))].slice(0, 30);
     const av = img(m.photo), cover = img(m.cover);
     const btn = mine ? `<button class="btn" type="button" data-pp="edit">✏️ Edit profile</button>`
       : `${st === "friends" ? `<button class="btn ghost" type="button" data-pp="unf">✓ Friends</button>` : st === "sent" ? `<button class="btn ghost" type="button" data-pp="unf">Request sent · Cancel</button>` : st === "request" ? `<button class="btn" type="button" data-pp="add">✓ Accept friend request</button>` : `<button class="btn" type="button" data-pp="add">＋ Add friend</button>`}
