@@ -22,7 +22,8 @@
   async function gisInit(msgEl) {
     await loadGIS();
     if (gisInit.done) return; gisInit.done = true;
-    google.accounts.id.initialize({ client_id: gid, ux_mode: "popup", callback: async (resp) => {
+    // full-page sign-in (no pop-up window): pop-ups are blocked in many phone browsers and in-app browsers
+    google.accounts.id.initialize({ client_id: gid, ux_mode: "redirect", login_uri: location.origin + "/api/cf/auth/google-redirect", callback: async (resp) => {
       const m = msgEl || document.getElementById("auth-msg") || document.getElementById("gt-msg"); if (m) m.textContent = "Signing you in…";
       const r = await MW.sb.auth.signInWithIdToken({ provider: "google", token: resp.credential });
       if (r.error) { if (m) m.textContent = r.error.message; return; }
@@ -32,7 +33,7 @@
   window.MW_googleSignIn = () => { if (gid) gisInit().then(() => google.accounts.id.prompt()).catch(() => {}); };
   async function providers() {
     if (CF) {
-      try { const r = await fetch("/api/cf/auth/settings").then((x) => x.json()); gid = r.google || null; return gid ? ["google"] : []; } catch (_) { return []; }
+      try { const r = await fetch("/api/cf/auth/settings").then((x) => x.json()); gid = r.google || null; return [...(gid ? ["google"] : []), ...(r.facebook ? ["facebook"] : [])]; } catch (_) { return []; }
     }
     try {
       const c = window.MW_CONFIG || {};
@@ -51,11 +52,18 @@
   }
   function bar(list, msgEl) {
     const d = document.createElement("div"); d.className = "mw-sso";
+    if (CF && list.includes("facebook")) {
+      // Facebook: a full-page sign-in too (no pop-up)
+      const fb = document.createElement("a"); fb.href = "/api/cf/auth/facebook"; fb.textContent = "Continue with Facebook";
+      fb.style.cssText = "display:flex;align-items:center;justify-content:center;width:min(360px,100%);margin:0 auto;border-radius:999px;padding:11px 14px;font:700 15px var(--body,system-ui);background:#1877f2;color:#fff;text-decoration:none";
+      d.appendChild(fb);
+    }
     if (CF && gid) {
       const slot = document.createElement("div"); slot.style.cssText = "display:flex;justify-content:center;min-height:44px"; d.appendChild(slot);
       gisInit(msgEl).then(() => google.accounts.id.renderButton(slot, { theme: "outline", size: "large", shape: "pill", text: "continue_with", width: Math.min(360, (slot.parentElement && slot.parentElement.clientWidth) || 320) })).catch(() => { slot.textContent = "Google sign-in couldn't load. Check your connection."; });
       return d;
     }
+    if (CF) return d;
     d.innerHTML = list.map((p) => { const [n, bg, fg] = LABEL[p]; return `<button type="button" data-sso="${p}" style="background:${bg};color:${fg}">Continue with ${n}</button>`; }).join("");
     d.addEventListener("click", (e) => { const b = e.target.closest("[data-sso]"); if (b) go(b.dataset.sso, msgEl); });
     return d;

@@ -4,7 +4,7 @@
  *    and a plain tap still works normally. window.MW_resetFloats() (or any [data-reset-floats] button) puts them back. */
 (function () {
   "use strict";
-  const CARDS = ["gl-perm", "mw-install", "mw-push-ask", "mw-choices", "wv-box", "pp"];
+  const CARDS = ["gl-perm", "mw-install", "mw-push-ask", "mw-choices", "wv-box", "pp", "ct-box"];
   window.MW_screenClear = function (self) {
     if (document.querySelector("dialog[open]")) return false;
     const en = document.getElementById("enter"); if (en && !en.hidden && getComputedStyle(en).display !== "none") return false;

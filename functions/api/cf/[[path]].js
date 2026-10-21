@@ -1,5 +1,5 @@
 /* /api/cf/* — Meechie's World's own free sign-in + database (Cloudflare D1 + KV). See lib/cf.js for the rules. */
-import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, checkInsert, checkUpdate, RuleError, verifyGoogle, sha256hex, uuid } from "../../../lib/cf.js";
+import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, checkInsert, checkUpdate, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
 
 // Google "Sign in with Google" client id (public; the Google Cloud project the site already uses)
 const GOOGLE_CLIENT_ID = (env) => env.GOOGLE_CLIENT_ID || "";
@@ -34,8 +34,15 @@ export async function onRequest(ctx) {
 
 /* ---------------- accounts ---------------- */
 async function auth(what, request, env) {
-  const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
-  if (what === "settings") return json({ google: GOOGLE_CLIENT_ID(env) || null });
+  let body = {};
+  if (what === "google-redirect") {
+    // Google's full-page sign-in (no pop-up window): Google posts the sign-in back here as a form
+    const f = await request.formData().catch(() => null);
+    const cookie = (request.headers.get("cookie") || "").match(/(?:^|;\s*)g_csrf_token=([^;]+)/);
+    if (!f || !cookie || f.get("g_csrf_token") !== cookie[1]) return new Response("Sign-in expired. Go back and try again.", { status: 400 });
+    body = { credential: f.get("credential") };
+  } else if (request.method === "POST") body = await request.json().catch(() => ({}));
+  if (what === "settings") return json({ google: GOOGLE_CLIENT_ID(env) || null, facebook: !!(env.FACEBOOK_APP_ID && env.FACEBOOK_APP_SECRET) });
 
   if (what === "signup") {
     const email = String(body.email || "").trim().toLowerCase(), pw = String(body.password || "");
@@ -60,37 +67,36 @@ async function auth(what, request, env) {
     return json({ data: { user: session.user, session }, error: null });
   }
 
-  if (what === "google") {
+  if (what === "google" || what === "google-redirect") {
     const cid = GOOGLE_CLIENT_ID(env); if (!cid) return err("Google sign-in isn't set up yet.", 501);
     const g = await verifyGoogle(body.credential, cid);
-    if (!g) return err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
-    const email = String(g.email || "").toLowerCase();
-    const link = await env.DB.prepare("select v from kv where k = ?").bind("gsub:" + g.sub).first();
-    let u = link ? await env.DB.prepare("select * from users where id = ?").bind(link.v).first() : null;
-    if (!u) {
-      const h = await sha256hex("meechies-world:" + email);
-      const owner = await env.DB.prepare("select v from kv where k = ?").bind("owner-email:" + h).first();
-      const byEmail = await env.DB.prepare("select * from users where email = ?").bind(email).first();
-      // bring back the member's old profile: their saved find-by-email code matches this (Google-verified) email
-      const old = await env.DB.prepare("select owner from docs where coll = 'members' and json_extract(data, '$.emailHash') = ? and owner not in (select id from users) limit 1").bind(h).first();
-      const id = (owner && owner.v) || (byEmail && byEmail.id) || (old && old.owner) || uuid();
-      u = await env.DB.prepare("select * from users where id = ?").bind(id).first();
-      const st = [];
-      // Google proved this email. Anyone else who signed up with it (no proof) loses it and gets signed out,
-      // and a password set on this account before Google proved it is cleared, so nobody else can keep access.
-      if (byEmail && byEmail.id !== id) st.push(env.DB.prepare("update users set email = null where id = ?").bind(byEmail.id), env.DB.prepare("delete from sessions where uid = ?").bind(byEmail.id));
-      if (u && u.pass && !(await env.DB.prepare("select 1 from kv where k like 'gsub:%' and v = ?").bind(id).first())) st.push(env.DB.prepare("update users set pass = null where id = ?").bind(id), env.DB.prepare("delete from sessions where uid = ?").bind(id));
-      if (st.length) await env.DB.batch(st);
-      if (!u) {
-        const meta = { full_name: String(g.name || "").slice(0, 30), avatar_url: g.picture || "" };
-        u = { id, email, name: meta.full_name, meta: JSON.stringify(meta), created_at: new Date().toISOString() };
-        await env.DB.prepare("insert into users (id, email, name, meta, created_at) values (?,?,?,?,?)").bind(u.id, u.email, u.name, u.meta, u.created_at).run();
-      } else if (!u.email) { await env.DB.prepare("update users set email = ? where id = ?").bind(email, id).run(); u.email = email; }
-      await env.DB.prepare("insert or replace into kv (k, v) values (?, ?)").bind("gsub:" + g.sub, id).run();
-      u = await env.DB.prepare("select * from users where id = ?").bind(id).first();
-    }
+    if (!g) return what === "google-redirect" ? new Response("Google sign-in didn't work. Go back and try again.", { status: 401 }) : err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
+    const u = await linkProvider(env, "gsub:" + g.sub, String(g.email || "").toLowerCase(), g.name, g.picture);
     const session = await newSession(env, u);
+    if (what === "google-redirect") {
+      return signedInPage(session);
+    }
     return json({ data: { user: session.user, session }, error: null });
+  }
+
+  // Facebook sign-in (full page, no pop-up): /api/cf/auth/facebook → Facebook → /api/cf/auth/facebook-callback
+  if (what === "facebook" || what === "facebook-callback") {
+    const appId = env.FACEBOOK_APP_ID, secret = env.FACEBOOK_APP_SECRET, origin = new URL(request.url).origin;
+    if (!appId || !secret) return page("Facebook sign-in isn't switched on yet.", 501);
+    const back = origin + "/api/cf/auth/facebook-callback";
+    if (what === "facebook") {
+      const state = randToken(18);
+      return new Response(null, { status: 302, headers: { location: "https://www.facebook.com/v19.0/dialog/oauth?" + new URLSearchParams({ client_id: appId, redirect_uri: back, state, scope: "public_profile,email", response_type: "code" }), "set-cookie": `mw_fb_state=${state}; Path=/api/cf/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax`, "cache-control": "no-store" } });
+    }
+    const q = new URL(request.url).searchParams, cookie = (request.headers.get("cookie") || "").match(/(?:^|;\s*)mw_fb_state=([^;]+)/);
+    if (q.get("error")) return page("Facebook sign-in was cancelled.", 400);
+    if (!cookie || q.get("state") !== cookie[1] || !q.get("code")) return page("Sign-in expired. Go back and try again.", 400);
+    const tok = await fetch("https://graph.facebook.com/v19.0/oauth/access_token?" + new URLSearchParams({ client_id: appId, client_secret: secret, redirect_uri: back, code: q.get("code") })).then((r) => r.json()).catch(() => ({}));
+    if (!tok.access_token) return page("Facebook sign-in didn't work. Go back and try again.", 401);
+    const fbme = await fetch("https://graph.facebook.com/v19.0/me?" + new URLSearchParams({ fields: "id,name,email,picture.width(200)", access_token: tok.access_token })).then((r) => r.json()).catch(() => ({}));
+    if (!fbme.id) return page("Facebook sign-in didn't work. Go back and try again.", 401);
+    const u = await linkProvider(env, "fbid:" + fbme.id, String(fbme.email || "").toLowerCase(), fbme.name, fbme.picture && fbme.picture.data && fbme.picture.data.url);
+    return signedInPage(await newSession(env, u));
   }
 
   const me = await userFrom(request, env);
@@ -115,6 +121,39 @@ async function auth(what, request, env) {
     return json({ data: { user: publicUser(me) }, error: null });
   }
   return err("Not found", 404, "not_found");
+}
+
+
+/* ---------------- sign-in helpers shared by Google and Facebook ---------------- */
+const page = (msg, status = 200) => new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Meechie's World</title><body style="background:#0b0a08;color:#f0cf78;font:600 17px system-ui;display:grid;place-items:center;height:100vh;text-align:center;padding:20px"><div>${msg}<br><br><a href="/" style="color:#fff">Back to Meechie's World</a></div>`, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+function signedInPage(session) {
+  const data = JSON.stringify(session).replace(/</g, "\\u003c");
+  return new Response(`<!doctype html><meta charset="utf-8"><title>Signing in…</title><body style="background:#0b0a08;color:#f0cf78;font:600 16px system-ui;display:grid;place-items:center;height:100vh">Signing you in…<script>try{localStorage.setItem("mw-cf-session",${JSON.stringify(data)})}catch(e){}location.replace("/")</script>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "set-cookie": "mw_fb_state=; Path=/api/cf/auth; Max-Age=0" } });
+}
+// Find or make the member for a proven sign-in (Google / Facebook). `key` is e.g. "gsub:<google id>" or "fbid:<facebook id>".
+async function linkProvider(env, key, email, name, picture) {
+  const link = await env.DB.prepare("select v from kv where k = ?").bind(key).first();
+  let u = link ? await env.DB.prepare("select * from users where id = ?").bind(link.v).first() : null;
+  if (u) return u;
+  const h = email ? await sha256hex("meechies-world:" + email) : null;
+  const owner = h ? await env.DB.prepare("select v from kv where k = ?").bind("owner-email:" + h).first() : null;
+  const byEmail = email ? await env.DB.prepare("select * from users where email = ?").bind(email).first() : null;
+  // bring back the member's old profile: their saved find-by-email code matches this (proven) email
+  const old = h ? await env.DB.prepare("select owner from docs where coll = 'members' and json_extract(data, '$.emailHash') = ? and owner not in (select id from users) limit 1").bind(h).first() : null;
+  const id = (owner && owner.v) || (byEmail && byEmail.id) || (old && old.owner) || uuid();
+  u = await env.DB.prepare("select * from users where id = ?").bind(id).first();
+  const st = [];
+  // The provider proved this email. Anyone else who signed up with it (no proof) loses it and gets signed out,
+  // and a password set on this account before it was proven is cleared, so nobody else can keep access.
+  if (byEmail && byEmail.id !== id) st.push(env.DB.prepare("update users set email = null where id = ?").bind(byEmail.id), env.DB.prepare("delete from sessions where uid = ?").bind(byEmail.id));
+  if (u && u.pass && !(await env.DB.prepare("select 1 from kv where (k like 'gsub:%' or k like 'fbid:%') and v = ?").bind(id).first())) st.push(env.DB.prepare("update users set pass = null where id = ?").bind(id), env.DB.prepare("delete from sessions where uid = ?").bind(id));
+  if (st.length) await env.DB.batch(st);
+  if (!u) {
+    const meta = { full_name: String(name || "").slice(0, 30), avatar_url: picture || "" };
+    await env.DB.prepare("insert into users (id, email, name, meta, created_at) values (?,?,?,?,?)").bind(id, email || null, meta.full_name, JSON.stringify(meta), new Date().toISOString()).run();
+  } else if (!u.email && email) await env.DB.prepare("update users set email = ? where id = ?").bind(email, id).run();
+  await env.DB.prepare("insert or replace into kv (k, v) values (?, ?)").bind(key, id).run();
+  return await env.DB.prepare("select * from users where id = ?").bind(id).first();
 }
 
 /* ---------------- tables ---------------- */
