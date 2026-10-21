@@ -4,8 +4,8 @@
   "use strict";
   const TABS = [
     ["home", "Home", '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
-    ["community", "Meechie's Book", '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 20c0-2.4 1.4-4.4 3.5-5"/>'],
-    ["clips", "Clips", '<path d="M8 5v14l11-7z"/>'],
+    ["legal", "Legal Help", '<path d="M12 3v18M5 7h14M6 7l-3 6h6L6 7zm12 0-3 6h6l-3-6zM7 21h10"/>'],
+    ["community", "Community", '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 20c0-2.4 1.4-4.4 3.5-5"/>'],
     ["radio", "Radio", '<circle cx="12" cy="13" r="3"/><path d="M5 9h14v11H5zM7 9l9-5"/>'],
   ];
   const css = document.createElement("style");
@@ -67,7 +67,7 @@ nav.tabs a{letter-spacing:.02em}
 
   const ICON = { live: "🔴", predict: "🔮", jobs: "💼", books: "📚", liveradio: "📡", livetv: "📺", home: "🏠", services: "🧰", shop: "🛍️", community: "👥", radio: "📻", clips: "🎬", videos: "📺", world: "🌐", games: "🎮", creators: "🎨", chat: "💬", messages: "✉️", ads: "📌", promote: "📣", contact: "📞", friends: "🤝", dating: "💘", studio: "🎚️", preach: "✝️", markets: "📈", coin: "🪙", legal: "⚖️" };
   // the sections that always show in the computer header row (the rest live under "☰ Menu")
-  const CORE = ["home", "community", "radio", "videos", "shop", "books", "dating", "messages", "live"];
+  const CORE = ["home", "legal", "services", "community", "radio", "videos", "shop", "messages", "live"];
   document.querySelectorAll("header nav.tabs a[data-go]").forEach((a) => { if (CORE.includes(a.dataset.go)) a.classList.add("core"); });
   const bar = document.createElement("nav");
   bar.className = "apptab"; bar.setAttribute("aria-label", "App tabs");
