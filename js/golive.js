@@ -28,8 +28,8 @@
 .gl-card .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e5484d;margin-right:6px;animation:glp 1s infinite}
 @keyframes glp{50%{opacity:.3}}
 .gl-stage{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
-.gl-box{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:9/16;max-height:78vh;border:1px solid var(--line)}
-.gl-box video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
+.gl-box{position:relative;border-radius:18px;overflow:hidden;background:radial-gradient(120% 80% at 50% 40%,#1a1610,#000);aspect-ratio:var(--ar,9/16);max-height:82vh;border:1px solid var(--line);margin-inline:auto;width:100%}
+.gl-box video{width:100%;height:100%;object-fit:contain;display:block;background:transparent}
 .gl-box .tag{position:absolute;left:10px;top:10px;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:5px 10px;font:700 12px var(--body)}
 .gl-box .tag b{color:#ff6b70}
 .gl-box .cnt{position:absolute;right:10px;top:10px;background:rgba(0,0,0,.55);color:#fff;border-radius:999px;padding:5px 10px;font:700 12px var(--body)}
@@ -50,7 +50,7 @@
 
   const isLive = (l) => l.onsite && Date.now() - (l.beat || l.startedAt || 0) < 90e3;
   const myBattle = (uid) => battles.find((b) => (b.a === uid || b.b === uid) && Date.now() < (b.end || 0) + 15000);
-  const giftScore = (uid, from, to) => (typeof giftLog !== "undefined" ? giftLog : []).filter((g) => g.to === uid && g.createdAt >= from && g.createdAt <= to).reduce((n, g) => n + (VAL[g.kind] || 1), 0);
+  const giftScore = (uid, from, to) => (typeof giftLog !== "undefined" ? giftLog : []).filter((g) => g.to === uid && g.createdAt >= from && g.createdAt <= to).reduce((n, g) => n + (g.paid && g.coins ? Math.round(g.coins / 10) : (VAL[g.kind] || 1)), 0);
 
   /* ---------- page ---------- */
   function render() {
@@ -82,12 +82,34 @@
   function paintStage() {
     const st = root.querySelector("#gl-stage"); if (!st) return;
     st.innerHTML = "";
-    if (hosting) { const b = box(ME(), "You", true); st.appendChild(b); b.querySelector("video").srcObject = hosting.stream; }
+    if (hosting) { const b = box(ME(), "You", true); st.appendChild(b); const v = b.querySelector("video"); v.srcObject = hosting.stream; fitBox(v); }
     for (const [id, w] of Object.entries(watching)) { const b = box(id, HANDLE(id), false); st.appendChild(b); if (w.stream) attach(b, w); }
     paintChat();
   }
+  // the frame takes the camera's own shape (tall phone or wide laptop), so nothing gets cut off or zoomed in
+  function fitBox(v) {
+    const set = () => { if (v.videoWidth && v.videoHeight) { const bx = v.closest(".gl-box"); if (bx) bx.style.setProperty("--ar", v.videoWidth + "/" + v.videoHeight); } };
+    v.addEventListener("loadedmetadata", set); v.addEventListener("resize", set); set();
+  }
+  // widest view the camera allows (some phones start the front camera zoomed in), sharp picture
+  async function widen(stream) {
+    const t = stream && stream.getVideoTracks()[0]; if (!t) return;
+    try { t.contentHint = "detail"; } catch (_) {}
+    try { const c = t.getCapabilities ? t.getCapabilities() : {}; const adv = {};
+      if (c.zoom && typeof c.zoom.min === "number") adv.zoom = c.zoom.min;
+      if (c.resizeMode && c.resizeMode.includes && c.resizeMode.includes("none")) adv.resizeMode = "none";
+      if (Object.keys(adv).length) await t.applyConstraints({ advanced: [adv] });
+    } catch (_) {}
+  }
+  // ask the connection to send a high-quality picture (up to ~2.5 Mbps), keeping it sharp rather than smooth-but-blurry
+  function hiQuality(pc) {
+    pc.getSenders().forEach((snd) => { if (!snd.track || snd.track.kind !== "video") return;
+      try { const p = snd.getParameters(); if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+        p.encodings[0].maxBitrate = 2500000; p.encodings[0].maxFramerate = 30; p.encodings[0].scaleResolutionDownBy = 1; p.degradationPreference = "maintain-resolution";
+        snd.setParameters(p).catch(() => {}); } catch (_) {} });
+  }
   function attach(b, w) {
-    const v = b.querySelector("video"); v.srcObject = w.stream; v.muted = !w.sound;
+    const v = b.querySelector("video"); v.srcObject = w.stream; v.muted = !w.sound; fitBox(v);
     const wait = b.querySelector("[data-wait]"); if (wait) wait.remove();
     const snd = b.querySelector("[data-unmute]"); if (snd) snd.hidden = !!w.sound;
     v.play().catch(() => { v.muted = true; w.sound = false; if (snd) snd.hidden = false; v.play().catch(() => {}); });
@@ -205,7 +227,8 @@
     const reset = () => { if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = "🎥 Go live"; } };
     let stream = null, lastErr = null;
     const tries = [
-      { video: { facingMode: facing, width: { ideal: 720 }, height: { ideal: 1280 } }, audio: { echoCancellation: true, noiseSuppression: true } },
+      { video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } },
+      { video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: { echoCancellation: true, noiseSuppression: true } },
       { video: true, audio: true },
       { video: true, audio: false },
     ];
@@ -218,7 +241,7 @@
         : "Couldn't start the camera (" + (n || "unknown") + (lastErr && lastErr.message ? ": " + lastErr.message : "") + ")");
       return;
     }
-    status("");
+    status(""); await widen(stream);
     if (!stream.getAudioTracks().length) say("Going live without sound: the microphone wasn't allowed.");
     let room;
     try { room = await joinRoom(ME()); } catch (e) { stream.getTracks().forEach((t) => t.stop()); reset(); status(e.message || "Couldn't connect. Try again."); return; }
@@ -232,6 +255,7 @@
       hosting.stream.getTracks().forEach((t) => pc.addTrack(t, hosting.stream));
       pc.onicecandidate = (e) => { if (e.candidate) room.emit("ice", { to: data.peer, from: "host", c: e.candidate.toJSON() }); };
       pc.onconnectionstatechange = () => { if (/failed|closed|disconnected/.test(pc.connectionState)) { try { pc.close(); } catch (_) {} delete hosting?.peers[data.peer]; count(); } else count(); };
+      hiQuality(pc);
       const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
       room.emit("offer", { to: data.peer, sdp: pc.localDescription.toJSON() });
     });
@@ -255,9 +279,9 @@
   async function flip() {
     if (!hosting) return; facing = facing === "user" ? "environment" : "user";
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } }); const nt = s.getVideoTracks()[0];
+      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } } }); await widen(s); const nt = s.getVideoTracks()[0];
       const old = hosting.stream.getVideoTracks()[0]; hosting.stream.removeTrack(old); old.stop(); hosting.stream.addTrack(nt);
-      Object.values(hosting.peers).forEach((pc) => { const snd = pc.getSenders().find((x) => x.track && x.track.kind === "video"); if (snd) snd.replaceTrack(nt); });
+      Object.values(hosting.peers).forEach((pc) => { const snd = pc.getSenders().find((x) => x.track && x.track.kind === "video"); if (snd) snd.replaceTrack(nt).then(() => hiQuality(pc)).catch(() => {}); });
       paintStage();
     } catch (_) { say("Couldn't switch cameras."); }
   }
@@ -323,10 +347,10 @@
       const to = b.dataset.giftlive; if (typeof openGift !== "function") return;
       openGift(to);
       const dlg = document.getElementById("gift-dialog"); if (!dlg || !dlg.open) return; // not opened (not a member, or gifting yourself)
-      const form = document.getElementById("gift-form");
-      dlg.addEventListener("close", () => form.removeEventListener("submit", once), { once: true }); // cancelled: don't fire on a later gift
-      const once = () => { form.removeEventListener("submit", once); setTimeout(() => { const g = (typeof giftKind !== "undefined" ? giftKind : "rose"); const r = to === ME() ? hosting && hosting.room : (watching[to] || {}).room; if (r) r.emit("gift", { uid: ME(), kind: g }); fly(to, g); }, 300); };
-      form.addEventListener("submit", once);
+      // only after the gift really went through (paid gifts can fail for not enough coins)
+      const sent = (ev) => { const d = ev.detail || {}; if (d.to !== to) return; document.removeEventListener("mw-gift-sent", sent); const g = d.kind || "rose"; const r = to === ME() ? hosting && hosting.room : (watching[to] || {}).room; if (r) r.emit("gift", { uid: ME(), kind: g }); fly(to, g); };
+      document.addEventListener("mw-gift-sent", sent);
+      dlg.addEventListener("close", () => setTimeout(() => document.removeEventListener("mw-gift-sent", sent), 50), { once: true });
     }
   });
   root.addEventListener("input", (e) => { if (e.target.id === "gl-title") titleDraft = e.target.value; });

@@ -1983,6 +1983,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   <form id="gift-form" method="dialog">
     <h3 style="font-size:22px">Send a gift to <span id="gift-to"></span></h3>
     <div class="gift-grid" id="gift-grid"></div>
+    <div id="coin-bar" hidden></div>
     <div class="field"><label for="gift-note">Note (optional)</label><input type="text" id="gift-note" maxlength="80"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="submit">Send gift</button></div>
   </form>
@@ -2185,9 +2186,14 @@ $("#gift-grid").innerHTML=GIFTS.map(([k,e,n])=>`<button class="gift" type="butto
 $("#gift-grid").addEventListener("click",e=>{const b=e.target.closest("[data-gift]"); if(!b) return; giftKind=b.dataset.gift; $$("#gift-grid .gift").forEach(x=>x.setAttribute("aria-pressed",x===b));});
 function openGift(uid){ if(!needMember()) return; if(uid===me){toast("Send gifts to other members.");return;} giftTo=uid; $("#gift-to").textContent=handleOf(uid); $("#gift-dialog").showModal(); }
 $("#gift-form").addEventListener("submit",async e=>{ e.preventDefault();
-  try{ await db.collection("gifts").add({from:me,to:giftTo,kind:giftKind,note:$("#gift-note").value.trim(),createdAt:Date.now()});
-    db.doc("members/"+giftTo).update({giftsReceived:(members[giftTo]?.giftsReceived||0)+1}).catch(()=>{});
-    $("#gift-note").value=""; $("#gift-dialog").close(); toast("Gift sent to "+handleOf(giftTo)); }
+  const to=giftTo, kind=giftKind, note=$("#gift-note").value.trim();
+  try{
+    // paid gifts (coins): js/coins.js handles buying, the 60/40 split and cash-outs
+    let how=false; if(window.MW_COINS && MW_COINS.paid){ how=await MW_COINS.send(to,kind,note); if(!how) return; }
+    if(how!=="paid") await db.collection("gifts").add({from:me,to,kind,note,createdAt:Date.now()});
+    db.doc("members/"+to).update({giftsReceived:(members[to]?.giftsReceived||0)+1}).catch(()=>{});
+    $("#gift-note").value=""; $("#gift-dialog").close(); toast("Gift sent to "+handleOf(to));
+    document.dispatchEvent(new CustomEvent("mw-gift-sent",{detail:{to,kind}})); }
   catch(err){ toast(err.message||err.code); }
 });
 function subGifts(){ db.collection("gifts").orderBy("createdAt","desc").limit(300).onSnapshot(s=>{giftLog=s.docs.map(d=>d.data()); renderGifts();}, e=>console.warn(e)); }
@@ -3327,7 +3333,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792580555"></script>
+<script src="js/appnav.js?v=1792599801"></script>
 <script src="js/fb-feed.js?v=1792580555"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/studio.js?v=1792580555"></script>
@@ -3351,11 +3357,12 @@ boot();
 <script src="js/books.js?v=1792580555"></script>
 <script src="js/social.js?v=1792580555"></script>
 <script src="js/jobs.js?v=1792580555"></script>
-<script src="js/golive.js?v=1792580555"></script>
+<script src="js/coins.js?v=1792599801"></script>
+<script src="js/golive.js?v=1792599801"></script>
 <script src="js/predict.js?v=1792580555"></script>
 <script src="js/people.js?v=1792580555"></script>
 <script src="js/originals.js?v=1792580555"></script>
-<script src="js/welcome-show.js?v=1792580555"></script>
+<script src="js/welcome-show.js?v=1792599841"></script>
 <script src="js/profile-setup.js?v=1792580555"></script>
 <script src="js/profile-page.js?v=1792580555"></script>
 <script src="js/social-login.js?v=1792580555"></script>

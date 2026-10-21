@@ -128,4 +128,14 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
     quietRadio(); play(i, true); choices();
   }
   window.MW_show = { start, pause: () => pause(true), resume, active: () => on, loud };
+  // the "▶ Meechie's videos" button is always there in the bottom-left, even on visits where the
+  // welcome videos didn't start by themselves (coming straight to a page, or already signed in)
+  let tries = 0;
+  const keepPill = setInterval(() => {
+    if (++tries > 40) return clearInterval(keepPill);
+    if (on || !(window.MW_ORIGINALS || []).length) return;
+    const en = document.getElementById("enter"); if (en && !en.hidden) return;
+    if (!$("#mw-show-pill")) pause(true);
+    clearInterval(keepPill);
+  }, 1500);
 })();
