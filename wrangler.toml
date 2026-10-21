@@ -14,3 +14,7 @@ database_id = "239edbe9-4ae7-462e-ac4a-ecd2c2342a77"
 [[kv_namespaces]]
 binding = "MEDIA"
 id = "4c6c12f437f74296b33c17b9ad441473"
+
+[vars]
+# Google's public sign-in id (the "Continue with Google" button). Not a secret.
+GOOGLE_CLIENT_ID = "429216763635-bfgt31qbolbj0ijh5b5ckqcfb63ftt9u.apps.googleusercontent.com"
