@@ -4,7 +4,7 @@
   "use strict";
   const TABS = [
     ["home", "Home", '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
-    ["community", "Feed", '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 20c0-2.4 1.4-4.4 3.5-5"/>'],
+    ["community", "Meechie's Book", '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 20c0-2.4 1.4-4.4 3.5-5"/>'],
     ["clips", "Clips", '<path d="M8 5v14l11-7z"/>'],
     ["radio", "Radio", '<circle cx="12" cy="13" r="3"/><path d="M5 9h14v11H5zM7 9l9-5"/>'],
   ];
@@ -36,10 +36,20 @@
 }
 #hdr-right{display:flex;align-items:center;gap:6px;flex:none;margin-left:8px}
 @media (max-width:640px){#hdr-right{position:absolute;right:16px;top:12px;margin:0}#hdr-right .authbar{position:static!important;margin:0}}
-#hdr-menu{display:inline-grid;place-items:center;gap:0;border:1px solid var(--gold,#d4a843);background:#15130f;color:var(--gold-hi,#f0cf78);border-radius:12px;padding:7px 12px;font:800 13px var(--body,system-ui);cursor:pointer;margin-left:8px}
-@media (min-width:761px), (pointer:fine){#hdr-menu{display:none}header.bar nav.tabs{flex-wrap:wrap!important;overflow:visible!important;row-gap:4px}}
+#hdr-menu{display:inline-flex!important;align-items:center;place-items:center;gap:0;border:1px solid var(--gold,#d4a843);background:#15130f;color:var(--gold-hi,#f0cf78);border-radius:12px;padding:7px 12px;font:800 13px var(--body,system-ui);cursor:pointer;margin-left:8px}
+/* computers: one clean row with the main sections; everything else is under "☰ Menu" */
+@media (min-width:761px), (pointer:fine){
+  header.bar nav.tabs{flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important}
+  header.bar nav.tabs a:not(.core):not([aria-current=page]){display:none!important}
+  .appmore{align-items:flex-start;justify-content:flex-end}
+  .appmore .sheet{width:min(560px,calc(100vw - 32px));max-height:min(80dvh,720px);margin:76px 16px 0 0;border:1px solid var(--gold,#d4a843);border-radius:20px;padding:14px 16px 16px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .appmore .grab{display:none}
+  .appmore .grid{grid-template-columns:repeat(4,1fr)}
+}
+header.bar{backdrop-filter:blur(16px)}
+nav.tabs a{letter-spacing:.02em}
 .apptab{display:none;position:fixed;left:0;right:0;bottom:0;z-index:9990;height:var(--tabbar);padding-bottom:env(safe-area-inset-bottom,0px);grid-template-columns:repeat(5,1fr);background:color-mix(in srgb,#0b0a08 94%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--gold-lo,#8c6d26)}
-.apptab a,.apptab button{display:grid;justify-items:center;align-content:center;gap:3px;color:var(--muted,#a99f8b);text-decoration:none;font:700 10.5px var(--body,system-ui);background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.apptab a,.apptab button{display:grid;justify-items:center;align-content:center;gap:3px;white-space:nowrap;letter-spacing:-.01em;color:var(--muted,#a99f8b);text-decoration:none;font:700 10.5px var(--body,system-ui);background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .apptab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
 .apptab a[aria-current=page]{color:var(--gold-hi,#f0cf78)}
 .apptab a[aria-current=page] svg{filter:drop-shadow(0 0 6px rgba(212,168,67,.6))}
@@ -56,6 +66,9 @@
   document.head.appendChild(css);
 
   const ICON = { live: "🔴", predict: "🔮", jobs: "💼", books: "📚", liveradio: "📡", livetv: "📺", home: "🏠", services: "🧰", shop: "🛍️", community: "👥", radio: "📻", clips: "🎬", videos: "📺", world: "🌐", games: "🎮", creators: "🎨", chat: "💬", messages: "✉️", ads: "📌", promote: "📣", contact: "📞", friends: "🤝", dating: "💘", studio: "🎚️", preach: "✝️", markets: "📈", coin: "🪙", legal: "⚖️" };
+  // the sections that always show in the computer header row (the rest live under "☰ Menu")
+  const CORE = ["home", "community", "radio", "videos", "shop", "books", "dating", "messages", "live"];
+  document.querySelectorAll("header nav.tabs a[data-go]").forEach((a) => { if (CORE.includes(a.dataset.go)) a.classList.add("core"); });
   const bar = document.createElement("nav");
   bar.className = "apptab"; bar.setAttribute("aria-label", "App tabs");
   bar.innerHTML = TABS.map(([v, n, p]) => `<a href="#${v}" data-go="${v}"><svg viewBox="0 0 24 24" aria-hidden="true">${p}</svg>${n}</a>`).join("") +
