@@ -146,7 +146,7 @@
       : state === "denied" ? `<p>Your camera is turned off for this site, so your phone won't ask again by itself.</p><p>${fix}</p>`
       : `<p>To go live, Meechie's World needs your <b>camera</b> and <b>microphone</b>. When your phone asks, tap <b>Allow</b>.</p>${msg ? `<p style="color:#ffb4b4">${E(msg)}</p>` : ""}`;
     m.innerHTML = `<div style="width:min(420px,100%);background:#15130f;border:1px solid var(--gold,#d4a843);border-radius:20px;padding:22px;color:var(--text,#f3ecdc);font:16px/1.45 var(--body,system-ui);display:grid;gap:10px;text-align:center">
-      <div style="font-size:44px">🎥🎤</div><h3 style="margin:0;font-size:21px">Allow camera &amp; microphone</h3>${body}
+      <div class="gi-hero" style="font-size:44px">🎥🎤</div><h3 style="margin:0;font-size:21px">Allow camera &amp; microphone</h3>${body}
       ${inApp ? "" : `<button class="btn" type="button" id="gl-perm-ok" style="background:#e5484d;color:#fff;font-size:17px;padding:13px">${state === "denied" ? "I turned it on — reload" : "Allow camera"}</button>`}
       <button class="btn ghost" type="button" id="gl-perm-no">Not now</button></div>`;
     m.hidden = false; m.dataset.from = "live";
@@ -188,7 +188,7 @@
       if (!m) { m = document.createElement("div"); m.id = "gl-perm"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true");
         m.style.cssText = "position:fixed;inset:0;z-index:10060;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:16px"; document.body.appendChild(m); }
       m.innerHTML = `<div style="width:min(420px,100%);background:#15130f;border:1px solid var(--gold,#d4a843);border-radius:20px;padding:22px;color:var(--text,#f3ecdc);font:16px/1.45 var(--body,system-ui);display:grid;gap:10px;text-align:center">
-        <div style="font-size:44px">🎥🎤</div><h3 style="margin:0;font-size:21px">Turn on your camera &amp; mic?</h3>
+        <div class="gi-hero" style="font-size:44px">🎥🎤</div><h3 style="margin:0;font-size:21px">Turn on your camera &amp; mic?</h3>
         <p>Meechie's World uses your <b>camera</b> and <b>microphone</b> to go live, record in the Studio, send voice messages, and talk to Meechie's AI.</p>
         <p class="muted" style="font-size:14px;margin:0">Nothing turns on until you use one of those. When your phone asks, tap <b>Allow</b>.</p>
         <button class="btn" type="button" id="gl-perm-ok" style="font-size:17px;padding:13px">Allow camera &amp; mic</button>

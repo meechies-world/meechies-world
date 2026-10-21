@@ -1,0 +1,105 @@
+/* ============================================================================
+   Gold graphics pack (Oct 2026): gold-foil line icons, section medallions,
+   poster-backed section headers, moving foil shine, glowing cards and buttons,
+   and a faint gold dust. Works with js/gold-icons.js. Scoped under html.lux.
+   Phones first: nothing here covers the page or takes taps.
+   ========================================================================== */
+
+/* ---------- gold line icons ---------- */
+html.lux .gi{width:1.2em;height:1.2em;flex:none;display:inline-block;vertical-align:-.22em;fill:none;stroke:url(#gi-g);stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 3px rgba(255,200,90,.45)) drop-shadow(0 1px 0 rgba(0,0,0,.8));overflow:visible}
+html.lux .gi-live path:first-child{animation:gi-pulse 1.6s ease-in-out infinite}
+html.lux .gi-live{stroke:#ff6b5b}
+html.lux .gi-live path:first-child{fill:#ff4d3d !important}
+@keyframes gi-pulse{50%{opacity:.45}}
+
+/* top stats strip: gold pills */
+html.lux #mw-stats > span,html.lux .stats span{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:linear-gradient(180deg,rgba(255,215,120,.09),rgba(255,215,120,.02));box-shadow:inset 0 0 0 1px rgba(214,170,74,.35),0 2px 10px rgba(0,0,0,.4)}
+html.lux #mw-stats .gi,html.lux .stats .gi{width:16px;height:16px}
+
+/* top nav tab icons */
+html.lux nav.tabs .gi{width:17px;height:17px;margin-right:5px}
+
+/* Meechie's Book header buttons: gold coins */
+html.lux #fb-top button{background:radial-gradient(120% 120% at 30% 20%,#2b2416,#0b0906 70%) !important;box-shadow:inset 0 0 0 1.5px rgba(232,190,100,.75),inset 0 -6px 12px rgba(0,0,0,.6),0 0 14px rgba(255,190,70,.22) !important}
+html.lux #fb-top button .gi{width:22px;height:22px}
+html.lux #fb-top button:active{transform:scale(.94)}
+
+/* Meechie's Book tab row */
+html.lux #fb-tabs button .gi{width:27px;height:27px;opacity:.62;filter:grayscale(.35) drop-shadow(0 1px 0 rgba(0,0,0,.8));transition:opacity .2s,transform .2s,filter .2s}
+html.lux #fb-tabs button[aria-pressed=true] .gi{opacity:1;transform:translateY(-2px) scale(1.08);filter:drop-shadow(0 0 6px rgba(255,205,100,.75)) drop-shadow(0 1px 0 rgba(0,0,0,.8))}
+html.lux #fb-tabs button[aria-pressed=true]{border-bottom-color:transparent !important;background:linear-gradient(0deg,rgba(255,200,90,.14),transparent 70%) !important}
+html.lux #fb-tabs button[aria-pressed=true]::after{content:"";position:absolute;left:14%;right:14%;bottom:0;height:3px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,#8a6524,#ffe08a,#8a6524);box-shadow:0 0 10px rgba(255,210,110,.8)}
+html.lux #fb-tabs button small{font-family:var(--display,Georgia,serif) !important;letter-spacing:.3px}
+
+/* left shortcuts + composer + make-story */
+html.lux #fb-left a span .gi{width:22px;height:22px}
+html.lux #fb-left a > span:first-child{background:radial-gradient(circle at 30% 25%,#2b2416,#0b0906 70%);box-shadow:inset 0 0 0 1px rgba(232,190,100,.55)}
+html.lux #fb-mind .r2 button span{display:inline-grid;place-items:center}
+html.lux #fb-mind .r2 .gi{width:22px;height:22px}
+html.lux #fb-mind .r2 button{border-radius:12px}
+html.lux #fb-mind .r2 button:hover{background:rgba(255,200,90,.08)}
+html.lux .st.add .top:not([style]),html.lux .fb-story.make .top{display:grid;place-items:center;background:radial-gradient(90% 80% at 50% 30%,rgba(255,200,90,.22),transparent 70%),linear-gradient(160deg,#1d180f,#070605) !important}
+html.lux .st.add .top .gi,html.lux .fb-story.make .top .gi{width:46px;height:46px;stroke-width:1.4}
+html.lux .fb-story.make .plus{background:var(--foil-grad) !important;color:#1a1305 !important;box-shadow:0 0 0 3px #0e0c09,0 0 12px rgba(255,200,90,.6) !important}
+
+/* "All sections" sheet */
+html.lux .appmore .grid a > span:first-child,html.lux .sheet .grid a > span:first-child{display:grid;place-items:center;width:52px;height:52px;margin:0 auto 6px;border-radius:16px;background:radial-gradient(120% 120% at 30% 20%,#2e2617,#0a0806 70%);box-shadow:inset 0 0 0 1.5px rgba(232,190,100,.6),0 6px 16px rgba(0,0,0,.55),0 0 12px rgba(255,190,70,.15)}
+html.lux .appmore .grid .gi,html.lux .sheet .grid .gi{width:28px;height:28px}
+
+html.lux .gi-hero{display:flex;justify-content:center;gap:14px}
+html.lux .gi-hero .gi{width:58px;height:58px;stroke-width:1.3}
+
+/* ---------- section titles: medallion + moving foil shine ---------- */
+html.lux .gi-medal{display:grid;place-items:center;width:58px;height:58px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 35% 28%,#3a301c,#0a0806 68%) padding-box,conic-gradient(from 210deg,#8a6524,#ffe9a6,#c8902e,#fff4c2,#8a6524,#ffd76a,#8a6524) border-box;
+  border:2.5px solid transparent;box-shadow:0 0 0 1px rgba(0,0,0,.8),0 0 22px rgba(255,190,70,.35),inset 0 -8px 14px rgba(0,0,0,.6)}
+html.lux .gi-medal .gi{width:30px;height:30px;stroke-width:1.6}
+html.lux .gi-medal{display:inline-grid;margin:0 0 10px;vertical-align:top}
+html.lux .section-head h2,html.lux .lux-foil{background-size:240% 100%,320px 320px !important;animation:gi-shine 7s linear infinite}
+@keyframes gi-shine{from{background-position:0% 0,0 0}to{background-position:240% 0,320px 0}}
+
+/* poster behind each section header */
+html.lux .view[data-theme] .section-head{border-radius:20px;padding:22px 18px 22px !important;margin-bottom:22px;overflow:hidden;isolation:isolate;
+  box-shadow:inset 0 0 0 1px rgba(214,170,74,.35),0 18px 40px rgba(0,0,0,.55)}
+html.lux .view[data-theme] .section-head::before{content:"";position:absolute;inset:0;z-index:-1;
+  background:linear-gradient(90deg,rgba(5,5,5,.97) 0%,rgba(5,5,5,.9) 42%,rgba(5,5,5,.35) 78%,rgba(5,5,5,.55) 100%),radial-gradient(80% 120% at 100% 0%,rgba(255,190,80,.22),transparent 60%),var(--gi-poster,url("/img/lux/p-vision.webp")) right 22% / 48% auto no-repeat,#0b0907}
+html.lux .view[data-theme] .section-head::after{left:18px !important;right:18px !important;bottom:0 !important}
+html.lux .view[data-theme=services]{--gi-poster:url("/img/lux/p-build.webp")}
+html.lux .view[data-theme=shop]{--gi-poster:url("/img/lux/p-money.webp")}
+html.lux .view[data-theme=radio],html.lux .view[data-theme=studio],html.lux .view[data-theme=liveradio]{--gi-poster:url("/img/lux/p-movement.webp")}
+html.lux .view[data-theme=live],html.lux .view[data-theme=livetv],html.lux .view[data-theme=world]{--gi-poster:url("/img/lux/p-global.webp")}
+html.lux .view[data-theme=legal],html.lux .view[data-theme=preach]{--gi-poster:url("/img/lux/p-faith.webp")}
+html.lux .view[data-theme=books],html.lux .view[data-theme=exclusives]{--gi-poster:url("/img/lux/p-legacy.webp")}
+html.lux .view[data-theme=friends],html.lux .view[data-theme=chat],html.lux .view[data-theme=messages]{--gi-poster:url("/img/lux/p-support.webp")}
+html.lux .view[data-theme=fans],html.lux .view[data-theme=dating],html.lux .view[data-theme=creators]{--gi-poster:url("/img/lux/p-dreams.webp")}
+html.lux .view[data-theme=markets],html.lux .view[data-theme=coin],html.lux .view[data-theme=predict]{--gi-poster:url("/img/lux/p-money.webp")}
+html.lux .view[data-theme=jobs],html.lux .view[data-theme=ads],html.lux .view[data-theme=promote]{--gi-poster:url("/img/lux/p-real.webp")}
+html.lux .view[data-theme] .section-head .muted{max-width:62%;text-shadow:0 1px 2px #000}
+@media (max-width:600px){html.lux .view[data-theme] .section-head .muted{max-width:none}
+  html.lux .view[data-theme] .section-head::before{background:linear-gradient(180deg,rgba(5,5,5,.62),rgba(5,5,5,.93) 70%),radial-gradient(80% 60% at 100% 0%,rgba(255,190,80,.22),transparent 60%),var(--gi-poster,url("/img/lux/p-vision.webp")) right 18% / 62% auto no-repeat,#0b0907}}
+
+/* ---------- buttons: gold foil with a moving glint ---------- */
+html.lux .btn:not(.ghost){position:relative;overflow:hidden;isolation:isolate}
+html.lux .btn:not(.ghost)::after{content:"";position:absolute;top:-20%;bottom:-20%;width:38%;left:-60%;z-index:1;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.55) 50%,transparent);transform:skewX(-18deg);animation:gi-glint 4.8s ease-in-out infinite}
+@keyframes gi-glint{0%,62%{left:-60%}100%{left:140%}}
+html.lux .btn:active{transform:translateY(1px) scale(.985)}
+
+/* ---------- cards & posts: gold edge, depth, warm top light ---------- */
+html.lux .card,html.lux #feed .post,html.lux .post{box-shadow:inset 0 1px 0 rgba(255,232,160,.16),inset 0 0 0 1px rgba(214,170,74,.24),0 14px 34px rgba(0,0,0,.55) !important}
+html.lux #feed .post,html.lux .card{background-image:radial-gradient(120% 60% at 50% -20%,rgba(255,200,90,.07),transparent 60%) !important}
+html.lux #feed .post .av,html.lux #feed .post .avatar,html.lux #fb-mind .r1 .avatar,html.lux #fb-mind .r1 .av{box-shadow:0 0 0 2px #0e0c09,0 0 0 3.5px #d6aa4a,0 0 12px rgba(255,200,90,.35) !important}
+
+/* stories: gold ring like a crown jewel */
+html.lux .fb-story:not(.make){box-shadow:inset 0 0 0 2px rgba(232,190,100,.7),0 10px 24px rgba(0,0,0,.6) !important}
+
+/* ---------- bottom tab bar: gold glass ---------- */
+html.lux .apptab{background:linear-gradient(180deg,rgba(22,18,11,.92),rgba(5,5,5,.97)) !important;-webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);box-shadow:0 -1px 0 rgba(232,190,100,.45),0 -10px 30px rgba(0,0,0,.6) !important}
+html.lux .apptab a[aria-current] svg{filter:drop-shadow(0 0 6px rgba(255,205,100,.8))}
+
+/* ---------- gold dust ---------- */
+#gi-dust{position:fixed;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;mix-blend-mode:screen;opacity:.75}
+
+@media (prefers-reduced-motion:reduce){
+  html.lux .section-head h2,html.lux .lux-foil,html.lux .gi-live path,html.lux .btn::after,html.lux nav.tabs a::after{animation:none !important}
+}
