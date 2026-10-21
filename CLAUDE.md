@@ -23,6 +23,8 @@ This is the website and app for **Meechie's World Inc** (owner: Daryl "Meechie" 
 - No LV-letter or other brand-copy designs. Don't change his book cover. No fake engagement numbers.
 - The site's AI coder (Edit site → 🛠 AI coder) is on at the owner's request (Oct 2026). It only opens pull requests with a preview; the owner merges them.
 - Ask before sending any email to members.
+- Paid gifts: gifts are only sent with coins bought through Stripe (`functions/api/coins/`). STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are Cloudflare secrets the owner entered himself (Oct 2026); the Stripe webhook "meechies-world-coins" points at /api/coins/webhook. Never allow free gifts. Owner keeps 60%, the member gets 40%.
+- Meechie's Fans (18+) payments go through CCBill only, never Stripe.
 - Phones first: nothing may cover the screen or stack on top of something else. Floating buttons are draggable (`js/float-layout.js`), and pop-ups wait their turn (`MW_screenClear`).
 
 ## Where things are
