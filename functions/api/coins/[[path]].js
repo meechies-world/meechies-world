@@ -12,7 +12,15 @@
 import { json, userFrom, isAdmin, setup, take, change, uuid } from "../../../lib/cf.js";
 
 export const PACKS = { p100: { coins: 100, cents: 100 }, p550: { coins: 550, cents: 500 }, p1150: { coins: 1150, cents: 1000 }, p3000: { coins: 3000, cents: 2500 }, p6250: { coins: 6250, cents: 5000 } };
-export const GIFT_COINS = { rose: 10, mic: 50, gold: 100, fire: 200, crown: 500, diamond: 1000 };
+// Meechie's World gifts, smallest to biggest (1 coin = 1¢). "fx" gifts play a full-screen animation for everyone watching.
+export const GIFTS = [
+  ["rose", "🌹", "Rose", 1], ["heart", "💛", "Gold Heart", 5], ["mic", "🎤", "Mic Drop", 10], ["gg", "👏", "GG", 15], ["fire", "🔥", "Fire", 25],
+  ["crown", "👑", "Crown", 50], ["cash", "💵", "Cash Stack", 99], ["diamond", "💎", "Diamond", 199], ["chain", "⛓️", "Gold Chain", 299],
+  ["moneygun", "💸", "Money Gun", 500], ["lion", "🦁", "Lion", 1000], ["ride", "🚘", "Luxury Ride", 2000], ["jet", "🛩️", "Private Jet", 5000],
+  ["mansion", "🏰", "Mansion", 10000], ["world", "🌍", "Meechie's World", 20000],
+];
+export const GIFT_COINS = Object.fromEntries(GIFTS.map((g) => [g[0], g[3]]));
+GIFT_COINS.gold = 100; // older gift name, still accepted
 const MEMBER_SHARE = 0.4;          // the person who receives the gift
 const MIN_CASHOUT_CENTS = 2000;    // $20
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
@@ -51,7 +59,7 @@ export async function onRequest({ request, env, params }) {
   const paid = !!env.STRIPE_SECRET_KEY;
 
   // public: is the coin shop on, what things cost
-  if (route === "info") return json({ paid, packs: PACKS, gifts: GIFT_COINS, memberShare: MEMBER_SHARE, minCashout: MIN_CASHOUT_CENTS });
+  if (route === "info") return json({ paid, packs: PACKS, gifts: GIFT_COINS, catalog: GIFTS.map(([k, e, n, c]) => ({ k, e, n, c, fx: c >= 500 })), memberShare: MEMBER_SHARE, minCashout: MIN_CASHOUT_CENTS });
 
   // Stripe → us: a purchase finished
   if (route === "webhook" && method === "POST") {
@@ -95,10 +103,11 @@ export async function onRequest({ request, env, params }) {
 
   if (route === "gift" && method === "POST") {
     if (!paid) return err("free_mode", 409);
-    if (!(await take(env, "gift:" + me.id, 60, 30))) return err("Slow down a little.", 429);
+    if (!(await take(env, "gift:" + me.id, 60, 150))) return err("Slow down a little.", 429);
     const b = await request.json().catch(() => ({}));
-    const to = String(b.to || ""), kind = String(b.kind || ""), cost = GIFT_COINS[kind];
-    if (!cost) return err("Pick a gift.");
+    const qty = Math.max(1, Math.min(99, Math.round(+b.qty || 1)));
+    const to = String(b.to || ""), kind = String(b.kind || ""), cost = GIFT_COINS[kind] * qty;
+    if (!GIFT_COINS[kind]) return err("Pick a gift.");
     if (!/^[0-9a-f-]{36}$/.test(to) || to === me.id) return err("You can't send a gift to that person.");
     if (!(await env.DB.prepare("select 1 from docs where path = ?").bind("members/" + to).first())) return err("That member doesn't exist.");
     const note = String(b.note || "").slice(0, 80), now = Date.now(), id = uuid();
@@ -106,7 +115,7 @@ export async function onRequest({ request, env, params }) {
     // take the coins only if they have enough (one statement, so two taps can't spend the same coins twice)
     const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(cost, now, me.id, cost).run();
     if (!spent.meta.changes) return err("not_enough_coins", 402);
-    const gift = { from: me.id, to, kind, note, coins: cost, paid: true, context: String(b.context || "").slice(0, 20), createdAt: now };
+    const gift = { from: me.id, to, kind, qty, note, coins: cost, paid: true, context: String(b.context || "").slice(0, 20), battle: String(b.battle || "").slice(0, 40), createdAt: now };
     const gp = "gifts/" + id, iso = new Date(now).toISOString();
     await env.DB.batch([
       env.DB.prepare("insert into wallets (uid, earned_cents, updated_at) values (?,?,?) on conflict(uid) do update set earned_cents = earned_cents + excluded.earned_cents, updated_at = excluded.updated_at").bind(to, earn, now),
