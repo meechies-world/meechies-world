@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1792563486"></script>
-<meta name="mw-build" content="1792563486">
+<meta name="mw-build" content="1792569601">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc. — Conscientia</title>
 <meta name="description" content="Meechie's World Inc. — music, media, AI, artist development, legal document preparation, creator exclusives, books, apparel, and a community built to grow together.">
@@ -734,90 +734,6 @@ body.has-player .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
   .req{grid-template-columns:1fr}
   .msg{max-width:90%}
 }
-
-/* Meechie's World visual-only polish: luxury black, gold, and subtle celestial detailing. */
-:root{
-  --ink:#080807;--panel:#11100d;--panel-2:#19160f;--line:#3e321c;
-  --gold:#d9ad4b;--gold-hi:#ffe5a0;--gold-lo:#8e6b26;
-  --text:#fbf5e7;--muted:#b8ad96;
-  --r:14px;
-}
-body{
-  background:
-    radial-gradient(ellipse at 50% -14%,rgba(212,168,67,.13),transparent 42rem),
-    radial-gradient(ellipse at 100% 42%,rgba(212,168,67,.045),transparent 32rem),
-    var(--ink);
-  letter-spacing:.005em;
-}
-header.bar{
-  background:rgba(8,8,7,.88);
-  border-bottom-color:rgba(217,173,75,.38);
-  box-shadow:0 8px 32px rgba(0,0,0,.22);
-}
-.brand svg{filter:drop-shadow(0 0 9px rgba(240,207,120,.18))}
-.brand b{letter-spacing:.09em}
-nav.tabs a{transition:color .18s ease,background .18s ease,transform .18s ease}
-nav.tabs a:hover:not([aria-current]){background:rgba(217,173,75,.09);transform:translateY(-1px)}
-.hero{position:relative;isolation:isolate;padding-block:clamp(32px,5vw,68px) 48px}
-.hero:before{
-  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(115deg,rgba(217,173,75,.055),transparent 44%,rgba(217,173,75,.025));
-  border:1px solid rgba(217,173,75,.12);border-radius:24px;
-  mask-image:linear-gradient(#000,transparent 96%);
-}
-.hero h1{
-  background:linear-gradient(115deg,#fff8e7 5%,#f1d17d 48%,#b8872c 88%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  filter:drop-shadow(0 8px 26px rgba(0,0,0,.25));
-}
-.hero h1 span{background:none;-webkit-text-fill-color:var(--gold);text-shadow:0 0 26px rgba(217,173,75,.16)}
-.hero p.lead{color:#c4b9a2;line-height:1.8}
-.crest{filter:drop-shadow(0 20px 40px rgba(0,0,0,.4))}
-.stats{border-color:rgba(217,173,75,.32);background:linear-gradient(90deg,transparent,rgba(217,173,75,.035),transparent)}
-.stats div{border-color:rgba(217,173,75,.2)}
-.stats b{text-shadow:0 0 24px rgba(217,173,75,.13)}
-section.view{padding-block:clamp(32px,5vw,56px) 76px}
-.section-head{margin-bottom:30px}
-.section-head h2{letter-spacing:.015em}
-.section-head h2::after{width:78px;height:2px;box-shadow:0 0 14px rgba(217,173,75,.35)}
-.card,.post,.div,.tier,.ad,.chat,.empty{
-  box-shadow:0 12px 34px rgba(0,0,0,.13);
-}
-.card{background:linear-gradient(145deg,rgba(255,255,255,.025),transparent 50%),var(--panel);border-color:rgba(217,173,75,.2)}
-.divisions{gap:1px;border-color:rgba(217,173,75,.3);background:rgba(217,173,75,.3)}
-.div{background:linear-gradient(145deg,rgba(217,173,75,.035),transparent 55%),var(--panel);transition:background .2s ease}
-.div:hover{background:linear-gradient(145deg,rgba(217,173,75,.085),transparent 65%),var(--panel)}
-.div .code{letter-spacing:.18em}
-.book{background:radial-gradient(ellipse at 75% 15%,rgba(217,173,75,.13),transparent 55%),linear-gradient(135deg,#20190d,#080807 78%);box-shadow:inset 6px 0 0 #000,inset 8px 0 0 var(--gold-lo),8px 12px 22px rgba(0,0,0,.25)}
-.btn{box-shadow:0 5px 18px rgba(217,173,75,.1);transition:transform .18s ease,background .18s ease,box-shadow .18s ease}
-.btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(217,173,75,.18)}
-.btn.ghost{box-shadow:none}
-.chip,.act,.channels button{transition:background .16s ease,color .16s ease,border-color .16s ease}
-.chip:hover{border-color:var(--gold-lo);color:var(--gold-hi);background:rgba(217,173,75,.06)}
-.post,.ad,.tier{border-color:rgba(217,173,75,.19)}
-.post:hover,.ad:hover{border-color:rgba(217,173,75,.38)}
-.post.sponsored,.tier.feature{background:radial-gradient(ellipse at 90% 0%,rgba(217,173,75,.10),transparent 48%),var(--panel)}
-.avatar{box-shadow:inset 0 0 0 2px rgba(217,173,75,.04);background:radial-gradient(circle at 30% 25%,#2b2416,var(--panel-2) 72%)}
-input[type=text],input[type=url],input[type=email],textarea,select{
-  background:#090907;border-color:#40341f;transition:border-color .18s ease,box-shadow .18s ease
-}
-input:focus,textarea:focus,select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(217,173,75,.09)}
-.rule{opacity:.8}
-dialog{box-shadow:0 30px 100px rgba(0,0,0,.6)}
-@media(max-width:760px){
-  .hero{gap:22px;padding:28px 18px 32px}
-  .hero h1{font-size:clamp(40px,12vw,66px)}
-  .hero p.lead{font-size:17px;line-height:1.7}
-  .crest{width:min(260px,76vw)}
-  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .stats div:nth-child(2){border-right:0}
-  .stats div:nth-child(-n+2){border-bottom:1px solid rgba(217,173,75,.2)}
-  .section-head{align-items:start}
-}
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
-}
-
 </style>
 <style>
 @media (max-width:640px){#radio-note{top:auto;bottom:calc(150px + env(safe-area-inset-bottom,0px))}}
@@ -939,31 +855,6 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 @media(max-width:980px){.mw-path-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){#v-home .hero{padding:28px 16px;border-radius:20px}.mw-launchpad-head{display:block}.mw-launchpad-head>p{margin-top:10px}.mw-path-grid{grid-template-columns:1fr}.mw-path{display:grid;grid-template-columns:92px 1fr}.mw-path-art{height:100%;min-height:148px;border-bottom:0;border-right:1px solid rgba(216,180,90,.16)}.mw-path-art:before{width:50px;height:50px}.mw-path-art:after{width:34px;height:34px}.mw-path-copy{padding:14px}.mw-path-copy b{font-size:18px}#v-legal .lg-fee-steps{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.mw-path{transition:none}.mw-path:hover{transform:none}}
-</style>
-
-
-
-
-
-<style id="mw-art-direction">
-:root{--ink:#050608!important;--panel:#0b0c10!important;--panel-2:#12141a!important;--line:rgba(204,171,92,.30)!important;--gold:#d6ae55!important;--gold-hi:#fff0bd!important;--gold-lo:#826124!important;--text:#f7f3e9!important;--muted:#b6b3ad!important;--ice:#b8d9ed;--ice-hi:#eef9ff;--r:16px}
-html{background:#050608!important;scroll-behavior:smooth}
-body{color:var(--text)!important;background:radial-gradient(ellipse at 50% -10%,rgba(185,215,239,.12),transparent 38rem),radial-gradient(ellipse at 4% 22%,rgba(214,174,85,.11),transparent 32rem),radial-gradient(ellipse at 96% 60%,rgba(115,150,184,.08),transparent 35rem),#050608!important}
-body:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.12;background-image:linear-gradient(rgba(220,190,122,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(220,190,122,.12) 1px,transparent 1px);background-size:64px 64px;mask-image:linear-gradient(to bottom,#000,transparent 88%)}
-header.bar{background:rgba(5,6,8,.9)!important;border-bottom:1px solid rgba(214,174,85,.4)!important;box-shadow:0 12px 40px rgba(0,0,0,.55);backdrop-filter:blur(18px)}
-.bar-in{min-height:76px}.brand{gap:12px}.brand svg{filter:drop-shadow(0 0 10px rgba(214,174,85,.36))}.brand b{letter-spacing:.13em!important;text-shadow:0 2px 18px rgba(214,174,85,.12)}.brand small{letter-spacing:.22em!important;color:#c6b47e!important}
-nav.tabs{gap:5px}nav.tabs a{border:1px solid transparent;transition:background .2s,border-color .2s,color .2s}nav.tabs a[aria-current=page]{background:linear-gradient(135deg,#fff1c3,#d6ae55 45%,#846123)!important;color:#08090b!important;box-shadow:0 5px 20px rgba(214,174,85,.2);border-color:#f3d98c!important}nav.tabs a:hover:not([aria-current]){border-color:rgba(214,174,85,.34);background:rgba(214,174,85,.07);color:#fff0bd}
-.wrap{position:relative}.section-head{border-bottom-color:rgba(214,174,85,.24)!important}.section-head h2,.tt-head h3{background:linear-gradient(180deg,#fff9e6 0%,#f4d98c 34%,#c59a3c 62%,#fff0bd 80%,#9b762c 100%);-webkit-background-clip:text;background-clip:text;color:transparent}.eyebrow{color:#dfc57f!important;letter-spacing:.18em!important}.muted,small.muted{color:#b6b3ad!important}
-.card,.post,.tier,.ad,.div,.prod,.social,.pr-card,.mk-card,.cn-card,.tt-box,.feat-vid,.hero{border:1px solid rgba(214,174,85,.25)!important;box-shadow:0 20px 55px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025)}
-.card,.post,.tier,.ad,.div,.prod,.social,.pr-card,.mk-card,.cn-card,.tt-box{background:linear-gradient(145deg,rgba(19,20,24,.97),rgba(7,8,10,.98))!important;border-radius:16px!important}
-.hero{position:relative;isolation:isolate;overflow:hidden;border-radius:24px!important;background:radial-gradient(ellipse at 50% 0,rgba(214,174,85,.18),transparent 48%),radial-gradient(ellipse at 50% 45%,rgba(160,202,230,.10),transparent 62%),linear-gradient(145deg,#15120b 0%,#090a0d 54%,#080706 100%)!important;border:1px solid rgba(225,193,117,.58)!important;box-shadow:0 28px 80px rgba(0,0,0,.5),inset 0 0 0 1px rgba(255,241,195,.045)}
-.hero:before{content:"";position:absolute;inset:9px;border:1px solid rgba(214,174,85,.2);border-radius:16px;pointer-events:none;z-index:-1}.hero:after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.32;z-index:-2;background:linear-gradient(120deg,transparent 10%,rgba(213,230,244,.055) 45%,transparent 68%),radial-gradient(circle at 50% 40%,transparent 0 22%,rgba(214,174,85,.07) 22.2% 22.5%,transparent 22.8%)}
-.hero .crest{filter:drop-shadow(0 0 16px rgba(214,174,85,.2))}.hero .pillar-col{filter:drop-shadow(0 0 10px rgba(214,174,85,.13))}
-.btn,button.btn,button:not(.plain){transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}.btn:not(.ghost),button.btn:not(.ghost){background:linear-gradient(135deg,#fff0bd 0%,#d6ae55 43%,#866326 100%)!important;color:#08090b!important;border:1px solid #f2d88b!important;box-shadow:0 8px 24px rgba(214,174,85,.17)}.btn.ghost,.btn.secondary{background:linear-gradient(135deg,rgba(190,220,240,.055),rgba(214,174,85,.045))!important;border:1px solid rgba(214,174,85,.4)!important;color:#f8e5a8!important}.btn:hover,button.btn:hover{transform:translateY(-2px);box-shadow:0 13px 30px rgba(214,174,85,.23)}
-input,textarea,select{background:#08090c!important;color:#f7f3e9!important;border:1px solid rgba(214,174,85,.3)!important;border-radius:10px!important}input:focus,textarea:focus,select:focus{border-color:#e9ca76!important;box-shadow:0 0 0 3px rgba(214,174,85,.13)!important}input::placeholder,textarea::placeholder{color:#777978!important}
-.announce{border-color:rgba(214,174,85,.32)!important;background:linear-gradient(100deg,#12110d,#0b0c10)!important}footer,.footer{border-top:1px solid rgba(214,174,85,.25)!important}a{transition:color .18s ease}a:hover{color:#fff0bd}hr{border-color:rgba(214,174,85,.2)!important}table th{color:#f3d98c}.badge,.pill{border-color:rgba(214,174,85,.32)!important}.gated #gate,.gate{background:radial-gradient(ellipse at 50% 0,rgba(214,174,85,.14),transparent 60%),#08090b!important}
-@media(max-width:760px){.bar-in{min-height:62px}body{background:radial-gradient(ellipse at 50% -5%,rgba(185,215,239,.1),transparent 25rem),radial-gradient(ellipse at 0 25%,rgba(214,174,85,.08),transparent 24rem),#050608!important}.hero{border-radius:17px!important}.hero:before{inset:6px;border-radius:11px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn,button.btn{transition:none!important}}
 </style>
 </head>
 <body>
@@ -1225,9 +1116,6 @@ input,textarea,select{background:#08090c!important;color:#f7f3e9!important;borde
         <a class="mw-path mw-path-exclusive" href="#exclusives" data-go="exclusives"><span class="mw-path-art" aria-hidden="true"><span>♛</span></span><span class="mw-path-copy"><small>CREATOR MEMBERSHIPS</small><b>Meechies Exclusives</b><em>Explore creator fan clubs and premium content experiences.</em><strong>Explore Exclusives ↗</strong></span></a>
       </div>
     </div>
-
-
-    
 
     <div class="card tt-box" style="margin-top:56px">
       <div class="tt-head"><div><p class="eyebrow" style="margin:0">Only on Meechie's World</p><h3 style="margin:2px 0 0">Meechie's World Originals</h3></div></div>
@@ -3448,7 +3336,7 @@ boot();
 <script src="js/messages.js?v=1792563486"></script>
 <script src="js/videos.js?v=1792563486"></script>
 <script src="js/markets.js?v=1792563486"></script>
-<script src="js/legal.js?v=1792563486"></script>
+<script src="js/legal.js?v=1792569601"></script>
 <script src="js/coin.js?v=1792563486"></script>
 <script src="js/preach.js?v=1792563486"></script>
 <script src="js/world3d.js?v=1792563486"></script>
@@ -3478,7 +3366,5 @@ boot();
 <script src="js/engage.js?v=1792563486"></script>
 <script src="js/visitors.js?v=1792563486"></script>
 <script src="js/ai-widget.js?v=1792563486"></script>
-
-
 </body>
 </html>
