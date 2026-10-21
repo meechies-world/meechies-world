@@ -10,12 +10,16 @@
  */
 (function () {
   const cfg = window.MW_CONFIG || {};
-  const ready = !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
-  const sb = ready ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
+  const CF = cfg.BACKEND === "cf" && !!window.MW_CF; // Meechie's World's own free backend on Cloudflare
+  const ready = CF || !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
+  const sb = CF ? window.MW_CF.createClient() : ready ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
     realtime: { params: { eventsPerSecond: 20 } }
   }) : null;
-  window.MW = { sb, ready };
+  window.MW = { sb, ready, cf: CF };
+  // where uploads go: Cloudflare (free) or the old Supabase storage
+  const upURL = (bucket, path) => (CF ? "/api/cf/upload/" + bucket + "/" + path : cfg.SUPABASE_URL + "/storage/v1/object/" + bucket + "/" + path);
+  const upHeaders = (x, type) => { x.setRequestHeader("authorization", "Bearer " + session.access_token); if (!CF) x.setRequestHeader("apikey", cfg.SUPABASE_ANON_KEY); x.setRequestHeader("content-type", type); };
 
   let session = null, adminFlag = false;
   const sessionReady = (async () => {
@@ -24,7 +28,7 @@
     session = data.session;
     // A saved sign-in whose hourly token is being renewed can come back empty for a moment:
     // try renewing it before treating the person as signed out.
-    if (!session && Object.keys(localStorage).some((k) => /^sb-.*-auth-token$/.test(k) && localStorage.getItem(k))) {
+    if (!session && !CF && Object.keys(localStorage).some((k) => /^sb-.*-auth-token$/.test(k) && localStorage.getItem(k))) {
       try { const r = await Promise.race([sb.auth.refreshSession(), new Promise((res) => setTimeout(() => res({}), 6000))]); if (r && r.data && r.data.session) session = r.data.session; } catch (_) {}
     }
     if (session) {
@@ -220,7 +224,7 @@
 
   /* ---------- member videos (bucket "media", each member's own folder) ---------- */
   const VTYPES = { mp4: "video/mp4", m4v: "video/x-m4v", mov: "video/quicktime", webm: "video/webm", "3gp": "video/3gpp", mkv: "video/x-matroska" };
-  window.MW.VIDEO_MAX = 50 * 1024 * 1024;
+  window.MW.VIDEO_MAX = (CF ? 25 : 50) * 1024 * 1024;
   /* Big phone videos (over 50 MB) get shrunk to 720p in the browser before uploading, so any clip can be posted. */
   window.MW.shrinkVideo = (file, onProg) => new Promise((res, rej) => {
     const v = document.createElement("video"); v.muted = false; v.playsInline = true; v.preload = "auto"; v.src = URL.createObjectURL(file);
@@ -229,7 +233,7 @@
       try {
         const dur = v.duration || 60, scale = Math.min(1, 720 / Math.min(v.videoWidth || 720, v.videoHeight || 720));
         const W = Math.round((v.videoWidth || 720) * scale / 2) * 2, H = Math.round((v.videoHeight || 1280) * scale / 2) * 2;
-        const kbps = Math.max(600, Math.min(2500, Math.floor((40 * 8 * 1024) / dur))); // aim under ~40 MB
+        const kbps = Math.max(450, Math.min(2500, Math.floor(((CF ? 21 : 40) * 8 * 1024) / dur))); // aim under the size limit
         const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
         const vs = cv.captureStream(30); let as = null;
         try { const AC = window.AudioContext || window.webkitAudioContext, ac = new AC(), src = ac.createMediaElementSource(v), dst = ac.createMediaStreamDestination(); src.connect(dst); as = dst.stream; } catch (_) {}
@@ -249,24 +253,22 @@
     if (file.size > window.MW.VIDEO_MAX) {
       try { file = await window.MW.shrinkVideo(file, (f) => onProg && onProg(f * 0.5)); const p0 = onProg; onProg = p0 ? (f) => p0(0.5 + f * 0.5) : null; }
       catch (err) { return rej(err); }
-      if (file.size > window.MW.VIDEO_MAX) return rej(new Error("That video is still over 50 MB after shrinking. Post a shorter clip (under about 3 minutes)."));
+      if (file.size > window.MW.VIDEO_MAX) return rej(new Error("That video is still too big after shrinking. Post a shorter clip (under about " + (CF ? "2" : "3") + " minutes)."));
     }
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     let type = file.type || VTYPES[ext] || "video/mp4";
     if (!/^video\//.test(type)) return rej(new Error("Pick a video file (MP4, MOV or WebM)."));
     const path = session.user.id + "/" + newId() + "." + (VTYPES[ext] ? ext : "mp4");
     const x = new XMLHttpRequest();
-    x.open("POST", cfg.SUPABASE_URL + "/storage/v1/object/media/" + path);
-    x.setRequestHeader("authorization", "Bearer " + session.access_token);
-    x.setRequestHeader("apikey", cfg.SUPABASE_ANON_KEY);
-    x.setRequestHeader("content-type", type);
-    x.setRequestHeader("x-upsert", "false");
+    x.open("POST", upURL("media", path));
+    upHeaders(x, type);
+    if (!CF) x.setRequestHeader("x-upsert", "false");
     x.upload.onprogress = (e) => { if (e.lengthComputable && onProg) onProg(e.loaded / e.total); };
     x.onload = () => {
       if (x.status >= 200 && x.status < 300) return res({ path, url: sb.storage.from("media").getPublicUrl(path).data.publicUrl });
       let m = "Upload failed (" + x.status + ")"; try { const j = JSON.parse(x.responseText); m = j.message || j.error || m; } catch (_) {}
       if (/mime|type/i.test(m)) m = "That video type isn't supported. Use MP4, MOV or WebM.";
-      if (/size|large|exceed/i.test(m)) m = "That video is over 50 MB. Trim it or record a shorter clip.";
+      if (/size|large|exceed|25 MB/i.test(m)) m = "That video is too big. Trim it or record a shorter clip.";
       rej(new Error(m));
     };
     x.onerror = () => rej(new Error("Network problem. Check your connection and try again."));
@@ -275,16 +277,14 @@
   // Any member file (song mixdowns, dating photos): same private-folder rules as videos.
   window.MW.uploadMedia = (blob, opts = {}) => new Promise((res, rej) => {
     if (!session) return rej(new Error("Sign in first."));
-    if (blob.size > window.MW.VIDEO_MAX) return rej(new Error("That file is over 50 MB."));
+    if (blob.size > window.MW.VIDEO_MAX) return rej(new Error("That file is too big (over " + Math.round(window.MW.VIDEO_MAX / 1048576) + " MB)."));
     const type = opts.type || blob.type || "application/octet-stream";
     if (!/^(audio|image|video)\//.test(type)) return rej(new Error("That file type isn't supported."));
     const ext = opts.ext || ({ "audio/wav": "wav", "audio/mpeg": "mp3", "audio/webm": "webm", "audio/mp4": "m4a", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[type] || "bin");
     const path = session.user.id + "/" + newId() + "." + ext;
     const x = new XMLHttpRequest();
-    x.open("POST", cfg.SUPABASE_URL + "/storage/v1/object/media/" + path);
-    x.setRequestHeader("authorization", "Bearer " + session.access_token);
-    x.setRequestHeader("apikey", cfg.SUPABASE_ANON_KEY);
-    x.setRequestHeader("content-type", type);
+    x.open("POST", upURL("media", path));
+    upHeaders(x, type);
     x.upload.onprogress = (e) => { if (e.lengthComputable && opts.onProg) opts.onProg(e.loaded / e.total); };
     x.onload = () => { if (x.status >= 200 && x.status < 300) return res({ path, url: sb.storage.from("media").getPublicUrl(path).data.publicUrl }); let m = "Upload failed (" + x.status + ")"; try { const j = JSON.parse(x.responseText); m = j.message || j.error || m; } catch (_) {} rej(new Error(m)); };
     x.onerror = () => rej(new Error("Network problem. Check your connection and try again."));
