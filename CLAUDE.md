@@ -21,7 +21,7 @@ This is the website and app for **Meechie's World Inc** (owner: Daryl "Meechie" 
 - Don't interrupt the live site. Don't delete member data without his OK.
 - Never commit passwords, API keys, tax IDs, SSN or EIN. Secrets go in Cloudflare/Supabase settings, and he enters them himself.
 - No LV-letter or other brand-copy designs. Don't change his book cover. No fake engagement numbers.
-- The site's built-in AI coder stays off unless he says to turn it on.
+- The site's AI coder (Edit site → 🛠 AI coder) is on at the owner's request (Oct 2026). It only opens pull requests with a preview; the owner merges them.
 - Ask before sending any email to members.
 - Phones first: nothing may cover the screen or stack on top of something else. Floating buttons are draggable (`js/float-layout.js`), and pop-ups wait their turn (`MW_screenClear`).
 
