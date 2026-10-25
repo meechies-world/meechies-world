@@ -28,7 +28,10 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
 .pp-av{width:150px;height:150px;border-radius:50%;border:5px solid var(--ink,#0b0a08);outline:3px solid var(--ppc,#d4a843);background:#241d10 center/cover;display:grid;place-items:center;font:800 56px var(--body,system-ui);color:var(--gold-hi,#f0cf78)}
 .pp-name{padding-bottom:10px;min-width:0}.pp-name h2{margin:0;font-size:clamp(24px,4vw,32px);overflow-wrap:anywhere}
 .pp-name .bio{color:var(--muted,#bbb);margin:2px 0}.pp-name .fc{color:var(--muted,#bbb);font-weight:700;font-size:14px}
+.pp-stack{display:flex;margin-top:8px}.pp-stack button{width:34px;height:34px;border-radius:50%;border:2px solid var(--ink,#0b0a08);margin-left:-8px;background:#241d10 center/cover;color:var(--gold-hi,#f0cf78);font:800 13px var(--body,system-ui);cursor:pointer;padding:0;display:grid;place-items:center}.pp-stack button:first-child{margin-left:0}
 .pp-acts{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line,#333)}
+.pp-acts .btn:first-child{flex:1 1 auto}
+.pp-seeall{background:none;border:0;color:var(--gold-hi,#f0cf78);font:700 13px var(--body,system-ui);cursor:pointer;padding:0}
 .pp-tabs{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--line,#333);overflow-x:auto}
 .pp-tabs button{background:none;border:0;color:var(--muted,#bbb);font:700 15px var(--body,system-ui);padding:10px 14px;border-radius:10px;cursor:pointer;white-space:nowrap}
 .pp-tabs button[aria-pressed=true]{color:var(--gold-hi,#f0cf78);box-shadow:inset 0 -3px 0 var(--ppc,#d4a843)}
@@ -45,7 +48,7 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
 .pp-post img,.pp-post video{width:100%;max-height:520px;object-fit:contain;border-radius:12px;background:#000}
 .pp-post p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.pp-post small{color:var(--muted,#bbb)}
 .pp-main{display:grid;gap:12px;align-content:start}
-@media (max-width:720px){.pp-body{grid-template-columns:1fr}.pp-top{grid-template-columns:1fr;justify-items:center;text-align:center;margin-top:-80px}.pp-av{width:140px;height:140px}.pp-acts{justify-content:center}}`;
+@media (max-width:720px){.pp-body{grid-template-columns:1fr}.pp-top{grid-template-columns:1fr;justify-items:center;text-align:center;margin-top:-80px}.pp-av{width:140px;height:140px}.pp-acts{justify-content:center}.pp-stack{justify-content:center}}`;
   document.head.appendChild(css);
 
   function apps(m) {
@@ -65,7 +68,7 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
     const av = img(m.photo), cover = img(m.cover);
     const btn = mine ? `<button class="btn" type="button" data-pp="edit">✏️ Edit profile</button>`
       : `${st === "friends" ? `<button class="btn ghost" type="button" data-pp="unf">✓ Friends</button>` : st === "sent" ? `<button class="btn ghost" type="button" data-pp="unf">Request sent · Cancel</button>` : st === "request" ? `<button class="btn" type="button" data-pp="add">✓ Accept friend request</button>` : `<button class="btn" type="button" data-pp="add">＋ Add friend</button>`}
-         <button class="btn ${st === "friends" ? "" : "ghost"}" type="button" data-dm="${E(uid)}">💬 Message</button>`;
+         <button class="btn ${st === "friends" ? "" : "ghost"}" type="button" data-dm="${E(uid)}">💬 Message</button>${typeof openGift === "function" ? `<button class="btn ghost" type="button" data-pp="gift">🎁 Gift</button>` : ""}`;
     const intro = [
       m.bio && ["💼", E(m.bio)], m.work && ["🏢", "Works at <b>" + E(m.work) + "</b>"], m.school && ["🎓", "Went to <b>" + E(m.school) + "</b>"],
       m.city && ["🏠", "Lives in <b>" + E(m.city) + "</b>"], m.hometown && ["📍", "From <b>" + E(m.hometown) + "</b>"], m.relationship && ["❤️", E(m.relationship)],
@@ -76,8 +79,8 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
     const introCard = `<div class="pp-card pp-intro"><h3>Intro</h3>${intro.map(([i, t]) => `<div><span>${i}</span><span>${t}</span></div>`).join("") || `<p class="muted" style="margin:0">${mine ? "Add your work, school and city in Edit profile." : "Nothing here yet."}</p>`}
       ${Array.isArray(m.interests) && m.interests.length ? `<b style="font-size:14px">Into</b><div class="pp-apps">${m.interests.slice(0, 22).map((x) => `<span style="border:1px solid var(--line,#333);border-radius:999px;padding:5px 11px;font-size:13px">${E(x)}</span>`).join("")}</div>` : ""}
       ${apps(m) ? `<b style="font-size:14px">Apps</b><div class="pp-apps">${apps(m)}</div>` : ""}</div>`;
-    const photoCard = `<div class="pp-card"><h3>Photos</h3>${photos.length ? `<div class="pp-grid">${photos.slice(0, 9).map((p) => `<img src="${E(p.photo)}" alt="" loading="lazy" data-ppimg>`).join("")}</div>` : `<p class="muted" style="margin:0">No photos yet.</p>`}</div>`;
-    const friendCard = `<div class="pp-card"><h3>Friends <small class="muted" style="font-weight:600">${friends.length}</small></h3>${friends.length ? `<div class="pp-fr">${friends.slice(0, 9).map((f) => `<button type="button" data-profile="${E(f)}">${sq(f)}<span>${E((MEM()[f] || {}).handle || "Member")}</span></button>`).join("")}</div>` : `<p class="muted" style="margin:0">No friends yet.</p>`}</div>`;
+    const photoCard = `<div class="pp-card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h3>Photos</h3>${photos.length > 9 ? `<button type="button" class="pp-seeall" data-pptab="photos">See all photos</button>` : ""}</div>${photos.length ? `<div class="pp-grid">${photos.slice(0, 9).map((p) => `<img src="${E(p.photo)}" alt="" loading="lazy" data-ppimg>`).join("")}</div>` : `<p class="muted" style="margin:0">No photos yet.</p>`}</div>`;
+    const friendCard = `<div class="pp-card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h3>Friends <small class="muted" style="font-weight:600">${friends.length}</small></h3>${friends.length > 9 ? `<button type="button" class="pp-seeall" data-pptab="friends">See all friends</button>` : ""}</div>${friends.length ? `<div class="pp-fr">${friends.slice(0, 9).map((f) => `<button type="button" data-profile="${E(f)}">${sq(f)}<span>${E((MEM()[f] || {}).handle || "Member")}</span></button>`).join("")}</div>` : `<p class="muted" style="margin:0">No friends yet.</p>`}</div>`;
     const postList = ps.length ? ps.map((p) => `<article class="pp-post"><small>${typeof ago === "function" ? E(ago(p.createdAt)) : ""}</small>${p.text ? `<p>${E(p.text)}</p>` : ""}${img(p.photo) ? `<img src="${E(p.photo)}" alt="" loading="lazy">` : ""}${/^https:\/\//.test(p.video || "") ? `<video src="${E(p.video)}#t=0.1" controls playsinline preload="metadata"></video>` : ""}</article>`).join("") : `<div class="pp-card"><p class="muted" style="margin:0">${mine ? "You haven't posted yet. Share something in Community." : "No posts yet."}</p></div>`;
     let main = "";
     if (tab === "posts") main = `<div class="pp-body"><div style="display:grid;gap:16px;align-content:start">${introCard}${photoCard}${friendCard}</div><div class="pp-main">${postList}</div></div>`;
@@ -88,7 +91,7 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
     box.innerHTML = `<div class="pp-wrap"><div class="pp-close"><button type="button" data-pp="close" aria-label="Back">←</button><b>${E(m.handle || "Member")}</b></div>
 <div class="pp-cover" style="${cover ? `background-image:url('${E(cover)}')` : ""}">${mine ? `<button class="btn sm ghost ed" type="button" data-pp="edit">📷 ${cover ? "Change" : "Add"} cover photo</button>` : ""}</div>
 <div class="pp-top"><div class="pp-av" style="${av ? `background-image:url('${E(av)}')` : ""}">${av ? "" : E(((m.handle || "?").trim()[0] || "?").toUpperCase())}</div>
-<div class="pp-name"><h2>${E(m.handle || "Member")}</h2>${m.bio ? `<p class="bio">${E(m.bio)}</p>` : ""}<span class="fc">${friends.length} friend${friends.length === 1 ? "" : "s"}</span></div></div>
+<div class="pp-name"><h2>${E(m.handle || "Member")}</h2>${m.bio ? `<p class="bio">${E(m.bio)}</p>` : ""}<span class="fc">${friends.length} friend${friends.length === 1 ? "" : "s"}</span>${friends.length ? `<div class="pp-stack">${friends.slice(0, 8).map((f) => { const fm = MEM()[f] || {}, fp = img(fm.photo); return `<button type="button" data-profile="${E(f)}" title="${E(fm.handle || "Member")}" style="${fp ? `background-image:url('${E(fp)}')` : ""}">${fp ? "" : E(((fm.handle || "?").trim()[0] || "?").toUpperCase())}</button>`; }).join("")}</div>` : ""}</div></div>
 <div class="pp-acts">${btn}</div>
 <div class="pp-tabs">${[["posts", "Posts"], ["about", "About"], ["friends", "Friends"], ["photos", "Photos"]].map(([k, n]) => `<button type="button" data-pptab="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
 ${main}</div>`;
@@ -111,6 +114,7 @@ ${main}</div>`;
       const k = b.dataset.pp;
       if (k === "close") return close();
       if (k === "edit") { const id = uid; close(); window.MW_profileSetup ? MW_profileSetup.open() : say("Open Edit profile from the menu."); return; }
+      if (k === "gift") { if (typeof openGift === "function") openGift(uid); return; }
       if (k === "add") { if (typeof needMember === "function" && !needMember()) return; if (await MW_FRIENDS.add(uid)) say(MW_FRIENDS.status(uid) === "friends" ? "You're friends now!" : "Friend request sent"); paint(); return; }
       if (k === "unf") { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Tap again to remove"; return; } await MW_FRIENDS.remove(uid); paint(); }
     });
