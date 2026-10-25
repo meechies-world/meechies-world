@@ -35,23 +35,36 @@ export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const now = Date.now();
   const origin = new URL(request.url).origin;
+  // presence: every client pings this endpoint every ~12s, so a small ping table
+  // doubles as the site's online count — counts only, no identities are stored
+  const counts = { online: 0, listening: 0 };
+  try {
+    const u = new URL(request.url);
+    const cid = (u.searchParams.get("cid") || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
+    const lis = u.searchParams.get("l") === "1" ? 1 : 0;
+    await env.DB.prepare("create table if not exists pings (cid text primary key, at integer, listening integer)").run();
+    if (cid) await env.DB.prepare("insert into pings (cid, at, listening) values (?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening").bind(cid, now, lis).run();
+    await env.DB.prepare("delete from pings where at < ?").bind(now - 45000).run();
+    const row = await env.DB.prepare("select count(*) as n, coalesce(sum(listening), 0) as l from pings where at > ?").bind(now - 35000).first();
+    if (row) { counts.online = row.n || 0; counts.listening = row.l || 0; }
+  } catch (_) {}
   let S = await readDoc(env, "radio/dj");
-  if (!S) return json({ ok: true, mode: "empty" });
+  if (!S) return json({ ok: true, mode: "empty", online: counts.online, listening: counts.listening });
   S.A = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.A || {});
   S.B = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.B || {});
 
   // The booth has the tables — hands off.
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return json({ ok: true, mode: "booth" });
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return json({ ok: true, mode: "booth", online: counts.online, listening: counts.listening });
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "playlist" });
+    return json({ ok: true, mode: "playlist", online: counts.online, listening: counts.listening });
   }
 
   const { results } = await env.DB.prepare("select data from docs where coll = 'tracks'").all();
   const lib = (results || []).map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
     .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
-  if (!lib.length) return json({ ok: true, mode: "empty-lib" });
+  if (!lib.length) return json({ ok: true, mode: "empty-lib", online: counts.online, listening: counts.listening });
   const byAsset = new Map(lib.map((t) => [t.assetId, t]));
   const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
@@ -146,5 +159,5 @@ export async function onRequestGet({ request, env }) {
   if (!S.live) { S.live = true; S.liveSince = now; changed = true; }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
   if (changed) await writeDoc(env, "radio/dj", "radio", S);
-  return json({ ok: true, mode: "autodj", changed });
+  return json({ ok: true, mode: "autodj", changed, online: counts.online, listening: counts.listening });
 }

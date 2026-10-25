@@ -238,6 +238,8 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .cutbtn.on{background:#7a4fd0;color:#fff;border-color:#7a4fd0}
 .pairwave{width:100%;height:72px;background:#070605;border:1px solid #241d10;border-radius:8px}
 .browtab.on{background:var(--gold);color:#191104;border-color:var(--gold)}
+.online-chip{display:inline-flex;align-items:center;gap:5px;font:700 12px var(--body);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 10px;white-space:nowrap;margin-left:10px}
+.online-chip b{color:#45bd62}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -262,6 +264,7 @@ html.popdj .popdj-hint{display:block}`;
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span class="onair-lamp" id="st-lamp"><span class="dot"></span>OFF AIR</span></div>
   <div class="ticker" id="st-ticker" hidden><span id="st-ticker-t"></span></div>
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
+  <div id="st-online" class="muted" style="font-size:13px"></div>
   <div id="st-show"></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
@@ -273,7 +276,7 @@ html.popdj .popdj-hint{display:block}`;
 <div class="dj" id="dj-owner" hidden>
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
-    <span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
+    <span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-decks">
@@ -622,7 +625,16 @@ html.popdj .popdj-hint{display:block}`;
   // tables and the 24/7 keeper stands down; close the booth and the keeper takes over
   setInterval(() => { if (OWNER() && (S.live || document.getElementById("dj-owner")?.offsetParent)) save(true); }, 10000);
   // the keeper ping: keeps the rotation advancing around the clock, booth open or not
-  const pingKeeper = () => fetch("/api/station", { cache: "no-store" }).catch(() => {});
+  // presence: every client carries a random per-tab id and reports whether it is
+  // listening to the decks; the keeper answers with the live counts, painted into
+  // the header chip, the booth top bar and the station card
+  let myCid = ""; try { myCid = sessionStorage.getItem("mw-cid") || ""; if (!myCid) { myCid = rid(); sessionStorage.setItem("mw-cid", myCid); } } catch (_) { myCid = rid(); }
+  function paintOnline(o, l) {
+    const chip = document.getElementById("online-chip"); if (chip) { chip.hidden = false; const nb = document.getElementById("online-n"); if (nb) nb.textContent = o; }
+    const b = document.getElementById("dj-online"); if (b) b.textContent = "👥 " + o + " online · 🎧 " + l + " on the decks";
+    const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + o + " on the site" : o + " on the site right now";
+  }
+  const pingKeeper = () => fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0), { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.online != null) paintOnline(j.online, j.listening || 0); }).catch(() => {});
   pingKeeper(); setInterval(pingKeeper, 12000);
   setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } paintStation(); }, 30000);
   function startListening() {
