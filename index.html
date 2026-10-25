@@ -127,7 +127,8 @@ textarea{resize:vertical;min-height:90px}
 .post{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:12px;min-width:0}
 .post.sponsored{border-color:var(--gold-lo);background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 8%,var(--panel)),var(--panel))}
 .post-head{display:flex;align-items:center;gap:12px}
-.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--gold-lo);color:var(--gold-hi);font:700 16px var(--display);flex:none}
+.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--gold-lo);color:var(--gold-hi);font:700 16px var(--display);flex:none;position:relative;overflow:hidden}
+.avatar .avimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
 .post-head .who{min-width:0}
 .post-head b{display:block}
 .post-head small{color:var(--muted)}
@@ -996,7 +997,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <form id="gt-form" autocomplete="on">
       <div class="gt-field" id="gt-name-f"><label for="gt-name">Your name</label><input id="gt-name" name="name" maxlength="30" autocomplete="nickname" placeholder="What should we call you?"></div>
       <div class="gt-field"><label for="gt-email">Email</label><input id="gt-email" name="email" type="email" autocomplete="email" required></div>
-      <div class="gt-field"><label for="gt-pass">Password <small>(8+ characters)</small></label><input id="gt-pass" name="password" type="password" minlength="8" autocomplete="new-password" required></div>
+      <div class="gt-field"><label for="gt-pass">Password <small>(6+ characters)</small></label><input id="gt-pass" name="password" type="password" minlength="6" autocomplete="new-password" required></div>
       <p class="gt-msg" id="gt-msg" aria-live="polite"></p>
       <button class="btn" type="submit" id="gt-go">Create my account &amp; enter</button>
       <button class="btn fb-btn" type="button" id="gt-fb" hidden>Continue with Facebook</button>
@@ -1280,7 +1281,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
           <p>Create your free account to post, chat, play, and design.</p><button class="btn" type="button" data-auth="signup" style="margin-top:12px">Join free</button> <button class="btn ghost" type="button" data-auth="signin" style="margin-top:12px">Sign in</button>
         </div>
         <div class="feed" id="feed">
-          <div class="empty" id="feed-empty"><h3>The feed is ready</h3><p>New posts appear here live. Be the first to post a photo or say hello.</p></div>
+          <div class="empty" id="feed-empty" hidden><h3>The feed is ready</h3><p>New posts appear here live. Be the first to post a photo or say hello.</p></div>
         </div>
       </div>
       <aside class="side">
@@ -2059,7 +2060,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <dialog id="pw-dialog">
   <form id="pw-form" method="dialog">
     <h3 style="font-size:22px">Set a new password</h3>
-    <div class="field"><label for="pw-new">New password (at least 8 characters)</label><input type="password" id="pw-new" minlength="8" autocomplete="new-password" required></div>
+    <div class="field"><label for="pw-new">New password (at least 6 characters)</label><input type="password" id="pw-new" minlength="6" autocomplete="new-password" required></div>
     <p class="muted" id="pw-msg" style="margin:0"></p>
     <div style="display:flex;justify-content:flex-end"><button class="btn" type="submit">Save password</button></div>
   </form>
@@ -2071,7 +2072,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <p class="muted" id="auth-sub" style="margin:0;text-align:center">Free forever. Post, chat, play, and design.</p>
     <div id="auth-social" hidden><button class="btn fb-btn" type="button" id="auth-fb"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M13.5 22v-8h2.7l.4-3.2h-3.1V8.8c0-.9.3-1.5 1.6-1.5h1.7V4.4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.2v2.3H7.5V14h2.7v8h3.3z"/></svg>Continue with Facebook</button><p class="muted" style="margin:10px 0 0;text-align:center;font-size:13px">or use your email</p></div>
     <div class="field"><label for="auth-email">Email</label><input type="email" id="auth-email" autocomplete="email" required></div>
-    <div class="field"><label for="auth-pass">Password (8+ characters)</label><input type="password" id="auth-pass" minlength="8" autocomplete="current-password" required style="width:100%;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px"></div>
+    <div class="field"><label for="auth-pass">Password (6+ characters)</label><input type="password" id="auth-pass" minlength="6" autocomplete="current-password" required style="width:100%;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px"></div>
     <p class="muted" id="auth-msg" style="margin:0;font-size:14px;text-align:center" aria-live="polite"></p>
     <button class="btn" type="submit" id="auth-go">Create my account</button>
     <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px">
@@ -2148,7 +2149,8 @@ function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.o
 /* ---------- Live platform ---------- */
 let db=null, user=null, me=null, isOwner=false, members={}, profileMe=null;
 const handleOf = id => members[id]?.handle || "Member";
-const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo); return ph ? `<span class="avatar" data-uid="${esc(id)}" style="background:url('${esc(ph)}') center/cover"></span>` : `<span class="avatar" data-uid="${esc(id)}">${esc(initial(m.handle))}</span>`; };
+const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo); return `<span class="avatar" data-uid="${esc(id)}">${esc(initial(m.handle))}${ph ? `<img class="avimg" src="${esc(ph)}" alt="" loading="lazy">` : ""}</span>`; };
+document.addEventListener("error", (e) => { const t = e.target; if (t && t.classList && t.classList.contains("avimg")) t.remove(); }, true); // a dead photo link falls back to the member's initial instead of an empty circle
 
 async function boot(){
   [db,user] = await Promise.all([claude.use("db"), claude.use("user")]);
@@ -3365,7 +3367,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
 boot();
 </script>
 <script src="js/appnav.js?v=1792602872"></script>
-<script src="js/fb-feed.js?v=1792926401"></script>
+<script src="js/fb-feed.js?v=1792927100"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/stories.js?v=1792607566"></script>
 <script src="js/book-plus.js?v=1792607145"></script>
@@ -3388,7 +3390,7 @@ boot();
 <script src="js/friends.js?v=1792580555"></script>
 <script src="js/dating.js?v=1792580555"></script>
 <script src="js/books.js?v=1792580555"></script>
-<script src="js/social.js?v=1792580555"></script>
+<script src="js/social.js?v=1792927100"></script>
 <script src="js/jobs.js?v=1792580555"></script>
 <script src="js/shop-gift.js?v=1792600603"></script>
 <script src="js/fans.js?v=1792602872"></script>
