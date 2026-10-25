@@ -151,7 +151,9 @@ textarea{resize:vertical;min-height:90px}
 .reply .r-img{display:block;max-width:220px;max-height:260px;border-radius:12px;margin-top:6px;object-fit:cover}
 .empty{text-align:center;padding:44px 20px;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
 .empty h3{color:var(--text);font-size:20px;margin-bottom:6px}
-aside.side{display:grid;gap:18px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 80px)}
+:root{--shell-h:48px}
+body[data-view=clips] #fb-top{display:none}
+aside.side{display:grid;gap:18px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 80px + var(--shell-h))}
 .side h3{font-size:16px;letter-spacing:.06em;margin-bottom:10px}
 .member-list{display:grid;gap:10px}
 .member-list div{display:flex;align-items:center;gap:10px;font-size:14px;min-width:0}
@@ -3369,7 +3371,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792602872"></script>
+<script src="js/appnav.js?v=1792928500"></script>
 <script src="js/fb-feed.js?v=1792928400"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/stories.js?v=1792607566"></script>
@@ -3380,16 +3382,16 @@ boot();
 <script src="js/messages.js?v=1792580555"></script>
 <script src="js/videos.js?v=1792580555"></script>
 <script src="js/markets.js?v=1792580555"></script>
-<script src="js/legal.js?v=1792580555"></script>
+<script src="js/legal.js?v=1792928500"></script>
 <script src="js/coin.js?v=1792580555"></script>
 <script src="js/preach.js?v=1792580555"></script>
 <script src="js/world3d.js?v=1792580555"></script>
-<script src="js/clips.js?v=1792580555"></script>
+<script src="js/clips.js?v=1792928500"></script>
 <script src="js/dj.js?v=1792580555"></script>
 <script src="js/live.js?v=1792580555"></script>
 <script src="js/autotune.js?v=1792580555"></script>
 <script src="js/beatmaker.js?v=1792580555"></script>
-<script src="js/beatlab.js?v=1792580555"></script>
+<script src="js/beatlab.js?v=1792928500"></script>
 <script src="js/friends.js?v=1792580555"></script>
 <script src="js/dating.js?v=1792580555"></script>
 <script src="js/books.js?v=1792580555"></script>

@@ -11,7 +11,7 @@
   const css = document.createElement("style");
   css.textContent = `
 #v-clips .clips-wrap{position:relative;max-width:520px;margin:0 auto}
-#v-clips .clips{height:calc(100dvh - 150px);min-height:420px;overflow-y:auto;scroll-snap-type:y mandatory;border-radius:18px;background:#000;border:1px solid var(--line);scrollbar-width:none;overscroll-behavior:contain}
+#v-clips .clips{height:calc(100dvh - 150px - var(--shell-h,48px));min-height:420px;overflow-y:auto;scroll-snap-type:y mandatory;border-radius:18px;background:#000;border:1px solid var(--line);scrollbar-width:none;overscroll-behavior:contain}
 #v-clips .clips::-webkit-scrollbar{display:none}
 #v-clips .clip{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:grid;place-items:center;overflow:hidden;background:#000}
 #v-clips .clip video{width:100%;height:100%;object-fit:cover;background:#000}
@@ -30,8 +30,8 @@
 #v-clips .clip-add input{position:absolute;inset:0;opacity:0;cursor:pointer}
 #v-clips .clip-up{position:absolute;left:12px;right:12px;bottom:66px;background:var(--panel);border:1px solid var(--gold);border-radius:14px;padding:14px;display:grid;gap:10px;z-index:5}
 #v-clips .clip-up input[type=text]{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px system-ui,sans-serif}
-@media (max-width:640px){#v-clips .clips{height:calc(100dvh - 120px);border-radius:0;border:0}}
-body.has-player #v-clips .clips{height:calc(100dvh - 230px - env(safe-area-inset-bottom,0px))}
+@media (max-width:640px){#v-clips .clips{height:calc(100dvh - 120px - var(--shell-h,48px));border-radius:0;border:0}}
+body.has-player #v-clips .clips{height:calc(100dvh - 230px - var(--shell-h,48px) - env(safe-area-inset-bottom,0px))}
 body.has-player #v-clips .rail{bottom:70px}`;
   document.head.appendChild(css);
 
