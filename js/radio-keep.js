@@ -1,8 +1,8 @@
 /* Keep the music playing (owner's rule): the station keeps playing while members browse the site,
  * keeps going with the tab in the background or the phone screen locked (Media Session below), and
- * when someone leaves and comes back, the music picks back up on their first tap — unless they
- * pressed pause/stop themselves. (A closed tab is silence: no website can play from a page that
- * no longer exists — that part needs an app, not a web page.) */
+ * if it ever gets knocked off — a video stepping it aside and not handing it back, a tab reload,
+ * leaving and returning — it brings itself back, unless the listener stopped it themselves.
+ * (A closed tab is still silence: no website can play from a page that no longer exists.) */
 (function () {
   "use strict";
   const KEY = "mw-keep-playing";
@@ -11,7 +11,9 @@
   const el = (id) => document.getElementById(id);
   const titleNow = () => { const t = el("pb-title"); return t && t.textContent.trim() ? t.textContent.trim() : "Live Radio"; };
   const subNow = () => { const t = el("pb-sub"); return t && t.textContent.trim() ? t.textContent.trim() : "Meechie's World"; };
-  const playingNow = () => { const b = el("pb-play"); return !!(b && b.getAttribute("aria-label") === "Pause"); }; // the player bar's own button says Pause while sound is playing
+  const playingNow = () => { const b = el("pb-play"); return !!(b && b.getAttribute("aria-label") === "Pause"); }; // the player bar's own button says Pause while sound plays
+  const mediaEl = () => el("audio");
+  const musicMode = () => { try { return typeof mode === "string" ? mode : null; } catch (_) { return null; } };
 
   /* ---- Media Session: lock-screen / notification controls, and the OS treats this as real media ---- */
   function paintSession() {
@@ -35,22 +37,72 @@
     const t0 = el("pb-title"); if (t0) new MutationObserver(paintSession).observe(t0, { childList: true, characterData: true, subtree: true });
   }
 
-  /* ---- remember "the music was on" (any mode), reconciled against the player bar itself ---- */
+  /* ---- "the listener wants music" = set by THEIR taps on the player controls, never by side effects.
+   * A video stepping the radio aside, a crossfade, a live room — none of those clear it. ---- */
   document.addEventListener("play", (e) => { if (e.target && e.target.tagName === "AUDIO") { setWant(true); paintSession(); } }, true);
-  document.addEventListener("pause", (e) => { if (e.target && e.target.tagName === "AUDIO" && !playingNow()) setWant(false); }, true);
+  document.addEventListener("click", (e) => {
+    const t = e.target && e.target.closest ? e.target.closest("#pb-play,#tune-in,#en-mute,#pb-pause") : null;
+    if (!t) return;
+    setTimeout(() => { // read the state AFTER the engine handled the tap
+      const a = mediaEl();
+      if (playingNow() || (a && !a.paused)) setWant(true); else setWant(false);
+    }, 80);
+  }, true);
   setInterval(() => { if (playingNow()) { setWant(true); paintSession(); } }, 5000);
 
-  /* ---- coming back: first tap brings the music back (browsers require a tap before sound) ---- */
-  const w = want();
-  if (w && Date.now() - w.t < 12 * 3600 * 1000) {
+  /* ---- one sound at a time (owner's rule): ANY video or audio on the site with sound up
+   * pauses the radio, and the radio comes back when it ends. Some players remembered to tell
+   * the radio; the feed's never did — so this listens at the document level and speaks for
+   * every player through the site's own step-aside switch (MW_videoSound). ---- */
+  const loud = new Set();
+  const isRadio = (t) => !t || t.id === "audio";
+  const radioAudible = () => { const a = mediaEl(); return !!(a && !a.paused && ["radio", "library", "intro"].includes(musicMode() || "")); };
+  function loudPlay(t) {
+    if (isRadio(t) || loud.has(t)) return;
+    loud.add(t);
+    if (loud.size === 1 && radioAudible()) { try { window.MW_videoSound && MW_videoSound.start(); } catch (_) {} }
+  }
+  function loudDone(t) {
+    if (!loud.delete(t)) return;
+    if (!loud.size) { try { window.MW_videoSound && MW_videoSound.end(); } catch (_) {} } // engine restores in ~1.5s; the watchdog below backstops it
+  }
+  document.addEventListener("play", (e) => { const t = e.target; if (t && (t.tagName === "VIDEO" || t.tagName === "AUDIO") && !t.muted) loudPlay(t); }, true);
+  document.addEventListener("pause", (e) => { loudDone(e.target); }, true);
+  document.addEventListener("ended", (e) => { loudDone(e.target); }, true);
+  document.addEventListener("volumechange", (e) => { const t = e.target; if (!t || (t.tagName !== "VIDEO" && t.tagName !== "AUDIO")) return; if (!t.paused && !t.muted) loudPlay(t); else loudDone(t); }, true);
+
+  /* ---- the watchdog: if the music should be on but isn't, bring it back ---- */
+  let lastTry = 0, fails = 0;
+  function heal() {
+    const w = want(); if (!w || Date.now() - w.t > 12 * 3600 * 1000) return;
+    if (fails > 5) return;                                   // the browser keeps refusing: stop fighting it
+    if (Date.now() - lastTry < 9000) return;                 // at most one rescue per 9 seconds
+    if (document.visibilityState !== "visible") return;      // background rules are the OS's; we heal on return
+    if (document.documentElement.classList.contains("gated")) return;
+    if (window._welcomeOn) return;                           // the welcome video gets its moment
+    try { if (window.MW_videoSound && MW_videoSound.holding()) return; } catch (_) {} // a video has the sound on purpose
+    let loudVideo = false;
+    document.querySelectorAll("video,audio").forEach((v) => { if (!v.paused && !v.muted) loudVideo = true; });
+    if (loudVideo) return;
+    const a = mediaEl(); if (!a) return;
+    if (!a.paused) return;                                   // sound is flowing — nothing to heal
+    const m = musicMode();
+    if (m !== "radio" && m !== "library" && m !== "intro") return; // live/DJ rooms run their own audio
+    lastTry = Date.now();
+    try {
+      if (m === "radio") { if (typeof tuneIn === "function") tuneIn(); }
+      else { const p = a.play(); if (p && p.catch) p.catch(() => { fails++; }); }
+    } catch (_) { fails++; }
+  }
+  setInterval(heal, 4000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(heal, 600); });
+
+  /* ---- coming back to the site: first tap brings the music back (browsers require a tap before sound) ---- */
+  const w0 = want();
+  if (w0 && Date.now() - w0.t < 12 * 3600 * 1000) {
     document.addEventListener("pointerdown", function h() {
       document.removeEventListener("pointerdown", h);
-      setTimeout(() => {
-        if (playingNow()) return;
-        const a = el("audio");
-        if (a && !a.paused && !a.ended) return;
-        try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {}
-      }, 350);
+      setTimeout(() => { lastTry = 0; heal(); const m = musicMode(); if (!playingNow() && (m === null || m === "radio" || m === "intro")) { try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }, 350);
     });
   }
 })();
