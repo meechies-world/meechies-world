@@ -27,14 +27,14 @@ body[data-view=community]{background:#18191a}
 #fb-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
 @media(min-width:1100px){#fb-cols{grid-template-columns:260px minmax(0,680px) 300px;justify-content:center}}
 #fb-left{display:none}
-@media(min-width:1100px){#fb-left{display:grid;gap:2px;position:sticky;top:70px}}
+@media(min-width:1100px){#fb-left{display:grid;gap:2px;position:sticky;top:116px}}
 #fb-left a{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;color:var(--fb-text);text-decoration:none;font:600 15px system-ui}
 #fb-left a:hover{background:var(--fb-hover)}
 #fb-left a span{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--fb-hover);font-size:19px;overflow:hidden}
 #fb-left a span .avatar{width:36px;height:36px;margin:0}
 #v-community #fb-cols>.grid-2{display:contents}
 #v-community aside.side{display:none}
-@media(min-width:1100px){#v-community aside.side{display:grid;gap:14px;position:sticky;top:70px}}
+@media(min-width:1100px){#v-community aside.side{display:grid;gap:14px;position:sticky;top:116px}}
 #v-community .card,#v-community .post{background:var(--fb-card)!important;border:0!important;border-radius:10px!important;color:var(--fb-text);box-shadow:0 1px 2px rgba(0,0,0,.3)}
 #v-community .card h3{color:var(--fb-mute);font:700 15px system-ui;letter-spacing:0}
 #v-community .muted{color:var(--fb-mute)!important}

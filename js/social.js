@@ -24,14 +24,14 @@
   /* ---------- top bar: members, online, my followers ---------- */
   const bar = document.createElement("div"); bar.id = "mw-stats"; bar.setAttribute("aria-live", "polite");
   const header = document.querySelector("header.bar"); if (header) header.after(bar);
-  let memberCount = 0;
+  let memberCount = 0, countsKnown = false;
   async function countMembers() {
-    try { const { count } = await MW.sb.from("docs").select("path", { count: "exact", head: true }).eq("coll", "members"); if (typeof count === "number") memberCount = count; } catch (_) {}
+    try { const { count } = await MW.sb.from("docs").select("path", { count: "exact", head: true }).eq("coll", "members"); if (typeof count === "number") { memberCount = count; countsKnown = true; } } catch (_) {}
     paintBar();
   }
   function paintBar() {
     const mine = ME() ? window.MW_FOLLOWERS(ME()) : 0, fol = window.MW_FOLLOWING.size;
-    bar.innerHTML = `<span>👥 <b>${memberCount.toLocaleString()}</b> members</span><span class="on">● <b style="color:#4ade80">${window.MW_ONLINE.size}</b> online now</span>` + (ME() ? `<span>❤️ <b>${mine}</b> followers</span><span>➕ <b>${fol}</b> following</span>` : "");
+    bar.innerHTML = `<span>👥 ${countsKnown ? `<b>${memberCount.toLocaleString()}</b> ` : ""}members</span><span class="on">● ${countsKnown ? `<b style="color:#4ade80">${window.MW_ONLINE.size}</b> ` : ""}online now</span>` + (ME() ? `<span>❤️ <b>${mine}</b> followers</span><span>➕ <b>${fol}</b> following</span>` : "");
   }
 
   /* ---------- follows ---------- */
