@@ -80,22 +80,35 @@ async function auth(what, request, env) {
   }
 
   // Facebook sign-in (full page, no pop-up): /api/cf/auth/facebook → Facebook → /api/cf/auth/facebook-callback
+  const FB_GRAPH = "v22.0"; // Meta retires Graph versions roughly every two years — keep this current
   if (what === "facebook" || what === "facebook-callback") {
     const appId = env.FACEBOOK_APP_ID, secret = env.FACEBOOK_APP_SECRET, origin = new URL(request.url).origin;
     if (!appId || !secret) return page("Facebook sign-in isn't switched on yet.", 501);
     const back = origin + "/api/cf/auth/facebook-callback";
     if (what === "facebook") {
       const state = randToken(18);
-      return new Response(null, { status: 302, headers: { location: "https://www.facebook.com/v19.0/dialog/oauth?" + new URLSearchParams({ client_id: appId, redirect_uri: back, state, scope: "public_profile,email", response_type: "code" }), "set-cookie": `mw_fb_state=${state}; Path=/api/cf/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax`, "cache-control": "no-store" } });
+      return new Response(null, { status: 302, headers: { location: "https://www.facebook.com/" + FB_GRAPH + "/dialog/oauth?" + new URLSearchParams({ client_id: appId, redirect_uri: back, state, scope: "public_profile,email", response_type: "code" }), "set-cookie": `mw_fb_state=${state}; Path=/api/cf/auth; Max-Age=600; HttpOnly; Secure; SameSite=Lax`, "cache-control": "no-store" } });
     }
     const q = new URL(request.url).searchParams, cookie = (request.headers.get("cookie") || "").match(/(?:^|;\s*)mw_fb_state=([^;]+)/);
     if (q.get("error")) return page("Facebook sign-in was cancelled.", 400);
     if (!cookie || q.get("state") !== cookie[1] || !q.get("code")) return page("Sign-in expired. Go back and try again.", 400);
-    const tok = await fetch("https://graph.facebook.com/v19.0/oauth/access_token?" + new URLSearchParams({ client_id: appId, client_secret: secret, redirect_uri: back, code: q.get("code") })).then((r) => r.json()).catch(() => ({}));
+    const tok = await fetch("https://graph.facebook.com/" + FB_GRAPH + "/oauth/access_token?" + new URLSearchParams({ client_id: appId, client_secret: secret, redirect_uri: back, code: q.get("code") })).then((r) => r.json()).catch(() => ({}));
     if (!tok.access_token) return page("Facebook sign-in didn't work. Go back and try again.", 401);
-    const fbme = await fetch("https://graph.facebook.com/v19.0/me?" + new URLSearchParams({ fields: "id,name,email,picture.width(200)", access_token: tok.access_token })).then((r) => r.json()).catch(() => ({}));
+    const fbme = await fetch("https://graph.facebook.com/" + FB_GRAPH + "/me?" + new URLSearchParams({ fields: "id,name,email,picture.width(200)", access_token: tok.access_token })).then((r) => r.json()).catch(() => ({}));
     if (!fbme.id) return page("Facebook sign-in didn't work. Go back and try again.", 401);
-    const u = await linkProvider(env, "fbid:" + fbme.id, String(fbme.email || "").toLowerCase(), fbme.name, fbme.picture && fbme.picture.data && fbme.picture.data.url);
+    // Bring the member's Facebook picture onto our own shelf: Facebook's picture links expire, ours don't.
+    // (The grey default head — is_silhouette — is not a real photo, so it is never copied.)
+    let picUrl = fbme.picture && fbme.picture.data && !fbme.picture.data.is_silhouette ? fbme.picture.data.url : null;
+    if (picUrl && env.MEDIA) {
+      try {
+        const pr = await fetch(picUrl), ct = pr.headers.get("content-type") || "";
+        if (pr.ok && /^image\//.test(ct)) {
+          const buf = await pr.arrayBuffer();
+          if (buf.byteLength > 0 && buf.byteLength <= 200000) { await env.MEDIA.put("media/fb/" + fbme.id + ".jpg", buf, { metadata: { type: ct, size: buf.byteLength } }); picUrl = origin + "/m/media/fb/" + fbme.id + ".jpg"; }
+        }
+      } catch (_) {}
+    }
+    const u = await linkProvider(env, "fbid:" + fbme.id, String(fbme.email || "").toLowerCase(), fbme.name, picUrl);
     return signedInPage(await newSession(env, u));
   }
 
