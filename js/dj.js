@@ -88,7 +88,7 @@
 
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 });
-  let S = { live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [] };
+  let S = { live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
@@ -216,7 +216,7 @@
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" id="rec-btn">⏺ Start recording</button><span id="rec-st" class="muted" style="font-size:13px">Captures the full mix + your mic.</span></div>
       <div id="rec-out"></div></div>
     <div class="dj-panel"><h4>🤖 AUTO-DJ</h4>
-      <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ad-on" style="width:auto"> Auto-DJ: when a song ends, crossfade to the next queued song</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ad-on" style="width:auto" checked> Auto-DJ runs the station: when a song ends, crossfade to the next one — your queue first, then the full library on rotation</label>
       <div class="dj-list" id="ad-queue" style="max-height:150px"></div>
       <small class="muted">Add songs with the ＋Q button in Your Library. Works while you're live — the station never goes quiet.</small></div>
     <div class="dj-panel"><h4>📥 REQUESTS &amp; DROPS</h4><div class="dj-list" id="rq-list" style="max-height:220px"><small class="muted">Nothing yet. Listener requests land here.</small></div></div>
@@ -297,6 +297,7 @@
       peaks(k);
     });
     $("#dj-xf").value = S.xf; $("#dj-golive").checked = !!S.live;
+    const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = S.live ? "ON AIR" : "OFF AIR";
     renderLog($("#dj-log")); paintPads();
   }
@@ -309,7 +310,7 @@
     const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = live ? "ON AIR" : "OFF AIR";
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
     const now = live ? ["A", "B"].filter((k) => S[k].playing).map((k) => S[k].title).filter(Boolean) : [];
-    $("#st-now").textContent = live ? (now.length ? "🎧 Live now: " + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
+    $("#st-now").textContent = live ? (now.length ? (S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? `<b style="font-size:13px;letter-spacing:.1em">🎙️ LATEST RECORDED SHOW</b><audio controls preload="none" src="${E(S.show.url)}" style="width:100%;margin-top:6px"></audio><small class="muted">Recorded ${new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}</small>` : "";
     renderLog($("#st-log"));
   }
@@ -350,7 +351,7 @@
     if (OWNER() && ownerLoaded) return;
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
-    S = Object.assign({ live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [] }, d || {});
+    S = Object.assign({ live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true }, d || {});
     S.A = Object.assign(blank(), S.A || {}); S.B = Object.assign(blank(), S.B || {});
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; ["A", "B"].forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
@@ -423,8 +424,16 @@
     if (t.id === "dj-echo" && echoWet) echoWet.gain.value = +t.value;
     if (t.id === "dj-verb" && verbWet) verbWet.gain.value = +t.value;
   });
-  root.addEventListener("change", (e) => { if (OWNER() && e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } });
-  $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended."); });
+  root.addEventListener("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } });
+  $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
+    // Auto-DJ is the station's play method: if nothing is playing it starts the rotation itself,
+    // and it primes the idle deck so the first crossfade is ready
+    if (S.live && S.autodj) {
+      const playing = ["A", "B"].find((k) => S[k].playing);
+      if (!playing) { const item = queue.length ? queue.shift() : nextFromLibrary(); if (item) { saveQueue(); paintQueue(); load("A", item).then(() => togglePlay("A")); } }
+      else { const idle = playing === "A" ? "B" : "A"; if (!okUrl(S[idle].src)) { const item = queue.length ? queue[0] : nextFromLibrary(); if (item && !queue.length) bag.push(item); if (item) load(idle, item); } }
+    }
+  });
   // scratch / scrub: drag a platter sideways to move through the song
   ["A", "B"].forEach((k) => {
     const pl = () => $("#pl-" + k); let drag = null;
@@ -438,12 +447,26 @@
   /* ---------- Auto-DJ queue ---------- */
   let queue = []; try { queue = JSON.parse(localStorage.getItem("mw-dj-queue") || "[]"); } catch (_) {}
   const saveQueue = () => { try { localStorage.setItem("mw-dj-queue", JSON.stringify(queue)); } catch (_) {} };
-  function paintQueue() { const box = $("#ad-queue"); if (!box) return; box.innerHTML = queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title)}">${i + 1}. ${E(q.title)}</span><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : '<small class="muted">Queue is empty.</small>'; }
+  function paintQueue() { const box = $("#ad-queue"); if (!box) return; box.innerHTML = queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title)}">${i + 1}. ${E(q.title)}</span><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : '<small class="muted">Queue is empty — Auto-DJ pulls from the full library rotation.</small>'; }
   root.addEventListener("click", (e) => { const b = e.target.closest("[data-qdel]"); if (b) { queue.splice(+b.dataset.qdel, 1); saveQueue(); paintQueue(); } });
+  /* the library rotation: a shuffled bag of the whole library, refilled when it runs out —
+     this is what the station plays on Auto-DJ when the hand-picked queue is empty */
+  let bag = [], lastTitle = "";
+  function nextFromLibrary() {
+    if (!bag.length) { bag = TRACKS().map((t) => ({ src: URLOF(t), title: t.title, cover: t.cover || "" })).filter((x) => okUrl(x.src)); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } }
+    if (!bag.length) return null;
+    let item = bag.pop();
+    if (item.title === lastTitle && bag.length) { const other = bag.pop(); bag.push(item); item = other; }
+    lastTitle = item.title;
+    return item;
+  }
   let xfAnim = null;
   function autoNext(endedK) {
-    if (!$("#ad-on")?.checked || !queue.length) return;
-    const target = endedK === "A" ? "B" : "A", item = queue.shift(); saveQueue(); paintQueue();
+    if (!S.autodj) return;
+    const item = queue.length ? queue.shift() : nextFromLibrary();
+    if (!item) return;
+    saveQueue(); paintQueue();
+    const target = endedK === "A" ? "B" : "A";
     const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; }
     load(target, item).then(async () => {
       await togglePlay(target);
