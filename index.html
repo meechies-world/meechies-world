@@ -1309,6 +1309,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div><p class="eyebrow">Meechie's World Radio</p><h2>Radio &amp; Music</h2></div>
       <p class="muted">Tune in to the station and hear the same song as everybody else at the same moment, or pick any track from the library and play it yourself.</p>
     </div>
+    <div id="dj-booth-root"></div>
     <div class="featured card" id="featured-wrap" hidden>
       <h3>FEATURED ARTISTS</h3>
       <p class="muted" style="margin:0 0 12px;font-size:14px">Big-name songs play through their official players, so each one is their platform's player and not part of the station.</p>
@@ -1367,11 +1368,10 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   <div class="wrap">
     <div class="section-head">
       <div><p class="eyebrow">Meechie's World Radio</p><h2>🎛️ DJ Station</h2></div>
-      <p class="muted">The turntables — and nothing else. Four decks, full effects, scratch and all. Whatever plays here IS the live radio: listeners hear every move, exactly as it happens.</p>
+      <p class="muted">The turntables live at the top of the Radio — and they pop out onto their own screen. Whatever plays on them IS the live radio: everyone hears the same song at the same time.</p>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn" type="button" id="dj-pop2">⛶ Pop out the decks — their own screen</button></div>
     <p class="muted popdj-hint" style="margin:0 0 12px">⛶ Popped-out decks screen — just the tables, nothing else. Close this window anytime; the station keeps playing.</p>
-    <div id="dj-booth-root"></div>
     <div class="card" id="dj-visit-note" style="margin-top:16px">
       <h3 style="font-size:16px;margin-bottom:8px">This is Meechie's booth</h3>
       <p class="muted" style="margin:0 0 10px">The tables belong to Meechie. Head to the radio to listen live and pick songs for the station.</p>
@@ -2592,6 +2592,14 @@ function airNow(){
 }
 function setCover(el,t){ if(safeImg(t?.cover)){ el.style.backgroundImage=`url("${t.cover}")`; el.innerHTML=""; } }
 function paintAir(){
+  const djA = window.MW_AIRNOW && window.MW_AIRNOW();
+  if (djA) {
+    $("#onair-flag").textContent = "● ON AIR"; $("#onair-flag").classList.toggle("off", false);
+    $("#air-title").textContent = djA.title; $("#air-artist").textContent = djA.sub;
+    if (djA.cover) setCover($("#air-cover"), { cover: djA.cover }); else $("#air-cover").style.backgroundImage = "";
+    $("#onair").classList.toggle("playing", typeof mode !== "undefined" && mode === "dj" && typeof media !== "undefined" && !media.paused);
+    return;
+  }
   const a=airNow(), t=a&&tracks[a.i];
   $("#onair-flag").textContent = t ? "● ON AIR" : "● OFF AIR"; $("#onair-flag").classList.toggle("off",!t);
   if(t){ $("#air-title").textContent=t.title; $("#air-artist").textContent=t.artist+" · "+fmt(a.left)+" left"; setCover($("#air-cover"),t); }
@@ -2619,6 +2627,7 @@ function load(t,offset,autoplay){ return new Promise(res=>{ let done=false; cons
   if(autoplay) media.play().catch(()=>{}); else media.load(); setTimeout(fin,4000); }); }
 let playTok=0;
 async function tuneIn(afterEnd){ const tok=++playTok;
+  if (window.MW_DJ_LIVE && window.MW_DJ_LIVE()) { window.MW_DJ.start(); return; }
   let a=airNow(); if(a && afterEnd===true && a.i===curIdx) a={i:(curIdx+1)%tracks.length,offset:0}; // song file shorter than listed: move on instead of replaying
   if(!a){ toast("The station starts when the first track is added."); return; }
   // After a song ends: pick up exactly where the crossfade left the next song, or near its start if there was no crossfade
@@ -2649,7 +2658,7 @@ if("mediaSession" in navigator){ const ms=navigator.mediaSession, H=(a,f)=>{ try
   media.addEventListener("play",()=>{ try{ ms.playbackState="playing"; }catch(_){} }); media.addEventListener("pause",()=>{ try{ ms.playbackState="paused"; }catch(_){} }); }
 media.addEventListener("ended",()=>{ if(mode==="intro"){ tuneIn(); return; } if(mode==="radio") tuneIn(true); else if(mode==="library"){ const n=(curIdx+1)%tracks.length; playLib(n, xfOffset(n)||0); } });
 media.addEventListener("timeupdate",()=>{ const d=isFinite(media.duration)&&media.duration?media.duration:(tracks[curIdx]?.duration||0); $("#pb-fill").style.width=(mode==="live"?100:(d?media.currentTime/d*100:0))+"%"; $("#pb-time").textContent=mode==="live"?"● LIVE":fmt(media.currentTime)+" / "+fmt(d); });
-$("#tune-in").addEventListener("click",()=>{ if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
+$("#tune-in").addEventListener("click",()=>{ if(window.MW_DJ_LIVE && window.MW_DJ_LIVE()){ window.MW_DJ.toggle(); return; } if(mode==="radio"&&!media.paused){ media.pause(); room?.presence({radio:null}); } else tuneIn(); });
 $("#pb-play").addEventListener("click",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.paused?MW_LIVE.play().catch(()=>{}):MW_LIVE.pause(); return; } if(mode==="dj"){ document.getElementById("dj-listen")?.click(); return; } if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
 $("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="intro"){ tuneIn(); return; } if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
 $("#pb-prev").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
@@ -3407,7 +3416,7 @@ boot();
 <script src="js/preach.js?v=1792580555"></script>
 <script src="js/world3d.js?v=1792580555"></script>
 <script src="js/clips.js?v=1792929000"></script>
-<script src="js/dj.js?v=1792943000"></script>
+<script src="js/dj.js?v=1792944000"></script>
 <script src="js/live.js?v=1792580555"></script>
 <script src="js/autotune.js?v=1792580555"></script>
 <script src="js/beatmaker.js?v=1792580555"></script>
