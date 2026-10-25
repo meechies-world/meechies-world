@@ -22,7 +22,7 @@ body[data-view=community]{background:#18191a}
 #v-community .section-head{display:none}
 #v-community .wrap{padding-top:0!important}
 #fb-top{position:relative;z-index:15;display:flex;align-items:center;gap:8px;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:0;padding:8px clamp(16px,3.2vw,56px)}
-#fb-top .wm{font:800 24px/1 var(--display,system-ui);color:var(--gold-hi,#f0cf78);letter-spacing:-.5px;margin-right:auto;white-space:nowrap;cursor:pointer}
+#fb-top .wm{font:25px/1.25 "Nosifer","Cinzel Decorative",serif;background:linear-gradient(180deg,#ff3524 0%,#d20f00 45%,#7a0500 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 2px rgba(0,0,0,.6));letter-spacing:0;margin-right:auto;white-space:nowrap;cursor:pointer;padding-right:6px}
 #fb-top button{width:40px;height:40px;border-radius:50%;border:0;background:var(--fb-hover);color:var(--fb-text);font-size:18px;display:grid;place-items:center;cursor:pointer;position:relative}
 #fb-top button i{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 4px}
 #fb-top button.on{background:#e41e3f;color:#fff}
