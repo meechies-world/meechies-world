@@ -18,7 +18,7 @@
   let typingCh = null, typingWith = null, theyTypeUntil = 0, lastTypeSent = 0, pickFor = null;
   let mini = null, heads = []; const fresh = [];
   let tab = "chats", replyTo = null, forwardBody = null, showArch = false;
-  let prefs = { pin: [], mute: [], arch: [], hideReq: [] };
+  let prefs = { pin: [], mute: [], arch: [], hideReq: [], vanish: {}, leftGroups: [] };
   try { const p = JSON.parse(localStorage.getItem("mw_mx_prefs") || "{}"); if (p && typeof p === "object") prefs = Object.assign(prefs, p); } catch (_) {}
   const savePrefs = () => { try { localStorage.setItem("mw_mx_prefs", JSON.stringify(prefs)); } catch (_) {} };
   const inList = (k, id) => (prefs[k] || []).includes(id);
@@ -42,15 +42,34 @@
   const STORE = "https:\\/\\/yjouaysczttqbytksejq\\.supabase\\.co\\/storage\\/v1\\/object\\/public\\/media\\/[A-Za-z0-9_\\-\\/]+";
   const VOICE_RE = new RegExp("^🎙️ Voice message ⟦(" + STORE + "\\.(?:webm|m4a|mp4|ogg))⟧$");
   const PHOTO_RE = new RegExp("^📷 Photo ⟦(" + STORE + "\\.(?:jpg|png|webp))⟧$");
-  const REACT_RE = /^⟦react:(\d+):(❤️|😂|😮|😢|😡|👍|🔥)⟧$/;
   const REACTS = ["❤️", "😂", "😮", "😢", "😡", "👍"];
   const voiceUrl = (b) => (VOICE_RE.exec(b || "") || [])[1] || "";
   const photoUrl = (b) => (PHOTO_RE.exec(b || "") || [])[1] || "";
-  const isReact = (b) => REACT_RE.test(b || "");
-  const Q_RE = /^⟦q:(\d+)⟧/;
-  const quoteOf = (b) => { const m = Q_RE.exec(b || ""); return m ? m[1] : null; };
-  const bareText = (b) => String(b || "").replace(Q_RE, "");
-  const preview = (r) => { const b = bareText(r.body); if (voiceUrl(b)) return "🎙️ Voice message"; if (photoUrl(b)) return "📷 Photo"; const m = REACT_RE.exec(b || ""); if (m) return "Reacted " + m[2] + " to a message"; return b; };
+  /* Message bodies can carry bracket tags in any order, stripped before display:
+   * ⟦g:<groupId>⟧ group copy · ⟦m:<msgId>⟧ one shared id on every group copy ·
+   * ⟦x:<epochMs>⟧ disappearing expiry · ⟦q:<id>⟧ quote · ⟦react:…⟧ reaction */
+  const REACT_TAIL = /^⟦react:(@?)([a-z0-9-]+):(❤️|😂|😮|😢|😡|👍|🔥)⟧$/;
+  const TAG_RES = [["g", /^⟦g:([a-z0-9-]{1,48})⟧/i], ["m", /^⟦m:([a-z0-9-]{6,48})⟧/i], ["x", /^⟦x:(\d{10,16})⟧/], ["q", /^⟦q:([a-z0-9-]+)⟧/i]];
+  const tagsOf = (b) => { const t = {}; let s = String(b || ""); let again = true; while (again) { again = false; for (const [k, re] of TAG_RES) { const m = re.exec(s); if (m) { t[k] = m[1]; s = s.slice(m[0].length); again = true; } } } return { t, s }; };
+  const bareText = (b) => tagsOf(b).s;
+  const quoteOf = (b) => tagsOf(b).t.q || null;
+  const groupOfRow = (r) => tagsOf(r.body).t.g || null;
+  const muidOf = (r) => tagsOf(r.body).t.m || null;
+  const expired = (r) => { const x = +tagsOf(r.body).t.x || 0; return x > 0 && x <= Date.now(); };
+  const reactOf = (b) => { const m = REACT_TAIL.exec(tagsOf(b).s); return m ? { target: m[2], emoji: m[3] } : null; };
+  const isReact = (b) => !!reactOf(b);
+  const preview = (r) => { const b = bareText(r.body); if (voiceUrl(b)) return "🎙️ Voice message"; if (photoUrl(b)) return "📷 Photo"; const m = reactOf(r.body); if (m) return "Reacted " + m.emoji + " to a message"; return b; };
+  /* ---------- Stage 2: group chats + disappearing messages ---------- */
+  const DB = () => (typeof db !== "undefined" ? db : null);
+  let groups = {}; // gid -> {name, members:[uids], owner}
+  const curGid = () => (other && other.startsWith("g:") ? other.slice(2) : null);
+  const gname = (gid) => (groups[gid] && groups[gid].name) || "Group chat";
+  const gav = (gid, cls = "") => `<span class="mx-av grp ${cls}">👥</span>`;
+  const VANISH_STEPS = [0, 86400000, 604800000];
+  const vanishMs = (chatId) => (prefs.vanish && prefs.vanish[chatId]) || 0;
+  const vanishLabel = (chatId) => (vanishMs(chatId) === 86400000 ? "24h" : vanishMs(chatId) === 604800000 ? "7d" : "");
+  const vPrefix = (chatId) => (vanishMs(chatId) ? "⟦x:" + (Date.now() + vanishMs(chatId)) + "⟧" : "");
+  const vanishLeft = (r) => { const x = +tagsOf(r.body).t.x || 0; if (!x) return ""; const ms = x - Date.now(); if (ms <= 0) return ""; const h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3); return " · ⏳ " + (h >= 24 ? Math.floor(h / 24) + "d left" : h >= 1 ? h + "h left" : Math.max(1, m) + "m left"); };
   const pickHTML = (id) => REACTS.map((r) => `<button type="button" data-rx="${r}">${r}</button>`).join("") + `<span class="mx-pick-acts"><button type="button" data-rp="${id}">↩ Reply</button><button type="button" data-fw="${id}">↪ Forward</button><button type="button" data-cp="${id}">📋 Copy</button></span>`;
   const linkify = (t) => E(t).replace(/(^|\s)(https:\/\/[^\s<]+)/g, (m, p, u) => `${p}<a href="${u}" target="_blank" rel="noopener nofollow">${u.length > 48 ? u.slice(0, 46) + "…" : u}</a>`)
     // phone numbers in a message can be tapped to call
@@ -72,13 +91,20 @@
   }
 
   function convos() {
-    const m = new Map();
+    const m = new Map(), gm = new Map();
     for (const r of all) {
+      const gid = groupOfRow(r);
+      if (gid) {
+        if (inList("leftGroups", gid) || !groups[gid]) continue;
+        let c = gm.get(gid); if (!c) { c = { id: "g:" + gid, gid, group: true, last: r, unread: 0 }; gm.set(gid, c); }
+        if (r.recipient === uid && !r.read_at && !isReact(r.body)) c.unread++;
+        continue;
+      }
       const o = r.sender === uid ? r.recipient : r.sender;
       let c = m.get(o); if (!c) { c = { id: o, last: r, unread: 0 }; m.set(o, c); }
       if (r.recipient === uid && !r.read_at && !isReact(r.body)) c.unread++;
     }
-    return [...m.values()].sort((a, b) => new Date(b.last.created_at) - new Date(a.last.created_at));
+    return [...gm.values(), ...m.values()].sort((a, b) => new Date(b.last.created_at) - new Date(a.last.created_at));
   }
   const unreadCount = () => all.filter((r) => r.recipient === uid && !r.read_at && !isReact(r.body)).length;
   function paintDot() {
@@ -96,12 +122,20 @@
       if (prevIds.has(r.id) || r.recipient !== uid || r.sender === uid) return;
       if (r.sender === other && !view.hidden && !document.hidden) { theyTypeUntil = 0; return; } // you're looking at it
       if (isReact(r.body)) return;
+      if (groupOfRow(r) || expired(r)) return; // group + vanishing mail: no banner or pop — the unread badge still counts it
       if (inList("mute", r.sender)) { addHead(r.sender); return; } // muted: head badge only, no sound, no banner
       if (mini === r.sender && !document.hidden) return; // its chat window is open
       pop(); if (window.MW_NOTIFY) MW_NOTIFY("New message from " + handle(r.sender), String(preview(r)).slice(0, 80));
       fresh.push(r);
     });
-    all = data || []; paintDot(); autoPlayVoices(); if (!view.hidden) render();
+    let rows = data || [];
+    // disappearing messages: once expired they vanish — delete my copies for real (the other
+    // person's copy vanishes from their screen on their next load the same way)
+    rows = rows.filter((r) => { if (!expired(r)) return true; try { sb.from("dms").delete().eq("id", r.id).then(() => {}, () => {}); } catch (_) {} return false; });
+    // group fan-out: my own sent messages exist once per member — keep one copy of each
+    const seenM = new Set();
+    rows = rows.filter((r) => { if (r.sender !== uid) return true; const mu = muidOf(r); if (!mu) return true; if (seenM.has(mu)) return false; seenM.add(mu); return true; });
+    all = rows; paintDot(); autoPlayVoices(); if (!view.hidden) render();
     fresh.forEach(popIn); fresh.length = 0; paintHeads(); if (mini) paintMini();
   }
   function later() { clearTimeout(timer); timer = setTimeout(load, 200); }
@@ -112,6 +146,12 @@
     await sb.from("dms").update({ read_at: new Date().toISOString() }).eq("recipient", uid).eq("sender", other).is("read_at", null);
     all.forEach((r) => { if (r.sender === other && r.recipient === uid && !r.read_at) r.read_at = new Date().toISOString(); });
     paintDot();
+  }
+  async function markReadGroup(gid) {
+    if (document.hidden) return;
+    const senders = [...new Set(all.filter((r) => groupOfRow(r) === gid && r.recipient === uid && !r.read_at).map((r) => r.sender))];
+    for (const s of senders) { try { await sb.from("dms").update({ read_at: new Date().toISOString() }).eq("recipient", uid).eq("sender", s).is("read_at", null); } catch (_) {} }
+    if (senders.length) { all.forEach((r) => { if (groupOfRow(r) === gid && r.recipient === uid && !r.read_at) r.read_at = new Date().toISOString(); }); paintDot(); }
   }
 
   /* ---------- typing indicator (live, nothing saved) ---------- */
@@ -136,7 +176,7 @@
   function bubble(r) {
     const body = bareText(r.body), v = voiceUrl(body), p = photoUrl(body);
     const qid = quoteOf(r.body);
-    const qrow = qid ? all.find((x) => String(x.id) === String(qid)) : null;
+    const qrow = qid ? all.find((x) => String(x.id) === String(qid)) || all.find((x) => muidOf(x) === qid) : null;
     const q = qrow ? `<div class="mx-quote"><b>${E(handle(qrow.sender))}</b><span>${E(String(preview(qrow)).slice(0, 90))}</span></div>` : "";
     if (v) return q + `<div class="mx-bub voice"><span>🎙️ Walkie</span><audio src="${E(v)}" controls preload="none"></audio></div>`;
     if (p) return q + `<a class="mx-photo" href="${E(p)}" target="_blank" rel="noopener"><img src="${E(p)}" alt="Photo" loading="lazy"></a>`;
@@ -176,42 +216,51 @@
     } else {
       let cs = convos().filter((c) => showArch ? inList("arch", c.id) : !inList("arch", c.id));
       cs.sort((a, b) => (inList("pin", b.id) ? 1 : 0) - (inList("pin", a.id) ? 1 : 0) || new Date(b.last.created_at) - new Date(a.last.created_at));
-      items = cs.length ? cs.map((c) => `<button type="button" class="dm-row ${c.id === other ? "on" : ""} ${c.unread ? "unread" : ""}" data-open="${E(c.id)}">${av(c.id)}<span class="dm-t"><b>${E(handle(c.id))}</b><small>${c.last.sender === uid ? "You: " : ""}${E(String(preview(c.last)).slice(0, 60))} · ${when(c.last.created_at)}</small></span><span class="dm-x">${inList("pin", c.id) ? "📌" : ""}${inList("mute", c.id) ? "🔕" : ""}<span class="dm-menu-b" data-menu="${E(c.id)}" role="button" aria-label="Chat options">⋯</span></span>${c.unread ? `<span class="dm-m"><i>${c.unread}</i></span>` : c.last.sender === uid && c.last.read_at ? `<span class="dm-m">${av(c.id, "tiny")}</span>` : ""}</button>`).join("") : `<p class="muted" style="margin:10px 4px">${showArch ? "No archived chats." : "No messages yet. Search for a member above, or tap Message on a member card."}</p>`;
+      const rowFor = (c) => c.group
+        ? `<button type="button" class="dm-row ${c.id === other ? "on" : ""} ${c.unread ? "unread" : ""}" data-open="${E(c.id)}">${gav(c.gid)}<span class="dm-t"><b>${E(gname(c.gid))}</b><small>${c.last.sender === uid ? "You: " : E(handle(c.last.sender)) + ": "}${E(String(preview(c.last)).slice(0, 48))} · ${when(c.last.created_at)}</small></span><span class="dm-x">${inList("pin", c.id) ? "📌" : ""}<span class="dm-menu-b" data-menu="${E(c.id)}" role="button" aria-label="Chat options">⋯</span></span>${c.unread ? `<span class="dm-m"><i>${c.unread}</i></span>` : ""}</button>`
+        : `<button type="button" class="dm-row ${c.id === other ? "on" : ""} ${c.unread ? "unread" : ""}" data-open="${E(c.id)}">${av(c.id)}<span class="dm-t"><b>${E(handle(c.id))}</b><small>${c.last.sender === uid ? "You: " : ""}${E(String(preview(c.last)).slice(0, 60))} · ${when(c.last.created_at)}</small></span><span class="dm-x">${inList("pin", c.id) ? "📌" : ""}${inList("mute", c.id) ? "🔕" : ""}<span class="dm-menu-b" data-menu="${E(c.id)}" role="button" aria-label="Chat options">⋯</span></span>${c.unread ? `<span class="dm-m"><i>${c.unread}</i></span>` : c.last.sender === uid && c.last.read_at ? `<span class="dm-m">${av(c.id, "tiny")}</span>` : ""}</button>`;
+      items = `<button type="button" class="dm-row dm-newgroup" data-newgroup>👥 Start a group chat</button>` + (cs.length ? cs.map(rowFor).join("") : `<p class="muted" style="margin:10px 4px">${showArch ? "No archived chats." : "No messages yet. Search for a member above, or tap Message on a member card."}</p>`);
       if (showArch || prefs.arch.length) items += `<button type="button" class="dm-row dm-arch-toggle" data-archtoggle>${showArch ? "← Back to chats" : "🗄 Archived (" + prefs.arch.length + ")"}</button>`;
     }
     list.innerHTML = items;
     if (!other) { thread.innerHTML = `<div class="dm-none"><svg class="sqc-ico" aria-hidden="true" style="width:46px;height:46px"><use href="#sqc"/></svg><b>Your messages</b><span class="muted">Pick a chat, or search for a member to start one. Only you and the other person can read your messages. They aren't end-to-end encrypted, so never send passwords or card numbers.</span></div>`; return; }
-    typingChannel();
+    const gid = curGid();
+    if (!gid) typingChannel();
     const prevIn = document.getElementById("dm-in"), keep = prevIn && thread.dataset.with === other, draft = keep ? prevIn.value : "", hadFocus = keep && document.activeElement === prevIn;
     const box0 = document.getElementById("dm-msgs"), atBottom = !keep || !box0 || box0.scrollHeight - box0.scrollTop - box0.clientHeight < 80, oldTop = box0 ? box0.scrollTop : 0;
     thread.dataset.with = other;
     const openPick = keep ? document.querySelector(".mx-pick")?.dataset.for : null; // keep an open reaction picker through a refresh
-    const pair = all.filter((r) => (r.sender === uid && r.recipient === other) || (r.sender === other && r.recipient === uid)).slice().reverse();
-    // reactions: the latest reaction from each person on each message
-    const reacts = {}; pair.filter((r) => isReact(r.body)).forEach((r) => { const m = REACT_RE.exec(r.body); (reacts[m[1]] = reacts[m[1]] || {})[r.sender] = m[2]; });
+    const pair = gid ? all.filter((r) => groupOfRow(r) === gid).slice().reverse()
+      : all.filter((r) => !groupOfRow(r) && ((r.sender === uid && r.recipient === other) || (r.sender === other && r.recipient === uid))).slice().reverse();
+    // reactions: the latest reaction from each person on each message (group messages key on their shared id)
+    const reacts = {}; pair.filter((r) => isReact(r.body)).forEach((r) => { const m = reactOf(r.body); if (m) (reacts[m.target] = reacts[m.target] || {})[r.sender] = m.emoji; });
     const msgs = pair.filter((r) => !isReact(r.body));
     const lastMineSeen = [...msgs].reverse().find((r) => r.sender === uid && r.read_at);
     let html = "", prev = null;
     msgs.forEach((r, i) => {
-      const nx = msgs[i + 1], mine = r.sender === uid;
+      const nx = msgs[i + 1], mine = r.sender === uid, mid = gid ? (muidOf(r) || String(r.id)) : String(r.id);
       const gap = !prev || new Date(r.created_at) - new Date(prev.created_at) > 3600e3;
       if (gap) html += `<div class="mx-day">${E(dayLabel(r.created_at))} · ${E(clock(r.created_at))}</div>`;
       const endOfGroup = !nx || nx.sender !== r.sender || new Date(nx.created_at) - new Date(r.created_at) > 3600e3;
-      const rx = reacts[r.id] ? Object.values(reacts[r.id]) : [];
-      html += `<div class="mx-msg ${mine ? "me" : ""} ${endOfGroup ? "end" : ""}" data-mid="${r.id}">
+      const rx = reacts[mid] ? Object.values(reacts[mid]) : [];
+      html += `<div class="mx-msg ${mine ? "me" : ""} ${endOfGroup ? "end" : ""}" data-mid="${E(mid)}">
         ${!mine ? (endOfGroup ? av(r.sender, "sm") : '<span class="mx-av sm ghost"></span>') : ""}
-        <div class="mx-col">${bubble(r)}${rx.length ? `<span class="mx-rx">${E([...new Set(rx)].join(""))}${rx.length > 1 ? " " + rx.length : ""}</span>` : ""}</div>
-        <button type="button" class="mx-react-btn" data-rpick="${r.id}" aria-label="React">☺</button>
-        <small class="mx-time">${E(clock(r.created_at))}</small></div>`;
-      if (lastMineSeen && r.id === lastMineSeen.id) html += `<div class="mx-seen">${av(other, "tiny")}<span>Seen</span></div>`;
+        <div class="mx-col">${gid && !mine ? `<div class="mx-gname">${E(handle(r.sender))}</div>` : ""}${bubble(r)}${rx.length ? `<span class="mx-rx">${E([...new Set(rx)].join(""))}${rx.length > 1 ? " " + rx.length : ""}</span>` : ""}</div>
+        <button type="button" class="mx-react-btn" data-rpick="${E(mid)}" aria-label="React">☺</button>
+        <small class="mx-time">${E(clock(r.created_at))}${E(vanishLeft(r))}</small></div>`;
+      if (!gid && lastMineSeen && r.id === lastMineSeen.id) html += `<div class="mx-seen">${av(other, "tiny")}<span>Seen</span></div>`;
       prev = r;
     });
     const qrow2 = replyTo ? msgs.find((x) => String(x.id) === String(replyTo)) : null;
     if (replyTo && !qrow2) replyTo = null;
     const st = Date.now() < theyTypeUntil ? "typing…" : online.has(other) ? "Active now" : "";
-    thread.innerHTML = `<div class="dm-head"><button type="button" class="act dm-back" data-back aria-label="Back to chats">←</button>${av(other, "md")}<div class="mx-who"><b>${E(handle(other))}</b><small id="mx-status">${st}</small></div><span class="dm-calls"><button type="button" class="act" data-call aria-label="Voice call on Live" title="Voice call — opens Live">📞</button><button type="button" class="act" data-call aria-label="Video call on Live" title="Video call — opens Live">🎥</button></span></div>
-<div class="dm-msgs" id="dm-msgs">${msgs.length ? html : `<div class="mx-hello">${av(other, "lg")}<b>${E(handle(other))}</b><span class="muted">Say hello 👋</span></div>`}
-<div class="mx-msg end" id="mx-typing"${Date.now() < theyTypeUntil ? "" : " hidden"}>${av(other, "sm")}<div class="mx-col"><div class="mx-bub dots"><i></i><i></i><i></i></div></div></div></div>
+    const vBtn = `<button type="button" class="act mx-vanish" data-vanish title="Disappearing messages: ${vanishLabel(other) ? "ON — new messages vanish after " + vanishLabel(other) : "off — tap to turn on"}" aria-label="Disappearing messages">⏱${vanishLabel(other) ? `<i>${vanishLabel(other)}</i>` : ""}</button>`;
+    const headHtml = gid
+      ? `<div class="dm-head"><button type="button" class="act dm-back" data-back aria-label="Back to chats">←</button>${gav(gid, "md")}<div class="mx-who"><b>${E(gname(gid))}</b><small>${((groups[gid] || {}).members || []).length} members</small></div><span class="dm-calls">${vBtn}<button type="button" class="act" data-ginfo aria-label="Group details" title="Group details">ℹ️</button></span></div>`
+      : `<div class="dm-head"><button type="button" class="act dm-back" data-back aria-label="Back to chats">←</button>${av(other, "md")}<div class="mx-who"><b>${E(handle(other))}</b><small id="mx-status">${st}</small></div><span class="dm-calls">${vBtn}<button type="button" class="act" data-call aria-label="Voice call on Live" title="Voice call — opens Live">📞</button><button type="button" class="act" data-call aria-label="Video call on Live" title="Video call — opens Live">🎥</button></span></div>`;
+    thread.innerHTML = `${headHtml}
+<div class="dm-msgs" id="dm-msgs">${msgs.length ? html : `<div class="mx-hello">${gid ? gav(gid, "lg") : av(other, "lg")}<b>${E(gid ? gname(gid) : handle(other))}</b><span class="muted">Say hello 👋</span></div>`}
+<div class="mx-msg end" id="mx-typing"${Date.now() < theyTypeUntil ? "" : " hidden"}>${gid ? gav(gid, "sm") : av(other, "sm")}<div class="mx-col"><div class="mx-bub dots"><i></i><i></i><i></i></div></div></div></div>
 <div class="mx-emoji" id="mx-emoji" hidden>${["😀", "😂", "😍", "🥰", "😎", "🔥", "💯", "🙏", "👏", "💪", "🎶", "👑", "💰", "😢", "😡", "❤️"].map((e) => `<button type="button" data-emo="${e}">${e}</button>`).join("")}</div>
 ${qrow2 ? `<div class="mx-replybar"><span>↩ Replying to <b>${E(handle(qrow2.sender))}</b>: ${E(String(preview(qrow2)).slice(0, 60))}</span><button type="button" data-rx-cancel aria-label="Cancel reply">×</button></div>` : ""}
 <form class="dm-form" id="dm-form">
@@ -222,17 +271,91 @@ ${qrow2 ? `<div class="mx-replybar"><span>↩ Replying to <b>${E(handle(qrow2.se
     const box = document.getElementById("dm-msgs"); if (box) box.scrollTop = atBottom ? box.scrollHeight : oldTop;
     const ni = document.getElementById("dm-in"); if (ni && draft) ni.value = draft; if (ni && hadFocus) ni.focus();
     if (openPick) { const col = view.querySelector(`.mx-msg[data-mid="${CSS.escape(String(openPick))}"] .mx-col`); if (col) { const pk = document.createElement("div"); pk.className = "mx-pick"; pk.dataset.for = openPick; pk.innerHTML = pickHTML(openPick); col.appendChild(pk); } }
-    paintSend(); markRead();
+    paintSend(); if (gid) markReadGroup(gid); else markRead();
   }
   function paintSend() { const i = document.getElementById("dm-in"), s = document.getElementById("mx-send"); if (i && s) { const has = !!i.value.trim(); s.textContent = has ? "➤" : "👍"; s.classList.toggle("go", has); s.setAttribute("aria-label", has ? "Send" : "Send a thumbs up"); } }
 
-  function open(id) { if (forwardBody) { const b = forwardBody; forwardBody = null; send(b, id).then((ok) => say(ok ? "Forwarded" : "Could not forward")); return; } other = id; replyTo = null; q = ""; const s = view.querySelector(".dm-search"); if (s) s.value = ""; if (typeof go === "function") go("messages"); render(); setTimeout(() => { const i = document.getElementById("dm-in"); if (i) i.focus(); }, 50); }
+  function open(id) { if (forwardBody) { const b = forwardBody; forwardBody = null; (id.startsWith("g:") ? sendGroup(id.slice(2), b, null) : send(vPrefix(id) + b, id)).then((ok) => say(ok ? "Forwarded" : "Could not forward")); return; } other = id; replyTo = null; q = ""; const s = view.querySelector(".dm-search"); if (s) s.value = ""; if (typeof go === "function") go("messages"); render(); setTimeout(() => { const i = document.getElementById("dm-in"); if (i) i.focus(); }, 50); }
   async function send(body, to = other) {
     if (!body || !to) return false;
     const { error } = await sb.from("dms").insert({ recipient: to, body });
     if (error) { say("Could not send: " + error.message); return false; }
     if (window.MW_pushNotify && !/^⟦react:/.test(body)) MW_pushNotify(to);
     load(); return true;
+  }
+  /* group fan-out: one body, one copy per member. Every copy carries the group tag; my own
+   * copies share the ⟦m:⟧ id, so my screens show the message once */
+  async function fanOut(gid, body) {
+    const g = groups[gid]; if (!g) return false;
+    const targets = (g.members || []).filter((x) => x !== uid).slice(0, 10);
+    if (!targets.length) { say("You're the only one in this group."); return false; }
+    let ok = false;
+    for (const to of targets) { const { error } = await sb.from("dms").insert({ recipient: to, body }); if (!error) { ok = true; if (window.MW_pushNotify) MW_pushNotify(to); } }
+    if (ok) load();
+    return ok;
+  }
+  async function sendGroup(gid, text, rp) {
+    if (!text) return false;
+    const muid = "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const body = "⟦g:" + gid + "⟧⟦m:" + muid + "⟧" + vPrefix(other) + (rp ? "⟦q:" + rp + "⟧" : "") + text;
+    return fanOut(gid, body);
+  }
+  const sendCore = (core) => (curGid() ? sendGroup(curGid(), core, null) : send(vPrefix(other) + core));
+  function cycleVanish() {
+    if (!other) return;
+    const cur = vanishMs(other), nx = VANISH_STEPS[(VANISH_STEPS.indexOf(cur) + 1) % VANISH_STEPS.length];
+    prefs.vanish = prefs.vanish || {};
+    if (nx) prefs.vanish[other] = nx; else delete prefs.vanish[other];
+    savePrefs();
+    say(nx ? "⏳ Disappearing messages ON — new messages here vanish after " + (nx === 86400000 ? "24 hours" : "7 days") + ", for everyone in the chat." : "Disappearing messages off.");
+    render();
+  }
+  function groupPicker() {
+    document.getElementById("mx-group")?.remove();
+    const cands = new Map();
+    const F = window.MW_FRIENDS; (F && F.list ? F.list() : []).forEach((id) => cands.set(id, 1));
+    convos().forEach((c) => { if (!c.group) cands.set(c.id, 1); });
+    const box = document.createElement("div"); box.id = "mx-group";
+    box.innerHTML = `<div class="gp"><h4>👥 New group chat</h4>
+      <input type="text" id="gp-name" maxlength="60" placeholder="Group name (e.g. Family, The Shop Crew)" aria-label="Group name">
+      <div>${cands.size ? [...cands.keys()].map((id) => `<label class="gm"><input type="checkbox" value="${E(id)}">${av(id, "sm")}<span>${E(handle(id))}</span></label>`).join("") : `<p class="muted">No friends or chats yet — message someone first, then start a group with them.</p>`}</div>
+      <small class="muted">Up to 10 people including you. Everyone in the group sees every message.</small>
+      <div class="row"><button type="button" class="btn ghost" data-gp="x">Cancel</button><button type="button" class="btn" data-gp="go">Create group</button></div></div>`;
+    document.body.appendChild(box);
+    box.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-gp]"); if (!b) { if (e.target === box) box.remove(); return; }
+      if (b.dataset.gp === "x") { box.remove(); return; }
+      const name = box.querySelector("#gp-name").value.trim();
+      const picked = [...box.querySelectorAll("input[type=checkbox]:checked")].map((i) => i.value);
+      if (!name) { say("Give the group a name first."); return; }
+      if (!picked.length) { say("Pick at least one person for the group."); return; }
+      if (picked.length + 1 > 10) { say("Groups hold up to 10 people — untick a few."); return; }
+      const d = DB(); if (!d) { say("Groups aren't available right now."); return; }
+      const gid = "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      b.disabled = true;
+      try { await d.doc("groups/" + gid).set({ name, members: [uid, ...picked], owner: uid }); }
+      catch (err) { say("Couldn't create the group: " + (err.message || err)); b.disabled = false; return; }
+      groups[gid] = { name, members: [uid, ...picked], owner: uid };
+      box.remove(); say("Group created 🎉"); open("g:" + gid);
+    });
+  }
+  function groupInfo() {
+    const gid = curGid(); if (!gid) return;
+    const g = groups[gid]; if (!g) return;
+    document.getElementById("mx-group")?.remove();
+    const box = document.createElement("div"); box.id = "mx-group";
+    const vl = vanishLabel(other);
+    box.innerHTML = `<div class="gp"><h4>👥 ${E(g.name)}</h4>
+      <div>${g.members.map((id) => `<div class="gm">${av(id, "sm")}<span>${E(handle(id))}${id === uid ? " (you)" : ""}${id === g.owner ? " · creator" : ""}</span></div>`).join("")}</div>
+      <small class="muted">Disappearing messages here: ${vl ? "on (" + vl + ")" : "off"} — set them with the ⏱ button in the chat.</small>
+      <div class="row">${g.owner === uid ? `<button type="button" class="btn ghost" data-gi="del">Delete group for everyone</button>` : ""}<button type="button" class="btn ghost" data-gi="leave">Leave group</button><button type="button" class="btn" data-gi="x">Close</button></div></div>`;
+    document.body.appendChild(box);
+    box.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-gi]"); if (!b) { if (e.target === box) box.remove(); return; }
+      if (b.dataset.gi === "x") { box.remove(); return; }
+      if (b.dataset.gi === "leave") { prefs.leftGroups = [...(prefs.leftGroups || []), gid]; savePrefs(); delete groups[gid]; box.remove(); other = null; say("You left the group — it's hidden for you now."); render(); return; }
+      if (b.dataset.gi === "del") { const d = DB(); if (d) { try { await d.doc("groups/" + gid).update({ members: [], deleted: true }); } catch (_) {} } delete groups[gid]; box.remove(); other = null; say("Group deleted."); render(); }
+    });
   }
 
   function build() {
@@ -326,6 +449,19 @@ body.mw-editing #mx-fab{display:none}
 .mx-pick-acts button{font-size:12px!important;color:var(--gold-hi);background:var(--panel-2);border-radius:999px;padding:4px 9px}
 .dm-calls{margin-left:auto;display:flex;gap:2px}.dm-calls .act{font-size:19px;background:none;border:0;cursor:pointer;padding:6px}
 .dm-arch-toggle{justify-content:center;color:var(--muted);font-weight:700}
+.mx-gname{font:700 11px var(--body);color:var(--gold-hi);margin:0 0 2px 4px}
+.mx-av.grp{font-size:20px}.mx-av.grp.md{font-size:17px}.mx-av.grp.lg{font-size:36px}.mx-av.grp.sm{font-size:12px}
+.mx-vanish{position:relative}
+.mx-vanish i{position:absolute;top:-2px;right:-4px;background:var(--gold);color:#0b0a08;border-radius:999px;font:800 9px var(--body);font-style:normal;padding:1px 4px}
+.dm-newgroup{justify-content:center;color:var(--gold-hi);font-weight:700;border:1px dashed var(--gold-lo);margin-bottom:6px}
+#mx-group{position:fixed;inset:0;z-index:100003;display:grid;place-items:center;background:rgba(0,0,0,.65)}
+#mx-group .gp{width:min(420px,calc(100vw - 28px));max-height:calc(100vh - 60px);overflow:auto;background:linear-gradient(180deg,#1d1810,#100e0a);border:1px solid var(--gold-lo);border-radius:18px;padding:16px;display:grid;gap:12px}
+#mx-group h4{margin:0;color:var(--gold-hi);font-size:18px}
+#mx-group input[type=text]{background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);font:inherit;width:100%}
+#mx-group .gm{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:10px;cursor:pointer}
+#mx-group .gm:hover{background:var(--panel-2)}
+#mx-group .gm input{width:18px;height:18px;accent-color:var(--gold)}
+#mx-group .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
 @media (max-width:760px){.dm-app{grid-template-columns:1fr}.dm-app.has-thread .dm-side{display:none}.dm-app:not(.has-thread) .dm-thread{display:none}.dm-back{display:inline-block}.dm-thread{min-height:calc(100vh - 220px)}.mx-react-btn{opacity:.6}}`;
     document.head.appendChild(css);
     // the "active now" strip goes above the chat list
@@ -351,16 +487,19 @@ body.mw-editing #mx-fab{display:none}
       const mn = e.target.closest("[data-menu]"); if (mn) { e.preventDefault(); e.stopPropagation(); openMenu(mn.dataset.menu, mn); return; }
       if (e.target.closest("[data-archtoggle]")) { showArch = !showArch; render(); return; }
       if (e.target.closest("[data-call]")) { say("Opening Live — start your room there and they'll see you live"); if (typeof go === "function") go("live"); return; }
+      if (e.target.closest("[data-vanish]")) { cycleVanish(); return; }
+      if (e.target.closest("[data-newgroup]")) { groupPicker(); return; }
+      if (e.target.closest("[data-ginfo]")) { groupInfo(); return; }
       if (e.target.closest("[data-rx-cancel]")) { replyTo = null; render(); return; }
       const rpb = e.target.closest("[data-rp]"); if (rpb) { replyTo = rpb.dataset.rp; document.querySelector(".mx-pick")?.remove(); render(); const i2 = document.getElementById("dm-in"); if (i2) i2.focus(); return; }
-      const fwb = e.target.closest("[data-fw]"); if (fwb) { const row = all.find((x) => String(x.id) === String(fwb.dataset.fw)); document.querySelector(".mx-pick")?.remove(); if (row && bareText(row.body)) { forwardBody = bareText(row.body); other = null; tab = "chats"; say("Pick a chat to forward it to"); render(); } return; }
-      const cpb = e.target.closest("[data-cp]"); if (cpb) { const row = all.find((x) => String(x.id) === String(cpb.dataset.cp)); document.querySelector(".mx-pick")?.remove(); if (row) { try { await navigator.clipboard.writeText(bareText(row.body)); say("Copied"); } catch (_) { say("Copy isn't available here"); } } return; }
+      const fwb = e.target.closest("[data-fw]"); if (fwb) { const row = all.find((x) => String(x.id) === String(fwb.dataset.fw)) || all.find((x) => muidOf(x) === fwb.dataset.fw); document.querySelector(".mx-pick")?.remove(); if (row && bareText(row.body)) { forwardBody = bareText(row.body); other = null; tab = "chats"; say("Pick a chat to forward it to"); render(); } return; }
+      const cpb = e.target.closest("[data-cp]"); if (cpb) { const row = all.find((x) => String(x.id) === String(cpb.dataset.cp)) || all.find((x) => muidOf(x) === cpb.dataset.cp); document.querySelector(".mx-pick")?.remove(); if (row) { try { await navigator.clipboard.writeText(bareText(row.body)); say("Copied"); } catch (_) { say("Copy isn't available here"); } } return; }
       const o = e.target.closest("[data-open]"); if (o) { open(o.dataset.open); return; }
       if (e.target.closest("[data-back]")) { other = null; render(); return; }
       const em = e.target.closest("[data-emo]"); if (em) { const i = document.getElementById("dm-in"); i.value += em.dataset.emo; i.focus(); paintSend(); sendTyping(); return; }
       if (e.target.closest("#mx-emo")) { const p = document.getElementById("mx-emoji"); p.hidden = !p.hidden; return; }
       const rp = e.target.closest("[data-rpick]"); if (rp) { showPick(rp.dataset.rpick); return; }
-      const rx = e.target.closest("[data-rx]"); if (rx) { const id = rx.closest(".mx-pick").dataset.for; document.querySelector(".mx-pick")?.remove(); await send("⟦react:" + id + ":" + rx.dataset.rx + "⟧"); return; }
+      const rx = e.target.closest("[data-rx]"); if (rx) { const id = rx.closest(".mx-pick").dataset.for; document.querySelector(".mx-pick")?.remove(); const gid2 = curGid(); if (gid2) await fanOut(gid2, "⟦g:" + gid2 + "⟧⟦react:@" + id + ":" + rx.dataset.rx + "⟧"); else await send("⟦react:" + id + ":" + rx.dataset.rx + "⟧"); return; }
       if (!e.target.closest(".mx-pick")) document.querySelector(".mx-pick")?.remove();
     });
     // long-press (phone) or double-click a message to react
@@ -375,10 +514,12 @@ body.mw-editing #mx-fab{display:none}
     view.addEventListener("input", (e) => { if (e.target.id === "dm-in") { paintSend(); if (e.target.value.trim()) sendTyping(); } });
     view.addEventListener("submit", async (e) => {
       if (e.target.id !== "dm-form") return; e.preventDefault();
-      const i = document.getElementById("dm-in"); let body = i.value.trim() || "👍"; if (!other) return;
-      if (replyTo && i.value.trim()) { body = "⟦q:" + replyTo + "⟧" + body; replyTo = null; }
+      const i = document.getElementById("dm-in"); const raw = i.value.trim(); if (!other) return;
+      const rp = replyTo; replyTo = null;
       i.value = ""; paintSend(); document.getElementById("mx-emoji").hidden = true;
-      const ok = await send(body); if (!ok && body !== "👍") i.value = bareText(body); i.focus(); render();
+      const ok = curGid() ? await sendGroup(curGid(), raw || "👍", rp) : await send((rp && raw ? "⟦q:" + rp + "⟧" : "") + vPrefix(other) + (raw || "👍"));
+      if (!ok && raw) i.value = raw;
+      i.focus(); render();
     });
     // photos
     view.addEventListener("change", async (e) => {
@@ -389,7 +530,7 @@ body.mw-editing #mx-fab{display:none}
         if (typeof compress === "function") { const d = await compress(f, 1400); blob = await (await fetch(d)).blob(); }
         const type = /png|webp|jpeg/.test(blob.type) ? blob.type : "image/jpeg";
         const up = await MW.uploadMedia(blob, { type, ext: type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg" });
-        if (await send("📷 Photo ⟦" + up.url + "⟧")) say("📷 Sent");
+        if (await sendCore("📷 Photo ⟦" + up.url + "⟧")) say("📷 Sent");
       } catch (err) { say("Couldn't send the photo: " + (err.message || err)); }
     });
     /* walkie-talkie: hold the 📻 button, talk, let go */
@@ -414,7 +555,7 @@ body.mw-editing #mx-fab{display:none}
       try { stream && stream.getTracks().forEach((t) => t.stop()); } catch (_) {} stream = null;
       if (Date.now() - t0 < 500) { say("Hold the 📻 button while you talk."); return; }
       const mime = (r.mimeType || "audio/webm").split(";")[0], ext = /mp4/.test(mime) ? "m4a" : "webm";
-      try { const up = await MW.uploadMedia(new Blob(chunks, { type: mime }), { type: mime, ext }); if (await send("🎙️ Voice message ⟦" + up.url + "⟧")) say("📻 Sent"); }
+      try { const up = await MW.uploadMedia(new Blob(chunks, { type: mime }), { type: mime, ext }); if (await sendCore("🎙️ Voice message ⟦" + up.url + "⟧")) say("📻 Sent"); }
       catch (err) { say("Couldn't send: " + (err.message || err)); }
     };
     ["pointerup", "pointercancel"].forEach((ev) => document.addEventListener(ev, release));
@@ -484,7 +625,7 @@ body.mw-editing #mx-fab{display:none}
     if (!mini) { w.hidden = true; return; }
     const box0 = w.querySelector(".mm-msgs"), atBottom = first || !box0 || box0.scrollHeight - box0.scrollTop - box0.clientHeight < 60;
     const draft = w.querySelector("input")?.value || "", focused = document.activeElement && w.contains(document.activeElement);
-    const msgs = all.filter((r) => ((r.sender === uid && r.recipient === mini) || (r.sender === mini && r.recipient === uid)) && !isReact(r.body)).slice(0, 40).reverse();
+    const msgs = all.filter((r) => !groupOfRow(r) && ((r.sender === uid && r.recipient === mini) || (r.sender === mini && r.recipient === uid)) && !isReact(r.body)).slice(0, 40).reverse();
     w.innerHTML = `<div class="mm-head">${av(mini, "sm")}<b>${E(handle(mini))}</b><small>${onlineIds().has(mini) ? "Active now" : ""}</small>
 <button type="button" data-mmfull title="Open in Messenger" aria-label="Open in Messenger">⤢</button><button type="button" data-mmclose aria-label="Close chat">×</button></div>
 <div class="mm-msgs">${msgs.length ? msgs.map((r) => `<div class="mx-msg ${r.sender === uid ? "me" : ""} end">${r.sender !== uid ? av(r.sender, "sm") : ""}<div class="mx-col">${bubble(r)}</div></div>`).join("") : `<p class="muted" style="text-align:center;margin:auto">Say hello 👋</p>`}</div>
@@ -505,7 +646,7 @@ body.mw-editing #mx-fab{display:none}
     document.addEventListener("submit", async (e) => {
       const f = e.target.closest("[data-popreply],[data-mmform]"); if (!f) return; e.preventDefault();
       const to = f.dataset.popreply || mini, i = f.querySelector("input"), body = i.value.trim(); if (!body || !to) return;
-      i.value = ""; const ok = await send(body, to);
+      i.value = ""; const ok = await send(vPrefix(to) + body, to);
       if (!ok) { i.value = body; return; }
       if (f.dataset.popreply) { document.getElementById("mx-pop").hidden = true; say("Sent to " + handle(to)); await markReadFrom(to); }
     });
@@ -551,6 +692,9 @@ body.mw-editing #mx-heads,body.mw-editing #mx-mini{display:none}`;
     build(); if (!uid) { render(); return; }
     fab(); wireHeads();
     await load(); paintHeads();
+    // group registry: my groups live in docs (groups/<gid> = {name, members, owner})
+    const d0 = DB();
+    if (d0) d0.collection("groups").limit(500).onSnapshot((s) => { const nx = {}; s.docs.forEach((x) => { const v = x.data(); if (v && !v.deleted && Array.isArray(v.members) && v.members.includes(uid)) nx[x.id] = { name: String(v.name || "Group chat"), members: v.members.filter((i) => typeof i === "string"), owner: v.owner || "" }; }); groups = nx; if (!view.hidden) render(); }, () => {});
     sb.channel("dms-live").on("postgres_changes", { event: "*", schema: "public", table: "dms" }, later).subscribe();
     started = true; setInterval(() => { if (!document.hidden) load(); }, 45000);
     // keep "active now" dots fresh

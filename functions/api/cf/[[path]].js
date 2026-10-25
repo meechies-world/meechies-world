@@ -249,6 +249,20 @@ async function rest(request, env) {
       await env.DB.batch([b, change(env, "dms", null, null, typeof sender === "string" ? sender : uid, uid)]);
       return json({ data: null, error: null });
     }
+    if (q.op === "delete") {
+      // either party may delete a DM row they are part of — disappearing messages use this
+      // to remove their expired copies for real. Nobody can delete anyone else's mail.
+      const id = f("id");
+      if (typeof id !== "number" && typeof id !== "string") return err("Which message?");
+      const row = await env.DB.prepare("select sender, recipient from dms where id = ?").bind(+id).first();
+      if (!row) return json({ data: null, error: null });
+      if (row.sender !== uid && row.recipient !== uid) throw new RuleError("That isn't your message.");
+      await env.DB.batch([
+        env.DB.prepare("delete from dms where id = ?").bind(+id),
+        change(env, "dms", null, null, row.sender, row.recipient),
+      ]);
+      return json({ data: null, error: null });
+    }
   }
 
   if (q.table === "admins" && q.op === "select") {
