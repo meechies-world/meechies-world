@@ -210,7 +210,24 @@ body.dj-past #fb-left,body.dj-on #fb-left{transform:translateX(-110%);opacity:0;
 body.dj-past #fb-right,body.dj-on #fb-right{transform:translateX(110%);opacity:0;pointer-events:none}
 body.dj-past #ai-fab,body.dj-past #mx-heads,body.dj-on #ai-fab,body.dj-on #mx-heads{opacity:0!important;pointer-events:none!important;transform:scale(.5)}
 #ai-fab,#mx-heads{transition:opacity .3s ease,transform .3s ease}
-@media (max-width:760px){.dj-decks{display:flex;flex-direction:column}.deck[data-deck=A]{order:1}.mixer.m1{order:2}.deck[data-deck=B]{order:3}.deck[data-deck=C]{order:4}.mixer.m2{order:5}.deck[data-deck=D]{order:6}.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}}
+.swipe-hint{display:none}
+@media (max-width:760px){
+.dj-decks{display:flex;flex-direction:row;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;padding:2px 2px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.dj-decks::-webkit-scrollbar{display:none}
+.dj-decks>*{flex:0 0 87%;scroll-snap-align:center;min-width:0}
+.swipe-hint{display:block;text-align:center;color:var(--gold-hi);font:700 12.5px var(--body);letter-spacing:.04em;margin:4px 0 8px}
+.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}
+#dj-owner .btn{min-height:48px}
+#dj-owner [data-play]{min-height:56px;font-size:17px}
+#dj-owner .pad{min-height:58px}
+#dj-owner input[type=range]{min-height:38px}
+#dj-owner .platter{width:min(200px,52vw)}
+.deck{background:linear-gradient(180deg,#181310,#0c0a07)}
+.deck h4{font-size:15px;letter-spacing:.16em}
+#dj-online{color:#45bd62;font-weight:800}
+#dj-browser .dj-item{min-height:54px}
+#dj-browser .dj-item .btn{min-height:46px;min-width:46px}
+}
 html.popdj header.bar,html.popdj #player-bar,html.popdj footer,html.popdj #fb-left,html.popdj #fb-right,html.popdj #ai-fab,html.popdj #mx-heads{display:none!important}
 html.popdj main{margin:0!important;padding:10px!important}
 html.popdj #v-radio .wrap{max-width:none!important;width:100%!important}
@@ -240,8 +257,11 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .cutbtn.on{background:#7a4fd0;color:#fff;border-color:#7a4fd0}
 .pairwave{width:100%;height:72px;background:#070605;border:1px solid #241d10;border-radius:8px}
 .browtab.on{background:var(--gold);color:#191104;border-color:var(--gold)}
-.online-chip{display:inline-flex;align-items:center;gap:5px;font:700 12px var(--body);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 10px;white-space:nowrap;margin-left:10px}
+.online-chip{display:inline-flex;align-items:center;gap:5px;font:700 12px var(--body);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 10px;white-space:nowrap;margin-left:10px;flex:none}
 .online-chip b{color:#45bd62}
+@media(max-width:640px){.online-chip{margin-left:6px;padding:3px 8px;font-size:11px}}
+#dj-browser .dj-search{position:sticky;top:0;z-index:3;background:#0d0b08;padding:6px 0}
+.ptab-on{align-self:center;font:800 12.5px var(--body);color:#45bd62;white-space:nowrap;padding:0 4px}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -281,6 +301,7 @@ html.popdj .popdj-hint{display:block}`;
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
+  <div class="swipe-hint">👆 SWIPE SIDEWAYS — DECK A ⟷ MIXER ⟷ DECK B</div>
   <div class="dj-decks">
     ${deckHTML("A")}
     <div class="mixer m1"><small>MIC DROP</small>
@@ -312,6 +333,7 @@ html.popdj .popdj-hint{display:block}`;
       <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net" style="max-height:260px"></div></div>
     <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
   </div>
+  <div class="swipe-hint">👆 SWIPE SIDEWAYS — DECK C ⟷ MIXER ⟷ DECK D</div>
   <div class="dj-decks" style="margin-top:16px">
     ${deckHTML("C")}
     <div class="mixer m2"><small>DECKS C / D</small>
@@ -353,7 +375,7 @@ html.popdj .popdj-hint{display:block}`;
     const curP = boothEl.querySelector("#dj-cur")?.closest(".dj-panel"); if (curP) curP.classList.add("pg-music");
     boothEl.dataset.ptab = "all";
     const ptabs = document.createElement("div"); ptabs.id = "dj-ptabs";
-    ptabs.innerHTML = [["all", "🎛️ All"], ["decks", "🎚️ Decks"], ["studio", "🎙️ Studio"], ["music", "🎵 Music"]].map(([v, t]) => `<button class="btn ghost sm${v === "all" ? " on" : ""}" type="button" data-ptab="${v}">${t}</button>`).join("");
+    ptabs.innerHTML = [["all", "🎛️ All"], ["decks", "🎚️ Decks"], ["studio", "🎙️ Studio"], ["music", "🎵 Music"]].map(([v, t]) => `<button class="btn ghost sm${v === "all" ? " on" : ""}" type="button" data-ptab="${v}">${t}</button>`).join("") + '<span class="ptab-on" id="dj-online2"></span>';
     boothHome.insertBefore(ptabs, boothEl);
   }
   document.addEventListener("click", (e) => { const pb = e.target.closest && e.target.closest("[data-ptab]"); if (!pb) return; const o = document.getElementById("dj-owner"); if (o) o.dataset.ptab = pb.dataset.ptab; document.querySelectorAll("#dj-ptabs [data-ptab]").forEach((x) => x.classList.toggle("on", x === pb)); });
@@ -637,6 +659,7 @@ html.popdj .popdj-hint{display:block}`;
   function paintOnline(o, l) {
     const chip = document.getElementById("online-chip"); if (chip) { chip.hidden = false; const nb = document.getElementById("online-n"); if (nb) nb.textContent = o; }
     const b = document.getElementById("dj-online"); if (b) b.textContent = "👥 " + o + " online · 🎧 " + l + " on the decks";
+    const o2 = document.getElementById("dj-online2"); if (o2) o2.textContent = "🟢 " + o + " online · 🎧 " + l;
     const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + o + " on the site" : o + " on the site right now";
   }
   const pingKeeper = () => fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0), { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.online != null) paintOnline(j.online, j.listening || 0); }).catch(() => {});
@@ -835,6 +858,7 @@ html.popdj .popdj-hint{display:block}`;
       return;
     }
     if (b.dataset.queue != null) { const t = TRACKS()[+b.dataset.queue]; if (t) { queue.push({ src: URLOF(t), title: t.title, cover: t.cover || "", dur: +t.duration || 0 }); saveQueue(); paintQueue(); say("Queued: " + t.title); } return; }
+    if (b.dataset.nqueue != null) { const n = net[+b.dataset.nqueue]; if (!n) return; b.disabled = true; const src = await iaFile(n.id); b.disabled = false; if (!src) { say("No playable file in that one. Pick another."); return; } queue.push({ src, title: n.title, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), dur: 0 }); saveQueue(); paintQueue(); say("Queued: " + n.title); return; }
     if (b.dataset.play) return togglePlay(b.dataset.play);
     if (b.dataset.cue0) { const k = b.dataset.cue0, s = S[k], d = deck(k); s.pos = 0; if (s.playing) s.start = Date.now(); try { d.el.currentTime = 0; } catch (_) {} save(true); return; }
     if (b.dataset.brake) { const k = b.dataset.brake, d = deck(k); if (d.el.paused) return; const r0 = d.el.playbackRate, t0 = performance.now(); const step = () => { const p = (performance.now() - t0) / 800; if (p >= 1) { d.el.pause(); d.el.playbackRate = S[k].rate || 1; if (S[k].playing) { S[k].playing = false; S[k].pos = d.el.currentTime; paintOwner(); save(true); } return; } d.el.playbackRate = Math.max(0.02, r0 * (1 - p)); requestAnimationFrame(step); }; step(); return; }
@@ -1240,7 +1264,7 @@ html.popdj .popdj-hint{display:block}`;
   $("#dj-sf").addEventListener("submit", async (e) => {
     e.preventDefault(); const q = $("#dj-q").value.trim(); if (!q) return;
     $("#dj-net").innerHTML = '<small class="muted">Searching...</small>';
-    try { net = await iaSearch(q); $("#dj-net").innerHTML = net.length ? net.map((n, i) => `<div class="dj-item"><span title="${E(n.title)}">${E(n.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-net="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-net="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-net="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-net="${i}">D</button></div>`).join("") : '<small class="muted">Nothing found. Try another word.</small>'; }
+    try { net = await iaSearch(q); $("#dj-net").innerHTML = net.length ? net.map((n, i) => `<div class="dj-item"><span title="${E(n.title)}">${E(n.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-net="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-net="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-net="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-net="${i}">D</button><button class="btn ghost sm" type="button" data-nqueue="${i}">＋Q</button></div>`).join("") : '<small class="muted">Nothing found. Try another word.</small>'; }
     catch (_) { $("#dj-net").innerHTML = '<small class="muted">Search is busy. Try again in a moment.</small>'; }
   });
 
