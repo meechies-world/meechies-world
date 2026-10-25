@@ -10,7 +10,7 @@
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
   const ME = () => (typeof me !== "undefined" ? me : null);
   const DB = () => (typeof db !== "undefined" ? db : null);
-  const okUrl = (u) => /^https:\/\/[^\s"'<>()]+$/i.test(u || "");
+  const okUrl = (u) => /^https:\/\/[^\s"'<>()]+$/i.test(u || "") && !/supabase\.co/i.test(u || ""); // old Supabase storage is shut off; its photos/videos are dead
   let likesLoaded = false, profiles = {}, likes = {}, tab = "discover", editing = false, photoIdx = {}, busy = false;
 
   const css = document.createElement("style");

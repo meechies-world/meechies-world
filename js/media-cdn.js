@@ -6,6 +6,26 @@
   const fix = (u) => (typeof u === "string" && u.startsWith(PUB)) ? location.origin + "/m/" + u.slice(PUB.length).split("?")[0] : u;
   window.mwMedia = fix;
 
+  /* The old Supabase storage is shut off (402 for every file), so anything still pointing there is dead.
+     Hide it instead of showing broken players and picture frames: dead post/clip videos take their whole
+     card with them, dead photos just disappear (initials/placeholder show through). A video that fails to
+     play for any other reason (e.g. a phone codec browsers refuse) hides its post/clip card too. */
+  const DEAD = (u) => typeof u === "string" && u.includes("supabase.co/");
+  const GONE_PX = "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
+  function bury(el) {
+    if (!el || el.nodeType !== 1 || el.dataset.dead) return;
+    const tag = el.tagName;
+    if (tag === "IMG") { el.dataset.dead = "1"; el.style.display = "none"; try { el.src = GONE_PX; } catch (_) {} return; }
+    if (tag === "VIDEO" || tag === "SOURCE" || tag === "AUDIO") {
+      const v = tag === "SOURCE" ? el.parentElement : el;
+      const box = (v && v.closest && v.closest(".post,.clip,.fb-story,.dt-card")) || v;
+      if (!box || box.dataset.dead) return; box.dataset.dead = "1";
+      if (v && v.pause) try { v.pause(); } catch (_) {}
+      box.style.display = "none";
+    }
+  }
+  document.addEventListener("error", (e) => { const t = e.target; if (t && (t.tagName === "VIDEO" || t.tagName === "SOURCE") && t.closest && t.closest(".post,.clip")) bury(t); }, true);
+
   const wrap = (proto, prop) => {
     const d = Object.getOwnPropertyDescriptor(proto, prop);
     if (!d || !d.set) return;
@@ -29,12 +49,13 @@
     if (!el || el.nodeType !== 1) return;
     for (const n of ["src", "poster", "href"]) {
       const v = el.getAttribute && el.getAttribute(n);
+      if (v && DEAD(v) && n !== "href") { bury(el); continue; }
       if (v && v.startsWith(PUB)) {
         setAttr.call(el, n, fix(v));
         if ((el.tagName === "SOURCE") && el.parentElement && el.parentElement.load) el.parentElement.load();
       }
     }
-    if (el.style && el.style.backgroundImage && el.style.backgroundImage.includes(PUB)) el.style.backgroundImage = el.style.backgroundImage.split(PUB).join(location.origin + "/m/");
+    if (el.style && el.style.backgroundImage && el.style.backgroundImage.includes(PUB)) el.style.backgroundImage = "none";
     if (deep && el.querySelectorAll) el.querySelectorAll("[src],[poster],[href],[style*='supabase.co']").forEach((c) => scan(c, false));
   };
   const start = () => {
