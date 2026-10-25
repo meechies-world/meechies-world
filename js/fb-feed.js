@@ -17,10 +17,11 @@
   const css = document.createElement("style");
   css.textContent = `
 #v-community{--fb-bg:#18191a;--fb-card:#242526;--fb-hover:#3a3b3c;--fb-text:#e4e6eb;--fb-mute:#b0b3b8;--fb-line:#3e4042;--fb-blue:#2d88ff;background:var(--fb-bg)!important}
+#fb-top,#fb-tabs,#fb-notes{--fb-bg:#18191a;--fb-card:#242526;--fb-hover:#3a3b3c;--fb-text:#e4e6eb;--fb-mute:#b0b3b8;--fb-line:#3e4042;--fb-blue:#2d88ff;--shell-h:48px}
 body[data-view=community]{background:#18191a}
 #v-community .section-head{display:none}
 #v-community .wrap{padding-top:0!important}
-#fb-top{position:relative;z-index:15;display:flex;align-items:center;gap:8px;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:0 calc(-1 * clamp(16px,3.2vw,56px)) 14px;padding:8px clamp(16px,3.2vw,56px)}
+#fb-top{position:relative;z-index:15;display:flex;align-items:center;gap:8px;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:0;padding:8px clamp(16px,3.2vw,56px)}
 #fb-top .wm{font:800 24px/1 var(--display,system-ui);color:var(--gold-hi,#f0cf78);letter-spacing:-.5px;margin-right:auto;white-space:nowrap}
 #fb-top button{width:40px;height:40px;border-radius:50%;border:0;background:var(--fb-hover);color:var(--fb-text);font-size:18px;display:grid;place-items:center;cursor:pointer;position:relative}
 #fb-top button i{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 4px}
@@ -87,7 +88,7 @@ body[data-view=community]{background:#18191a}
 #v-community .reply-form input{border-radius:999px;background:var(--fb-hover);border:0;color:var(--fb-text)}
 @media(max-width:760px){
   #v-community .wrap{padding-inline:0!important}
-  #fb-top{margin:0 0 8px;padding:8px 12px}
+  #fb-top{margin:0;padding:8px 12px}
   #fb-main{display:flex;flex-direction:column}
   #fb-stories{order:-1;padding-inline:12px}
   #v-community .card,#v-community .post{border-radius:0!important}
@@ -108,7 +109,17 @@ body[data-view=community]{background:#18191a}
 <button type="button" data-fb="search" aria-label="Search people">🔍</button>
 <button type="button" data-fb="msgs" aria-label="Messenger">💬<i hidden></i></button>
 <button type="button" data-fb="me" aria-label="My profile">👤</button>`;
-  wrap.prepend(top);
+  // The Book shell lives at body level, under the site header, so it stays on every view (owner's rule).
+  const hdr0 = document.querySelector("header.bar");
+  if (hdr0) hdr0.after(top); else document.body.prepend(top);
+  top.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-fb]"); if (!b) return;
+    e.preventDefault();
+    const k = b.dataset.fb;
+    if (k === "msgs") go("messages");
+    else if (k === "search") go("friends");
+    else if (k === "me") { if (window.MW_profilePage && window.MW_profilePage.mine) window.MW_profilePage.mine(); else go("friends"); }
+  });
 
   // columns: shortcuts | feed | right side
   const cols = document.createElement("div"); cols.id = "fb-cols";
@@ -187,15 +198,15 @@ body[data-view=community]{background:#18191a}
   const dot = document.querySelector(".dm-dot"); if (dot) new MutationObserver(paintBadge).observe(dot, { attributes: true });
   /* Facebook-style tab row: Home · Friends · Video · Marketplace · Notifications · Menu */
   const tcss = document.createElement("style");
-  tcss.textContent = `#fb-tabs{display:flex;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:-14px calc(-1 * clamp(16px,3.2vw,56px)) 14px;padding:0 clamp(16px,3.2vw,56px);position:sticky;top:60px;z-index:14}
+  tcss.textContent = `#fb-tabs{display:flex;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:0 0 14px;padding:0 clamp(16px,3.2vw,56px);position:sticky;top:60px;z-index:14}
 #fb-tabs button{flex:1;max-width:120px;height:48px;border:0;border-bottom:3px solid transparent;background:none;color:var(--fb-mute);font-size:21px;cursor:pointer;position:relative;display:grid;place-items:center;border-radius:0}
 #fb-tabs button:hover{background:var(--fb-hover)}
 #fb-tabs button[aria-pressed=true]{color:var(--fb-blue);border-bottom-color:var(--fb-blue)}
 #fb-tabs button i{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 5px}
 #fb-tabs button small{position:absolute;bottom:3px;left:0;right:0;font:600 10px system-ui;color:inherit}
 @media(min-width:761px){#fb-tabs{justify-content:center}#fb-tabs button small{display:none}}
-@media(max-width:760px){#fb-tabs{margin:-8px 0 8px;padding:0}#fb-tabs button small{display:none}}
-#fb-notes{background:var(--fb-card);border-radius:10px;margin-bottom:14px;padding:10px 8px;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+@media(max-width:760px){#fb-tabs{margin:0 0 8px;padding:0}#fb-tabs button small{display:none}}
+#fb-notes{position:fixed;top:114px;right:12px;width:min(380px,calc(100vw - 24px));max-height:70vh;overflow:auto;z-index:30;background:var(--fb-card);border:1px solid var(--fb-line);border-radius:10px;padding:10px 8px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
 #fb-notes[hidden]{display:none}
 #fb-notes h3{margin:4px 8px 8px;color:var(--fb-text);font:700 22px system-ui}
 #fb-notes .n{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;color:var(--fb-text);padding:8px;border-radius:8px;font:400 14px/1.3 system-ui;cursor:pointer}
@@ -205,16 +216,16 @@ body[data-view=community]{background:#18191a}
 #fb-notes .n .e{font-size:22px;flex:none;width:48px;text-align:center}
 #fb-notes .n small{display:block;color:var(--fb-mute);font-size:12px;margin-top:2px}
 #fb-notes .empty{color:var(--fb-mute);padding:16px 8px;text-align:center}
-@media(max-width:760px){#fb-notes{border-radius:0}}`;
+@media(max-width:760px){#fb-notes{right:8px;left:8px;width:auto}}`;
   document.head.appendChild(tcss);
   const tabs = document.createElement("div"); tabs.id = "fb-tabs"; tabs.setAttribute("role", "tablist");
   tabs.innerHTML = [["home", "🏠", "Home"], ["friends", "👥", "Friends"], ["video", "📺", "Video"], ["market", "🛍️", "Marketplace"], ["notes", "🔔", "Notifications"], ["menu", "☰", "Menu"]]
     .map(([k, ic, n]) => `<button type="button" data-fbt="${k}" aria-label="${n}" aria-pressed="${k === "home"}">${ic}<i hidden></i><small>${n}</small></button>`).join("");
   top.after(tabs);
-  const stickTabs = () => { const h = document.querySelector("header.bar"); tabs.style.top = (h ? h.offsetHeight : 60) + "px"; };
+  const stickTabs = () => { const h = document.querySelector("header.bar"); const hh = h ? h.offsetHeight : 60; tabs.style.top = hh + "px"; const nt = document.getElementById("fb-notes"); if (nt) nt.style.top = (hh + 54) + "px"; };
   stickTabs(); addEventListener("resize", stickTabs);
   const notes = document.createElement("div"); notes.id = "fb-notes"; notes.hidden = true;
-  main.prepend(notes);
+  tabs.after(notes); stickTabs();
   const NAME = (id) => { try { return typeof handleOf === "function" ? handleOf(id) : "Someone"; } catch (_) { return "Someone"; } };
   const AV = (id) => { try { return typeof avatarOf === "function" ? avatarOf(id) : ""; } catch (_) { return ""; } };
   const SEEN = "mw_fb_seen";
