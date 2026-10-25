@@ -42,6 +42,29 @@ body.has-player #ai-panel{height:min(520px,calc(100vh - 180px))}
 .ai-m img{max-width:100%;border-radius:10px;display:block;margin-bottom:6px}
 .ai-typing{display:inline-flex;gap:4px}.ai-typing i{width:6px;height:6px;border-radius:50%;background:var(--gold,#d4a843);animation:aiB 1s infinite}.ai-typing i:nth-child(2){animation-delay:.15s}.ai-typing i:nth-child(3){animation-delay:.3s}
 @keyframes aiB{0%,80%,100%{opacity:.25}40%{opacity:1}}
+#ai-talkbtn{display:block;width:100%;text-align:center;background:linear-gradient(180deg,#241c0e,#171208);border:0;border-bottom:1px solid var(--line,#3a3223);color:var(--gold-hi,#f0cf78);font:700 13.5px system-ui,sans-serif;padding:9px;cursor:pointer;flex:none}
+#ai-stage{display:grid;justify-items:center;gap:9px;padding:16px 14px 12px;border-bottom:1px solid var(--line,#3a3223);background:radial-gradient(ellipse 90% 120% at 50% 0,rgba(212,168,67,.14),transparent 70%);flex:none}
+#ai-stage[hidden]{display:none}
+.ai-face{position:relative;width:148px;height:148px;flex:none}
+.ai-face img{width:100%;height:100%;object-fit:cover;border-radius:50%;border:3px solid var(--gold,#d4a843);position:relative;z-index:2;background:#1d1810}
+.ai-face .rg{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(212,168,67,.55);z-index:1;pointer-events:none}
+#ai-stage[data-state="listening"] .rg.a{animation:aiPulse 1.3s ease-out infinite}
+#ai-stage[data-state="listening"] .rg.b{animation:aiPulse 1.3s ease-out .45s infinite}
+#ai-stage[data-state="idle"] .ai-face img{animation:aiBreath 4s ease-in-out infinite}
+#ai-stage[data-state="thinking"] .rg.a{border-style:dashed;animation:aiSpin 2.4s linear infinite}
+#ai-stage[data-state="speaking"] .ai-face img{animation:aiTalk .5s ease-in-out infinite alternate}
+@keyframes aiPulse{0%{transform:scale(1);opacity:.85}100%{transform:scale(1.5);opacity:0}}
+@keyframes aiSpin{to{transform:rotate(360deg)}}
+@keyframes aiBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}
+@keyframes aiTalk{from{transform:scale(1)}to{transform:scale(1.05)}}
+.ai-wave{display:none;gap:3px;align-items:center;height:22px}
+#ai-stage[data-state="speaking"] .ai-wave{display:flex}
+.ai-wave i{width:4px;height:14px;background:var(--gold,#d4a843);border-radius:2px;animation:aiWv .7s ease-in-out infinite}
+.ai-wave i:nth-child(2){animation-delay:.1s}.ai-wave i:nth-child(3){animation-delay:.2s}.ai-wave i:nth-child(4){animation-delay:.3s}.ai-wave i:nth-child(5){animation-delay:.4s}.ai-wave i:nth-child(6){animation-delay:.5s}.ai-wave i:nth-child(7){animation-delay:.6s}
+@keyframes aiWv{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1.5)}}
+#ai-stage-st{margin:0;color:var(--muted,#a99f8b);font-size:13.5px;text-align:center;min-height:2.5em;max-width:300px;line-height:1.35}
+.ai-stage-row{display:flex;gap:8px}
+#ai-panel.talking{height:min(720px,calc(100vh - 56px))}
 body.mw-editing #ai-fab{display:none!important}`;
   document.head.appendChild(css);
 
@@ -50,6 +73,13 @@ body.mw-editing #ai-fab{display:none!important}`;
   const panel = document.createElement("section");
   panel.id = "ai-panel"; panel.hidden = true; panel.setAttribute("aria-label", "Chat with Meechie, the AI assistant");
   panel.innerHTML = `<header><img class="ai-av lg" src="/img/meechie-ai.jpg" alt="Meechie"><div><b>Meechie · AI</b><small>Answers 24/7 · talk, type, send a photo, or draft legal papers</small></div><select id="ai-model" aria-label="Choose Meechie's brain or an image maker" title="Pick a brain — every AI model on Cloudflare, wired in"><option value="">✨ Auto brain</option></select><button type="button" id="ai-new" title="Start a new chat" aria-label="Start a new chat" style="font-size:14px;border:1px solid var(--line,#3a3223);border-radius:999px;padding:4px 10px;margin-left:auto">＋ New</button><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
+<button type="button" id="ai-talkbtn">🎙️ Talk to Meechie — tap for a voice chat</button>
+<div id="ai-stage" data-state="idle" hidden>
+<div class="ai-face"><img src="/img/meechie-ai.jpg" alt="Meechie"><span class="rg a"></span><span class="rg b"></span></div>
+<div class="ai-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<p id="ai-stage-st">A real conversation: talk, and Meechie listens, answers out loud, then listens again.</p>
+<div class="ai-stage-row"><button type="button" id="ai-talk-go" class="btn">🎙️ Start talking</button><button type="button" id="ai-talk-stop" class="btn ghost" hidden>⏹ End call</button></div>
+</div>
 <div id="ai-log2" aria-live="polite"></div><div class="ai-chips" id="ai-chips"></div>
 <div id="ai-attach" hidden></div>
 <form id="ai-form2"><label class="ai-tool" id="ai-pic" aria-label="Send a photo">📷<input type="file" accept="image/*" id="ai-file" aria-label="Choose a photo"></label><button type="button" class="ai-tool" id="ai-mic" aria-label="Talk to the AI">🎙️</button><input id="ai-in2" aria-label="Ask Meechie" maxlength="1500" autocomplete="off" placeholder="Ask me anything"><button type="submit">Send</button></form>`;
@@ -78,7 +108,7 @@ body.mw-editing #ai-fab{display:none!important}`;
     chips.innerHTML = hist.length ? "" : CHIPS.map((c) => `<button type="button">${E(c)}</button>`).join("");
     log.scrollTop = log.scrollHeight;
   }
-  async function ask(q) {
+  async function ask(q, viaTalk) {
     if (busy || !q.trim()) return;
     if (!signedIn()) { if (typeof openAuth === "function") openAuth("signup"); return; }
     const img = pending; pending = ""; attach.hidden = true;
@@ -96,13 +126,14 @@ body.mw-editing #ai-fab{display:none!important}`;
     let reply;
     try {
       const tok = MW.session().access_token;
-      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ messages: hist.slice(-20).map((m) => ({ role: m.role, content: m.content })), image: img || undefined, ...(picked ? { model: picked } : {}) }) });
+      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ messages: hist.slice(-20).map((m) => ({ role: m.role, content: m.content })), image: img || undefined, ...(picked && !viaTalk ? { model: picked } : {}), ...(viaTalk ? { voice: true } : {}) }) });
       const j = await r.json().catch(() => ({}));
       reply = r.ok && j.reply ? j.reply + (j.sources && j.sources.length ? "\n\nSources: " + j.sources.map((x, i) => "[" + (i + 1) + "] " + x.title + " (" + x.url + ")").join("  ") : "") : (j.error === "busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com.");
     } catch (_) { reply = "I can't connect right now. Check your internet and try again."; }
     hist.push({ role: "assistant", content: reply }); hist = hist.slice(-40);
     try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((m) => ({ role: m.role, content: m.content, ...(m.check ? { check: m.check } : {}) })))); } catch (_) {}
-    busy = false; draw(false); speak(reply);
+    busy = false; draw(false);
+    if (viaTalk) playReply(reply); else speak(reply);
   }
   /* read answers out loud */
   let talkBack = false; try { talkBack = localStorage.getItem("mw_ai_voice") === "1"; } catch (_) {}
@@ -143,7 +174,7 @@ body.mw-editing #ai-fab{display:none!important}`;
     } catch (_) { pending = ""; }
   });
   fab.addEventListener("click", () => { panel.hidden = false; fab.hidden = true; draw(false); setTimeout(() => inp.focus(), 50); });
-  panel.querySelector("#ai-close").addEventListener("click", () => { panel.hidden = true; sync(); });
+  panel.querySelector("#ai-close").addEventListener("click", () => { stopTalk(); panel.hidden = true; sync(); });
   chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; sync(); return; } ask(b.textContent); });
   panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} window.speechSynthesis?.cancel(); draw(false); inp.focus(); });
   log.addEventListener("click", async (e) => {
@@ -160,6 +191,121 @@ body.mw-editing #ai-fab{display:none!important}`;
     }
     const c = e.target.closest("[data-copy-i]"); if (!c) return; const m = hist[+c.dataset.copyI]; if (m) navigator.clipboard?.writeText(m.content).then(() => { c.textContent = "Copied ✓"; setTimeout(() => (c.textContent = "Copy"), 1500); }).catch(() => {}); });
   panel.querySelector("#ai-form2").addEventListener("submit", (e) => { e.preventDefault(); let q = inp.value; if (!q.trim() && pending) q = "What is in this picture?"; inp.value = ""; ask(q); });
+  /* ---------- Talk mode: a real voice conversation with Meechie ----------
+   * His picture is the face. Your voice → server ears (Whisper) → the brain in voice style
+   * (short spoken answers) → server voice (Deepgram Aura) → he listens again, like a call. */
+  const STT_MODEL = "@cf/openai/whisper-large-v3-turbo", TTS_MODEL = "@cf/deepgram/aura-1";
+  const stage = panel.querySelector("#ai-stage"), stEl = panel.querySelector("#ai-stage-st"), goBtn = panel.querySelector("#ai-talk-go"), stopBtn = panel.querySelector("#ai-talk-stop");
+  const talk = { on: false, stream: null, rec: null, audio: null, vadTimer: null, ac: null, empties: 0 };
+  const aiTok = () => MW.session().access_token;
+  function setState(s, msg) { stage.dataset.state = s; if (msg) stEl.textContent = msg; }
+  panel.querySelector("#ai-talkbtn").addEventListener("click", () => {
+    const show = stage.hidden;
+    stage.hidden = !show; panel.classList.toggle("talking", show);
+    if (!show) stopTalk(); else if (!talk.on) setState("idle", "Tap Start talking, allow the microphone, and just talk to Meechie.");
+  });
+  goBtn.addEventListener("click", async () => {
+    if (!signedIn()) { if (typeof openAuth === "function") openAuth("signup"); return; }
+    if (kindOf[picked] === "image") { setState("idle", "First pick a brain (not an image maker) in the picker up top, then start talking."); return; }
+    talk.on = true; talk.empties = 0; goBtn.hidden = true; stopBtn.hidden = false; unlockSpeech();
+    setState("speaking", "Meechie is talking…");
+    await speakChunks(["Hey! Talk to me — ask me anything."]);
+    if (talk.on) listen();
+  });
+  stopBtn.addEventListener("click", stopTalk);
+  function stopTalk() {
+    talk.on = false;
+    if (talk.rec) { try { talk.rec.ondataavailable = null; talk.rec.onstop = null; talk.rec.stop(); } catch (_) {} talk.rec = null; }
+    if (talk.vadTimer) { clearInterval(talk.vadTimer); talk.vadTimer = null; }
+    if (talk.stream) { try { talk.stream.getTracks().forEach((t) => t.stop()); } catch (_) {} talk.stream = null; }
+    if (talk.ac) { try { talk.ac.close(); } catch (_) {} talk.ac = null; }
+    if (talk.audio) { try { talk.audio.pause(); } catch (_) {} talk.audio = null; }
+    try { window.speechSynthesis?.cancel(); } catch (_) {}
+    if (goBtn) { goBtn.hidden = false; stopBtn.hidden = true; }
+    if (stage && !stage.hidden) setState("idle", "Call ended. Tap Start talking whenever you're ready.");
+  }
+  async function speakChunks(parts) {
+    for (const part of parts) {
+      if (!talk.on) return;
+      let played = false;
+      try {
+        const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + aiTok() }, body: JSON.stringify({ model: TTS_MODEL, text: part }) });
+        if (r.ok && /^audio\//.test(r.headers.get("content-type") || "")) {
+          const url = URL.createObjectURL(await r.blob());
+          played = await new Promise((res) => {
+            const a = new Audio(url); talk.audio = a;
+            a.onended = () => { URL.revokeObjectURL(url); res(true); };
+            a.onerror = () => { URL.revokeObjectURL(url); res(false); };
+            a.play().catch(() => res(false));
+          });
+          talk.audio = null;
+        }
+      } catch (_) {}
+      if (!talk.on) return;
+      if (!played) await new Promise((res) => { // device voice as a fallback
+        if (!("speechSynthesis" in window)) return res();
+        const u = new SpeechSynthesisUtterance(part); u.onend = () => res(); u.onerror = () => res();
+        try { speechSynthesis.speak(u); } catch (_) { res(); }
+      });
+    }
+  }
+  function playReply(reply) {
+    if (!talk.on) return;
+    const clean = String(reply || "").split("\n\nSources:")[0].replace(/\[\d+\]/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*#_`>]/g, "").trim();
+    if (!clean) { listen(); return; }
+    setState("speaking", "Meechie is talking…");
+    const chunks = []; let cur = "";
+    for (const s of clean.split(/(?<=[.!?])\s+/)) { if ((cur + " " + s).length > 850 && cur) { chunks.push(cur); cur = s; } else cur = cur ? cur + " " + s : s; }
+    if (cur) chunks.push(cur);
+    speakChunks(chunks.slice(0, 4)).then(() => { if (talk.on) listen(); });
+  }
+  async function listen() {
+    if (!talk.on) return;
+    setState("listening", "🎙️ Listening… talk now. He answers when you pause.");
+    let stream;
+    try { stream = talk.stream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }); talk.stream = stream; }
+    catch (_) { talk.on = false; goBtn.hidden = false; stopBtn.hidden = true; setState("idle", "The microphone is blocked. Allow mic access for this site, then tap Start talking."); return; }
+    const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((x) => window.MediaRecorder && MediaRecorder.isTypeSupported(x)) || "";
+    const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined); talk.rec = rec;
+    const chunks = []; rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+    let heard = false, quietSince = 0; const t0 = Date.now();
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)(); talk.ac = ac;
+      const an = ac.createAnalyser(); an.fftSize = 512; ac.createMediaStreamSource(stream).connect(an);
+      const buf = new Uint8Array(an.frequencyBinCount);
+      talk.vadTimer = setInterval(() => {
+        if (!talk.on || talk.rec !== rec) { clearInterval(talk.vadTimer); return; }
+        an.getByteTimeDomainData(buf);
+        let peak = 0; for (let i = 0; i < buf.length; i += 4) peak = Math.max(peak, Math.abs(buf[i] - 128) / 128);
+        const now = Date.now();
+        if (peak > 0.06) { heard = true; quietSince = now; }
+        if ((heard && now - quietSince > 1100) || now - t0 > 12000 || (!heard && now - t0 > 7000)) { try { rec.stop(); } catch (_) {} }
+      }, 120);
+    } catch (_) { setTimeout(() => { try { rec.stop(); } catch (_) {} }, 6000); }
+    rec.onstop = async () => {
+      if (talk.vadTimer) { clearInterval(talk.vadTimer); talk.vadTimer = null; }
+      if (talk.ac) { try { talk.ac.close(); } catch (_) {} talk.ac = null; }
+      talk.rec = null;
+      if (!talk.on) return;
+      const blob = new Blob(chunks, { type: type || "audio/webm" });
+      if (!heard || blob.size < 1200) { if (++talk.empties >= 3) { stopTalk(); setState("idle", "I couldn't hear you — tap Start talking to try again."); } else listen(); return; }
+      talk.empties = 0;
+      setState("thinking", "Meechie is thinking…");
+      let text = "";
+      try {
+        const dataUrl = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+        const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + aiTok() }, body: JSON.stringify({ model: STT_MODEL, audio: dataUrl }) });
+        const j = await r.json().catch(() => ({}));
+        text = (j.text || "").trim();
+        if (!r.ok && j.error === "limit") { stopTalk(); setState("idle", j.message || "Voice allowance used up for now — you can still type below."); return; }
+      } catch (_) {}
+      if (!talk.on) return;
+      if (text) ask(text, true);
+      else if (++talk.empties >= 3) { stopTalk(); setState("idle", "I couldn't make that out — tap Start talking to try again."); }
+      else listen();
+    };
+    try { rec.start(); } catch (_) { if (talk.on) listen(); }
+  }
   // hide the bubble on the Contact page, which already has the full AI box
   const contact = document.getElementById("v-contact"), msgs = document.getElementById("v-messages");
   // also hidden in Messenger, where it would cover the Send button

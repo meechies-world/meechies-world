@@ -108,6 +108,6 @@ export async function onRequestPost({ request, env }) {
   // fair-use limit: 60 questions an hour, 300 a day per member (the reply explains it, so every chat box shows it)
   if ((await take(env, token, "ai", 3600, 60)) === false || (await take(env, token, "ai-day", 86400, 300)) === false)
     return json({ reply: "You've used Meechie's AI a lot this hour. Take a short break and try again later.", limited: true });
-  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model });
+  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true });
   return json(out, out.error ? 503 : 200);
 }
