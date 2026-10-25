@@ -1005,11 +1005,17 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   </div>
 </div>
 <script>
-/* Members only: anyone not signed in sees this sign-up screen instead of the site. It shows before the page paints.
-   (The member data itself is also locked to signed-in accounts on the database side.) */
-(function(){ var signed=false; try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if((/^sb-.*-auth-token$/.test(k) || k==="mw-cf-session") && localStorage.getItem(k) && localStorage.getItem(k)!=="null"){ signed=true; break; } } }catch(_){}
-  if(/[?&#](code=|access_token=|type=recovery)/.test(location.href)) signed=true; // coming back from Facebook or a password-reset link
-  if(!signed){ document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true; }
+/* Open browsing with a 5-minute head start (owner's call, Oct 2026): visitors look around
+   freely; after 5 minutes, guests get the sign-up screen and must sign in or join to keep
+   going. Member data stays locked to signed-in accounts on the database side. */
+(function(){ var KEY=/^sb-.*-auth-token$/;
+  function signedIn(){ try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if((KEY.test(k) || k==="mw-cf-session") && localStorage.getItem(k) && localStorage.getItem(k)!=="null") return true; } }catch(_){}
+    try{ if(window.MW && MW.session && MW.session()) return true; }catch(_){}
+    return /[?&#](code=|access_token=|type=recovery)/.test(location.href); }
+  if(signedIn()) return;
+  setTimeout(function(){ if(signedIn() || window.MW_OUTAGE) return; /* signed in meanwhile, or sign-in is down: keep browsing */
+    document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true;
+  }, 5*60*1000);
 })();
 </script>
 
@@ -3294,8 +3300,8 @@ $("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"s
     if(up && !r.data.session){ up=false; paint(); $("#gt-msg").textContent="Almost there: check your email and tap the link to confirm, then sign in here."; return; }
     $("#gt-msg").textContent="You're in. Loading..."; // the page reloads into the site
   });
-  // a saved sign-in turned out to be expired: show the gate after all
-  (window.MW?.sessionReady||Promise.resolve()).then(()=>{ const s=window.MW?.session?.(); if(!s && !window.MW_OUTAGE && window.MW?.ready && !/[?&#](code=|access_token=|type=recovery)/.test(location.href)){ document.documentElement.classList.add("gated"); g.hidden=false; const en=$("#enter"); if(en) en.hidden=true; } });
+  // Open browsing (owner's call, Oct 2026): an expired or missing sign-in no longer
+  // brings the gate back — the visitor just keeps browsing as a guest.
 })();
 
 function showRecovery(){ try{sessionStorage.setItem("mw_recovery","1");}catch(_){} const d=$("#pw-dialog"); if(!d.open) d.showModal(); }
