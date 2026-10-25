@@ -41,7 +41,8 @@ body.has-player #v-clips .rail{bottom:70px}`;
   const HANDLE = (id) => (typeof handleOf === "function" ? handleOf(id) : "Member");
   const AV = (id) => (typeof avatarOf === "function" ? avatarOf(id) : "");
   function clips() {
-    return P().filter((p) => /^https:\/\//.test(p.video || "")).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    // the old Supabase storage is shut off — its clips are dead for everyone, keep them out entirely
+    return P().filter((p) => /^https:\/\//.test(p.video || "") && !/supabase\.co/.test(p.video)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }
   function render() {
     const list = clips(), uid = ME();
@@ -56,6 +57,7 @@ body.has-player #v-clips .rail{bottom:70px}`;
         el = document.createElement("div"); el.className = "clip"; el.dataset.id = p.id;
         el.innerHTML = `<video playsinline loop preload="none" muted></video><div class="shade"></div><button class="snd" type="button"></button><div class="cap"></div><div class="rail"></div>`;
         el.querySelector("video").dataset.src = p.video;
+        el.querySelector("video").addEventListener("error", () => { el.remove(); els.delete(p.id); if (!els.size) render(); }); // a clip that can't play (dead file, phone codec) takes itself out
         els.set(p.id, el); io && io.observe(el);
       }
       const liked = (p.likes || []).includes(uid);
