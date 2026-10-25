@@ -30,10 +30,10 @@ body[data-view=community]{background:#18191a}
 @media(min-width:1100px){#fb-cols{grid-template-columns:minmax(0,680px) 300px;justify-content:center}}
 #fb-left{display:none}
 @media(min-width:1100px){#fb-left{display:grid;gap:2px;position:fixed;left:0;top:var(--rail-top,116px);width:240px;max-height:calc(100dvh - var(--rail-top,116px) - 84px);overflow-y:auto;padding:4px 8px;z-index:13;align-content:start;scrollbar-width:thin}}
-body[data-view=clips] #fb-left,body[data-view=world] #fb-left{display:none}
+body[data-view=clips] #fb-left,body[data-view=world] #fb-left,body[data-view=dj] #fb-left{display:none}
 #fb-right{display:none}
 @media(min-width:1280px){#fb-right{display:block;position:fixed;right:0;top:var(--rail-top,116px);width:280px;max-height:calc(100dvh - var(--rail-top,116px) - 84px);overflow-y:auto;padding:4px 10px;z-index:13;scrollbar-width:thin}}
-body[data-view=clips] #fb-right,body[data-view=world] #fb-right{display:none}
+body[data-view=clips] #fb-right,body[data-view=world] #fb-right,body[data-view=dj] #fb-right{display:none}
 #fb-right #fb-contacts{background:var(--fb-card);border-radius:10px;padding:12px 8px;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 #fb-right #fb-contacts h3{color:var(--fb-mute);font:700 15px system-ui;margin:2px 8px 8px}
 @media(min-width:1100px){body:not([data-view=clips]):not([data-view=world]) main{margin-left:240px}}

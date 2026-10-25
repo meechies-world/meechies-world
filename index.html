@@ -1036,6 +1036,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <a href="#legal" data-go="legal">⚖️ Legal Help</a>
       <a href="#shop" data-go="shop">Shop</a>
       <a href="#radio" data-go="radio">Radio</a>
+      <a href="#dj" data-go="dj">🎛️ DJ</a>
       <a href="#liveradio" data-go="liveradio">Live Radio</a>
       <a href="#livetv" data-go="livetv">Live TV</a>
       <a href="#live" data-go="live">🔴 Live</a>
@@ -1337,6 +1338,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     </div>
 
     <div id="dj-root"></div>
+    <div style="margin-top:14px"><a class="btn" href="#dj" data-go="dj">🎛️ Open the DJ Station — 4 decks</a></div>
     <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-top:40px">
       <div><p class="eyebrow">Music player</p><h3 style="font-size:28px;margin-top:6px">The Library</h3></div>
       <span class="muted" id="lib-count" style="font-size:14px">0 tracks</span>
@@ -1356,6 +1358,22 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <a class="btn ghost sm" href="https://www.reverbnation.com/halalmusic" target="_blank" rel="noopener">Become a fan on ReverbNation →</a></div>
       <p class="muted" style="margin:0 0 14px">Play every song from the halal music page right here. Hit play all, or pick a track.</p>
       <div class="rn-frame"><iframe title="Meechie's songs on ReverbNation" loading="lazy" width="100%" height="520" scrolling="no" frameborder="no" allow="autoplay; encrypted-media" src="https://legacy.reverbnation.com/widget_code/html_widget/artist_7533494?widget_id=55&amp;pwc[included_songs]=1&amp;context_type=page_object"></iframe></div>
+    </div>
+  </div>
+</section>
+
+<!-- DJ STATION -->
+<section class="view" data-theme="radio" id="v-dj" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Meechie's World Radio</p><h2>🎛️ DJ Station</h2></div>
+      <p class="muted">The turntables — and nothing else. Four decks, full effects, scratch and all. Whatever plays here IS the live radio: listeners hear every move, exactly as it happens.</p>
+    </div>
+    <div id="dj-booth-root"></div>
+    <div class="card" id="dj-visit-note" style="margin-top:16px">
+      <h3 style="font-size:16px;margin-bottom:8px">This is Meechie's booth</h3>
+      <p class="muted" style="margin:0 0 10px">The tables belong to Meechie. Head to the radio to listen live and pick songs for the station.</p>
+      <a class="btn sm" href="#radio" data-go="radio">🎧 Go to the radio</a>
     </div>
   </div>
 </section>
@@ -2106,8 +2124,8 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
-const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
+const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
+const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["dj","dj-booth-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
     let n=0; const t=setInterval(()=>{ const e=document.getElementById(el); if(e||++n>30){ clearInterval(t); e&&e.scrollIntoView({behavior:"smooth",block:"start"}); } },100); return; }
@@ -3372,7 +3390,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
 boot();
 </script>
 <script src="js/appnav.js?v=1792928500"></script>
-<script src="js/fb-feed.js?v=1792928400"></script>
+<script src="js/fb-feed.js?v=1792941000"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/stories.js?v=1792607566"></script>
 <script src="js/book-plus.js?v=1792607145"></script>
@@ -3387,7 +3405,7 @@ boot();
 <script src="js/preach.js?v=1792580555"></script>
 <script src="js/world3d.js?v=1792580555"></script>
 <script src="js/clips.js?v=1792929000"></script>
-<script src="js/dj.js?v=1792940000"></script>
+<script src="js/dj.js?v=1792941000"></script>
 <script src="js/live.js?v=1792580555"></script>
 <script src="js/autotune.js?v=1792580555"></script>
 <script src="js/beatmaker.js?v=1792580555"></script>
