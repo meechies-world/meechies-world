@@ -71,7 +71,9 @@
   function paintList() {
     const el = root.querySelector("#gl-list"); if (!el) return;
     const on = lives.filter(isLive).filter((l) => l.id !== ME());
-    el.innerHTML = on.map((l) => `<button class="gl-card" type="button" data-watch="${E(l.id)}"><span><span class="dot"></span><b>${E(HANDLE(l.id))}</b>${l.host ? ' <span class="badge">Host</span>' : ""}</span><small class="muted">${E(l.title || "Live")}</small><span style="color:var(--gold-hi);font-weight:700">${watching[l.id] ? "Watching ✓ (tap to leave)" : "Watch →"}</span></button>`).join("") || '<p class="muted">Nobody else is live right now. Be the first!</p>';
+    el.innerHTML = on.map((l) => l.obs && l.url
+      ? `<button class="gl-card" type="button" data-obs="${E(l.id)}"><span><span class="dot"></span><b>${E(HANDLE(l.id))}</b>${l.host ? ' <span class="badge">Host</span>' : ""} <span class="badge">📡 OBS</span></span><small class="muted">${E(l.title || "Live")}</small><span style="color:var(--gold-hi);font-weight:700">Watch →</span></button>`
+      : `<button class="gl-card" type="button" data-watch="${E(l.id)}"><span><span class="dot"></span><b>${E(HANDLE(l.id))}</b>${l.host ? ' <span class="badge">Host</span>' : ""}</span><small class="muted">${E(l.title || "Live")}</small><span style="color:var(--gold-hi);font-weight:700">${watching[l.id] ? "Watching ✓ (tap to leave)" : "Watch →"}</span></button>`).join("") || '<p class="muted">Nobody else is live right now. Be the first!</p>';
   }
   function box(id, label, isMe) {
     const b = document.createElement("div"); b.className = "gl-box"; b.dataset.box = id;
