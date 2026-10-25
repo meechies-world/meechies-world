@@ -32,7 +32,7 @@
   const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
   /* ================= audio engine: decks -> EQ -> mixer -> FX -> master ================= */
-  let ctx = null, masterIn = null, masterGain = null, analyser = null, recDest = null;
+  let ctx = null, masterIn = null, masterGain = null, analyser = null, recDest = null, limiter = null;
   let fxFilter = null, echoWet = null, verbWet = null, micGain = null, micMon = null, micAn = null;
   let echoFb = null, flaWet = null, gateOsc = null, gateDepth = null, gateGain = null, crushNode = null, crushBuilt = -1;
   function actx() {
@@ -42,11 +42,12 @@
         masterIn = ctx.createGain();
         fxFilter = ctx.createBiquadFilter(); fxFilter.type = "lowpass"; fxFilter.frequency.value = 18000; fxFilter.Q.value = 0.4;
         masterGain = ctx.createGain(); masterGain.gain.value = 0.95;
+        limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20; limiter.attack.value = 0.002; limiter.release.value = 0.18;
         analyser = ctx.createAnalyser(); analyser.fftSize = 256;
         // transformer/gate chopper sits in the master path (depth 0 = open)
         gateGain = ctx.createGain(); gateGain.gain.value = 1;
         crushNode = ctx.createWaveShaper(); crushNode.oversample = "2x";
-        masterIn.connect(gateGain); gateGain.connect(crushNode); crushNode.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(analyser); analyser.connect(ctx.destination);
+        masterIn.connect(gateGain); gateGain.connect(crushNode); crushNode.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(limiter); limiter.connect(analyser); analyser.connect(ctx.destination);
         gateOsc = ctx.createOscillator(); gateOsc.type = "square"; gateOsc.frequency.value = 4;
         const gateShaper = ctx.createWaveShaper(); gateShaper.curve = new Float32Array([-1, 1]);
         gateDepth = ctx.createGain(); gateDepth.gain.value = 0;
@@ -66,7 +67,7 @@
         const verb = ctx.createConvolver(); verb.buffer = impulse(2.2, 2.4);
         const vw = ctx.createGain(); vw.gain.value = 0; masterIn.connect(verb); verb.connect(vw); vw.connect(masterGain); verbWet = vw;
         // recording tap (the whole mix + mic land here)
-        recDest = ctx.createMediaStreamDestination(); masterGain.connect(recDest);
+        recDest = ctx.createMediaStreamDestination(); limiter.connect(recDest);
         // mic chain: mic -> compressor -> record tap (+ optional speaker monitor, off by default)
         micGain = ctx.createGain(); micGain.gain.value = 0.9;
         micMon = ctx.createGain(); micMon.gain.value = 0; micGain.connect(micMon); micMon.connect(ctx.destination);
@@ -199,6 +200,17 @@ html.popdj #v-radio .wrap{max-width:none!important;width:100%!important}
 html.popdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
 .pad{transition:filter .15s ease,transform .15s ease}
 .pad.hit{filter:brightness(1.9);transform:scale(.93)}
+#dj-ptabs{display:none}
+@media (max-width:900px){
+  html.popdj #dj-ptabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+  html.popdj #dj-ptabs .btn.on{background:var(--gold);color:#15130f}
+  html.popdj #dj-owner[data-ptab="decks"] .pg-studio,html.popdj #dj-owner[data-ptab="decks"] .pg-music{display:none}
+  html.popdj #dj-owner[data-ptab="studio"] .pg-music{display:none}
+  html.popdj #dj-owner[data-ptab="music"] .pg-studio{display:none}
+  html.popdj #dj-owner .btn{min-height:44px}
+  html.popdj #dj-owner .pad{min-height:58px}
+  html.popdj #dj-owner [data-play]{min-height:52px;font-size:16px}
+}
 html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none!important}
 .popdj-hint{display:none}
 html.popdj .popdj-hint{display:block}`;
@@ -293,6 +305,16 @@ html.popdj .popdj-hint{display:block}`;
   // the booth moves into its own DJ view — its own section, nothing but DJing
   const boothEl = document.getElementById("dj-owner"), boothHome = document.getElementById("dj-booth-root");
   if (boothEl && boothHome) boothHome.appendChild(boothEl);
+  // console panels: tag the booth's panel groups so the phone console can tab them
+  if (boothEl && boothHome) {
+    const g2 = boothEl.querySelectorAll(".dj-grid2"); if (g2[0]) g2[0].classList.add("pg-studio"); if (g2[1]) g2[1].classList.add("pg-music");
+    const curP = boothEl.querySelector("#dj-cur")?.closest(".dj-panel"); if (curP) curP.classList.add("pg-music");
+    boothEl.dataset.ptab = "all";
+    const ptabs = document.createElement("div"); ptabs.id = "dj-ptabs";
+    ptabs.innerHTML = [["all", "🎛️ All"], ["decks", "🎚️ Decks"], ["studio", "🎙️ Studio"], ["music", "🎵 Music"]].map(([v, t]) => `<button class="btn ghost sm${v === "all" ? " on" : ""}" type="button" data-ptab="${v}">${t}</button>`).join("");
+    boothHome.insertBefore(ptabs, boothEl);
+  }
+  document.addEventListener("click", (e) => { const pb = e.target.closest && e.target.closest("[data-ptab]"); if (!pb) return; const o = document.getElementById("dj-owner"); if (o) o.dataset.ptab = pb.dataset.ptab; document.querySelectorAll("#dj-ptabs [data-ptab]").forEach((x) => x.classList.toggle("on", x === pb)); });
   const $ = (s) => document.querySelector(s);
   const decks = { A: null, B: null, C: null, D: null };
   const DECKS = ["A", "B", "C", "D"]; const PAIR = { A: "B", B: "A", C: "D", D: "C" };
@@ -301,10 +323,11 @@ html.popdj .popdj-hint{display:block}`;
   const agoT = (at) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 
   /* ---------- levels, following the shared state, listener side ---------- */
-  let listening = false, voiceEl = null, heardVoice = "", micHot = 0;
+  let listening = false, voiceEl = null, heardVoice = "", micHot = 0, mixVol = 1;
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
-    DECKS.forEach((k) => { if (decks[k]) { const x = k === "C" || k === "D" ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A"; decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * duck); } });
+    const mix = listening && !OWNER() ? mixVol : 1;
+    DECKS.forEach((k) => { if (decks[k]) { const x = k === "C" || k === "D" ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A"; decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * duck * mix); } });
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
   function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
@@ -448,7 +471,7 @@ html.popdj .popdj-hint{display:block}`;
   function stopListening() { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
-  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening };
+  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
   window.MW_DJ_LIVE = () => isLive();
   // the top MWR card reads the tables: whatever is on the decks is what the station says is on air
   window.MW_AIRNOW = () => {
@@ -666,12 +689,12 @@ html.popdj .popdj-hint{display:block}`;
 
   /* ---------- pro DJ sounds: best of the free market (curated, verified) ---------- */
     const CURATED = [
-    { id: "AirHorn", file: "AirHorn.mp3", name: "📯 Pro Air Horn", tag: "one-shot · the classic" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 02.mp3", name: "🎺 Clean Scratch 2", tag: "Scratch Tactics · scratch · public domain" },
     { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 01.mp3", name: "🎺 Clean Scratch 1", tag: "Scratch Tactics · scratch" },
     { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 03.mp3", name: "🎺 Clean Scratch 3", tag: "Scratch Tactics · scratch" },
     { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 05.mp3", name: "🎺 Clean Scratch 5", tag: "Scratch Tactics · scratch" },
-    { id: "120-dj-fx-np-003-bm-004_20260830", file: "080_DjFx_NP_001_BM004.mp3", name: "💿 Massive Scratch 80", tag: "Massive Scratches pack" },
-    { id: "120-dj-fx-np-003-bm-004_20260830", file: "090_DjFx_NP_003_BM004.mp3", name: "💿 Massive Scratch 90", tag: "Massive Scratches pack" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 04.mp3", name: "💿 Battle Scratch 4", tag: "Scratch Tactics · scratch · public domain" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 07.mp3", name: "💿 Battle Scratch 7", tag: "Scratch Tactics · scratch · public domain" },
     { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Battle Beats/Battle Beat 08.mp3", name: "🥁 Battle Beat 8", tag: "Scratch Tactics · beat loop" },
     { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Battle Beats/Battle Beat 10.mp3", name: "🥁 Battle Beat 10", tag: "Scratch Tactics · beat loop" },
     { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Bass/Bass 01.mp3", name: "🔊 Bass Line 1", tag: "Scratch Tactics · bass" },
