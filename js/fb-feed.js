@@ -81,11 +81,15 @@ body[data-view=community]{background:#18191a}
 #v-community .reply .r-time{color:var(--fb-mute);font-size:12px;margin-left:12px}
 #v-community .reply-form{display:flex;gap:8px;align-items:center}
 #v-community .reply-form .avatar{width:32px;height:32px;margin:0;flex:none}
+#fb-contacts .c-row{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;color:var(--fb-text);padding:7px 8px;border-radius:8px;font:600 14px system-ui;cursor:pointer}
+#fb-contacts .c-row:hover{background:var(--fb-hover)}
+#fb-contacts .c-row .avatar{width:36px;height:36px;margin:0;flex:none}
 #v-community .reply-form input{border-radius:999px;background:var(--fb-hover);border:0;color:var(--fb-text)}
 @media(max-width:760px){
   #v-community .wrap{padding-inline:0!important}
   #fb-top{margin:0 0 8px;padding:8px 12px}
-  #fb-stories{padding-inline:12px}
+  #fb-main{display:flex;flex-direction:column}
+  #fb-stories{order:-1;padding-inline:12px}
   #v-community .card,#v-community .post{border-radius:0!important}
   #fb-mind{margin-bottom:8px}
   #v-community .feed{gap:8px!important}
@@ -96,6 +100,7 @@ body[data-view=community]{background:#18191a}
   const grid = view.querySelector(".grid-2");
   const main = grid && grid.firstElementChild;
   if (!wrap || !grid || !main) return;
+  main.id = "fb-main";
 
   // top strip
   const top = document.createElement("div"); top.id = "fb-top";
@@ -182,7 +187,7 @@ body[data-view=community]{background:#18191a}
   const dot = document.querySelector(".dm-dot"); if (dot) new MutationObserver(paintBadge).observe(dot, { attributes: true });
   /* Facebook-style tab row: Home · Friends · Video · Marketplace · Notifications · Menu */
   const tcss = document.createElement("style");
-  tcss.textContent = `#fb-tabs{display:flex;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:-14px calc(-1 * clamp(16px,3.2vw,56px)) 14px;padding:0 clamp(16px,3.2vw,56px);position:relative;z-index:14}
+  tcss.textContent = `#fb-tabs{display:flex;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:-14px calc(-1 * clamp(16px,3.2vw,56px)) 14px;padding:0 clamp(16px,3.2vw,56px);position:sticky;top:60px;z-index:14}
 #fb-tabs button{flex:1;max-width:120px;height:48px;border:0;border-bottom:3px solid transparent;background:none;color:var(--fb-mute);font-size:21px;cursor:pointer;position:relative;display:grid;place-items:center;border-radius:0}
 #fb-tabs button:hover{background:var(--fb-hover)}
 #fb-tabs button[aria-pressed=true]{color:var(--fb-blue);border-bottom-color:var(--fb-blue)}
@@ -206,6 +211,8 @@ body[data-view=community]{background:#18191a}
   tabs.innerHTML = [["home", "🏠", "Home"], ["friends", "👥", "Friends"], ["video", "📺", "Video"], ["market", "🛍️", "Marketplace"], ["notes", "🔔", "Notifications"], ["menu", "☰", "Menu"]]
     .map(([k, ic, n]) => `<button type="button" data-fbt="${k}" aria-label="${n}" aria-pressed="${k === "home"}">${ic}<i hidden></i><small>${n}</small></button>`).join("");
   top.after(tabs);
+  const stickTabs = () => { const h = document.querySelector("header.bar"); tabs.style.top = (h ? h.offsetHeight : 60) + "px"; };
+  stickTabs(); addEventListener("resize", stickTabs);
   const notes = document.createElement("div"); notes.id = "fb-notes"; notes.hidden = true;
   main.prepend(notes);
   const NAME = (id) => { try { return typeof handleOf === "function" ? handleOf(id) : "Someone"; } catch (_) { return "Someone"; } };
@@ -259,7 +266,21 @@ body[data-view=community]{background:#18191a}
   document.addEventListener("mw-posts", paintTabs);
   setInterval(paintTabs, 8000);
 
-  const paintAll = () => { paintLeft(); paintMind(); paintStories(); paintBadge(); paintTabs(); };
+  /* Contacts card (desktop right rail): your friends, tap to open their profile. Hidden for guests. */
+  const side = view.querySelector("aside.side");
+  const contacts = document.createElement("div"); contacts.className = "card"; contacts.id = "fb-contacts"; contacts.hidden = true;
+  if (side) side.appendChild(contacts);
+  function paintContacts() {
+    const id = myId(); if (!id || !side) { contacts.hidden = true; return; }
+    let ids = []; try { ids = (window.MW_FRIENDS && MW_FRIENDS.list) ? MW_FRIENDS.list() : []; } catch (_) {}
+    ids = ids.filter((u) => u !== id).slice(0, 12);
+    if (!ids.length) { contacts.hidden = true; return; }
+    contacts.innerHTML = `<h3>Contacts</h3>` + ids.map((u) => `<button type="button" class="c-row" data-contact="${esc(u)}">${AV(u)}<span>${esc(NAME(u))}</span></button>`).join("");
+    contacts.hidden = false;
+  }
+  contacts.addEventListener("click", (e) => { const b = e.target.closest("[data-contact]"); if (!b) return; if (window.MW_profilePage) window.MW_profilePage.open(b.dataset.contact); });
+
+  const paintAll = () => { paintLeft(); paintMind(); paintStories(); paintBadge(); paintTabs(); paintContacts(); };
   paintAll();
   // repaint names/photos once the signed-in profile loads, and whenever the Feed is opened
   new MutationObserver(() => { if (!view.hidden) paintAll(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
