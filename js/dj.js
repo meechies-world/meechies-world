@@ -30,6 +30,8 @@
   const DEAD = (u) => typeof u === "string" && u.includes("supabase.co"); // old storage is shut off
   const DBF = () => DB(); // the Firestore-shaped db facade (same one radio/dj uses)
   const rid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+  const tabId = rid(); // this window's booth identity: saves are stamped with it, so two booth
+  // windows (the main tab and the pop-out) can tell their own echoes from real commands
 
   /* ================= audio engine: decks -> EQ -> mixer -> FX -> master ================= */
   let ctx = null, masterIn = null, masterGain = null, analyser = null, recDest = null, limiter = null;
@@ -130,7 +132,7 @@
   let S = { live: false, xf: 0.5, xf2: 0.5, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
-  function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
@@ -276,7 +278,7 @@ html.popdj .popdj-hint{display:block}`;
 <div class="dj" id="dj-owner" hidden>
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
-    <span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
+    <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-decks">
@@ -411,6 +413,9 @@ html.popdj .popdj-hint{display:block}`;
   async function follow(k) {
     const s = S[k], d = deck(k);
     if (!okUrl(s.src) || DEAD(s.src)) { d.stop(); return; }
+    // cues and loops live in the shared state too, so a cue set or a loop armed in the
+    // pop-out exists on the window playing the sound (and the other way round)
+    if (OWNER()) { if (Array.isArray(s.cues)) { d.cues = s.cues.slice(0, 3); while (d.cues.length < 3) d.cues.push(null); } if (s.loop) { d.loop = s.loop; d.loopBeats = s.loopBeats || 0; } else if (s.loop === null) { d.loop = null; d.loopBeats = 0; } paintCues(k); }
     await d.set(s.src);
     d.el.playbackRate = s.rate || 1;
     const want = posOf(k);
@@ -623,7 +628,7 @@ html.popdj .popdj-hint{display:block}`;
   function isLive() { return S.live && Date.now() - (S.updatedAt || 0) < 3 * 60e3; }
   // booth heartbeat: while the booth is on screen (or a set is live) the booth owns the
   // tables and the 24/7 keeper stands down; close the booth and the keeper takes over
-  setInterval(() => { if (OWNER() && (S.live || document.getElementById("dj-owner")?.offsetParent)) save(true); }, 10000);
+  setInterval(() => { if (OWNER() && boothLead && (S.live || document.getElementById("dj-owner")?.offsetParent)) save(true); }, 10000);
   // the keeper ping: keeps the rotation advancing around the clock, booth open or not
   // presence: every client carries a random per-tab id and reports whether it is
   // listening to the decks; the keeper answers with the live counts, painted into
@@ -636,6 +641,28 @@ html.popdj .popdj-hint{display:block}`;
   }
   const pingKeeper = () => fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0), { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.online != null) paintOnline(j.online, j.listening || 0); }).catch(() => {});
   pingKeeper(); setInterval(pingKeeper, 12000);
+  /* one booth plays the sound; the other is its remote. The main tab and the pop-out
+   * are two full booths sharing one station — without a leader they would each play
+   * their own copy and overwrite each other's saves. A localStorage lease picks the
+   * leader: the first booth window actually showing the decks holds it; a mirror's
+   * buttons write the shared state and the leader plays them. Close the leader and
+   * the mirror takes over within seconds. */
+  let boothLead = false;
+  const leaseKey = "mw-booth-lease";
+  function leaseBeat() {
+    const boothOpen = OWNER() && !!document.getElementById("dj-owner")?.offsetParent;
+    let L = null; try { L = JSON.parse(localStorage.getItem(leaseKey) || "null"); } catch (_) {}
+    const now = Date.now();
+    let mine = false;
+    if (boothOpen) { mine = !L || L.id === tabId || now - (L.at || 0) > 7000; if (mine) { try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: now })); } catch (_) {} } }
+    const was = boothLead; boothLead = mine;
+    const badge = document.getElementById("dj-lead");
+    if (badge && OWNER()) badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror — the other window plays the sound, this one is the remote";
+    if (boothLead && !was && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].playing) follow(k); });
+    if (!boothLead && was) DECKS.forEach((k) => { try { decks[k]?.stop(); } catch (_) {} });
+  }
+  leaseBeat(); setInterval(leaseBeat, 3000);
+  addEventListener("pagehide", () => { if (boothLead) { try { const L = JSON.parse(localStorage.getItem(leaseKey) || "null"); if (L && L.id === tabId) localStorage.removeItem(leaseKey); } catch (_) {} } });
   setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } paintStation(); }, 30000);
   function startListening() {
     listening = true; actx();
@@ -694,14 +721,29 @@ html.popdj .popdj-hint{display:block}`;
   $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : isLive() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
 
   let ownerLoaded = false;
+  function mergeState(d) {
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
+    m.fx = Object.assign(defFx(), m.fx || {});
+    m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
+    return m;
+  }
   function onState(d) {
     const firstOwnerLoad = OWNER() && !ownerLoaded;
-    if (OWNER() && ownerLoaded) return;
+    if (OWNER() && ownerLoaded) {
+      // Booth-to-booth sync: my own saves echo back and are ignored, but a save stamped
+      // by the OTHER booth window (the pop-out, or the main tab) is a command — repaint
+      // from it, and if THIS window holds the sound, play what it says. The 24/7 keeper's
+      // advances land here too, so an open booth never shows a stale station.
+      if (d && d.by !== tabId && (d.updatedAt || 0) > (S.updatedAt || 0)) {
+        S = mergeState(d);
+        paintOwner(); paintStation();
+        if (boothLead) DECKS.forEach((k) => { if (S[k].src) follow(k); });
+      }
+      return;
+    }
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
-    S = Object.assign({ live: false, xf: 0.5, xf2: 0.5, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
-    S.fx = Object.assign(defFx(), S.fx || {});
-    S.A = Object.assign(blank(), S.A || {}); S.B = Object.assign(blank(), S.B || {}); S.C = Object.assign(blank(), S.C || {}); S.D = Object.assign(blank(), S.D || {});
+    S = mergeState(d);
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; DECKS.forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
     const live = isLive();
@@ -712,7 +754,7 @@ html.popdj .popdj-hint{display:block}`;
     if (listening) DECKS.forEach((k) => follow(k));
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
-    if (firstOwnerLoad) { show(); DECKS.forEach((k) => { if (S[k].playing) follow(k); }); }
+    if (firstOwnerLoad) { show(); DECKS.forEach((k) => { if (S[k].playing && boothLead) follow(k); }); }
     playVoice(); paintStation();
     if (OWNER()) paintOwner();
   }
@@ -725,7 +767,14 @@ html.popdj .popdj-hint{display:block}`;
   let net = [];
   async function load(k, item) {
     const d = deck(k); actx();
-    S[k] = Object.assign(blank(), { src: item.src, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false });
+    if (!boothLead) {
+      // mirror window: put the song on the shared deck — the window playing the sound loads it for real
+      S[k] = Object.assign(blank(), { src: item.src, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
+      d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k); paintOwner(); save();
+      say("Loaded on deck " + k + " — the window playing the sound picked it up.");
+      return;
+    }
+    S[k] = Object.assign(blank(), { src: item.src, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
     d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k);
     paintOwner(); $("#ttl-" + k).textContent = "Loading " + item.title + "...";
     const ok = await d.set(item.src);
@@ -736,6 +785,13 @@ html.popdj .popdj-hint{display:block}`;
   async function togglePlay(k) {
     const s = S[k], d = deck(k); if (!okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
     actx(); try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
+    if (!boothLead) {
+      // mirror window: flip the shared state only — the window holding the sound plays it
+      if (s.playing) { s.pos = posOf(k); s.playing = false; }
+      else { s.playing = true; s.start = Date.now() - (s.pos || 0) * 1000; logPlay(s.title); if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintStation(); say("🔴 You're LIVE — the window playing the sound has the tables on the radio."); } }
+      paintOwner(); save(true);
+      return;
+    }
     if (s.playing) { s.pos = d.el.currentTime; s.playing = false; d.el.pause(); }
     else {
       await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
@@ -782,8 +838,8 @@ html.popdj .popdj-hint{display:block}`;
     if (b.dataset.play) return togglePlay(b.dataset.play);
     if (b.dataset.cue0) { const k = b.dataset.cue0, s = S[k], d = deck(k); s.pos = 0; if (s.playing) s.start = Date.now(); try { d.el.currentTime = 0; } catch (_) {} save(true); return; }
     if (b.dataset.brake) { const k = b.dataset.brake, d = deck(k); if (d.el.paused) return; const r0 = d.el.playbackRate, t0 = performance.now(); const step = () => { const p = (performance.now() - t0) / 800; if (p >= 1) { d.el.pause(); d.el.playbackRate = S[k].rate || 1; if (S[k].playing) { S[k].playing = false; S[k].pos = d.el.currentTime; paintOwner(); save(true); } return; } d.el.playbackRate = Math.max(0.02, r0 * (1 - p)); requestAnimationFrame(step); }; step(); return; }
-    if (b.dataset.hot) { if (hotTimer === "done") { hotTimer = null; return; } const [k, n] = b.dataset.hot.split(":"), d = deck(k), i = +n - 1; if (d.cues[i] == null) { let ct = d.el.currentTime || 0; if (S.quant !== false) ct = snapBeat(k, ct); d.cues[i] = ct; say("Cue " + n + " set at " + fmt(ct) + (S.quant !== false && beatLen(k) ? " (snapped to the beat)" : "")); } else { try { d.el.currentTime = d.cues[i]; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.cues[i] * 1000; save(true); } paintCues(k); return; }
-    if (b.dataset.loopb) { const [k, beats] = b.dataset.loopb.split(":"), d = deck(k), bl = beatLen(k); if (d.loop && d.loopBeats === +beats) { d.loop = null; d.loopBeats = 0; } else { let st = d.el.currentTime || 0; if (S.quant !== false) st = snapBeat(k, st); const len = bl ? +beats * bl : +beats; d.loop = [st, st + len]; d.loopBeats = +beats; try { d.el.currentTime = st; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - st * 1000; save(true); say("Looping " + beats + " beats on deck " + k + (bl ? "" : " (no BPM measured yet — seconds for now)")); } paintCues(k); return; }
+    if (b.dataset.hot) { if (hotTimer === "done") { hotTimer = null; return; } const [k, n] = b.dataset.hot.split(":"), d = deck(k), i = +n - 1; if (d.cues[i] == null) { let ct = d.el.currentTime || 0; if (S.quant !== false) ct = snapBeat(k, ct); d.cues[i] = ct; S[k].cues = d.cues.slice(); save(true); say("Cue " + n + " set at " + fmt(ct) + (S.quant !== false && beatLen(k) ? " (snapped to the beat)" : "")); } else { try { d.el.currentTime = d.cues[i]; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.cues[i] * 1000; save(true); } paintCues(k); return; }
+    if (b.dataset.loopb) { const [k, beats] = b.dataset.loopb.split(":"), d = deck(k), bl = beatLen(k); if (d.loop && d.loopBeats === +beats) { d.loop = null; d.loopBeats = 0; S[k].loop = null; S[k].loopBeats = 0; save(true); } else { let st = d.el.currentTime || 0; if (S.quant !== false) st = snapBeat(k, st); const len = bl ? +beats * bl : +beats; d.loop = [st, st + len]; d.loopBeats = +beats; S[k].loop = d.loop; S[k].loopBeats = d.loopBeats; try { d.el.currentTime = st; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - st * 1000; save(true); say("Looping " + beats + " beats on deck " + k + (bl ? "" : " (no BPM measured yet — seconds for now)")); } paintCues(k); return; }
     if (b.dataset.sync) { const k = b.dataset.sync, o = DECKS.find((x) => x !== k && S[x].playing) || PAIR[k];
       if (S[k].bpm > 0 && S[o].bpm > 0) {
         const target = (S[o].bpm * (S[o].rate || 1)) / S[k].bpm;
@@ -804,7 +860,7 @@ html.popdj .popdj-hint{display:block}`;
   });
   // long-press a hot cue clears it
   let hotTimer = null;
-  onMain("pointerdown", (e) => { const b = e.target.closest("[data-hot]"); if (!b || !OWNER()) return; hotTimer = setTimeout(() => { const [k, n] = b.dataset.hot.split(":"); deck(k).cues[+n - 1] = null; paintCues(k); say("Cue " + n + " cleared"); hotTimer = "done"; }, 650); });
+  onMain("pointerdown", (e) => { const b = e.target.closest("[data-hot]"); if (!b || !OWNER()) return; hotTimer = setTimeout(() => { const [k, n] = b.dataset.hot.split(":"); deck(k).cues[+n - 1] = null; S[k].cues = deck(k).cues.slice(); save(true); paintCues(k); say("Cue " + n + " cleared"); hotTimer = "done"; }, 650); });
   onMainRaw("pointerup", (e) => { if (hotTimer === "done") { e.preventDefault(); return; } clearTimeout(hotTimer); hotTimer = null; }, true);
   onMain("input", (e) => {
     if (!OWNER()) return;
@@ -873,7 +929,7 @@ html.popdj .popdj-hint{display:block}`;
   }
   let xfAnim = null, adTimer = null;
   async function autoNext(endedK) {
-    if (!S.autodj) return;
+    if (!S.autodj || !boothLead) return;
     let item = null;
     const pick = reqCache.filter((r) => r.data && r.data.kind === "pick").sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
