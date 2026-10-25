@@ -32,7 +32,9 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
 .pp-acts{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px;border-bottom:1px solid var(--line,#333)}
 .pp-acts .btn:first-child{flex:1 1 auto}
 .pp-seeall{background:none;border:0;color:var(--gold-hi,#f0cf78);font:700 13px var(--body,system-ui);cursor:pointer;padding:0}
-.pp-tabs{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--line,#333);overflow-x:auto}
+.pp-tabs{display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid var(--line,#333);overflow-x:auto;position:sticky;top:47px;z-index:2;background:rgba(11,10,8,.92);backdrop-filter:blur(8px)}
+.pp-phead{display:flex;gap:10px;align-items:center}.pp-pav{width:40px;height:40px;border-radius:50%;background:#241d10 center/cover;display:grid;place-items:center;font:800 16px var(--body,system-ui);color:var(--gold-hi,#f0cf78);flex:none}
+.pp-av{position:relative}.pp-av[data-pp]{cursor:pointer}.pp-camb{position:absolute;right:2px;bottom:2px;width:34px;height:34px;border-radius:50%;background:#2a2113;border:2px solid var(--ink,#0b0a08);display:grid;place-items:center;font-size:15px}
 .pp-tabs button{background:none;border:0;color:var(--muted,#bbb);font:700 15px var(--body,system-ui);padding:10px 14px;border-radius:10px;cursor:pointer;white-space:nowrap}
 .pp-tabs button[aria-pressed=true]{color:var(--gold-hi,#f0cf78);box-shadow:inset 0 -3px 0 var(--ppc,#d4a843)}
 .pp-body{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;padding:16px}
@@ -61,6 +63,8 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
     const box = document.getElementById("pp"); if (!box || !uid) return;
     const m = MEM()[uid] || {}, mine = uid === ME(), c = COL[m.color] || COL.gold, F = window.MW_FRIENDS;
     const friends = F && F.of ? F.of(uid) : [], st = F && F.status ? F.status(uid) : "none";
+    const myF = !mine && ME() && F && F.of ? F.of(ME()) : [];
+    const mutual = myF.length ? friends.filter((f) => f !== ME() && myF.includes(f)) : [];
     const ps = POSTS().filter((p) => p.authorId === uid);
     // their profile pictures (up to 5) first, then photos from their posts
     const profPics = (Array.isArray(m.photos) ? m.photos : []).filter((u) => typeof u === "string" && img(u)).slice(0, 5).map((u) => ({ photo: u }));
@@ -81,7 +85,7 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
       ${apps(m) ? `<b style="font-size:14px">Apps</b><div class="pp-apps">${apps(m)}</div>` : ""}</div>`;
     const photoCard = `<div class="pp-card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h3>Photos</h3>${photos.length > 9 ? `<button type="button" class="pp-seeall" data-pptab="photos">See all photos</button>` : ""}</div>${photos.length ? `<div class="pp-grid">${photos.slice(0, 9).map((p) => `<img src="${E(p.photo)}" alt="" loading="lazy" data-ppimg>`).join("")}</div>` : `<p class="muted" style="margin:0">No photos yet.</p>`}</div>`;
     const friendCard = `<div class="pp-card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><h3>Friends <small class="muted" style="font-weight:600">${friends.length}</small></h3>${friends.length > 9 ? `<button type="button" class="pp-seeall" data-pptab="friends">See all friends</button>` : ""}</div>${friends.length ? `<div class="pp-fr">${friends.slice(0, 9).map((f) => `<button type="button" data-profile="${E(f)}">${sq(f)}<span>${E((MEM()[f] || {}).handle || "Member")}</span></button>`).join("")}</div>` : `<p class="muted" style="margin:0">No friends yet.</p>`}</div>`;
-    const postList = ps.length ? ps.map((p) => `<article class="pp-post"><small>${typeof ago === "function" ? E(ago(p.createdAt)) : ""}</small>${p.text ? `<p>${E(p.text)}</p>` : ""}${img(p.photo) ? `<img src="${E(p.photo)}" alt="" loading="lazy">` : ""}${/^https:\/\//.test(p.video || "") ? `<video src="${E(p.video)}#t=0.1" controls playsinline preload="metadata"></video>` : ""}</article>`).join("") : `<div class="pp-card"><p class="muted" style="margin:0">${mine ? "You haven't posted yet. Share something in Community." : "No posts yet."}</p></div>`;
+    const postList = ps.length ? ps.map((p) => `<article class="pp-post"><div class="pp-phead"><div class="pp-pav" style="${av ? `background-image:url('${E(av)}')` : ""}">${av ? "" : E(((m.handle || "?").trim()[0] || "?").toUpperCase())}</div><div><b>${E(m.handle || "Member")}</b><br><small>${typeof ago === "function" ? E(ago(p.createdAt)) : ""} · 🌐</small></div></div>${p.text ? `<p>${E(p.text)}</p>` : ""}${img(p.photo) ? `<img src="${E(p.photo)}" alt="" loading="lazy">` : ""}${/^https:\/\//.test(p.video || "") ? `<video src="${E(p.video)}#t=0.1" controls playsinline preload="metadata"></video>` : ""}</article>`).join("") : `<div class="pp-card"><p class="muted" style="margin:0">${mine ? "You haven't posted yet. Share something in Community." : "No posts yet."}</p></div>`;
     let main = "";
     if (tab === "posts") main = `<div class="pp-body"><div style="display:grid;gap:16px;align-content:start">${introCard}${photoCard}${friendCard}</div><div class="pp-main">${postList}</div></div>`;
     if (tab === "about") main = `<div class="pp-body" style="grid-template-columns:1fr">${introCard}</div>`;
@@ -90,8 +94,8 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
     box.style.setProperty("--ppc", c);
     box.innerHTML = `<div class="pp-wrap"><div class="pp-close"><button type="button" data-pp="close" aria-label="Back">←</button><b>${E(m.handle || "Member")}</b></div>
 <div class="pp-cover" style="${cover ? `background-image:url('${E(cover)}')` : ""}">${mine ? `<button class="btn sm ghost ed" type="button" data-pp="edit">📷 ${cover ? "Change" : "Add"} cover photo</button>` : ""}</div>
-<div class="pp-top"><div class="pp-av" style="${av ? `background-image:url('${E(av)}')` : ""}">${av ? "" : E(((m.handle || "?").trim()[0] || "?").toUpperCase())}</div>
-<div class="pp-name"><h2>${E(m.handle || "Member")}</h2>${m.bio ? `<p class="bio">${E(m.bio)}</p>` : ""}<span class="fc">${friends.length} friend${friends.length === 1 ? "" : "s"}</span>${friends.length ? `<div class="pp-stack">${friends.slice(0, 8).map((f) => { const fm = MEM()[f] || {}, fp = img(fm.photo); return `<button type="button" data-profile="${E(f)}" title="${E(fm.handle || "Member")}" style="${fp ? `background-image:url('${E(fp)}')` : ""}">${fp ? "" : E(((fm.handle || "?").trim()[0] || "?").toUpperCase())}</button>`; }).join("")}</div>` : ""}</div></div>
+<div class="pp-top"><div class="pp-av"${mine ? ` data-pp="edit" role="button" title="Edit profile"` : ""} style="${av ? `background-image:url('${E(av)}')` : ""}">${av ? "" : E(((m.handle || "?").trim()[0] || "?").toUpperCase())}${mine ? `<span class="pp-camb">📷</span>` : ""}</div>
+<div class="pp-name"><h2>${E(m.handle || "Member")}</h2>${m.bio ? `<p class="bio">${E(m.bio)}</p>` : ""}<span class="fc">${friends.length} friend${friends.length === 1 ? "" : "s"}</span>${mutual.length ? `<div class="fc" style="font-weight:600">${mutual.length} mutual friend${mutual.length === 1 ? "" : "s"}</div>` : ""}${friends.length ? `<div class="pp-stack">${friends.slice(0, 8).map((f) => { const fm = MEM()[f] || {}, fp = img(fm.photo); return `<button type="button" data-profile="${E(f)}" title="${E(fm.handle || "Member")}" style="${fp ? `background-image:url('${E(fp)}')` : ""}">${fp ? "" : E(((fm.handle || "?").trim()[0] || "?").toUpperCase())}</button>`; }).join("")}</div>` : ""}</div></div>
 <div class="pp-acts">${btn}</div>
 <div class="pp-tabs">${[["posts", "Posts"], ["about", "About"], ["friends", "Friends"], ["photos", "Photos"]].map(([k, n]) => `<button type="button" data-pptab="${k}" aria-pressed="${tab === k}">${n}</button>`).join("")}</div>
 ${main}</div>`;
