@@ -14,7 +14,11 @@
     ["414400b86f194364986b", "mw-5"], ["3cd44e04305d45368ce7", "mw-6"], ["b53436a297bc4fd9a781", "mw-7"],
   ].map(([id, n]) => ({ src: SB + id + ".mp4", local: "/media/promo/" + n + ".mp4", poster: "/media/promo/" + n + ".jpg" }));
   window.MW_ORIGINALS = VIDS;
-  const vid = (v, attrs) => `<video ${attrs} poster="${v.poster}" playsinline preload="metadata"><source src="${v.src}" type="video/mp4"><source src="${v.local}" type="video/mp4"></video>`;
+  /* Sources: the site's own copies FIRST (Cloudflare-fast and always up), the Supabase relay
+   * second as a backup. The relay's storage is over quota (402), and a dead first <source>
+   * used to kill the welcome video outright — the browser treated the error page as a broken
+   * video instead of falling through to the good copy. */
+  const vid = (v, attrs) => `<video ${attrs} poster="${v.poster}" playsinline preload="metadata"><source src="${v.local}" type="video/mp4"><source src="${v.src}" type="video/mp4"></video>`;
 
   const css = document.createElement("style");
   css.textContent = `
@@ -68,16 +72,23 @@
     let finished = false;
     const fin = () => { if (finished) return; finished = true; try { v.pause(); } catch (_) {} b.remove(); done && done(); };
     const b = document.createElement("div"); b.id = "wv-box"; b.setAttribute("role", "dialog"); b.setAttribute("aria-label", "Welcome to Meechie's World");
-    b.innerHTML = vid(WELCOME, 'autoplay playsinline') + '<button type="button" class="skip">Skip ›</button><div class="cap">WELCOME TO MEECHIE\'S WORLD</div>';
+    b.innerHTML = `<video autoplay playsinline poster="${WELCOME.poster}"></video>` + '<button type="button" class="skip">Skip ›</button><div class="cap">WELCOME TO MEECHIE\'S WORLD</div>';
     document.body.appendChild(b);
     const v = b.querySelector("video");
-    v.addEventListener("ended", fin); v.addEventListener("error", () => setTimeout(fin, 400));
+    // play the site's own copy first; if it ever fails, fall back to the relay copy once
+    let triedBackup = false;
+    v.addEventListener("ended", fin);
+    v.addEventListener("error", () => {
+      if (!triedBackup) { triedBackup = true; v.src = WELCOME.src; v.load(); v.play().catch(() => {}); }
+      else setTimeout(fin, 400);
+    });
     b.querySelector(".skip").addEventListener("click", fin);
+    v.src = WELCOME.local; v.load();
     // the Enter tap counts as permission for sound; if the phone still blocks it, play muted with a "tap for sound" button
     v.play().catch(() => { v.muted = true; v.play().catch(fin);
       const s = document.createElement("button"); s.type = "button"; s.className = "snd"; s.textContent = "🔊 Tap for sound"; b.appendChild(s);
       s.addEventListener("click", () => { v.muted = false; v.currentTime = 0; v.play().catch(() => {}); s.remove(); }); });
-    setTimeout(() => { if (!finished && v.paused && v.currentTime === 0) fin(); }, 9000); // never get stuck if it can't load
+    setTimeout(() => { if (!finished && v.paused && v.currentTime === 0 && v.readyState < 2) fin(); }, 9000); // never get stuck if it can't load
   };
 
   /* ---------- Dating page: the dating video at the top ---------- */
