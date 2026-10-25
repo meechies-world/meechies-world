@@ -25,6 +25,7 @@ body[data-view=community]{background:#18191a}
 #fb-top .wm{font:800 24px/1 var(--display,system-ui);color:var(--gold-hi,#f0cf78);letter-spacing:-.5px;margin-right:auto;white-space:nowrap;cursor:pointer}
 #fb-top button{width:40px;height:40px;border-radius:50%;border:0;background:var(--fb-hover);color:var(--fb-text);font-size:18px;display:grid;place-items:center;cursor:pointer;position:relative}
 #fb-top button i{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 4px}
+#fb-top button.on{background:#e41e3f;color:#fff}
 #fb-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
 @media(min-width:1100px){#fb-cols{grid-template-columns:260px minmax(0,680px) 300px;justify-content:center}}
 #fb-left{display:none}
@@ -108,6 +109,7 @@ body[data-view=community]{background:#18191a}
   top.innerHTML = `<span class="wm">meechie's book</span>
 <button type="button" data-fb="search" aria-label="Search people">🔍</button>
 <button type="button" data-fb="msgs" aria-label="Messenger">💬<i hidden></i></button>
+<button type="button" data-fb="radio" aria-label="Live radio">📻<i hidden></i></button>
 <button type="button" data-fb="me" aria-label="My profile">👤</button>`;
   // The Book shell lives at body level, under the site header, so it stays on every view (owner's rule).
   const hdr0 = document.querySelector("header.bar");
@@ -119,8 +121,22 @@ body[data-view=community]{background:#18191a}
     const k = b.dataset.fb;
     if (k === "msgs") go("messages");
     else if (k === "search") go("friends");
+    else if (k === "radio") toggleRadio();
     else if (k === "me") { if (window.MW_profilePage && window.MW_profilePage.mine) window.MW_profilePage.mine(); else go("friends"); }
   });
+  /* Live radio from the Book bar: starts the station, or pauses/resumes whatever is playing.
+     The player itself lives at body level (the bottom player bar), so it keeps playing across views. */
+  function radioEl() { try { if (typeof mode !== "undefined" && mode === "live" && window.MW_LIVE) return window.MW_LIVE; if (typeof media !== "undefined") return media; } catch (_) {} return null; }
+  function paintRadio() { const b = top.querySelector("[data-fb=radio]"); if (!b) return; const el = radioEl(), on = !!(el && !el.paused); b.classList.toggle("on", on); const i = b.querySelector("i"); if (i) { i.hidden = !on; if (on) i.textContent = "•"; } }
+  function toggleRadio() {
+    try {
+      const pb = document.getElementById("pb-play");
+      if (typeof mode !== "undefined" && mode && pb) pb.click(); // something is loaded: the player bar's own button knows how to pause/resume it
+      else if (typeof tuneIn === "function") tuneIn(); // nothing yet: tune in to the live station
+      else if (pb) pb.click();
+    } catch (_) {}
+    setTimeout(paintRadio, 700);
+  }
 
   // columns: shortcuts | feed | right side
   const cols = document.createElement("div"); cols.id = "fb-cols";
@@ -227,6 +243,9 @@ body[data-view=community]{background:#18191a}
   stickTabs(); addEventListener("resize", stickTabs);
   const notes = document.createElement("div"); notes.id = "fb-notes"; notes.hidden = true;
   tabs.after(notes); stickTabs();
+  /* the members/online strip goes under the Book tabs, so the Book bar sits flush under the site header — no gap */
+  const moveStats = () => { const st = document.getElementById("mw-stats"); if (!st) return false; if (st.previousElementSibling !== tabs) tabs.after(st); return true; };
+  if (!moveStats()) { let sn = 0; const siv = setInterval(() => { if (moveStats() || ++sn > 40) clearInterval(siv); }, 250); }
   const NAME = (id) => { try { return typeof handleOf === "function" ? handleOf(id) : "Someone"; } catch (_) { return "Someone"; } };
   const AV = (id) => { try { return typeof avatarOf === "function" ? avatarOf(id) : ""; } catch (_) { return ""; } };
   const SEEN = "mw_fb_seen";
@@ -282,6 +301,7 @@ body[data-view=community]{background:#18191a}
   });
   document.addEventListener("mw-posts", paintTabs);
   setInterval(paintTabs, 8000);
+  setInterval(paintRadio, 3000);
 
   /* Contacts card (desktop right rail): your friends, tap to open their profile. Hidden for guests. */
   const side = view.querySelector("aside.side");
@@ -297,7 +317,7 @@ body[data-view=community]{background:#18191a}
   }
   contacts.addEventListener("click", (e) => { const b = e.target.closest("[data-contact]"); if (!b) return; if (window.MW_profilePage) window.MW_profilePage.open(b.dataset.contact); });
 
-  const paintAll = () => { paintLeft(); paintMind(); paintStories(); paintBadge(); paintTabs(); paintContacts(); };
+  const paintAll = () => { paintLeft(); paintMind(); paintStories(); paintBadge(); paintTabs(); paintContacts(); paintRadio(); };
   paintAll();
   // repaint names/photos once the signed-in profile loads, and whenever the Feed is opened
   new MutationObserver(() => { if (!view.hidden) paintAll(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
