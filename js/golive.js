@@ -59,7 +59,7 @@
     if (key === shellKey && root.querySelector("#gl-list")) { paintList(); paintBattle(); return; }
     shellKey = key;
     root.innerHTML = `
-      <div class="gl-host-ctrl">${hosting ? `<button class="btn" type="button" id="gl-end" style="background:#e5484d;color:#fff">■ End my live</button><button class="btn ghost" type="button" id="gl-flip">🔄 Flip camera</button><button class="btn ghost" type="button" id="gl-battle">⚔️ Start a battle</button><span class="muted" id="gl-vc">0 watching</span>` : `<input type="text" id="gl-title" maxlength="80" placeholder="What's your live about?" value="${E(titleDraft)}" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)"><button class="btn" type="button" id="gl-go" style="background:#e5484d;color:#fff">🎥 Go live</button>`}</div>
+      <div class="gl-host-ctrl">${hosting ? `<button class="btn" type="button" id="gl-end" style="background:#e5484d;color:#fff">■ End my live</button><button class="btn ghost" type="button" id="gl-flip">🔄 Flip camera</button><button class="btn ghost" type="button" id="gl-battle">⚔️ Start a battle</button><span class="muted" id="gl-vc">0 watching</span><div style="flex-basis:100%;display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:4px"><label class="muted" style="display:flex;gap:6px;align-items:center">🎙️ Your voice <input type="range" id="gl-voice" min="0" max="1.5" step="0.05" value="${hosting.voiceVol ?? 1}" style="width:110px"></label><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gl-rad" ${hosting.radioOn ? "checked" : ""} style="width:auto"> 🎧 Station music on my stream</label><label class="muted" style="display:flex;gap:6px;align-items:center">🎵 Music for viewers <input type="range" id="gl-radvol" min="0" max="1" step="0.05" value="${hosting.radioVol ?? 0.7}" style="width:110px"></label><small class="muted">Your voice and the station, balanced by you — the music dips on its own while you talk.</small></div>` : `<input type="text" id="gl-title" maxlength="80" placeholder="What's your live about?" value="${E(titleDraft)}" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)"><button class="btn" type="button" id="gl-go" style="background:#e5484d;color:#fff">🎥 Go live</button>`}</div>
       <div id="gl-status" class="muted" style="font-size:14px;${statusMsg ? "" : "display:none;"}padding:10px 12px;border:1px solid #e5484d;border-radius:12px;background:#1a0d0d;color:#ffd6d6">${E(statusMsg)}</div>
       <div class="gl-stage" id="gl-stage"></div>
       <div id="gl-battlebox"></div>
@@ -247,14 +247,29 @@
     if (!stream.getAudioTracks().length) say("Going live without sound: the microphone wasn't allowed.");
     let room;
     try { room = await joinRoom(ME()); } catch (e) { stream.getTracks().forEach((t) => t.stop()); reset(); status(e.message || "Couldn't connect. Try again."); return; }
-    hosting = { stream, room, peers: {}, title: titleDraft.trim() || "Live with " + HANDLE(ME()) };
+    // pro stream mix: the mic runs through a voice gain before it reaches viewers,
+    // so the host balances VOICE vs MUSIC for the audience, not just at the phone
+    let sendStream = stream, actx = null, voiceGain = null;
+    try {
+      if (stream.getAudioTracks().length) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        actx = new AC();
+        const msrc = actx.createMediaStreamSource(stream);
+        voiceGain = actx.createGain(); voiceGain.gain.value = 1;
+        const mdst = actx.createMediaStreamDestination();
+        msrc.connect(voiceGain); voiceGain.connect(mdst);
+        const vt = stream.getVideoTracks()[0], at = mdst.stream.getAudioTracks()[0];
+        sendStream = new MediaStream([vt, at].filter(Boolean));
+      }
+    } catch (_) { sendStream = stream; actx = null; voiceGain = null; }
+    hosting = { stream, sendStream, actx, voiceGain, voiceVol: 1, radioOn: false, radioVol: 0.7, room, peers: {}, title: titleDraft.trim() || "Live with " + HANDLE(ME()) };
     wireChat(room, ME());
     room.on("want", async ({ data }) => {
       if (!hosting || !data || !data.peer) return;
       if (Object.keys(hosting.peers).length >= MAX_VIEWERS && !hosting.peers[data.peer]) { room.emit("full", { to: data.peer }); return; }
       if (hosting.peers[data.peer]) return;
       const pc = new RTCPeerConnection(ICE); hosting.peers[data.peer] = pc;
-      hosting.stream.getTracks().forEach((t) => pc.addTrack(t, hosting.stream));
+      (hosting.sendStream || hosting.stream).getTracks().forEach((t) => pc.addTrack(t, hosting.sendStream || hosting.stream));
       pc.onicecandidate = (e) => { if (e.candidate) room.emit("ice", { to: data.peer, from: "host", c: e.candidate.toJSON() }); };
       pc.onconnectionstatechange = () => { if (/failed|closed|disconnected/.test(pc.connectionState)) { try { pc.close(); } catch (_) {} delete hosting?.peers[data.peer]; count(); } else count(); };
       hiQuality(pc);
@@ -265,7 +280,7 @@
     room.on("ice", async ({ data }) => { if (!data || data.to !== "host") return; const pc = hosting && hosting.peers[data.from]; if (pc && data.c) { try { await pc.addIceCandidate(data.c); } catch (_) {} } });
     room.on("bye", ({ data }) => { const pc = hosting && hosting.peers[data && data.from]; if (pc) { try { pc.close(); } catch (_) {} delete hosting.peers[data.from]; count(); } });
     let saved = true;
-    await DB().doc("live/" + ME()).set({ title: hosting.title.slice(0, 80), url: "", onsite: true, host: typeof isOwner !== "undefined" && isOwner, startedAt: Date.now(), beat: Date.now() }).catch((e) => { saved = false; say("You're live, but we couldn't list you on the Live page: " + (e.message || e.code)); });
+    await DB().doc("live/" + ME()).set({ title: hosting.title.slice(0, 80), url: "", onsite: true, host: typeof isOwner !== "undefined" && isOwner, startedAt: Date.now(), beat: Date.now(), radioOn: hosting.radioOn, radioVol: hosting.radioVol }).catch((e) => { saved = false; say("You're live, but we couldn't list you on the Live page: " + (e.message || e.code)); });
     hosting.beat = setInterval(() => DB().doc("live/" + ME()).update({ beat: Date.now() }).catch(() => {}), 30000);
     room.emit("hello", {}); if (saved) say("You're live! Share the site so people can watch.");
     shellKey = ""; render();
@@ -275,7 +290,7 @@
     if (!hosting) return;
     clearInterval(hosting.beat); hosting.room.emit("ended", {});
     Object.values(hosting.peers).forEach((p) => { try { p.close(); } catch (_) {} });
-    hosting.stream.getTracks().forEach((t) => t.stop()); try { hosting.room.leave(); } catch (_) {}
+    if (hosting.actx) { try { hosting.actx.close(); } catch (_) {} } hosting.stream.getTracks().forEach((t) => t.stop()); try { hosting.room.leave(); } catch (_) {}
     hosting = null; shellKey = ""; await DB().doc("live/" + ME()).delete().catch(() => {}); say("Your live has ended."); render();
   }
   async function flip() {
@@ -312,6 +327,28 @@
     shellKey = ""; render();
   }
   function stopWatch(id) { const w = watching[id]; if (!w) return; try { w.room.emit("bye", { from: myPeer }); w.pc.close(); w.room.leave(); } catch (_) {} delete watching[id]; if (!Object.keys(watching).length) window.MW_videoSound?.end(); shellKey = ""; render(); }
+
+  /* ---------- station music bed for viewers ----------
+   * When a host turns the station on for their stream, viewers hear the radio
+   * (the DJ tables) under the host's voice, at the level the host set — and it
+   * dips itself while the host is talking. */
+  let bedFor = null, bedCtx = null, bedAn = null, bedStream = null, bedLevel = 0, bedTarget = 0.7;
+  function closeBedAn() { if (bedCtx) { try { bedCtx.close(); } catch (_) {} } bedCtx = null; bedAn = null; bedStream = null; }
+  function syncBed() {
+    const MW = window.MW_DJ; if (!MW) return;
+    let drive = null;
+    for (const [id, w] of Object.entries(watching)) { const l = lives.find((x) => x.id === id); if (l && l.radioOn && w.sound) { drive = { id, l, w }; break; } }
+    if (!drive) { if (bedFor) { MW.setMixVol(1); MW.stop(); bedFor = null; } closeBedAn(); return; }
+    if (bedFor !== drive.id) { bedFor = drive.id; bedLevel = drive.l.radioVol ?? 0.7; MW.start(); }
+    bedTarget = drive.l.radioVol ?? 0.7;
+    if (drive.w.stream && drive.w.stream.getAudioTracks().length) {
+      if (bedStream !== drive.w.stream) { closeBedAn(); bedStream = drive.w.stream;
+        try { const AC = window.AudioContext || window.webkitAudioContext; bedCtx = new AC(); const src = bedCtx.createMediaStreamSource(drive.w.stream); bedAn = bedCtx.createAnalyser(); bedAn.fftSize = 512; const z = bedCtx.createGain(); z.gain.value = 0; src.connect(bedAn); bedAn.connect(z); z.connect(bedCtx.destination); if (bedCtx.state === "suspended") bedCtx.resume().catch(() => {}); } catch (_) { closeBedAn(); }
+      }
+    } else closeBedAn();
+    if (!bedAn) MW.setMixVol(bedTarget);
+  }
+  setInterval(() => { if (view.hidden) return; syncBed(); if (bedAn && bedFor) { const a = new Uint8Array(bedAn.fftSize); bedAn.getByteTimeDomainData(a); let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i] - 128) / 128); const t = m > 0.055 ? bedTarget * 0.32 : bedTarget; bedLevel += (t - bedLevel) * 0.35; window.MW_DJ?.setMixVol(Math.max(0, Math.min(1, bedLevel))); } }, 300);
 
   /* ---------- battles (TikTok-style) ----------
    * Two hosts, 1/3/5 minutes. Points = coins of paid gifts sent to each side during the battle.
@@ -386,7 +423,7 @@
   /* ---------- clicks ---------- */
   root.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
-    if (b.dataset.unmute !== undefined) { const bx = b.closest("[data-box]"), w = watching[bx.dataset.box]; if (w) { w.sound = true; attach(bx, w); } return; }
+    if (b.dataset.unmute !== undefined) { const bx = b.closest("[data-box]"), w = watching[bx.dataset.box]; if (w) { w.sound = true; attach(bx, w); } setTimeout(syncBed, 60); return; }
     if (b.id === "gl-go") return goLive();
     if (b.id === "gl-end") return endLive();
     if (b.id === "gl-flip") return flip();
@@ -404,7 +441,13 @@
       dlg.addEventListener("close", () => setTimeout(() => document.removeEventListener("mw-gift-sent", sent), 50), { once: true });
     }
   });
-  root.addEventListener("input", (e) => { if (e.target.id === "gl-title") titleDraft = e.target.value; });
+  root.addEventListener("input", (e) => {
+    if (e.target.id === "gl-title") titleDraft = e.target.value;
+    if (!hosting) return;
+    if (e.target.id === "gl-voice") { hosting.voiceVol = +e.target.value; if (hosting.voiceGain && hosting.actx) { try { hosting.voiceGain.gain.setTargetAtTime(hosting.voiceVol, hosting.actx.currentTime, 0.03); } catch (_) { hosting.voiceGain.gain.value = hosting.voiceVol; } } }
+    if (e.target.id === "gl-radvol") { hosting.radioVol = +e.target.value; DB()?.doc("live/" + ME()).update({ radioVol: hosting.radioVol }).catch(() => {}); }
+    if (e.target.id === "gl-rad") { hosting.radioOn = e.target.checked; DB()?.doc("live/" + ME()).update({ radioOn: hosting.radioOn, radioVol: hosting.radioVol }).catch(() => {}); say(hosting.radioOn ? "🎧 The station is on your stream — viewers hear the music too, at the level of the Music slider." : "Station music off your stream."); }
+  });
   root.addEventListener("keydown", (e) => { if (e.target.id === "gl-title" && e.key === "Enter") { e.preventDefault(); goLive(); } });
   root.addEventListener("submit", (e) => {
     const f = e.target.closest("[data-chatform]"); if (!f) return; e.preventDefault();
