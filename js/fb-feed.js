@@ -72,8 +72,15 @@ body[data-view=community]{background:#18191a}
 #v-community .post-actions .act.on{color:var(--fb-blue)!important}
 #v-community .post-actions .trend-badge{flex-basis:100%;margin:2px 4px 4px}
 #v-community .replies{margin:0 16px 10px}
-#v-community .reply{background:var(--fb-hover);border-radius:18px;padding:8px 12px;color:var(--fb-text);margin-bottom:6px}
-#v-community .reply b{display:block;font:600 13px system-ui}
+#v-community .reply{display:flex;gap:8px;background:none;padding:0;color:var(--fb-text);margin-bottom:8px}
+#v-community .reply .avatar{width:32px;height:32px;margin:0;flex:none}
+#v-community .reply .r-main{min-width:0}
+#v-community .reply .r-bub{background:var(--fb-hover);border-radius:18px;padding:7px 12px}
+#v-community .reply .r-bub b{display:block;font:600 13px system-ui}
+#v-community .reply .r-bub span{font:400 14px/1.3 system-ui}
+#v-community .reply .r-time{color:var(--fb-mute);font-size:12px;margin-left:12px}
+#v-community .reply-form{display:flex;gap:8px;align-items:center}
+#v-community .reply-form .avatar{width:32px;height:32px;margin:0;flex:none}
 #v-community .reply-form input{border-radius:999px;background:var(--fb-hover);border:0;color:var(--fb-text)}
 @media(max-width:760px){
   #v-community .wrap{padding-inline:0!important}
