@@ -194,7 +194,7 @@ body[data-view=community]{background:#18191a}
 #fb-tabs button i{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 5px}
 #fb-tabs button small{position:absolute;bottom:3px;left:0;right:0;font:600 10px system-ui;color:inherit}
 @media(min-width:761px){#fb-tabs{justify-content:center}#fb-tabs button small{display:none}}
-@media(max-width:760px){#fb-tabs{margin:-8px 0 8px;padding:0}}
+@media(max-width:760px){#fb-tabs{margin:-8px 0 8px;padding:0}#fb-tabs button small{display:none}}
 #fb-notes{background:var(--fb-card);border-radius:10px;margin-bottom:14px;padding:10px 8px;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 #fb-notes[hidden]{display:none}
 #fb-notes h3{margin:4px 8px 8px;color:var(--fb-text);font:700 22px system-ui}
