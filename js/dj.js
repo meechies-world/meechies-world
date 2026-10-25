@@ -195,7 +195,10 @@ body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:n
 @media (max-width:760px){.dj-decks{display:flex;flex-direction:column}.deck[data-deck=A]{order:1}.mixer.m1{order:2}.deck[data-deck=B]{order:3}.deck[data-deck=C]{order:4}.mixer.m2{order:5}.deck[data-deck=D]{order:6}.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}}
 html.popdj header.bar,html.popdj #player-bar,html.popdj footer,html.popdj #fb-left,html.popdj #fb-right,html.popdj #ai-fab,html.popdj #mx-heads{display:none!important}
 html.popdj main{margin:0!important;padding:10px!important}
-html.popdj #v-dj .wrap{max-width:none!important;width:100%!important}
+html.popdj #v-radio .wrap{max-width:none!important;width:100%!important}
+html.popdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
+.pad{transition:filter .15s ease,transform .15s ease}
+.pad.hit{filter:brightness(1.9);transform:scale(.93)}
 html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none!important}
 .popdj-hint{display:none}
 html.popdj .popdj-hint{display:block}`;
@@ -404,7 +407,7 @@ html.popdj .popdj-hint{display:block}`;
     const live = isLive();
     const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = live ? "ON AIR" : "OFF AIR";
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
-    const now = live ? DECKS.filter((k) => S[k].playing).map((k) => S[k].title).filter(Boolean) : [];
+    const now = live ? DECKS.filter((k) => S[k].playing && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000)).map((k) => S[k].title).filter(Boolean) : [];
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? `<b style="font-size:13px;letter-spacing:.1em">🎙️ LATEST RECORDED SHOW</b><audio controls preload="none" src="${E(S.show.url)}" style="width:100%;margin-top:6px"></audio><small class="muted">Recorded ${new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}</small>` : "";
@@ -412,6 +415,7 @@ html.popdj .popdj-hint{display:block}`;
   }
   setInterval(() => {
     const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) show();
+    if (pkTab === "mine" && !pkItems.length && TRACKS().length) paintPkList();
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) el.textContent = fmt(decks[k].el.currentTime) + (decks[k].el.duration ? " / " + fmt(decks[k].el.duration) : "");
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
@@ -444,10 +448,21 @@ html.popdj .popdj-hint{display:block}`;
   function stopListening() { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
-  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening };
+  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening };
+  window.MW_DJ_LIVE = () => isLive();
+  // the top MWR card reads the tables: whatever is on the decks is what the station says is on air
+  window.MW_AIRNOW = () => {
+    if (!isLive()) return null;
+    const fresh = S.boothAt && Date.now() - S.boothAt < 90000;
+    const playing = DECKS.filter((k) => S[k].playing && S[k].title && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000));
+    if (!playing.length) return { title: "Live on the decks", sub: fresh ? "🎧 Meechie's set is live — the tables are running the station" : "🤖 Auto-DJ is running the station from the tables", cover: "" };
+    const d = S[playing[0]];
+    const left = d.dur && d.start ? Math.max(0, Math.round(d.dur - (Date.now() - d.start) / 1000)) : 0;
+    return { title: playing.length > 1 ? d.title + " × " + S[playing[1]].title : d.title, sub: (fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : ""), cover: d.cover || "" };
+  };
   /* pop the decks out onto their own screen: a clean window with only the DJ view */
   function popOut() {
-    const url = location.pathname + "?popdj=1#dj";
+    const url = location.pathname + "?popdj=1#radio";
     const w = window.open(url, "mw-dj-decks", "popup=yes,width=1440,height=920");
     if (w) { try { w.focus(); } catch (_) {} say("Decks popped out on their own screen ⛶"); }
     else { document.documentElement.classList.add("popdj"); try { go("dj"); } catch (_) {} say("Pop-ups are blocked here — decks went full-screen on this page instead. Allow pop-ups for a separate window."); }
@@ -515,9 +530,14 @@ html.popdj .popdj-hint{display:block}`;
       if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintOwner(); paintStation(); say("🔴 You're LIVE — whatever you play on the tables is on the radio for everyone."); }
     }
     paintOwner(); levels(); save(true);
-    // Pausing the last deck doesn't kill the radio: with Auto-DJ on and nothing cued
-    // on the other deck, the rotation takes the wheel until he plays the tables again.
-    if (!s.playing && S.live && S.autodj && (k === "A" || k === "B")) { const o = PAIR[k]; if (!S[o].playing && !okUrl(S[o].src)) autoNext(k); }
+    // Pausing the tables doesn't kill the radio: with Auto-DJ on and every deck
+    // stopped, the rotation (listener picks first) takes the wheel after a short
+    // grace — and playing any deck again cancels it.
+    if (s.playing && adTimer) { clearTimeout(adTimer); adTimer = null; }
+    if (!s.playing && S.live && S.autodj && !DECKS.some((x) => S[x].playing)) {
+      if (adTimer) clearTimeout(adTimer);
+      adTimer = setTimeout(() => { adTimer = null; if (S.live && S.autodj && !DECKS.some((x) => S[x].playing)) { say("🤖 Auto-DJ is keeping the station rolling — play any deck to take back over."); autoNext(k === "B" ? "B" : "A"); } }, 5000);
+    }
   }
   onMain("click", async (e) => {
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
@@ -620,7 +640,7 @@ html.popdj .popdj-hint{display:block}`;
     }
     return null;
   }
-  let xfAnim = null;
+  let xfAnim = null, adTimer = null;
   async function autoNext(endedK) {
     if (!S.autodj) return;
     let item = null;
@@ -702,8 +722,8 @@ html.popdj .popdj-hint{display:block}`;
   onMain("pointerdown", (e) => { const b = e.target.closest("[data-pad]"); if (!b) return; padPress = setTimeout(() => { const p = (S.pads || [])[+b.dataset.pad]; if (p && okUrl(p.url)) { S.voice = { id: p.id, url: p.url, at: Date.now() }; heardVoice = p.id; save(true); say("Drop sent out over the air 📡"); } padPress = "done"; }, 650); });
   onMainRaw("pointerup", () => { clearTimeout(padPress); if (padPress !== "done") padPress = null; }, true);
   onMain("click", async (e) => {
-    const s = e.target.closest("[data-synth]"); if (s && OWNER()) { SYNTH[+s.dataset.synth].fn(); return; }
-    const pb = e.target.closest("[data-pad]"); if (pb && OWNER()) { if (padPress === "done") { padPress = null; return; } const p = (S.pads || [])[+pb.dataset.pad]; if (p) playPadUrl(p.url); return; }
+    const s = e.target.closest("[data-synth]"); if (s && OWNER()) { s.classList.add("hit"); setTimeout(() => s.classList.remove("hit"), 200); SYNTH[+s.dataset.synth].fn(); return; }
+    const pb = e.target.closest("[data-pad]"); if (pb && OWNER()) { if (padPress === "done") { padPress = null; return; } const p = (S.pads || [])[+pb.dataset.pad]; if (p) { pb.classList.add("hit"); setTimeout(() => pb.classList.remove("hit"), 200); playPadUrl(p.url); } return; }
     const pr = e.target.closest("[data-padrec]"); if (pr && OWNER()) return recordPad(+pr.dataset.padrec, pr);
   });
   async function recordPad(i, btn) {
