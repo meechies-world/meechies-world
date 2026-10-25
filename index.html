@@ -3164,8 +3164,8 @@ function drawReplies(id){
   const box=document.querySelector(`[data-rbox="${id}"]`); if(!box) return;
   // only the list is redrawn, so someone else's new comment doesn't close your keyboard mid-typing
   let list=box.querySelector(".r-list");
-  if(!list){ box.innerHTML=`<div class="r-list"></div><form class="reply-form" data-rform="${id}"><label class="r-pic" title="Add a picture" aria-label="Add a picture">📷<input type="file" accept="image/*" hidden></label><input type="text" id="r-${id}" maxlength="500" placeholder="Write a comment"><button class="btn sm" type="submit">Reply</button></form><div class="r-prev" hidden></div>`; list=box.querySelector(".r-list"); }
-  list.innerHTML=(replyCache[id]||[]).map(r=>`<div class="reply"><b>${esc(handleOf(r.authorId))}</b>${esc(r.text||"")}${/^https:\/\//.test(r.photo||"")?`<img class="r-img" src="${esc(r.photo)}" alt="" loading="lazy">`:""}</div>`).join("");
+  if(!list){ box.innerHTML=`<div class="r-list"></div><form class="reply-form" data-rform="${id}">${me?avatarOf(me):'<span class="avatar">👤</span>'}<label class="r-pic" title="Add a picture" aria-label="Add a picture">📷<input type="file" accept="image/*" hidden></label><input type="text" id="r-${id}" maxlength="500" placeholder="Write a comment"><button class="btn sm" type="submit">Reply</button></form><div class="r-prev" hidden></div>`; list=box.querySelector(".r-list"); }
+  list.innerHTML=(replyCache[id]||[]).map(r=>`<div class="reply">${avatarOf(r.authorId)}<div class="r-main"><div class="r-bub"><b>${esc(handleOf(r.authorId))}</b><span>${esc(r.text||"")}</span>${/^https:\/\//.test(r.photo||"")?`<img class="r-img" src="${esc(r.photo)}" alt="" loading="lazy">`:""}</div><small class="r-time">${ago(r.createdAt)}</small></div></div>`).join("");
 }
 $("#feed").addEventListener("submit",async e=>{
   const f=e.target.closest("[data-rform]"); if(!f) return; e.preventDefault(); if(!needMember()) return;
@@ -3365,7 +3365,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
 boot();
 </script>
 <script src="js/appnav.js?v=1792602872"></script>
-<script src="js/fb-feed.js?v=1792607145"></script>
+<script src="js/fb-feed.js?v=1792925958"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/stories.js?v=1792607566"></script>
 <script src="js/book-plus.js?v=1792607145"></script>
