@@ -17,7 +17,7 @@
   const css = document.createElement("style");
   css.textContent = `
 #v-community{--fb-bg:#18191a;--fb-card:#242526;--fb-hover:#3a3b3c;--fb-text:#e4e6eb;--fb-mute:#b0b3b8;--fb-line:#3e4042;--fb-blue:#2d88ff;background:var(--fb-bg)!important}
-#fb-top,#fb-tabs,#fb-notes{--fb-bg:#18191a;--fb-card:#242526;--fb-hover:#3a3b3c;--fb-text:#e4e6eb;--fb-mute:#b0b3b8;--fb-line:#3e4042;--fb-blue:#2d88ff;--shell-h:48px}
+#fb-top,#fb-tabs,#fb-notes,#fb-left,#fb-right{--fb-bg:#18191a;--fb-card:#242526;--fb-hover:#3a3b3c;--fb-text:#e4e6eb;--fb-mute:#b0b3b8;--fb-line:#3e4042;--fb-blue:#2d88ff;--shell-h:48px}
 body[data-view=community]{background:#18191a}
 #v-community .section-head{display:none}
 #v-community .wrap{padding-top:0!important}
@@ -27,9 +27,17 @@ body[data-view=community]{background:#18191a}
 #fb-top button i{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 4px}
 #fb-top button.on{background:#e41e3f;color:#fff}
 #fb-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
-@media(min-width:1100px){#fb-cols{grid-template-columns:260px minmax(0,680px) 300px;justify-content:center}}
+@media(min-width:1100px){#fb-cols{grid-template-columns:minmax(0,680px) 300px;justify-content:center}}
 #fb-left{display:none}
-@media(min-width:1100px){#fb-left{display:grid;gap:2px;position:sticky;top:116px}}
+@media(min-width:1100px){#fb-left{display:grid;gap:2px;position:fixed;left:0;top:var(--rail-top,116px);width:240px;max-height:calc(100dvh - var(--rail-top,116px) - 84px);overflow-y:auto;padding:4px 8px;z-index:13;align-content:start;scrollbar-width:thin}}
+body[data-view=clips] #fb-left,body[data-view=world] #fb-left{display:none}
+#fb-right{display:none}
+@media(min-width:1280px){#fb-right{display:block;position:fixed;right:0;top:var(--rail-top,116px);width:280px;max-height:calc(100dvh - var(--rail-top,116px) - 84px);overflow-y:auto;padding:4px 10px;z-index:13;scrollbar-width:thin}}
+body[data-view=clips] #fb-right,body[data-view=world] #fb-right{display:none}
+#fb-right #fb-contacts{background:var(--fb-card);border-radius:10px;padding:12px 8px;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+#fb-right #fb-contacts h3{color:var(--fb-mute);font:700 15px system-ui;margin:2px 8px 8px}
+@media(min-width:1100px){body:not([data-view=clips]):not([data-view=world]) main{margin-left:240px}}
+@media(min-width:1280px){body:not([data-view=clips]):not([data-view=world]) main{margin-right:280px}}
 #fb-left a{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;color:var(--fb-text);text-decoration:none;font:600 15px system-ui}
 #fb-left a:hover{background:var(--fb-hover)}
 #fb-left a span{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--fb-hover);font-size:19px;overflow:hidden}
@@ -142,7 +150,9 @@ body[data-view=community]{background:#18191a}
   const cols = document.createElement("div"); cols.id = "fb-cols";
   grid.before(cols);
   const left = document.createElement("nav"); left.id = "fb-left"; left.setAttribute("aria-label", "Shortcuts");
-  cols.append(left, grid);
+  document.body.appendChild(left); // batch 3: body-level fixed rail, so the shortcuts stay on every view (desktop)
+  cols.append(grid);
+  left.addEventListener("click", (e) => { const b = e.target.closest('[data-fb="me"]'); if (!b) return; e.preventDefault(); if (window.MW_profilePage && window.MW_profilePage.mine) window.MW_profilePage.mine(); else go("friends"); });
   function paintLeft() {
     const p = myProf();
     left.innerHTML = `<a href="#" data-fb="me"><span>${myAv()}</span>${esc((p && p.handle) || "Your profile")}</a>
@@ -239,7 +249,7 @@ body[data-view=community]{background:#18191a}
   tabs.innerHTML = [["home", "🏠", "Home"], ["friends", "👥", "Friends"], ["video", "📺", "Video"], ["market", "🛍️", "Marketplace"], ["notes", "🔔", "Notifications"], ["menu", "☰", "Menu"]]
     .map(([k, ic, n]) => `<button type="button" data-fbt="${k}" aria-label="${n}" aria-pressed="${k === "home"}">${ic}<i hidden></i><small>${n}</small></button>`).join("");
   top.after(tabs);
-  const stickTabs = () => { const h = document.querySelector("header.bar"); const hh = h ? h.offsetHeight : 60; tabs.style.top = hh + "px"; const nt = document.getElementById("fb-notes"); if (nt) nt.style.top = (hh + 54) + "px"; };
+  const stickTabs = () => { const h = document.querySelector("header.bar"); const hh = h ? h.offsetHeight : 60; tabs.style.top = hh + "px"; document.documentElement.style.setProperty("--rail-top", (hh + 56) + "px"); const nt = document.getElementById("fb-notes"); if (nt) nt.style.top = (hh + 54) + "px"; };
   stickTabs(); addEventListener("resize", stickTabs);
   const notes = document.createElement("div"); notes.id = "fb-notes"; notes.hidden = true;
   tabs.after(notes); stickTabs();
@@ -303,12 +313,14 @@ body[data-view=community]{background:#18191a}
   setInterval(paintTabs, 8000);
   setInterval(paintRadio, 3000);
 
-  /* Contacts card (desktop right rail): your friends, tap to open their profile. Hidden for guests. */
-  const side = view.querySelector("aside.side");
+  /* Contacts card (desktop right rail): your friends, tap to open their profile. Hidden for guests.
+     Batch 4: the card lives in a body-level fixed right rail (#fb-right), so it stays on every view. */
+  const rail = document.createElement("div"); rail.id = "fb-right";
+  document.body.appendChild(rail);
   const contacts = document.createElement("div"); contacts.className = "card"; contacts.id = "fb-contacts"; contacts.hidden = true;
-  if (side) side.appendChild(contacts);
+  rail.appendChild(contacts);
   function paintContacts() {
-    const id = myId(); if (!id || !side) { contacts.hidden = true; return; }
+    const id = myId(); if (!id) { contacts.hidden = true; return; }
     let ids = []; try { ids = (window.MW_FRIENDS && MW_FRIENDS.list) ? MW_FRIENDS.list() : []; } catch (_) {}
     ids = ids.filter((u) => u !== id).slice(0, 12);
     if (!ids.length) { contacts.hidden = true; return; }
