@@ -134,6 +134,7 @@ textarea{resize:vertical;min-height:90px}
 .badge{display:inline-flex;align-items:center;gap:4px;font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:4px 7px;border-radius:999px;border:1px solid var(--gold-lo);color:var(--gold-hi)}
 .badge.ok{border-color:color-mix(in srgb,var(--ok) 60%,transparent);color:var(--ok)}
 .post-text{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+#v-community .post-text.big{font-size:22px;line-height:1.34}
 .post img.photo{width:100%;border-radius:var(--r);max-height:560px;object-fit:cover}
 .post-actions{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--line);padding-top:10px}
 .act{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px}
@@ -1264,7 +1265,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
           </div>
         </div>
         <div class="card composer" id="composer" hidden>
-          <div class="field"><label for="p-text">Share something with the community</label><textarea id="p-text" maxlength="2000" placeholder="What's going on?"></textarea></div>
+          <div class="field"><label for="p-text">Share something with the community</label><textarea id="p-text" maxlength="2000" placeholder="What's on your mind?"></textarea></div>
           <img id="p-preview" class="preview-img" alt="Photo to post" hidden>
           <div class="vid-pick" id="p-vwrap" hidden><video id="p-vprev" controls playsinline muted></video><small class="muted" id="p-vinfo"></small><div class="vid-bar"><i id="p-vbar"></i></div><button class="act" type="button" id="p-vclear" style="justify-self:start">Remove video</button></div>
           <label id="announce-opt" hidden style="display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;color:var(--gold-hi)"><input type="checkbox" id="p-announce"> Send to everybody as an announcement (banner on every page)</label>
@@ -3129,16 +3130,16 @@ function renderFeed(){
     el.className="post"+(p.announce?" announcement":p.sponsored?" sponsored":"");
     // Only rebuild the top part (text, photo, video) when it really changed, so a playing video keeps playing.
     const bodySig=JSON.stringify([p.text,p.photo,p.video,p.announce,p.sponsored,handleOf(p.authorId),(members[p.authorId]||{}).photo,shop&&shop[1],me,F.has(p.authorId)]);
-    if(el._sig!==bodySig){ el._sig=bodySig; el.querySelector(".post-body").innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)}</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="btn sm fl-btn ${F.has(p.authorId)?"on":""}" type="button" data-follow="${esc(p.authorId)}" style="margin-left:auto">${F.has(p.authorId)?"Following":"＋ Follow"}</button><button class="act" type="button" data-dm="${esc(p.authorId)}">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(safeUrl(shop[1]))}" target="_blank" rel="noopener">Shop</a>`:""}</div>
-      ${p.text?`<p class="post-text">${esc(p.text)}</p>`:""}
+    if(el._sig!==bodySig){ el._sig=bodySig; el.querySelector(".post-body").innerHTML=`<div class="post-head">${avatarOf(p.authorId)}<div class="who"><b>${esc(handleOf(p.authorId))}</b><small>${ago(p.createdAt)} · 🌐</small></div>${p.authorId&&p.authorId!==me&&!p.announce?`<button class="btn sm fl-btn ${F.has(p.authorId)?"on":""}" type="button" data-follow="${esc(p.authorId)}" style="margin-left:auto">${F.has(p.authorId)?"Following":"＋ Follow"}</button><button class="act" type="button" data-dm="${esc(p.authorId)}">Message</button>`:""}${p.announce?'<span class="badge" style="margin-left:auto">From Meechie · Everyone</span>':p.sponsored?'<span class="badge" style="margin-left:auto">Promoted</span>':''}${shop&&!p.sponsored?`<a class="shop-link" href="${esc(safeUrl(shop[1]))}" target="_blank" rel="noopener">Shop</a>`:""}</div>
+      ${p.text?`<p class="post-text${!p.photo&&!p.video&&!p.audio&&p.text.length<=120?" big":""}">${esc(p.text)}</p>`:""}
       ${/^data:image\//.test(p.photo||"")||/^https:\/\//.test(p.photo||"")?`<img class="photo" src="${esc(p.photo)}" alt="Photo from ${esc(handleOf(p.authorId))}" loading="lazy">`:""}
       ${/^https:\/\//.test(p.video||"")?`<video class="vid" src="${esc(p.video)}#t=0.1" controls playsinline preload="metadata"></video>`:""}
       ${/^https:\/\//.test(p.audio||"")?`<audio class="aud" src="${esc(p.audio)}" controls preload="none" style="width:100%;margin-top:8px"></audio>`:""}`; }
-    const ws=el.querySelector(".who small"); if(ws) ws.textContent=ago(p.createdAt);
+    const ws=el.querySelector(".who small"); if(ws) ws.textContent=ago(p.createdAt)+" · 🌐";
     el.querySelector(".post-actions").innerHTML=`
         ${trend.has(p.id)?`<span class="trend-badge">🔥 Trending</span>`:""}
-        <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">♥ ${showLc?lc:""} Like</button>
-        <button class="act" data-replies="${esc(p.id)}">💬 ${(+p.replyCount)||""} Comment</button>
+        <button class="act ${liked?"on":""}" data-like="${esc(p.id)}">👍 ${showLc?lc:""} Like</button>
+        <button class="act" data-replies="${esc(p.id)}">💬 ${(+p.replyCount)>=3||isOwner?(+p.replyCount):""} Comment</button>
         <button class="act" data-share="${esc(p.id)}">↗ Share</button>
         ${p.authorId!==me?`<button class="act" data-giftto="${esc(p.authorId)}">🎁 Gift</button>`:""}
         ${isOwner?`<button class="act" data-sponsor="${esc(p.id)}">${p.sponsored?"Unpin":"Pin as promoted"}</button>`:""}
