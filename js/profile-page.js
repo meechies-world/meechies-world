@@ -50,7 +50,7 @@ body.pp-open #mw-fab,body.pp-open #ai-fab,body.pp-open #mx-fab,body.pp-open #vz-
 .pp-post img,.pp-post video{width:100%;max-height:520px;object-fit:contain;border-radius:12px;background:#000}
 .pp-post p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}.pp-post small{color:var(--muted,#bbb)}
 .pp-main{display:grid;gap:12px;align-content:start}
-@media (max-width:720px){.pp-body{grid-template-columns:1fr}.pp-top{grid-template-columns:1fr;justify-items:center;text-align:center;margin-top:-80px}.pp-av{width:140px;height:140px}.pp-acts{justify-content:center}.pp-stack{justify-content:center}}`;
+@media (max-width:720px){.pp-body{grid-template-columns:1fr}.pp-top{grid-template-columns:1fr;justify-items:center;text-align:center;margin-top:-80px}.pp-av{width:140px;height:140px}.pp-acts{justify-content:center}.pp-stack{justify-content:center}.pp-body:not([style]) .pp-intro>div:nth-of-type(n+6),.pp-body:not([style]) .pp-intro .pp-apps,.pp-body:not([style]) .pp-intro b{display:none}}`;
   document.head.appendChild(css);
 
   function apps(m) {
