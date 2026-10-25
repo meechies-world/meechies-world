@@ -225,7 +225,8 @@
   /* ---------- member videos (bucket "media", each member's own folder) ---------- */
   const VTYPES = { mp4: "video/mp4", m4v: "video/x-m4v", mov: "video/quicktime", webm: "video/webm", "3gp": "video/3gpp", mkv: "video/x-matroska" };
   window.MW.VIDEO_MAX = (CF ? 25 : 50) * 1024 * 1024;
-  /* Big phone videos (over 50 MB) get shrunk to 720p in the browser before uploading, so any clip can be posted. */
+  /* Every upload is converted to a browser-safe format (720p, H.264 MP4 or WebM) in the browser before
+     uploading: some phones record .mkv or high-efficiency files that upload fine but no browser can play. */
   window.MW.shrinkVideo = (file, onProg) => new Promise((res, rej) => {
     const v = document.createElement("video"); v.muted = false; v.playsInline = true; v.preload = "auto"; v.src = URL.createObjectURL(file);
     v.onerror = () => rej(new Error("This phone can't read that video. Try a shorter clip."));
@@ -250,11 +251,10 @@
   });
   window.MW.uploadVideo = (file, onProg) => new Promise(async (res, rej) => {
     if (!session) return rej(new Error("Sign in first."));
-    if (file.size > window.MW.VIDEO_MAX) {
-      try { file = await window.MW.shrinkVideo(file, (f) => onProg && onProg(f * 0.5)); const p0 = onProg; onProg = p0 ? (f) => p0(0.5 + f * 0.5) : null; }
-      catch (err) { return rej(err); }
-      if (file.size > window.MW.VIDEO_MAX) return rej(new Error("That video is still too big after shrinking. Post a shorter clip (under about " + (CF ? "2" : "3") + " minutes)."));
-    }
+    // Convert EVERY video before upload (owner's rule, 2026-10-25) so nothing unplayable gets posted.
+    try { file = await window.MW.shrinkVideo(file, (f) => onProg && onProg(f * 0.5)); const p0 = onProg; onProg = p0 ? (f) => p0(0.5 + f * 0.5) : null; }
+    catch (err) { return rej(new Error("That video couldn't be converted on this device, so it wasn't posted. " + (err.message || ""))); }
+    if (file.size > window.MW.VIDEO_MAX) return rej(new Error("That video is still too big after converting. Post a shorter clip (under about " + (CF ? "2" : "3") + " minutes)."));
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     let type = file.type || VTYPES[ext] || "video/mp4";
     if (!/^video\//.test(type)) return rej(new Error("Pick a video file (MP4, MOV or WebM)."));
