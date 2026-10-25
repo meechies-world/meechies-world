@@ -50,6 +50,27 @@
   }, true);
   setInterval(() => { if (playingNow()) { setWant(true); paintSession(); } }, 5000);
 
+  /* ---- one sound at a time (owner's rule): ANY video or audio on the site with sound up
+   * pauses the radio, and the radio comes back when it ends. Some players remembered to tell
+   * the radio; the feed's never did — so this listens at the document level and speaks for
+   * every player through the site's own step-aside switch (MW_videoSound). ---- */
+  const loud = new Set();
+  const isRadio = (t) => !t || t.id === "audio";
+  const radioAudible = () => { const a = mediaEl(); return !!(a && !a.paused && ["radio", "library", "intro"].includes(musicMode() || "")); };
+  function loudPlay(t) {
+    if (isRadio(t) || loud.has(t)) return;
+    loud.add(t);
+    if (loud.size === 1 && radioAudible()) { try { window.MW_videoSound && MW_videoSound.start(); } catch (_) {} }
+  }
+  function loudDone(t) {
+    if (!loud.delete(t)) return;
+    if (!loud.size) { try { window.MW_videoSound && MW_videoSound.end(); } catch (_) {} } // engine restores in ~1.5s; the watchdog below backstops it
+  }
+  document.addEventListener("play", (e) => { const t = e.target; if (t && (t.tagName === "VIDEO" || t.tagName === "AUDIO") && !t.muted) loudPlay(t); }, true);
+  document.addEventListener("pause", (e) => { loudDone(e.target); }, true);
+  document.addEventListener("ended", (e) => { loudDone(e.target); }, true);
+  document.addEventListener("volumechange", (e) => { const t = e.target; if (!t || (t.tagName !== "VIDEO" && t.tagName !== "AUDIO")) return; if (!t.paused && !t.muted) loudPlay(t); else loudDone(t); }, true);
+
   /* ---- the watchdog: if the music should be on but isn't, bring it back ---- */
   let lastTry = 0, fails = 0;
   function heal() {
@@ -61,7 +82,7 @@
     if (window._welcomeOn) return;                           // the welcome video gets its moment
     try { if (window.MW_videoSound && MW_videoSound.holding()) return; } catch (_) {} // a video has the sound on purpose
     let loudVideo = false;
-    document.querySelectorAll("video").forEach((v) => { if (!v.paused && !v.muted) loudVideo = true; });
+    document.querySelectorAll("video,audio").forEach((v) => { if (!v.paused && !v.muted) loudVideo = true; });
     if (loudVideo) return;
     const a = mediaEl(); if (!a) return;
     if (!a.paused) return;                                   // sound is flowing — nothing to heal
