@@ -1055,6 +1055,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <a href="#creators" data-go="creators">Creators</a>
       <a href="#exclusives" data-go="exclusives">✨ Exclusives</a>
       <a href="#jobs" data-go="jobs">Jobs</a>
+      <a href="#connect" data-go="connect">🔌 Connect</a>
       <a href="#ads" data-go="ads">Ad Board</a>
       <a href="#promote" data-go="promote">Promote</a>
       <a href="#contact" data-go="contact">Contact</a>
@@ -1404,6 +1405,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 </section>
 
 <section class="view" data-theme="jobs" id="v-jobs" hidden><div class="wrap"><div class="lux-banner"><img src="/img/lux/hiring.webp" alt="We're hiring! Join the Meechies World team: call businesses, bring us clients, get paid. Work from home, flexible hours." loading="lazy" width="1000" height="1499"></div><div class="section-head"><div><p class="eyebrow">Work & hiring</p><h2>Jobs</h2></div><p class="muted">Companies post jobs and find workers. Workers list their skills and get hired. Message each other right here.</p></div><div id="jb-root"></div></div></section>
+<section class="view" data-theme="connect" id="v-connect" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">All your apps, one page</p><h2>Connect</h2></div><p class="muted">Your email, your socials, your money — every tool you use, one tap away. Link your socials once and they show on your profile for the whole community.</p></div><div id="cn-root"></div></div></section>
 
 <section class="view" data-theme="friends" id="v-friends" hidden><div class="wrap"><div class="section-head"><div><p class="eyebrow">Your people</p><h2>Friends</h2></div><p class="muted">Add friends, accept requests, and see what your friends are posting.</p></div><div id="fr-root"></div></div></section>
 
@@ -2102,7 +2104,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","fans","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
+const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["radio","dj-root"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -3400,6 +3402,7 @@ boot();
 <script src="js/gold-icons.js?v=1792626191"></script>
 <script src="js/golive.js?v=1792928200"></script>
 <script src="js/obs.js?v=1792928200"></script>
+<script src="js/connect.js?v=1792928300"></script>
 <script src="js/predict.js?v=1792580555"></script>
 <script src="js/people.js?v=1792580555"></script>
 <script src="js/originals.js?v=1792580555"></script>
