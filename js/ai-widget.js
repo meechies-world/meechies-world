@@ -38,6 +38,7 @@ body.has-player #ai-panel{height:min(520px,calc(100vh - 180px))}
 #ai-form2 .ai-tool input{position:absolute;inset:0;opacity:0;cursor:pointer}
 #ai-attach{display:flex;align-items:center;gap:8px;padding:6px 12px 0;font-size:12px;color:var(--muted,#a99f8b)}#ai-attach img{width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid var(--line,#3a3223)}
 #ai-panel header .ai-spk{margin-left:auto;font-size:18px}#ai-panel header #ai-new+.ai-spk{margin-left:6px}#ai-panel header #ai-new{color:var(--gold-hi,#f0cf78);white-space:nowrap;flex:none}#ai-panel header .ai-spk+button{margin-left:6px}
+#ai-model{background:var(--ink,#0b0a08);color:var(--gold-hi,#f0cf78);border:1px solid var(--line,#3a3223);border-radius:999px;padding:5px 6px;font:600 11px system-ui,sans-serif;max-width:104px;flex:none}
 .ai-m img{max-width:100%;border-radius:10px;display:block;margin-bottom:6px}
 .ai-typing{display:inline-flex;gap:4px}.ai-typing i{width:6px;height:6px;border-radius:50%;background:var(--gold,#d4a843);animation:aiB 1s infinite}.ai-typing i:nth-child(2){animation-delay:.15s}.ai-typing i:nth-child(3){animation-delay:.3s}
 @keyframes aiB{0%,80%,100%{opacity:.25}40%{opacity:1}}
@@ -48,17 +49,31 @@ body.mw-editing #ai-fab{display:none!important}`;
   fab.id = "ai-fab"; fab.type = "button"; fab.innerHTML = '<img class="ai-av" src="/img/meechie-ai.jpg" alt=""><span class="dot"></span>Ask Meechie (AI)';
   const panel = document.createElement("section");
   panel.id = "ai-panel"; panel.hidden = true; panel.setAttribute("aria-label", "Chat with Meechie, the AI assistant");
-  panel.innerHTML = `<header><img class="ai-av lg" src="/img/meechie-ai.jpg" alt="Meechie"><div><b>Meechie · AI</b><small>Answers 24/7 · talk, type, send a photo, or draft legal papers</small></div><button type="button" id="ai-new" title="Start a new chat" aria-label="Start a new chat" style="font-size:14px;border:1px solid var(--line,#3a3223);border-radius:999px;padding:4px 10px;margin-left:auto">＋ New</button><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
+  panel.innerHTML = `<header><img class="ai-av lg" src="/img/meechie-ai.jpg" alt="Meechie"><div><b>Meechie · AI</b><small>Answers 24/7 · talk, type, send a photo, or draft legal papers</small></div><select id="ai-model" aria-label="Choose Meechie's brain or an image maker" title="Pick a brain — every AI model on Cloudflare, wired in"><option value="">✨ Auto brain</option></select><button type="button" id="ai-new" title="Start a new chat" aria-label="Start a new chat" style="font-size:14px;border:1px solid var(--line,#3a3223);border-radius:999px;padding:4px 10px;margin-left:auto">＋ New</button><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
 <div id="ai-log2" aria-live="polite"></div><div class="ai-chips" id="ai-chips"></div>
 <div id="ai-attach" hidden></div>
 <form id="ai-form2"><label class="ai-tool" id="ai-pic" aria-label="Send a photo">📷<input type="file" accept="image/*" id="ai-file" aria-label="Choose a photo"></label><button type="button" class="ai-tool" id="ai-mic" aria-label="Talk to the AI">🎙️</button><input id="ai-in2" aria-label="Ask Meechie" maxlength="1500" autocomplete="off" placeholder="Ask me anything"><button type="submit">Send</button></form>`;
   document.body.append(fab, panel);
   const log = panel.querySelector("#ai-log2"), chips = panel.querySelector("#ai-chips"), inp = panel.querySelector("#ai-in2");
+  /* every Cloudflare AI model, wired in: pick a brain, or pick an image maker and describe a picture */
+  const sel = panel.querySelector("#ai-model");
+  const kindOf = {};
+  let picked = ""; try { picked = localStorage.getItem("mw_ai_model") || ""; } catch (_) {}
+  fetch("/api/ai").then((r) => r.json()).then((j) => {
+    const brains = (j.models || []).filter((m) => ["chat", "reasoning", "code", "vision"].includes(m.kind));
+    const makers = (j.models || []).filter((m) => m.kind === "image");
+    brains.forEach((m) => { kindOf[m.id] = m.kind; }); makers.forEach((m) => { kindOf[m.id] = m.kind; });
+    const grp = (label, list) => list.length ? `<optgroup label="${label}">` + list.map((m) => `<option value="${E(m.id)}">${E(m.name)}</option>`).join("") + "</optgroup>" : "";
+    sel.innerHTML = `<option value="">✨ Auto brain</option>` + grp("🧠 Brains", brains) + grp("🎨 Image makers", makers);
+    if (picked && kindOf[picked]) sel.value = picked; else picked = "";
+    if (kindOf[picked] === "image") inp.placeholder = "Describe a picture to draw…";
+  }).catch(() => {});
+  sel.addEventListener("change", () => { picked = sel.value; try { localStorage.setItem("mw_ai_model", picked); } catch (_) {} inp.placeholder = kindOf[picked] === "image" ? "Describe a picture to draw…" : "Ask me anything"; });
 
   function signedIn() { const s = window.MW && MW.session && MW.session(); return !!(s && s.user); }
   function draw(thinking) {
     const hello = `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">Hey! I'm Meechie, the AI assistant for Meechie's World. Ask me about services and prices, promotion, the shop, clothing designs, or how anything on the site works. I can also explain court procedure and help you draft motions on the Legal Help tab.</div></div>`;
-    log.innerHTML = hello + hist.map((m, i) => m.role === "user" ? `<div class="ai-m me">${m.pic ? `<img src="${E(m.pic)}" alt="Photo you sent">` : ""}${fmt(m.content)}</div>` : `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">${fmt(m.content)}<span class="ai-acts"><button type="button" class="ai-copy" data-copy-i="${i}" aria-label="Copy this answer">Copy</button><button type="button" class="ai-copy" data-check-i="${i}" aria-label="Double-check this answer">🔍 Double-check</button></span>${m.check ? `<div class="ai-check">${fmt(m.check)}</div>` : ""}</div></div>`).join("") + (thinking ? `<div class="ai-m"><span class="ai-typing"><i></i><i></i><i></i></span></div>` : "");
+    log.innerHTML = hello + hist.map((m, i) => m.role === "user" ? `<div class="ai-m me">${m.pic ? `<img src="${E(m.pic)}" alt="Photo you sent">` : ""}${fmt(m.content)}</div>` : `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">${m.pic ? `<img src="${E(m.pic)}" alt="Picture Meechie AI made">` : ""}${fmt(m.content)}<span class="ai-acts"><button type="button" class="ai-copy" data-copy-i="${i}" aria-label="Copy this answer">Copy</button><button type="button" class="ai-copy" data-check-i="${i}" aria-label="Double-check this answer">🔍 Double-check</button></span>${m.check ? `<div class="ai-check">${fmt(m.check)}</div>` : ""}</div></div>`).join("") + (thinking ? `<div class="ai-m"><span class="ai-typing"><i></i><i></i><i></i></span></div>` : "");
     if (!signedIn()) log.innerHTML += `<div class="ai-m">Join free (it takes 20 seconds) to chat with me.<br><button class="btn sm" type="button" data-auth="signup" style="margin-top:8px">Join free</button> <button class="btn sm ghost" type="button" data-auth="signin" style="margin-top:8px">Sign in</button></div>`;
     chips.innerHTML = hist.length ? "" : CHIPS.map((c) => `<button type="button">${E(c)}</button>`).join("");
     log.scrollTop = log.scrollHeight;
@@ -68,10 +83,20 @@ body.mw-editing #ai-fab{display:none!important}`;
     if (!signedIn()) { if (typeof openAuth === "function") openAuth("signup"); return; }
     const img = pending; pending = ""; attach.hidden = true;
     hist.push({ role: "user", content: q.trim().slice(0, 4000), ...(img ? { pic: img } : {}) }); busy = true; draw(true);
+    if (kindOf[picked] === "image") { // an image maker is picked: the message is a drawing prompt
+      let pic = "", errText = "";
+      try {
+        const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + MW.session().access_token }, body: JSON.stringify({ model: picked, prompt: q.trim() }) });
+        if (r.ok && /^image\//.test(r.headers.get("content-type") || "")) { const b = await r.blob(); pic = await new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(""); fr.readAsDataURL(b); }); }
+        else { const j = await r.json().catch(() => ({})); errText = j.message || "The image maker is busy right now. Try again in a moment."; }
+      } catch (_) { errText = "I can't reach the image maker right now. Check your internet and try again."; }
+      hist.push({ role: "assistant", content: pic ? "🎨 Here's your picture — long-press it (or right-click) to save it." : errText, ...(pic ? { pic } : {}) }); hist = hist.slice(-40);
+      busy = false; draw(false); return;
+    }
     let reply;
     try {
       const tok = MW.session().access_token;
-      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ messages: hist.slice(-20).map((m) => ({ role: m.role, content: m.content })), image: img || undefined }) });
+      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ messages: hist.slice(-20).map((m) => ({ role: m.role, content: m.content })), image: img || undefined, ...(picked ? { model: picked } : {}) }) });
       const j = await r.json().catch(() => ({}));
       reply = r.ok && j.reply ? j.reply + (j.sources && j.sources.length ? "\n\nSources: " + j.sources.map((x, i) => "[" + (i + 1) + "] " + x.title + " (" + x.url + ")").join("  ") : "") : (j.error === "busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com.");
     } catch (_) { reply = "I can't connect right now. Check your internet and try again."; }
