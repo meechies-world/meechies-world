@@ -655,6 +655,23 @@ html.popdj .popdj-hint{display:block}`;
     else { document.documentElement.classList.add("popdj"); try { go("dj"); } catch (_) {} say("Pop-ups are blocked here — decks went full-screen on this page instead. Allow pop-ups for a separate window."); }
   }
   if (/[?&]popdj=1/.test(location.search)) document.documentElement.classList.add("popdj");
+  /* gentle mouse-wheel on the Radio page (desktop): the booth is a long page and stock
+   * wheel notches jump it too far — ease wheel steps to about half speed. Trackpads
+   * (small pixel deltas), pinch zoom, and the inner song lists keep their native feel. */
+  let wheelTgt = null, wheelRaf = 0;
+  const wheelStop = () => { if (wheelRaf) cancelAnimationFrame(wheelRaf); wheelRaf = 0; wheelTgt = null; };
+  addEventListener("pointerdown", wheelStop, true);
+  addEventListener("wheel", (e) => {
+    if (!matchMedia("(pointer:fine)").matches || document.body.dataset.view !== "radio" || e.ctrlKey) return;
+    let n = e.target;
+    while (n && n !== document.body) { const st = getComputedStyle(n); if ((st.overflowY === "auto" || st.overflowY === "scroll") && n.scrollHeight > n.clientHeight + 1) { if ((e.deltaY > 0 && n.scrollTop + n.clientHeight < n.scrollHeight - 1) || (e.deltaY < 0 && n.scrollTop > 0)) { wheelStop(); return; } } n = n.parentElement; }
+    if (e.deltaMode === 0 && Math.abs(e.deltaY) < 40) { wheelStop(); return; }
+    const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY;
+    e.preventDefault();
+    const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+    wheelTgt = Math.max(0, Math.min(max, (wheelTgt ?? scrollY) + d * 0.45));
+    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.3); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
+  }, { passive: false });
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
   if (typeof media !== "undefined") media.addEventListener("play", () => {
     if (listening) { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; return; }
