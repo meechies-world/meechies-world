@@ -17,6 +17,12 @@
   let seenIds = null, uid = null, all = [], other = null, q = "", timer = null, started = false;
   let typingCh = null, typingWith = null, theyTypeUntil = 0, lastTypeSent = 0, pickFor = null;
   let mini = null, heads = []; const fresh = [];
+  let tab = "chats", replyTo = null, forwardBody = null, showArch = false;
+  let prefs = { pin: [], mute: [], arch: [], hideReq: [] };
+  try { const p = JSON.parse(localStorage.getItem("mw_mx_prefs") || "{}"); if (p && typeof p === "object") prefs = Object.assign(prefs, p); } catch (_) {}
+  const savePrefs = () => { try { localStorage.setItem("mw_mx_prefs", JSON.stringify(prefs)); } catch (_) {} };
+  const inList = (k, id) => (prefs[k] || []).includes(id);
+  const toggleIn = (k, id) => { prefs[k] = inList(k, id) ? prefs[k].filter((x) => x !== id) : [...(prefs[k] || []), id]; savePrefs(); };
   try { heads = JSON.parse(sessionStorage.getItem("mx_heads") || "[]").filter((x) => typeof x === "string").slice(0, 4); } catch (_) {}
 
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -41,7 +47,11 @@
   const voiceUrl = (b) => (VOICE_RE.exec(b || "") || [])[1] || "";
   const photoUrl = (b) => (PHOTO_RE.exec(b || "") || [])[1] || "";
   const isReact = (b) => REACT_RE.test(b || "");
-  const preview = (r) => { const b = r.body; if (voiceUrl(b)) return "🎙️ Voice message"; if (photoUrl(b)) return "📷 Photo"; const m = REACT_RE.exec(b || ""); if (m) return "Reacted " + m[2] + " to a message"; return b; };
+  const Q_RE = /^⟦q:(\d+)⟧/;
+  const quoteOf = (b) => { const m = Q_RE.exec(b || ""); return m ? m[1] : null; };
+  const bareText = (b) => String(b || "").replace(Q_RE, "");
+  const preview = (r) => { const b = bareText(r.body); if (voiceUrl(b)) return "🎙️ Voice message"; if (photoUrl(b)) return "📷 Photo"; const m = REACT_RE.exec(b || ""); if (m) return "Reacted " + m[2] + " to a message"; return b; };
+  const pickHTML = (id) => REACTS.map((r) => `<button type="button" data-rx="${r}">${r}</button>`).join("") + `<span class="mx-pick-acts"><button type="button" data-rp="${id}">↩ Reply</button><button type="button" data-fw="${id}">↪ Forward</button><button type="button" data-cp="${id}">📋 Copy</button></span>`;
   const linkify = (t) => E(t).replace(/(^|\s)(https:\/\/[^\s<]+)/g, (m, p, u) => `${p}<a href="${u}" target="_blank" rel="noopener nofollow">${u.length > 48 ? u.slice(0, 46) + "…" : u}</a>`)
     // phone numbers in a message can be tapped to call
     .replace(/(^|[\s(:])(\+?1?[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4})(?=$|[\s.,!?)])/g, (m, p, n) => `${p}<a href="tel:${n.replace(/[^\d+]/g, "")}">📞 ${n}</a>`);
@@ -86,6 +96,7 @@
       if (prevIds.has(r.id) || r.recipient !== uid || r.sender === uid) return;
       if (r.sender === other && !view.hidden && !document.hidden) { theyTypeUntil = 0; return; } // you're looking at it
       if (isReact(r.body)) return;
+      if (inList("mute", r.sender)) { addHead(r.sender); return; } // muted: head badge only, no sound, no banner
       if (mini === r.sender && !document.hidden) return; // its chat window is open
       pop(); if (window.MW_NOTIFY) MW_NOTIFY("New message from " + handle(r.sender), String(preview(r)).slice(0, 80));
       fresh.push(r);
@@ -123,11 +134,14 @@
   }
 
   function bubble(r) {
-    const v = voiceUrl(r.body), p = photoUrl(r.body);
-    if (v) return `<div class="mx-bub voice"><span>🎙️ Walkie</span><audio src="${E(v)}" controls preload="none"></audio></div>`;
-    if (p) return `<a class="mx-photo" href="${E(p)}" target="_blank" rel="noopener"><img src="${E(p)}" alt="Photo" loading="lazy"></a>`;
-    const big = /^(\p{Extended_Pictographic}|️|‍|\s){1,8}$/u.test(r.body) && r.body.trim().length <= 12;
-    return `<div class="mx-bub${big ? " big" : ""}">${linkify(r.body)}</div>`;
+    const body = bareText(r.body), v = voiceUrl(body), p = photoUrl(body);
+    const qid = quoteOf(r.body);
+    const qrow = qid ? all.find((x) => String(x.id) === String(qid)) : null;
+    const q = qrow ? `<div class="mx-quote"><b>${E(handle(qrow.sender))}</b><span>${E(String(preview(qrow)).slice(0, 90))}</span></div>` : "";
+    if (v) return q + `<div class="mx-bub voice"><span>🎙️ Walkie</span><audio src="${E(v)}" controls preload="none"></audio></div>`;
+    if (p) return q + `<a class="mx-photo" href="${E(p)}" target="_blank" rel="noopener"><img src="${E(p)}" alt="Photo" loading="lazy"></a>`;
+    const big = /^(\p{Extended_Pictographic}|️|‍|\s){1,8}$/u.test(body) && body.trim().length <= 12;
+    return q + `<div class="mx-bub${big ? " big" : ""}">${linkify(body)}</div>`;
   }
 
   function render() {
@@ -144,14 +158,26 @@
     const act = Object.keys(ms).filter((id) => id !== uid && online.has(id)).slice(0, 20);
     const strip = view.querySelector(".mx-active");
     if (strip) strip.innerHTML = act.length ? act.map((id) => `<button type="button" data-open="${E(id)}" title="${E(handle(id))}">${av(id)}<small>${E(handle(id).split(" ")[0])}</small></button>`).join("") : "";
+    view.querySelectorAll(".mx-tabs [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === tab));
+    const reqs = (window.MW_FRIENDS && MW_FRIENDS.requests ? MW_FRIENDS.requests() : []).filter((id) => !inList("hideReq", id));
+    const tn = view.querySelector(".mx-tab-n"); if (tn) { tn.hidden = !reqs.length; tn.textContent = reqs.length; }
+    if (strip) strip.style.display = tab === "chats" && !q.trim() ? "" : "none";
     let items = "";
     if (q.trim()) {
       const t = q.trim().toLowerCase();
       const found = Object.keys(ms).filter((id) => id !== uid && String(ms[id].handle || "").toLowerCase().includes(t)).slice(0, 15);
       items = found.length ? found.map((id) => `<button type="button" class="dm-row" data-open="${E(id)}">${av(id)}<span class="dm-t"><b>${E(ms[id].handle)}</b><small>${E(ms[id].bio || "Member")}</small></span></button>`).join("") : `<p class="muted" style="margin:10px 4px">No member found with that name.</p>`;
+    } else if (tab === "friends") {
+      const F = window.MW_FRIENDS;
+      const fr = F && F.list ? F.list() : [];
+      items = fr.length ? fr.map((id) => `<button type="button" class="dm-row ${id === other ? "on" : ""}" data-open="${E(id)}">${av(id)}<span class="dm-t"><b>${E(handle(id))}</b><small>${online.has(id) ? "Active now" : E((ms[id] && ms[id].bio) || "Friend")}</small></span></button>`).join("") : `<p class="muted" style="margin:10px 4px">No friends yet. Search above to message any member, or open the Friends page to add people.</p>`;
+    } else if (tab === "requests") {
+      items = reqs.length ? reqs.map((id) => `<div class="dm-row fr-row">${av(id)}<span class="dm-t"><b>${E(handle(id))}</b><small>Wants to be friends</small></span><span class="fr-acts"><button type="button" class="btn sm" data-facc="${E(id)}">Accept</button><button type="button" class="btn ghost sm" data-fign="${E(id)}">Ignore</button></span></div>`).join("") : `<p class="muted" style="margin:10px 4px">No friend requests right now.</p>`;
     } else {
-      const cs = convos();
-      items = cs.length ? cs.map((c) => `<button type="button" class="dm-row ${c.id === other ? "on" : ""} ${c.unread ? "unread" : ""}" data-open="${E(c.id)}">${av(c.id)}<span class="dm-t"><b>${E(handle(c.id))}</b><small>${c.last.sender === uid ? "You: " : ""}${E(String(preview(c.last)).slice(0, 60))} · ${when(c.last.created_at)}</small></span>${c.unread ? `<span class="dm-m"><i>${c.unread}</i></span>` : c.last.sender === uid && c.last.read_at ? `<span class="dm-m">${av(c.id, "tiny")}</span>` : ""}</button>`).join("") : `<p class="muted" style="margin:10px 4px">No messages yet. Search for a member above, or tap Message on a member card.</p>`;
+      let cs = convos().filter((c) => showArch ? inList("arch", c.id) : !inList("arch", c.id));
+      cs.sort((a, b) => (inList("pin", b.id) ? 1 : 0) - (inList("pin", a.id) ? 1 : 0) || new Date(b.last.created_at) - new Date(a.last.created_at));
+      items = cs.length ? cs.map((c) => `<button type="button" class="dm-row ${c.id === other ? "on" : ""} ${c.unread ? "unread" : ""}" data-open="${E(c.id)}">${av(c.id)}<span class="dm-t"><b>${E(handle(c.id))}</b><small>${c.last.sender === uid ? "You: " : ""}${E(String(preview(c.last)).slice(0, 60))} · ${when(c.last.created_at)}</small></span><span class="dm-x">${inList("pin", c.id) ? "📌" : ""}${inList("mute", c.id) ? "🔕" : ""}<span class="dm-menu-b" data-menu="${E(c.id)}" role="button" aria-label="Chat options">⋯</span></span>${c.unread ? `<span class="dm-m"><i>${c.unread}</i></span>` : c.last.sender === uid && c.last.read_at ? `<span class="dm-m">${av(c.id, "tiny")}</span>` : ""}</button>`).join("") : `<p class="muted" style="margin:10px 4px">${showArch ? "No archived chats." : "No messages yet. Search for a member above, or tap Message on a member card."}</p>`;
+      if (showArch || prefs.arch.length) items += `<button type="button" class="dm-row dm-arch-toggle" data-archtoggle>${showArch ? "← Back to chats" : "🗄 Archived (" + prefs.arch.length + ")"}</button>`;
     }
     list.innerHTML = items;
     if (!other) { thread.innerHTML = `<div class="dm-none"><svg class="sqc-ico" aria-hidden="true" style="width:46px;height:46px"><use href="#sqc"/></svg><b>Your messages</b><span class="muted">Pick a chat, or search for a member to start one. Only you and the other person can read your messages. They aren't end-to-end encrypted, so never send passwords or card numbers.</span></div>`; return; }
@@ -180,11 +206,14 @@
       if (lastMineSeen && r.id === lastMineSeen.id) html += `<div class="mx-seen">${av(other, "tiny")}<span>Seen</span></div>`;
       prev = r;
     });
+    const qrow2 = replyTo ? msgs.find((x) => String(x.id) === String(replyTo)) : null;
+    if (replyTo && !qrow2) replyTo = null;
     const st = Date.now() < theyTypeUntil ? "typing…" : online.has(other) ? "Active now" : "";
-    thread.innerHTML = `<div class="dm-head"><button type="button" class="act dm-back" data-back aria-label="Back to chats">←</button>${av(other, "md")}<div class="mx-who"><b>${E(handle(other))}</b><small id="mx-status">${st}</small></div></div>
+    thread.innerHTML = `<div class="dm-head"><button type="button" class="act dm-back" data-back aria-label="Back to chats">←</button>${av(other, "md")}<div class="mx-who"><b>${E(handle(other))}</b><small id="mx-status">${st}</small></div><span class="dm-calls"><button type="button" class="act" data-call aria-label="Voice call on Live" title="Voice call — opens Live">📞</button><button type="button" class="act" data-call aria-label="Video call on Live" title="Video call — opens Live">🎥</button></span></div>
 <div class="dm-msgs" id="dm-msgs">${msgs.length ? html : `<div class="mx-hello">${av(other, "lg")}<b>${E(handle(other))}</b><span class="muted">Say hello 👋</span></div>`}
 <div class="mx-msg end" id="mx-typing"${Date.now() < theyTypeUntil ? "" : " hidden"}>${av(other, "sm")}<div class="mx-col"><div class="mx-bub dots"><i></i><i></i><i></i></div></div></div></div>
 <div class="mx-emoji" id="mx-emoji" hidden>${["😀", "😂", "😍", "🥰", "😎", "🔥", "💯", "🙏", "👏", "💪", "🎶", "👑", "💰", "😢", "😡", "❤️"].map((e) => `<button type="button" data-emo="${e}">${e}</button>`).join("")}</div>
+${qrow2 ? `<div class="mx-replybar"><span>↩ Replying to <b>${E(handle(qrow2.sender))}</b>: ${E(String(preview(qrow2)).slice(0, 60))}</span><button type="button" data-rx-cancel aria-label="Cancel reply">×</button></div>` : ""}
 <form class="dm-form" id="dm-form">
   <label class="mx-tool" title="Send a photo" aria-label="Send a photo">📷<input type="file" accept="image/*" id="mx-photo" hidden></label>
   <button type="button" class="dm-walkie" id="dm-walkie" aria-label="Hold to talk (walkie-talkie)">📻</button>
@@ -192,12 +221,12 @@
   <button class="mx-send" type="submit" id="mx-send" aria-label="Send">👍</button></form>`;
     const box = document.getElementById("dm-msgs"); if (box) box.scrollTop = atBottom ? box.scrollHeight : oldTop;
     const ni = document.getElementById("dm-in"); if (ni && draft) ni.value = draft; if (ni && hadFocus) ni.focus();
-    if (openPick) { const col = view.querySelector(`.mx-msg[data-mid="${CSS.escape(String(openPick))}"] .mx-col`); if (col) { const pk = document.createElement("div"); pk.className = "mx-pick"; pk.dataset.for = openPick; pk.innerHTML = REACTS.map((r) => `<button type="button" data-rx="${r}">${r}</button>`).join(""); col.appendChild(pk); } }
+    if (openPick) { const col = view.querySelector(`.mx-msg[data-mid="${CSS.escape(String(openPick))}"] .mx-col`); if (col) { const pk = document.createElement("div"); pk.className = "mx-pick"; pk.dataset.for = openPick; pk.innerHTML = pickHTML(openPick); col.appendChild(pk); } }
     paintSend(); markRead();
   }
   function paintSend() { const i = document.getElementById("dm-in"), s = document.getElementById("mx-send"); if (i && s) { const has = !!i.value.trim(); s.textContent = has ? "➤" : "👍"; s.classList.toggle("go", has); s.setAttribute("aria-label", has ? "Send" : "Send a thumbs up"); } }
 
-  function open(id) { other = id; q = ""; const s = view.querySelector(".dm-search"); if (s) s.value = ""; if (typeof go === "function") go("messages"); render(); setTimeout(() => { const i = document.getElementById("dm-in"); if (i) i.focus(); }, 50); }
+  function open(id) { if (forwardBody) { const b = forwardBody; forwardBody = null; send(b, id).then((ok) => say(ok ? "Forwarded" : "Could not forward")); return; } other = id; replyTo = null; q = ""; const s = view.querySelector(".dm-search"); if (s) s.value = ""; if (typeof go === "function") go("messages"); render(); setTimeout(() => { const i = document.getElementById("dm-in"); if (i) i.focus(); }, 50); }
   async function send(body, to = other) {
     if (!body || !to) return false;
     const { error } = await sb.from("dms").insert({ recipient: to, body });
@@ -277,12 +306,55 @@ body.has-player #mx-fab{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-in
 #mx-fab i{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:999px;background:#e5484d;color:#fff;font:800 11px/20px system-ui,sans-serif;font-style:normal;padding:0 5px;border:2px solid #0b0a08}
 
 body.mw-editing #mx-fab{display:none}
+.mx-tabs{display:flex;gap:6px}
+.mx-tabs button{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 4px;font:700 13px var(--body);cursor:pointer;position:relative}
+.mx-tabs button.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
+.mx-tab-n{position:absolute;top:-5px;right:2px;background:#e5484d;color:#fff;border-radius:999px;font:800 10px var(--body);font-style:normal;padding:1px 6px}
+.dm-x{display:flex;align-items:center;gap:5px;font-size:12px;flex:none}
+.dm-menu-b{cursor:pointer;font-size:19px;line-height:1;padding:2px 5px;border-radius:8px;color:var(--muted)}
+.dm-menu-b:hover{background:var(--panel-2);color:var(--text)}
+#mx-menu{position:fixed;z-index:10001;width:200px;background:#1d1810;border:1px solid var(--gold-lo);border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.6);padding:6px;display:grid;gap:2px}
+#mx-menu button{background:none;border:0;color:var(--text);text-align:left;font:600 14px var(--body);padding:9px 10px;border-radius:9px;cursor:pointer}
+#mx-menu button:hover{background:var(--panel-2)}
+.fr-row{cursor:default}.fr-acts{display:flex;gap:6px;flex:none}
+.mx-quote{display:grid;gap:1px;background:rgba(0,0,0,.28);border-left:3px solid var(--gold);border-radius:8px;padding:6px 9px;margin-bottom:5px;font-size:12.5px}
+.mx-quote b{color:var(--gold-hi);font-size:11.5px}.mx-quote span{opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mx-replybar{display:flex;align-items:center;gap:8px;padding:7px 12px;border-top:1px solid var(--line);background:#1d1810;font-size:13px}
+.mx-replybar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mx-replybar button{background:none;border:0;color:var(--muted);font-size:18px;cursor:pointer}
+.mx-pick{flex-wrap:wrap;max-width:262px;border-radius:18px}.mx-pick-acts{display:flex;gap:4px;width:100%;border-top:1px solid var(--line);padding-top:4px}
+.mx-pick-acts button{font-size:12px!important;color:var(--gold-hi);background:var(--panel-2);border-radius:999px;padding:4px 9px}
+.dm-calls{margin-left:auto;display:flex;gap:2px}.dm-calls .act{font-size:19px;background:none;border:0;cursor:pointer;padding:6px}
+.dm-arch-toggle{justify-content:center;color:var(--muted);font-weight:700}
 @media (max-width:760px){.dm-app{grid-template-columns:1fr}.dm-app.has-thread .dm-side{display:none}.dm-app:not(.has-thread) .dm-thread{display:none}.dm-back{display:inline-block}.dm-thread{min-height:calc(100vh - 220px)}.mx-react-btn{opacity:.6}}`;
     document.head.appendChild(css);
     // the "active now" strip goes above the chat list
     const side = view.querySelector(".dm-side"); if (side && !side.querySelector(".mx-active")) { const a = document.createElement("div"); a.className = "mx-active"; side.querySelector(".dm-search").after(a); }
+    if (side && !side.querySelector(".mx-tabs")) { const t = document.createElement("div"); t.className = "mx-tabs"; t.innerHTML = `<button type="button" data-tab="chats">Chats</button><button type="button" data-tab="friends">Friends</button><button type="button" data-tab="requests">Requests<i class="mx-tab-n" hidden></i></button>`; side.querySelector(".dm-search").after(t); }
     view.querySelector(".dm-search").addEventListener("input", (e) => { q = e.target.value; render(); });
+    function closeMenu() { const m = document.getElementById("mx-menu"); if (m) m.remove(); }
+    function openMenu(id, anchor) {
+      closeMenu();
+      const m = document.createElement("div"); m.id = "mx-menu";
+      m.innerHTML = `<button type="button" data-mact="pin">${inList("pin", id) ? "📌 Unpin" : "📌 Pin to top"}</button><button type="button" data-mact="mute">${inList("mute", id) ? "🔔 Unmute" : "🔕 Mute notifications"}</button><button type="button" data-mact="arch">${inList("arch", id) ? "🗄 Unarchive" : "🗄 Archive"}</button>`;
+      document.body.appendChild(m);
+      const r = anchor.getBoundingClientRect();
+      m.style.top = Math.max(8, Math.min(innerHeight - 170, r.bottom + 6)) + "px";
+      m.style.left = Math.max(8, Math.min(innerWidth - 208, r.right - 200)) + "px";
+      m.addEventListener("click", (ev) => { const b = ev.target.closest("[data-mact]"); if (!b) return; const act = b.dataset.mact; closeMenu(); toggleIn(act, id); if (act === "arch" && inList("arch", id) && other === id) other = null; render(); });
+      setTimeout(() => document.addEventListener("click", function away(ev) { if (!ev.target.closest("#mx-menu")) { closeMenu(); document.removeEventListener("click", away, { capture: true }); } }, { capture: true }), 0);
+    }
     view.addEventListener("click", async (e) => {
+      const tb = e.target.closest("[data-tab]"); if (tb) { tab = tb.dataset.tab; render(); return; }
+      const fa = e.target.closest("[data-facc]"); if (fa) { if (window.MW_FRIENDS && MW_FRIENDS.add) await MW_FRIENDS.add(fa.dataset.facc); say("You are now friends"); render(); return; }
+      const fi = e.target.closest("[data-fign]"); if (fi) { prefs.hideReq = [...(prefs.hideReq || []), fi.dataset.fign]; savePrefs(); render(); return; }
+      const mn = e.target.closest("[data-menu]"); if (mn) { e.preventDefault(); e.stopPropagation(); openMenu(mn.dataset.menu, mn); return; }
+      if (e.target.closest("[data-archtoggle]")) { showArch = !showArch; render(); return; }
+      if (e.target.closest("[data-call]")) { say("Opening Live — start your room there and they'll see you live"); if (typeof go === "function") go("live"); return; }
+      if (e.target.closest("[data-rx-cancel]")) { replyTo = null; render(); return; }
+      const rpb = e.target.closest("[data-rp]"); if (rpb) { replyTo = rpb.dataset.rp; document.querySelector(".mx-pick")?.remove(); render(); const i2 = document.getElementById("dm-in"); if (i2) i2.focus(); return; }
+      const fwb = e.target.closest("[data-fw]"); if (fwb) { const row = all.find((x) => String(x.id) === String(fwb.dataset.fw)); document.querySelector(".mx-pick")?.remove(); if (row && bareText(row.body)) { forwardBody = bareText(row.body); other = null; tab = "chats"; say("Pick a chat to forward it to"); render(); } return; }
+      const cpb = e.target.closest("[data-cp]"); if (cpb) { const row = all.find((x) => String(x.id) === String(cpb.dataset.cp)); document.querySelector(".mx-pick")?.remove(); if (row) { try { await navigator.clipboard.writeText(bareText(row.body)); say("Copied"); } catch (_) { say("Copy isn't available here"); } } return; }
       const o = e.target.closest("[data-open]"); if (o) { open(o.dataset.open); return; }
       if (e.target.closest("[data-back]")) { other = null; render(); return; }
       const em = e.target.closest("[data-emo]"); if (em) { const i = document.getElementById("dm-in"); i.value += em.dataset.emo; i.focus(); paintSend(); sendTyping(); return; }
@@ -298,14 +370,15 @@ body.mw-editing #mx-fab{display:none}
     function showPick(id) {
       document.querySelector(".mx-pick")?.remove();
       const m = view.querySelector(`.mx-msg[data-mid="${CSS.escape(String(id))}"] .mx-col`); if (!m) return;
-      const p = document.createElement("div"); p.className = "mx-pick"; p.dataset.for = id; p.innerHTML = REACTS.map((r) => `<button type="button" data-rx="${r}">${r}</button>`).join(""); m.appendChild(p);
+      const p = document.createElement("div"); p.className = "mx-pick"; p.dataset.for = id; p.innerHTML = pickHTML(id); m.appendChild(p);
     }
     view.addEventListener("input", (e) => { if (e.target.id === "dm-in") { paintSend(); if (e.target.value.trim()) sendTyping(); } });
     view.addEventListener("submit", async (e) => {
       if (e.target.id !== "dm-form") return; e.preventDefault();
-      const i = document.getElementById("dm-in"), body = i.value.trim() || "👍"; if (!other) return;
+      const i = document.getElementById("dm-in"); let body = i.value.trim() || "👍"; if (!other) return;
+      if (replyTo && i.value.trim()) { body = "⟦q:" + replyTo + "⟧" + body; replyTo = null; }
       i.value = ""; paintSend(); document.getElementById("mx-emoji").hidden = true;
-      const ok = await send(body); if (!ok && body !== "👍") i.value = body; i.focus();
+      const ok = await send(body); if (!ok && body !== "👍") i.value = bareText(body); i.focus(); render();
     });
     // photos
     view.addEventListener("change", async (e) => {
@@ -379,6 +452,7 @@ body.mw-editing #mx-fab{display:none}
   }
   function popIn(r) {
     const id = r.sender; addHead(id);
+    if (window.MW_screenClear && !MW_screenClear("mx-pop")) { setTimeout(() => popIn(r), 5000); return; } // one card at a time: wait your turn instead of covering the page
     let card = document.getElementById("mx-pop");
     if (!card) { card = document.createElement("div"); card.id = "mx-pop"; card.setAttribute("role", "status"); document.body.appendChild(card); }
     card.dataset.from = id;
@@ -386,8 +460,8 @@ body.mw-editing #mx-fab{display:none}
 <button type="button" class="mx-pop-main" data-head="${E(id)}">${av(id, "md")}<span><b>${E(handle(id))}</b><small>${E(String(preview(r)).slice(0, 90))}</small></span></button>
 <form class="mx-pop-reply" data-popreply="${E(id)}"><input type="text" maxlength="2000" placeholder="Reply to ${E(handle(id).split(" ")[0])}…" aria-label="Quick reply" autocomplete="off"><button type="submit" aria-label="Send">➤</button></form>`;
     card.hidden = false; card.classList.remove("in"); void card.offsetWidth; card.classList.add("in");
-    clearTimeout(card._t); const hide = () => { if (!card.matches(":hover,:focus-within")) card.hidden = true; else card._t = setTimeout(hide, 3000); };
-    card._t = setTimeout(hide, 8000);
+    clearTimeout(card._t); const hide = () => { const inp = card.querySelector("input"); if (inp && document.activeElement === inp && inp.value.trim()) { card._t = setTimeout(hide, 3000); return; } card.hidden = true; };
+    card._t = setTimeout(hide, 8000); // touch-safe: only a half-typed reply holds the banner open, never a sticky :hover
   }
   function openMini(id) {
     if (!view.hidden) { open(id); return; }

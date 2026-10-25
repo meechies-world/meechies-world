@@ -12,10 +12,11 @@
     return true;
   };
 
-  const FLOATS = ["ai-fab", "mx-fab", "mw-fab", "vz-pill", "mx-heads", "mw-show", "mw-show-pill"];
+  const FLOATS = ["ai-fab", "mx-fab", "mw-fab", "vz-pill", "mw-show", "mw-show-pill"];
   const KEY = "mw_float_pos";
   let pos = {}; try { pos = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (_) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch (_) {} };
+  if (pos["mx-heads"]) { delete pos["mx-heads"]; save(); } // chat heads are never draggable: a dragged stack parked itself over other UI and swallowed taps (owner bug report, 2026-10-25)
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   function place(el) {
