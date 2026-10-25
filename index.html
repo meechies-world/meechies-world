@@ -3338,7 +3338,7 @@ let shopLoaded=false;
 async function loadShop(){ if(shopLoaded) return; shopLoaded=true;
   try{ const r=await fetch("/api/store"); const j=await r.json(); const ps=j.products||[];
     if(!ps.length) throw new Error("empty");
-    $("#shop-grid").innerHTML=ps.map(p=>`<div class="prod"><a class="prod-a" href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy"><b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">Shop now →</span></a><button type="button" class="prod-share" data-share data-title="${esc(p.title)}" data-price="${esc(p.price||"")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
+    $("#shop-grid").innerHTML=ps.map(p=>`<div class="prod"><a class="prod-a" href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy"><b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">Shop now →</span></a><button type="button" class="prod-share" data-pshare data-title="${esc(p.title)}" data-price="${esc(p.price||"")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
   }catch(_){ $("#shop-grid").innerHTML='<div class="empty">Our latest drop is in the store. Tap the button below to shop.</div>'; }
   loadShopify();
 }
@@ -3348,7 +3348,7 @@ async function loadShopify(){
     if(!ps.length) throw new Error("empty");
     ps.sort((a,b)=>(b.digital?1:0)-(a.digital?1:0)); // eBooks first
     window.MW_SHOPIFY=ps;
-    $("#shopify-grid").innerHTML=ps.map(p=>`<div class="prod"><a class="prod-a" href="${esc(p.digital&&p.buy?p.buy:p.url)}" target="_blank" rel="noopener">${p.img?`<img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy">`:`<div class="prod-ph">${esc(p.title)}</div>`}<b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">${p.digital?"Buy &amp; download →":"Shop now →"}</span></a><button type="button" class="prod-share" data-share data-title="${esc(p.title)}" data-price="${esc(p.price||"")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
+    $("#shopify-grid").innerHTML=ps.map(p=>`<div class="prod"><a class="prod-a" href="${esc(p.digital&&p.buy?p.buy:p.url)}" target="_blank" rel="noopener">${p.img?`<img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy">`:`<div class="prod-ph">${esc(p.title)}</div>`}<b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">${p.digital?"Buy &amp; download →":"Shop now →"}</span></a><button type="button" class="prod-share" data-pshare data-title="${esc(p.title)}" data-price="${esc(p.price||"")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
     window.MW_shopGifts?.decorate();
   }catch(_){ $("#shopify-grid").innerHTML='<div class="empty">Tap the button below to see everything in the store.</div>'; }
 }
@@ -3401,7 +3401,7 @@ boot();
 <script src="js/fans.js?v=1792602872"></script>
 <script src="js/coins.js?v=1792607145"></script>
 <script src="js/games.js?v=1792933000"></script>
-<script src="js/share.js?v=1792934000"></script>
+<script src="js/share.js?v=1792936000"></script>
 <script src="js/gifts-plus.js?v=1792618621"></script>
 <script src="js/gold-icons.js?v=1792626191"></script>
 <script src="js/golive.js?v=1792928200"></script>

@@ -57,18 +57,21 @@
       else if (b.dataset.sh === "more") { close(); try { await navigator.share({ title: d.title, text: d.text, url: d.url }); } catch (_) {} }
     });
   }
-  window.MW_share = function (data) {
+  /* NOTE: window.MW_share belongs to js/engage.js (its (text, hash) signature powers the
+   * post/video share buttons). This richer product share uses its own name and its own
+   * [data-pshare] attribute so the two systems never collide. */
+  window.MW_shareProduct = function (data) {
     const d = { title: (data && data.title) || "Meechie's World", text: (data && data.text) || (data && data.title) || "", url: (data && data.url) || location.href };
     const open = () => { if (navigator.share) navigator.share({ title: d.title, text: d.text, url: d.url }).catch((err) => { if (err && err.name !== "AbortError") openSheet(d); }); else openSheet(d); };
     // pop-ups wait their turn on this site; a share tap is the user's own tap, so one short retry is enough
     if (typeof window.MW_screenClear === "function" && !window.MW_screenClear()) setTimeout(open, 700); else open();
   };
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-share]"); if (!b) return;
+    const b = e.target.closest("[data-pshare]"); if (!b) return;
     e.preventDefault(); e.stopPropagation();
     const title = b.dataset.title || "Meechie's World";
     const price = b.dataset.price || "";
     const text = `Check this out at Meechie's World 👑 ${title}${price ? " — " + price : ""}`;
-    window.MW_share({ title, text, url: b.dataset.url || location.href });
+    window.MW_shareProduct({ title, text, url: b.dataset.url || location.href });
   }, true);
 })();
