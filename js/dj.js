@@ -27,6 +27,7 @@
   /* ================= audio engine: decks -> EQ -> mixer -> FX -> master ================= */
   let ctx = null, masterIn = null, masterGain = null, analyser = null, recDest = null;
   let fxFilter = null, echoWet = null, verbWet = null, micGain = null, micMon = null, micAn = null;
+  let echoFb = null, flaWet = null, gateOsc = null, gateDepth = null, gateGain = null;
   function actx() {
     if (!ctx) {
       try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { ctx = null; }
@@ -35,11 +36,24 @@
         fxFilter = ctx.createBiquadFilter(); fxFilter.type = "lowpass"; fxFilter.frequency.value = 18000; fxFilter.Q.value = 0.4;
         masterGain = ctx.createGain(); masterGain.gain.value = 0.95;
         analyser = ctx.createAnalyser(); analyser.fftSize = 256;
-        masterIn.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(analyser); analyser.connect(ctx.destination);
-        // echo send
-        const dly = ctx.createDelay(1); dly.delayTime.value = 0.28; const fb = ctx.createGain(); fb.gain.value = 0.34;
-        const dw = ctx.createGain(); dw.gain.value = 0; dly.connect(fb); fb.connect(dly); dly.connect(dw); dw.connect(masterGain);
+        // transformer/gate chopper sits in the master path (depth 0 = open)
+        gateGain = ctx.createGain(); gateGain.gain.value = 1;
+        masterIn.connect(gateGain); gateGain.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(analyser); analyser.connect(ctx.destination);
+        gateOsc = ctx.createOscillator(); gateOsc.type = "square"; gateOsc.frequency.value = 4;
+        const gateShaper = ctx.createWaveShaper(); gateShaper.curve = new Float32Array([-1, 1]);
+        gateDepth = ctx.createGain(); gateDepth.gain.value = 0;
+        gateOsc.connect(gateShaper); gateShaper.connect(gateDepth); gateDepth.connect(gateGain.gain); gateOsc.start();
+        // echo send (feedback exposed as Echo Repeat)
+        const dly = ctx.createDelay(1); dly.delayTime.value = 0.28; echoFb = ctx.createGain(); echoFb.gain.value = 0.34;
+        const dw = ctx.createGain(); dw.gain.value = 0; dly.connect(echoFb); echoFb.connect(dly); dly.connect(dw); dw.connect(masterGain);
         masterIn.connect(dly); echoWet = dw;
+        // flanger send: short modulated delay with feedback
+        const fd = ctx.createDelay(0.05); fd.delayTime.value = 0.004;
+        const ffb = ctx.createGain(); ffb.gain.value = 0.45;
+        const fw = ctx.createGain(); fw.gain.value = 0;
+        const lfo = ctx.createOscillator(); lfo.frequency.value = 0.3; const lfoG = ctx.createGain(); lfoG.gain.value = 0.0016;
+        lfo.connect(lfoG); lfoG.connect(fd.delayTime); lfo.start();
+        fd.connect(ffb); ffb.connect(fd); fd.connect(fw); fw.connect(masterGain); masterIn.connect(fd); flaWet = fw;
         // reverb send (generated impulse — no files, always free)
         const verb = ctx.createConvolver(); verb.buffer = impulse(2.2, 2.4);
         const vw = ctx.createGain(); vw.gain.value = 0; masterIn.connect(verb); verb.connect(vw); vw.connect(masterGain); verbWet = vw;
@@ -62,14 +76,14 @@
 
   /* ---------- a deck: one audio element with its own EQ + gain ---------- */
   function Deck() {
-    const d = { el: new Audio(), gain: null, eq: null, src: "", level: 1, cors: true, peaks: null, rate: 1, vinyl: false, cues: [null, null, null], loop: null };
+    const d = { el: new Audio(), gain: null, eq: null, flt: null, src: "", level: 1, cors: true, peaks: null, rate: 1, vinyl: false, cues: [null, null, null], loop: null };
     d.el.preload = "auto"; d.el.playsInline = true; d.el.crossOrigin = "anonymous";
     d.set = (src) => new Promise((res) => {
       if (d.src === src) return res(true);
       d.src = src; d.cors = true; d.el.crossOrigin = "anonymous"; d.el.src = src; d.peaks = null;
       const ok = () => { clean(); wire(); res(true); };
       const bad = () => { clean(); if (d.cors) { d.cors = false;
-          if (d.gain) { const old = d.el; old.pause(); d.el = new Audio(); d.el.preload = "auto"; d.el.playsInline = true; d.gain = null; d.eq = null; d.onswap && d.onswap(old); }
+          if (d.gain) { const old = d.el; old.pause(); d.el = new Audio(); d.el.preload = "auto"; d.el.playsInline = true; d.gain = null; d.eq = null; d.flt = null; d.onswap && d.onswap(old); }
           d.el.removeAttribute("crossorigin"); d.el.src = src; d.el.addEventListener("loadedmetadata", () => res(true), { once: true }); d.el.addEventListener("error", () => res(false), { once: true }); } else res(false); };
       const clean = () => { d.el.removeEventListener("loadedmetadata", ok); d.el.removeEventListener("error", bad); };
       d.el.addEventListener("loadedmetadata", ok); d.el.addEventListener("error", bad);
@@ -79,8 +93,9 @@
         const lo = c.createBiquadFilter(); lo.type = "lowshelf"; lo.frequency.value = 120;
         const mid = c.createBiquadFilter(); mid.type = "peaking"; mid.frequency.value = 1000; mid.Q.value = 0.9;
         const hi = c.createBiquadFilter(); hi.type = "highshelf"; hi.frequency.value = 8000;
-        d.gain = c.createGain(); s.connect(lo); lo.connect(mid); mid.connect(hi); hi.connect(d.gain); d.gain.connect(masterIn);
-        d.eq = { lo, mid, hi };
+        const flt = c.createBiquadFilter(); flt.type = "lowpass"; flt.frequency.value = 18000; flt.Q.value = 1.1;
+        d.gain = c.createGain(); s.connect(lo); lo.connect(mid); mid.connect(hi); hi.connect(flt); flt.connect(d.gain); d.gain.connect(masterIn);
+        d.eq = { lo, mid, hi }; d.flt = flt;
       } catch (_) { d.gain = null; d.eq = null; } d.apply(); }
     d.vol = (v) => { d.level = Math.max(0, Math.min(1, v)); d.apply(); };
     d.apply = () => { if (d.gain) { d.gain.gain.value = d.level; d.el.volume = 1; } else d.el.volume = d.level; };
@@ -91,7 +106,8 @@
 
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 });
-  let S = { live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true };
+  const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0 });
+  let S = { live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
@@ -128,6 +144,7 @@
 .eqrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;width:100%}
 .eqrow label{font-size:10px;color:var(--muted);letter-spacing:.08em;display:grid;gap:2px}
 .cuebtn.on{background:var(--gold);color:#191104;border-color:var(--gold)}
+.gatebtn.on,.pktab.on{background:var(--gold);color:#191104;border-color:var(--gold)}
 .loopbtn.on{background:#a3161c;color:#fff;border-color:#e5484d}
 .mixer{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px 10px;display:grid;gap:12px;align-content:start;justify-items:center;text-align:center}
 .mixer small{color:var(--muted);font-size:11px;letter-spacing:.12em}
@@ -174,6 +191,7 @@
     <label class="lab">Pitch <span id="pit-v-${k}">+0.0%</span><input type="range" min="0.92" max="1.08" step="0.001" value="1" data-pitch="${k}" aria-label="Deck ${k} pitch"></label>
     <label class="lab" style="display:flex;align-items:center;gap:8px"><input type="checkbox" data-vinyl="${k}" style="width:auto"> Vinyl mode (pitch bends like a record)</label>
     <div class="eqrow"><label>LOW<input type="range" min="-24" max="24" step="1" value="0" data-eq="${k}:lo"></label><label>MID<input type="range" min="-24" max="24" step="1" value="0" data-eq="${k}:mid"></label><label>HIGH<input type="range" min="-24" max="24" step="1" value="0" data-eq="${k}:hi"></label></div>
+    <label class="lab">Filter (left = deep ↔ right = thin)<input type="range" min="0" max="100" step="1" value="50" data-flt="${k}" aria-label="Deck ${k} filter"></label>
     <label class="lab">Volume<input type="range" min="0" max="1" step="0.01" value="0.9" data-vol="${k}" aria-label="Deck ${k} volume"></label></div>`;
 
   root.innerHTML = `
@@ -187,6 +205,7 @@
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn ghost sm" type="button" id="rq-rec">🎙️ Record a voice drop</button><small class="muted" id="rq-rec-st">Up to 20 seconds. Meechie can play it on air.</small></div>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b style="font-size:13px;letter-spacing:.1em">🎵 PICK A SONG FOR THE RADIO</b><small class="muted" style="display:block;margin:4px 0 8px">Pick a song and it plays next on the live radio — Meechie's songs mixed with real artists.</small><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm pktab" type="button" id="pk-mine">🔥 Meechie's songs</button><button class="btn ghost sm pktab" type="button" id="pk-real">🎤 Real artists</button></div><div class="dj-list" id="pk-list" style="max-height:260px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin-top:12px">📻 COMING UP — LISTENER PICKS</b><div class="dj-list" id="pk-queue" style="margin-top:6px;max-height:110px"><small class="muted">No picks yet — be the first.</small></div></div>
   </div>
 </div>
 <div class="dj" id="dj-owner" hidden>
@@ -204,7 +223,10 @@
       <small>MASTER</small><input type="range" min="0" max="1" step="0.01" value="0.95" id="dj-master" aria-label="Master volume">
       <small>FILTER</small><input type="range" min="0" max="100" step="1" value="100" id="dj-filter" aria-label="Master filter">
       <small>ECHO</small><input type="range" min="0" max="0.6" step="0.02" value="0" id="dj-echo" aria-label="Echo level">
-      <small>REVERB</small><input type="range" min="0" max="0.7" step="0.02" value="0" id="dj-verb" aria-label="Reverb level"></div>
+      <small>ECHO REPEAT</small><input type="range" min="0" max="0.7" step="0.02" value="0.34" id="dj-fb" aria-label="Echo repeat">
+      <small>REVERB</small><input type="range" min="0" max="0.7" step="0.02" value="0" id="dj-verb" aria-label="Reverb level">
+      <small>FLANGER</small><input type="range" min="0" max="1" step="0.02" value="0" id="dj-fla" aria-label="Flanger level">
+      <small>TRANSFORMER (CHOP)</small><div style="display:flex;gap:5px;justify-content:center"><button class="btn ghost sm gatebtn on" type="button" data-gate="0">OFF</button><button class="btn ghost sm gatebtn" type="button" data-gate="2">SLOW</button><button class="btn ghost sm gatebtn" type="button" data-gate="4">MED</button><button class="btn ghost sm gatebtn" type="button" data-gate="8">FAST</button></div></div>
     ${deckHTML("B")}
   </div>
   <div class="dj-grid2">
@@ -246,6 +268,31 @@
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     ["A", "B"].forEach((k) => { if (decks[k]) decks[k].vol((S[k].vol ?? 0.9) * xfGain(S.xf, k) * duck); });
   }
+  /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
+  function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
+    if (!node) return;
+    if (v <= 50) { node.type = "lowpass"; node.frequency.value = v >= 49 ? 18000 : 200 * Math.pow(90, v / 50); }
+    else { node.type = "highpass"; node.frequency.value = v <= 51 ? 10 : 20 * Math.pow(600, (v - 50) / 50); }
+  }
+  function applyFx() {
+    ["A", "B"].forEach((k) => {
+      const d = decks[k]; if (!d) return;
+      const eq = S[k].eq || { lo: 0, mid: 0, hi: 0 };
+      if (d.eq) { d.eq.lo.gain.value = eq.lo || 0; d.eq.mid.gain.value = eq.mid || 0; d.eq.hi.gain.value = eq.hi || 0; }
+      if (d.flt) fltFreq(d.flt, S[k].flt == null ? 50 : S[k].flt);
+    });
+    const f = S.fx || defFx();
+    if (fxFilter) fxFilter.frequency.value = 200 * Math.pow(90, (f.mf == null ? 100 : f.mf) / 100);
+    if (echoWet) echoWet.gain.value = f.echo || 0;
+    if (echoFb) echoFb.gain.value = f.fb == null ? 0.34 : f.fb;
+    if (verbWet) verbWet.gain.value = f.verb || 0;
+    if (flaWet) flaWet.gain.value = (f.fla || 0) * 0.8;
+    if (gateOsc && gateDepth && gateGain) {
+      const g = +f.gate || 0;
+      if (g > 0) { gateOsc.frequency.value = g; gateDepth.gain.value = 0.5; gateGain.gain.value = 0.5; }
+      else { gateDepth.gain.value = 0; gateGain.gain.value = 1; }
+    }
+  }
   async function follow(k) {
     const s = S[k], d = deck(k);
     if (!okUrl(s.src) || DEAD(s.src)) { d.stop(); return; }
@@ -258,7 +305,7 @@
       if (d.el.paused) d.el.play().catch(() => {});
     }
     else { d.el.pause(); if (Math.abs(d.el.currentTime - want) > 0.5) { try { d.el.currentTime = want; } catch (_) {} } }
-    levels();
+    applyFx(); levels();
   }
   function playVoice() {
     const v = S.voice; if (!v || !okUrl(v.url) || DEAD(v.url) || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
@@ -314,7 +361,8 @@
     const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = live ? "ON AIR" : "OFF AIR";
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
     const now = live ? ["A", "B"].filter((k) => S[k].playing).map((k) => S[k].title).filter(Boolean) : [];
-    $("#st-now").textContent = live ? (now.length ? (S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
+    const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
+    $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? `<b style="font-size:13px;letter-spacing:.1em">🎙️ LATEST RECORDED SHOW</b><audio controls preload="none" src="${E(S.show.url)}" style="width:100%;margin-top:6px"></audio><small class="muted">Recorded ${new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}</small>` : "";
     renderLog($("#st-log"));
   }
@@ -366,7 +414,8 @@
     if (OWNER() && ownerLoaded) return;
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
-    S = Object.assign({ live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true }, d || {});
+    S = Object.assign({ live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
+    S.fx = Object.assign(defFx(), S.fx || {});
     S.A = Object.assign(blank(), S.A || {}); S.B = Object.assign(blank(), S.B || {});
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; ["A", "B"].forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
@@ -430,6 +479,7 @@
     if (b.dataset.hot) { if (hotTimer === "done") { hotTimer = null; return; } const [k, n] = b.dataset.hot.split(":"), d = deck(k), i = +n - 1; if (d.cues[i] == null) { d.cues[i] = d.el.currentTime || 0; say("Cue " + n + " set at " + fmt(d.cues[i])); } else { try { d.el.currentTime = d.cues[i]; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.cues[i] * 1000; save(true); } paintCues(k); return; }
     if (b.dataset.loop) { const [k, secs] = b.dataset.loop.split(":"), d = deck(k); if (d.loop && Math.round(d.loop[1] - d.loop[0]) === +secs) d.loop = null; else { const st = d.el.currentTime || 0; d.loop = [st, st + (+secs)]; say("Looping " + secs + "s on deck " + k); } paintCues(k); return; }
     if (b.dataset.sync) { const k = b.dataset.sync, o = k === "A" ? "B" : "A"; S[k].rate = S[o].rate || 1; deck(k).el.playbackRate = S[k].rate; if (S[k].playing) { /* keep position honest */ S[k].start = Date.now() - deck(k).el.currentTime * 1000; } paintOwner(); save(true); say("Deck " + k + " speed matched to deck " + o); return; }
+    if (b.dataset.gate != null) { S.fx.gate = +b.dataset.gate; root.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate)); applyFx(); save(true); say(S.fx.gate ? "Transformer chop is ON — everyone listening hears the beat get sliced." : "Transformer off."); return; }
   });
   // long-press a hot cue clears it
   let hotTimer = null;
@@ -440,12 +490,15 @@
     const t = e.target;
     if (t.dataset.vol) { S[t.dataset.vol].vol = +t.value; levels(); save(); }
     if (t.dataset.pitch) { const k = t.dataset.pitch; S[k].rate = +t.value; deck(k).el.playbackRate = S[k].rate; deck(k).el.preservesPitch = !deck(k).vinyl; $("#pit-v-" + k).textContent = ((S[k].rate - 1) * 100).toFixed(1).replace("-", "−") + "%"; save(); }
-    if (t.dataset.eq) { const [k, band] = t.dataset.eq.split(":"), d = deck(k); if (d.eq) d.eq[band].gain.value = +t.value; }
+    if (t.dataset.eq) { const [k, band] = t.dataset.eq.split(":"), d = deck(k); if (d.eq) d.eq[band].gain.value = +t.value; S[k].eq = Object.assign({ lo: 0, mid: 0, hi: 0 }, S[k].eq || {}); S[k].eq[band] = +t.value; save(); }
+    if (t.dataset.flt) { const k = t.dataset.flt; S[k].flt = +t.value; if (deck(k).flt) fltFreq(deck(k).flt, +t.value); save(); }
     if (t.id === "dj-xf") { S.xf = +t.value; levels(); save(); }
     if (t.id === "dj-master" && masterGain) masterGain.gain.value = +t.value;
-    if (t.id === "dj-filter" && fxFilter) fxFilter.frequency.value = 200 * Math.pow(90, +t.value / 100);
-    if (t.id === "dj-echo" && echoWet) echoWet.gain.value = +t.value;
-    if (t.id === "dj-verb" && verbWet) verbWet.gain.value = +t.value;
+    if (t.id === "dj-filter") { S.fx.mf = +t.value; applyFx(); save(); }
+    if (t.id === "dj-echo") { S.fx.echo = +t.value; applyFx(); save(); }
+    if (t.id === "dj-fb") { S.fx.fb = +t.value; applyFx(); save(); }
+    if (t.id === "dj-verb") { S.fx.verb = +t.value; applyFx(); save(); }
+    if (t.id === "dj-fla") { S.fx.fla = +t.value; applyFx(); save(); }
   });
   root.addEventListener("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } });
   $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
@@ -484,9 +537,17 @@
     return item;
   }
   let xfAnim = null;
-  function autoNext(endedK) {
+  async function autoNext(endedK) {
     if (!S.autodj) return;
-    const item = queue.length ? queue.shift() : nextFromLibrary();
+    let item = null;
+    const pick = reqCache.filter((r) => r.data && r.data.kind === "pick").sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
+    if (pick) {
+      if (pick.data.src && okUrl(pick.data.src)) item = { src: pick.data.src, title: pick.data.title || "", cover: pick.data.cover || "" };
+      else if (pick.data.iaId) { const src = await iaFile(pick.data.iaId); if (src) item = { src, title: pick.data.title || "", cover: "https://archive.org/services/img/" + encodeURIComponent(pick.data.iaId) }; }
+      DBF()?.doc("requests/" + pick.id).delete().catch(() => {});
+      if (item) say("🎵 Listener pick up next: " + item.title);
+    }
+    if (!item) item = queue.length ? queue.shift() : nextFromLibrary();
     if (!item) return;
     saveQueue(); paintQueue();
     const target = endedK === "A" ? "B" : "A";
@@ -645,22 +706,63 @@
       setTimeout(() => { if (dropRec) dropRec.stop(); }, 20000);
     } catch (_) { say("Allow the microphone to record a drop."); }
   });
-  let reqSubbed = false;
+  let reqSubbed = false, reqCache = [];
   function renderReqs(docs) {
     const box = $("#rq-list"); if (!box) return;
     const rows = docs.map((x) => ({ id: x.id, data: x.data() || {} })).sort((a, b) => (b.data.at || 0) - (a.data.at || 0)).slice(0, 30);
     box.innerHTML = rows.length ? rows.map((r) => r.data.kind === "voice"
       ? `<div class="req"><b>🎙️ Voice drop</b><small>${agoT(r.data.at || Date.now())}</small><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" type="button" data-rqplay="${E(r.data.url)}">▶ Hear it</button><button class="btn sm" type="button" data-rqair="${E(r.id)}|${E(r.data.url)}|${E(r.data.asset || "")}">📡 Play on air</button><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Done</button></span></div>`
+      : r.data.kind === "pick" ? `<div class="req"><span>🎵 Listener pick: ${E(r.data.title || "")}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`
       : `<div class="req"><span>${E(r.data.text || "")}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`).join("") : '<small class="muted">Nothing yet. Listener requests land here.</small>';
   }
   function subReqs() {
     if (reqSubbed || !OWNER()) return; const d = DBF(); if (!d) return; reqSubbed = true;
-    try { d.collection("requests").limit(40).onSnapshot((s) => renderReqs(s.docs), () => {}); } catch (_) { reqSubbed = false; }
+    try { d.collection("requests").limit(40).onSnapshot((s) => { reqCache = s.docs.map((x) => ({ id: x.id, data: x.data() || {} })); renderReqs(s.docs); }, () => {}); } catch (_) { reqSubbed = false; }
   }
   root.addEventListener("click", async (e) => {
     const p = e.target.closest("[data-rqplay]"); if (p) { new Audio(p.dataset.rqplay).play().catch(() => {}); return; }
     const air = e.target.closest("[data-rqair]"); if (air && OWNER()) { const [id, url, asset] = air.dataset.rqair.split("|"); S.voice = { id: asset || id, url, at: Date.now() }; heardVoice = S.voice.id; save(true); say("Drop is on the air 📡"); DBF()?.doc("requests/" + id).delete().catch(() => {}); return; }
     const dn = e.target.closest("[data-rqdone]"); if (dn && OWNER()) { DBF()?.doc("requests/" + dn.dataset.rqdone).delete().catch(() => {}); }
+  });
+
+  /* ---------- listener song picker: the audience queues the radio ---------- */
+  let pkTab = "mine", pkReal = null, pkSubbed = false;
+  function paintPkList() {
+    const box = $("#pk-list"); if (!box) return;
+    const m = $("#pk-mine"), r = $("#pk-real");
+    if (m) { m.classList.toggle("on", pkTab === "mine"); m.classList.toggle("ghost", pkTab !== "mine"); }
+    if (r) { r.classList.toggle("on", pkTab === "real"); r.classList.toggle("ghost", pkTab !== "real"); }
+    if (pkTab === "mine") {
+      const ts = TRACKS();
+      box.innerHTML = ts.length ? ts.map((t, i) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn sm" type="button" data-picklib="${i}">▶ Play next</button></div>`).join("") : '<small class="muted">The library is loading — one second.</small>';
+    } else if (pkReal == null) { box.innerHTML = '<small class="muted">Loading real artists…</small>'; loadReal(); }
+    else box.innerHTML = pkReal.length ? pkReal.map((n, i) => `<div class="dj-item"><span title="${E(n.title)}">${E(n.title)}</span><button class="btn sm" type="button" data-picknet="${i}">▶ Play next</button></div>`).join("") : '<small class="muted">The artist shelf is empty right now — pick from the Meechie list instead.</small>';
+  }
+  async function loadReal() {
+    const qs = ['creator:"Johnny Cash"', 'creator:"Miles Davis"', 'creator:"Grateful Dead"', 'creator:"James Brown"', 'creator:"Bob Marley"', 'creator:"Duke Ellington"'];
+    const seen = new Set(), out = [];
+    const rs = await Promise.allSettled(qs.map((q) => iaSearch(q)));
+    for (const r of rs) if (r.status === "fulfilled") for (const n of r.value) if (!seen.has(n.id)) { seen.add(n.id); out.push(n); }
+    pkReal = out.slice(0, 36);
+    if (pkTab === "real") paintPkList();
+  }
+  function subPicks() {
+    if (pkSubbed) return; const d = DBF(); if (!d) return; pkSubbed = true;
+    try { d.collection("requests").limit(100).onSnapshot((s) => { const box = $("#pk-queue"); if (!box) return; const picks = s.docs.map((x) => x.data() || {}).filter((r) => r.kind === "pick").sort((a, b) => (a.at || 0) - (b.at || 0)); box.innerHTML = picks.length ? picks.map((p, i) => `<div class="dj-item"><span title="${E(p.title || "")}">${i + 1}. ${E(p.title || "")}</span><small class="muted">listener pick</small></div>`).join("") : '<small class="muted">No picks yet — be the first.</small>'; }, () => { pkSubbed = false; }); } catch (_) { pkSubbed = false; }
+  }
+  root.addEventListener("click", async (e) => {
+    if (e.target.closest("#pk-mine")) { pkTab = "mine"; paintPkList(); return; }
+    if (e.target.closest("#pk-real")) { pkTab = "real"; paintPkList(); return; }
+    const pl = e.target.closest("[data-picklib]"), pn = e.target.closest("[data-picknet]");
+    if (!pl && !pn) return;
+    const now = Date.now();
+    if (now - (+(localStorage.getItem("mw-last-pick") || 0)) < 45000) { say("One pick at a time — your song is in line 🎵"); return; }
+    let data = null;
+    if (pl) { const t = TRACKS()[+pl.dataset.picklib]; if (t) data = { kind: "pick", title: t.title, src: URLOF(t), cover: t.cover || "", at: now }; }
+    else { const n = (pkReal || [])[+pn.dataset.picknet]; if (n) data = { kind: "pick", title: n.title, iaId: n.id, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), at: now }; }
+    if (!data) return;
+    try { await sendRequest(data); try { localStorage.setItem("mw-last-pick", String(now)); } catch (_) {} say("🎵 Picked: " + data.title + " — it's in line for the radio!"); }
+    catch (_) { say("Join free / sign in to pick songs for the radio."); }
   });
 
   /* ---------- ticker ---------- */
@@ -692,7 +794,7 @@
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) return;
     d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
-    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; if (own) { libList(); paintOwner(); paintQueue(); paintPads(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } };
+    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; if (own) { libList(); paintOwner(); paintQueue(); paintPads(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); };
     show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
   }

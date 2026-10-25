@@ -65,15 +65,42 @@ export async function onRequestGet({ request, env }) {
     if (avoidSrc && id && avoidSrc.includes(id) && S.bag.length) { const other = S.bag.pop(); S.bag.push(id); id = other; }
     return byAsset.get(id) || lib[0];
   };
-  const startDeck = (k, t, startMs) => {
-    S[k] = { src: srcOf(t), title: t.title || "", cover: t.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1 };
-    S.log = [{ t: t.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== t.title)).slice(0, 30);
+  const startDeckItem = (k, item, startMs) => {
+    S[k] = { src: item.src, title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1 };
+    S.log = [{ t: item.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== item.title)).slice(0, 30);
+  };
+  const startDeck = (k, t, startMs) => startDeckItem(k, { src: srcOf(t), title: t.title || "", cover: t.cover || "" }, startMs);
+  /* listener picks (docs in the requests collection, kind:"pick") jump the queue:
+     they play next, ahead of the library rotation. A pick is consumed (deleted)
+     whether or not its file resolves, so a dead pick can never jam the station. */
+  const takePick = async () => {
+    let rows = [];
+    try { rows = (await env.DB.prepare("select path, data from docs where coll = 'requests'").all()).results || []; } catch (_) { return null; }
+    const picks = [];
+    for (const r of rows) { try { const d = JSON.parse(r.data); if (d && d.kind === "pick" && !d.played) picks.push({ path: r.path, d }); } catch (_) {} }
+    picks.sort((a, b) => (a.d.at || 0) - (b.d.at || 0));
+    for (const p of picks) {
+      let src = p.d.src || "";
+      if (src && src.includes("supabase.co")) src = "";
+      if (!src && p.d.iaId) {
+        try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); } catch (_) {}
+      }
+      try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); } catch (_) {}
+      if (src) return { src, title: p.d.title || "", cover: p.d.cover || "" };
+    }
+    return null;
+  };
+  const nextItem = async (avoidSrc) => {
+    const pk = await takePick();
+    if (pk) return pk;
+    const t = bagPick(avoidSrc);
+    return { src: srcOf(t), title: t.title || "", cover: t.cover || "" };
   };
 
   let changed = false;
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
   if (!cur) { // dead air — start the rotation on deck A right now
-    startDeck("A", bagPick(""), now); S.xf = 0; changed = true; cur = "A";
+    startDeckItem("A", await nextItem(""), now); S.xf = 0; changed = true; cur = "A";
   }
   for (let i = 0; i < 60; i++) {
     const other = cur === "A" ? "B" : "A";
@@ -82,10 +109,10 @@ export async function onRequestGet({ request, env }) {
     if (now >= endAt) { // song fully over: stop it; the other deck (already started at the fade) takes the wheel
       if (S[cur].playing) { S[cur].playing = false; S[cur].pos = 0; changed = true; }
       if (S[other].playing) { cur = other; continue; }
-      startDeck(other, bagPick(S[cur].src), endAt); S.xf = other === "A" ? 0 : 1; changed = true; cur = other; continue;
+      startDeckItem(other, await nextItem(S[cur].src), endAt); S.xf = other === "A" ? 0 : 1; changed = true; cur = other; continue;
     }
     if (now >= endAt - XF * 1000 && !S[other].playing) { // crossfade point: bring the next song in under this one
-      startDeck(other, bagPick(S[cur].src), endAt - XF * 1000);
+      startDeckItem(other, await nextItem(S[cur].src), endAt - XF * 1000);
       S.xf = other === "A" ? 0 : 1; changed = true;
     }
     break;
