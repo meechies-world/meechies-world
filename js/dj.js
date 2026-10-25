@@ -192,7 +192,13 @@ body.dj-past #fb-left{transform:translateX(-110%);opacity:0;pointer-events:none}
 body.dj-past #fb-right{transform:translateX(110%);opacity:0;pointer-events:none}
 body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:none!important;transform:scale(.5)}
 #ai-fab,#mx-heads{transition:opacity .3s ease,transform .3s ease}
-@media (max-width:760px){.dj-decks{display:flex;flex-direction:column}.deck[data-deck=A]{order:1}.mixer.m1{order:2}.deck[data-deck=B]{order:3}.deck[data-deck=C]{order:4}.mixer.m2{order:5}.deck[data-deck=D]{order:6}.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}}`;
+@media (max-width:760px){.dj-decks{display:flex;flex-direction:column}.deck[data-deck=A]{order:1}.mixer.m1{order:2}.deck[data-deck=B]{order:3}.deck[data-deck=C]{order:4}.mixer.m2{order:5}.deck[data-deck=D]{order:6}.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}}
+html.popdj header.bar,html.popdj #player-bar,html.popdj footer,html.popdj #fb-left,html.popdj #fb-right,html.popdj #ai-fab,html.popdj #mx-heads{display:none!important}
+html.popdj main{margin:0!important;padding:10px!important}
+html.popdj #v-dj .wrap{max-width:none!important;width:100%!important}
+html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none!important}
+.popdj-hint{display:none}
+html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
   const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div>
@@ -226,7 +232,7 @@ body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:n
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-decks">
     ${deckHTML("A")}
     <div class="mixer m1"><small>MIC DROP</small>
@@ -405,6 +411,7 @@ body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:n
     renderLog($("#st-log"));
   }
   setInterval(() => {
+    const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) show();
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) el.textContent = fmt(decks[k].el.currentTime) + (decks[k].el.duration ? " / " + fmt(decks[k].el.duration) : "");
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
@@ -438,6 +445,15 @@ body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:n
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
   window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening };
+  /* pop the decks out onto their own screen: a clean window with only the DJ view */
+  function popOut() {
+    const url = location.pathname + "?popdj=1#dj";
+    const w = window.open(url, "mw-dj-decks", "popup=yes,width=1440,height=920");
+    if (w) { try { w.focus(); } catch (_) {} say("Decks popped out on their own screen ⛶"); }
+    else { document.documentElement.classList.add("popdj"); try { go("dj"); } catch (_) {} say("Pop-ups are blocked here — decks went full-screen on this page instead. Allow pop-ups for a separate window."); }
+  }
+  if (/[?&]popdj=1/.test(location.search)) document.documentElement.classList.add("popdj");
+  document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
   if (typeof media !== "undefined") media.addEventListener("play", () => {
     if (listening) { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; return; }
     // The tables ARE the live radio while a set is live: any radio tune-in (player bar,
@@ -465,7 +481,7 @@ body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:n
     if (listening) DECKS.forEach((k) => follow(k));
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
-    if (firstOwnerLoad) DECKS.forEach((k) => { if (S[k].playing) follow(k); });
+    if (firstOwnerLoad) { show(); DECKS.forEach((k) => { if (S[k].playing) follow(k); }); }
     playVoice(); paintStation();
     if (OWNER()) paintOwner();
   }
@@ -505,6 +521,7 @@ body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:n
   }
   onMain("click", async (e) => {
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
+    if (b.dataset.pop != null) { popOut(); return; }
     if (b.dataset.preset) {
       const P = {
         radio: { fx: { mf: 100, echo: 0, fb: 0.34, verb: 0.12, fla: 0, gate: 0, crush: 0 }, vinyl: false, msg: "🏆 Pro Radio setup: clean broadcast sound, a touch of reverb, echo armed for drops." },
