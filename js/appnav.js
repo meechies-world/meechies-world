@@ -29,8 +29,8 @@
   #ai-panel{height:min(560px,calc(100dvh - var(--tabbar) - 120px))!important}
   .toast{bottom:calc(var(--tabbar) + 16px)!important}
   body.has-player .toast{bottom:calc(var(--tabbar) + 90px)!important}
-  #v-clips .clips{height:calc(100dvh - 64px - var(--tabbar))!important}
-  body.has-player #v-clips .clips{height:calc(100dvh - 64px - var(--tabbar) - 72px)!important}
+  #v-clips .clips{height:calc(100dvh - 64px - var(--tabbar) - var(--shell-h,48px))!important}
+  body.has-player #v-clips .clips{height:calc(100dvh - 64px - var(--tabbar) - 72px - var(--shell-h,48px))!important}
   #mw-bar{bottom:var(--tabbar)!important}
   .apptab{display:grid!important}
 }

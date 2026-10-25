@@ -30,7 +30,7 @@
   const css = document.createElement("style");
   css.textContent = `
 #bl-root{display:grid;gap:14px}
-.bl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#1b160d,#0f0d09);position:sticky;top:64px;z-index:5}
+.bl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#1b160d,#0f0d09);position:sticky;top:calc(64px + var(--shell-h,48px));z-index:5}
 .bl-bar .t{font:800 20px ui-monospace,monospace;color:var(--gold-hi);min-width:84px;text-align:center}
 .bl-btn{border:1px solid var(--line);background:#0c0a07;color:var(--text);border-radius:12px;padding:10px 14px;font:800 14px var(--body);cursor:pointer;min-width:44px}
 .bl-btn.rec{border-color:#e5484d;color:#ff8b8f}.bl-btn.rec.on{background:#e5484d;color:#fff;animation:blp 1s infinite}
