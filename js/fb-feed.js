@@ -22,7 +22,7 @@ body[data-view=community]{background:#18191a}
 #v-community .section-head{display:none}
 #v-community .wrap{padding-top:0!important}
 #fb-top{position:relative;z-index:15;display:flex;align-items:center;gap:8px;background:var(--fb-card);border-bottom:1px solid var(--fb-line);margin:0;padding:8px clamp(16px,3.2vw,56px)}
-#fb-top .wm{font:800 24px/1 var(--display,system-ui);color:var(--gold-hi,#f0cf78);letter-spacing:-.5px;margin-right:auto;white-space:nowrap}
+#fb-top .wm{font:800 24px/1 var(--display,system-ui);color:var(--gold-hi,#f0cf78);letter-spacing:-.5px;margin-right:auto;white-space:nowrap;cursor:pointer}
 #fb-top button{width:40px;height:40px;border-radius:50%;border:0;background:var(--fb-hover);color:var(--fb-text);font-size:18px;display:grid;place-items:center;cursor:pointer;position:relative}
 #fb-top button i{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 4px}
 #fb-cols{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
@@ -113,6 +113,7 @@ body[data-view=community]{background:#18191a}
   const hdr0 = document.querySelector("header.bar");
   if (hdr0) hdr0.after(top); else document.body.prepend(top);
   top.addEventListener("click", (e) => {
+    if (e.target.closest(".wm")) { go("community"); return; }
     const b = e.target.closest("[data-fb]"); if (!b) return;
     e.preventDefault();
     const k = b.dataset.fb;
@@ -258,10 +259,15 @@ body[data-view=community]{background:#18191a}
   }
   function markSeen() { try { const s = seenSet(); noteList().forEach((n) => s.add(n.k)); localStorage.setItem(SEEN, JSON.stringify([...s].slice(-600))); } catch (_) {} }
   function setTab(k) { tabs.querySelectorAll("[data-fbt]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.fbt === k))); }
+  /* the lit tab follows the view you are on — go() stamps it on <body data-view> on every navigation */
+  const TABMAP = { community: "home", friends: "friends", videos: "video", clips: "video", live: "video", preach: "video", shop: "market" };
+  const syncTab = () => { if (!notes.hidden) return; setTab(TABMAP[document.body.dataset.view] || ""); };
+  new MutationObserver(syncTab).observe(document.body, { attributes: true, attributeFilter: ["data-view"] });
+  syncTab();
   tabs.addEventListener("click", (e) => {
     const b = e.target.closest("[data-fbt]"); if (!b) return; const k = b.dataset.fbt;
-    if (k === "home") { notes.hidden = true; setTab("home"); view.scrollIntoView({ behavior: "smooth" }); }
-    else if (k === "notes") { if (notes.hidden) { paintNotes(); notes.hidden = false; setTab("notes"); setTimeout(() => { markSeen(); paintTabs(); }, 1500); } else { notes.hidden = true; setTab("home"); } }
+    if (k === "home") { notes.hidden = true; setTab("home"); if (document.body.dataset.view !== "community") { go("community"); setTimeout(() => view.scrollIntoView({ behavior: "smooth" }), 60); } else view.scrollIntoView({ behavior: "smooth" }); }
+    else if (k === "notes") { if (notes.hidden) { paintNotes(); notes.hidden = false; setTab("notes"); setTimeout(() => { markSeen(); paintTabs(); }, 1500); } else { notes.hidden = true; syncTab(); } }
     else if (k === "friends") go("friends");
     else if (k === "video") go("videos");
     else if (k === "market") go("shop");
@@ -270,7 +276,7 @@ body[data-view=community]{background:#18191a}
   notes.addEventListener("click", (e) => {
     const b = e.target.closest("[data-note]"); if (!b || !notes._list) return; const n = notes._list[+b.dataset.note]; if (!n) return;
     if (n.go) { go(n.go); return; }
-    notes.hidden = true; setTab("home");
+    notes.hidden = true; syncTab();
     const el = n.post && (document.querySelector(`#feed [data-id="${n.post}"]`) || document.querySelector(`#feed [data-rbox="${n.post}"]`)?.closest(".post"));
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
   });
