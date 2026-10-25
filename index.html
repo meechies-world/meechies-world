@@ -2154,7 +2154,7 @@ function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.o
 /* ---------- Live platform ---------- */
 let db=null, user=null, me=null, isOwner=false, members={}, profileMe=null;
 const handleOf = id => members[id]?.handle || "Member";
-const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo); return `<span class="avatar" data-uid="${esc(id)}">${esc(initial(m.handle))}${ph ? `<img class="avimg" src="${esc(ph)}" alt="" loading="lazy">` : ""}</span>`; };
+const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo), pp=/^\d{1,3}% \d{1,3}%$/.test(m.photoPos||"")?m.photoPos:""; return `<span class="avatar" data-uid="${esc(id)}">${esc(initial(m.handle))}${ph ? `<img class="avimg" src="${esc(ph)}" alt="" loading="lazy"${pp ? ` style="object-position:${pp}"` : ""}>` : ""}</span>`; };
 document.addEventListener("error", (e) => { const t = e.target; if (t && t.classList && t.classList.contains("avimg")) t.remove(); }, true); // a dead photo link falls back to the member's initial instead of an empty circle
 
 async function boot(){
@@ -3379,7 +3379,7 @@ boot();
 <script src="js/studio.js?v=1792580555"></script>
 <script src="js/owner.js?v=1792580555"></script>
 <script src="js/site-coder-ui.js?v=1792580555"></script>
-<script src="js/messages.js?v=1792931000"></script>
+<script src="js/messages.js?v=1792932000"></script>
 <script src="js/videos.js?v=1792580555"></script>
 <script src="js/markets.js?v=1792580555"></script>
 <script src="js/legal.js?v=1792928500"></script>
@@ -3409,8 +3409,8 @@ boot();
 <script src="js/people.js?v=1792580555"></script>
 <script src="js/originals.js?v=1792580555"></script>
 <script src="js/welcome-show.js?v=1792599841"></script>
-<script src="js/profile-setup.js?v=1792580555"></script>
-<script src="js/profile-page.js?v=1792927000"></script>
+<script src="js/profile-setup.js?v=1792932000"></script>
+<script src="js/profile-page.js?v=1792932000"></script>
 <script src="js/social-login.js?v=1792580555"></script>
 <script src="js/radio-keep.js?v=1792928000"></script>
 <script src="js/share-song.js?v=1792927800"></script>

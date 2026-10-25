@@ -31,7 +31,7 @@
   const ini = (s) => (String(s || "?").trim()[0] || "?").toUpperCase();
   const photo = (id) => { const p = mem(id).photo; return /^https:\/\//.test(p || "") || /^data:image\/(png|jpe?g|webp);base64,/.test(p || "") ? p : ""; };
   const onlineIds = () => { const s = new Set(); try { (typeof room !== "undefined" && room && room.peers ? room.peers() : []).forEach((p) => p.by && s.add(p.by)); } catch (_) {} return s; };
-  const av = (id, cls = "") => { const p = photo(id), on = onlineIds().has(id); return `<span class="mx-av ${cls}">${p ? `<img src="${E(p)}" alt="">` : `<b>${E(ini(handle(id)))}</b>`}${on ? '<i class="on" title="Active now"></i>' : ""}</span>`; };
+  const av = (id, cls = "") => { const p = photo(id), on = onlineIds().has(id), pp = (mem(id) || {}).photoPos, ps = /^\d{1,3}% \d{1,3}%$/.test(pp || "") ? ` style="object-position:${pp}"` : ""; return `<span class="mx-av ${cls}">${p ? `<img src="${E(p)}" alt=""${ps}>` : `<b>${E(ini(handle(id)))}</b>`}${on ? '<i class="on" title="Active now"></i>' : ""}</span>`; };
   const when = (iso) => { const ms = new Date(iso).getTime(), s = (Date.now() - ms) / 1000; if (s < 60) return "now"; if (s < 3600) return Math.floor(s / 60) + "m"; if (s < 86400) return Math.floor(s / 3600) + "h"; if (s < 604800) return Math.floor(s / 86400) + "d"; return new Date(ms).toLocaleDateString(); };
   const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   const dayLabel = (iso) => { const d = new Date(iso), t = new Date(); const y = new Date(); y.setDate(t.getDate() - 1);

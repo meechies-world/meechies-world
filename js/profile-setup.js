@@ -32,6 +32,8 @@
   const INTERESTS = ["🎤 Hip-hop & rap", "🎶 R&B & soul", "🙏 Gospel", "🎧 Making beats", "🎬 Movies & TV", "📺 Live TV", "📚 Books", "👗 Fashion & clothes", "💇 Hair & nails", "💈 Barber", "⚖️ Legal help", "💼 Business & money", "🪙 Crypto", "🎮 Games", "🏀 Sports", "🍳 Cooking", "💻 Tech & AI", "🌍 History & Egypt", "❤️ Dating", "👨‍👩‍👧 Family", "🛠️ Remodeling", "✈️ Travel"];
   let picked = new Set();
   let photo = "", pics = [], cover = "", color = "gold", busy = false;
+  let coverPos = "50% 50%", photoPos = "50% 50%";
+  const vpos = (s) => (/^\d{1,3}% \d{1,3}%$/.test(s || "") ? s : "50% 50%");
 
   const css = document.createElement("style");
   css.textContent = `
@@ -54,7 +56,9 @@
 .ps-job[hidden]{display:none}
 .ps-soc{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ps-soc label{font-size:13px!important}@media (max-width:480px){.ps-soc{grid-template-columns:1fr}}
 .ps-more summary{cursor:pointer;color:var(--gold-hi,#f0cf78);font-weight:700;font-size:14px;margin:4px 0 8px}
-.ps-cov{display:block;height:70px;border-radius:10px;background:#241d10 center/cover;border:1px solid var(--line,#333)}
+.ps-cov{display:block;height:70px;border-radius:10px;background:#241d10 center/cover;border:1px solid var(--line,#333);cursor:grab;touch-action:none}
+.ps-cov:active{cursor:grabbing}
+.ps-pic{touch-action:none}
 .ps-int{display:flex;flex-wrap:wrap;gap:6px}.ps-int button{border:1px solid var(--line,#444);background:#1d1810;color:var(--text,#fff);border-radius:999px;padding:6px 11px;font:600 13px var(--body,system-ui);cursor:pointer}.ps-int button[aria-pressed=true]{background:var(--gold,#d4a843);color:#0b0a08;border-color:var(--gold-hi,#f0cf78)}
 .ps-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}`;
   document.head.appendChild(css);
@@ -69,7 +73,7 @@
 <div style="display:grid;gap:6px"><b style="font-size:14px">📷 Profile pictures <span class="hint">(at least 1, up to 5; tap one to make it your main picture)</span></b><div id="ps-pics"></div></div>
 <label>📱 Phone number <input type="tel" id="ps-phone" maxlength="20" placeholder="(724) 555-0123" autocomplete="tel"></label>
 <label class="chk"><input type="checkbox" id="ps-phone-pub"> <span>Show my phone number on my profile<br><span class="hint">Off by default, and then only you can see it. If you turn it on, anyone who visits can see it.</span></span></label>
-<label>Cover photo <span class="hint">(the wide picture across the top of your profile)</span><input type="file" accept="image/*" id="ps-cover-f"><span class="ps-cov" id="ps-cov"></span></label>
+<label>Cover photo <span class="hint">(the wide picture across the top of your profile — drag it to position it)</span><input type="file" accept="image/*" id="ps-cover-f"><span class="ps-cov" id="ps-cov"></span></label>
 <div class="ps-soc"><label>Works at<input type="text" id="ps-work" maxlength="80" placeholder="Company or job"></label><label>Went to school at<input type="text" id="ps-school" maxlength="80" placeholder="School"></label>
 <label>Lives in<input type="text" id="ps-city" maxlength="60" placeholder="City, State"></label><label>From<input type="text" id="ps-home" maxlength="60" placeholder="Hometown"></label>
 <label>Relationship<select id="ps-rel"><option value="">Don't show</option><option>Single</option><option>In a relationship</option><option>Engaged</option><option>Married</option><option>It's complicated</option></select></label></div>
@@ -91,11 +95,38 @@
 <div class="ps-acts"><button class="btn ghost" type="button" id="ps-later">Later</button><button class="btn" type="submit" id="ps-save">Save my profile</button></div>
 </form>`;
     document.body.appendChild(d);
-    const paint = () => { const pic = d.querySelector("#ps-pic"); pic.style.backgroundImage = photo ? `url("${photo.replace(/"/g, "")}")` : ""; d.querySelector("#ps-ini").textContent = photo ? "" : ((P()?.handle || "?").trim()[0] || "?").toUpperCase();
+    const paint = () => { const pic = d.querySelector("#ps-pic"); pic.style.backgroundImage = photo ? `url("${photo.replace(/"/g, "")}")` : ""; pic.style.backgroundPosition = photoPos; d.querySelector("#ps-ini").textContent = photo ? "" : ((P()?.handle || "?").trim()[0] || "?").toUpperCase();
       const hex = (COLORS.find((c) => c[0] === color) || COLORS[0])[1]; pic.style.setProperty("--ps", hex);
       d.querySelectorAll("[data-col]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.col === color))); };
-    const drawPics = picStrip(d.querySelector("#ps-pics"), () => pics, (a) => { pics = a; photo = a[0] || ""; paint(); });
-    d._paint = () => { paint(); drawPics(); d.querySelector("#ps-cov").style.backgroundImage = cover ? `url("${cover.replace(/"/g, "")}")` : ""; };
+    const drawPics = picStrip(d.querySelector("#ps-pics"), () => pics, (a) => { if (a[0] !== photo) photoPos = "50% 50%"; pics = a; photo = a[0] || ""; paint(); });
+    d._paint = () => { paint(); drawPics(); const cov = d.querySelector("#ps-cov"); cov.style.backgroundImage = cover ? `url("${cover.replace(/"/g, "")}")` : ""; cov.style.backgroundPosition = coverPos; };
+    /* drag to position the cover and the profile picture, right here in the editor */
+    let pdrag = null, pSwallow = false;
+    const wirePosDrag = (el, get, set, url) => {
+      el.addEventListener("pointerdown", (e) => {
+        if (!url()) return;
+        const [px, py] = get().split(" ").map((v) => parseFloat(v));
+        pdrag = { el, set, sx: e.clientX, sy: e.clientY, px, py, moved: false, nat: null };
+        const im = new Image(); im.onload = () => { if (pdrag) pdrag.nat = { w: im.naturalWidth, h: im.naturalHeight }; }; im.src = url();
+        try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+      el.addEventListener("pointermove", (e) => {
+        if (!pdrag || pdrag.el !== el) return;
+        const dx = e.clientX - pdrag.sx, dy = e.clientY - pdrag.sy;
+        if (!pdrag.moved && Math.hypot(dx, dy) < 5) return;
+        pdrag.moved = true;
+        const r = el.getBoundingClientRect();
+        let fx = 0, fy = 0;
+        if (pdrag.nat) { const s = Math.max(r.width / pdrag.nat.w, r.height / pdrag.nat.h), rw = pdrag.nat.w * s, rh = pdrag.nat.h * s; fx = rw > r.width ? dx / (rw - r.width) * 100 : 0; fy = rh > r.height ? dy / (rh - r.height) * 100 : 0; }
+        else { fx = dx / r.width * 100; fy = dy / r.height * 100; }
+        set(Math.max(0, Math.min(100, pdrag.px - fx)), Math.max(0, Math.min(100, pdrag.py - fy)));
+      });
+      const end = () => { if (pdrag && pdrag.el === el) { if (pdrag.moved) { pSwallow = true; setTimeout(() => { pSwallow = false; }, 350); } pdrag = null; } };
+      el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
+    };
+    wirePosDrag(d.querySelector("#ps-cov"), () => coverPos, (x, y) => { coverPos = Math.round(x) + "% " + Math.round(y) + "%"; d.querySelector("#ps-cov").style.backgroundPosition = coverPos; }, () => cover);
+    wirePosDrag(d.querySelector("#ps-pic"), () => photoPos, (x, y) => { photoPos = Math.round(x) + "% " + Math.round(y) + "%"; d.querySelector("#ps-pic").style.backgroundPosition = photoPos; }, () => photo);
+    d.addEventListener("click", (e) => { if (pSwallow && (e.target.closest("#ps-cov") || e.target.closest("#ps-pic"))) { e.preventDefault(); e.stopPropagation(); } }, true);
     d.querySelector("#ps-int").addEventListener("click", (e) => { const b = e.target.closest("[data-int]"); if (!b) return; const x = b.dataset.int; picked.has(x) ? picked.delete(x) : picked.add(x); b.setAttribute("aria-pressed", String(picked.has(x))); });
     d.querySelector("#ps-colors").addEventListener("click", (e) => { const b = e.target.closest("[data-col]"); if (b) { color = b.dataset.col; paint(); } });
     d.querySelector("#ps-wantjob").addEventListener("change", (e) => { d.querySelector("#ps-job").hidden = !e.target.checked; });
@@ -103,12 +134,12 @@
       const f = e.target.files[0]; e.target.value = ""; if (!f) return;
       say("Adding your photo…");
       // the round picture: the new one becomes the main picture (the others stay, up to 5)
-      try { const url = await readPhoto(f); pics = [url, ...pics].slice(0, MAXPICS); photo = url; d._paint(); }
+      try { const url = await readPhoto(f); pics = [url, ...pics].slice(0, MAXPICS); photo = url; photoPos = "50% 50%"; d._paint(); }
       catch (err) { say("Couldn't add the photo: " + (err.message || err)); }
     });
     d.querySelector("#ps-cover-f").addEventListener("change", async (e) => {
       const f = e.target.files[0]; e.target.value = ""; if (!f) return; say("Adding your cover photo…");
-      try { const dataUrl = typeof compress === "function" ? await compress(f, 1400) : ""; if (!dataUrl) return; cover = dataUrl; d._paint();
+      try { const dataUrl = typeof compress === "function" ? await compress(f, 1400) : ""; if (!dataUrl) return; cover = dataUrl; coverPos = "50% 50%"; d._paint();
         if (window.MW && MW.uploadMedia) { const up = await MW.uploadMedia(await (await fetch(dataUrl)).blob(), { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) cover = up.url; d._paint(); }
       } catch (err) { say("Couldn't add the cover photo: " + (err.message || err)); }
     });
@@ -135,6 +166,7 @@
       const upd = { phone: pub ? phone : "", phonePublic: pub, website: web, socials, color, work: v("ps-work"), school: v("ps-school"), city: v("ps-city"), hometown: v("ps-home"), relationship: d.querySelector("#ps-rel").value, interests: [...picked].slice(0, 22), emailFind: d.querySelector("#ps-emailfind").checked, setupDone: true };
       if (!upd.emailFind) upd.emailHash = "";
       if (cover && /^https:\/\//.test(cover)) upd.cover = cover;
+      upd.coverPos = coverPos; upd.photoPos = photoPos;
       Object.assign(upd, picsUpd(pics));
       await DB().doc("members/" + ME()).update(upd);
       try { if (window.MW && MW.sb) await MW.sb.auth.updateUser({ data: { phone_private: phone } }); } catch (_) {}
@@ -153,7 +185,7 @@
   function open() {
     if (!ME() || !P()) { if (typeof openAuth === "function") openAuth("signup"); return; }
     const d = dialog(), p = P();
-    pics = picsOf(p); photo = pics[0] || ""; cover = p.cover || ""; d.querySelector("#ps-emailfind").checked = p.emailFind !== false; picked = new Set(Array.isArray(p.interests) ? p.interests : []); d.querySelectorAll("[data-int]").forEach((b) => b.setAttribute("aria-pressed", String(picked.has(b.dataset.int)))); color = p.color || "gold";
+    pics = picsOf(p); photo = pics[0] || ""; cover = p.cover || ""; coverPos = vpos(p.coverPos); photoPos = vpos(p.photoPos); d.querySelector("#ps-emailfind").checked = p.emailFind !== false; picked = new Set(Array.isArray(p.interests) ? p.interests : []); d.querySelectorAll("[data-int]").forEach((b) => b.setAttribute("aria-pressed", String(picked.has(b.dataset.int)))); color = p.color || "gold";
     let priv = ""; try { priv = MW.session()?.user?.user_metadata?.phone_private || ""; } catch (_) {}
     d.querySelector("#ps-phone").value = p.phone || priv; d.querySelector("#ps-phone-pub").checked = !!p.phonePublic; d.querySelector("#ps-web").value = p.website || ""; d.querySelector("#ps-work").value = p.work || ""; d.querySelector("#ps-school").value = p.school || ""; d.querySelector("#ps-city").value = p.city || ""; d.querySelector("#ps-home").value = p.hometown || ""; d.querySelector("#ps-rel").value = p.relationship || "";
     SOC.forEach(([k]) => { d.querySelector("#pss-" + k).value = (p.socials && p.socials[k]) || ""; });
