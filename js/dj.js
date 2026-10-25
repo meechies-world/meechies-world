@@ -343,7 +343,12 @@
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
   window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening };
-  if (typeof media !== "undefined") media.addEventListener("play", () => { if (listening) { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; } });
+  if (typeof media !== "undefined") media.addEventListener("play", () => {
+    if (listening) { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; return; }
+    // The tables ARE the live radio while a set is live: any radio tune-in (player bar,
+    // hero, lock-screen controls, radio-keep) hands over to the deck mix, not the playlist.
+    if (!OWNER() && isLive() && typeof mode !== "undefined" && mode === "radio") { autoMoved = true; startListening(); }
+  });
   $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : isLive() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
 
   let ownerLoaded = false;
@@ -390,6 +395,7 @@
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title);
+      if (!S.live) say("🔇 Booth only right now — flip “Go live” at the top of the station and the tables take over the radio for everyone.");
     }
     paintOwner(); levels(); save(true);
   }
