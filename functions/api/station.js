@@ -12,7 +12,7 @@
  * gap where nobody was listening. Writes are rare: only on an advance, or a light
  * updatedAt touch so clients keep reading the station as live. */
 const XF = 3.5; // crossfade seconds, same as the booth
-const BOOTH_FRESH = 45000; // booth heartbeat window
+const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
 async function readDoc(env, path) {
@@ -53,7 +53,7 @@ export async function onRequestGet({ request, env }) {
     .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
   if (!lib.length) return json({ ok: true, mode: "empty-lib" });
   const byAsset = new Map(lib.map((t) => [t.assetId, t]));
-  const durOf = (deck) => { const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
+  const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
 
   const bagPick = (avoidSrc) => {
@@ -66,10 +66,10 @@ export async function onRequestGet({ request, env }) {
     return byAsset.get(id) || lib[0];
   };
   const startDeckItem = (k, item, startMs) => {
-    S[k] = { src: item.src, title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1 };
+    S[k] = { src: item.src, title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
     S.log = [{ t: item.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== item.title)).slice(0, 30);
   };
-  const startDeck = (k, t, startMs) => startDeckItem(k, { src: srcOf(t), title: t.title || "", cover: t.cover || "" }, startMs);
+  const startDeck = (k, t, startMs) => startDeckItem(k, { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 }, startMs);
   /* listener picks (docs in the requests collection, kind:"pick") jump the queue:
      they play next, ahead of the library rotation. A pick is consumed (deleted)
      whether or not its file resolves, so a dead pick can never jam the station. */
@@ -80,21 +80,47 @@ export async function onRequestGet({ request, env }) {
     for (const r of rows) { try { const d = JSON.parse(r.data); if (d && d.kind === "pick" && !d.played) picks.push({ path: r.path, d }); } catch (_) {} }
     picks.sort((a, b) => (a.d.at || 0) - (b.d.at || 0));
     for (const p of picks) {
-      let src = p.d.src || "";
+      let src = p.d.src || "", iaDur = 0;
       if (src && src.includes("supabase.co")) src = "";
       if (!src && p.d.iaId) {
-        try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); } catch (_) {}
+        try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); iaDur = +f.length || 0; } } catch (_) {}
       }
       try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); } catch (_) {}
-      if (src) return { src, title: p.d.title || "", cover: p.d.cover || "" };
+      if (src) return { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) };
     }
     return null;
   };
+  /* the mixed rotation: like a real station, the Auto-DJ alternates Meechie's own
+     tracks with real-artist music from the Internet Archive pool (free/CC). The
+     pool lives in the station doc and refills itself when it runs dry. */
+  const POOL_QUERIES = ['creator:"Johnny Cash"', 'creator:"Miles Davis"', 'creator:"Grateful Dead"', 'creator:"James Brown"', 'creator:"Bob Marley"', 'creator:"Duke Ellington"', 'creator:"John Coltrane"', '"hip hop" mixtape', '"soul" "live"', '"rock" "live" concert', '"reggae" "live"', '"jazz" "live"'];
+  async function buildPool() {
+    const out = [], seen = new Set();
+    for (const q of POOL_QUERIES) {
+      try {
+        const u = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent("(" + q + ") AND mediatype:audio AND licenseurl:*creativecommons*") + "&fl[]=identifier&fl[]=title&fl[]=creator&sort[]=downloads+desc&rows=12&output=json";
+        const j = await (await fetch(u)).json();
+        for (const d of (j.response?.docs || [])) { const id = String(d.identifier); if (seen.has(id)) continue; seen.add(id); out.push({ iaId: id, title: [].concat(d.title || id)[0] + (d.creator ? " · " + [].concat(d.creator)[0] : ""), cover: "https://archive.org/services/img/" + encodeURIComponent(id) }); }
+      } catch (_) {}
+    }
+    for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+    return out.slice(0, 80);
+  }
+  async function poolItem() {
+    if (!Array.isArray(S.pool) || !S.pool.length || (S.poolAt && now - S.poolAt > 24 * 3600e3)) { S.pool = await buildPool(); S.poolAt = now; }
+    while (S.pool && S.pool.length) {
+      const p = S.pool.pop();
+      try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) return { src: "https://archive.org/download/" + encodeURIComponent(p.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"), title: p.title || "", cover: p.cover || "", dur: +f.length || 0 }; } catch (_) {}
+    }
+    return null;
+  }
   const nextItem = async (avoidSrc) => {
     const pk = await takePick();
     if (pk) return pk;
+    S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
+    if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
     const t = bagPick(avoidSrc);
-    return { src: srcOf(t), title: t.title || "", cover: t.cover || "" };
+    return { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 };
   };
 
   let changed = false;

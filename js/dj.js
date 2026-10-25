@@ -13,6 +13,13 @@
   "use strict";
   const root = document.getElementById("dj-root");
   if (!root) return;
+  // The booth (#dj-owner) moves into its own DJ view (#dj-booth-root). All DJ events
+  // delegate from <main>, scoped to the two DJ homes, so the move breaks nothing and
+  // no other page element can trigger a DJ control.
+  const mainEl = document.querySelector("main");
+  const inDj = (e) => !e.target || !e.target.closest || !!e.target.closest("#dj-root,#dj-booth-root");
+  const onMain = (type, fn, opts) => { if (mainEl) mainEl.addEventListener(type, (e) => { if (!inDj(e)) return; fn(e); }, opts); };
+  const onMainRaw = (type, fn, opts) => { if (mainEl) mainEl.addEventListener(type, fn, opts); };
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
   const DB = () => (typeof db !== "undefined" ? db : null);
@@ -27,7 +34,7 @@
   /* ================= audio engine: decks -> EQ -> mixer -> FX -> master ================= */
   let ctx = null, masterIn = null, masterGain = null, analyser = null, recDest = null;
   let fxFilter = null, echoWet = null, verbWet = null, micGain = null, micMon = null, micAn = null;
-  let echoFb = null, flaWet = null, gateOsc = null, gateDepth = null, gateGain = null;
+  let echoFb = null, flaWet = null, gateOsc = null, gateDepth = null, gateGain = null, crushNode = null, crushBuilt = -1;
   function actx() {
     if (!ctx) {
       try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { ctx = null; }
@@ -38,7 +45,8 @@
         analyser = ctx.createAnalyser(); analyser.fftSize = 256;
         // transformer/gate chopper sits in the master path (depth 0 = open)
         gateGain = ctx.createGain(); gateGain.gain.value = 1;
-        masterIn.connect(gateGain); gateGain.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(analyser); analyser.connect(ctx.destination);
+        crushNode = ctx.createWaveShaper(); crushNode.oversample = "2x";
+        masterIn.connect(gateGain); gateGain.connect(crushNode); crushNode.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(analyser); analyser.connect(ctx.destination);
         gateOsc = ctx.createOscillator(); gateOsc.type = "square"; gateOsc.frequency.value = 4;
         const gateShaper = ctx.createWaveShaper(); gateShaper.curve = new Float32Array([-1, 1]);
         gateDepth = ctx.createGain(); gateDepth.gain.value = 0;
@@ -105,9 +113,9 @@
   const xfGain = (xf, side) => Math.cos((side === "A" ? xf : 1 - xf) * Math.PI / 2); // equal-power crossfade
 
   /* ---------- shared station state (doc radio/dj) ---------- */
-  const blank = () => ({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 });
-  const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0 });
-  let S = { live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
+  const blank = () => ({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
+  const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0, crush: 0 });
+  let S = { live: false, xf: 0.5, xf2: 0.5, duck: false, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
@@ -161,7 +169,7 @@
 .pad.custom{border-style:dashed}
 .pad small{display:block;color:var(--muted);font-weight:600;font-size:10px;margin-top:3px}
 .dj-list{display:grid;gap:6px;max-height:240px;overflow:auto}
-.dj-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px}
+.dj-item{display:grid;grid-template-columns:minmax(0,1fr) repeat(5,auto);gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px}
 .dj-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dj-search{display:flex;gap:8px}.dj-search input,.dj-panel input[type=text],.dj-panel textarea{flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}
 .req{display:grid;gap:4px;padding:9px;border:1px solid var(--line);border-radius:10px;font-size:14px}
@@ -178,8 +186,13 @@
 .ticker span{display:inline-block;padding-left:100%;animation:djtick 18s linear infinite}
 @keyframes djtick{to{transform:translateX(-100%)}}
 .rec-on{color:#ff8b8f;font-weight:800}
-@media (min-width:1000px){#dj-root{width:min(1400px,95vw);margin-left:50%;transform:translateX(-50%)}}
-@media (max-width:760px){.dj-decks{display:flex;flex-direction:column}.deck{order:1}.deck[data-deck=B]{order:3}.mixer{order:2}.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}}`;
+@media (min-width:1000px){#dj-booth-root{width:min(1500px,96vw);margin-left:50%;transform:translateX(-50%)}}
+#fb-left,#fb-right{transition:transform .35s ease,opacity .35s ease}
+body.dj-past #fb-left{transform:translateX(-110%);opacity:0;pointer-events:none}
+body.dj-past #fb-right{transform:translateX(110%);opacity:0;pointer-events:none}
+body.dj-past #ai-fab,body.dj-past #mx-heads{opacity:0!important;pointer-events:none!important;transform:scale(.5)}
+#ai-fab,#mx-heads{transition:opacity .3s ease,transform .3s ease}
+@media (max-width:760px){.dj-decks{display:flex;flex-direction:column}.deck[data-deck=A]{order:1}.mixer.m1{order:2}.deck[data-deck=B]{order:3}.deck[data-deck=C]{order:4}.mixer.m2{order:5}.deck[data-deck=D]{order:6}.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}}`;
   document.head.appendChild(css);
 
   const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div>
@@ -205,7 +218,7 @@
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn ghost sm" type="button" id="rq-rec">🎙️ Record a voice drop</button><small class="muted" id="rq-rec-st">Up to 20 seconds. Meechie can play it on air.</small></div>
-    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b style="font-size:13px;letter-spacing:.1em">🎵 PICK A SONG FOR THE RADIO</b><small class="muted" style="display:block;margin:4px 0 8px">Pick a song and it plays next on the live radio — Meechie's songs mixed with real artists.</small><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm pktab" type="button" id="pk-mine">🔥 Meechie's songs</button><button class="btn ghost sm pktab" type="button" id="pk-real">🎤 Real artists</button></div><div class="dj-list" id="pk-list" style="max-height:260px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin-top:12px">📻 COMING UP — LISTENER PICKS</b><div class="dj-list" id="pk-queue" style="margin-top:6px;max-height:110px"><small class="muted">No picks yet — be the first.</small></div></div>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b style="font-size:13px;letter-spacing:.1em">🎵 PICK A SONG FOR THE RADIO</b><small class="muted" style="display:block;margin:4px 0 8px">Pick a song and it plays next on the live radio — Meechie's songs mixed with real artists, every genre. The list is long: browse the shelves, tap a genre, or search any artist.</small><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm pktab" type="button" id="pk-mine">🔥 Meechie's songs</button><button class="btn ghost sm pktab" type="button" id="pk-real">🎤 Real artists</button></div><form class="dj-search" id="pk-form" style="margin-bottom:8px"><input type="search" id="pk-q" placeholder="Search any artist or song..." aria-label="Search music to pick"><button class="btn sm" type="submit">Search</button></form><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn ghost sm" type="button" data-pkgenre="hiphop">🕶️ Hip-Hop</button><button class="btn ghost sm" type="button" data-pkgenre="jazz">🎷 Jazz</button><button class="btn ghost sm" type="button" data-pkgenre="rock">🎸 Rock</button><button class="btn ghost sm" type="button" data-pkgenre="soul">❤️ Soul &amp; R&amp;B</button><button class="btn ghost sm" type="button" data-pkgenre="reggae">🇯🇲 Reggae</button><button class="btn ghost sm" type="button" data-pkgenre="classics">🎺 Classics</button><button class="btn ghost sm" type="button" data-pkgenre="more">🌍 More artists</button></div><div class="dj-list" id="pk-list" style="max-height:300px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin-top:12px">📻 COMING UP — LISTENER PICKS</b><div class="dj-list" id="pk-queue" style="margin-top:6px;max-height:110px"><small class="muted">No picks yet — be the first.</small></div></div>
   </div>
 </div>
 <div class="dj" id="dj-owner" hidden>
@@ -215,7 +228,7 @@
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
   <div class="dj-decks">
     ${deckHTML("A")}
-    <div class="mixer"><small>MIC DROP</small>
+    <div class="mixer m1"><small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
       <small>CROSSFADER</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf" aria-label="Crossfader">
@@ -229,6 +242,14 @@
       <small>TRANSFORMER (CHOP)</small><div style="display:flex;gap:5px;justify-content:center"><button class="btn ghost sm gatebtn on" type="button" data-gate="0">OFF</button><button class="btn ghost sm gatebtn" type="button" data-gate="2">SLOW</button><button class="btn ghost sm gatebtn" type="button" data-gate="4">MED</button><button class="btn ghost sm gatebtn" type="button" data-gate="8">FAST</button></div></div>
     ${deckHTML("B")}
   </div>
+  <div class="dj-decks" style="margin-top:16px">
+    ${deckHTML("C")}
+    <div class="mixer m2"><small>DECKS C / D</small>
+      <small>CROSSFADER C/D</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf2" aria-label="Crossfader decks C and D">
+      <div style="display:flex;justify-content:space-between;width:100%;font:700 11px var(--body);color:var(--gold-hi)"><span>C</span><span>D</span></div>
+      <small>BITCRUSH (GRIT)</small><input type="range" min="0" max="100" step="1" value="0" id="dj-crush" aria-label="Bitcrush grit">
+      <small style="letter-spacing:0;text-transform:none">Decks C and D run through the same master effects, mic, talk button and recorder — every move broadcasts to the radio.</small></div>
+    ${deckHTML("D")}
   <div class="dj-grid2">
     <div class="dj-panel"><h4>🎤 LIVE MIC</h4>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" id="mic-on">Open the mic</button><button class="btn ghost sm" type="button" id="mic-mon">🔇 Monitor off</button></div>
@@ -237,7 +258,7 @@
       <small class="muted">Your live mic feeds the show recording. To talk TO the listeners, use the big HOLD TO TALK button — it sends your voice out over the mix.</small></div>
     <div class="dj-panel"><h4>🔊 JINGLE / SPOT BOARD</h4>
       <div class="pads" id="dj-pads"></div>
-      <small class="muted">Top row: built-in station sounds. Bottom row: your own drops — tap an empty pad to record up to 8 seconds. ▶ plays it in the booth, 📡 sends it out over the air.</small></div>
+      <small class="muted">Built-in station sounds first, then your own drops — tap an empty pad to record up to 8 seconds. ▶ plays it in the booth, 📡 sends it out over the air.</small></div>
     <div class="dj-panel"><h4>⏺️ RECORD THE SHOW</h4>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" id="rec-btn">⏺ Start recording</button><span id="rec-st" class="muted" style="font-size:13px">Captures the full mix + your mic.</span></div>
       <div id="rec-out"></div></div>
@@ -256,8 +277,12 @@
       <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net"></div></div>
   </div>
 </div>`;
-  const $ = (s) => root.querySelector(s);
-  const decks = { A: null, B: null };
+  // the booth moves into its own DJ view — its own section, nothing but DJing
+  const boothEl = document.getElementById("dj-owner"), boothHome = document.getElementById("dj-booth-root");
+  if (boothEl && boothHome) boothHome.appendChild(boothEl);
+  const $ = (s) => document.querySelector(s);
+  const decks = { A: null, B: null, C: null, D: null };
+  const DECKS = ["A", "B", "C", "D"]; const PAIR = { A: "B", B: "A", C: "D", D: "C" };
   const deck = (k) => decks[k] || (decks[k] = Deck());
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   const agoT = (at) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
@@ -266,7 +291,7 @@
   let listening = false, voiceEl = null, heardVoice = "", micHot = 0;
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
-    ["A", "B"].forEach((k) => { if (decks[k]) decks[k].vol((S[k].vol ?? 0.9) * xfGain(S.xf, k) * duck); });
+    DECKS.forEach((k) => { if (decks[k]) { const x = k === "C" || k === "D" ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A"; decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * duck); } });
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
   function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
@@ -274,8 +299,15 @@
     if (v <= 50) { node.type = "lowpass"; node.frequency.value = v >= 49 ? 18000 : 200 * Math.pow(90, v / 50); }
     else { node.type = "highpass"; node.frequency.value = v <= 51 ? 10 : 20 * Math.pow(600, (v - 50) / 50); }
   }
+  function setCrushCurve(v) {
+    if (!crushNode || v === crushBuilt) return; crushBuilt = v;
+    const n = 1024, curve = new Float32Array(n);
+    if (v <= 0) { for (let i = 0; i < n; i++) curve[i] = (i / (n - 1)) * 2 - 1; }
+    else { const steps = Math.pow(2, Math.max(1.5, 8 - (v / 100) * 6.5)); for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; curve[i] = Math.round(x * steps) / steps; } }
+    crushNode.curve = curve;
+  }
   function applyFx() {
-    ["A", "B"].forEach((k) => {
+    DECKS.forEach((k) => {
       const d = decks[k]; if (!d) return;
       const eq = S[k].eq || { lo: 0, mid: 0, hi: 0 };
       if (d.eq) { d.eq.lo.gain.value = eq.lo || 0; d.eq.mid.gain.value = eq.mid || 0; d.eq.hi.gain.value = eq.hi || 0; }
@@ -287,6 +319,7 @@
     if (echoFb) echoFb.gain.value = f.fb == null ? 0.34 : f.fb;
     if (verbWet) verbWet.gain.value = f.verb || 0;
     if (flaWet) flaWet.gain.value = (f.fla || 0) * 0.8;
+    if (crushNode) setCrushCurve(f.crush || 0);
     if (gateOsc && gateDepth && gateGain) {
       const g = +f.gate || 0;
       if (g > 0) { gateOsc.frequency.value = g; gateDepth.gain.value = 0.5; gateGain.gain.value = 0.5; }
@@ -336,18 +369,18 @@
     } catch (_) { peakCache.set(src, null); }
   }
   function paintOwner() {
-    ["A", "B"].forEach((k) => {
+    DECKS.forEach((k) => {
       const s = S[k], pl = $("#pl-" + k);
       $("#ttl-" + k).textContent = s.title || "Load a song";
       pl.classList.toggle("spin", !!s.playing);
       pl.classList.toggle("has-cover", okUrl(s.cover)); if (okUrl(s.cover)) pl.style.setProperty("--cv", `url("${s.cover}")`);
-      root.querySelector(`[data-play="${k}"]`).textContent = s.playing ? "⏸ Pause" : "▶ Play";
-      root.querySelector(`[data-vol="${k}"]`).value = s.vol ?? 0.9;
-      const pv = root.querySelector(`[data-pitch="${k}"]`); if (pv && document.activeElement !== pv) pv.value = s.rate || 1;
+      document.querySelector(`[data-play="${k}"]`).textContent = s.playing ? "⏸ Pause" : "▶ Play";
+      document.querySelector(`[data-vol="${k}"]`).value = s.vol ?? 0.9;
+      const pv = document.querySelector(`[data-pitch="${k}"]`); if (pv && document.activeElement !== pv) pv.value = s.rate || 1;
       $("#pit-v-" + k).textContent = (((s.rate || 1) - 1) * 100).toFixed(1).replace("-", "−") + "%";
       peaks(k);
     });
-    $("#dj-xf").value = S.xf; $("#dj-golive").checked = !!S.live;
+    $("#dj-xf").value = S.xf; const x2 = $("#dj-xf2"); if (x2) x2.value = S.xf2 ?? 0.5; const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = S.live ? "ON AIR" : "OFF AIR";
     renderLog($("#dj-log")); paintPads();
@@ -360,19 +393,19 @@
     const live = isLive();
     const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = live ? "ON AIR" : "OFF AIR";
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
-    const now = live ? ["A", "B"].filter((k) => S[k].playing).map((k) => S[k].title).filter(Boolean) : [];
+    const now = live ? DECKS.filter((k) => S[k].playing).map((k) => S[k].title).filter(Boolean) : [];
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? `<b style="font-size:13px;letter-spacing:.1em">🎙️ LATEST RECORDED SHOW</b><audio controls preload="none" src="${E(S.show.url)}" style="width:100%;margin-top:6px"></audio><small class="muted">Recorded ${new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}</small>` : "";
     renderLog($("#st-log"));
   }
   setInterval(() => {
-    ["A", "B"].forEach((k) => {
+    DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) el.textContent = fmt(decks[k].el.currentTime) + (decks[k].el.duration ? " / " + fmt(decks[k].el.duration) : "");
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
-    if (listening) { follow("A"); follow("B"); }
+    if (listening) DECKS.forEach((k) => follow(k));
     // station clock + show timer
     const ck = $("#dj-clock"); if (ck && OWNER()) ck.textContent = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "America/New_York" }) + " ET";
     const st = $("#dj-showtime"); if (st && OWNER()) st.textContent = S.live && S.liveSince ? "⏱ On air " + fmt((Date.now() - S.liveSince) / 1000) : "";
@@ -384,7 +417,7 @@
   function isLive() { return S.live && Date.now() - (S.updatedAt || 0) < 3 * 60e3; }
   // booth heartbeat: while the booth is on screen (or a set is live) the booth owns the
   // tables and the 24/7 keeper stands down; close the booth and the keeper takes over
-  setInterval(() => { if (OWNER() && (S.live || root.offsetParent)) save(true); }, 20000);
+  setInterval(() => { if (OWNER() && (S.live || document.getElementById("dj-owner")?.offsetParent)) save(true); }, 10000);
   // the keeper ping: keeps the rotation advancing around the clock, booth open or not
   const pingKeeper = () => fetch("/api/station", { cache: "no-store" }).catch(() => {});
   pingKeeper(); setInterval(pingKeeper, 12000);
@@ -392,16 +425,16 @@
   function startListening() {
     listening = true; actx();
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
-    $("#dj-listen").textContent = "⏹ Stop listening"; follow("A"); follow("B");
+    $("#dj-listen").textContent = "⏹ Stop listening"; DECKS.forEach((k) => follow(k));
     try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
     try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
-  function stopListening() { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  function stopListening() { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
   window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening };
   if (typeof media !== "undefined") media.addEventListener("play", () => {
-    if (listening) { listening = false; ["A", "B"].forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; return; }
+    if (listening) { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; return; }
     // The tables ARE the live radio while a set is live: any radio tune-in (player bar,
     // hero, lock-screen controls, radio-keep) hands over to the deck mix, not the playlist.
     if (!OWNER() && isLive() && typeof mode !== "undefined" && mode === "radio") { autoMoved = true; startListening(); }
@@ -414,20 +447,20 @@
     if (OWNER() && ownerLoaded) return;
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
-    S = Object.assign({ live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
+    S = Object.assign({ live: false, xf: 0.5, xf2: 0.5, duck: false, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
     S.fx = Object.assign(defFx(), S.fx || {});
-    S.A = Object.assign(blank(), S.A || {}); S.B = Object.assign(blank(), S.B || {});
+    S.A = Object.assign(blank(), S.A || {}); S.B = Object.assign(blank(), S.B || {}); S.C = Object.assign(blank(), S.C || {}); S.D = Object.assign(blank(), S.D || {});
     // heal the booth: anything still pointing at the dead storage comes off the decks
-    if (OWNER()) { let dirty = false; ["A", "B"].forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
+    if (OWNER()) { let dirty = false; DECKS.forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
     const live = isLive();
     $("#dj-banner").hidden = !live || OWNER();
     $("#dj-station").hidden = OWNER() ? false : (live || (S.log || []).length > 0 || !!S.show);
     if (!live && listening) endSet();
     if (live && !was && !document.hidden && !OWNER() && typeof mode !== "undefined" && mode === "radio" && typeof media !== "undefined" && !media.paused) { autoMoved = true; startListening(); }
-    if (listening) { follow("A"); follow("B"); }
+    if (listening) DECKS.forEach((k) => follow(k));
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
-    if (firstOwnerLoad) ["A", "B"].forEach((k) => { if (S[k].playing) follow(k); });
+    if (firstOwnerLoad) DECKS.forEach((k) => { if (S[k].playing) follow(k); });
     playVoice(); paintStation();
     if (OWNER()) paintOwner();
   }
@@ -435,19 +468,19 @@
   /* ---------- owner: loading songs, transport, deck tools ---------- */
   function libList() {
     const list = TRACKS();
-    $("#dj-lib").innerHTML = list.length ? list.map((t, i) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button></div>`).join("") : '<small class="muted">No songs in your library yet.</small>';
+    $("#dj-lib").innerHTML = list.length ? list.map((t, i) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button></div>`).join("") : '<small class="muted">No songs in your library yet.</small>';
   }
   let net = [];
   async function load(k, item) {
     const d = deck(k); actx();
-    S[k] = Object.assign(blank(), { src: item.src, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1 });
+    S[k] = Object.assign(blank(), { src: item.src, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0 });
     d.cues = [null, null, null]; d.loop = null; paintCues(k);
     paintOwner(); $("#ttl-" + k).textContent = "Loading " + item.title + "...";
     const ok = await d.set(item.src);
     if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
     d.el.currentTime = 0; d.el.playbackRate = S[k].rate || 1; paintOwner(); levels(); save();
   }
-  function paintCues(k) { root.querySelectorAll(`[data-hot^="${k}:"]`).forEach((b, i) => b.classList.toggle("on", deck(k).cues[i] != null)); root.querySelectorAll(`[data-loop^="${k}:"]`).forEach((b) => b.classList.toggle("on", !!deck(k).loop && +b.dataset.loop.split(":")[1] === Math.round(deck(k).loop[1] - deck(k).loop[0]))); }
+  function paintCues(k) { document.querySelectorAll(`[data-hot^="${k}:"]`).forEach((b, i) => b.classList.toggle("on", deck(k).cues[i] != null)); document.querySelectorAll(`[data-loop^="${k}:"]`).forEach((b) => b.classList.toggle("on", !!deck(k).loop && +b.dataset.loop.split(":")[1] === Math.round(deck(k).loop[1] - deck(k).loop[0]))); }
   async function togglePlay(k) {
     const s = S[k], d = deck(k); if (!okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
     actx(); try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
@@ -463,29 +496,29 @@
     paintOwner(); levels(); save(true);
     // Pausing the last deck doesn't kill the radio: with Auto-DJ on and nothing cued
     // on the other deck, the rotation takes the wheel until he plays the tables again.
-    if (!s.playing && S.live && S.autodj) { const o = k === "A" ? "B" : "A"; if (!S[o].playing && !okUrl(S[o].src)) autoNext(k); }
+    if (!s.playing && S.live && S.autodj && (k === "A" || k === "B")) { const o = PAIR[k]; if (!S[o].playing && !okUrl(S[o].src)) autoNext(k); }
   }
-  root.addEventListener("click", async (e) => {
+  onMain("click", async (e) => {
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
     if (b.dataset.load) {
-      if (b.dataset.lib != null) { const t = TRACKS()[+b.dataset.lib]; if (t) load(b.dataset.load, { src: URLOF(t), title: t.title, cover: t.cover }); }
+      if (b.dataset.lib != null) { const t = TRACKS()[+b.dataset.lib]; if (t) load(b.dataset.load, { src: URLOF(t), title: t.title, cover: t.cover, dur: +t.duration || 0 }); }
       else if (b.dataset.net != null) { const n = net[+b.dataset.net]; if (!n) return; b.disabled = true; const src = await iaFile(n.id); b.disabled = false; if (!src) { say("No playable file in that one. Pick another."); return; } load(b.dataset.load, { src, title: n.title, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id) }); }
       return;
     }
-    if (b.dataset.queue != null) { const t = TRACKS()[+b.dataset.queue]; if (t) { queue.push({ src: URLOF(t), title: t.title, cover: t.cover || "" }); saveQueue(); paintQueue(); say("Queued: " + t.title); } return; }
+    if (b.dataset.queue != null) { const t = TRACKS()[+b.dataset.queue]; if (t) { queue.push({ src: URLOF(t), title: t.title, cover: t.cover || "", dur: +t.duration || 0 }); saveQueue(); paintQueue(); say("Queued: " + t.title); } return; }
     if (b.dataset.play) return togglePlay(b.dataset.play);
     if (b.dataset.cue0) { const k = b.dataset.cue0, s = S[k], d = deck(k); s.pos = 0; if (s.playing) s.start = Date.now(); try { d.el.currentTime = 0; } catch (_) {} save(true); return; }
     if (b.dataset.brake) { const k = b.dataset.brake, d = deck(k); if (d.el.paused) return; const r0 = d.el.playbackRate, t0 = performance.now(); const step = () => { const p = (performance.now() - t0) / 800; if (p >= 1) { d.el.pause(); d.el.playbackRate = S[k].rate || 1; if (S[k].playing) { S[k].playing = false; S[k].pos = d.el.currentTime; paintOwner(); save(true); } return; } d.el.playbackRate = Math.max(0.02, r0 * (1 - p)); requestAnimationFrame(step); }; step(); return; }
     if (b.dataset.hot) { if (hotTimer === "done") { hotTimer = null; return; } const [k, n] = b.dataset.hot.split(":"), d = deck(k), i = +n - 1; if (d.cues[i] == null) { d.cues[i] = d.el.currentTime || 0; say("Cue " + n + " set at " + fmt(d.cues[i])); } else { try { d.el.currentTime = d.cues[i]; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.cues[i] * 1000; save(true); } paintCues(k); return; }
     if (b.dataset.loop) { const [k, secs] = b.dataset.loop.split(":"), d = deck(k); if (d.loop && Math.round(d.loop[1] - d.loop[0]) === +secs) d.loop = null; else { const st = d.el.currentTime || 0; d.loop = [st, st + (+secs)]; say("Looping " + secs + "s on deck " + k); } paintCues(k); return; }
-    if (b.dataset.sync) { const k = b.dataset.sync, o = k === "A" ? "B" : "A"; S[k].rate = S[o].rate || 1; deck(k).el.playbackRate = S[k].rate; if (S[k].playing) { /* keep position honest */ S[k].start = Date.now() - deck(k).el.currentTime * 1000; } paintOwner(); save(true); say("Deck " + k + " speed matched to deck " + o); return; }
-    if (b.dataset.gate != null) { S.fx.gate = +b.dataset.gate; root.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate)); applyFx(); save(true); say(S.fx.gate ? "Transformer chop is ON — everyone listening hears the beat get sliced." : "Transformer off."); return; }
+    if (b.dataset.sync) { const k = b.dataset.sync, o = DECKS.find((x) => x !== k && S[x].playing) || PAIR[k]; S[k].rate = S[o].rate || 1; deck(k).el.playbackRate = S[k].rate; if (S[k].playing) { /* keep position honest */ S[k].start = Date.now() - deck(k).el.currentTime * 1000; } paintOwner(); save(true); say("Deck " + k + " speed matched to deck " + o); return; }
+    if (b.dataset.gate != null) { S.fx.gate = +b.dataset.gate; document.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate)); applyFx(); save(true); say(S.fx.gate ? "Transformer chop is ON — everyone listening hears the beat get sliced." : "Transformer off."); return; }
   });
   // long-press a hot cue clears it
   let hotTimer = null;
-  root.addEventListener("pointerdown", (e) => { const b = e.target.closest("[data-hot]"); if (!b || !OWNER()) return; hotTimer = setTimeout(() => { const [k, n] = b.dataset.hot.split(":"); deck(k).cues[+n - 1] = null; paintCues(k); say("Cue " + n + " cleared"); hotTimer = "done"; }, 650); });
-  root.addEventListener("pointerup", (e) => { if (hotTimer === "done") { e.preventDefault(); return; } clearTimeout(hotTimer); hotTimer = null; }, true);
-  root.addEventListener("input", (e) => {
+  onMain("pointerdown", (e) => { const b = e.target.closest("[data-hot]"); if (!b || !OWNER()) return; hotTimer = setTimeout(() => { const [k, n] = b.dataset.hot.split(":"); deck(k).cues[+n - 1] = null; paintCues(k); say("Cue " + n + " cleared"); hotTimer = "done"; }, 650); });
+  onMainRaw("pointerup", (e) => { if (hotTimer === "done") { e.preventDefault(); return; } clearTimeout(hotTimer); hotTimer = null; }, true);
+  onMain("input", (e) => {
     if (!OWNER()) return;
     const t = e.target;
     if (t.dataset.vol) { S[t.dataset.vol].vol = +t.value; levels(); save(); }
@@ -493,6 +526,8 @@
     if (t.dataset.eq) { const [k, band] = t.dataset.eq.split(":"), d = deck(k); if (d.eq) d.eq[band].gain.value = +t.value; S[k].eq = Object.assign({ lo: 0, mid: 0, hi: 0 }, S[k].eq || {}); S[k].eq[band] = +t.value; save(); }
     if (t.dataset.flt) { const k = t.dataset.flt; S[k].flt = +t.value; if (deck(k).flt) fltFreq(deck(k).flt, +t.value); save(); }
     if (t.id === "dj-xf") { S.xf = +t.value; levels(); save(); }
+    if (t.id === "dj-xf2") { S.xf2 = +t.value; levels(); save(); }
+    if (t.id === "dj-crush") { S.fx.crush = +t.value; applyFx(); save(); }
     if (t.id === "dj-master" && masterGain) masterGain.gain.value = +t.value;
     if (t.id === "dj-filter") { S.fx.mf = +t.value; applyFx(); save(); }
     if (t.id === "dj-echo") { S.fx.echo = +t.value; applyFx(); save(); }
@@ -500,7 +535,7 @@
     if (t.id === "dj-verb") { S.fx.verb = +t.value; applyFx(); save(); }
     if (t.id === "dj-fla") { S.fx.fla = +t.value; applyFx(); save(); }
   });
-  root.addEventListener("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } });
   $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
     // Auto-DJ is the station's play method: if nothing is playing it starts the rotation itself,
     // and it primes the idle deck so the first crossfade is ready
@@ -511,30 +546,42 @@
     }
   });
   // scratch / scrub: drag a platter sideways to move through the song
-  ["A", "B"].forEach((k) => {
+  DECKS.forEach((k) => {
     const pl = () => $("#pl-" + k); let drag = null;
-    root.addEventListener("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; drag = { x: e.clientX, was: !deck(k).el.paused }; deck(k).el.pause(); e.preventDefault(); });
-    root.addEventListener("pointermove", (e) => { if (!drag) return; const d = deck(k), dx = e.clientX - drag.x; drag.x = e.clientX; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * 0.06)); } catch (_) {} });
-    root.addEventListener("pointerup", () => { if (!drag) return; const d = deck(k); if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
+    onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; drag = { x: e.clientX, was: !deck(k).el.paused }; deck(k).el.pause(); e.preventDefault(); });
+    onMainRaw("pointermove", (e) => { if (!drag) return; const d = deck(k), dx = e.clientX - drag.x; drag.x = e.clientX; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * 0.06)); } catch (_) {} });
+    onMainRaw("pointerup", () => { if (!drag) return; const d = deck(k); if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
   });
   // deck ended -> owner bookkeeping + Auto-DJ
-  ["A", "B"].forEach((k) => setTimeout(() => deck(k).el.addEventListener("ended", () => { if (OWNER() && !listening) { S[k].playing = false; S[k].pos = 0; paintOwner(); save(true); autoNext(k); } if (listening && !OWNER()) { /* listeners follow the doc */ } }), 0));
+  DECKS.forEach((k) => setTimeout(() => deck(k).el.addEventListener("ended", () => { if (OWNER() && !listening) { S[k].playing = false; S[k].pos = 0; paintOwner(); save(true); if (k === "A" || k === "B") autoNext(k); } if (listening && !OWNER()) { /* listeners follow the doc */ } }), 0));
 
   /* ---------- Auto-DJ queue ---------- */
   let queue = []; try { queue = JSON.parse(localStorage.getItem("mw-dj-queue") || "[]"); } catch (_) {}
   const saveQueue = () => { try { localStorage.setItem("mw-dj-queue", JSON.stringify(queue)); } catch (_) {} };
   function paintQueue() { const box = $("#ad-queue"); if (!box) return; box.innerHTML = queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title)}">${i + 1}. ${E(q.title)}</span><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : '<small class="muted">Queue is empty — Auto-DJ pulls from the full library rotation.</small>'; }
-  root.addEventListener("click", (e) => { const b = e.target.closest("[data-qdel]"); if (b) { queue.splice(+b.dataset.qdel, 1); saveQueue(); paintQueue(); } });
+  onMain("click", (e) => { const b = e.target.closest("[data-qdel]"); if (b) { queue.splice(+b.dataset.qdel, 1); saveQueue(); paintQueue(); } });
   /* the library rotation: a shuffled bag of the whole library, refilled when it runs out —
      this is what the station plays on Auto-DJ when the hand-picked queue is empty */
   let bag = [], lastTitle = "";
   function nextFromLibrary() {
-    if (!bag.length) { bag = TRACKS().map((t) => ({ src: URLOF(t), title: t.title, cover: t.cover || "" })).filter((x) => okUrl(x.src)); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } }
+    if (!bag.length) { bag = TRACKS().map((t) => ({ src: URLOF(t), title: t.title, cover: t.cover || "", dur: +t.duration || 0 })).filter((x) => okUrl(x.src)); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } }
     if (!bag.length) return null;
     let item = bag.pop();
     if (item.title === lastTitle && bag.length) { const other = bag.pop(); bag.push(item); item = other; }
     lastTitle = item.title;
     return item;
+  }
+  /* the mixed rotation, booth side: alternate Meechie's own tracks with real-artist
+     music from the Archive pool — like a real station, not just his catalog */
+  let mixFlip = false, poolCache = null;
+  async function nextFromPool() {
+    if (!poolCache) poolCache = await iaMulti(['creator:"Johnny Cash"', 'creator:"Miles Davis"', 'creator:"Grateful Dead"', 'creator:"James Brown"', 'creator:"Bob Marley"', 'creator:"Duke Ellington"', 'creator:"John Coltrane"', '"hip hop" mixtape', '"soul" "live"', '"rock" "live" concert', '"reggae" "live"', '"jazz" "live"']);
+    for (let tries = 0; tries < 3 && poolCache && poolCache.length; tries++) {
+      const n = poolCache[Math.floor(Math.random() * poolCache.length)];
+      const src = await iaFile(n.id);
+      if (src) return { src, title: n.title, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), dur: 0 };
+    }
+    return null;
   }
   let xfAnim = null;
   async function autoNext(endedK) {
@@ -542,12 +589,13 @@
     let item = null;
     const pick = reqCache.filter((r) => r.data && r.data.kind === "pick").sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
-      if (pick.data.src && okUrl(pick.data.src)) item = { src: pick.data.src, title: pick.data.title || "", cover: pick.data.cover || "" };
+      if (pick.data.src && okUrl(pick.data.src)) item = { src: pick.data.src, title: pick.data.title || "", cover: pick.data.cover || "", dur: pick.data.dur || 0 };
       else if (pick.data.iaId) { const src = await iaFile(pick.data.iaId); if (src) item = { src, title: pick.data.title || "", cover: "https://archive.org/services/img/" + encodeURIComponent(pick.data.iaId) }; }
       DBF()?.doc("requests/" + pick.id).delete().catch(() => {});
       if (item) say("🎵 Listener pick up next: " + item.title);
     }
-    if (!item) item = queue.length ? queue.shift() : nextFromLibrary();
+    if (!item && queue.length) item = queue.shift();
+    if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
     if (!item) return;
     saveQueue(); paintQueue();
     const target = endedK === "A" ? "B" : "A";
@@ -565,7 +613,13 @@
     { name: "🚨 Siren", fn() { const c = actx(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = "square"; o.frequency.setValueAtTime(700, t); for (let i = 0; i < 4; i++) { o.frequency.linearRampToValueAtTime(1400, t + i * 0.36 + 0.18); o.frequency.linearRampToValueAtTime(700, t + i * 0.36 + 0.36); } g.gain.setValueAtTime(0.07, t); g.gain.setValueAtTime(0.07, t + 1.4); g.gain.linearRampToValueAtTime(0.0001, t + 1.55); o.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 1.6); } },
     { name: "🔫 Laser", fn() { const c = actx(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = "sawtooth"; o.frequency.setValueAtTime(2400, t); o.frequency.exponentialRampToValueAtTime(120, t + 0.28); g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3); o.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 0.32); } },
     { name: "✨ Sting", fn() { const c = actx(), t = c.currentTime; [523, 659, 784, 1047].forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = "triangle"; o.frequency.value = f; const st = t + i * 0.09; g.gain.setValueAtTime(0.0001, st); g.gain.exponentialRampToValueAtTime(0.18, st + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, st + 0.9); o.connect(g); g.connect(masterIn); o.start(st); o.stop(st + 0.95); }); } },
+    { name: "🎺 Scratch", fn() { const c = actx(), t = c.currentTime, o = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain(); o.type = "sawtooth"; bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 2; o.frequency.setValueAtTime(300, t); o.frequency.linearRampToValueAtTime(1100, t + 0.1); o.frequency.linearRampToValueAtTime(240, t + 0.22); o.frequency.linearRampToValueAtTime(950, t + 0.32); o.frequency.linearRampToValueAtTime(200, t + 0.46); g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5); o.connect(bp); bp.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 0.52); } },
+    { name: "💥 Impact", fn() { const c = actx(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = "sine"; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(36, t + 0.5); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6); o.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 0.62); const nb = noiseBuf(), ns = c.createBufferSource(), ng = c.createGain(), nf = c.createBiquadFilter(); nf.type = "lowpass"; nf.frequency.value = 900; ns.buffer = nb; ng.gain.setValueAtTime(0.22, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.25); ns.connect(nf); nf.connect(ng); ng.connect(masterIn); ns.start(t); ns.stop(t + 0.3); } },
+    { name: "🔔 Bell", fn() { const c = actx(), t = c.currentTime; [880, 1318, 1760].forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(); o.type = "sine"; o.frequency.value = f; g.gain.setValueAtTime(0.16 / (i + 1), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 1.1 - i * 0.25); o.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 1.15); }); } },
+    { name: "⏪ Rewind", fn() { const c = actx(), t = c.currentTime, o = c.createOscillator(), g = c.createGain(); o.type = "sawtooth"; o.frequency.setValueAtTime(950, t); o.frequency.exponentialRampToValueAtTime(110, t + 0.55); g.gain.setValueAtTime(0.09, t); g.gain.setValueAtTime(0.09, t + 0.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.58); o.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 0.6); } },
+    { name: "🥁 Drum Fill", fn() { const c = actx(), t = c.currentTime, nb = noiseBuf(); [0, 0.11, 0.22, 0.33].forEach((off, i) => { const ns = c.createBufferSource(), ng = c.createGain(), nf = c.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 400 + i * 350; nf.Q.value = 1.2; ns.buffer = nb; ng.gain.setValueAtTime(0.2, t + off); ng.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.09); ns.connect(nf); nf.connect(ng); ng.connect(masterIn); ns.start(t + off); ns.stop(t + off + 0.1); const o = c.createOscillator(), og = c.createGain(); o.type = "sine"; o.frequency.value = 180 - i * 25; og.gain.setValueAtTime(0.22, t + off); og.gain.exponentialRampToValueAtTime(0.0001, t + off + 0.1); o.connect(og); og.connect(masterIn); o.start(t + off); o.stop(t + off + 0.11); }); } },
   ];
+  function noiseBuf() { const c = actx(); if (!c._nb) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; c._nb = b; } return c._nb; }
   let padEl = null, padSrc = null;
   function playPadUrl(url) {
     actx();
@@ -579,9 +633,9 @@
       custom.map((p, i) => p ? `<button class="pad custom" type="button" data-pad="${i}">🎙️ Drop ${i + 1}<small>▶ booth · long-press = 📡 on air</small></button>` : `<button class="pad custom" type="button" data-padrec="${i}">➕ Drop ${i + 1}<small>tap to record 8s</small></button>`).join("");
   }
   let padPress = null;
-  root.addEventListener("pointerdown", (e) => { const b = e.target.closest("[data-pad]"); if (!b) return; padPress = setTimeout(() => { const p = (S.pads || [])[+b.dataset.pad]; if (p && okUrl(p.url)) { S.voice = { id: p.id, url: p.url, at: Date.now() }; heardVoice = p.id; save(true); say("Drop sent out over the air 📡"); } padPress = "done"; }, 650); });
-  root.addEventListener("pointerup", () => { clearTimeout(padPress); if (padPress !== "done") padPress = null; }, true);
-  root.addEventListener("click", async (e) => {
+  onMain("pointerdown", (e) => { const b = e.target.closest("[data-pad]"); if (!b) return; padPress = setTimeout(() => { const p = (S.pads || [])[+b.dataset.pad]; if (p && okUrl(p.url)) { S.voice = { id: p.id, url: p.url, at: Date.now() }; heardVoice = p.id; save(true); say("Drop sent out over the air 📡"); } padPress = "done"; }, 650); });
+  onMainRaw("pointerup", () => { clearTimeout(padPress); if (padPress !== "done") padPress = null; }, true);
+  onMain("click", async (e) => {
     const s = e.target.closest("[data-synth]"); if (s && OWNER()) { SYNTH[+s.dataset.synth].fn(); return; }
     const pb = e.target.closest("[data-pad]"); if (pb && OWNER()) { if (padPress === "done") { padPress = null; return; } const p = (S.pads || [])[+pb.dataset.pad]; if (p) playPadUrl(p.url); return; }
     const pr = e.target.closest("[data-padrec]"); if (pr && OWNER()) return recordPad(+pr.dataset.padrec, pr);
@@ -719,14 +773,29 @@
     if (reqSubbed || !OWNER()) return; const d = DBF(); if (!d) return; reqSubbed = true;
     try { d.collection("requests").limit(40).onSnapshot((s) => { reqCache = s.docs.map((x) => ({ id: x.id, data: x.data() || {} })); renderReqs(s.docs); }, () => {}); } catch (_) { reqSubbed = false; }
   }
-  root.addEventListener("click", async (e) => {
+  onMain("click", async (e) => {
     const p = e.target.closest("[data-rqplay]"); if (p) { new Audio(p.dataset.rqplay).play().catch(() => {}); return; }
     const air = e.target.closest("[data-rqair]"); if (air && OWNER()) { const [id, url, asset] = air.dataset.rqair.split("|"); S.voice = { id: asset || id, url, at: Date.now() }; heardVoice = S.voice.id; save(true); say("Drop is on the air 📡"); DBF()?.doc("requests/" + id).delete().catch(() => {}); return; }
     const dn = e.target.closest("[data-rqdone]"); if (dn && OWNER()) { DBF()?.doc("requests/" + dn.dataset.rqdone).delete().catch(() => {}); }
   });
 
   /* ---------- listener song picker: the audience queues the radio ---------- */
-  let pkTab = "mine", pkReal = null, pkSubbed = false;
+  let pkTab = "mine", pkReal = null, pkItems = null, pkLabel = "", pkSubbed = false;
+  const PK_GENRES = {
+    hiphop: ['"hip hop" mixtape', '"rap" mixtape', 'creator:"Soulja Boy"', '"hip hop" "live"'],
+    jazz: ['creator:"Miles Davis"', 'creator:"John Coltrane"', '"jazz" "live" quartet', 'creator:"Duke Ellington"'],
+    rock: ['creator:"Grateful Dead"', '"rock" "live" concert', 'creator:"Phish"', '"rock" "live"'],
+    soul: ['creator:"James Brown"', 'creator:"Marvin Gaye"', '"soul" "live"', '"motown"'],
+    reggae: ['creator:"Bob Marley"', '"reggae" "live"', 'creator:"Peter Tosh"'],
+    classics: ['creator:"Johnny Cash"', 'creator:"Frank Sinatra"', 'creator:"Duke Ellington"', '"big band" "live"'],
+    more: ['creator:"Bob Dylan"', 'creator:"Janis Joplin"', '"blues" "live"', '"gospel" choir', '"funk" "live"'],
+  };
+  async function iaMulti(qs) {
+    const seen = new Set(), out = [];
+    const rs = await Promise.allSettled(qs.map((q) => iaSearch(q)));
+    for (const r of rs) if (r.status === "fulfilled") for (const n of r.value) if (!seen.has(n.id)) { seen.add(n.id); out.push(n); }
+    return out;
+  }
   function paintPkList() {
     const box = $("#pk-list"); if (!box) return;
     const m = $("#pk-mine"), r = $("#pk-real");
@@ -734,36 +803,49 @@
     if (r) { r.classList.toggle("on", pkTab === "real"); r.classList.toggle("ghost", pkTab !== "real"); }
     if (pkTab === "mine") {
       const ts = TRACKS();
-      box.innerHTML = ts.length ? ts.map((t, i) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn sm" type="button" data-picklib="${i}">▶ Play next</button></div>`).join("") : '<small class="muted">The library is loading — one second.</small>';
-    } else if (pkReal == null) { box.innerHTML = '<small class="muted">Loading real artists…</small>'; loadReal(); }
-    else box.innerHTML = pkReal.length ? pkReal.map((n, i) => `<div class="dj-item"><span title="${E(n.title)}">${E(n.title)}</span><button class="btn sm" type="button" data-picknet="${i}">▶ Play next</button></div>`).join("") : '<small class="muted">The artist shelf is empty right now — pick from the Meechie list instead.</small>';
+      box.innerHTML = ts.length ? ts.map((t, i) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn sm" type="button" data-picklib="${i}">▶ Play next</button></div>`).join("") : '<small class="muted">The library is loading \u2014 one second.</small>';
+      return;
+    }
+    if (pkItems == null) { box.innerHTML = `<small class="muted">Loading ${E(pkLabel || "music")}\u2026</small>`; return; }
+    box.innerHTML = (pkLabel ? `<small class="muted" style="display:block;margin-bottom:4px">${E(pkLabel)} \u2014 ${pkItems.length} songs. Tap \u25B6 and yours plays next.</small>` : "") +
+      (pkItems.length ? pkItems.map((n, i) => `<div class="dj-item"><span title="${E(n.title)}">${E(n.title)}</span><button class="btn sm" type="button" data-picknet="${i}">\u25B6 Play next</button></div>`).join("") : '<small class="muted">Nothing on this shelf right now \u2014 try a genre or search an artist.</small>');
   }
   async function loadReal() {
-    const qs = ['creator:"Johnny Cash"', 'creator:"Miles Davis"', 'creator:"Grateful Dead"', 'creator:"James Brown"', 'creator:"Bob Marley"', 'creator:"Duke Ellington"'];
-    const seen = new Set(), out = [];
-    const rs = await Promise.allSettled(qs.map((q) => iaSearch(q)));
-    for (const r of rs) if (r.status === "fulfilled") for (const n of r.value) if (!seen.has(n.id)) { seen.add(n.id); out.push(n); }
-    pkReal = out.slice(0, 36);
-    if (pkTab === "real") paintPkList();
+    const out = await iaMulti(['creator:"Johnny Cash"', 'creator:"Miles Davis"', 'creator:"Grateful Dead"', 'creator:"James Brown"', 'creator:"Bob Marley"', 'creator:"Duke Ellington"', 'creator:"John Coltrane"', 'creator:"Marvin Gaye"']);
+    pkReal = out.slice(0, 60);
+    if (pkTab === "real") { pkItems = pkReal; pkLabel = "Real artists"; paintPkList(); }
+  }
+  async function loadGenre(g) {
+    const out = await iaMulti(PK_GENRES[g] || []);
+    if (pkTab === "genre") { pkItems = out.slice(0, 60); paintPkList(); }
+  }
+  async function loadSearch(q) {
+    let out = [];
+    try { out = await iaSearch(q); } catch (_) {}
+    if (pkTab === "search") { pkItems = out; paintPkList(); }
   }
   function subPicks() {
     if (pkSubbed) return; const d = DBF(); if (!d) return; pkSubbed = true;
     try { d.collection("requests").limit(100).onSnapshot((s) => { const box = $("#pk-queue"); if (!box) return; const picks = s.docs.map((x) => x.data() || {}).filter((r) => r.kind === "pick").sort((a, b) => (a.at || 0) - (b.at || 0)); box.innerHTML = picks.length ? picks.map((p, i) => `<div class="dj-item"><span title="${E(p.title || "")}">${i + 1}. ${E(p.title || "")}</span><small class="muted">listener pick</small></div>`).join("") : '<small class="muted">No picks yet — be the first.</small>'; }, () => { pkSubbed = false; }); } catch (_) { pkSubbed = false; }
   }
-  root.addEventListener("click", async (e) => {
+  onMain("click", async (e) => {
     if (e.target.closest("#pk-mine")) { pkTab = "mine"; paintPkList(); return; }
-    if (e.target.closest("#pk-real")) { pkTab = "real"; paintPkList(); return; }
+    if (e.target.closest("#pk-real")) { pkTab = "real"; pkItems = pkReal; pkLabel = "Real artists"; paintPkList(); if (!pkReal) loadReal(); return; }
+    const gb = e.target.closest("[data-pkgenre]");
+    if (gb) { pkTab = "genre"; pkItems = null; pkLabel = gb.textContent.trim(); paintPkList(); loadGenre(gb.dataset.pkgenre); return; }
     const pl = e.target.closest("[data-picklib]"), pn = e.target.closest("[data-picknet]");
     if (!pl && !pn) return;
     const now = Date.now();
     if (now - (+(localStorage.getItem("mw-last-pick") || 0)) < 45000) { say("One pick at a time — your song is in line 🎵"); return; }
     let data = null;
-    if (pl) { const t = TRACKS()[+pl.dataset.picklib]; if (t) data = { kind: "pick", title: t.title, src: URLOF(t), cover: t.cover || "", at: now }; }
-    else { const n = (pkReal || [])[+pn.dataset.picknet]; if (n) data = { kind: "pick", title: n.title, iaId: n.id, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), at: now }; }
+    if (pl) { const t = TRACKS()[+pl.dataset.picklib]; if (t) data = { kind: "pick", title: t.title, src: URLOF(t), cover: t.cover || "", dur: +t.duration || 0, at: now }; }
+    else { const n = (pkItems || [])[+pn.dataset.picknet]; if (n) data = { kind: "pick", title: n.title, iaId: n.id, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), at: now }; }
     if (!data) return;
     try { await sendRequest(data); try { localStorage.setItem("mw-last-pick", String(now)); } catch (_) {} say("🎵 Picked: " + data.title + " — it's in line for the radio!"); }
     catch (_) { say("Join free / sign in to pick songs for the radio."); }
   });
+  const pkFormEl = $("#pk-form");
+  if (pkFormEl) pkFormEl.addEventListener("submit", (e) => { e.preventDefault(); const q = $("#pk-q").value.trim(); if (!q) return; pkTab = "search"; pkItems = null; pkLabel = "Search: " + q; paintPkList(); loadSearch(q); });
 
   /* ---------- ticker ---------- */
   $("#dj-ticker-set").addEventListener("click", () => { S.ticker = $("#dj-ticker-in").value.trim().slice(0, 140); save(true); paintStation(); say(S.ticker ? "Ticker is on the station card." : "Ticker cleared."); });
@@ -785,7 +867,7 @@
   $("#dj-sf").addEventListener("submit", async (e) => {
     e.preventDefault(); const q = $("#dj-q").value.trim(); if (!q) return;
     $("#dj-net").innerHTML = '<small class="muted">Searching...</small>';
-    try { net = await iaSearch(q); $("#dj-net").innerHTML = net.length ? net.map((n, i) => `<div class="dj-item"><span title="${E(n.title)}">${E(n.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-net="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-net="${i}">B</button></div>`).join("") : '<small class="muted">Nothing found. Try another word.</small>'; }
+    try { net = await iaSearch(q); $("#dj-net").innerHTML = net.length ? net.map((n, i) => `<div class="dj-item"><span title="${E(n.title)}">${E(n.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-net="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-net="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-net="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-net="${i}">D</button></div>`).join("") : '<small class="muted">Nothing found. Try another word.</small>'; }
     catch (_) { $("#dj-net").innerHTML = '<small class="muted">Search is busy. Try again in a moment.</small>'; }
   });
 
@@ -794,9 +876,12 @@
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) return;
     d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
-    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; if (own) { libList(); paintOwner(); paintQueue(); paintPads(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); };
+    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; if (own) { libList(); paintOwner(); paintQueue(); paintPads(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
     show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
+    // scroll past the tables and the side buttons/floats fold away — nothing covers the decks
+    const boothHome2 = document.getElementById("dj-booth-root");
+    if (boothHome2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => document.body.classList.toggle("dj-past", !en.isIntersecting && en.boundingClientRect.top < 0)); }, { threshold: 0 }).observe(boothHome2);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
