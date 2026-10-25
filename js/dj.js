@@ -408,9 +408,13 @@
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title);
-      if (!S.live) say("🔇 Booth only right now — flip “Go live” at the top of the station and the tables take over the radio for everyone.");
+      // The tables ARE the radio: pressing play on a deck goes live, no separate switch.
+      if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintOwner(); paintStation(); say("🔴 You're LIVE — whatever you play on the tables is on the radio for everyone."); }
     }
     paintOwner(); levels(); save(true);
+    // Pausing the last deck doesn't kill the radio: with Auto-DJ on and nothing cued
+    // on the other deck, the rotation takes the wheel until he plays the tables again.
+    if (!s.playing && S.live && S.autodj) { const o = k === "A" ? "B" : "A"; if (!S[o].playing && !okUrl(S[o].src)) autoNext(k); }
   }
   root.addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
