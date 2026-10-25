@@ -42,7 +42,7 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
   const vs = window.MW_videoSound;
   if (vs && vs.start) { const s = vs.start; vs.start = function () { if (on) pause(true); return s.apply(this, arguments); }; }
 
-  function src(k) { const o = list[k]; return `<source src="${o.src}" type="video/mp4"><source src="${o.local}" type="video/mp4">`; }
+  function src(k) { const o = list[k]; return `<source src="${o.local}" type="video/mp4"><source src="${o.src}" type="video/mp4">`; }
   function play(k, sound) {
     i = (k + list.length) % list.length;
     v.poster = list[i].poster; v.innerHTML = src(i); v.load();
