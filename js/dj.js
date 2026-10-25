@@ -149,7 +149,7 @@
 .onair-lamp.on .dot{background:#ff5b60;animation:djpulse 1.2s infinite}
 @keyframes djpulse{50%{opacity:.35}}
 .dj-clock{font:700 13px ui-monospace,monospace;color:var(--gold-hi)}
-.dj-decks{display:grid;grid-template-columns:minmax(0,1fr) 240px minmax(0,1fr);gap:16px;align-items:stretch}
+.dj-decks{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);gap:16px;align-items:stretch}
 .deck{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;justify-items:center;text-align:center;min-width:0;align-content:start}
 .deck h4{margin:0;font:800 13px var(--body);letter-spacing:.18em;color:var(--gold-hi)}
 .platter{width:min(240px,38vw);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 2px,#1b1b1b 2px 4px);border:3px solid #2a2418;position:relative;box-shadow:inset 0 0 20px #000,0 8px 20px rgba(0,0,0,.6);cursor:grab;touch-action:none}
@@ -168,7 +168,10 @@
 .cuebtn.on{background:var(--gold);color:#191104;border-color:var(--gold)}
 .gatebtn.on,.pktab.on{background:var(--gold);color:#191104;border-color:var(--gold)}
 .loopbtn.on{background:#a3161c;color:#fff;border-color:#e5484d}
-.mixer{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px 10px;display:grid;gap:12px;align-content:start;justify-items:center;text-align:center}
+.mixer{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px 10px;display:grid;gap:12px;align-content:start;justify-items:center;text-align:center;min-width:0}
+.mixer>*{max-width:100%}
+.mixer label{white-space:normal}
+.mixer small{overflow-wrap:break-word}
 .mixer small{color:var(--muted);font-size:11px;letter-spacing:.12em}
 .talk{width:120px;height:120px;border-radius:50%;border:3px solid #e5484d;background:#2a0f10;color:#fff;font:800 13px var(--body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .talk.on{background:#e5484d;box-shadow:0 0 0 8px rgba(229,72,77,.25),0 0 30px #e5484d}
