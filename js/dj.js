@@ -5,7 +5,10 @@
  *        Auto-DJ queue with auto-crossfade, a program log, a station ticker, show recording,
  *        and the Go Live switch that puts the mix on the station for everyone (doc radio/dj).
  * Listeners: when Meechie is live on the decks, the site plays the same mix in sync; they also get the
- *        station card (ticker, recently played, latest recorded show, request box, voice drops). */
+ *        station card (ticker, recently played, latest recorded show, request box, voice drops).
+ * 24/7: functions/api/station.js is the station keeper — while the booth is open its saves stamp
+ *        S.boothAt and the keeper stands down (Malik has the tables); once the booth closes, the
+ *        keeper runs the Auto-DJ rotation in the same state, so the tables never go off air. */
 (function () {
   "use strict";
   const root = document.getElementById("dj-root");
@@ -91,13 +94,13 @@
   let S = { live: false, xf: 0.5, duck: false, A: blank(), B: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
-  function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
   const css = document.createElement("style");
   css.textContent = `
-.dj{margin-top:40px;border:1px solid var(--gold-lo);border-radius:20px;padding:18px;background:radial-gradient(ellipse at 50% 0,#2a2112 0,#100d08 60%);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.dj{margin-top:40px;border:1px solid var(--gold-lo);border-radius:20px;padding:26px;background:radial-gradient(ellipse at 50% 0,#2a2112 0,#100d08 60%);box-shadow:0 20px 50px rgba(0,0,0,.5)}
 .dj-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .dj-top h3{margin:0;font-size:26px}
 .dj-live{display:flex;align-items:center;gap:8px;font-weight:700}
@@ -108,16 +111,16 @@
 .onair-lamp.on .dot{background:#ff5b60;animation:djpulse 1.2s infinite}
 @keyframes djpulse{50%{opacity:.35}}
 .dj-clock{font:700 13px ui-monospace,monospace;color:var(--gold-hi)}
-.dj-decks{display:grid;grid-template-columns:1fr 170px 1fr;gap:14px;align-items:stretch}
+.dj-decks{display:grid;grid-template-columns:1fr 240px 1fr;gap:16px;align-items:stretch}
 .deck{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;justify-items:center;text-align:center;min-width:0;align-content:start}
 .deck h4{margin:0;font:800 13px var(--body);letter-spacing:.18em;color:var(--gold-hi)}
-.platter{width:min(132px,32vw);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 2px,#1b1b1b 2px 4px);border:3px solid #2a2418;position:relative;box-shadow:inset 0 0 20px #000,0 8px 20px rgba(0,0,0,.6);cursor:grab;touch-action:none}
+.platter{width:min(240px,38vw);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 2px,#1b1b1b 2px 4px);border:3px solid #2a2418;position:relative;box-shadow:inset 0 0 20px #000,0 8px 20px rgba(0,0,0,.6);cursor:grab;touch-action:none}
 .platter::after{content:"";position:absolute;inset:34%;border-radius:50%;background:var(--gold) center/cover;box-shadow:0 0 0 3px #0c0a07}
 .platter.has-cover::after{background-image:var(--cv)}
 .platter.spin{animation:djspin 1.8s linear infinite}
 @keyframes djspin{to{transform:rotate(360deg)}}
-.deck canvas.wave{width:100%;height:46px;background:#070605;border:1px solid #241d10;border-radius:8px}
-.deck .ttl{font-weight:700;font-size:14px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.deck canvas.wave{width:100%;height:84px;background:#070605;border:1px solid #241d10;border-radius:8px}
+.deck .ttl{font-weight:700;font-size:17px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .deck .tm{font:600 12px ui-monospace,monospace;color:var(--muted)}
 .deck .row{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;width:100%}
 .deck label.lab{width:100%;font-size:11px;color:var(--muted);text-align:left;display:grid;gap:2px}
@@ -128,7 +131,7 @@
 .loopbtn.on{background:#a3161c;color:#fff;border-color:#e5484d}
 .mixer{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px 10px;display:grid;gap:12px;align-content:start;justify-items:center;text-align:center}
 .mixer small{color:var(--muted);font-size:11px;letter-spacing:.12em}
-.talk{width:92px;height:92px;border-radius:50%;border:3px solid #e5484d;background:#2a0f10;color:#fff;font:800 13px var(--body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.talk{width:120px;height:120px;border-radius:50%;border:3px solid #e5484d;background:#2a0f10;color:#fff;font:800 13px var(--body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .talk.on{background:#e5484d;box-shadow:0 0 0 8px rgba(229,72,77,.25),0 0 30px #e5484d}
 .micmeter{width:100%;height:8px;background:#1c1710;border-radius:99px;overflow:hidden}
 .micmeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#45bd62,#f7b928,#e5484d);transition:width .08s}
@@ -136,7 +139,7 @@
 .dj-panel{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
 .dj-panel h4{margin:0;font:800 12px var(--body);letter-spacing:.16em;color:var(--gold-hi)}
 .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.pad{padding:14px 6px;border-radius:12px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font:700 12px var(--body);cursor:pointer}
+.pad{padding:20px 8px;border-radius:12px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font:700 12px var(--body);cursor:pointer}
 .pad:active{transform:scale(.96)}
 .pad.custom{border-style:dashed}
 .pad small{display:block;color:var(--muted);font-weight:600;font-size:10px;margin-top:3px}
@@ -158,11 +161,12 @@
 .ticker span{display:inline-block;padding-left:100%;animation:djtick 18s linear infinite}
 @keyframes djtick{to{transform:translateX(-100%)}}
 .rec-on{color:#ff8b8f;font-weight:800}
+@media (min-width:1000px){#dj-root{width:min(1400px,95vw);margin-left:50%;transform:translateX(-50%)}}
 @media (max-width:760px){.dj-decks{display:flex;flex-direction:column}.deck{order:1}.deck[data-deck=B]{order:3}.mixer{order:2}.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}}`;
   document.head.appendChild(css);
 
   const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div>
-    <canvas class="wave" id="wv-${k}" width="300" height="46"></canvas>
+    <canvas class="wave" id="wv-${k}" width="520" height="84"></canvas>
     <div class="ttl" id="ttl-${k}">Load a song</div><div class="tm" id="tm-${k}">0:00</div>
     <div class="row"><button class="btn sm" type="button" data-play="${k}">▶ Play</button><button class="btn ghost sm" type="button" data-cue0="${k}">⏮ Cue</button><button class="btn ghost sm" type="button" data-brake="${k}">🛑 Brake</button></div>
     <div class="row">${[1, 2, 3].map((n) => `<button class="btn ghost sm cuebtn" type="button" data-hot="${k}:${n}">CUE ${n}</button>`).join("")}</div>
@@ -330,7 +334,12 @@
 
   /* ---------- listeners ---------- */
   function isLive() { return S.live && Date.now() - (S.updatedAt || 0) < 3 * 60e3; }
-  setInterval(() => { if (OWNER() && S.live) save(true); }, 60000);
+  // booth heartbeat: while the booth is on screen (or a set is live) the booth owns the
+  // tables and the 24/7 keeper stands down; close the booth and the keeper takes over
+  setInterval(() => { if (OWNER() && (S.live || root.offsetParent)) save(true); }, 20000);
+  // the keeper ping: keeps the rotation advancing around the clock, booth open or not
+  const pingKeeper = () => fetch("/api/station", { cache: "no-store" }).catch(() => {});
+  pingKeeper(); setInterval(pingKeeper, 12000);
   setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } paintStation(); }, 30000);
   function startListening() {
     listening = true; actx();
@@ -353,6 +362,7 @@
 
   let ownerLoaded = false;
   function onState(d) {
+    const firstOwnerLoad = OWNER() && !ownerLoaded;
     if (OWNER() && ownerLoaded) return;
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
@@ -366,6 +376,9 @@
     if (!live && listening) endSet();
     if (live && !was && !document.hidden && !OWNER() && typeof mode !== "undefined" && mode === "radio" && typeof media !== "undefined" && !media.paused) { autoMoved = true; startListening(); }
     if (listening) { follow("A"); follow("B"); }
+    // taking control: opening the booth pulls whatever the station is playing onto the
+    // decks, in sync, so the tables are his from the first second
+    if (firstOwnerLoad) ["A", "B"].forEach((k) => { if (S[k].playing) follow(k); });
     playVoice(); paintStation();
     if (OWNER()) paintOwner();
   }
