@@ -29,6 +29,10 @@ const SCHEMA = [
   "create table if not exists coin_tx (id text primary key, uid text not null, kind text not null, coins integer not null default 0, cents integer not null default 0, other text, at integer not null)",
   "create index if not exists coin_tx_uid on coin_tx (uid, at)",
   "create table if not exists cashouts (id integer primary key autoincrement, uid text not null, cents integer not null, method text, handle text, status text not null default 'requested', at integer not null, paid_at integer)",
+  "create table if not exists game_pool (id integer primary key, coins integer not null default 0)",
+  "insert or ignore into game_pool (id, coins) values (1, 0)",
+  "create table if not exists game_pots (id text primary key, creator text not null, joiner text, bet integer not null, side text not null, status text not null default 'open', winner text, at integer not null, done_at integer)",
+  "create index if not exists game_pots_status on game_pots (status, at)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
@@ -50,6 +54,54 @@ async function stripeSigned(env, body, header) {
   const mac = [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(t + "." + body)))].map((b) => b.toString(16).padStart(2, "0")).join("");
   return sigs.some((s) => s.length === mac.length && [...s].reduce((d, c, i) => d | (c.charCodeAt(0) ^ mac.charCodeAt(i)), 0) === 0);
 }
+
+/* ---------------- Coin Casino (games for coins) ----------------
+ * The house can never lose: every payout comes out of the prize pool, and the pool is only ever
+ * filled by players — the losing part of every bet (minus a 10% house fee) plus any coins the
+ * owner seeds in. A bet is refused up front when its biggest possible win beats the pool, so the
+ * site never owes a coin it didn't collect first. Winnings are coins: spend them on gifts (the
+ * person you gift earns cash value at the usual 40%) or play them again. Members flagged
+ * under 18 can't play. */
+const GAMES = {
+  flip: { name: "Coin Flip", maxMult: 1.9 },
+  highcard: { name: "High Card", maxMult: 1.9 },
+  dice: { name: "Lucky Dice", maxMult: 5.4 },
+  slots: { name: "Gold Slots", maxMult: 25 },
+  race: { name: "Meechie Race", maxMult: 5 },
+};
+const GAME_MIN_BET = 5, GAME_MAX_BET = 1000, GAME_FEE = 0.10;
+const rnd = (n) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
+const die = () => 1 + rnd(6);
+function settleGame(game, bet, choice) {
+  // pay = TOTAL coins credited back (0 = lost, bet = push)
+  if (game === "flip") {
+    const land = rnd(2) ? "tails" : "heads";
+    return { pay: land === choice ? Math.floor(bet * 1.9) : 0, detail: { land } };
+  }
+  if (game === "highcard") {
+    const you = 2 + rnd(13), dealer = 2 + rnd(13);
+    return { pay: you > dealer ? Math.floor(bet * 1.9) : you === dealer ? bet : 0, detail: { you, dealer } };
+  }
+  if (game === "dice") {
+    const d1 = die(), d2 = die(), sum = d1 + d2;
+    const win = choice === "seven" ? sum === 7 : choice === "over" ? sum > 7 : sum < 7;
+    return { pay: win ? Math.floor(bet * (choice === "seven" ? 5.4 : 2.2)) : 0, detail: { d1, d2, sum } };
+  }
+  if (game === "slots") {
+    const W = [["🌹", 3], ["🎤", 3], ["🔥", 2], ["💵", 2], ["💎", 1], ["👑", 1]];
+    const bag = W.flatMap(([s, w]) => Array(w).fill(s));
+    const reels = [bag[rnd(12)], bag[rnd(12)], bag[rnd(12)]];
+    const TRIPLE = { "👑": 25, "💎": 15, "💵": 10, "🔥": 10, "🎤": 8, "🌹": 6 };
+    let pay = 0;
+    if (reels[0] === reels[1] && reels[1] === reels[2]) pay = Math.floor(bet * TRIPLE[reels[0]]);
+    else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) pay = Math.floor(bet * 1.2);
+    return { pay, detail: { reels } };
+  }
+  const rolls = [die(), die(), die(), die()], total = rolls.reduce((a, b) => a + b, 0); // race: 4 dice down a 24-space board
+  return { pay: total >= 21 ? bet * 5 : total >= 17 ? Math.floor(bet * 1.8) : total >= 13 ? bet : 0, detail: { rolls, total } };
+}
+const poolRow = async (env) => ((await env.DB.prepare("select coins from game_pool where id = 1").first()) || { coins: 0 }).coins;
+const isUnder18 = async (env, uid) => { const r = await env.DB.prepare("select data from docs where path = ?").bind("members/" + uid).first(); try { return !!(r && JSON.parse(r.data || "{}").under18); } catch (_) { return false; } };
 
 export async function onRequest({ request, env, params }) {
   if (!env.DB) return err("Database not connected.", 503);
@@ -86,6 +138,154 @@ export async function onRequest({ request, env, params }) {
     const recent = (await env.DB.prepare("select kind, coins, cents, other, at from coin_tx where uid = ? order by at desc limit 30").bind(me.id).all()).results || [];
     const outs = (await env.DB.prepare("select id, cents, method, status, at, paid_at from cashouts where uid = ? order by at desc limit 10").bind(me.id).all()).results || [];
     return json({ paid, coins: w.coins, earnedCents: w.earned_cents, paidOutCents: w.paid_cents, pendingCents: p, availableCents: w.earned_cents - w.paid_cents - p, recent, cashouts: outs });
+  }
+
+  /* ---------------- Coin Casino routes ---------------- */
+  if (route === "games" && method === "GET") {
+    const pool = await poolRow(env);
+    const maxBet = {}; for (const [k, g] of Object.entries(GAMES)) maxBet[k] = Math.max(0, Math.min(GAME_MAX_BET, Math.floor(pool / (g.maxMult - 1))));
+    const pots = (await env.DB.prepare("select id, creator, bet, side, at from game_pots where status = 'open' order by at desc limit 20").all()).results || [];
+    const wins = (await env.DB.prepare("select uid, kind, coins, other, at from coin_tx where kind in ('game_win','pot_win') order by at desc limit 12").all()).results || [];
+    const mine = (await env.DB.prepare("select kind, coins, other, at from coin_tx where (uid = ? and kind like 'game%') or (uid = ? and kind like 'pot%') order by at desc limit 10").bind(me.id, me.id).all()).results || [];
+    return json({ pool, games: Object.fromEntries(Object.entries(GAMES).map(([k, g]) => [k, { name: g.name, maxMult: g.maxMult }])), maxBet, minBet: GAME_MIN_BET, fee: GAME_FEE, pots, wins, mine, admin, paid });
+  }
+
+  if (route === "play" && method === "POST") {
+    if (await isUnder18(env, me.id)) return err("Members under 18 can't play coin games.");
+    if (!(await take(env, "play:" + me.id, 60, 30))) return err("Slow down a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const game = String(b.game || ""), G = GAMES[game]; if (!G) return err("Pick a game.");
+    const bet = Math.round(+b.bet || 0);
+    if (!(bet >= GAME_MIN_BET && bet <= GAME_MAX_BET)) return err("Bets are " + GAME_MIN_BET + " to " + GAME_MAX_BET + " coins.");
+    let choice = String(b.choice || "");
+    if (game === "flip" && !["heads", "tails"].includes(choice)) return err("Pick heads or tails.");
+    if (game === "dice" && !["under", "over", "seven"].includes(choice)) return err("Pick under 7, over 7, or exactly 7.");
+    const pool = await poolRow(env);
+    const maxNow = Math.min(GAME_MAX_BET, Math.floor(pool / (G.maxMult - 1)));
+    if (bet > maxNow) return err(pool < GAME_MIN_BET ? "The prize pool is empty right now. PvP pots are still open, and every lost bet refills the pool." : "The prize pool (" + pool + " coins) caps this game's bet at " + maxNow + " right now.");
+    const now = Date.now(), id = uuid();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(bet, now, me.id, bet).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    const { pay, detail } = settleGame(game, bet, choice);
+    const fee = Math.floor(bet * GAME_FEE);
+    const tx = (pfx, uid2, kind, coins, cents) => env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind(pfx + id, uid2, kind, coins, cents, game, now);
+    let stmts, note = "";
+    if (pay > bet) {
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update game_pool set coins = coins - ? where id = 1 and coins >= ?").bind(pay - bet, pay - bet),
+        env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pay, now, me.id),
+        tx("gw:", me.id, "game_win", pay, 0)];
+    } else if (pay === bet) {
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(bet, now, me.id),
+        tx("gp:", me.id, "game_push", bet, 0)];
+    } else if (pay > 0) {
+      const fee2 = Math.min(fee, bet - pay);
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pay, now, me.id),
+        tx("gw:", me.id, "game_win", pay, 0),
+        env.DB.prepare("update game_pool set coins = coins + ? where id = 1").bind(bet - pay - fee2)];
+      if (fee2) stmts.push(tx("gf:", OWNER_ID, "game_fee", 0, fee2));
+    } else {
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update game_pool set coins = coins + ? where id = 1").bind(bet - fee)];
+      if (fee) stmts.push(tx("gf:", OWNER_ID, "game_fee", 0, fee));
+    }
+    const res = await env.DB.batch(stmts);
+    let finalPay = pay;
+    if (pay > bet && !res[1].meta.changes) {
+      // two big wins landed at the same moment and the pool can't fund this profit: the round becomes a push, bet back
+      await env.DB.batch([
+        env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(pay - bet, Date.now(), me.id, pay - bet),
+        env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("gx:" + id, me.id, "game_push", bet, 0, game, Date.now()),
+      ]);
+      finalPay = bet; note = "The prize pool just ran low, so this round is a push — your bet is back.";
+    }
+    const w = await wallet(env, me.id);
+    return json({ ok: true, game, bet, pay: finalPay, detail, note, coins: w.coins, pool: await poolRow(env) });
+  }
+
+  if (route === "pot/create" && method === "POST") {
+    if (await isUnder18(env, me.id)) return err("Members under 18 can't play coin games.");
+    if (!(await take(env, "pot:" + me.id, 60, 10))) return err("Slow down a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const bet = Math.round(+b.bet || 0), side = String(b.side || "");
+    if (!(bet >= GAME_MIN_BET && bet <= GAME_MAX_BET)) return err("Bets are " + GAME_MIN_BET + " to " + GAME_MAX_BET + " coins.");
+    if (!["heads", "tails"].includes(side)) return err("Pick heads or tails.");
+    const open = await env.DB.prepare("select count(*) n from game_pots where creator = ? and status = 'open'").bind(me.id).first();
+    if (open && open.n >= 3) return err("You already have 3 open pots. Wait for a player or cancel one.");
+    const now = Date.now(), id = uuid();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(bet, now, me.id, bet).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    await env.DB.batch([
+      env.DB.prepare("insert into game_pots (id, creator, bet, side, status, at) values (?,?,?,?,'open',?)").bind(id, me.id, bet, side, now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pb:" + id, me.id, "pot_bet", -bet, 0, "flip-pvp", now),
+    ]);
+    return json({ ok: true, id });
+  }
+
+  if (route === "pot/join" && method === "POST") {
+    if (await isUnder18(env, me.id)) return err("Members under 18 can't play coin games.");
+    const b = await request.json().catch(() => ({})); const id = String(b.id || "");
+    const pot = await env.DB.prepare("select * from game_pots where id = ? and status = 'open'").bind(id).first();
+    if (!pot) return err("That pot is gone — someone beat you to it.");
+    if (pot.creator === me.id) return err("That's your own pot.");
+    const now = Date.now();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(pot.bet, now, me.id, pot.bet).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    const claim = await env.DB.prepare("update game_pots set status = 'done', joiner = ?, done_at = ? where id = ? and status = 'open'").bind(me.id, now, id).run();
+    if (!claim.meta.changes) { await env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pot.bet, now, me.id).run(); return err("That pot just got taken. Your coins are back."); }
+    const land = rnd(2) ? "tails" : "heads";
+    const creatorWon = land === pot.side, winner = creatorWon ? pot.creator : me.id, loser = creatorWon ? me.id : pot.creator;
+    const potTotal = pot.bet * 2, rake = Math.floor(potTotal * GAME_FEE), prize = potTotal - rake;
+    await env.DB.batch([
+      env.DB.prepare("update game_pots set winner = ? where id = ?").bind(winner, id),
+      env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(prize, now, winner),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pb:" + id + ":j", me.id, "pot_bet", -pot.bet, 0, "flip-pvp", now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pw:" + id, winner, "pot_win", prize, 0, "flip-pvp", now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pf:" + id, OWNER_ID, "game_fee", 0, rake, loser, now),
+    ]);
+    const w = await wallet(env, me.id);
+    return json({ ok: true, land, creatorSide: pot.side, youWon: winner === me.id, prize, coins: w.coins });
+  }
+
+  if (route === "pot/cancel" && method === "POST") {
+    const b = await request.json().catch(() => ({})); const id = String(b.id || "");
+    const pot = await env.DB.prepare("select * from game_pots where id = ? and status = 'open' and creator = ?").bind(id, me.id).first();
+    if (!pot) return err("No open pot of yours with that id.");
+    const now = Date.now();
+    await env.DB.batch([
+      env.DB.prepare("update game_pots set status = 'cancelled', done_at = ? where id = ?").bind(now, id),
+      env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pot.bet, now, me.id),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pc:" + id, me.id, "pot_refund", pot.bet, 0, "flip-pvp", now),
+    ]);
+    return json({ ok: true });
+  }
+
+  if (route === "pool/seed" && method === "POST") {
+    const b = await request.json().catch(() => ({})); const amt = Math.round(+b.coins || 0);
+    if (!(amt >= 1 && amt <= 100000)) return err("Pick an amount.");
+    const now = Date.now();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(amt, now, me.id, amt).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    await env.DB.batch([
+      env.DB.prepare("update game_pool set coins = coins + ? where id = 1").bind(amt),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("ps:" + uuid(), me.id, "pool_seed", -amt, 0, "casino", now),
+    ]);
+    return json({ ok: true, pool: await poolRow(env) });
+  }
+
+  if (route === "admin/grant" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({})); const amt = Math.round(+b.coins || 0); const to = String(b.to || me.id);
+    if (!(amt >= 1 && amt <= 1000000)) return err("Pick an amount.");
+    if (!/^[0-9a-f-]{36}$/.test(to)) return err("Bad member id.");
+    const now = Date.now();
+    await env.DB.batch([
+      env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(to, amt, now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("ag:" + uuid(), to, "grant", amt, 0, "casino", now),
+    ]);
+    return json({ ok: true });
   }
 
   if (route === "checkout" && method === "POST") {
