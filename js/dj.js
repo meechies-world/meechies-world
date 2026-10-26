@@ -292,6 +292,7 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .xfdot{position:absolute;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gold));border:2px solid #0d0b08;box-shadow:0 2px 10px rgba(0,0,0,.65);transform:translate(-50%,-50%);pointer-events:none;left:50%;top:50%}
 .xfpl{position:absolute;top:50%;transform:translateY(-50%);font:800 12px var(--body);color:var(--gold-hi)}
 .xfpl.a{left:8px}.xfpl.b{right:8px}
+.deck .wave{cursor:pointer;touch-action:none}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -968,6 +969,22 @@ html.popdj .popdj-hint{display:block}`;
     pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
     pad.addEventListener("pointerup", () => { if (drag) { drag = false; save(true); } });
     pad.addEventListener("pointercancel", () => { drag = false; });
+  });
+  // touch the waveform to jump the song there: tap a spot to play from it, or drag
+  // across to scrub. Works in the sound window and from the mirror (it writes the
+  // shared position and the leader follows). Seeking outside an active loop clears it.
+  DECKS.forEach((k) => {
+    const cv = document.getElementById("wv-" + k); if (!cv) return;
+    let scrub = false;
+    const seekTo = (e) => { const d = deck(k); const dur = d.el.duration || S[k].dur || 0; if (!dur) { say("That deck needs a song loaded before you can scrub it."); return; } const r = cv.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); const t = f * dur;
+      if (d.loop && (t < d.loop[0] || t > d.loop[1])) { d.loop = null; d.loopBeats = 0; S[k].loop = null; S[k].loopBeats = 0; }
+      try { d.el.currentTime = t; } catch (_) {}
+      if (S[k].playing) S[k].start = Date.now() - t * 1000; else S[k].pos = t;
+      paintCues(k); peaks(k); };
+    cv.addEventListener("pointerdown", (e) => { if (!OWNER()) return; scrub = true; try { cv.setPointerCapture(e.pointerId); } catch (_) {} seekTo(e); e.preventDefault(); });
+    cv.addEventListener("pointermove", (e) => { if (scrub) seekTo(e); });
+    cv.addEventListener("pointerup", () => { if (scrub) { scrub = false; save(true); } });
+    cv.addEventListener("pointercancel", () => { scrub = false; });
   });
   $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
     // Auto-DJ is the station's play method: if nothing is playing it starts the rotation itself,
