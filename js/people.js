@@ -74,6 +74,7 @@
     try { document.querySelectorAll("#pp-sheet [data-follow]").forEach((b) => { const f = window.MW_FOLLOWING && window.MW_FOLLOWING.has(id); b.textContent = f ? "Following" : "＋ Follow"; b.classList.toggle("on", !!f); }); } catch (_) {}
   }
   window.MW_PROFILE = profile;
+  window.MW_showOnline = () => directory("online");
 
   document.addEventListener("click", (e) => {
     const st = e.target.closest("#mw-stats span");
