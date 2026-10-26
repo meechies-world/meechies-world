@@ -480,6 +480,12 @@ html.popdj .popdj-hint{display:block}
 /* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
    top of every page in a little rectangle; it steps aside whenever a big screen
    (the booth's or the station card's) is already in front of them */
+#dj-livealert{position:fixed;top:112px;left:50%;transform:translateX(-50%);z-index:66;display:flex;gap:8px;align-items:center;background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #f0cf78;border-radius:999px;padding:7px 10px;box-shadow:0 12px 32px rgba(0,0,0,.6);max-width:min(94vw,560px)}
+#dj-livealert[hidden]{display:none}
+#dj-livealert .la-txt{font:700 12.5px var(--body);color:#ffe9b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dj-livealert .btn{white-space:nowrap}
+body.dj-on #dj-livealert,html.popdj #dj-livealert,html.gated #dj-livealert{display:none!important}
+@media (max-width:760px){#dj-livealert{top:106px}#dj-livealert .la-txt{font-size:11.5px}}
 #dj-mini{position:fixed;top:64px;right:10px;width:208px;z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px}
@@ -793,6 +799,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the mini master screen: one floating rectangle on every page, so the live
   // music video follows viewers around the whole site (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
+  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
   if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='vchip' id='mn-vchip' hidden></div></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { const t = vmixTargets()[0]; miniOffVid = t ? (S[t.k] && S[t.k].yt) || "*" : "*"; mn.hidden = true; });
     // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
     // "make the music video screen moveable") — drag it anywhere; the spot is
@@ -1468,8 +1475,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     return m;
   }
+  // the site-wide LIVE pill (owner ask 2026-10-26): when Meechie (or an approved
+  // guest DJ) is actually at the tables, every visitor sees it, with a one-tap
+  // tune-in that mutes everything else and lands them on the radio
+  function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const host = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const setId = guest ? ("g" + (S.djGuest.uid || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + (S.djGuest.name || "A guest DJ") + " is DJing on Meechie's World Radio") : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
   function onState(d) {
-    paintVEdit();
+    paintVEdit(); try { paintLiveAlert(); } catch (_) {}
     const firstOwnerLoad = OWNER() && !ownerLoaded;
     if (OWNER() && ownerLoaded) {
       // Booth-to-booth sync: my own saves echo back and are ignored, but a save stamped
