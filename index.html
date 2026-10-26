@@ -411,6 +411,16 @@ a.social:hover{border-color:var(--gold)}
 @keyframes eq{0%,100%{height:15%}50%{height:100%}}
 @media (prefers-reduced-motion:reduce){.playing .bars i{animation:none;height:60%}}
 .req-list{display:grid;gap:8px;max-height:220px;overflow-y:auto;margin-bottom:12px}
+/* compact radio page: tighter cards under the booth, the library scrolls inside
+   its own box instead of stretching the page, and folded blocks pull everything up */
+#v-radio .section-head{margin-bottom:8px}
+#v-radio .radio-top{gap:14px}
+#v-radio .onair{padding:18px;gap:12px;min-height:0}
+#v-radio .onair .freq{font-size:clamp(34px,5vw,52px)}
+#v-radio .card{padding:16px}
+#v-radio .tracks{max-height:540px;overflow-y:auto;padding-right:4px}
+#v-radio .rn-box{margin-top:18px}
+@media (max-width:760px){#v-radio .tracks{max-height:60vh}}
 .req-list div{background:var(--panel-2);border-radius:10px;padding:8px 12px;font-size:14px;overflow-wrap:anywhere}
 .req-list b{color:var(--gold-hi);margin-right:6px}
 .tracks{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:14px}
@@ -1341,10 +1351,11 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 
     <div id="dj-root"></div>
     <div style="margin-top:14px"><a class="btn" href="#dj" data-go="dj">🎛️ Open the DJ Station — 4 decks</a></div>
-    <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-top:40px">
+    <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-top:18px">
       <div><p class="eyebrow">Music player</p><h3 style="font-size:28px;margin-top:6px">The Library</h3></div>
-      <span class="muted" id="lib-count" style="font-size:14px">0 tracks</span>
+      <span style="display:flex;gap:8px;align-items:center"><span class="muted" id="lib-count" style="font-size:14px">0 tracks</span><button class="btn ghost sm" type="button" data-fold="lib-body" data-fold-label="Library">▾ Library</button></span>
     </div>
+    <div id="lib-body">
     <div id="uploader" hidden>
       <div class="upload-row">
         <span class="btn file-btn">Upload tracks<input type="file" id="up-audio" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.mp4,.webm,video/mp4,video/webm" multiple aria-label="Upload tracks"></span>
@@ -1355,6 +1366,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <p class="muted" style="font-size:13px;margin:8px 0 0" id="up-status">Upload MP3, WAV, M4A, AAC, OGG, MP4 or WebM files up to 50 MB each. Music videos play too. Only you see this.</p>
     </div>
     <div class="tracks" id="tracks"><div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie's World shows up here.</div></div>
+    </div>
     <div class="rn-box">
       <div class="rn-head"><div><p class="eyebrow">More music</p><h3 class="sub-h" style="margin:4px 0 0">Meechie on ReverbNation</h3></div>
         <a class="btn ghost sm" href="https://www.reverbnation.com/halalmusic" target="_blank" rel="noopener">Become a fan on ReverbNation →</a></div>
@@ -3417,7 +3429,7 @@ boot();
 <script src="js/preach.js?v=1792580555"></script>
 <script src="js/world3d.js?v=1792580555"></script>
 <script src="js/clips.js?v=1792929000"></script>
-<script src="js/dj.js?v=1792972000"></script>
+<script src="js/dj.js?v=1792973000"></script>
 <script src="js/live.js?v=1792580555"></script>
 <script src="js/autotune.js?v=1792580555"></script>
 <script src="js/beatmaker.js?v=1792580555"></script>

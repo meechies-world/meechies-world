@@ -265,7 +265,7 @@ html{scrollbar-gutter:stable}
 .loglist time{color:var(--muted);font:600 11px ui-monospace,monospace;white-space:nowrap}
 .dj-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:20px;padding:14px 16px;border-radius:14px;border:1px solid #e5484d;background:linear-gradient(90deg,#2a0f10,#15130f)}
 .dj-banner b{color:#ff8b8f}
-.station{margin-top:20px;border:1px solid var(--gold-lo);border-radius:16px;padding:16px;background:#0d0b08;display:grid;gap:12px}
+.station{margin-top:12px;border:1px solid var(--gold-lo);border-radius:16px;padding:16px;background:#0d0b08;display:grid;gap:12px}
 .station h3{margin:0;font-size:20px}
 .ticker{overflow:hidden;white-space:nowrap;border:1px solid #e5484d;border-radius:10px;padding:8px 0;background:#1c0b0c;color:#ffb3b6;font-weight:700}
 .ticker span{display:inline-block;padding-left:100%;animation:djtick 18s linear infinite}
@@ -402,7 +402,8 @@ html.popdj .popdj-hint{display:block}`;
   root.innerHTML = `
 <div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button></div>
 <div class="station" id="dj-station" hidden>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span class="onair-lamp" id="st-lamp"><span class="dot"></span>OFF AIR</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span style="display:flex;gap:8px;align-items:center"><span class="onair-lamp" id="st-lamp"><span class="dot"></span>OFF AIR</span><button class="btn ghost sm" type="button" data-fold="st-body" aria-label="Fold the station panel">▾</button></span></div>
+  <div id="st-body">
   <div class="ticker" id="st-ticker" hidden><span id="st-ticker-t"></span></div>
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
@@ -413,6 +414,7 @@ html.popdj .popdj-hint{display:block}`;
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn ghost sm" type="button" id="rq-rec">🎙️ Record a voice drop</button><small class="muted" id="rq-rec-st">Up to 20 seconds. Meechie can play it on air.</small></div>
     <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b style="font-size:13px;letter-spacing:.1em">🎵 PICK A SONG FOR THE RADIO</b><small class="muted" style="display:block;margin:4px 0 8px">Pick a song and it plays next on the live radio — Meechie's songs mixed with real artists, every genre. The list is long: browse the shelves, tap a genre, or search any artist.</small><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm pktab" type="button" id="pk-mine">🔥 Meechie's songs</button><button class="btn ghost sm pktab" type="button" id="pk-real">🎤 Real artists</button></div><form class="dj-search" id="pk-form" style="margin-bottom:8px"><input type="search" id="pk-q" placeholder="Search any artist or song..." aria-label="Search music to pick"><button class="btn sm" type="submit">Search</button></form><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn ghost sm" type="button" data-pkgenre="hiphop">🕶️ Hip-Hop</button><button class="btn ghost sm" type="button" data-pkgenre="jazz">🎷 Jazz</button><button class="btn ghost sm" type="button" data-pkgenre="rock">🎸 Rock</button><button class="btn ghost sm" type="button" data-pkgenre="soul">❤️ Soul &amp; R&amp;B</button><button class="btn ghost sm" type="button" data-pkgenre="reggae">🇯🇲 Reggae</button><button class="btn ghost sm" type="button" data-pkgenre="classics">🎺 Classics</button><button class="btn ghost sm" type="button" data-pkgenre="more">🌍 More artists</button></div><div class="dj-list" id="pk-list" style="max-height:300px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin-top:12px">📻 COMING UP — LISTENER PICKS</b><div class="dj-list" id="pk-queue" style="margin-top:6px;max-height:110px"><small class="muted">No picks yet — be the first.</small></div></div>
+  </div>
   </div>
 </div>
 <div class="dj" id="dj-owner" hidden>
@@ -494,6 +496,11 @@ html.popdj .popdj-hint{display:block}`;
   // the booth moves into its own DJ view — its own section, nothing but DJing
   const boothEl = document.getElementById("dj-owner"), boothHome = document.getElementById("dj-booth-root");
   if (boothEl && boothHome) boothHome.appendChild(boothEl);
+  // foldable page sections: a [data-fold] button hides its block and everything
+  // below pulls up to fill the space; the choice sticks on this device
+  const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-fold]"); if (!b) return; const t = document.getElementById(b.dataset.fold); if (!t) return; t.hidden = !t.hidden; b.textContent = (t.hidden ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); try { localStorage.setItem("mw-fold-" + b.dataset.fold, t.hidden ? "1" : ""); if (!t.hidden) localStorage.removeItem("mw-fold-" + b.dataset.fold); } catch (_) {} });
+  applyFolds(); if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyFolds);
   // console panels: tag the booth's panel groups so the phone console can tab them
   if (boothEl && boothHome) {
     const g2 = boothEl.querySelectorAll(".dj-grid2"); if (g2[0]) g2[0].classList.add("pg-studio"); if (g2[1]) g2[1].classList.add("pg-music");
