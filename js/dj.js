@@ -1414,8 +1414,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   if (!SANDBOX) { renderDjLive(); setInterval(() => { renderDjLive(); }, 5000); }
   /* gentle mouse-wheel on the Radio + DJ Station pages (desktop): the booth is a
-   * long page and stock wheel notches jump it too far. Ease to 40% AND cap each
-   * notch at 170px of travel — page-mode wheels (deltaMode 2, e.g. Windows set to
+   * long page and stock wheel notches jump it too far. Ease to 20% AND cap each
+   * notch at 85px of travel — page-mode wheels (deltaMode 2, e.g. Windows set to
    * "one screen at a time") used to sail ~430px per notch even eased, which the
    * owner reported 2026-10-26 as "one scroll moves down too fast and far".
    * Trackpads (small pixel deltas), pinch zoom, and the inner song lists keep
@@ -1431,7 +1431,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY;
     e.preventDefault();
     const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
-    wheelTgt = Math.max(0, Math.min(max, (wheelTgt ?? scrollY) + Math.max(-170, Math.min(170, d * 0.4))));
+    wheelTgt = Math.max(0, Math.min(max, (wheelTgt ?? scrollY) + Math.max(-85, Math.min(85, d * 0.2))));
     if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.3); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
   }, { passive: false });
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
