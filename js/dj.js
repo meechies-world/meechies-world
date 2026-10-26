@@ -1666,12 +1666,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       else { const idle = playing === "A" ? "B" : "A"; if (!okUrl(S[idle].src)) { const item = queue.length ? queue[0] : nextFromLibrary(); if (item && !queue.length) bag.push(item); if (item) load(idle, item); } }
     }
   });
-  // scratch / scrub: drag a platter sideways to move through the song
+  // scratch / scrub: drag a platter sideways — the song position follows the
+  // hand AND the hand makes a scratch noise (owner ask, 2026-10-26). The deck
+  // element is paused while scrubbing, so the track itself stays silent; the
+  // noise is a synthesized vinyl bed (looped noise through a bandpass whose
+  // pitch and volume ride the hand speed) on the master bus — the booth hears
+  // it and show recordings keep it. YouTube decks scrub coarsely (their player
+  // seeks in chunks) but get the same noise, so every disc answers the hand.
+  let scrBed = null;
+  const scratchBed = () => { const c = (typeof actx === "function") ? actx() : ctx; if (!c || !masterIn) return null; if (scrBed) return scrBed; try { const len = 2 * c.sampleRate, buf = c.createBuffer(1, len, c.sampleRate), ch = buf.getChannelData(0); for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1; const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 1.1; const g = c.createGain(); g.gain.value = 0; src.connect(bp); bp.connect(g); g.connect(masterIn); src.start(); scrBed = { bp, g }; } catch (_) {} return scrBed; };
+  const scratchSound = (vel) => { const s = scratchBed(); if (!s || !ctx) return; const v = Math.min(1, Math.abs(vel) / 1.6), t = ctx.currentTime; s.g.gain.setTargetAtTime(v * 0.38, t, 0.012); s.bp.frequency.setTargetAtTime(450 + v * 1600, t, 0.02); };
+  const scratchStop = () => { if (scrBed && ctx) scrBed.g.gain.setTargetAtTime(0, ctx.currentTime, 0.06); };
   DECKS.forEach((k) => {
     const pl = () => $("#pl-" + k); let drag = null;
-    onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; drag = { x: e.clientX, was: !deck(k).el.paused }; deck(k).el.pause(); e.preventDefault(); });
-    onMainRaw("pointermove", (e) => { if (!drag) return; const d = deck(k), dx = e.clientX - drag.x; drag.x = e.clientX; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * 0.06)); } catch (_) {} });
-    onMainRaw("pointerup", () => { if (!drag) return; const d = deck(k); if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
+    onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; drag = { x: e.clientX, t: performance.now(), was: !deck(k).el.paused }; deck(k).el.pause(); scratchBed(); e.preventDefault(); });
+    onMainRaw("pointermove", (e) => { if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * 0.09)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; scratchSound(dx / dt); });
+    onMainRaw("pointerup", () => { if (!drag) return; scratchStop(); const d = deck(k); if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
+    onMainRaw("pointercancel", () => { if (!drag) return; scratchStop(); drag = null; });
   });
   // deck ended -> owner bookkeeping + Auto-DJ
   // dead-air guard: a deck that runs out (or stalls at the end) while the station is
