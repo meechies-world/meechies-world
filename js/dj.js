@@ -454,6 +454,15 @@ html.popdj .popdj-hint{display:block}
 #dj-screen .vstage{aspect-ratio:21/9;max-height:46vh;min-height:170px;border-radius:14px}
 @media(max-width:760px){#dj-screen .vstage{min-height:150px;max-height:36vh}}
 @media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner .deck[data-deck="A"]{grid-row:4/span 3}#dj-owner .deck[data-deck="B"]{grid-row:4/span 3}#dj-owner .deck[data-deck="C"]{grid-row:4/span 3}#dj-owner .deck[data-deck="D"]{grid-row:4/span 3}#dj-owner #dj-browser{grid-row:4}#dj-owner .mixer.m1{grid-row:5}#dj-owner .mixer.m2{grid-row:6}}
+/* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
+   top of every page in a little rectangle; it steps aside whenever a big screen
+   (the booth's or the station card's) is already in front of them */
+#dj-mini{position:fixed;top:64px;right:10px;width:208px;z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+#dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
+#dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px}
+#dj-mini .vstage{border:0;border-radius:0}
+@media(max-width:760px){#dj-mini{top:56px;width:168px}}
+html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner [data-ckey]{position:relative}
 #dj-owner [data-ckey].ck-off{display:none!important}
 #dj-owner.ck-on [data-ckey]{outline:1.5px dashed rgba(212,168,67,.55);outline-offset:2px}
@@ -629,6 +638,9 @@ html.popdj .popdj-hint{display:block}
   // the booth moves into its own DJ view — its own section, nothing but DJing
   const boothEl = document.getElementById("dj-owner"), boothHome = document.getElementById("dj-booth-root");
   if (boothEl && boothHome) boothHome.appendChild(boothEl);
+  // the mini master screen: one floating rectangle on every page, so the live
+  // music video follows viewers around the whole site (never in the Playground)
+  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='vchip' id='mn-vchip' hidden></div></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { const t = vmixTargets()[0]; miniOffVid = t ? (S[t.k] && S[t.k].yt) || "*" : "*"; mn.hidden = true; }); }
   // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
   // decks — on wide screens the console grid still parks it at the top of the
   // middle column; everywhere else it now leads the booth instead of hiding
@@ -725,6 +737,7 @@ html.popdj .popdj-hint{display:block}
   const mkScreen = (ids, standby, chip) => ({ ids, standby, chip, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
   const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
   const scrView = mkScreen(["#st-vs1", "#st-vs2"], null, "#st-vchip");
+  const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, "#mn-vchip");
   function vmixTargets() {
     const vm = S.vmix || { mode: "auto", a: "", b: "", t: 0 };
     if (vm.mode === "man" && vm.a && S[vm.a] && S[vm.a].yt) {
@@ -784,8 +797,23 @@ html.popdj .popdj-hint{display:block}
         if (has) await renderScreen(scrView, false, mix, duck);
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
+      await miniApply(mix, duck);
     } catch (_) {}
     stageBusy = false;
+  }
+  /* the mini screen is a silent mirror (the sound already travels with the decks
+   * and the station screen): it shows the same mix in a small rectangle at the
+   * top of every page, and steps aside when a big screen is in view, when the
+   * booth itself is on screen, or when the viewer closed it for this video */
+  let miniOffVid = "", stInView = false;
+  async function miniApply(mix, duck) {
+    const box = $("#dj-mini"); if (!box || SANDBOX) return;
+    const tg = vmixTargets(), top = tg.slice().sort((a, b) => b.op - a.op)[0], vid = top ? (S[top.k] && S[top.k].yt) || "" : "";
+    const show = !!tg.length && vid !== miniOffVid && !stInView && !document.body.classList.contains("dj-on");
+    box.hidden = !show;
+    if (!tg.length) scrMini.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
+    if (!show) return;
+    await renderScreen(scrMini, true, 1, 1);
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
   function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
@@ -1904,6 +1932,8 @@ html.popdj .popdj-hint{display:block}
     // scroll past the tables and the side buttons/floats fold away — nothing covers the decks
     const boothHome2 = document.getElementById("dj-booth-root");
     if (boothHome2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { document.body.classList.toggle("dj-past", !en.isIntersecting && en.boundingClientRect.top < 0); document.body.classList.toggle("dj-on", en.isIntersecting); }); }, { threshold: 0 }).observe(boothHome2);
+    const stBox2 = document.getElementById("st-ytbox");
+    if (stBox2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { stInView = en.isIntersecting; }); }, { threshold: 0.05 }).observe(stBox2);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
