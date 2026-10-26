@@ -34,6 +34,10 @@
     cartoons: { q: "collection:animationandcartoons AND mediatype:movies AND year:[1000 TO 1949]", label: "Classic Cartoons" },
   };
   const SEARCH_SET = "(collection:prelinger OR collection:SciFi_Horror OR collection:animationandcartoons OR (collection:feature_films AND year:[1000 TO 1929]))";
+  const kwQ = (words) => { const kw = words.join(" OR "); return `(title:(${kw}) OR description:(${kw})) AND mediatype:movies AND ${SEARCH_SET}`; };
+  SHELVES.halloween = { q: kwQ(["halloween", "horror", "ghost", "haunted", "vampire", "zombie", "witch", "terror", "demon", "monster", "dracula", "frankenstein", "mummy", "werewolf"]), label: "Halloween horror & spooky classics" };
+  SHELVES.thanksgiving = { q: kwQ(["thanksgiving", "turkey", "pilgrim", "harvest"]), label: "Thanksgiving films, cartoons & vintage specials" };
+  SHELVES.christmas = { q: kwQ(["christmas", "santa", "scrooge", "rudolph", "noel"]), label: "Christmas films, cartoons & vintage specials" };
   let cur = { mode: "fame", q: "", page: 1 }, busy = false, started = false;
 
   async function iaSearch(q, page) {
