@@ -461,7 +461,7 @@ html.popdj .popdj-hint{display:block}`;
 
 </div>
   <div class="dj-panel" id="dj-browser" style="margin-top:16px">
-    <div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px"><b style="font-size:13px;letter-spacing:.08em">▶️ DJ YOUTUBE — PLAY THE MUSIC VIDEO</b><small class="muted" style="display:block;margin:4px 0 8px">Paste any YouTube link, put the video on a deck, and mix it: play, pause, seek and the X fader volume all work, and your listeners see the video on the station. YouTube keeps its audio locked in its player, so EQ, effects and scratch stay on your own files.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a YouTube link..." style="flex:1;min-width:200px" aria-label="YouTube link"><span style="font-size:12px;color:var(--muted)">Load on:</span><button class="btn ghost sm" type="button" data-ytload="A">A</button><button class="btn ghost sm" type="button" data-ytload="B">B</button><button class="btn ghost sm" type="button" data-ytload="C">C</button><button class="btn ghost sm" type="button" data-ytload="D">D</button></div></div>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px"><b style="font-size:13px;letter-spacing:.08em">▶️ DJ YOUTUBE — PLAY THE MUSIC VIDEO</b><small class="muted" style="display:block;margin:4px 0 8px">Paste any YouTube link, put the video on a deck, and mix it: play, pause, seek and the X fader volume all work, and your listeners see the video on the station. YouTube keeps its audio locked in its player, so EQ, effects and scratch stay on your own files.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a YouTube link..." style="flex:1;min-width:200px" aria-label="YouTube link"><span style="font-size:12px;color:var(--muted)">Load on:</span><button class="btn ghost sm" type="button" data-ytload="A">A</button><button class="btn ghost sm" type="button" data-ytload="B">B</button><button class="btn ghost sm" type="button" data-ytload="C">C</button><button class="btn ghost sm" type="button" data-ytload="D">D</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px"><input type="search" id="dj-ytq" placeholder="Search YouTube — any artist, any song..." aria-label="Search YouTube"><button class="btn sm" type="submit">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:260px;margin-top:8px"></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4>
       <button class="btn sm browtab on" type="button" data-brow="lib">Your Library</button>
       <button class="btn ghost sm browtab" type="button" data-brow="net">Free Music Search</button>
@@ -482,7 +482,9 @@ html.popdj .popdj-hint{display:block}`;
       <small class="muted">Built-in station sounds first, then your own drops — tap an empty pad to record up to 8 seconds. ▶ plays it in the booth, 📡 sends it out over the air.</small></div>
     <div class="dj-panel"><h4>⏺️ RECORD THE SHOW</h4>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" id="rec-btn">⏺ Start recording</button><span id="rec-st" class="muted" style="font-size:13px">Captures the full mix + your mic.</span></div>
-      <div id="rec-out"></div></div>
+      <div id="rec-out"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;border-top:1px solid var(--line);padding-top:10px"><button class="btn ghost sm" type="button" id="ses-btn">🎬 Record the session (video)</button><span id="ses-st" class="muted" style="font-size:13px">Films this tab — the music videos, the decks, everything — with the full mix sound. Pick this tab and tick “share tab audio”.</span></div>
+      <div id="ses-out"></div></div>
     <div class="dj-panel"><h4>🤖 AUTO-DJ</h4>
       <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ad-on" style="width:auto" checked> Auto-DJ runs the station: when a song ends, crossfade to the next one — your queue first, then the full library on rotation</label>
       <div class="dj-list" id="ad-queue" style="max-height:150px"></div>
@@ -790,7 +792,7 @@ html.popdj .popdj-hint{display:block}`;
     const now = live ? DECKS.filter((k) => S[k].playing && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000)).map((k) => S[k].title).filter(Boolean) : [];
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
-    $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? `<b style="font-size:13px;letter-spacing:.1em">🎙️ LATEST RECORDED SHOW</b><audio controls preload="none" src="${E(S.show.url)}" style="width:100%;margin-top:6px"></audio><small class="muted">Recorded ${new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })}</small>` : "";
+    $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? "<b style=\"font-size:13px;letter-spacing:.1em\">" + (S.show.video ? "🎬 LATEST SESSION VIDEO" : "🎙️ LATEST RECORDED SHOW") + "</b>" + (S.show.video ? "<video controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px;border-radius:10px;background:#000\"></video>" : "<audio controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px\"></audio>") + "<small class=\"muted\">Recorded " + new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + "</small>" : "";
     renderLog($("#st-log"));
   }
   setInterval(() => {
@@ -1027,6 +1029,7 @@ html.popdj .popdj-hint{display:block}`;
       applyFx(); levels(); paintOwner(); save(true); say(P.msg); return;
     }
     if (b.dataset.curplay != null) { const ci = CURATED[+b.dataset.curplay]; if (ci) { b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (src) playPadUrl(src); else say("That sound wouldn't load. Try another."); } return; }
+    if (b.dataset.ytput) { const [dk, ix] = b.dataset.ytput.split(":"), it = ytRes[+ix]; if (it) load(dk, { yt: it.id, src: "", title: it.title, cover: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg", dur: it.dur || 0 }); return; }
     if (b.dataset.ytload) { const inp = $("#dj-yt"), vid = ytParse(inp && inp.value); if (!vid) { say("Paste a YouTube link first — then pick the deck."); return; } load(b.dataset.ytload, { yt: vid, src: "", title: "YouTube video", cover: "https://i.ytimg.com/vi/" + vid + "/hqdefault.jpg", dur: 0 }); return; }
     if (b.dataset.load) {
       if (b.dataset.cur != null) { const ci = CURATED[+b.dataset.cur]; if (!ci) return; b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (!src) { say("That sound wouldn't load. Try another."); return; } load(b.dataset.load, { src, title: ci.name, cover: "" }); }
@@ -1347,6 +1350,63 @@ html.popdj .popdj-hint{display:block}`;
       });
     };
     showT0 = Date.now(); showRec.start(1000); $("#rec-btn").textContent = "⏹ Stop recording"; $("#rec-st").innerHTML = '<span class="rec-on">● REC</span> Recording the show...';
+  });
+
+  /* ---------- YouTube search: public Piped mirrors, no key needed ---------- */
+  let ytRes = [];
+  const PIPED = ["https://pipedapi.kavin.rocks", "https://pipedapi.adminforge.de", "https://pipedapi.leptons.xyz", "https://pipedapi-libre.kavin.rocks", "https://api.piped.yt"];
+  async function ytSearch(q) {
+    for (const base of PIPED) {
+      try {
+        const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {};
+        const r = await fetch(base + "/search?q=" + encodeURIComponent(q) + "&filter=videos", ctl);
+        if (!r.ok) continue;
+        const j = await r.json();
+        if (j && Array.isArray(j.items)) return j.items.map((it) => { const m = String(it.url || "").match(/v=([A-Za-z0-9_-]{11})/); return m ? { id: m[1], title: it.title || "YouTube video", dur: it.duration || 0 } : null; }).filter(Boolean).slice(0, 12);
+      } catch (_) {}
+    }
+    return null;
+  }
+  function paintYtRes(msg) {
+    const box = $("#dj-ytres"); if (!box) return;
+    box.innerHTML = msg ? `<small class="muted">${msg}</small>` : ytRes.map((it, i) => `<div class="dj-item"><span style="display:flex;gap:8px;align-items:center;min-width:0"><img src="https://i.ytimg.com/vi/${it.id}/default.jpg" alt="" style="width:64px;height:36px;object-fit:cover;border-radius:6px;flex:none"><span title="${E(it.title)}">${E(it.title)}${it.dur ? ` <small class="muted">${fmt(it.dur)}</small>` : ""}</span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost sm" type="button" data-ytput="${dk}:${i}">${dk}</button>`).join("")}</div>`).join("");
+  }
+  const ytf = $("#dj-ytform");
+  if (ytf) ytf.addEventListener("submit", async (e) => {
+    e.preventDefault(); const q = $("#dj-ytq").value.trim(); if (!q) return;
+    paintYtRes("Searching YouTube...");
+    const res = await ytSearch(q);
+    if (!res) { ytRes = []; paintYtRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
+    ytRes = res; paintYtRes(res.length ? "" : "Nothing found for that — try another name.");
+  });
+
+  /* ---------- session video: film the tab, so a music-video mix lands in one file.
+   * The show recorder above only hears the audio graph, and YouTube decks never
+   * enter it — the tab's own rendered picture + sound is the whole session. ---------- */
+  let sesRec = null, sesChunks = [], sesStream = null, sesT0 = 0;
+  $("#ses-btn").addEventListener("click", async () => {
+    if (sesRec) { sesRec.stop(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) { say("This browser can't film the tab — the regular show recording still works for audio."); return; }
+    try { sesStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }); }
+    catch (_) { say("No film this time — pick this tab and tick “share tab audio” so the mix is in the movie."); return; }
+    if (!sesStream.getAudioTracks().length) $("#ses-st").textContent = "Heads up: no tab audio was shared, so this film will be silent — stop and share again with tab audio on for the full mix.";
+    sesChunks = []; const type = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+    sesRec = new MediaRecorder(sesStream, type ? { mimeType: type, videoBitsPerSecond: 6000000 } : undefined);
+    sesRec.ondataavailable = (ev) => ev.data.size && sesChunks.push(ev.data);
+    sesRec.onstop = () => {
+      const blob = new Blob(sesChunks, { type: (sesRec && sesRec.mimeType) || "video/webm" }), url = URL.createObjectURL(blob), dur = fmt((Date.now() - sesT0) / 1000);
+      if (sesStream) { sesStream.getTracks().forEach((t) => t.stop()); sesStream = null; }
+      sesRec = null; $("#ses-btn").textContent = "🎬 Record the session (video)";
+      $("#ses-out").innerHTML = `<video controls src="${url}" style="width:100%;border-radius:10px;background:#000"></video><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sm" href="${url}" download="meechies-world-dj-session.webm">⬇ Download the session (${dur})</a><button class="btn ghost sm" type="button" id="ses-post">📻 Post as Latest Show</button></div>`;
+      $("#ses-st").textContent = "Filmed " + dur + ". Download it, or post it to the station card so everyone can watch the session.";
+      $("#ses-post").addEventListener("click", async (ev) => {
+        ev.target.disabled = true; ev.target.textContent = "Posting...";
+        try { const a = await claude.use("assets"); const up = await a.upload(blob, { type: "video/webm" }); const old = S.show; S.show = { id: up.id, url: up.url, at: Date.now(), video: true }; save(true); paintStation(); ev.target.textContent = "Posted ✓ It's on the station card"; if (old && old.id) a.delete(old.id).catch(() => {}); }
+        catch (_) { ev.target.disabled = false; ev.target.textContent = "📻 Post as Latest Show"; say("Couldn't post the session. Download it instead."); }
+      });
+    };
+    sesStream.getVideoTracks().forEach((t) => t.addEventListener("ended", () => { if (sesRec) sesRec.stop(); }));
+    sesT0 = Date.now(); sesRec.start(1000); $("#ses-btn").textContent = "⏹ Stop filming"; $("#ses-st").innerHTML = '<span class="rec-on">● REC</span> Filming the session — everything you play and mix is in the movie.';
   });
 
   /* ---------- requests + listener voice drops ---------- */
