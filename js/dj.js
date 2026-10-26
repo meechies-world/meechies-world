@@ -284,7 +284,7 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .xfpad{position:relative;width:150px;height:150px;border-radius:50%;border:2px solid var(--gold-lo);background:radial-gradient(circle,#1a1409 0 55%,#0d0b08 75%);touch-action:none;cursor:grab;margin:2px auto}
 .xfpad::before{content:"";position:absolute;inset:16px;border-radius:50%;border:1px dashed #3a2f16}
 .xfpad::after{content:"";position:absolute;left:50%;top:6px;bottom:6px;width:1px;background:#2c2413}
-.xfdot{position:absolute;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gold));border:2px solid #0d0b08;box-shadow:0 2px 10px rgba(0,0,0,.65);transform:translate(-50%,-50%);pointer-events:none;left:50%;top:50%}
+border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gold));border:2px solid #0d0b08;box-shadow:0 2px 10px rgba(0,0,0,.65);transform:translate(-50%,-50%);pointer-events:none;left:50%;top:50%}
 .xfpl{position:absolute;top:50%;transform:translateY(-50%);font:800 12px var(--body);color:var(--gold-hi)}
 .xfpl.a{left:8px}.xfpl.b{right:8px}
 .deck .wave{cursor:pointer;touch-action:none}
@@ -299,7 +299,7 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 @media(min-width:1100px){body[data-view="radio"] #fb-left,body[data-view="radio"] #fb-right{display:none!important}body[data-view="radio"] main{margin-left:0!important;margin-right:0!important}body[data-view="radio"] #v-radio .wrap{max-width:1740px}}
 /* compact decks on desktop: smaller platters, waves, buttons and gaps so a whole
    table fits the screen without a long scroll (Malik: "make these tabs smaller") */
-@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:150px;height:150px}}
+@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}}
 /* three-zone console on wide screens (Malik: "deck A and B on one side, C and D on
    the other, the mixer and song pick in the middle"): the deck bank unwraps so its
    pieces place straight into the booth grid — A/B left, C/D right, and the middle
@@ -350,9 +350,9 @@ html.popdj .popdj-hint{display:block}`;
     <div class="mixer m1"><small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
-      <div class="xfpad big" id="dj-xfpad" title="One dot runs all four decks — drag it toward a deck and that deck takes over"><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
+      <span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
       
-      <small>BEAT ENGINE</small>
+
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-quant" checked style="width:auto"> Quantize — cues &amp; loops snap to the beat</label>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-fxsync" checked style="width:auto"> Effects follow the live tempo</label>
       <canvas class="pairwave" id="pw-AB" width="480" height="72"></canvas>
@@ -965,19 +965,28 @@ html.popdj .popdj-hint{display:block}`;
   // circular pan pads: drag the gold dot anywhere in the circle — the further it
   // moves toward a deck, the more that deck plays. Same mix as the sliders and the
   // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
-  function paintXfPads() { // THE ONE FADER dot: left/right = the crossfaders' spot, up/down = which pair rules (up A/B, down C/D)
-    const dot = $("#dj-xfdot"); if (!dot) return;
-    dot.style.left = (50 + (S.xf - 0.5) * 74) + "%";
-    dot.style.top = (50 + (S.panY || 0) * 37) + "%";
+  function paintXfPads() { // THE ONE FADER dot: full-travel paint (the dot reaches the edge your finger reaches) + live mix readout
+    const dot = $("#dj-xfdot"); if (dot) { dot.style.left = (50 + (S.xf - 0.5) * 84) + "%"; dot.style.top = (50 + (S.panY || 0) * 42) + "%"; }
+    const rd = $("#dj-pan-read"); if (rd) { const py = S.panY || 0, ab = py > 0 ? 1 - py : 1, cd = py < 0 ? 1 + py : 1; const g = { A: xfGain(S.xf, "A") * ab, B: xfGain(S.xf, "B") * ab, C: xfGain(S.xf2 ?? 0.5, "A") * cd, D: xfGain(S.xf2 ?? 0.5, "B") * cd }; const mx = Math.max(g.A, g.B, g.C, g.D, 0.0001); rd.textContent = ["A", "B", "C", "D"].map((k) => k + " " + Math.round(g[k] / mx * 100) + "%").join(" · "); }
   }
   // ONE pan dot for all four decks: left/right rides both crossfaders together,
   // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
-    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } const v = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf = v; S.xf2 = v; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
+    // the dot GLIDES to your finger (eased every frame) instead of jumping in steps,
+    // so the crossfade sounds smooth; grabbing it cancels an Auto-DJ crossfade.
+    const tgt = { x: S.xf, y: S.panY || 0 }; let glide = null;
+    const step = () => { const dx = tgt.x - S.xf, dy = tgt.y - (S.panY || 0);
+      if (Math.abs(dx) < 0.002 && Math.abs(dy) < 0.002) { S.xf = tgt.x; S.xf2 = tgt.x; S.panY = tgt.y; paintXfPads(); levels(); save(); glide = null; return; }
+      S.xf += dx * 0.38; S.xf2 = S.xf; S.panY = (S.panY || 0) + dy * 0.38; paintXfPads(); levels(); glide = requestAnimationFrame(step); };
+    const go = (x, y) => { tgt.x = Math.min(1, Math.max(0, x)); tgt.y = Math.min(1, Math.max(-1, y)); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } if (!glide) glide = requestAnimationFrame(step); };
+    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; go((dx + 1) / 2, dy); };
     pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = true; try { pad.setPointerCapture(e.pointerId); } catch (_) {} apply(e); e.preventDefault(); });
     pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
-    pad.addEventListener("pointerup", () => { drag = false; });
+    pad.addEventListener("pointerup", () => { drag = false; save(); });
     pad.addEventListener("pointercancel", () => { drag = false; });
+    pad.addEventListener("dblclick", () => { if (OWNER()) go(0.5, 0); });
+    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { go(tgt.x - st, tgt.y); e.preventDefault(); } else if (e.key === "ArrowRight") { go(tgt.x + st, tgt.y); e.preventDefault(); } else if (e.key === "ArrowUp") { go(tgt.x, tgt.y - st); e.preventDefault(); } else if (e.key === "ArrowDown") { go(tgt.x, tgt.y + st); e.preventDefault(); } });
+    const cb = $("#dj-pan-center"); if (cb) cb.addEventListener("click", () => { if (OWNER()) go(0.5, 0); });
   })();
   // touch the waveform to jump the song there: tap a spot to play from it, or drag
   // across to scrub. Works in the sound window and from the mirror (it writes the
