@@ -3,7 +3,7 @@
   "use strict";
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmt = (t) => E(t).replace(/^#{1,4}\s*(.+)$/gm, "<b>$1</b>").replace(/^\s*[-*•]\s+/gm, "• ").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/(^|[\s(])(https:\/\/[^\s<)]+)(?=$|[\s)])/g, (m, p, u) => p + `<a href="${u}" target="_blank" rel="noopener" style="color:var(--gold-hi,#f0cf78)">${u.replace(/^https:\/\/(www\.)?/, "").slice(0, 40)}</a>`).replace(/\((https:\/\/[^\s)]+)\)/g, (m, u) => `(<a href="${u}" target="_blank" rel="noopener" style="color:var(--gold-hi,#f0cf78)">link</a>)`).replace(/\n/g, "<br>");
-  const CHIPS = ["⚖️ Help with my court case", "What services do you offer?", "How do I promote my business?", "What's in the shop?", "How do I submit a clothing design?", "How do I pay or book?"];
+  const CHIPS = ["🧭 Take me to the radio", "⚖️ Help with my court case", "What services do you offer?", "How do I promote my business?", "What's in the shop?", "How do I submit a clothing design?", "How do I pay or book?"];
   let hist = [];
   try { hist = JSON.parse(localStorage.getItem("mw_ai2") || sessionStorage.getItem("mw_ai") || "[]"); } catch (_) { hist = []; }
   let busy = false;
@@ -30,6 +30,11 @@ body.has-player #ai-panel{height:min(520px,calc(100vh - 180px))}
 .ai-m.me{align-self:flex-end;background:rgba(212,168,67,.16);border-color:var(--gold-lo,#8c6d26);border-radius:14px 14px 4px 14px}
 .ai-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px}
 .ai-chips button{background:none;border:1px solid var(--gold-lo,#8c6d26);color:var(--gold-hi,#f0cf78);border-radius:999px;padding:6px 10px;font:600 12px system-ui,sans-serif;cursor:pointer}
+.ai-nav{display:flex;gap:6px;overflow-x:auto;padding:2px 14px 10px;scrollbar-width:none;align-items:center}
+.ai-nav::-webkit-scrollbar{display:none}
+.ai-nav .ai-navlead{flex:none;font-size:14px}
+.ai-nav button{flex:none;background:none;border:1px solid var(--line,#3a3223);color:var(--text,#f3ecdc);border-radius:999px;padding:6px 11px;font:600 12px system-ui,sans-serif;cursor:pointer}
+.ai-navb{display:inline-block;margin-top:8px;background:var(--gold,#d4a843);color:#0b0a08;border:0;border-radius:999px;padding:8px 14px;font:800 13px system-ui,sans-serif;cursor:pointer}
 #ai-form2{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line,#3a3223)}
 #ai-form2 input{flex:1;min-width:0;background:var(--ink,#0b0a08);border:1px solid var(--line,#3a3223);border-radius:999px;padding:10px 14px;color:var(--text,#f3ecdc);font:inherit}
 #ai-form2 button{background:var(--gold,#d4a843);color:#0b0a08;border:0;border-radius:999px;padding:0 16px;font-weight:800;cursor:pointer}
@@ -81,10 +86,19 @@ body.mw-editing #ai-fab{display:none!important}`;
 <div class="ai-stage-row"><button type="button" id="ai-talk-go" class="btn">🎙️ Start talking</button><button type="button" id="ai-talk-stop" class="btn ghost" hidden>⏹ End call</button></div>
 </div>
 <div id="ai-log2" aria-live="polite"></div><div class="ai-chips" id="ai-chips"></div>
+<div class="ai-nav" id="ai-nav" aria-label="Jump to a section"></div>
 <div id="ai-attach" hidden></div>
 <form id="ai-form2"><label class="ai-tool" id="ai-pic" aria-label="Send a photo">📷<input type="file" accept="image/*" id="ai-file" aria-label="Choose a photo"></label><button type="button" class="ai-tool" id="ai-mic" aria-label="Talk to the AI">🎙️</button><input id="ai-in2" aria-label="Ask Meechie" maxlength="1500" autocomplete="off" placeholder="Ask me anything"><button type="submit">Send</button></form>`;
   document.body.append(fab, panel);
   const log = panel.querySelector("#ai-log2"), chips = panel.querySelector("#ai-chips"), inp = panel.querySelector("#ai-in2");
+  /* site navigation: a jump-to row in the panel, plus [[nav:view]] markers in Meechie's
+     answers that render as Go buttons — ask "where is X" or "take me to X" and he sends you */
+  const NAVS = [["🏠", "home", "Home"], ["📖", "community", "Book"], ["🛠️", "services", "Services"], ["🛍️", "shop", "Shop"], ["📻", "radio", "Radio"], ["🎛️", "dj", "DJ"], ["🎬", "clips", "Clips"], ["📺", "videos", "Videos"], ["🔴", "live", "Live"], ["❤️", "dating", "Dating"], ["💬", "messages", "Messages"], ["🪙", "coin", "Coin"], ["🌍", "world", "World"], ["🎮", "games", "Games"], ["⚖️", "legal", "Legal"]];
+  const NAVLBL = { home: "Home", community: "Meechie's Book", services: "Services", shop: "the Shop", radio: "Radio", dj: "the DJ Station", clips: "Clips", videos: "Videos", live: "Live", livetv: "Live TV", liveradio: "Live Radio", friends: "Friends", dating: "Dating", coin: "Meechie's Coin", world: "the Virtual World", games: "Games", creators: "Creators", legal: "Legal Help", chat: "Chat & Walkie", messages: "Messages", connect: "Connect", books: "Books", studio: "Studio", markets: "Markets", predict: "Predictions", promote: "Promote", contact: "Contact" };
+  const navRow = panel.querySelector("#ai-nav");
+  navRow.innerHTML = '<span class="ai-navlead" aria-hidden="true">🧭</span>' + NAVS.map(([em, v, t]) => `<button type="button" data-navgo="${v}">${em} ${t}</button>`).join("");
+  function goTo(v) { if (typeof go === "function") { go(v); panel.hidden = true; sync(); } }
+  navRow.addEventListener("click", (e) => { const b = e.target.closest("[data-navgo]"); if (b) goTo(b.dataset.navgo); });
   /* every Cloudflare AI model, wired in: pick a brain, or pick an image maker and describe a picture */
   const sel = panel.querySelector("#ai-model");
   const kindOf = {};
@@ -102,8 +116,8 @@ body.mw-editing #ai-fab{display:none!important}`;
 
   function signedIn() { const s = window.MW && MW.session && MW.session(); return !!(s && s.user); }
   function draw(thinking) {
-    const hello = `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">Hey! I'm Meechie, the AI assistant for Meechie's World. Ask me about services and prices, promotion, the shop, clothing designs, or how anything on the site works. I can also explain court procedure and help you draft motions on the Legal Help tab.</div></div>`;
-    log.innerHTML = hello + hist.map((m, i) => m.role === "user" ? `<div class="ai-m me">${m.pic ? `<img src="${E(m.pic)}" alt="Photo you sent">` : ""}${fmt(m.content)}</div>` : `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">${m.pic ? `<img src="${E(m.pic)}" alt="Picture Meechie AI made">` : ""}${fmt(m.content)}<span class="ai-acts"><button type="button" class="ai-copy" data-copy-i="${i}" aria-label="Copy this answer">Copy</button><button type="button" class="ai-copy" data-check-i="${i}" aria-label="Double-check this answer">🔍 Double-check</button></span>${m.check ? `<div class="ai-check">${fmt(m.check)}</div>` : ""}</div></div>`).join("") + (thinking ? `<div class="ai-m"><span class="ai-typing"><i></i><i></i><i></i></span></div>` : "");
+    const hello = `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">Hey! I'm Meechie, the AI assistant for Meechie's World. Ask me about services and prices, promotion, the shop, clothing designs, or how anything on the site works. I can also explain court procedure and help you draft motions on the Legal Help tab. And I can take you places, too — just say "take me to the shop" and I'll send you there.</div></div>`;
+    log.innerHTML = hello + hist.map((m, i) => m.role === "user" ? `<div class="ai-m me">${m.pic ? `<img src="${E(m.pic)}" alt="Photo you sent">` : ""}${fmt(m.content)}</div>` : `<div class="ai-row"><img class="ai-av sm" src="/img/meechie-ai.jpg" alt=""><div class="ai-m">${m.pic ? `<img src="${E(m.pic)}" alt="Picture Meechie AI made">` : ""}${fmt(m.content)}<span class="ai-acts"><button type="button" class="ai-copy" data-copy-i="${i}" aria-label="Copy this answer">Copy</button><button type="button" class="ai-copy" data-check-i="${i}" aria-label="Double-check this answer">🔍 Double-check</button></span>${m.nav ? `<br><button type="button" class="ai-navb" data-nav="${m.nav}">➡️ Go to ${NAVLBL[m.nav] || m.nav}</button>` : ""}${m.check ? `<div class="ai-check">${fmt(m.check)}</div>` : ""}</div></div>`).join("") + (thinking ? `<div class="ai-m"><span class="ai-typing"><i></i><i></i><i></i></span></div>` : "");
     if (!signedIn()) log.innerHTML += `<div class="ai-m">Join free (it takes 20 seconds) to chat with me.<br><button class="btn sm" type="button" data-auth="signup" style="margin-top:8px">Join free</button> <button class="btn sm ghost" type="button" data-auth="signin" style="margin-top:8px">Sign in</button></div>`;
     chips.innerHTML = hist.length ? "" : CHIPS.map((c) => `<button type="button">${E(c)}</button>`).join("");
     log.scrollTop = log.scrollHeight;
@@ -130,9 +144,13 @@ body.mw-editing #ai-fab{display:none!important}`;
       const j = await r.json().catch(() => ({}));
       reply = r.ok && j.reply ? j.reply + (j.sources && j.sources.length ? "\n\nSources: " + j.sources.map((x, i) => "[" + (i + 1) + "] " + x.title + " (" + x.url + ")").join("  ") : "") : (j.error === "busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com.");
     } catch (_) { reply = "I can't connect right now. Check your internet and try again."; }
-    hist.push({ role: "assistant", content: reply }); hist = hist.slice(-40);
-    try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((m) => ({ role: m.role, content: m.content, ...(m.check ? { check: m.check } : {}) })))); } catch (_) {}
+    // a [[nav:view]] marker at the end of the answer becomes a Go button; it never shows as text
+    let navTo = ""; const nm = /\[\[nav:([a-z]+)\]\]/.exec(reply || "");
+    if (nm) { navTo = nm[1]; reply = reply.replace(/\s*\[\[nav:[a-z]+\]\]/g, "").trim(); }
+    hist.push({ role: "assistant", content: reply, ...(navTo ? { nav: navTo } : {}) }); hist = hist.slice(-40);
+    try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((m) => ({ role: m.role, content: m.content, ...(m.check ? { check: m.check } : {}), ...(m.nav ? { nav: m.nav } : {}) })))); } catch (_) {}
     busy = false; draw(false);
+    if (viaTalk && navTo) goTo(navTo); // hands-free: in talk mode he takes you there right away
     if (viaTalk) playReply(reply); else speak(reply);
   }
   /* read answers out loud */
@@ -175,9 +193,10 @@ body.mw-editing #ai-fab{display:none!important}`;
   });
   fab.addEventListener("click", () => { panel.hidden = false; fab.hidden = true; draw(false); setTimeout(() => inp.focus(), 50); });
   panel.querySelector("#ai-close").addEventListener("click", () => { stopTalk(); panel.hidden = true; sync(); });
-  chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; sync(); return; } ask(b.textContent); });
+  chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/take me to the radio/.test(b.textContent)) { goTo("radio"); return; } if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; sync(); return; } ask(b.textContent); });
   panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} window.speechSynthesis?.cancel(); draw(false); inp.focus(); });
   log.addEventListener("click", async (e) => {
+    const nb = e.target.closest("[data-nav]"); if (nb) { goTo(nb.dataset.nav); return; }
     const k = e.target.closest("[data-check-i]"); if (k) {
       const i = +k.dataset.checkI, m = hist[i], q = [...hist.slice(0, i)].reverse().find((x) => x.role === "user"); if (!m || k.dataset.busy) return;
       k.dataset.busy = "1"; k.textContent = "Checking...";
@@ -186,7 +205,7 @@ body.mw-editing #ai-fab{display:none!important}`;
         const j = await r.json().catch(() => ({}));
         m.check = r.ok && j.text ? (j.by === "claude" ? "Double-checked by Claude:\n" : "Double-checked by a second AI:\n") + j.text + (j.sources && j.sources.length ? "\nSources: " + j.sources.map((x) => x.url).join("  ") : "") : j.error === "limit" && j.message ? j.message : "Couldn't double-check right now. Try again in a minute.";
       } catch (_) { m.check = "Couldn't double-check right now."; }
-      try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((x) => ({ role: x.role, content: x.content, ...(x.check ? { check: x.check } : {}) })))); } catch (_) {}
+      try { localStorage.setItem("mw_ai2", JSON.stringify(hist.map((x) => ({ role: x.role, content: x.content, ...(x.check ? { check: x.check } : {}), ...(x.nav ? { nav: x.nav } : {}) })))); } catch (_) {}
       draw(false); return;
     }
     const c = e.target.closest("[data-copy-i]"); if (!c) return; const m = hist[+c.dataset.copyI]; if (m) navigator.clipboard?.writeText(m.content).then(() => { c.textContent = "Copied ✓"; setTimeout(() => (c.textContent = "Copy"), 1500); }).catch(() => {}); });
