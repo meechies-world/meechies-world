@@ -1042,6 +1042,9 @@ html.popdj .popdj-hint{display:block}
       const el = $("#tm-" + k); if (el && decks[k]) el.textContent = fmt(decks[k].el.currentTime) + (decks[k].el.duration ? " / " + fmt(decks[k].el.duration) : "");
       // watchdog: an element that reached the end without firing 'ended' still hands over
       if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
+      // seamless handover (owner, 2026-10-26): the only deck on air is about to
+      // run out — start its pair partner NOW and crossfade into it, no hole
+      if (OWNER() && boothLead && S.live && !listening && S[k].playing && decks[k] && !decks[k].loop && !handoverBusy && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
@@ -1477,9 +1480,10 @@ html.popdj .popdj-hint{display:block}
     }
     return null;
   }
-  let xfAnim = null, adTimer = null;
-  async function autoNext(endedK, force) {
+  let xfAnim = null, adTimer = null, handoverBusy = false;
+  async function autoNext(endedK, force, fadeMs) {
     if ((!S.autodj && !force) || !boothLead) return;
+    if (handoverBusy) return; handoverBusy = true;
     let item = null;
     const pick = reqCache.filter((r) => r.data && r.data.kind === "pick").sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
@@ -1490,15 +1494,17 @@ html.popdj .popdj-hint{display:block}
     }
     if (!item && queue.length) item = queue.shift();
     if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
-    if (!item) return;
+    if (!item) { handoverBusy = false; return; }
     saveQueue(); paintQueue();
-    const target = endedK === "A" ? "B" : "A";
+    const target = PAIR[endedK] || "A";
     const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; }
     load(target, item).then(async () => {
       await togglePlay(target);
-      const from = S.xf, to = target === "A" ? 0 : 1, t0 = performance.now();
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500); S.xf = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
-    });
+      // the crossfade rides the pair's own axis: A/B on S.xf, C/D on S.xf2
+      const cd = target === "C" || target === "D", key = cd ? "xf2" : "xf";
+      const from = S[key] ?? 0.5, to = target === "B" || target === "D" ? 1 : 0, t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); S[key] = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; handoverBusy = false; save(true); } }, 100);
+    }).catch(() => { handoverBusy = false; });
   }
 
   /* ---------- pro DJ sounds: best of the free market (curated, verified) ---------- */
