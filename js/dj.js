@@ -455,7 +455,7 @@ html.popdj .popdj-hint{display:block}
 #dj-screen>small{display:block;color:var(--muted);font-size:11px;letter-spacing:.12em;margin-bottom:6px}
 #dj-screen .vstage{aspect-ratio:21/9;max-height:46vh;min-height:170px;border-radius:14px}
 @media(max-width:760px){#dj-screen .vstage{min-height:150px;max-height:36vh}}
-@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner .deck[data-deck="A"]{grid-row:4/span 3}#dj-owner .deck[data-deck="B"]{grid-row:4/span 3}#dj-owner .deck[data-deck="C"]{grid-row:4/span 3}#dj-owner .deck[data-deck="D"]{grid-row:4/span 3}#dj-owner #dj-browser{grid-row:4}#dj-owner .mixer.m1{grid-row:5}#dj-owner .mixer.m2{grid-row:6}}
+@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner .deck[data-deck="A"]{grid-row:4/span 3}#dj-owner .deck[data-deck="B"]{grid-row:4/span 3}#dj-owner .deck[data-deck="C"]{grid-row:4/span 3}#dj-owner .deck[data-deck="D"]{grid-row:4/span 3}#dj-owner #dj-browser{grid-row:4}#dj-owner #dj-xfbar{grid-column:3;grid-row:5}#dj-owner .mixer.m1{grid-row:6}#dj-owner .mixer.m2{grid-row:7}}
 /* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
    top of every page in a little rectangle; it steps aside whenever a big screen
    (the booth's or the station card's) is already in front of them */
@@ -502,13 +502,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .xfpad.big{width:110px;height:110px}
 }
 @media (min-width:1100px){
-#dj-booth-root #dj-owner .mixer.m1{display:flex;flex-direction:column}
-#dj-booth-root #dj-owner .mixer.m1>*{order:7}
-#dj-booth-root #dj-owner .mixer.m1>#dj-xfpad{order:1}
-#dj-booth-root #dj-owner .mixer.m1>#dj-xfpad+small{order:2}
-#dj-booth-root #dj-owner .mixer.m1>#dj-xfpad+small+div{order:3}
 #dj-booth-root #dj-owner .xfpad.big{width:190px;height:190px}
 }
+#dj-owner .xfbar{align-items:center;text-align:center}
 /* ===== PRO HARDWARE SKIN — the owner's reference unit (AlphaTheta XDJ-AZ),
    2026-10-26: same booth, hardware body. Charcoal panels, jog wheels with
    ticked rims and color-coded decks, performance pads, silver fader caps,
@@ -604,13 +600,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div></div>
     <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
   </div>
+  <div class="mixer xfbar" id="dj-xfbar">
+      <div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
+      <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes, and the master screen up top blends with it</small>
+      <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
+  </div>
   <div class="dj-decks" data-show="C">
     ${deckHTML("A")}
     ${deckHTML("B")}
     <div class="mixer m1">
-      <div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
-      <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes, and the master screen up top blends with it</small>
-      <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
       <small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
@@ -691,6 +689,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // below all four decks
   const brEl = document.getElementById("dj-browser"), dkEl = boothEl && boothEl.querySelector(".dj-decks");
   if (brEl && dkEl) dkEl.before(brEl);
+  // the X fader rides right under the music browser / YouTube search (owner,
+  // 2026-10-26: "put the cross fader at the top under the youtube search")
+  const xfEl = document.getElementById("dj-xfbar"); if (xfEl && brEl) brEl.after(xfEl);
   // foldable page sections: a [data-fold] button hides its block and everything
   // below pulls up to fill the space; the choice sticks on this device
   const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
@@ -725,8 +726,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const ckReg = (el, key, label) => { if (!el || el.dataset.ckey) return; el.dataset.ckey = key; const c = document.createElement("button"); c.type = "button"; c.className = "ck-chip"; c.dataset.ckhide = key; c.textContent = "✕ Hide"; el.appendChild(c); ckBlocks.push({ el, key, label }); };
   ckReg(document.getElementById("dj-browser"), "browser", "🎵 Music browser");
   ckReg(document.getElementById("dj-screen"), "screen", "📺 Master screen");
+  ckReg(document.getElementById("dj-xfbar"), "xfbar", "🎚️ Crossfader");
   ["A", "B", "C", "D"].forEach((k) => ckReg(boothEl.querySelector('.deck[data-deck="' + k + '"]'), "deck" + k, "🎚️ Deck " + k));
-  ckReg(boothEl.querySelector(".mixer.m1"), "mixer1", "🎛️ Mixer + X fader");
+  ckReg(boothEl.querySelector(".mixer.m1"), "mixer1", "🎛️ Mixer — mic, master & FX");
   ckReg(boothEl.querySelector(".mixer.m2"), "mixer2", "🎛️ C/D strip");
   ckReg(boothEl.querySelector(".dj-setups"), "setups", "⚙️ Setups row");
   boothEl.querySelectorAll(".dj-grid2 > .dj-panel").forEach((p) => { const h = p.querySelector("h4"); const label = h ? h.textContent.trim().slice(0, 26) : "Studio panel"; ckReg(p, "panel-" + label.replace(/[^a-z0-9]+/gi, "-").toLowerCase(), label); });
