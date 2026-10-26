@@ -317,6 +317,19 @@ body.dj-past #ai-fab,body.dj-past #mx-heads,body.dj-on #ai-fab,body.dj-on #mx-he
 body.dj-on #fb-tabs,body.dj-past #fb-tabs{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
 body.dj-on .player-bar,body.dj-past .player-bar{opacity:0!important;pointer-events:none!important;transform:translateY(130%)}
 #ai-fab,#mx-heads,#mx-fab{transition:opacity .3s ease,transform .3s ease}
+/* EVERYTHING OFF while the tables are on (Malik, 2026-10-26): the site header, the
+   Book top bar, the announcement bar and the phone tab bar join the cut-off set */
+header.bar,#fb-top,.announce,.apptab{transition:transform .3s ease,opacity .3s ease}
+body.dj-on header.bar,body.dj-past header.bar{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
+body.dj-on #fb-top,body.dj-past #fb-top{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
+body.dj-on .announce,body.dj-past .announce{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
+body.dj-on .apptab,body.dj-past .apptab{opacity:0!important;pointer-events:none!important;transform:translateY(130%)}
+/* the DJ Station view is tables territory too: same chrome off; the header stays as the way out */
+body[data-view="dj"] #fb-left{transform:translateX(-110%);opacity:0;pointer-events:none}
+body[data-view="dj"] #fb-right{transform:translateX(110%);opacity:0;pointer-events:none}
+body[data-view="dj"] #ai-fab,body[data-view="dj"] #mx-heads,body[data-view="dj"] #mw-fab,body[data-view="dj"] #mw-show,body[data-view="dj"] #mw-show-pill,body[data-view="dj"] #vz-pill,body[data-view="dj"] #mx-fab{opacity:0!important;pointer-events:none!important;transform:scale(.5)}
+body[data-view="dj"] #fb-tabs,body[data-view="dj"] #fb-top,body[data-view="dj"] .announce{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
+body[data-view="dj"] .player-bar,body[data-view="dj"] .apptab{opacity:0!important;pointer-events:none!important;transform:translateY(130%)}
 .swapbar{display:none}
 @media (max-width:760px){
 .dj-decks{display:grid;grid-template-columns:1fr 1fr;gap:8px}

@@ -7,6 +7,7 @@
   const CARDS = ["gl-perm", "mw-install", "mw-push-ask", "mw-choices", "wv-box", "pp", "ct-box"];
   window.MW_screenClear = function (self) {
     if (document.querySelector("dialog[open]")) return false;
+    if (document.body && document.body.classList.contains("dj-on")) return false; /* the DJ tables are on: pop-up cards wait until the set is over (owner, 2026-10-26) */
     const en = document.getElementById("enter"); if (en && !en.hidden && getComputedStyle(en).display !== "none") return false;
     for (const id of CARDS) { if (id === self) continue; const el = document.getElementById(id); if (el && !el.hidden && getComputedStyle(el).display !== "none" && el.getClientRects().length) return false; /* offsetParent is always null for fixed cards */ }
     return true;
