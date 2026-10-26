@@ -368,6 +368,7 @@ html.popdj main{margin:0!important;padding:10px!important}
 html.popdj #v-radio .wrap{max-width:none!important;width:100%!important}
 html.popdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
 html.popdj.popdj-guest #v-radio .wrap>#dj-root{display:block!important}
+html.popdj.popdj-guest #v-radio .wrap>.radio-top{display:grid!important}
 html.playdj header.bar,html.playdj #player-bar,html.playdj footer,html.playdj #fb-left,html.playdj #fb-right,html.playdj #ai-fab,html.playdj #mx-heads,html.playdj #fb-top,html.playdj #fb-tabs,html.playdj #fb-notes,html.playdj .announce,html.playdj .apptab,html.playdj #mx-fab,html.playdj #mw-fab,html.playdj #mw-show,html.playdj #mw-show-pill,html.playdj #vz-pill{display:none!important}
 html.playdj main{margin:0!important;padding:10px!important}
 html.playdj #v-radio .wrap{max-width:none!important;width:100%!important}
