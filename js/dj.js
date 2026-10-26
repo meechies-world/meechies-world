@@ -575,6 +575,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
 #dj-booth-root #dj-owner .platter{border-color:#45454c}
 #dj-booth-root #dj-owner .platter::before{background:repeating-conic-gradient(from 0deg,rgba(235,235,240,.85) 0deg 2deg,transparent 2deg 10deg)}
+/* ===== SETUP UPGRADE (owner: "Upgrade my set up", 2026-10-26) — pro-size jog
+   wheels on desktop/tablet, a true performance-pad grid in the cue section with
+   deck-colored glow, stronger spin glow, and a metal finish for the setups row.
+   The big wheels are height-guarded so landscape phones keep their fitted
+   console (short screens stay on the phone sizes). ===== */
+@media(min-width:761px) and (min-height:560px){#dj-booth-root #dj-owner .deck .platter{width:196px}#dj-booth-root #dj-owner .deck .platter::after{font-size:26px}}
+@media(min-width:1500px) and (min-height:560px){#dj-booth-root #dj-owner .deck .platter{width:216px}}
+#dj-booth-root #dj-owner .platter.spin{box-shadow:0 0 26px var(--dk,#f0cf78),inset 0 0 20px #000,0 8px 20px rgba(0,0,0,.6)}
+#dj-booth-root #dj-owner .dsec[data-dsec="cues"] .row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+#dj-booth-root #dj-owner .cuebtn,#dj-booth-root #dj-owner .loopbtn{min-height:52px}
+#dj-booth-root #dj-owner .cuebtn.on,#dj-booth-root #dj-owner .loopbtn.on{box-shadow:0 0 16px var(--dk,#f0cf78),inset 0 0 0 2px #000}
+#dj-booth-root #dj-owner .dj-setups .btn{background:linear-gradient(180deg,#26262a,#131315);border:1px solid #3f3f46;color:#e8e4da;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 3px 0 #000}
+#dj-booth-root #dj-owner .mixer h4,#dj-booth-root #dj-owner .dj-panel>h4{background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #2b2b30;border-radius:8px;padding:6px 9px}
 #dj-mini{border:3px solid #0a0a0c;outline:1px solid #2c2c30}
 #dj-owner .xfpad{background:linear-gradient(135deg,#17181a,#0b0b0d);border:1px solid #2e2e33;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 18px #000}
 #dj-owner .xfdot{background:linear-gradient(180deg,#f2f2f5,#9a9aa2 50%,#55555c);border:1px solid #000;box-shadow:0 3px 8px rgba(0,0,0,.6)}
