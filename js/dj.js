@@ -649,7 +649,7 @@ html.popdj .popdj-hint{display:block}
   const ckBlocks = [];
   const ckReg = (el, key, label) => { if (!el || el.dataset.ckey) return; el.dataset.ckey = key; const c = document.createElement("button"); c.type = "button"; c.className = "ck-chip"; c.dataset.ckhide = key; c.textContent = "✕ Hide"; el.appendChild(c); ckBlocks.push({ el, key, label }); };
   ckReg(document.getElementById("dj-browser"), "browser", "🎵 Music browser");
-  DECKS.forEach((k) => ckReg(boothEl.querySelector('.deck[data-deck="' + k + '"]'), "deck" + k, "🎚️ Deck " + k));
+  ["A", "B", "C", "D"].forEach((k) => ckReg(boothEl.querySelector('.deck[data-deck="' + k + '"]'), "deck" + k, "🎚️ Deck " + k));
   ckReg(boothEl.querySelector(".mixer.m1"), "mixer1", "🎛️ Mixer + X fader");
   ckReg(boothEl.querySelector(".mixer.m2"), "mixer2", "🎛️ C/D strip");
   ckReg(boothEl.querySelector(".dj-setups"), "setups", "⚙️ Setups row");
