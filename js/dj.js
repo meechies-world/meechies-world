@@ -300,11 +300,6 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
 /* compact decks on desktop: smaller platters, waves, buttons and gaps so a whole
    table fits the screen without a long scroll (Malik: "make these tabs smaller") */
 @media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}}
-/* three-zone console on wide screens (Malik: "deck A and B on one side, C and D on
-   the other, the mixer and song pick in the middle"): the deck bank unwraps so its
-   pieces place straight into the booth grid — A/B left, C/D right, and the middle
-   column stacks main mixer, SONG PICKER, C/D mixer. Pick and load without scrolling. */
-@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -972,21 +967,15 @@ html.popdj .popdj-hint{display:block}`;
   // ONE pan dot for all four decks: left/right rides both crossfaders together,
   // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
-    // the dot GLIDES to your finger (eased every frame) instead of jumping in steps,
-    // so the crossfade sounds smooth; grabbing it cancels an Auto-DJ crossfade.
-    const tgt = { x: S.xf, y: S.panY || 0 }; let glide = null;
-    const step = () => { const dx = tgt.x - S.xf, dy = tgt.y - (S.panY || 0);
-      if (Math.abs(dx) < 0.002 && Math.abs(dy) < 0.002) { S.xf = tgt.x; S.xf2 = tgt.x; S.panY = tgt.y; paintXfPads(); levels(); save(); glide = null; return; }
-      S.xf += dx * 0.38; S.xf2 = S.xf; S.panY = (S.panY || 0) + dy * 0.38; paintXfPads(); levels(); glide = requestAnimationFrame(step); };
-    const go = (x, y) => { tgt.x = Math.min(1, Math.max(0, x)); tgt.y = Math.min(1, Math.max(-1, y)); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } if (!glide) glide = requestAnimationFrame(step); };
-    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; go((dx + 1) / 2, dy); };
+    const center = () => { S.xf = 0.5; S.xf2 = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
+    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.xf = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf2 = S.xf; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
     pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = true; try { pad.setPointerCapture(e.pointerId); } catch (_) {} apply(e); e.preventDefault(); });
     pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
-    pad.addEventListener("pointerup", () => { drag = false; save(); });
+    pad.addEventListener("pointerup", () => { if (drag) { drag = false; save(true); } });
     pad.addEventListener("pointercancel", () => { drag = false; });
-    pad.addEventListener("dblclick", () => { if (OWNER()) go(0.5, 0); });
-    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { go(tgt.x - st, tgt.y); e.preventDefault(); } else if (e.key === "ArrowRight") { go(tgt.x + st, tgt.y); e.preventDefault(); } else if (e.key === "ArrowUp") { go(tgt.x, tgt.y - st); e.preventDefault(); } else if (e.key === "ArrowDown") { go(tgt.x, tgt.y + st); e.preventDefault(); } });
-    const cb = $("#dj-pan-center"); if (cb) cb.addEventListener("click", () => { if (OWNER()) go(0.5, 0); });
+    pad.addEventListener("dblclick", () => { if (OWNER()) center(); });
+    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { S.xf = Math.max(0, S.xf - st); S.xf2 = S.xf; } else if (e.key === "ArrowRight") { S.xf = Math.min(1, S.xf + st); S.xf2 = S.xf; } else if (e.key === "ArrowUp") { S.panY = Math.max(-1, (S.panY || 0) - st); } else if (e.key === "ArrowDown") { S.panY = Math.min(1, (S.panY || 0) + st); } else return; paintXfPads(); levels(); save(); e.preventDefault(); });
+    const cb = $("#dj-pan-center"); if (cb) cb.addEventListener("click", () => { if (OWNER()) center(); });
   })();
   // touch the waveform to jump the song there: tap a spot to play from it, or drag
   // across to scrub. Works in the sound window and from the mirror (it writes the
