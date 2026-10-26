@@ -444,6 +444,12 @@ html.popdj .popdj-hint{display:block}
 .vstage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .vslot{position:absolute;inset:0;opacity:0;transition:opacity .12s linear;pointer-events:none}
 #app-poll [data-appvote].on{outline:2px solid #f0cf78;outline-offset:2px}
+.vstage .vslot{overflow:hidden}
+.vstage .vslot iframe{filter:brightness(var(--vb,1)) contrast(var(--vc,1)) saturate(var(--vs,1));transform:scale(var(--vz,1))}
+#dj-edit .edgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
+@media(max-width:760px){#dj-edit .edgrid{grid-template-columns:1fr}}
+#dj-edit label{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:7px}
+#dj-edit label span{color:#e9d9a6;font-weight:700}
 .vslot iframe{width:100%;height:100%;border:0}
 .vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
@@ -455,7 +461,7 @@ html.popdj .popdj-hint{display:block}
 #dj-screen>small{display:block;color:var(--muted);font-size:11px;letter-spacing:.12em;margin-bottom:6px}
 #dj-screen .vstage{aspect-ratio:21/9;max-height:46vh;min-height:170px;border-radius:14px}
 @media(max-width:760px){#dj-screen .vstage{min-height:150px;max-height:36vh}}
-@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner .deck[data-deck="A"]{grid-row:4/span 3}#dj-owner .deck[data-deck="B"]{grid-row:4/span 3}#dj-owner .deck[data-deck="C"]{grid-row:4/span 3}#dj-owner .deck[data-deck="D"]{grid-row:4/span 3}#dj-owner #dj-browser{grid-row:4}#dj-owner #dj-xfbar{grid-column:3;grid-row:5}#dj-owner .mixer.m1{grid-row:6}#dj-owner .mixer.m2{grid-row:7}}
+@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner>#dj-edit{grid-column:1/-1;grid-row:4}#dj-owner .deck[data-deck="A"]{grid-row:5/span 3}#dj-owner .deck[data-deck="B"]{grid-row:5/span 3}#dj-owner .deck[data-deck="C"]{grid-row:5/span 3}#dj-owner .deck[data-deck="D"]{grid-row:5/span 3}#dj-owner #dj-browser{grid-row:5}#dj-owner #dj-xfbar{grid-column:3;grid-row:6}#dj-owner .mixer.m1{grid-row:7}#dj-owner .mixer.m2{grid-row:8}}
 /* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
    top of every page in a little rectangle; it steps aside whenever a big screen
    (the booth's or the station card's) is already in front of them */
@@ -600,6 +606,29 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div></div>
     <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
   </div>
+  <div class="dj-panel" id="dj-edit">
+    <h4>🎬 VIDEO &amp; AUDIO EDITING</h4>
+    <div class="edgrid">
+      <div>
+        <small>📺 VIDEO — THE MASTER PICTURE · EVERYONE SEES IT</small>
+        <label>Brightness <span id="djx-vb-v">100%</span></label><input type="range" id="djx-vb" min="0.5" max="1.5" step="0.01" value="1" aria-label="Master video brightness">
+        <label>Contrast <span id="djx-vc-v">100%</span></label><input type="range" id="djx-vc" min="0.5" max="1.5" step="0.01" value="1" aria-label="Master video contrast">
+        <label>Saturation <span id="djx-vs-v">100%</span></label><input type="range" id="djx-vs" min="0" max="2" step="0.01" value="1" aria-label="Master video saturation">
+        <label>Zoom <span id="djx-vz-v">100%</span></label><input type="range" id="djx-vz" min="1" max="1.6" step="0.01" value="1" aria-label="Master video zoom">
+        <div style="margin-top:9px"><button class="btn ghost sm" type="button" id="djx-vreset">↺ Reset picture</button></div>
+      </div>
+      <div>
+        <small>🔊 AUDIO — THE MASTER SOUND · SAME KNOBS AS THE MIXER</small>
+        <label>Boost <span id="djx-boost-v">100%</span></label><input type="range" id="djx-boost" min="1" max="2" step="0.01" value="1" aria-label="Volume boost">
+        <label>Filter</label><input type="range" id="djx-filter" min="0" max="100" step="1" value="100" aria-label="Master filter">
+        <label>Echo</label><input type="range" id="djx-echo" min="0" max="0.6" step="0.02" value="0" aria-label="Echo level">
+        <label>Echo repeat</label><input type="range" id="djx-fb" min="0" max="0.7" step="0.02" value="0.34" aria-label="Echo repeat">
+        <label>Reverb</label><input type="range" id="djx-verb" min="0" max="0.7" step="0.02" value="0" aria-label="Reverb level">
+        <label>Flanger</label><input type="range" id="djx-fla" min="0" max="1" step="0.02" value="0" aria-label="Flanger level">
+        <label>Grit (crush)</label><input type="range" id="djx-crush" min="0" max="100" step="1" value="0" aria-label="Bitcrush grit">
+      </div>
+    </div>
+  </div>
   <div class="mixer xfbar" id="dj-xfbar">
       <div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
       <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes, and the master screen up top blends with it</small>
@@ -727,6 +756,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   ckReg(document.getElementById("dj-browser"), "browser", "🎵 Music browser");
   ckReg(document.getElementById("dj-screen"), "screen", "📺 Master screen");
   ckReg(document.getElementById("dj-xfbar"), "xfbar", "🎚️ Crossfader");
+  ckReg(document.getElementById("dj-edit"), "edit", "🎬 Video & audio editing");
   ["A", "B", "C", "D"].forEach((k) => ckReg(boothEl.querySelector('.deck[data-deck="' + k + '"]'), "deck" + k, "🎚️ Deck " + k));
   ckReg(boothEl.querySelector(".mixer.m1"), "mixer1", "🎛️ Mixer — mic, master & FX");
   ckReg(boothEl.querySelector(".mixer.m2"), "mixer2", "🎛️ C/D strip");
@@ -1071,6 +1101,20 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     drawPair("A", "B"); drawPair("C", "D");
   }, 200);
 
+  /* the editing panel under the master screen (owner, 2026-10-26): S.ved shapes
+     the master PICTURE on every screen (booth, station, mini) via CSS vars, and
+     the audio half mirrors the mixer's master FX — both panels always agree */
+  const paintVEdit = () => { const v = S.ved || {}, de = document.documentElement.style; de.setProperty("--vb", v.b == null ? 1 : v.b); de.setProperty("--vc", v.c == null ? 1 : v.c); de.setProperty("--vs", v.s == null ? 1 : v.s); de.setProperty("--vz", v.z == null ? 1 : v.z); };
+  const paintEdit = () => { const f = S.fx || defFx(), v = S.ved || {}; const set = (id, val) => { const el = $(id); if (el && document.activeElement !== el) el.value = val; }, txt = (id, val) => { const el = $(id); if (el) el.textContent = val; };
+    set("#djx-boost", f.boost || 1); txt("#djx-boost-v", Math.round((f.boost || 1) * 100) + "%");
+    set("#djx-filter", f.mf == null ? 100 : f.mf); set("#dj-filter", f.mf == null ? 100 : f.mf);
+    set("#djx-echo", f.echo || 0); set("#dj-echo", f.echo || 0);
+    set("#djx-fb", f.fb == null ? 0.34 : f.fb); set("#dj-fb", f.fb == null ? 0.34 : f.fb);
+    set("#djx-verb", f.verb || 0); set("#dj-verb", f.verb || 0);
+    set("#djx-fla", f.fla || 0); set("#dj-fla", f.fla || 0);
+    set("#djx-crush", f.crush || 0);
+    set("#djx-vb", v.b == null ? 1 : v.b); set("#djx-vc", v.c == null ? 1 : v.c); set("#djx-vs", v.s == null ? 1 : v.s); set("#djx-vz", v.z == null ? 1 : v.z);
+    txt("#djx-vb-v", Math.round((v.b == null ? 1 : v.b) * 100) + "%"); txt("#djx-vc-v", Math.round((v.c == null ? 1 : v.c) * 100) + "%"); txt("#djx-vs-v", Math.round((v.s == null ? 1 : v.s) * 100) + "%"); txt("#djx-vz-v", Math.round((v.z == null ? 1 : v.z) * 100) + "%"); };
   function paintOwner() {
     document.querySelectorAll("[data-vmix]").forEach((x) => x.classList.toggle("on", x.dataset.vmix === "auto" && (!S.vmix || S.vmix.mode === "auto")));
     document.querySelectorAll("[data-vsrc]").forEach((x) => x.classList.toggle("on", !!S.vmix && S.vmix.mode === "man" && S.vmix.a === x.dataset.vsrc && !S.vmix.b));
@@ -1090,7 +1134,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     });
     const qz = $("#dj-quant"); if (qz && document.activeElement !== qz) qz.checked = S.quant !== false;
     const fsx = $("#dj-fxsync"); if (fsx && document.activeElement !== fsx) fsx.checked = (S.fx && S.fx.sync) !== false;
-    const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live; paintXfPads();
+    const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live; paintEdit(); paintXfPads();
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = S.live ? "ON AIR" : "OFF AIR";
@@ -1326,6 +1370,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     return m;
   }
   function onState(d) {
+    paintVEdit();
     const firstOwnerLoad = OWNER() && !ownerLoaded;
     if (OWNER() && ownerLoaded) {
       // Booth-to-booth sync: my own saves echo back and are ignored, but a save stamped
@@ -1474,6 +1519,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (b.dataset.vcut != null && b.dataset.vcut !== "") { const k = b.dataset.vcut; S[k].vcut = !S[k].vcut; applyFx(); paintOwner(); save(true); say(S[k].vcut ? "🎤 Vocal cut ON deck " + k + " — the center (vocals) drops out for everyone. Karaoke trick, not true stems." : "Vocal cut off, deck " + k); return; }
     if (b.dataset.bcut != null && b.dataset.bcut !== "") { const k = b.dataset.bcut; S[k].bcut = !S[k].bcut; applyFx(); paintOwner(); save(true); say(S[k].bcut ? "🔊 Bass cut ON deck " + k + " — the low end is out, classic mix move." : "Bass back in, deck " + k); return; }
     if (b.dataset.gate != null) { S.fx.gate = +b.dataset.gate; document.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate)); applyFx(); save(true); say(S.fx.gate ? "Transformer chop is ON — everyone listening hears the beat get sliced." : "Transformer off."); return; }
+    if (b.id === "djx-vreset") { S.ved = { b: 1, c: 1, s: 1, z: 1 }; paintVEdit(); paintEdit(); save(true); say("Master picture reset — brightness, contrast, color and zoom back to normal for everyone."); return; }
   });
   // long-press a hot cue clears it
   let hotTimer = null;
@@ -1494,6 +1540,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.id === "dj-fb") { S.fx.fb = +t.value; applyFx(); save(); }
     if (t.id === "dj-verb") { S.fx.verb = +t.value; applyFx(); save(); }
     if (t.id === "dj-fla") { S.fx.fla = +t.value; applyFx(); save(); }
+    if (t.id === "djx-boost") { S.fx.boost = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-filter") { S.fx.mf = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-echo") { S.fx.echo = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-fb") { S.fx.fb = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-verb") { S.fx.verb = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-fla") { S.fx.fla = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-crush") { S.fx.crush = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-vb") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).b = +t.value; paintVEdit(); paintEdit(); save(); }
+    if (t.id === "djx-vc") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).c = +t.value; paintVEdit(); paintEdit(); save(); }
+    if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
+    if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
   onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
   // circular pan pads: drag the gold dot anywhere in the circle — the further it
