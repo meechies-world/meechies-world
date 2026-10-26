@@ -1466,6 +1466,32 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div><p class="eyebrow">Watch together</p><h2>Videos</h2></div>
       <p class="muted">Watch music videos, interviews, and more from the community. Share any YouTube or TikTok video by pasting its link.</p>
     </div>
+    <div class="vtab-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="btn" type="button" data-vtab="watch">📺 Videos</button>
+      <button class="btn ghost" type="button" data-vtab="movies">🍿 Movies — free classics</button>
+    </div>
+    <div id="vtab-movies" hidden>
+      <div class="card" style="padding:16px;margin-bottom:16px">
+        <p class="eyebrow" style="margin:0">Meechie's World Cinema</p>
+        <h3 style="margin:4px 0 6px">🍿 Free Movies — watch right here</h3>
+        <p class="muted" style="margin:0 0 12px;font-size:14px">Thousands of free public-domain classics from the Internet Archive: famous films, silent-era gems, sci-fi &amp; horror, vintage cartoons and the Prelinger vault. Free forever, no sign-up — and they play right here, so you never have to leave.</p>
+        <div id="mv-stage" hidden>
+          <div id="mv-frame"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px"><b id="mv-title"></b><button class="btn ghost sm" type="button" id="mv-close">✕ Close</button></div>
+        </div>
+        <form class="dj-search" id="mv-form" style="margin-top:10px"><input type="search" id="mv-q" placeholder="Search thousands of free movies..." aria-label="Search free movies"><button class="btn sm" type="submit">Search</button></form>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" id="mv-shelves">
+          <button class="btn sm mv-shelf" type="button" data-shelf="fame">⭐ Hall of Fame</button>
+          <button class="btn ghost sm mv-shelf" type="button" data-shelf="classics">🎞️ Silent-Era Classics</button>
+          <button class="btn ghost sm mv-shelf" type="button" data-shelf="scifi">👽 Sci-Fi &amp; Horror</button>
+          <button class="btn ghost sm mv-shelf" type="button" data-shelf="prelinger">📼 Prelinger Vault</button>
+          <button class="btn ghost sm mv-shelf" type="button" data-shelf="cartoons">🐰 Classic Cartoons</button>
+        </div>
+      </div>
+      <div id="mv-count" class="muted" style="font-size:13px;margin-bottom:8px"></div>
+      <div id="mv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"></div>
+      <div style="text-align:center;margin-top:16px"><button class="btn ghost" type="button" id="mv-more" hidden>Load more movies</button></div>
+    </div>
     <div class="card tt-box" style="margin-bottom:18px">
       <div class="tt-head"><div><p class="eyebrow" style="margin:0">Only on Meechie's World</p><h3 style="margin:2px 0 0">Meechie's World Originals</h3></div></div>
       <div class="orig-wrap"><div class="orig-row" data-originals></div></div>
@@ -3428,6 +3454,7 @@ boot();
 <script src="js/site-coder-ui.js?v=1792580555"></script>
 <script src="js/messages.js?v=1792935000"></script>
 <script src="js/videos.js?v=1792580555"></script>
+<script src="js/movies.js?v=1792978000"></script>
 <script src="js/markets.js?v=1792580555"></script>
 <script src="js/legal.js?v=1792928500"></script>
 <script src="js/coin.js?v=1792580555"></script>
