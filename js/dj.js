@@ -214,7 +214,7 @@
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
+  let S = { live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   function save(now) { if (!OWNER()) return; if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
@@ -418,7 +418,14 @@ html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
 @media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
 @media (max-width:760px){.dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#dj-browser .dj-item{grid-template-columns:minmax(0,1fr) repeat(5,44px)}#dj-browser .dj-item .btn{min-width:44px;width:44px;padding:0}}
-@media (orientation:landscape) and (max-height:540px) and (max-width:1100px){.dj-decks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}.dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}.dj-decks>.deck[data-deck="C"]{grid-column:3;grid-row:1}.dj-decks>.deck[data-deck="D"]{grid-column:4;grid-row:1}.dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}.dj-decks>.mixer.m2{grid-column:1/-1;grid-row:3}.dj-decks>.swapbar{display:none!important}#dj-owner .deck{padding:8px;gap:5px}#dj-owner .deck .platter{width:92px}#dj-owner .deck .wave{height:40px}}`;
+@media (orientation:landscape) and (max-height:540px) and (max-width:1100px){.dj-decks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}.dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}.dj-decks>.deck[data-deck="C"]{grid-column:3;grid-row:1}.dj-decks>.deck[data-deck="D"]{grid-column:4;grid-row:1}.dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}.dj-decks>.mixer.m2{grid-column:1/-1;grid-row:3}.dj-decks>.swapbar{display:none!important}#dj-owner .deck{padding:8px;gap:5px}#dj-owner .deck .platter{width:92px}#dj-owner .deck .wave{height:40px}}
+.vstage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.vslot{position:absolute;inset:0;opacity:0;transition:opacity .12s linear;pointer-events:none}
+.vslot iframe{width:100%;height:100%;border:0}
+.vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
+.vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
+.vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}`;
   document.head.appendChild(css);
 
   // collapsible deck sections: one shared open/shut choice per section, remembered
@@ -451,7 +458,7 @@ html.popdj .popdj-hint{display:block}
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
   <div id="st-show"></div>
-  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="ytbox"><div id="st-yt"></div></div></div>
+  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vchip" id="st-vchip" hidden></div></div></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
@@ -474,6 +481,9 @@ html.popdj .popdj-hint{display:block}
       <div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
       <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes</small>
       <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
+      <small>📺 MASTER — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
+      <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div></div>
+      <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
       <small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
@@ -605,22 +615,73 @@ html.popdj .popdj-hint{display:block}
     DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * duck * mix); } });
     stageApply(mix, duck);
   }
-  /* listeners' ON AIR video stage: one shared player in the station card shows the
-   * loudest playing YouTube deck's music video, at the mix volume the fader gives it */
-  let stageP = null, stageVid = "";
+  /* ---------- the MASTER music-video screen ----------
+   * Two player slots dissolve into each other exactly like the audio
+   * crossfade: in AUTO the visuals ride the same gains the X fader gives the
+   * sound, so fading the sound fades the picture. The booth's screen sits in
+   * the master section (muted there — the decks make the sound); viewers get
+   * the SAME screen on the station card, with the sound, mixed by the same
+   * numbers. The booth can also mix the picture by hand: S.vmix holds
+   * {mode:"man", a, b, t} and every screen follows it. */
   const stageGain = (k) => { const s = S[k], cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); return (s.vol ?? 0.9) * xfGain(x, side) * pairG; };
-  async function stageApply(mix, duck) {
-    if (OWNER()) return;
-    let best = "", bg = 0.02;
-    DECKS.forEach((k) => { if (S[k].yt && S[k].playing) { const g = stageGain(k); if (g > bg) { bg = g; best = k; } } });
-    const box = $("#st-ytbox");
-    if (!best) { if (stageP) { try { stageP.pauseVideo(); } catch (_) {} } if (box) box.hidden = true; return; }
-    if (box) box.hidden = false;
+  const mkScreen = (ids, standby, chip) => ({ ids, standby, chip, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
+  const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
+  const scrView = mkScreen(["#st-vs1", "#st-vs2"], null, "#st-vchip");
+  function vmixTargets() {
+    const vm = S.vmix || { mode: "auto", a: "", b: "", t: 0 };
+    if (vm.mode === "man" && vm.a && S[vm.a] && S[vm.a].yt) {
+      const t = Math.max(0, Math.min(1, +vm.t || 0)), out = [{ k: vm.a, op: 1 - t }];
+      if (vm.b && S[vm.b] && S[vm.b].yt && S[vm.b].yt !== S[vm.a].yt) out.push({ k: vm.b, op: t });
+      return out.filter((x) => x.op > 0.01);
+    }
+    const gs = DECKS.filter((k) => S[k].yt && S[k].playing).map((k) => ({ k, g: stageGain(k) })).filter((x) => x.g > 0.02).sort((a, b) => b.g - a.g).slice(0, 2);
+    if (!gs.length) return [];
+    const sum = gs.reduce((a, x) => a + x.g, 0) || 1;
+    return gs.map((x) => ({ k: x.k, op: Math.max(0.02, x.g / sum) }));
+  }
+  async function renderScreen(scr, muted, mix, duck) {
+    const tg = vmixTargets();
+    scr.slots.forEach((sl, i) => { if (sl.deck && !tg.some((x) => x.k === sl.deck)) { sl.deck = ""; const el = $(scr.ids[i]); if (el) el.style.opacity = 0; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } } });
+    const stb = scr.standby ? $(scr.standby) : null; if (stb) stb.style.display = tg.length ? "none" : "grid";
+    const chip = $(scr.chip);
+    if (!tg.length) { if (chip) chip.hidden = true; return; }
     await ytApi(); if (!window.YT || !YT.Player) return;
-    const vid = S[best].yt;
-    if (!stageP) { const mount = $("#st-yt"); if (!mount) return; try { stageP = new YT.Player(mount, { videoId: vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 1 }, events: { onReady: () => { stageVid = vid; } } }); } catch (_) {} return; }
-    if (stageVid !== vid) { stageVid = vid; try { stageP.loadVideoById(vid, Math.max(0, posOf(best))); } catch (_) {} }
-    try { const want = posOf(best), cur = stageP.getCurrentTime ? stageP.getCurrentTime() : 0; if (Math.abs(cur - want) > 4) stageP.seekTo(want, true); if (stageP.getPlayerState && stageP.getPlayerState() !== 1) stageP.playVideo(); stageP.setVolume(Math.round(Math.max(0, Math.min(1, bg * (duck || 1) * (mix || 1))) * 100)); } catch (_) {}
+    for (const t of tg) {
+      let i = scr.slots.findIndex((sl) => sl.deck === t.k);
+      if (i < 0) {
+        i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
+        const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
+        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; mount.innerHTML = "<div></div>";
+        try { sl.p = new YT.Player(mount.firstChild, { videoId: sl.vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: (e) => { try { if (muted) e.target.mute(); e.target.seekTo(Math.max(0, posOf(t.k)), true); e.target.playVideo(); } catch (_) {} } } }); } catch (_) {}
+        continue;
+      }
+      const sl = scr.slots[i];
+      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, posOf(t.k))); } catch (_) {} } }
+      const el = $(scr.ids[i]); if (el) { el.style.opacity = t.op.toFixed(2); el.style.zIndex = t.op >= 0.5 ? 2 : 1; }
+      if (sl.p) { try {
+        const want = posOf(t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
+        if (Math.abs(cur - want) > 3) sl.p.seekTo(want, true);
+        const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
+        if (stt !== 1 && S[t.k].playing) sl.p.playVideo();
+        if (stt === 1 && !S[t.k].playing) sl.p.pauseVideo();
+        if (!muted) sl.p.setVolume(Math.round(Math.max(0, Math.min(1, stageGain(t.k) * (duck || 1) * (mix || 1))) * 100));
+      } catch (_) {} }
+    }
+    const top = tg.slice().sort((a, b) => b.op - a.op)[0];
+    if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : ""); }
+  }
+  let stageBusy = false;
+  async function stageApply(mix, duck) {
+    if (stageBusy) return; stageBusy = true;
+    try {
+      if (OWNER()) { await renderScreen(scrBooth, true, 1, 1); const box = $("#st-ytbox"); if (box) box.hidden = true; }
+      else {
+        const has = vmixTargets().length > 0, box = $("#st-ytbox"); if (box) box.hidden = !has;
+        if (has) await renderScreen(scrView, false, mix, duck);
+        else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
+      }
+    } catch (_) {}
+    stageBusy = false;
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
   function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
@@ -832,6 +893,8 @@ html.popdj .popdj-hint{display:block}
   }, 200);
 
   function paintOwner() {
+    document.querySelectorAll("[data-vmix]").forEach((x) => x.classList.toggle("on", x.dataset.vmix === "auto" && (!S.vmix || S.vmix.mode === "auto")));
+    document.querySelectorAll("[data-vsrc]").forEach((x) => x.classList.toggle("on", !!S.vmix && S.vmix.mode === "man" && S.vmix.a === x.dataset.vsrc && !S.vmix.b));
     DECKS.forEach((k) => {
       const s = S[k], pl = $("#pl-" + k);
       $("#ttl-" + k).textContent = s.title || "Load a song";
@@ -998,8 +1061,9 @@ html.popdj .popdj-hint{display:block}
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
+    m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0 }, m.vmix || {});
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     return m;
   }
@@ -1089,6 +1153,22 @@ html.popdj .popdj-hint{display:block}
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
     if (b.dataset.pop != null) { popOut(); return; }
     if (b.dataset.dsecbtn) { const n = b.dataset.dsecbtn; secState[n] = secState[n] ? 0 : 1; try { localStorage.setItem("mw-dsec-v1", JSON.stringify(secState)); } catch (_) {} document.querySelectorAll('.dsec[data-dsec="' + n + '"]').forEach((s) => s.classList.toggle("shut", !secState[n])); return; }
+    if (b.dataset.vmix || b.dataset.vsrc) {
+      const ytDecks = () => DECKS.filter((k) => S[k].yt && S[k].playing).sort((x, y) => stageGain(y) - stageGain(x));
+      if (b.dataset.vsrc) { const k = b.dataset.vsrc; if (S[k] && S[k].yt) { S.vmix = { mode: "man", a: k, b: "", t: 0 }; say("📺 Master screen: deck " + k + " full screen — viewers see it too."); } else say("No video on deck " + k + " — put a YouTube video there first."); paintOwner(); save(true); return; }
+      const a = b.dataset.vmix;
+      if (a === "auto") { S.vmix = { mode: "auto", a: "", b: "", t: 0 }; say("📺 Video screen on AUTO — the picture now fades with the X fader, just like the sound."); paintOwner(); save(true); return; }
+      const top2 = ytDecks(), cur = vmixTargets()[0];
+      if (top2.length < 2 || !cur) { say("Put videos on two decks first — then Cut and Fade mix the pictures."); return; }
+      const other = top2.find((k) => k !== cur.k);
+      if (a === "cut") { S.vmix = { mode: "man", a: other, b: "", t: 0 }; say("✂️ Video CUT to deck " + other + "."); paintOwner(); save(true); return; }
+      // fade: dissolve from the deck on screen to the other one over ~1.2s,
+      // saving as it goes so viewers dissolve with the booth
+      S.vmix = { mode: "man", a: cur.k, b: other, t: 0 }; save(true);
+      const t0 = performance.now(); say("🌫️ Fading the picture to deck " + other + "…");
+      const step = () => { const p = Math.min(1, (performance.now() - t0) / 1200); S.vmix.t = p; stageApply(1, 1); save(); if (p < 1) requestAnimationFrame(step); else { S.vmix = { mode: "man", a: other, b: "", t: 0 }; paintOwner(); save(true); } };
+      requestAnimationFrame(step); return;
+    }
     if (b.dataset.preset) {
       const P = {
         loud: { fx: { mf: 100, echo: 0, fb: 0.3, verb: 0.1, fla: 0, gate: 0, crush: 0, boost: 1.25 }, vinyl: false, keepMix: true, msg: "🔊 Loud & Clear: the phone setup — mud off, boost set, and the broadcast polish brings the bass and clarity. Your mix and deck volumes stay right where they are." },
