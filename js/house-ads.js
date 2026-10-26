@@ -24,11 +24,21 @@
     ".mw-ad .mw-ad-price{margin-left:auto;color:#d4af37;font-weight:800;font-size:15px;white-space:nowrap}" +
     ".mw-ad .mw-ad-cta{white-space:nowrap;font-weight:700;font-size:13px;color:#d4af37}" +
     ".mw-ad .mw-ad-x{position:absolute;top:2px;right:6px;background:none;border:0;color:inherit;opacity:.55;font-size:18px;cursor:pointer;line-height:1;padding:6px}" +
-    "@media (max-width:480px){.mw-ad{margin-bottom:14px;padding:8px 10px}.mw-ad img{width:44px;height:44px}.mw-ad .mw-ad-title{font-size:13px}.mw-ad .mw-ad-price{font-size:13px}}";
+    "@media (max-width:480px){.mw-ad{margin-bottom:14px;padding:8px 10px}.mw-ad img{width:44px;height:44px}.mw-ad .mw-ad-title{font-size:13px}.mw-ad .mw-ad-price{font-size:13px}}" +
+    ".mw-shelf-h{font-size:13px;font-weight:800;letter-spacing:.12em;color:#d4af37;margin:18px 0 8px}" +
+    ".mw-rail{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}" +
+    ".mw-card{flex:0 0 148px;scroll-snap-align:start;display:block;background:#141414;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:8px;text-decoration:none;color:inherit}" +
+    ".mw-card img{width:100%;height:108px;object-fit:cover;border-radius:8px;background:#1c1c1c;display:block}" +
+    ".mw-card b{display:block;font-size:12.5px;line-height:1.3;margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:32px}" +
+    ".mw-card .mw-card-pr{display:block;color:#d4af37;font-weight:800;font-size:13px;margin-top:3px}" +
+    ".mw-card .mw-card-src{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0e0c07;background:#d4af37;border-radius:99px;padding:1px 7px;margin-top:6px}" +
+    ".mw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:8px}" +
+    ".mw-grid .mw-card{flex:none}";
   document.head.appendChild(css);
 
   var products = [];
   var slots = [];
+  var shelves = [];
 
   function fill(slot) {
     if (!products.length) return;
@@ -43,7 +53,7 @@
     }
     var mid = document.createElement("span");
     var tag = document.createElement("span");
-    tag.className = "mw-ad-tag"; tag.textContent = "Meechie's World Merch · Ad";
+    tag.className = "mw-ad-tag"; tag.textContent = "Meechie's World Merch · " + (p.src || "Ad");
     var ttl = document.createElement("span");
     ttl.className = "mw-ad-title"; ttl.textContent = p.title;
     mid.appendChild(tag); mid.appendChild(ttl);
@@ -63,6 +73,8 @@
       setHidden();
       slots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
       slots = [];
+      shelves.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
+      shelves = [];
     });
     slot.appendChild(a); slot.appendChild(x);
   }
@@ -85,11 +97,65 @@
     if (slots.length) setInterval(function () { if (!document.hidden) slots.forEach(fill); }, 12000);
   }
 
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  function card(p) {
+    var a = document.createElement("a");
+    a.className = "mw-card"; a.href = p.url; a.target = "_blank"; a.rel = "noopener";
+    if (p.img) { var img = document.createElement("img"); img.src = p.img; img.alt = ""; img.loading = "lazy"; a.appendChild(img); }
+    var b = document.createElement("b"); b.textContent = p.title; a.appendChild(b);
+    if (p.price) { var pr = document.createElement("span"); pr.className = "mw-card-pr"; pr.textContent = p.price; a.appendChild(pr); }
+    var s = document.createElement("span"); s.className = "mw-card-src"; s.textContent = p.src || "Store"; a.appendChild(s);
+    return a;
+  }
+
+  function shelf(heading, cls) {
+    var w = document.createElement("div");
+    var h = document.createElement("div"); h.className = "mw-shelf-h"; h.textContent = heading; w.appendChild(h);
+    var row = document.createElement("div"); row.className = cls; w.appendChild(row);
+    shelves.push(w);
+    return { wrap: w, row: row };
+  }
+
+  /* The Radio page carries the full advertising load (owner's ask, 2026-10-26):
+     a scrolling product rail under the station card and a product grid under
+     the song library, Printify + Shopify mixed, on top of the rotating banner
+     every view already gets. */
+  function mountRadio() {
+    if (isHidden()) return;
+    var sec = document.getElementById("v-radio");
+    if (!sec || sec.dataset.mwAdsFull) return;
+    sec.dataset.mwAdsFull = "1";
+    var mix = shuffle(products.slice());
+    var station = document.getElementById("dj-root");
+    if (station && station.parentNode) {
+      var rail = shelf("🛍️ MEECHIE'S WORLD MERCH — FROM THE STORES", "mw-rail");
+      mix.slice(0, 14).forEach(function (p) { rail.row.appendChild(card(p)); });
+      station.parentNode.insertBefore(rail.wrap, station.nextSibling);
+    }
+    var tracks = document.getElementById("tracks");
+    if (tracks && tracks.parentNode) {
+      var grid = shelf("🔥 MORE FROM THE STORES", "mw-grid");
+      mix.slice(14, 22).forEach(function (p) { grid.row.appendChild(card(p)); });
+      tracks.parentNode.insertBefore(grid.wrap, tracks.nextSibling);
+      var tail = document.createElement("div");
+      tail.className = "mw-ad";
+      grid.wrap.parentNode.insertBefore(tail, grid.wrap.nextSibling);
+      slots.push(tail); fill(tail);
+    }
+  }
+
   function start() {
-    fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) {
-      products = (j && j.products) || [];
-      if (products.length) mount();
-    }).catch(function () {});
+    var got = { printify: [], shopify: [] };
+    var done = function () {
+      var pf = got.printify.map(function (p) { return { title: p.title, img: p.img, price: p.price, url: p.url, src: "Printify" }; });
+      var sh = got.shopify.filter(function (p) { return /^https:\/\//.test(p.url || ""); }).map(function (p) { return { title: p.title, img: p.img, price: p.price, url: (p.digital && p.buy) ? p.buy : p.url, src: "Shopify" }; });
+      products = shuffle(pf.concat(sh));
+      if (products.length) { mount(); mountRadio(); }
+    };
+    var n = 0, step = function () { if (++n === 2) done(); };
+    fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) { got.printify = (j && j.products) || []; }).catch(function () {}).then(step);
+    fetch("/api/shopify").then(function (r) { return r.json(); }).then(function (j) { got.shopify = (j && j.products) || []; }).catch(function () {}).then(step);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
