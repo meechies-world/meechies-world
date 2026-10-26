@@ -68,7 +68,8 @@ h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
 .rule{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);border:0;margin:0}
 
 /* Top bar */
-header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--ink) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+header.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ink);border-bottom:1px solid var(--line)}
+.view{scroll-margin-top:118px}
 .bar-in{display:flex;align-items:center;gap:16px;padding-block:10px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);flex:none}
 .brand svg{width:34px;height:34px}
@@ -3483,7 +3484,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
 boot();
 </script>
 <script src="js/appnav.js?v=1792991000"></script>
-<script src="js/fb-feed.js?v=1792985000"></script>
+<script src="js/fb-feed.js?v=1793007000"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/stories.js?v=1792607566"></script>
 <script src="js/book-plus.js?v=1792607145"></script>
