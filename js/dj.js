@@ -2114,7 +2114,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
     // scroll past the tables and the side buttons/floats fold away — nothing covers the decks
     const boothHome2 = document.getElementById("dj-booth-root");
-    if (boothHome2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { document.body.classList.toggle("dj-past", !en.isIntersecting && en.boundingClientRect.top < 0); document.body.classList.toggle("dj-on", en.isIntersecting); }); }, { threshold: 0 }).observe(boothHome2);
+    if (boothHome2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { const r = en.boundingClientRect; document.body.classList.toggle("dj-past", !en.isIntersecting && r.top < 0); document.body.classList.toggle("dj-on", en.isIntersecting && r.top < innerHeight * 0.5); }); }, { threshold: 0 }).observe(boothHome2);
     const stBox2 = document.getElementById("st-ytbox");
     if (stBox2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { stInView = en.isIntersecting; }); }, { threshold: 0.05 }).observe(stBox2);
   }
