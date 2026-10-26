@@ -569,8 +569,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .cuebtn:nth-of-type(3){border-color:#38bdf8}
 #dj-booth-root #dj-owner .cuebtn.on,#dj-booth-root #dj-owner .loopbtn.on{background:#26200c;box-shadow:0 0 12px rgba(240,207,120,.35),inset 0 0 0 2px #000}
 #dj-booth-root #dj-owner .dsec .row{flex-wrap:wrap;row-gap:6px}
-#dj-screen .vstage{border:10px solid #0d0d10;outline:2px solid #5a5a63}
-#st-ytbox .vstage{border:8px solid #0d0d10;outline:2px solid #5a5a63}
+#dj-screen .vstage{border:14px solid #0c0c0e;outline:3px solid #77777f;box-shadow:0 18px 40px rgba(0,0,0,.65),0 0 0 6px #000,inset 0 0 0 2px rgba(240,207,120,.28)}
+#st-ytbox .vstage{border:10px solid #0c0c0e;outline:3px solid #77777f}
 #dj-booth-root #dj-owner .xfpad{background:linear-gradient(135deg,#1b1c1f,#0c0c0e);border:1.5px solid #3f3f46;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 22px #000}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
 #dj-booth-root #dj-owner .platter{border-color:#45454c}
@@ -2114,7 +2114,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
     // scroll past the tables and the side buttons/floats fold away — nothing covers the decks
     const boothHome2 = document.getElementById("dj-booth-root");
-    if (boothHome2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { const r = en.boundingClientRect; document.body.classList.toggle("dj-past", !en.isIntersecting && r.top < 0); document.body.classList.toggle("dj-on", en.isIntersecting && r.top < innerHeight * 0.5); }); }, { threshold: 0 }).observe(boothHome2);
+    // the cut-off gate, scroll-driven (fixes the 2026-10-26 tabs trap for good):
+    // an IntersectionObserver alone only reports enter/exit, so a ratio condition
+    // inside it goes stale mid-scroll — the bars stayed hidden at the very top.
+    // dj-on now means: the booth's top has scrolled up to the viewport top AND
+    // the booth still fills the lower screen — i.e. he is working the tables.
+    // At the hero, scrolling back up, or on any other view, every bar stays.
+    const boothGate = () => { if (!boothHome2) return; const r = boothHome2.getBoundingClientRect(); const on = r.top <= 80 && r.bottom > innerHeight * 0.5; document.body.classList.toggle("dj-on", on); document.body.classList.toggle("dj-past", !on && r.bottom < 0); };
+    if (boothHome2) { let gateQueued = false; const gateSoon = () => { if (gateQueued) return; gateQueued = true; requestAnimationFrame(() => { gateQueued = false; boothGate(); }); }; addEventListener("scroll", gateSoon, { passive: true }); addEventListener("resize", gateSoon); addEventListener("hashchange", () => { boothGate(); setTimeout(boothGate, 300); }); if ("IntersectionObserver" in window) new IntersectionObserver(() => boothGate(), { threshold: 0 }).observe(boothHome2); boothGate(); setTimeout(boothGate, 800); }
     const stBox2 = document.getElementById("st-ytbox");
     if (stBox2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { stInView = en.isIntersecting; }); }, { threshold: 0.05 }).observe(stBox2);
   }
