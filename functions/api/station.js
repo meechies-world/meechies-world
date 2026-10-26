@@ -176,6 +176,10 @@ export async function onRequestGet({ request, env }) {
     }
     break;
   }
+  // station clock: about once an hour the unattended station IDs itself with
+  // the first sound-board pad, the way a real station does at the top of the hour
+  const pad0 = (S.pads || [])[0];
+  if (pad0 && pad0.url && now - (S.clockAt || 0) > 50 * 60e3) { S.voice = { id: pad0.id || "", url: pad0.url, at: now }; S.clockAt = now; changed = true; }
   if (!S.live) { S.live = true; S.liveSince = now; changed = true; }
   // Unattended rule: while no booth is at the tables, the 24/7 station rests on the
   // clean broadcast profile. Performance FX a DJ left cranked (bitcrush grit, the
@@ -189,6 +193,7 @@ export async function onRequestGet({ request, env }) {
     if ((+fx.gate || 0) !== 0) { fx.gate = 0; changed = true; }
     if ((+fx.fla || 0) > 0.25) { fx.fla = 0.25; changed = true; }
     if ((+fx.verb || 0) > 0.3) { fx.verb = 0.3; changed = true; }
+    if ((+fx.pha || 0) > 0.3) { fx.pha = 0.3; changed = true; }
     if ((+fx.boost || 1) > 1.3) { fx.boost = 1.3; changed = true; }
   }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
@@ -224,7 +229,7 @@ export async function onRequestPost({ request, env }) {
     S.A = deck(b.A); S.B = deck(b.B); S.C = deck(b.C); S.D = deck(b.D);
     S.xf = num(b.xf, 0, 1, S.xf ?? 0.5); S.xf2 = num(b.xf2, 0, 1, S.xf2 ?? 0.5); S.panY = num(b.panY, -1, 1, S.panY ?? 0);
     const fxIn = b.fx || {};
-    S.fx = Object.assign({}, S.fx, { mf: num(fxIn.mf, 0, 100, 100), echo: num(fxIn.echo, 0, 0.6, 0), fb: num(fxIn.fb, 0, 0.6, 0.3), verb: num(fxIn.verb, 0, 0.3, 0.1), fla: num(fxIn.fla, 0, 0.25, 0), gate: 0, crush: num(fxIn.crush, 0, 12, 0), sync: fxIn.sync !== false, boost: num(fxIn.boost, 1, 1.3, 1) });
+    S.fx = Object.assign({}, S.fx, { mf: num(fxIn.mf, 0, 100, 100), echo: num(fxIn.echo, 0, 0.6, 0), fb: num(fxIn.fb, 0, 0.6, 0.3), verb: num(fxIn.verb, 0, 0.3, 0.1), fla: num(fxIn.fla, 0, 0.25, 0), pha: num(fxIn.pha, 0, 0.3, 0), gate: 0, crush: num(fxIn.crush, 0, 12, 0), sync: fxIn.sync !== false, boost: num(fxIn.boost, 1, 1.3, 1) });
     S.voice = (b.voice && typeof b.voice === "object" && /^https:\/\/|\/m\//.test(String(b.voice.url || ""))) ? { id: String(b.voice.id || "").slice(0, 80), url: String(b.voice.url).slice(0, 300), at: num(b.voice.at, 0, Date.now() + 60000, Date.now()) } : null;
     S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = "guest:" + user.id; g.lastWrite = Date.now(); S.djGuest = g;
     await writeDoc(env, "radio/dj", "radio", S);
