@@ -136,6 +136,16 @@ export async function onRequestGet({ request, env }) {
     return { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 };
   };
 
+  // A deliberate pause by the DJ is not dead air: the booth stamps S.pausedAt
+  // when Malik pauses with nothing else playing, and the keeper respects it for
+  // up to 30 minutes instead of restarting deck A over him. (A track that ends
+  // naturally never sets the stamp, so the rotation still never goes quiet.)
+  if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
+    if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
+    return json({ ok: true, mode: "paused", online: counts.online, listening: counts.listening });
+  }
+  if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
+
   let changed = false;
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
   if (!cur) { // dead air — start the rotation on deck A right now

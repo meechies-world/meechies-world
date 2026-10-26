@@ -1052,6 +1052,7 @@ html.popdj .popdj-hint{display:block}`;
       // mirror window: flip the shared state only — the window holding the sound plays it
       if (s.playing) { s.pos = posOf(k); s.playing = false; }
       else { s.playing = true; s.start = Date.now() - (s.pos || 0) * 1000; logPlay(s.title); if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintStation(); say("🔴 You're LIVE — the window playing the sound has the tables on the radio."); } }
+      if (s.playing) S.pausedAt = 0; else if (S.live && !DECKS.some((x) => S[x].playing)) S.pausedAt = Date.now();
       paintOwner(); save(true);
       return;
     }
@@ -1064,15 +1065,11 @@ html.popdj .popdj-hint{display:block}`;
       // The tables ARE the radio: pressing play on a deck goes live, no separate switch.
       if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintOwner(); paintStation(); say("🔴 You're LIVE — whatever you play on the tables is on the radio for everyone."); }
     }
+    // A pause from the DJ is a PAUSE, not dead air: stamp it (S.pausedAt) and
+    // nothing restarts a deck over it — not this booth, not the station keeper.
+    // A song that ENDS on its own still rolls into the next one (see deckEnded).
+    if (s.playing) S.pausedAt = 0; else if (S.live && !DECKS.some((x) => S[x].playing)) S.pausedAt = Date.now();
     paintOwner(); levels(); save(true);
-    // Pausing the tables doesn't kill the radio: with Auto-DJ on and every deck
-    // stopped, the rotation (listener picks first) takes the wheel after a short
-    // grace — and playing any deck again cancels it.
-    if (s.playing && adTimer) { clearTimeout(adTimer); adTimer = null; }
-    if (!s.playing && S.live && S.autodj && !DECKS.some((x) => S[x].playing)) {
-      if (adTimer) clearTimeout(adTimer);
-      adTimer = setTimeout(() => { adTimer = null; if (S.live && S.autodj && !DECKS.some((x) => S[x].playing)) { say("🤖 Auto-DJ is keeping the station rolling — play any deck to take back over."); autoNext(k === "B" ? "B" : "A"); } }, 5000);
-    }
   }
   onMain("click", async (e) => {
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
