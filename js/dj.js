@@ -22,8 +22,12 @@
   const onMainRaw = (type, fn, opts) => { if (mainEl) mainEl.addEventListener(type, fn, opts); };
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
+  // the DJ Playground (?playdj=1): a sandbox copy of the booth that anyone can play
+  // with. It runs the same code with a private state and never writes the radio —
+  // every guard below keys off this one flag.
+  const SANDBOX = (() => { try { return /[?&]playdj=1/.test(location.search); } catch (_) { return false; } })();
   const DB = () => (typeof db !== "undefined" ? db : null);
-  const OWNER = () => (typeof isOwner !== "undefined" && isOwner);
+  const OWNER = () => SANDBOX || (typeof isOwner !== "undefined" && isOwner);
   const TRACKS = () => (typeof tracks !== "undefined" ? tracks : []);
   const URLOF = (t) => (typeof trackUrl === "function" ? trackUrl(t) : "");
   const okUrl = (u) => /^https:\/\/[^\s"'<>]+$/i.test(u || "");
@@ -187,7 +191,7 @@
   let S = { live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
-  function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  function save(now) { if (!OWNER()) return; if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
@@ -313,6 +317,10 @@ html.popdj header.bar,html.popdj #player-bar,html.popdj footer,html.popdj #fb-le
 html.popdj main{margin:0!important;padding:10px!important}
 html.popdj #v-radio .wrap{max-width:none!important;width:100%!important}
 html.popdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
+html.playdj header.bar,html.playdj #player-bar,html.playdj footer,html.playdj #fb-left,html.playdj #fb-right,html.playdj #ai-fab,html.playdj #mx-heads{display:none!important}
+html.playdj main{margin:0!important;padding:10px!important}
+html.playdj #v-radio .wrap{max-width:none!important;width:100%!important}
+html.playdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
 .pad{transition:filter .15s ease,transform .15s ease}
 .pad.hit{filter:brightness(1.9);transform:scale(.93)}
 #dj-ptabs{display:none}
@@ -715,7 +723,7 @@ html.popdj .popdj-hint{display:block}`;
     const bpm = a.bpm || a.b || 0; if (!(bpm > 0)) return;
     S[k].bpm = bpm; S[k].beat0 = a.beat0 ?? a.o ?? 0; S[k].key = a.key || a.k || ""; S[k].cam = a.cam || a.c || "";
     paintBeat(k);
-    if (persist) { save(); const src = deck(k).src || S[k].src; const t = TRACKS().find((x) => URLOF(x) === src); if (t && t.id && !t.bpm) { t.bpm = S[k].bpm; t.key = S[k].key; t.cam = S[k].cam; try { DB()?.collection("tracks").doc(t.id).update({ bpm: S[k].bpm, key: S[k].key, cam: S[k].cam }).catch(() => {}); } catch (_) {} } }
+    if (persist && !SANDBOX) { save(); const src = deck(k).src || S[k].src; const t = TRACKS().find((x) => URLOF(x) === src); if (t && t.id && !t.bpm) { t.bpm = S[k].bpm; t.key = S[k].key; t.cam = S[k].cam; try { DB()?.collection("tracks").doc(t.id).update({ bpm: S[k].bpm, key: S[k].key, cam: S[k].cam }).catch(() => {}); } catch (_) {} } }
   }
   function paintBeat(k) {
     const s = S[k]; if (!s) return;
@@ -831,7 +839,7 @@ html.popdj .popdj-hint{display:block}`;
     const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + o + " on the site" : o + " on the site right now";
   }
   const pingKeeper = () => fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0), { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.online != null) paintOnline(j.online, j.listening || 0); }).catch(() => {});
-  pingKeeper(); setInterval(pingKeeper, 12000);
+  if (!SANDBOX) { pingKeeper(); setInterval(pingKeeper, 12000); }
   /* one booth plays the sound; the other is its remote. The main tab and the pop-out
    * are two full booths sharing one station — without a leader they would each play
    * their own copy and overwrite each other's saves. A localStorage lease picks the
@@ -841,6 +849,7 @@ html.popdj .popdj-hint{display:block}`;
   let boothLead = false;
   const leaseKey = "mw-booth-lease";
   function leaseBeat() {
+    if (SANDBOX) { boothLead = true; const b2 = document.getElementById("dj-lead"); if (b2) b2.textContent = "🎛 Playground — just for fun, this copy never touches the radio"; return; }
     // The lease belongs to a WINDOW, not to whichever view is on screen. Once this
     // window holds the sound it keeps it — Malik can walk the whole site or switch
     // tabs and the tables keep broadcasting, because the tables ARE the live radio.
@@ -893,6 +902,9 @@ html.popdj .popdj-hint{display:block}`;
     else { document.documentElement.classList.add("popdj"); try { go("dj"); } catch (_) {} say("Pop-ups are blocked here — decks went full-screen on this page instead. Allow pop-ups for a separate window."); }
   }
   if (/[?&]popdj=1/.test(location.search)) document.documentElement.classList.add("popdj");
+  if (SANDBOX) { document.documentElement.classList.add("playdj"); try { go("radio"); } catch (_) {} }
+  const pgB = document.getElementById("pg-open"), pgW = document.getElementById("pg-wrap"), pgF = document.getElementById("pg-frame");
+  if (pgB && pgW && pgF) pgB.addEventListener("click", () => { if (!pgF.getAttribute("src")) pgF.src = "/?playdj=1#radio"; pgW.hidden = false; pgB.textContent = "🎛️ The Playground is open below — play all you want, the real radio can't hear it"; pgW.scrollIntoView({ behavior: "smooth", block: "start" }); });
   /* gentle mouse-wheel on the Radio page (desktop): the booth is a long page and stock
    * wheel notches jump it too far — ease wheel steps to about half speed. Trackpads
    * (small pixel deltas), pinch zoom, and the inner song lists keep their native feel. */
@@ -1344,6 +1356,7 @@ html.popdj .popdj-hint{display:block}`;
       $("#rec-st").textContent = "Recorded " + dur + ". Download it, or post it to the station card for everyone.";
       $("#rec-btn").textContent = "⏺ Start recording"; showRec = null;
       $("#rec-post").addEventListener("click", async (ev) => {
+        if (SANDBOX) { say("In the playground the download is yours to keep — posting is off so the real station stays untouched."); return; }
         ev.target.disabled = true; ev.target.textContent = "Posting...";
         try { const a = await claude.use("assets"); const up = await a.upload(blob, { type: (blob.type || "audio/webm").split(";")[0] }); const old = S.show; S.show = { id: up.id, url: up.url, at: Date.now() }; save(true); paintStation(); ev.target.textContent = "Posted ✓ It's on the station card"; if (old && old.id) a.delete(old.id).catch(() => {}); }
         catch (_) { ev.target.disabled = false; ev.target.textContent = "📻 Post as Latest Show"; say("Couldn't post the show. Download it instead."); }
@@ -1400,6 +1413,7 @@ html.popdj .popdj-hint{display:block}`;
       $("#ses-out").innerHTML = `<video controls src="${url}" style="width:100%;border-radius:10px;background:#000"></video><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sm" href="${url}" download="meechies-world-dj-session.webm">⬇ Download the session (${dur})</a><button class="btn ghost sm" type="button" id="ses-post">📻 Post as Latest Show</button></div>`;
       $("#ses-st").textContent = "Filmed " + dur + ". Download it, or post it to the station card so everyone can watch the session.";
       $("#ses-post").addEventListener("click", async (ev) => {
+        if (SANDBOX) { say("In the playground the download is yours to keep — posting is off so the real station stays untouched."); return; }
         ev.target.disabled = true; ev.target.textContent = "Posting...";
         try { const a = await claude.use("assets"); const up = await a.upload(blob, { type: "video/webm" }); const old = S.show; S.show = { id: up.id, url: up.url, at: Date.now(), video: true }; save(true); paintStation(); ev.target.textContent = "Posted ✓ It's on the station card"; if (old && old.id) a.delete(old.id).catch(() => {}); }
         catch (_) { ev.target.disabled = false; ev.target.textContent = "📻 Post as Latest Show"; say("Couldn't post the session. Download it instead."); }
@@ -1453,7 +1467,7 @@ html.popdj .popdj-hint{display:block}`;
       : `<div class="req"><span>${E(r.data.text || "")}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`).join("") : '<small class="muted">Nothing yet. Listener requests land here.</small>';
   }
   function subReqs() {
-    if (reqSubbed || !OWNER()) return; const d = DBF(); if (!d) return; reqSubbed = true;
+    if (reqSubbed || !OWNER() || SANDBOX) return; const d = DBF(); if (!d) return; reqSubbed = true;
     try { d.collection("requests").limit(40).onSnapshot((s) => { reqCache = s.docs.map((x) => ({ id: x.id, data: x.data() || {} })); renderReqs(s.docs); }, () => {}); } catch (_) { reqSubbed = false; }
   }
   onMain("click", async (e) => {
@@ -1508,7 +1522,7 @@ html.popdj .popdj-hint{display:block}`;
     if (pkTab === "search") { pkItems = out; paintPkList(); }
   }
   function subPicks() {
-    if (pkSubbed) return; const d = DBF(); if (!d) return; pkSubbed = true;
+    if (pkSubbed || SANDBOX) return; const d = DBF(); if (!d) return; pkSubbed = true;
     try { d.collection("requests").limit(100).onSnapshot((s) => { const box = $("#pk-queue"); if (!box) return; const picks = s.docs.map((x) => x.data() || {}).filter((r) => r.kind === "pick").sort((a, b) => (a.at || 0) - (b.at || 0)); box.innerHTML = picks.length ? picks.map((p, i) => `<div class="dj-item"><span title="${E(p.title || "")}">${i + 1}. ${E(p.title || "")}</span><small class="muted">listener pick</small></div>`).join("") : '<small class="muted">No picks yet — be the first.</small>'; }, () => { pkSubbed = false; }); } catch (_) { pkSubbed = false; }
   }
   onMain("click", async (e) => {
@@ -1558,7 +1572,8 @@ html.popdj .popdj-hint{display:block}`;
   async function init() {
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) return;
-    d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
+    if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
+    else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }
     const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; if (own) { libList(); paintOwner(); paintQueue(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
     show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
