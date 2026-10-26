@@ -213,8 +213,23 @@ body.dj-past #ai-fab,body.dj-past #mx-heads,body.dj-on #ai-fab,body.dj-on #mx-he
 .swapbar{display:none}
 @media (max-width:760px){
 .dj-decks{display:block}
-.dj-decks>*{display:none!important}
-.dj-decks[data-show="A"]>.deck[data-deck="A"],.dj-decks[data-show="B"]>.deck[data-deck="B"],.dj-decks[data-show="C"]>.deck[data-deck="C"],.dj-decks[data-show="D"]>.deck[data-deck="D"],.dj-decks[data-show="M"]>.mixer{display:grid!important}
+.dj-decks.r2>*{display:none!important}
+.dj-decks.r2[data-show="C"]>.deck[data-deck="C"],.dj-decks.r2[data-show="D"]>.deck[data-deck="D"],.dj-decks.r2[data-show="M"]>.mixer{display:grid!important}
+.dj-decks.r1{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dj-decks.r1>.deck[data-deck="A"]{grid-column:1;grid-row:1}
+.dj-decks.r1>.deck[data-deck="B"]{grid-column:2;grid-row:1}
+.dj-decks.r1>.mixer{grid-column:1/-1;grid-row:2}
+.dj-decks.r1 .deck{padding:8px;gap:5px}
+#dj-owner .dj-decks.r1 .platter{width:84px}
+.dj-decks.r1 .wave{height:44px}
+.dj-decks.r1 .btn{padding:6px 8px;font-size:12px}
+.dj-decks.r1 .ttl{font-size:12px}
+#dj-faderbar{display:none}
+body.dj-on #dj-faderbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;gap:10px;align-items:center;background:rgba(13,11,8,.96);border-top:1px solid var(--gold-lo);padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px))}
+#dj-faderbar input{flex:1;min-height:36px}
+#dj-faderbar b{font:800 13px var(--body);color:var(--muted)}
+#dj-faderbar b.on{color:#45bd62}
+body.dj-on #dj-booth-root{padding-bottom:70px}
 .swapbar{display:flex;gap:6px;margin:0 0 8px;position:sticky;top:0;z-index:4;background:#0d0b08;padding:4px 0}
 .swapbar .btn{flex:1;min-height:44px}
 .swapbar .btn.on{background:var(--gold);color:#191104;border-color:var(--gold)}
@@ -306,9 +321,9 @@ html.popdj .popdj-hint{display:block}`;
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
+  <div id="dj-faderbar"><b id="xfb-a">A</b><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xfbar" aria-label="Crossfader"><b id="xfb-b">B</b></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
-  <div class="swapbar"><button class="btn sm on" type="button" data-swap="0:A">🎧 DECK A</button><button class="btn ghost sm" type="button" data-swap="0:M">🎚️ MIXER</button><button class="btn ghost sm" type="button" data-swap="0:B">🎧 DECK B</button></div>
-  <div class="dj-decks" data-show="A">
+  <div class="dj-decks r1">
     ${deckHTML("A")}
     <div class="mixer m1"><small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
@@ -341,7 +356,7 @@ html.popdj .popdj-hint{display:block}`;
     <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
   </div>
   <div class="swapbar"><button class="btn sm on" type="button" data-swap="1:C">🎧 DECK C</button><button class="btn ghost sm" type="button" data-swap="1:M">🎚️ MIXER</button><button class="btn ghost sm" type="button" data-swap="1:D">🎧 DECK D</button></div>
-  <div class="dj-decks" data-show="C" style="margin-top:16px">
+  <div class="dj-decks r2" data-show="C" style="margin-top:16px">
     ${deckHTML("C")}
     <div class="mixer m2"><small>DECKS C / D</small>
       <small>CROSSFADER C/D</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf2" aria-label="Crossfader decks C and D">
@@ -622,7 +637,7 @@ html.popdj .popdj-hint{display:block}`;
     });
     const qz = $("#dj-quant"); if (qz && document.activeElement !== qz) qz.checked = S.quant !== false;
     const fsx = $("#dj-fxsync"); if (fsx && document.activeElement !== fsx) fsx.checked = (S.fx && S.fx.sync) !== false;
-    $("#dj-xf").value = S.xf; const x2 = $("#dj-xf2"); if (x2) x2.value = S.xf2 ?? 0.5; const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
+    $("#dj-xf").value = S.xf; const xb0 = $("#dj-xfbar"); if (xb0 && document.activeElement !== xb0) xb0.value = S.xf; const x2 = $("#dj-xf2"); if (x2) x2.value = S.xf2 ?? 0.5; const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = S.live ? "ON AIR" : "OFF AIR";
@@ -653,6 +668,7 @@ html.popdj .popdj-hint{display:block}`;
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
     document.querySelectorAll("[data-swap]").forEach((b) => { const v = b.dataset.swap.split(":")[1]; b.classList.toggle("hot", !!S[v] && !!S[v].playing); });
+    const xfa = $("#xfb-a"), xfb = $("#xfb-b"); if (xfa) xfa.classList.toggle("on", !!S.A.playing); if (xfb) xfb.classList.toggle("on", !!S.B.playing);
     if (listening) DECKS.forEach((k) => follow(k));
     // station clock + show timer
     const ck = $("#dj-clock"); if (ck && OWNER()) ck.textContent = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "America/New_York" }) + " ET";
@@ -908,7 +924,8 @@ html.popdj .popdj-hint{display:block}`;
     if (t.dataset.pitch) { const k = t.dataset.pitch; S[k].rate = +t.value; deck(k).el.playbackRate = S[k].rate; deck(k).el.preservesPitch = !deck(k).vinyl; $("#pit-v-" + k).textContent = ((S[k].rate - 1) * 100).toFixed(1).replace("-", "−") + "%"; save(); }
     if (t.dataset.eq) { const [k, band] = t.dataset.eq.split(":"), d = deck(k); if (d.eq) d.eq[band].gain.value = +t.value; S[k].eq = Object.assign({ lo: 0, mid: 0, hi: 0 }, S[k].eq || {}); S[k].eq[band] = +t.value; save(); }
     if (t.dataset.flt) { const k = t.dataset.flt; S[k].flt = +t.value; if (deck(k).flt) fltFreq(deck(k).flt, +t.value); save(); }
-    if (t.id === "dj-xf") { S.xf = +t.value; levels(); save(); }
+    if (t.id === "dj-xf") { S.xf = +t.value; const xb2 = $("#dj-xfbar"); if (xb2) xb2.value = t.value; levels(); save(); }
+    if (t.id === "dj-xfbar") { S.xf = +t.value; const mx2 = $("#dj-xf"); if (mx2) mx2.value = t.value; levels(); save(); }
     if (t.id === "dj-xf2") { S.xf2 = +t.value; levels(); save(); }
     if (t.id === "dj-crush") { S.fx.crush = +t.value; applyFx(); save(); }
     if (t.id === "dj-master") { localMaster = +t.value; applyMaster(); }
@@ -995,7 +1012,7 @@ html.popdj .popdj-hint{display:block}`;
     load(target, item).then(async () => {
       await togglePlay(target);
       const from = S.xf, to = target === "A" ? 0 : 1, t0 = performance.now();
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500); S.xf = from + (to - from) * p; $("#dj-xf").value = S.xf; levels(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500); S.xf = from + (to - from) * p; $("#dj-xf").value = S.xf; const xb1 = $("#dj-xfbar"); if (xb1) xb1.value = S.xf; levels(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
     });
   }
 
