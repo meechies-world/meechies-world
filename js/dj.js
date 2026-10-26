@@ -41,7 +41,7 @@
   let ctx = null, masterIn = null, masterGain = null, analyser = null, recDest = null, limiter = null;
   let fxFilter = null, echoWet = null, verbWet = null, micGain = null, micMon = null, micAn = null;
   let echoFb = null, flaWet = null, gateOsc = null, gateDepth = null, gateGain = null, crushNode = null, crushBuilt = -1;
-  let echoDly = null, flaLfo = null, phaWet = null, phaLfo = null;
+  let echoDly = null, flaLfo = null, phaWet = null, phaLfo = null, noiseWet = null, noiseBp = null;
   function actx() {
     if (!ctx) {
       try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { ctx = null; }
@@ -69,7 +69,8 @@
         gateOsc.connect(gateShaper); gateShaper.connect(gateDepth); gateDepth.connect(gateGain.gain); gateOsc.start();
         // echo send (feedback exposed as Echo Repeat)
         const dly = ctx.createDelay(1); dly.delayTime.value = 0.28; echoDly = dly; echoFb = ctx.createGain(); echoFb.gain.value = 0.34;
-        const dw = ctx.createGain(); dw.gain.value = 0; dly.connect(echoFb); echoFb.connect(dly); dly.connect(dw); dw.connect(masterGain);
+        const ef = ctx.createBiquadFilter(); ef.type = "lowpass"; ef.frequency.value = 1600; ef.Q.value = 0.4; // dub character: every repeat comes back darker
+        const dw = ctx.createGain(); dw.gain.value = 0; dly.connect(echoFb); echoFb.connect(ef); ef.connect(dly); dly.connect(dw); dw.connect(masterGain);
         masterIn.connect(dly); echoWet = dw;
         // flanger send: short modulated delay with feedback
         const fd = ctx.createDelay(0.05); fd.delayTime.value = 0.004;
@@ -85,6 +86,13 @@
         const plfo = ctx.createOscillator(); plfo.frequency.value = 0.4; phaLfo = plfo; const plfoG = ctx.createGain(); plfoG.gain.value = 420;
         plfo.connect(plfoG); aps.forEach((f) => plfoG.connect(f.frequency)); plfo.start();
         masterIn.connect(aps[0]); aps[0].connect(aps[1]); aps[1].connect(aps[2]); aps[2].connect(aps[3]); aps[3].connect(pfb); pfb.connect(aps[0]); aps[3].connect(pw); pw.connect(masterGain); phaWet = pw;
+        // noise color FX: a looping noise source through a bandpass — one knob
+        // rides level and sweep together, the classic riser / wash
+        const nbuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate), nd = nbuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+        const nsrc = ctx.createBufferSource(); nsrc.buffer = nbuf; nsrc.loop = true;
+        const nbp = ctx.createBiquadFilter(); nbp.type = "bandpass"; nbp.frequency.value = 900; nbp.Q.value = 0.7;
+        const nw = ctx.createGain(); nw.gain.value = 0;
+        nsrc.connect(nbp); nbp.connect(nw); nw.connect(masterGain); nsrc.start(); noiseWet = nw; noiseBp = nbp;
         // reverb send (generated impulse — no files, always free)
         const verb = ctx.createConvolver(); verb.buffer = impulse(2.2, 2.4);
         const vw = ctx.createGain(); vw.gain.value = 0; masterIn.connect(verb); verb.connect(vw); vw.connect(masterGain); verbWet = vw;
@@ -221,7 +229,7 @@
 
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
-  const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, gate: 0, crush: 0, sync: true, boost: 1 });
+  const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
   let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
@@ -609,6 +617,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .dj-top{box-shadow:0 1px 0 rgba(240,207,120,.35)}
 #dj-station h3{background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #2b2b30;border-radius:8px;padding:6px 9px}
 #dj-booth-root #dj-owner [data-slip].on,#dj-booth-root #dj-owner [data-roll].on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.4)}
+#dj-booth-root #dj-owner .edivb.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.4)}
 #dj-mini{border:3px solid #0a0a0c;outline:1px solid #2c2c30}
 #dj-owner .xfpad{background:linear-gradient(135deg,#17181a,#0b0b0d);border:1px solid #2e2e33;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 18px #000}
 #dj-owner .xfdot{background:linear-gradient(180deg,#f2f2f5,#9a9aa2 50%,#55555c);border:1px solid #000;box-shadow:0 3px 8px rgba(0,0,0,.6)}
@@ -689,6 +698,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         <label>Reverb</label><input type="range" id="djx-verb" min="0" max="0.7" step="0.02" value="0" aria-label="Reverb level">
         <label>Flanger</label><input type="range" id="djx-fla" min="0" max="1" step="0.02" value="0" aria-label="Flanger level">
         <label>Phaser</label><input type="range" id="djx-pha" min="0" max="1" step="0.02" value="0" aria-label="Phaser level">
+        <label>Noise sweep</label><input type="range" id="djx-noise" min="0" max="1" step="0.02" value="0" aria-label="Noise sweep level">
         <label>Grit (crush)</label><input type="range" id="djx-crush" min="0" max="100" step="1" value="0" aria-label="Bitcrush grit">
       </div>
     </div>
@@ -710,6 +720,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       
 
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-quant" checked style="width:auto"> Quantize — cues &amp; loops snap to the beat</label>
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left">Jog feel <select id="dj-jogf" aria-label="Jog wheel feel"><option value="0.05">Light</option><option value="0.09">Standard</option><option value="0.14">Heavy</option></select> — how far a scratch drag moves the song</label>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-fxsync" checked style="width:auto"> Effects follow the live tempo</label>
       <canvas class="pairwave" id="pw-AB" width="480" height="72"></canvas>
       <small id="ph-AB" style="letter-spacing:0;text-transform:none">Phase meter: play both decks with a measured BPM and this shows how far apart the beats sit.</small>
@@ -718,9 +729,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <small>FILTER</small><input type="range" min="0" max="100" step="1" value="100" id="dj-filter" aria-label="Master filter">
       <small>ECHO</small><input type="range" min="0" max="0.6" step="0.02" value="0" id="dj-echo" aria-label="Echo level">
       <small>ECHO REPEAT</small><input type="range" min="0" max="0.7" step="0.02" value="0.34" id="dj-fb" aria-label="Echo repeat">
+      <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><small>ECHO BEATS</small><button class="btn ghost sm edivb" type="button" data-ediv="0.25">¼</button><button class="btn ghost sm edivb" type="button" data-ediv="0.5">½</button><button class="btn ghost sm edivb" type="button" data-ediv="0.75">¾</button><button class="btn ghost sm edivb" type="button" data-ediv="1">1</button><button class="btn ghost sm edivb" type="button" data-ediv="2">2</button></div>
       <small>REVERB</small><input type="range" min="0" max="0.7" step="0.02" value="0" id="dj-verb" aria-label="Reverb level">
       <small>FLANGER</small><input type="range" min="0" max="1" step="0.02" value="0" id="dj-fla" aria-label="Flanger level">
       <small>PHASER</small><input type="range" min="0" max="1" step="0.02" value="0" id="dj-pha" aria-label="Phaser level">
+      <small>NOISE</small><input type="range" min="0" max="1" step="0.02" value="0" id="dj-noise" aria-label="Noise sweep level">
       <small>TRANSFORMER (CHOP)</small><div style="display:flex;gap:5px;justify-content:center"><button class="btn ghost sm gatebtn on" type="button" data-gate="0">OFF</button><button class="btn ghost sm gatebtn" type="button" data-gate="2">SLOW</button><button class="btn ghost sm gatebtn" type="button" data-gate="4">MED</button><button class="btn ghost sm gatebtn" type="button" data-gate="8">FAST</button></div></div>
   
     <div class="mixer m2"><small>DECKS C / D</small>
@@ -742,7 +755,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <button class="btn ghost sm browtab" type="button" data-brow="cur">🏆 Pro DJ Sounds</button>
       <button class="btn ghost sm browtab" type="button" data-brow="prep">⭐ Prepare</button></div>
     <div id="br-panes">
-    <div data-browpane="lib"><div class="dj-list" id="dj-lib" style="max-height:300px"></div></div>
+    <div data-browpane="lib"><input type="search" id="dj-libq" placeholder="Filter your library — type a title..." aria-label="Filter your library" style="width:100%;margin-bottom:8px"><div class="dj-list" id="dj-lib" style="max-height:300px"></div></div>
     <div data-browpane="net" hidden><form class="dj-search" id="dj-sf"><input type="search" id="dj-q" placeholder="Search: hip hop, jazz, beats..." aria-label="Search free music"><button class="btn sm" type="submit">Search</button></form>
       <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net" style="max-height:260px"></div></div>
     <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
@@ -997,6 +1010,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (verbWet) verbWet.gain.value = Math.min(f.verb || 0, 0.3);
     if (flaWet) flaWet.gain.value = Math.min(f.fla || 0, 0.25) * 0.8;
     if (phaWet) phaWet.gain.value = Math.min(f.pha || 0, 0.3) * 0.9;
+    if (noiseWet) { const nz = Math.min(f.noise || 0, 0.5); noiseWet.gain.value = nz * 0.5; if (noiseBp) noiseBp.frequency.value = 400 + nz * 5200; }
     setCrushCurve(Math.min(f.crush || 0, 12));
     
     if (gateOsc && gateDepth && gateGain) {
@@ -1007,7 +1021,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // stem cuts ride the broadcast too: what the booth cuts is what listeners lose
     DECKS.forEach((k) => { const d = decks[k]; if (d && d.stem) { d.stem.nrm.gain.value = S[k].vcut ? 0 : 1; d.stem.oop.gain.value = S[k].vcut ? 1 : 0; d.stem.hp.frequency.value = S[k].bcut ? 160 : 10; } });
     // beat-synced FX: echo, flanger and the chopper follow the tempo of what's playing
-    if (f.sync !== false) { const rb = refBpm(); if (rb > 0) { const bl = 60 / rb; if (echoDly) echoDly.delayTime.value = bl * 0.75; if (flaLfo) flaLfo.frequency.value = 1 / (bl * 2); if (phaLfo) phaLfo.frequency.value = 1 / (bl * 4); if (gateOsc && (+f.gate || 0) > 0) gateOsc.frequency.value = (+f.gate / 2) * (rb / 60); } }
+    if (f.sync !== false) { const rb = refBpm(); if (rb > 0) { const bl = 60 / rb; if (echoDly) echoDly.delayTime.value = bl * (f.ediv || 0.75); if (flaLfo) flaLfo.frequency.value = 1 / (bl * 2); if (phaLfo) phaLfo.frequency.value = 1 / (bl * 4); if (gateOsc && (+f.gate || 0) > 0) gateOsc.frequency.value = (+f.gate / 2) * (rb / 60); } }
   }
   async function follow(k) {
     const s = S[k], d = deck(k);
@@ -1190,6 +1204,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     set("#djx-verb", f.verb || 0); set("#dj-verb", f.verb || 0);
     set("#djx-fla", f.fla || 0); set("#dj-fla", f.fla || 0);
     set("#djx-pha", f.pha || 0); set("#dj-pha", f.pha || 0);
+    set("#djx-noise", f.noise || 0); set("#dj-noise", f.noise || 0);
     set("#djx-crush", f.crush || 0);
     set("#djx-vb", v.b == null ? 1 : v.b); set("#djx-vc", v.c == null ? 1 : v.c); set("#djx-vs", v.s == null ? 1 : v.s); set("#djx-vz", v.z == null ? 1 : v.z);
     txt("#djx-vb-v", Math.round((v.b == null ? 1 : v.b) * 100) + "%"); txt("#djx-vc-v", Math.round((v.c == null ? 1 : v.c) * 100) + "%"); txt("#djx-vs-v", Math.round((v.s == null ? 1 : v.s) * 100) + "%"); txt("#djx-vz-v", Math.round((v.z == null ? 1 : v.z) * 100) + "%"); };
@@ -1211,9 +1226,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       peaks(k);
     });
     const qz = $("#dj-quant"); if (qz && document.activeElement !== qz) qz.checked = S.quant !== false;
+    const jf = $("#dj-jogf"); if (jf && document.activeElement !== jf) jf.value = String(JOGF);
     const fsx = $("#dj-fxsync"); if (fsx && document.activeElement !== fsx) fsx.checked = (S.fx && S.fx.sync) !== false;
     const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live; paintEdit(); paintXfPads();
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
+    document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", Math.abs((+x.dataset.ediv) - ((S.fx && S.fx.ediv) || 0.75)) < 0.01));
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = SANDBOX ? (S.live ? "PRACTICE" : "STANDBY") : (S.live ? "ON AIR" : "OFF AIR");
     renderLog($("#dj-log")); paintPads();
@@ -1487,9 +1504,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* ---------- owner: loading songs, transport, deck tools ---------- */
   const prepSet = () => { try { return new Set(JSON.parse(localStorage.getItem("mw-dj-prep") || "[]")); } catch (_) { return new Set(); } };
   const histList = () => { try { return JSON.parse(localStorage.getItem("mw-dj-hist") || "[]"); } catch (_) { return []; } };
+  let libFilter = "";
   function libList() {
     const list = TRACKS(), prep = prepSet();
-    $("#dj-lib").innerHTML = list.length ? list.map((t, i) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button><button class="btn ghost sm" type="button" data-prep="${i}">${prep.has(URLOF(t)) ? "⭐" : "☆"}</button></div>`).join("") : '<small class="muted">No songs in your library yet.</small>';
+    const rows = list.map((t, i) => [t, i]).filter(([t]) => !libFilter || (t.title || "").toLowerCase().includes(libFilter));
+    $("#dj-lib").innerHTML = list.length ? (rows.length ? rows.map(([t, i]) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button><button class="btn ghost sm" type="button" data-prep="${i}">${prep.has(URLOF(t)) ? "⭐" : "☆"}</button></div>`).join("") : '<small class="muted">No songs match that filter.</small>') : '<small class="muted">No songs in your library yet.</small>';
   }
   function paintPrep() { const box = $("#dj-prep"); if (!box) return; const set = prepSet(), list = TRACKS(); const rows = list.map((t, i) => [t, i]).filter(([t]) => set.has(URLOF(t))); box.innerHTML = rows.length ? rows.map(([t, i]) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-prep="${i}">⭐</button></div>`).join("") : '<small class="muted">Nothing prepared yet — tap ☆ on any song in Your Library.</small>'; const hb = $("#dj-hist"); if (hb) { const h = histList(); hb.innerHTML = h.length ? h.map((x, i) => `<div class="dj-item"><span title="${E(x.title || "")}">${E(x.title || "")}</span>${["A", "B", "C", "D"].map((L) => `<button class="btn ghost sm" type="button" data-hload="${L}" data-hist="${i}">${L}</button>`).join("")}</div>`).join("") : '<small class="muted">Nothing loaded yet — the booth history builds as you play.</small>'; } }
   let net = [];
@@ -1596,6 +1615,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (b.dataset.spin) { const k = b.dataset.spin, d = deck(k); if (d.el.paused) return; const t0 = performance.now(); scratchBed(); const iv = setInterval(() => { const p = (performance.now() - t0) / 750; if (p >= 1) { clearInterval(iv); scratchStop(); if (d.slip) { try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, (d.el.currentTime || 0) + 0.75 * (S[k].rate || 1))); } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; save(true); say("🌀 Slip backspin — deck " + k + " never lost its place."); } else { d.el.pause(); if (S[k].playing) { S[k].playing = false; S[k].pos = d.el.currentTime; paintOwner(); save(true); } } return; } try { d.el.currentTime = Math.max(0, (d.el.currentTime || 0) - (0.04 + p * 0.3)); } catch (_) {} scratchSound(0.4 + p); }, 50); return; }
     if (b.dataset.prep != null) { const t = TRACKS()[+b.dataset.prep]; if (t) { const set = prepSet(), u = URLOF(t); if (set.has(u)) set.delete(u); else set.add(u); try { localStorage.setItem("mw-dj-prep", JSON.stringify([...set])); } catch (_) {} libList(); paintPrep(); say(set.has(u) ? "⭐ Prepared: " + t.title : "Removed from Prepare: " + t.title); } return; }
     if (b.dataset.hload) { const x = histList()[+b.dataset.hist]; if (x) load(b.dataset.hload, { src: x.src || "", yt: x.yt || "", title: x.title || "", cover: x.cover || "", dur: x.dur || 0 }); return; }
+    if (b.dataset.ediv) { S.fx.ediv = +b.dataset.ediv; applyFx(); document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", x === b)); save(true); say("Echo locked to " + b.textContent + " of a beat."); return; }
     if (b.dataset.sync) { const k = b.dataset.sync, o = DECKS.find((x) => x !== k && S[x].playing) || PAIR[k];
       if (S[k].bpm > 0 && S[o].bpm > 0) {
         const target = (S[o].bpm * (S[o].rate || 1)) / S[k].bpm;
@@ -1636,6 +1656,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.id === "dj-verb") { S.fx.verb = +t.value; applyFx(); save(); }
     if (t.id === "dj-fla") { S.fx.fla = +t.value; applyFx(); save(); }
     if (t.id === "dj-pha") { S.fx.pha = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "dj-noise") { S.fx.noise = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "dj-libq") { libFilter = t.value.trim().toLowerCase(); libList(); }
     if (t.id === "djx-boost") { S.fx.boost = +t.value; applyFx(); paintEdit(); save(); }
     if (t.id === "djx-filter") { S.fx.mf = +t.value; applyFx(); paintEdit(); save(); }
     if (t.id === "djx-echo") { S.fx.echo = +t.value; applyFx(); paintEdit(); save(); }
@@ -1643,13 +1665,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.id === "djx-verb") { S.fx.verb = +t.value; applyFx(); paintEdit(); save(); }
     if (t.id === "djx-fla") { S.fx.fla = +t.value; applyFx(); paintEdit(); save(); }
     if (t.id === "djx-pha") { S.fx.pha = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-noise") { S.fx.noise = +t.value; applyFx(); paintEdit(); save(); }
     if (t.id === "djx-crush") { S.fx.crush = +t.value; applyFx(); paintEdit(); save(); }
     if (t.id === "djx-vb") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).b = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vc") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).c = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
-  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
   // circular pan pads: drag the gold dot anywhere in the circle — the further it
   // moves toward a deck, the more that deck plays. Same mix as the sliders and the
   // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
@@ -1704,6 +1727,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // it and show recordings keep it. YouTube decks scrub coarsely (their player
   // seeks in chunks) but get the same noise, so every disc answers the hand.
   let scrBed = null;
+  let JOGF = 0.09; try { JOGF = parseFloat(localStorage.getItem("mw-jogf") || "0.09") || 0.09; } catch (_) {}
   const scratchBed = () => { const c = (typeof actx === "function") ? actx() : ctx; if (!c || !masterIn) return null; if (scrBed) return scrBed; try { const len = 2 * c.sampleRate, buf = c.createBuffer(1, len, c.sampleRate), ch = buf.getChannelData(0); for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1; const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 1.1; const g = c.createGain(); g.gain.value = 0; src.connect(bp); bp.connect(g); g.connect(masterIn); src.start(); scrBed = { bp, g }; } catch (_) {} return scrBed; };
   const scratchSound = (vel) => { const s = scratchBed(); if (!s || !ctx) return; const v = Math.min(1, Math.abs(vel) / 1.6), t = ctx.currentTime; s.g.gain.setTargetAtTime(v * (grainSess ? 0.1 : 0.38), t, 0.012); s.bp.frequency.setTargetAtTime(450 + v * 1600, t, 0.02); };
   const scratchStop = () => { if (scrBed && ctx) scrBed.g.gain.setTargetAtTime(0, ctx.currentTime, 0.06); };
@@ -1720,7 +1744,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   DECKS.forEach((k) => {
     const pl = () => $("#pl-" + k); let drag = null;
     onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; drag = { x: e.clientX, t: performance.now(), at: performance.now(), pos: deck(k).el.currentTime || 0, was: !deck(k).el.paused }; deck(k).el.pause(); scratchBed(); deckBuffer(k).then(() => { if (drag) grainStart(k); }); if (bufCache.has(deck(k).src)) grainStart(k); e.preventDefault(); });
-    onMainRaw("pointermove", (e) => { if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * 0.09)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; d.scrVel = (d.scrVel || 0) * 0.55 + (Math.abs(dx * 0.09) / (dt / 1000)) * 0.45; scratchSound(dx / dt); });
+    onMainRaw("pointermove", (e) => { if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * JOGF)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; d.scrVel = (d.scrVel || 0) * 0.55 + (Math.abs(dx * JOGF) / (dt / 1000)) * 0.45; scratchSound(dx / dt); });
     onMainRaw("pointerup", () => { if (!drag) return; grainStop(); scratchStop(); const d = deck(k); if (drag.was && d.slip) { const sh = drag.pos + (performance.now() - drag.at) / 1000 * (S[k].rate || 1); try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} } if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
     onMainRaw("pointercancel", () => { if (!drag) return; grainStop(); scratchStop(); drag = null; });
   });
