@@ -11,6 +11,8 @@
  * rotation when a track reaches its crossfade point, fast-forwarding through any
  * gap where nobody was listening. Writes are rare: only on an advance, or a light
  * updatedAt touch so clients keep reading the station as live. */
+import { userFrom } from "../../lib/cf.js";
+
 const XF = 3.5; // crossfade seconds, same as the booth
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -203,6 +205,31 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   let b = null; try { b = await request.json(); } catch (_) {}
   if (!b) return json({ ok: false, error: "bad_body" }, 400);
+  /* guest DJ relay: a member Malik approved (S.djGuest in the station doc, set only
+     by his own booth) performs on their sandboxed table and posts the performance
+     here. The gate is strict: a live session, a grant naming that exact member,
+     unexpired — and only performance fields are merged, each one sanitized, so a
+     guest can never touch the station's own settings, log, show or grant. The
+     write stamps boothAt, so the keeper treats a guest set exactly like Malik's
+     own booth and keeps its hands off; Malik opening his booth overrides at once. */
+  if (b.kind === "guestdj") {
+    const user = await userFrom(request, env).catch(() => null);
+    if (!user) return json({ ok: false, error: "no_session" }, 401);
+    const S = await readDoc(env, "radio/dj");
+    const g = S && S.djGuest;
+    if (!S || !g || g.uid !== user.id || !(g.until > Date.now())) return json({ ok: false, error: "no_grant" }, 403);
+    if (g.lastWrite && Date.now() - g.lastWrite < 1500) return json({ ok: true, skipped: true });
+    const num = (v, lo, hi, dft) => { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : dft; };
+    const deck = (p) => { p = p || {}; const src = String(p.src || "").slice(0, 500); const yt = /^[A-Za-z0-9_-]{6,20}$/.test(p.yt || "") ? p.yt : ""; return { src: (src.startsWith("https://") || src.startsWith("/m/")) ? src : "", yt, title: String(p.title || "").slice(0, 120), cover: String(p.cover || "").slice(0, 300), start: num(p.start, 0, Date.now() + 60000, 0), pos: num(p.pos, 0, 7200, 0), playing: !!p.playing, vol: num(p.vol, 0, 1, 0.9), rate: num(p.rate, 0.5, 2, 1), dur: num(p.dur, 0, 7200, 0), eq: [0, 1, 2].map((i) => num((p.eq || [])[i], -15, 15, 0)), flt: num(p.flt, 0, 1, 1), bpm: num(p.bpm, 0, 300, 0), beat0: num(p.beat0, 0, 7200, 0), key: String(p.key || "").slice(0, 8), cam: String(p.cam || "").slice(0, 8), vcut: !!p.vcut, bcut: !!p.bcut, cues: [0, 1, 2].map((i) => num((p.cues || [])[i], 0, 7200, 0)), loop: (p.loop && typeof p.loop === "object") ? { a: num(p.loop.a, 0, 7200, 0), b: num(p.loop.b, 0, 7200, 0) } : null, loopBeats: num(p.loopBeats, 0, 64, 0) }; };
+    S.A = deck(b.A); S.B = deck(b.B); S.C = deck(b.C); S.D = deck(b.D);
+    S.xf = num(b.xf, 0, 1, S.xf ?? 0.5); S.xf2 = num(b.xf2, 0, 1, S.xf2 ?? 0.5); S.panY = num(b.panY, -1, 1, S.panY ?? 0);
+    const fxIn = b.fx || {};
+    S.fx = Object.assign({}, S.fx, { mf: num(fxIn.mf, 0, 100, 100), echo: num(fxIn.echo, 0, 0.6, 0), fb: num(fxIn.fb, 0, 0.6, 0.3), verb: num(fxIn.verb, 0, 0.3, 0.1), fla: num(fxIn.fla, 0, 0.25, 0), gate: 0, crush: num(fxIn.crush, 0, 12, 0), sync: fxIn.sync !== false, boost: num(fxIn.boost, 1, 1.3, 1) });
+    S.voice = (b.voice && typeof b.voice === "object" && /^https:\/\/|\/m\//.test(String(b.voice.url || ""))) ? { id: String(b.voice.id || "").slice(0, 80), url: String(b.voice.url).slice(0, 300), at: num(b.voice.at, 0, Date.now() + 60000, Date.now()) } : null;
+    S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = "guest:" + user.id; g.lastWrite = Date.now(); S.djGuest = g;
+    await writeDoc(env, "radio/dj", "radio", S);
+    return json({ ok: true });
+  }
   const ipRaw = request.headers.get("CF-Connecting-IP") || "";
   let h = 0; for (let i = 0; i < ipRaw.length; i++) h = ((h * 31) + ipRaw.charCodeAt(i)) >>> 0;
   const ip = "g" + h.toString(36);

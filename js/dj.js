@@ -217,7 +217,15 @@
   let S = { live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
-  function save(now) { if (!OWNER()) return; if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  let guestPostAt = 0;
+  function guestRelay() {
+    let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {}
+    if (!on) return;
+    const t = Date.now(); if (t - guestPostAt < 2500) return; guestPostAt = t;
+    const ses = (window.MW && MW.session && MW.session()) || null; const tok = ses && ses.access_token; if (!tok) return;
+    fetch("/api/station", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ kind: "guestdj", A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panY: S.panY, fx: S.fx, voice: S.voice }) }).then((r) => r.json()).then((j) => { if (j && j.ok === false) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended — thanks for spinning 🎧"); } }).catch(() => {});
+  }
+  function save(now) { if (!OWNER()) return; if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
@@ -592,6 +600,7 @@ html.popdj .popdj-hint{display:block}
       <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ad-on" style="width:auto" checked> Auto-DJ runs the station: when a song ends, crossfade to the next one — your queue first, then the full library on rotation</label>
       <div class="dj-list" id="ad-queue" style="max-height:150px"></div>
       <small class="muted">Add songs with the ＋Q button in Your Library. Works while you're live — the station never goes quiet.</small></div>
+    <div class="dj-panel"><h4>🎛️ LIVE DJ REQUESTS</h4><div id="djguest-now"><small class="muted">No guest DJ on the tables right now.</small></div><div class="dj-list" id="djreq-list" style="max-height:180px"></div></div>
     <div class="dj-panel"><h4>📥 REQUESTS &amp; DROPS</h4><div class="dj-list" id="rq-list" style="max-height:220px"><small class="muted">Nothing yet. Listener requests land here.</small></div></div>
     <div class="dj-panel"><h4>📜 PROGRAM LOG</h4><div class="loglist" id="dj-log"></div>
       <label style="display:grid;gap:4px;font-size:12px;color:var(--muted)">Station ticker (shows on the station card for everyone)<input type="text" id="dj-ticker-in" maxlength="140" placeholder="e.g. Taking requests all night — drop yours below!"></label>
@@ -1121,6 +1130,37 @@ html.popdj .popdj-hint{display:block}
   if (SANDBOX) { document.documentElement.classList.add("playdj"); try { go("radio"); } catch (_) {} }
   const pgB = document.getElementById("pg-open"), pgW = document.getElementById("pg-wrap"), pgF = document.getElementById("pg-frame");
   if (pgB && pgW && pgF) pgB.addEventListener("click", () => { if (!pgF.getAttribute("src")) pgF.src = "/?playdj=1#radio"; pgW.hidden = false; pgB.textContent = "🎛️ The Playground is open below — play all you want, the real radio can't hear it"; pgW.scrollIntoView({ behavior: "smooth", block: "start" }); });
+  /* member DJ table → live on the real radio, by Meechie's approval only: a signed-in
+     member asks from this page, the request lands in the booth's LIVE DJ REQUESTS
+     panel, and an approval (S.djGuest) unlocks their GO LIVE button. Their table is
+     the Playground above; while they are live, its saves relay through the server
+     gate (POST /api/station kind guestdj), which checks the grant on every write. */
+  (() => {
+    if (SANDBOX) return;
+    const sec = document.getElementById("v-dj"); if (!sec) return;
+    const card = document.createElement("div"); card.className = "card"; card.id = "djlive-card"; card.style.marginTop = "16px";
+    card.innerHTML = '<h3 style="margin-top:0">🎧 Your DJ table — play on the real radio</h3><div id="djlive-body"><p class="muted">Loading…</p></div>';
+    const pgCard = pgW ? pgW.closest(".card") : null;
+    if (pgCard && pgCard.parentNode) pgCard.parentNode.insertBefore(card, pgCard.nextSibling); else sec.appendChild(card);
+  })();
+  let djLiveSig = "", djLivePend = false, djLivePendAt = 0;
+  const mySess = () => { try { return (window.MW && MW.session && MW.session()) || null; } catch (_) { return null; } };
+  async function renderDjLive() {
+    const body = document.getElementById("djlive-body"); if (!body || SANDBOX) return;
+    const ses = mySess(), user = ses && ses.user, uid = user && user.id;
+    const g = S && S.djGuest, approved = !!(uid && g && g.uid === uid && g.until > Date.now());
+    let liveOn = false; try { liveOn = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {}
+    if (uid && !approved && !OWNER() && Date.now() - djLivePendAt > 10000) { djLivePendAt = Date.now(); try { const d = DBF(); const snap = d ? await d.doc("requests/djlive-" + uid).get() : null; djLivePend = !!(snap && snap.exists); } catch (_) {} }
+    const sig = [OWNER() ? "owner" : "", uid || "", approved ? g.until : 0, liveOn, djLivePend].join("|");
+    if (sig === djLiveSig) return; djLiveSig = sig;
+    if (OWNER()) { body.innerHTML = '<p class="muted">This is your station. When a member asks to DJ live, the request lands in your booth under 🎛️ LIVE DJ REQUESTS — approve it there and their table drives the radio until their slot ends, you end it, or you open your own booth.</p>'; return; }
+    if (!uid) { body.innerHTML = '<p class="muted">Your table is the DJ Playground above — yours to play on any time, and the real radio can\'t hear it. Want the real radio? <b>Sign in</b>, then ask Meechie for a live slot right here.</p>'; return; }
+    if (approved) { body.innerHTML = `<p>✅ <b>Meechie put you on!</b> Your live slot runs until ${new Date(g.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Open your table (the Playground above), flip this on, and play — the whole station hears your mix.</p><button class="btn" type="button" id="djlive-toggle">${liveOn ? "⏹ Stop — take me off the radio" : "🔴 GO LIVE on the radio"}</button>`; const t = document.getElementById("djlive-toggle"); if (t) t.addEventListener("click", () => { try { if (sessionStorage.getItem("mw-guestlive") === "1") sessionStorage.removeItem("mw-guestlive"); else { sessionStorage.setItem("mw-guestlive", "1"); if (pgB) pgB.click(); say("🔴 You are LIVE — your table is driving the radio"); } } catch (_) {} djLiveSig = ""; renderDjLive(); }); return; }
+    if (djLivePend) { body.innerHTML = '<p>⏳ <b>Request sent.</b> Meechie sees it in his booth — when he approves you, your GO LIVE button appears right here.</p><button class="btn ghost" type="button" id="djlive-cancel">Cancel my request</button>'; const c = document.getElementById("djlive-cancel"); if (c) c.addEventListener("click", async () => { try { const d = DBF(); if (d) await d.doc("requests/djlive-" + uid).delete(); } catch (_) {} djLivePend = false; djLiveSig = ""; renderDjLive(); }); return; }
+    body.innerHTML = '<p class="muted">Your table is the DJ Playground above — yours any time, and the real radio can\'t hear it. Want the station to hear you? Ask Meechie — if he approves you in his booth, you get a live slot (up to 2 hours) and your table drives the real radio.</p><button class="btn" type="button" id="djlive-ask">🎧 Ask Meechie to DJ live</button>';
+    const a = document.getElementById("djlive-ask"); if (a) a.addEventListener("click", async () => { const d = DBF(); if (!d) { say("Still loading — try again in a second"); return; } const name = (user.name || user.email || "Member").toString().slice(0, 60); try { await d.doc("requests/djlive-" + uid).set({ kind: "djlive", uid, name, title: "🎧 " + name + " wants to DJ live", at: Date.now(), status: "pending" }); djLivePend = true; say("Request sent to Meechie's booth 🎧"); } catch (_) { say("Couldn't send — try again"); } djLiveSig = ""; renderDjLive(); });
+  }
+  if (!SANDBOX) { renderDjLive(); setInterval(() => { renderDjLive(); }, 5000); }
   /* gentle mouse-wheel on the Radio page (desktop): the booth is a long page and stock
    * wheel notches jump it too far — ease wheel steps to about half speed. Trackpads
    * (small pixel deltas), pinch zoom, and the inner song lists keep their native feel. */
@@ -1702,13 +1742,23 @@ html.popdj .popdj-hint{display:block}
     } catch (_) { say("Allow the microphone to record a drop."); }
   });
   let reqSubbed = false, reqCache = [];
+  function renderDjReqs() {
+    const nowBox = $("#djguest-now"), list = $("#djreq-list"); if (!list) return;
+    const g = S.djGuest;
+    if (nowBox) nowBox.innerHTML = (g && g.until > Date.now())
+      ? `<div class="req"><span>🔴 <b>${E(g.name || "Guest DJ")}</b> is LIVE on the tables until ${new Date(g.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span><span><button class="btn sm" type="button" data-djend="1">⏹ End their set</button></span></div>`
+      : '<small class="muted">No guest DJ on the tables right now. Approve a request below and that member plays on the real radio for up to 2 hours — opening your own booth takes the tables back instantly.</small>';
+    const rows = (reqCache || []).filter((r) => r.data && r.data.kind === "djlive").sort((a, b) => (a.data.at || 0) - (b.data.at || 0));
+    list.innerHTML = rows.length ? rows.map((r) => `<div class="req"><span>🎧 <b>${E(r.data.name || "Member")}</b> wants to DJ live</span><small>${agoT(r.data.at || Date.now())}</small><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-djok="${E(r.id)}|${E(r.data.uid || "")}|${E(r.data.name || "Member")}">✅ Put them on</button><button class="btn ghost sm" type="button" data-djno="${E(r.id)}">✕ Not now</button></span></div>`).join("") : '<small class="muted">No requests waiting.</small>';
+  }
   function renderReqs(docs) {
     const box = $("#rq-list"); if (!box) return;
-    const rows = docs.map((x) => ({ id: x.id, data: x.data() || {} })).sort((a, b) => (b.data.at || 0) - (a.data.at || 0)).slice(0, 30);
+    const rows = docs.map((x) => ({ id: x.id, data: x.data() || {} })).filter((r) => r.data.kind !== "djlive").sort((a, b) => (b.data.at || 0) - (a.data.at || 0)).slice(0, 30);
     box.innerHTML = rows.length ? rows.map((r) => r.data.kind === "voice"
       ? `<div class="req"><b>🎙️ Voice drop</b><small>${agoT(r.data.at || Date.now())}</small><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" type="button" data-rqplay="${E(r.data.url)}">▶ Hear it</button><button class="btn sm" type="button" data-rqair="${E(r.id)}|${E(r.data.url)}|${E(r.data.asset || "")}">📡 Play on air</button><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Done</button></span></div>`
       : r.data.kind === "pick" ? `<div class="req"><span>🎵 Listener pick: ${E(r.data.title || "")}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`
       : `<div class="req"><span>${E(r.data.text || "")}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`).join("") : '<small class="muted">Nothing yet. Listener requests land here.</small>';
+    renderDjReqs();
   }
   function subReqs() {
     if (reqSubbed || !OWNER() || SANDBOX) return; const d = DBF(); if (!d) return; reqSubbed = true;
@@ -1718,6 +1768,9 @@ html.popdj .popdj-hint{display:block}
     const p = e.target.closest("[data-rqplay]"); if (p) { new Audio(p.dataset.rqplay).play().catch(() => {}); return; }
     const air = e.target.closest("[data-rqair]"); if (air && OWNER()) { const [id, url, asset] = air.dataset.rqair.split("|"); S.voice = { id: asset || id, url, at: Date.now() }; heardVoice = S.voice.id; save(true); say("Drop is on the air 📡"); DBF()?.doc("requests/" + id).delete().catch(() => {}); return; }
     const dn = e.target.closest("[data-rqdone]"); if (dn && OWNER()) { DBF()?.doc("requests/" + dn.dataset.rqdone).delete().catch(() => {}); }
+    const ok = e.target.closest("[data-djok]"); if (ok && OWNER()) { const parts = ok.dataset.djok.split("|"); const id = parts[0], uid = parts[1], name = parts.slice(2).join("|") || "Member"; if (uid) { S.djGuest = { uid, name, until: Date.now() + 2 * 3600e3, lastWrite: 0 }; save(true); say("🎧 " + name + " is on the tables — live for up to 2 hours"); } DBF()?.doc("requests/" + id).delete().catch(() => {}); renderDjReqs(); return; }
+    const no = e.target.closest("[data-djno]"); if (no && OWNER()) { DBF()?.doc("requests/" + no.dataset.djno).delete().catch(() => {}); return; }
+    const end = e.target.closest("[data-djend]"); if (end && OWNER()) { S.djGuest = null; save(true); say("Guest set ended — the tables are yours"); renderDjReqs(); return; }
   });
 
   /* ---------- listener song picker: the audience queues the radio ---------- */
@@ -1818,6 +1871,7 @@ html.popdj .popdj-hint{display:block}
     const d = await claude.use("db"); if (!d) return;
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }
+    if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
     const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; if (own) { libList(); paintOwner(); paintQueue(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
     show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
