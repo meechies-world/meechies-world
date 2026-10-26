@@ -20,6 +20,22 @@
 <meta name="twitter:image" content="https://meechiesworldinc.com/img/og-5.jpg">
 <link rel="canonical" href="https://meechiesworldinc.com/">
 <link rel="manifest" href="/manifest.webmanifest">
+<script>
+/* Meechie's World RADIO app mode — entered via ?app=radio (the standalone Radio
+   app's start_url, see /radio-app/). The app is just the radio + DJ station:
+   slim chrome, its own bottom bar, and a Full site escape hatch. */
+(function(){ try { var q = new URLSearchParams(location.search); if (q.get("app") === "radio") sessionStorage.setItem("mw-appmode", "radio"); if (sessionStorage.getItem("mw-appmode") === "radio") { document.documentElement.classList.add("appmode"); document.addEventListener("DOMContentLoaded", function () { if (document.getElementById("appbar")) return; var bar = document.createElement("nav"); bar.id = "appbar"; bar.setAttribute("aria-label", "Radio app"); bar.innerHTML = '<a href="#radio" data-go="radio">📻<span>Radio</span></a><a href="#dj" data-go="dj">🎛️<span>DJ Station</span></a><a href="#tv" data-go="tv">📺<span>Watch</span></a><a href="#videos" data-go="videos">🎬<span>Videos</span></a><a href="/" id="appbar-full">🌐<span>Full site</span></a>'; document.body.appendChild(bar); document.getElementById("appbar-full").addEventListener("click", function () { try { sessionStorage.removeItem("mw-appmode"); } catch (e) {} }); }); } } catch (e) {} })();
+</script>
+<style>
+html.appmode #fb-tabs,html.appmode #fb-left,html.appmode #fb-right,html.appmode .announce,html.appmode .apptab,html.appmode #mx-fab,html.appmode #mw-fab,html.appmode #ai-fab,html.appmode #vz-pill,html.appmode footer{display:none!important}
+html.appmode .player-bar{bottom:56px!important}
+html.appmode body{padding-bottom:124px}
+#appbar{position:fixed;left:0;right:0;bottom:0;height:56px;z-index:9995;display:none;background:#0d0b08;border-top:1px solid #8a6d1f;align-items:stretch;justify-content:space-around}
+html.appmode #appbar{display:flex}
+#appbar a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:#e9d9a6;text-decoration:none;font-size:16px}
+#appbar a span{font-size:10.5px;letter-spacing:.03em}
+#appbar a:active{background:#1d1809}
+</style>
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Meechie's World">

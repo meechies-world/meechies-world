@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meechie's World Radio — the App</title>
+<meta name="description" content="The standalone Meechie's World radio app: the live station + DJ tables, big-screen music videos, requests, and music that keeps playing with your phone screen off. Free — no app store needed.">
+<link rel="manifest" href="/manifest-radio.webmanifest">
+<meta name="theme-color" content="#0b0a08">
+<link rel="icon" href="/img/icon-192.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MW Radio">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#0b0a08;color:#f3ead2;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:center;padding:34px 20px 48px}
+  .logo{width:118px;height:118px;border-radius:26px;border:2px solid #8a6d1f;box-shadow:0 8px 34px rgba(240,207,120,.22)}
+  h1{margin:18px 0 2px;font-size:29px;letter-spacing:.14em;color:#f0cf78}
+  .sub{margin:0 0 20px;color:#cbb26a;letter-spacing:.28em;font-size:12px}
+  .pitch{max-width:520px;margin:0 auto 22px;color:#d8d2c0;font-size:16px;line-height:1.55}
+  ul{list-style:none;padding:0;margin:0 auto 26px;max-width:440px;text-align:left}
+  li{padding:9px 2px;border-bottom:1px solid #241d10;font-size:15.5px;line-height:1.45}
+  .open{display:inline-block;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.06em;font-size:18px;padding:15px 30px;border-radius:14px;text-decoration:none;box-shadow:0 6px 22px rgba(240,207,120,.3)}
+  .install{display:none;margin:14px auto 0;background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:16px;padding:13px 26px;border-radius:14px;cursor:pointer}
+  .how{max-width:440px;margin:26px auto 0;color:#a79c7e;font-size:14px;line-height:1.6}
+  .how b{color:#e9d9a6}
+  .back{display:inline-block;margin-top:30px;color:#8a8268;font-size:13.5px}
+</style>
+</head>
+<body>
+  <img class="logo" src="/img/icon-512.png" alt="Meechie's World Radio">
+  <h1>MEECHIE'S WORLD</h1>
+  <p class="sub">R A D I O</p>
+  <p class="pitch">A whole separate app that's <b>just the radio + DJ station</b> — nothing else. Watch the music videos on the big screen, ride with Meechie live on the decks, and keep the music playing when your phone screen shuts off.</p>
+  <ul>
+    <li>📻 &nbsp;The live station, on air around the clock</li>
+    <li>🎛️ &nbsp;The DJ Station — 4 decks, live sets, big-screen videos</li>
+    <li>🔒 &nbsp;Screen off? The music keeps playing, with lock-screen play / pause / skip</li>
+    <li>🎤 &nbsp;Song requests &amp; shoutouts straight to the station</li>
+    <li>🆓 &nbsp;Free — no app store, no download wait</li>
+  </ul>
+  <a class="open" id="open-btn" href="/?app=radio#radio">▶ OPEN THE RADIO APP</a>
+  <br>
+  <button class="install" id="install-btn" type="button">📲 INSTALL THE APP</button>
+  <p class="how" id="how-android"><b>Put it on your home screen:</b> tap <b>Install</b> above — or open your browser menu (⋮) and choose <b>“Add to Home screen.”</b> It lands like a real app, icon and all.</p>
+  <p class="how" id="how-ios" hidden><b>On iPhone:</b> tap the <b>Share</b> button, then <b>“Add to Home Screen.”</b> The Radio app lands on your home screen like a real app.</p>
+  <br>
+  <a class="back" href="/">← Back to the full Meechie's World site</a>
+<script>
+  (function () {
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    if (isIOS) { document.getElementById("how-ios").hidden = false; document.getElementById("how-android").hidden = true; }
+    var deferred = null, btn = document.getElementById("install-btn");
+    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; btn.style.display = "inline-block"; });
+    btn.addEventListener("click", function () { if (!deferred) return; deferred.prompt(); deferred.userChoice.then(function () { deferred = null; btn.style.display = "none"; }); });
+    if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) document.getElementById("open-btn").textContent = "▶ OPEN THE RADIO";
+  })();
+</script>
+</body>
+</html>
