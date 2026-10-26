@@ -960,13 +960,26 @@ html.popdj .popdj-hint{display:block}
   // listening to the decks; the keeper answers with the live counts, painted into
   // the header chip, the booth top bar and the station card
   let myCid = ""; try { myCid = sessionStorage.getItem("mw-cid") || ""; if (!myCid) { myCid = rid(); sessionStorage.setItem("mw-cid", myCid); } } catch (_) { myCid = rid(); }
-  function paintOnline(o, l) {
-    const chip = document.getElementById("online-chip"); if (chip) { chip.hidden = false; const nb = document.getElementById("online-n"); if (nb) nb.textContent = o; }
-    const b = document.getElementById("dj-online"); if (b) b.textContent = "👥 " + o + " online · 🎧 " + l + " on the decks";
-    const o2 = document.getElementById("dj-online2"); if (o2) o2.textContent = "🟢 " + o + " online · 🎧 " + l;
-    const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + o + " on the site" : o + " on the site right now";
+  function paintOnline(o, l, users) {
+    // ONE presence list for the whole site: when the keeper answers with the
+    // signed-in members who are on right now, that list is the count everywhere
+    // (header chip, booth, station card AND the Book strip via MW_ONLINE), so
+    // the numbers can never disagree again
+    let n = o;
+    if (Array.isArray(users)) {
+      n = users.length;
+      window.MW_ONLINE = new Set(users.map((x) => x.uid).filter(Boolean));
+      window.MW_ONLINE_USERS = users; window.MW_PING_AT = Date.now();
+      window.MW_GUESTS = Math.max(0, (o || 0) - n);
+    }
+    const chip = document.getElementById("online-chip");
+    if (chip) { chip.hidden = false; const nb = document.getElementById("online-n"); if (nb) nb.textContent = n; if (!chip._clk) { chip._clk = 1; chip.style.cursor = "pointer"; chip.title = "See who's online"; chip.addEventListener("click", () => { if (window.MW_showOnline) window.MW_showOnline(); }); } }
+    const b = document.getElementById("dj-online"); if (b) b.textContent = "👥 " + n + " online · 🎧 " + l + " on the decks";
+    const o2 = document.getElementById("dj-online2"); if (o2) o2.textContent = "🟢 " + n + " online · 🎧 " + l;
+    const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + n + " on the site" : n + " on the site right now";
   }
-  const pingKeeper = () => fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0), { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.online != null) paintOnline(j.online, j.listening || 0); }).catch(() => {});
+  const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
+    fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users); }).catch(() => {}); };
   if (!SANDBOX) { pingKeeper(); setInterval(pingKeeper, 12000); }
   /* one booth plays the sound; the other is its remote. The main tab and the pop-out
    * are two full booths sharing one station — without a leader they would each play

@@ -59,7 +59,7 @@
 
   /* ---------- online dots ---------- */
   function paintOnline() {
-    try { if (typeof room !== "undefined" && room && room.peers) window.MW_ONLINE = new Set(room.peers().map((p) => p.by).filter(Boolean)); } catch (_) {}
+    try { if (typeof room !== "undefined" && room && room.peers && (!window.MW_PING_AT || Date.now() - window.MW_PING_AT > 45000)) window.MW_ONLINE = new Set(room.peers().map((p) => p.by).filter(Boolean)); } catch (_) {}
     if (ME()) window.MW_ONLINE.add(ME());
     document.querySelectorAll(".avatar[data-uid]").forEach((a) => a.classList.toggle("online", window.MW_ONLINE.has(a.dataset.uid)));
     paintBar();

@@ -14,7 +14,7 @@
   const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const unb64 = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
   const rand = (n) => crypto.getRandomValues(new Uint8Array(n));
-  const LOCK_AFTER = 10 * 60 * 1000; // re-lock after 10 minutes away from the site
+  const LOCK_AFTER = 30 * 60 * 1000; // re-lock after 30 minutes away (and always on a fresh visit)
   const isApple = /iPhone|iPad|Macintosh/.test(navigator.userAgent);
   const label = isApple ? "Face ID / Touch ID" : "fingerprint / face unlock";
 
@@ -36,13 +36,28 @@
   const emblem = () => { const sym = document.querySelector("symbol#emblem"); return sym ? `<svg class="em" viewBox="${sym.getAttribute("viewBox") || "0 0 200 200"}" aria-hidden="true"><use href="#emblem"/></svg>` : ""; };
   const fingerIcon = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 11v3a6 6 0 0 1-1.5 4"/><path d="M8 7.5A6 6 0 0 1 18 12v1"/><path d="M6 11a6 6 0 0 1 .5-2.4"/><path d="M9 21a10 10 0 0 0 2-6v-3a1 1 0 0 1 2 0v2"/><path d="M15 20a14 14 0 0 0 1-4"/><path d="M4 15v-3a8 8 0 0 1 14-5.3"/></svg>';
 
+  /* ---------- enroll this device (shared by the offer and the lock screen) ---------- */
+  async function enroll(u) {
+    const name = (typeof members !== "undefined" && members[u] && members[u].handle) || "Member";
+    const c = await navigator.credentials.create({ publicKey: {
+      challenge: rand(32), rp: { name: "Meechie's World" },
+      user: { id: new TextEncoder().encode(u).slice(0, 64), name: name, displayName: name },
+      pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
+      timeout: 60000, attestation: "none" } });
+    if (!c) throw new Error("cancelled");
+    ls(KEY(u), b64(c.rawId)); ss("mw_bio_ok", String(Date.now()));
+    return true;
+  }
+
   /* ---------- the lock screen ---------- */
   function lock(u, cred) {
     if (document.getElementById("bio-lock")) return;
     const b = document.createElement("div"); b.id = "bio-lock"; b.setAttribute("role", "dialog"); b.setAttribute("aria-modal", "true"); b.setAttribute("aria-label", "Unlock Meechie's World");
     b.innerHTML = `<div class="in">${emblem()}<h3>Welcome back</h3><p>Unlock Meechie's World with ${label}.</p>
       <button type="button" class="go" id="bio-go">${fingerIcon}<span>Unlock</span></button><p class="bio-m" id="bio-msg" aria-live="polite"></p>
-      <button type="button" class="alt" id="bio-pw">Sign in with my password instead</button></div>`;
+      <button type="button" class="alt" id="bio-setup">Fingerprint not working? Set it up on this device</button>
+      <button type="button" class="alt" id="bio-pw">Skip for now — I'm already signed in</button></div>`;
     document.body.appendChild(b);
     document.documentElement.style.overflow = "hidden";
     const msg = b.querySelector("#bio-msg");
@@ -55,7 +70,10 @@
       } catch (e) { msg.textContent = e && e.name === "NotAllowedError" ? "That didn't go through. Tap Unlock to try again." : "Couldn't unlock. Try again, or sign in with your password."; }
     };
     b.querySelector("#bio-go").addEventListener("click", go);
-    b.querySelector("#bio-pw").addEventListener("click", () => { ls(KEY(u), null); try { window.MW && MW.signOut && MW.signOut(); } catch (_) {} b.remove(); document.documentElement.style.overflow = ""; });
+    b.querySelector("#bio-setup").addEventListener("click", async () => { msg.textContent = ""; try { await enroll(u); b.remove(); document.documentElement.style.overflow = ""; if (typeof toast === "function") toast("✅ " + label + " is set up on this device"); } catch (e) { msg.textContent = "Setup didn't finish — you can skip for now and try again later."; } });
+    // skipping never signs anyone out and never wipes the enrollment: sessions
+    // last a year on purpose, the lock is just the front door, not the account
+    b.querySelector("#bio-pw").addEventListener("click", () => { ss("mw_bio_ok", String(Date.now())); ss("mw_bio_pw", String(Date.now())); b.remove(); document.documentElement.style.overflow = ""; });
   }
 
   /* ---------- offer to turn it on ---------- */
@@ -69,18 +87,8 @@
     document.body.appendChild(o);
     o.querySelector("#bio-not").addEventListener("click", () => { ls("mw_bio_no_" + u, "1"); o.remove(); });
     o.querySelector("#bio-yes").addEventListener("click", async () => {
-      try {
-        const name = (typeof members !== "undefined" && members[u] && members[u].handle) || "Member";
-        const c = await navigator.credentials.create({ publicKey: {
-          challenge: rand(32), rp: { name: "Meechie's World" },
-          user: { id: new TextEncoder().encode(u).slice(0, 64), name: name, displayName: name },
-          pubKeyCredParams: [{ type: "public-key", alg: -7 }, { type: "public-key", alg: -257 }],
-          authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "preferred" },
-          timeout: 60000, attestation: "none" } });
-        if (!c) throw new Error("cancelled");
-        ls(KEY(u), b64(c.rawId)); ss("mw_bio_ok", String(Date.now())); o.remove();
-        if (typeof toast === "function") toast("✅ " + label + " unlock is on for this device");
-      } catch (e) { o.remove(); if (typeof toast === "function") toast("Couldn't turn it on. You can try again from Settings later."); }
+      try { await enroll(u); o.remove(); if (typeof toast === "function") toast("✅ " + label + " unlock is on for this device"); }
+      catch (e) { o.remove(); if (typeof toast === "function") toast("Couldn't turn it on — the lock screen has a setup button whenever you come back."); }
     });
   }
 
