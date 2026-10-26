@@ -161,3 +161,35 @@ export async function onRequestGet({ request, env }) {
   if (changed) await writeDoc(env, "radio/dj", "radio", S);
   return json({ ok: true, mode: "autodj", changed, online: counts.online, listening: counts.listening });
 }
+
+/* Guest song requests: the picker in js/dj.js first tries the member write; when
+ * that is refused (a visitor who is not signed in), it posts the pick here instead.
+ * The pick lands as a normal requests doc that the booth and this keeper already
+ * know how to play. Only picks with a resolved, trusted src and short text
+ * requests are accepted, rate-limited per visitor. */
+export async function onRequestPost({ request, env }) {
+  if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
+  let b = null; try { b = await request.json(); } catch (_) {}
+  if (!b) return json({ ok: false, error: "bad_body" }, 400);
+  const ipRaw = request.headers.get("CF-Connecting-IP") || "";
+  let h = 0; for (let i = 0; i < ipRaw.length; i++) h = ((h * 31) + ipRaw.charCodeAt(i)) >>> 0;
+  const ip = "g" + h.toString(36);
+  const recent = await env.DB.prepare("select count(*) as n from docs where coll = 'requests' and data like ? and created_at > ?").bind("%" + ip + "%", new Date(Date.now() - 60000).toISOString()).first();
+  if (recent && recent.n >= 3) return json({ ok: false, error: "slow_down" }, 429);
+  const now = Date.now();
+  let data = null;
+  if (b.kind === "pick") {
+    const title = String(b.title || "").slice(0, 120).trim();
+    const src = String(b.src || "");
+    const okSrc = src.startsWith("https://archive.org/download/") || src.startsWith(new URL(request.url).origin + "/m/assets/");
+    if (!title || !okSrc) return json({ ok: false, error: "bad_pick" }, 422);
+    data = { kind: "pick", title, src, cover: String(b.cover || "").slice(0, 300), dur: Math.max(0, Math.min(3600, +b.dur || 0)), at: now, guest: true, ip };
+  } else if (b.kind === "text") {
+    const text = String(b.text || "").slice(0, 120).trim();
+    if (!text) return json({ ok: false, error: "bad_text" }, 422);
+    data = { kind: "text", text, at: now, guest: true, ip };
+  } else return json({ ok: false, error: "bad_kind" }, 422);
+  const path = "requests/g" + now.toString(36) + Math.random().toString(36).slice(2, 8);
+  await writeDoc(env, path, "requests", data);
+  return json({ ok: true });
+}
