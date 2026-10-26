@@ -165,6 +165,7 @@ body[data-view=clips] #fb-right,body[data-view=world] #fb-right,body[data-view=d
 <a href="#clips" data-go="clips"><span>🎬</span>Clips</a>
 <a href="#books" data-go="books"><span>📚</span>Books</a>
 <a href="#radio" data-go="radio"><span>📻</span>Radio</a>
+<a href="#tv" data-go="tv"><span>📺</span>TV</a>
 <a href="#jobs" data-go="jobs"><span>💼</span>Jobs</a>`;
   }
 
