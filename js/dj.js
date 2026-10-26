@@ -129,7 +129,7 @@
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, xf: 0.5, xf2: 0.5, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
+  let S = { live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   function save(now) { if (!OWNER()) return; clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
@@ -293,6 +293,12 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .xfpl{position:absolute;top:50%;transform:translateY(-50%);font:800 12px var(--body);color:var(--gold-hi)}
 .xfpl.a{left:8px}.xfpl.b{right:8px}
 .deck .wave{cursor:pointer;touch-action:none}
+.xfpad.big{width:172px;height:172px}
+.xfpad .xfpl.tl{left:10px;top:8px;transform:none}
+.xfpad .xfpl.tr{right:10px;top:8px;left:auto;transform:none}
+.xfpad .xfpl.bl{left:10px;bottom:8px;top:auto;transform:none}
+.xfpad .xfpl.br{right:10px;bottom:8px;top:auto;left:auto;transform:none}
+@media(min-width:1100px){body.dj-on main{margin-left:0!important;margin-right:0!important}body.dj-on #v-radio .wrap{max-width:1740px}}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -340,8 +346,8 @@ html.popdj .popdj-hint{display:block}`;
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
       <small>CROSSFADER</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf" aria-label="Crossfader">
       <div style="display:flex;justify-content:space-between;width:100%;font:700 11px var(--body);color:var(--gold-hi)"><span>A</span><span>B</span></div>
-      <div class="xfpad" id="dj-xfpad" title="Drag the dot toward the deck you want louder"><span class="xfpl a">A</span><span class="xfpl b">B</span><div class="xfdot" id="dj-xfdot"></div></div>
-      <small>◉ PAN — drag the dot toward a deck to play it more</small>
+      <div class="xfpad big" id="dj-xfpad" title="One dot runs all four decks — drag it toward a deck and that deck takes over"><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
+      <small>◉ PAN ALL — one dot for all four decks: drag toward a deck to play it more (up = A/B, down = C/D, center = all even)</small>
       <small>BEAT ENGINE</small>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-quant" checked style="width:auto"> Quantize — cues &amp; loops snap to the beat</label>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-fxsync" checked style="width:auto"> Effects follow the live tempo</label>
@@ -362,8 +368,7 @@ html.popdj .popdj-hint{display:block}`;
     ${deckHTML("C")}
     <div class="mixer m2"><small>DECKS C / D</small>
       <small>CROSSFADER C/D</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf2" aria-label="Crossfader decks C and D">
-      <div class="xfpad" id="dj-xfpad2" title="Drag the dot toward the deck you want louder"><span class="xfpl a">C</span><span class="xfpl b">D</span><div class="xfdot" id="dj-xfdot2"></div></div>
-      <small>◉ PAN C/D — drag the dot toward a deck to play it more</small>
+      <small>C and D answer to the big PAN ALL dot too — or ride their own fader above.</small>
       <div style="display:flex;justify-content:space-between;width:100%;font:700 11px var(--body);color:var(--gold-hi)"><span>C</span><span>D</span></div>
       <canvas class="pairwave" id="pw-CD" width="480" height="72"></canvas>
       <small id="ph-CD" style="letter-spacing:0;text-transform:none">Phase meter for decks C and D.</small>
@@ -434,7 +439,7 @@ html.popdj .popdj-hint{display:block}`;
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
-    DECKS.forEach((k) => { if (decks[k]) { const x = k === "C" || k === "D" ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A"; decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * duck * mix); } });
+    DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * duck * mix); } });
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
   function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
@@ -792,7 +797,7 @@ html.popdj .popdj-hint{display:block}`;
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     return m;
@@ -956,20 +961,15 @@ html.popdj .popdj-hint{display:block}`;
   // circular pan pads: drag the gold dot anywhere in the circle — the further it
   // moves toward a deck, the more that deck plays. Same mix as the sliders and the
   // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
-  const padY = { 1: 0, 2: 0 };
-  function paintXfPads() {
-    const d1 = $("#dj-xfdot"); if (d1) { d1.style.left = (50 + (S.xf - 0.5) * 76) + "%"; d1.style.top = (50 + padY[1] * 34) + "%"; }
-    const d2 = $("#dj-xfdot2"); if (d2) { d2.style.left = (50 + ((S.xf2 ?? 0.5) - 0.5) * 76) + "%"; d2.style.top = (50 + padY[2] * 34) + "%"; }
-  }
-  [["#dj-xfpad", 1], ["#dj-xfpad2", 2]].forEach(([sel, pair]) => {
-    const pad = $(sel); if (!pad) return;
-    let drag = false;
-    const apply = (e) => { const r = pad.getBoundingClientRect(); let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2), dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2); const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } padY[pair] = dy; const v = Math.min(1, Math.max(0, (dx + 1) / 2)); if (pair === 1) { S.xf = v; const s1 = $("#dj-xf"); if (s1) s1.value = v; const xb = $("#dj-xfbar"); if (xb) xb.value = v; } else { S.xf2 = v; const s2 = $("#dj-xf2"); if (s2) s2.value = v; } levels(); paintXfPads(); };
+  // ONE pan dot for all four decks: left/right rides both crossfaders together,
+  // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
+  (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
+    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } const v = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf = v; S.xf2 = v; S.panY = Math.round(dy * 1000) / 1000; const s1 = $("#dj-xf"); if (s1) s1.value = v; const sb = $("#dj-xfbar"); if (sb) sb.value = v; const s2 = $("#dj-xf2"); if (s2) s2.value = v; paintXfPads(); levels(); save(); };
     pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = true; try { pad.setPointerCapture(e.pointerId); } catch (_) {} apply(e); e.preventDefault(); });
     pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
-    pad.addEventListener("pointerup", () => { if (drag) { drag = false; save(true); } });
+    pad.addEventListener("pointerup", () => { drag = false; });
     pad.addEventListener("pointercancel", () => { drag = false; });
-  });
+  })();
   // touch the waveform to jump the song there: tap a spot to play from it, or drag
   // across to scrub. Works in the sound window and from the mirror (it writes the
   // shared position and the leader follows). Seeking outside an active loop clears it.
