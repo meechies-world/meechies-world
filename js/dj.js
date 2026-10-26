@@ -152,9 +152,11 @@
 @keyframes djpulse{50%{opacity:.35}}
 .dj-clock{font:700 13px ui-monospace,monospace;color:var(--gold-hi)}
 .dj-decks{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);gap:16px;align-items:stretch}
+@media (min-width:1400px){.dj-decks{grid-template-columns:minmax(0,1fr) 250px minmax(0,1fr) minmax(0,1fr) 250px minmax(0,1fr);gap:12px}}
+@media (min-width:1650px){#v-radio .wrap{max-width:1720px}}
 .deck{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;justify-items:center;text-align:center;min-width:0;align-content:start}
 .deck h4{margin:0;font:800 13px var(--body);letter-spacing:.18em;color:var(--gold-hi)}
-.platter{width:min(240px,38vw);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 2px,#1b1b1b 2px 4px);border:3px solid #2a2418;position:relative;box-shadow:inset 0 0 20px #000,0 8px 20px rgba(0,0,0,.6);cursor:grab;touch-action:none}
+.platter{width:min(240px,100%);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 2px,#1b1b1b 2px 4px);border:3px solid #2a2418;position:relative;box-shadow:inset 0 0 20px #000,0 8px 20px rgba(0,0,0,.6);cursor:grab;touch-action:none}
 .platter::after{content:"";position:absolute;inset:34%;border-radius:50%;background:var(--gold) center/cover;box-shadow:0 0 0 3px #0c0a07}
 .platter.has-cover::after{background-image:var(--cv)}
 .platter.spin{animation:djspin 1.8s linear infinite}
@@ -212,18 +214,19 @@ body.dj-past #ai-fab,body.dj-past #mx-heads,body.dj-on #ai-fab,body.dj-on #mx-he
 #ai-fab,#mx-heads{transition:opacity .3s ease,transform .3s ease}
 .swapbar{display:none}
 @media (max-width:760px){
-.dj-decks{display:block}
-.dj-decks.r2>*{display:none!important}
-.dj-decks.r2[data-show="C"]>.deck[data-deck="C"],.dj-decks.r2[data-show="D"]>.deck[data-deck="D"],.dj-decks.r2[data-show="M"]>.mixer{display:grid!important}
-.dj-decks.r1{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.dj-decks.r1>.deck[data-deck="A"]{grid-column:1;grid-row:1}
-.dj-decks.r1>.deck[data-deck="B"]{grid-column:2;grid-row:1}
-.dj-decks.r1>.mixer{grid-column:1/-1;grid-row:2}
-.dj-decks.r1 .deck{padding:8px;gap:5px}
-#dj-owner .dj-decks.r1 .platter{width:84px}
-.dj-decks.r1 .wave{height:44px}
-.dj-decks.r1 .btn{padding:6px 8px;font-size:12px}
-.dj-decks.r1 .ttl{font-size:12px}
+.dj-decks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dj-decks>.deck[data-deck="C"],.dj-decks>.deck[data-deck="D"],.dj-decks>.mixer.m2{display:none!important}
+.dj-decks[data-show="C"]>.deck[data-deck="C"],.dj-decks[data-show="D"]>.deck[data-deck="D"],.dj-decks[data-show="M"]>.mixer.m2{display:grid!important}
+.dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}
+.dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}
+.dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}
+.dj-decks>.swapbar{grid-column:1/-1;grid-row:3}
+.dj-decks>.deck[data-deck="C"],.dj-decks>.deck[data-deck="D"],.dj-decks>.mixer.m2{grid-column:1/-1;grid-row:4}
+.dj-decks>.deck[data-deck="A"],.dj-decks>.deck[data-deck="B"]{padding:8px;gap:5px}
+#dj-owner .dj-decks>.deck[data-deck="A"] .platter,#dj-owner .dj-decks>.deck[data-deck="B"] .platter{width:84px}
+.dj-decks>.deck[data-deck="A"] .wave,.dj-decks>.deck[data-deck="B"] .wave{height:44px}
+.dj-decks>.deck[data-deck="A"] .btn,.dj-decks>.deck[data-deck="B"] .btn{padding:6px 8px;font-size:12px}
+.dj-decks>.deck[data-deck="A"] .ttl,.dj-decks>.deck[data-deck="B"] .ttl{font-size:12px}
 #dj-faderbar{display:none}
 body.dj-on #dj-faderbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;gap:10px;align-items:center;background:rgba(13,11,8,.96);border-top:1px solid var(--gold-lo);padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px))}
 #dj-faderbar input{flex:1;min-height:36px}
@@ -329,7 +332,7 @@ html.popdj .popdj-hint{display:block}`;
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
   <div id="dj-faderbar"><b id="xfb-a">A</b><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xfbar" aria-label="Crossfader"><b id="xfb-b">B</b></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
-  <div class="dj-decks r1">
+  <div class="dj-decks" data-show="C">
     ${deckHTML("A")}
     <div class="mixer m1"><small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
@@ -352,19 +355,9 @@ html.popdj .popdj-hint{display:block}`;
       <small>FLANGER</small><input type="range" min="0" max="1" step="0.02" value="0" id="dj-fla" aria-label="Flanger level">
       <small>TRANSFORMER (CHOP)</small><div style="display:flex;gap:5px;justify-content:center"><button class="btn ghost sm gatebtn on" type="button" data-gate="0">OFF</button><button class="btn ghost sm gatebtn" type="button" data-gate="2">SLOW</button><button class="btn ghost sm gatebtn" type="button" data-gate="4">MED</button><button class="btn ghost sm gatebtn" type="button" data-gate="8">FAST</button></div></div>
     ${deckHTML("B")}
-  </div>
-  <div class="dj-panel" id="dj-browser" style="margin-top:16px">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4>
-      <button class="btn sm browtab on" type="button" data-brow="lib">Your Library</button>
-      <button class="btn ghost sm browtab" type="button" data-brow="net">Free Music Search</button>
-      <button class="btn ghost sm browtab" type="button" data-brow="cur">🏆 Pro DJ Sounds</button></div>
-    <div data-browpane="lib"><div class="dj-list" id="dj-lib" style="max-height:300px"></div></div>
-    <div data-browpane="net" hidden><form class="dj-search" id="dj-sf"><input type="search" id="dj-q" placeholder="Search: hip hop, jazz, beats..." aria-label="Search free music"><button class="btn sm" type="submit">Search</button></form>
-      <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net" style="max-height:260px"></div></div>
-    <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
-  </div>
+  
   <div class="swapbar"><button class="btn sm on" type="button" data-swap="1:C">🎧 DECK C</button><button class="btn ghost sm" type="button" data-swap="1:M">🎚️ MIXER</button><button class="btn ghost sm" type="button" data-swap="1:D">🎧 DECK D</button></div>
-  <div class="dj-decks r2" data-show="C" style="margin-top:16px">
+  
     ${deckHTML("C")}
     <div class="mixer m2"><small>DECKS C / D</small>
       <small>CROSSFADER C/D</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf2" aria-label="Crossfader decks C and D">
@@ -376,7 +369,19 @@ html.popdj .popdj-hint{display:block}`;
       <small>BITCRUSH (GRIT)</small><input type="range" min="0" max="100" step="1" value="0" id="dj-crush" aria-label="Bitcrush grit">
       <small style="letter-spacing:0;text-transform:none">Decks C and D run through the same master effects, mic, talk button and recorder — every move broadcasts to the radio.</small></div>
     ${deckHTML("D")}
-  <div class="dj-grid2">
+
+</div>
+  <div class="dj-panel" id="dj-browser" style="margin-top:16px">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4>
+      <button class="btn sm browtab on" type="button" data-brow="lib">Your Library</button>
+      <button class="btn ghost sm browtab" type="button" data-brow="net">Free Music Search</button>
+      <button class="btn ghost sm browtab" type="button" data-brow="cur">🏆 Pro DJ Sounds</button></div>
+    <div data-browpane="lib"><div class="dj-list" id="dj-lib" style="max-height:300px"></div></div>
+    <div data-browpane="net" hidden><form class="dj-search" id="dj-sf"><input type="search" id="dj-q" placeholder="Search: hip hop, jazz, beats..." aria-label="Search free music"><button class="btn sm" type="submit">Search</button></form>
+      <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net" style="max-height:260px"></div></div>
+    <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
+  </div>
+    <div class="dj-grid2">
     <div class="dj-panel"><h4>🎤 LIVE MIC</h4>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" id="mic-on">Open the mic</button><button class="btn ghost sm" type="button" id="mic-mon">🔇 Monitor off</button></div>
       <div class="micmeter"><i id="mic-lvl"></i></div>
@@ -413,7 +418,7 @@ html.popdj .popdj-hint{display:block}`;
   document.addEventListener("click", (e) => { const pb = e.target.closest && e.target.closest("[data-ptab]"); if (!pb) return; const o = document.getElementById("dj-owner"); if (o) o.dataset.ptab = pb.dataset.ptab; document.querySelectorAll("#dj-ptabs [data-ptab]").forEach((x) => x.classList.toggle("on", x === pb)); });
   // phone deck switcher: panels SWAP (one tap, no sliding/scrolling through pages) —
   // each decks row shows exactly one panel: a deck or its mixer
-  document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-swap]"); if (!b) return; const [ri, v] = b.dataset.swap.split(":"); const rows = document.querySelectorAll(".dj-decks"); const row = rows[+ri]; if (row) row.dataset.show = v; b.parentElement.querySelectorAll("[data-swap]").forEach((x) => x.classList.toggle("on", x === b)); });
+  document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-swap]"); if (!b) return; const v = b.dataset.swap.split(":").pop(); const row = document.querySelector(".dj-decks"); if (row) row.dataset.show = v; b.parentElement.querySelectorAll("[data-swap]").forEach((x) => x.classList.toggle("on", x === b)); });
   // music browser tabs (Serato-style: one browser, three sources, right under the decks)
   document.addEventListener("click", (e) => { const bt = e.target.closest && e.target.closest("[data-brow]"); if (!bt) return; document.querySelectorAll("[data-brow]").forEach((x) => { const on = x === bt; x.classList.toggle("on", on); x.classList.toggle("ghost", !on); }); document.querySelectorAll("[data-browpane]").forEach((p) => { p.hidden = p.dataset.browpane !== bt.dataset.brow; }); });
   const $ = (s) => document.querySelector(s);
