@@ -87,6 +87,7 @@ nav.tabs a{letter-spacing:.02em}
   const auth = document.getElementById("authbar");
   if (auth && !document.getElementById("hdr-menu")) { const m = document.createElement("button"); m.type = "button"; m.id = "hdr-menu"; m.setAttribute("aria-label", "All sections"); m.innerHTML = '☰<span class="t"> Menu</span>'; const holder = document.createElement("span"); holder.id = "hdr-right"; auth.replaceWith(holder); holder.append(auth, m); m.addEventListener("click", () => { fillMore(); more.hidden = false; }); }
   more.addEventListener("click", (e) => { if (e.target === more || e.target.closest("[data-go]")) more.hidden = true; });
+  addEventListener("keydown", (e) => { if (e.key === "Escape") more.hidden = true; });
   // keep the bottom tabs in step with the page
   const sync = () => { const cur = (document.querySelector("header nav.tabs a[aria-current=page]") || {}).dataset?.go || location.hash.slice(1) || "home"; bar.querySelectorAll("a").forEach((a) => (a.dataset.go === cur ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"))); };
   const nav = document.querySelector("header nav.tabs");
