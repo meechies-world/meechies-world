@@ -19,6 +19,20 @@ const embed = async (href) => {
   const r = await fetch("https://www.tiktok.com/oembed?url=" + encodeURIComponent(href), { headers: { "user-agent": UA, accept: "application/json" } }).catch(() => null);
   return r && r.ok ? await r.json().catch(() => null) : null;
 };
+// oEmbed does not answer from this network at all (verified live 2026-10-26:
+// full metadata direct, empty from the worker), so fall back to the video
+// page's own embedded data — its caption, author and cover ride in the HTML.
+const unesc = (s) => { try { return JSON.parse('"' + String(s).replace(/"/g, '\\"') + '"'); } catch (_) { return String(s || ""); } };
+const scrape = async (href) => {
+  const r = await fetch(href, { redirect: "follow", headers: { "user-agent": UA, accept: "text/html,application/xhtml+xml" } }).catch(() => null);
+  if (!r || !r.ok) return null;
+  const body = await r.text().catch(() => "");
+  if (!body) return null;
+  const desc = (body.match(/"desc":"((?:[^"\\]|\\.)*)"/) || [])[1] || "";
+  const cover = (body.match(/"cover":"(https:(?:[^"\\]|\\.)*)"/) || [])[1] || (body.match(/"originCover":"(https:(?:[^"\\]|\\.)*)"/) || [])[1] || "";
+  const uid = (body.match(/"uniqueId":"([\w.-]+)"/) || [])[1] || "";
+  return { title: unesc(desc).slice(0, 100), author: uid.slice(0, 40), thumb: /^https:\/\//.test(unesc(cover)) ? unesc(cover) : "" };
+};
 
 export async function onRequestGet({ request }) {
   const link = new URL(request.url).searchParams.get("url") || "";
@@ -38,10 +52,12 @@ export async function onRequestGet({ request }) {
     if (!id && j && /^\d{8,25}$/.test(String(j.embed_product_id || ""))) id = String(j.embed_product_id);
   }
   if (!/^\d{8,25}$/.test(id || "")) return json({ error: "not_found" }, 404);
-  return json({
-    id,
-    title: j ? String(j.title || "").slice(0, 100) : "",
-    author: j ? String(j.author_unique_id || "").slice(0, 40) : "",
-    thumb: j && /^https:\/\//.test(j.thumbnail_url || "") ? j.thumbnail_url : "",
-  });
+  let title = j ? String(j.title || "").slice(0, 100) : "", author = j ? String(j.author_unique_id || "").slice(0, 40) : "", thumb = j && /^https:\/\//.test(j.thumbnail_url || "") ? j.thumbnail_url : "";
+  if (!title || !thumb) {
+    // fetch follows redirects, so this reaches the canonical video page for
+    // full links and short share links alike
+    const s = await scrape(u.href).catch(() => null);
+    if (s) { title = title || s.title; author = author || s.author; thumb = thumb || s.thumb; }
+  }
+  return json({ id, title, author, thumb });
 }
