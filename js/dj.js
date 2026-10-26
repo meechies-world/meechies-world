@@ -469,6 +469,8 @@ html.popdj .popdj-hint{display:block}
 #dj-mini{position:fixed;top:64px;right:10px;width:208px;z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px}
+#dj-mini .mn-bar{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+#dj-mini.mn-drag .mn-bar{cursor:grabbing}
 #dj-mini .vstage{border:0;border-radius:0}
 @media(max-width:760px){#dj-mini{top:56px;width:168px}}
 html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
@@ -736,7 +738,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   if (boothEl && boothHome) boothHome.appendChild(boothEl);
   // the mini master screen: one floating rectangle on every page, so the live
   // music video follows viewers around the whole site (never in the Playground)
-  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='vchip' id='mn-vchip' hidden></div></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { const t = vmixTargets()[0]; miniOffVid = t ? (S[t.k] && S[t.k].yt) || "*" : "*"; mn.hidden = true; }); }
+  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='vchip' id='mn-vchip' hidden></div></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { const t = vmixTargets()[0]; miniOffVid = t ? (S[t.k] && S[t.k].yt) || "*" : "*"; mn.hidden = true; });
+    // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
+    // "make the music video screen moveable") — drag it anywhere; the spot is
+    // remembered per device and restored on every page
+    const mnBar = mn.querySelector(".mn-bar");
+    const mnPlace = (x, y) => { const w = mn.offsetWidth || 208, h = mn.offsetHeight || 140; x = Math.max(2, Math.min(Math.round(x), Math.max(2, innerWidth - w - 2))); y = Math.max(2, Math.min(Math.round(y), Math.max(2, innerHeight - h - 2))); mn.style.left = x + "px"; mn.style.top = y + "px"; mn.style.right = "auto"; };
+    try { const p = JSON.parse(localStorage.getItem("mw-mini-pos") || "null"); if (p && typeof p.x === "number" && typeof p.y === "number") mnPlace(p.x, p.y); } catch (_) {}
+    mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); }
   // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
   // decks — on wide screens the console grid still parks it at the top of the
   // middle column; everywhere else it now leads the booth instead of hiding
