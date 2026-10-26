@@ -83,6 +83,12 @@ body.has-player #v-clips .rail{bottom:70px}`;
     el.querySelector(".snd").textContent = muted ? "🔇 Tap for sound" : "🔊";
     if (!muted) window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })();
     v.play().catch(() => { if (!v.muted) { v.muted = muted = true; el.querySelector(".snd").textContent = "🔇 Tap for sound"; window.MW_videoSound?.end(); v.play().catch(() => {}); } });
+    // a file this browser cannot decode can sit black forever without ever firing
+    // an error (a desktop-converted mp4 with Opus audio does exactly that) — if the
+    // active clip still has no picture after 9s, take it out like a dead one and
+    // roll on to the next clip instead of leaving a black screen up
+    clearTimeout(v._wd);
+    v._wd = setTimeout(() => { if (el.isConnected && v.readyState < 2) { const nx = el.nextElementSibling; el.remove(); els.delete(el.dataset.id); if (nx) activate(nx); else if (!els.size) render(); } }, 9000);
   }
   function setupIO() {
     io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting && en.intersectionRatio > 0.6 && !view.hidden) activate(en.target); else { const v = en.target.querySelector("video"); if (!v.paused) { v.pause(); if (!v.muted) window.MW_videoSound?.end(); } } }), { root: box, threshold: [0, 0.6, 1] });
