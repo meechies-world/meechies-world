@@ -549,6 +549,30 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner .eqrow label{background:#0f0f11;border:1px solid #232327;border-radius:8px;padding:5px 6px;text-align:center}
 #dj-screen .vstage{border:8px solid #0a0a0c;outline:1px solid #2c2c30;border-radius:6px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
 #st-ytbox .vstage{border:6px solid #0a0a0c;outline:1px solid #2c2c30}
+/* ===== SKIN CORRECTIONS — from the 2026-10-26 visual test + the owner's own
+   booth photo: the first skin pass lost specificity fights to the booth-root
+   override blocks and rounded corners instead of making shapes. These rules
+   carry the double-ID prefix and finish the job: truly round transport,
+   chunky pads, a bezel you can see, and the X fader's missing dot (it never
+   had a size or position rule anywhere — the JS set left/top on a static,
+   zero-height div, so it painted as nothing). ===== */
+#dj-booth-root #dj-owner [data-play],#dj-booth-root #dj-owner [data-cue0],#dj-booth-root #dj-owner [data-brake]{width:62px;height:62px;min-height:62px;border-radius:50%;padding:0;flex:none;font-size:11px;line-height:1.15}
+#dj-booth-root #dj-owner [data-play]{border:3px solid #4ade80!important;background:#0c1710;color:#dcffe6;box-shadow:0 0 0 3px #050d08,0 0 16px rgba(74,222,128,.4),0 4px 10px rgba(0,0,0,.55)}
+#dj-booth-root #dj-owner [data-cue0]{border:3px solid #f0cf78!important;background:#171106;color:#ffe9b0;box-shadow:0 0 0 3px #0d0a03,0 0 12px rgba(240,207,120,.3),0 4px 10px rgba(0,0,0,.55)}
+#dj-booth-root #dj-owner [data-brake]{border:2px solid #43434a!important;background:#141416;color:#e8e4da;box-shadow:0 4px 10px rgba(0,0,0,.5)}
+@media(max-width:760px){#dj-booth-root #dj-owner [data-play],#dj-booth-root #dj-owner [data-cue0],#dj-booth-root #dj-owner [data-brake]{width:52px;height:52px;min-height:52px;font-size:10px}}
+#dj-booth-root #dj-owner .cuebtn,#dj-booth-root #dj-owner .loopbtn{border-radius:10px;background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;font-weight:800;letter-spacing:.03em;min-height:48px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #000}
+#dj-booth-root #dj-owner .cuebtn:nth-of-type(1){border-color:#f0cf78}
+#dj-booth-root #dj-owner .cuebtn:nth-of-type(2){border-color:#4ade80}
+#dj-booth-root #dj-owner .cuebtn:nth-of-type(3){border-color:#38bdf8}
+#dj-booth-root #dj-owner .cuebtn.on,#dj-booth-root #dj-owner .loopbtn.on{background:#26200c;box-shadow:0 0 12px rgba(240,207,120,.35),inset 0 0 0 2px #000}
+#dj-booth-root #dj-owner .dsec .row{flex-wrap:wrap;row-gap:6px}
+#dj-screen .vstage{border:10px solid #0d0d10;outline:2px solid #5a5a63}
+#st-ytbox .vstage{border:8px solid #0d0d10;outline:2px solid #5a5a63}
+#dj-booth-root #dj-owner .xfpad{background:linear-gradient(135deg,#1b1c1f,#0c0c0e);border:1.5px solid #3f3f46;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 22px #000}
+#dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
+#dj-booth-root #dj-owner .platter{border-color:#45454c}
+#dj-booth-root #dj-owner .platter::before{background:repeating-conic-gradient(from 0deg,rgba(235,235,240,.85) 0deg 2deg,transparent 2deg 10deg)}
 #dj-mini{border:3px solid #0a0a0c;outline:1px solid #2c2c30}
 #dj-owner .xfpad{background:linear-gradient(135deg,#17181a,#0b0b0d);border:1px solid #2e2e33;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 18px #000}
 #dj-owner .xfdot{background:linear-gradient(180deg,#f2f2f5,#9a9aa2 50%,#55555c);border:1px solid #000;box-shadow:0 3px 8px rgba(0,0,0,.6)}
