@@ -152,7 +152,7 @@
 @keyframes djpulse{50%{opacity:.35}}
 .dj-clock{font:700 13px ui-monospace,monospace;color:var(--gold-hi)}
 .dj-decks{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);gap:16px;align-items:stretch}
-@media (min-width:1400px){.dj-decks{grid-template-columns:minmax(0,1fr) 250px minmax(0,1fr) minmax(0,1fr) 250px minmax(0,1fr);gap:12px}}
+
 @media (min-width:1650px){#v-radio .wrap{max-width:1720px}}
 .deck{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;justify-items:center;text-align:center;min-width:0;align-content:start}
 .deck h4{margin:0;font:800 13px var(--body);letter-spacing:.18em;color:var(--gold-hi)}
@@ -227,11 +227,6 @@ body.dj-past #ai-fab,body.dj-past #mx-heads,body.dj-on #ai-fab,body.dj-on #mx-he
 .dj-decks>.deck[data-deck="A"] .wave,.dj-decks>.deck[data-deck="B"] .wave{height:44px}
 .dj-decks>.deck[data-deck="A"] .btn,.dj-decks>.deck[data-deck="B"] .btn{padding:6px 8px;font-size:12px}
 .dj-decks>.deck[data-deck="A"] .ttl,.dj-decks>.deck[data-deck="B"] .ttl{font-size:12px}
-#dj-faderbar{display:none}
-body.dj-on #dj-faderbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;gap:10px;align-items:center;background:rgba(13,11,8,.96);border-top:1px solid var(--gold-lo);padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px))}
-#dj-faderbar input{flex:1;min-height:36px}
-#dj-faderbar b{font:800 13px var(--body);color:var(--muted)}
-#dj-faderbar b.on{color:#45bd62}
 body.dj-on #dj-booth-root{padding-bottom:70px}
 .swapbar{display:flex;gap:6px;margin:0 0 8px;position:sticky;top:0;z-index:4;background:#0d0b08;padding:4px 0}
 .swapbar .btn{flex:1;min-height:44px}
@@ -302,6 +297,9 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 /* the Radio view is a console: the Book rails get out of the way completely and the
    booth spreads edge to edge (the scroll-triggered hiding alone left them in the way) */
 @media(min-width:1100px){body[data-view="radio"] #fb-left,body[data-view="radio"] #fb-right{display:none!important}body[data-view="radio"] main{margin-left:0!important;margin-right:0!important}body[data-view="radio"] #v-radio .wrap{max-width:1740px}}
+/* compact decks on desktop: smaller platters, waves, buttons and gaps so a whole
+   table fits the screen without a long scroll (Malik: "make these tabs smaller") */
+@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:150px;height:150px}}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -340,17 +338,15 @@ html.popdj .popdj-hint{display:block}`;
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
-  <div id="dj-faderbar"><b id="xfb-a">A</b><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xfbar" aria-label="Crossfader"><b id="xfb-b">B</b></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-decks" data-show="C">
     ${deckHTML("A")}
+    ${deckHTML("B")}
     <div class="mixer m1"><small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
-      <small>CROSSFADER</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf" aria-label="Crossfader">
-      <div style="display:flex;justify-content:space-between;width:100%;font:700 11px var(--body);color:var(--gold-hi)"><span>A</span><span>B</span></div>
       <div class="xfpad big" id="dj-xfpad" title="One dot runs all four decks — drag it toward a deck and that deck takes over"><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
-      <small>◉ PAN ALL — one dot for all four decks: drag toward a deck to play it more (up = A/B, down = C/D, center = all even)</small>
+      
       <small>BEAT ENGINE</small>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-quant" checked style="width:auto"> Quantize — cues &amp; loops snap to the beat</label>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-fxsync" checked style="width:auto"> Effects follow the live tempo</label>
@@ -364,19 +360,15 @@ html.popdj .popdj-hint{display:block}`;
       <small>REVERB</small><input type="range" min="0" max="0.7" step="0.02" value="0" id="dj-verb" aria-label="Reverb level">
       <small>FLANGER</small><input type="range" min="0" max="1" step="0.02" value="0" id="dj-fla" aria-label="Flanger level">
       <small>TRANSFORMER (CHOP)</small><div style="display:flex;gap:5px;justify-content:center"><button class="btn ghost sm gatebtn on" type="button" data-gate="0">OFF</button><button class="btn ghost sm gatebtn" type="button" data-gate="2">SLOW</button><button class="btn ghost sm gatebtn" type="button" data-gate="4">MED</button><button class="btn ghost sm gatebtn" type="button" data-gate="8">FAST</button></div></div>
-    ${deckHTML("B")}
   
+    <div class="mixer m2"><small>DECKS C / D</small>
+      <canvas class="pairwave" id="pw-CD" width="480" height="72"></canvas>
+      <small id="ph-CD" style="letter-spacing:0;text-transform:none">Phase meter for decks C and D.</small>
+      <input type="range" min="0" max="100" step="1" value="0" id="dj-crush" aria-label="Bitcrush grit">
+      <small style="letter-spacing:0;text-transform:none"></small></div>
   <div class="swapbar"><button class="btn sm on" type="button" data-swap="1:C">🎧 DECK C</button><button class="btn ghost sm" type="button" data-swap="1:M">🎚️ MIXER</button><button class="btn ghost sm" type="button" data-swap="1:D">🎧 DECK D</button></div>
   
     ${deckHTML("C")}
-    <div class="mixer m2"><small>DECKS C / D</small>
-      <small>CROSSFADER C/D</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf2" aria-label="Crossfader decks C and D">
-      <small>C and D answer to the big PAN ALL dot too — or ride their own fader above.</small>
-      <div style="display:flex;justify-content:space-between;width:100%;font:700 11px var(--body);color:var(--gold-hi)"><span>C</span><span>D</span></div>
-      <canvas class="pairwave" id="pw-CD" width="480" height="72"></canvas>
-      <small id="ph-CD" style="letter-spacing:0;text-transform:none">Phase meter for decks C and D.</small>
-      <small>BITCRUSH (GRIT)</small><input type="range" min="0" max="100" step="1" value="0" id="dj-crush" aria-label="Bitcrush grit">
-      <small style="letter-spacing:0;text-transform:none">Decks C and D run through the same master effects, mic, talk button and recorder — every move broadcasts to the radio.</small></div>
     ${deckHTML("D")}
 
 </div>
@@ -472,7 +464,7 @@ html.popdj .popdj-hint{display:block}`;
     if (echoFb) echoFb.gain.value = f.fb == null ? 0.34 : f.fb;
     if (verbWet) verbWet.gain.value = f.verb || 0;
     if (flaWet) flaWet.gain.value = (f.fla || 0) * 0.8;
-    if (crushNode) setCrushCurve(f.crush || 0);
+    
     if (gateOsc && gateDepth && gateGain) {
       const g = +f.gate || 0;
       if (g > 0) { gateOsc.frequency.value = g; gateDepth.gain.value = 0.5; gateGain.gain.value = 0.5; }
@@ -661,7 +653,7 @@ html.popdj .popdj-hint{display:block}`;
     });
     const qz = $("#dj-quant"); if (qz && document.activeElement !== qz) qz.checked = S.quant !== false;
     const fsx = $("#dj-fxsync"); if (fsx && document.activeElement !== fsx) fsx.checked = (S.fx && S.fx.sync) !== false;
-    $("#dj-xf").value = S.xf; const xb0 = $("#dj-xfbar"); if (xb0 && document.activeElement !== xb0) xb0.value = S.xf; paintXfPads(); const x2 = $("#dj-xf2"); if (x2) x2.value = S.xf2 ?? 0.5; const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
+    const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = S.live ? "ON AIR" : "OFF AIR";
@@ -692,7 +684,6 @@ html.popdj .popdj-hint{display:block}`;
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
     document.querySelectorAll("[data-swap]").forEach((b) => { const v = b.dataset.swap.split(":")[1]; b.classList.toggle("hot", !!S[v] && !!S[v].playing); });
-    const xfa = $("#xfb-a"), xfb = $("#xfb-b"); if (xfa) xfa.classList.toggle("on", !!S.A.playing); if (xfb) xfb.classList.toggle("on", !!S.B.playing);
     if (listening) DECKS.forEach((k) => follow(k));
     // station clock + show timer
     const ck = $("#dj-clock"); if (ck && OWNER()) ck.textContent = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "America/New_York" }) + " ET";
@@ -948,9 +939,6 @@ html.popdj .popdj-hint{display:block}`;
     if (t.dataset.pitch) { const k = t.dataset.pitch; S[k].rate = +t.value; deck(k).el.playbackRate = S[k].rate; deck(k).el.preservesPitch = !deck(k).vinyl; $("#pit-v-" + k).textContent = ((S[k].rate - 1) * 100).toFixed(1).replace("-", "−") + "%"; save(); }
     if (t.dataset.eq) { const [k, band] = t.dataset.eq.split(":"), d = deck(k); if (d.eq) d.eq[band].gain.value = +t.value; S[k].eq = Object.assign({ lo: 0, mid: 0, hi: 0 }, S[k].eq || {}); S[k].eq[band] = +t.value; save(); }
     if (t.dataset.flt) { const k = t.dataset.flt; S[k].flt = +t.value; if (deck(k).flt) fltFreq(deck(k).flt, +t.value); save(); }
-    if (t.id === "dj-xf") { S.xf = +t.value; const xb2 = $("#dj-xfbar"); if (xb2) xb2.value = t.value; levels(); save(); paintXfPads(); }
-    if (t.id === "dj-xfbar") { S.xf = +t.value; const mx2 = $("#dj-xf"); if (mx2) mx2.value = t.value; levels(); save(); paintXfPads(); }
-    if (t.id === "dj-xf2") { S.xf2 = +t.value; levels(); save(); paintXfPads(); }
     if (t.id === "dj-crush") { S.fx.crush = +t.value; applyFx(); save(); }
     if (t.id === "dj-master") { localMaster = +t.value; applyMaster(); }
     if (t.id === "dj-boost") { S.fx.boost = +t.value; applyFx(); save(); }
@@ -967,7 +955,7 @@ html.popdj .popdj-hint{display:block}`;
   // ONE pan dot for all four decks: left/right rides both crossfaders together,
   // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
-    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } const v = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf = v; S.xf2 = v; S.panY = Math.round(dy * 1000) / 1000; const s1 = $("#dj-xf"); if (s1) s1.value = v; const sb = $("#dj-xfbar"); if (sb) sb.value = v; const s2 = $("#dj-xf2"); if (s2) s2.value = v; paintXfPads(); levels(); save(); };
+    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } const v = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf = v; S.xf2 = v; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
     pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = true; try { pad.setPointerCapture(e.pointerId); } catch (_) {} apply(e); e.preventDefault(); });
     pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
     pad.addEventListener("pointerup", () => { drag = false; });
@@ -1064,7 +1052,7 @@ html.popdj .popdj-hint{display:block}`;
     load(target, item).then(async () => {
       await togglePlay(target);
       const from = S.xf, to = target === "A" ? 0 : 1, t0 = performance.now();
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500); S.xf = from + (to - from) * p; $("#dj-xf").value = S.xf; const xb1 = $("#dj-xfbar"); if (xb1) xb1.value = S.xf; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500);  paintXfPads(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
     });
   }
 
