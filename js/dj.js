@@ -210,23 +210,29 @@ body.dj-past #fb-left,body.dj-on #fb-left{transform:translateX(-110%);opacity:0;
 body.dj-past #fb-right,body.dj-on #fb-right{transform:translateX(110%);opacity:0;pointer-events:none}
 body.dj-past #ai-fab,body.dj-past #mx-heads,body.dj-on #ai-fab,body.dj-on #mx-heads{opacity:0!important;pointer-events:none!important;transform:scale(.5)}
 #ai-fab,#mx-heads{transition:opacity .3s ease,transform .3s ease}
-.swipe-hint{display:none}
+.swapbar{display:none}
 @media (max-width:760px){
-.dj-decks{display:flex;flex-direction:row;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;padding:2px 2px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.dj-decks::-webkit-scrollbar{display:none}
-.dj-decks>*{flex:0 0 87%;scroll-snap-align:center;min-width:0}
-.swipe-hint{display:block;text-align:center;color:var(--gold-hi);font:700 12.5px var(--body);letter-spacing:.04em;margin:4px 0 8px}
+.dj-decks{display:block}
+.dj-decks>*{display:none!important}
+.dj-decks[data-show="A"]>.deck[data-deck="A"],.dj-decks[data-show="B"]>.deck[data-deck="B"],.dj-decks[data-show="C"]>.deck[data-deck="C"],.dj-decks[data-show="D"]>.deck[data-deck="D"],.dj-decks[data-show="M"]>.mixer{display:grid!important}
+.swapbar{display:flex;gap:6px;margin:0 0 8px;position:sticky;top:0;z-index:4;background:#0d0b08;padding:4px 0}
+.swapbar .btn{flex:1;min-height:44px}
+.swapbar .btn.on{background:var(--gold);color:#191104;border-color:var(--gold)}
+.swapbar .btn.hot{box-shadow:inset 0 0 0 2px #45bd62}
 .dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}
-#dj-owner .btn{min-height:48px}
-#dj-owner [data-play]{min-height:56px;font-size:17px}
-#dj-owner .pad{min-height:58px}
-#dj-owner input[type=range]{min-height:38px}
-#dj-owner .platter{width:min(200px,52vw)}
-.deck{background:linear-gradient(180deg,#181310,#0c0a07)}
-.deck h4{font-size:15px;letter-spacing:.16em}
+#dj-owner .btn{min-height:42px}
+#dj-owner [data-play]{min-height:50px;font-size:16px}
+#dj-owner .pad{min-height:52px}
+#dj-owner input[type=range]{min-height:32px}
+#dj-owner .platter{width:118px}
+.deck{padding:10px;gap:6px;background:linear-gradient(180deg,#181310,#0c0a07)}
+.deck h4{font-size:13px;letter-spacing:.16em;margin:0}
+.deck .wave{height:52px}
+.mixer{padding:10px 8px;gap:7px}
+.dj-panel{padding:10px}
 #dj-online{color:#45bd62;font-weight:800}
-#dj-browser .dj-item{min-height:54px}
-#dj-browser .dj-item .btn{min-height:46px;min-width:46px}
+#dj-browser .dj-item{min-height:48px}
+#dj-browser .dj-item .btn{min-height:42px;min-width:42px}
 }
 html.popdj header.bar,html.popdj #player-bar,html.popdj footer,html.popdj #fb-left,html.popdj #fb-right,html.popdj #ai-fab,html.popdj #mx-heads{display:none!important}
 html.popdj main{margin:0!important;padding:10px!important}
@@ -301,8 +307,8 @@ html.popdj .popdj-hint{display:block}`;
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
-  <div class="swipe-hint">👆 SWIPE SIDEWAYS — DECK A ⟷ MIXER ⟷ DECK B</div>
-  <div class="dj-decks">
+  <div class="swapbar"><button class="btn sm on" type="button" data-swap="0:A">🎧 DECK A</button><button class="btn ghost sm" type="button" data-swap="0:M">🎚️ MIXER</button><button class="btn ghost sm" type="button" data-swap="0:B">🎧 DECK B</button></div>
+  <div class="dj-decks" data-show="A">
     ${deckHTML("A")}
     <div class="mixer m1"><small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
@@ -334,8 +340,8 @@ html.popdj .popdj-hint{display:block}`;
       <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net" style="max-height:260px"></div></div>
     <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
   </div>
-  <div class="swipe-hint">👆 SWIPE SIDEWAYS — DECK C ⟷ MIXER ⟷ DECK D</div>
-  <div class="dj-decks" style="margin-top:16px">
+  <div class="swapbar"><button class="btn sm on" type="button" data-swap="1:C">🎧 DECK C</button><button class="btn ghost sm" type="button" data-swap="1:M">🎚️ MIXER</button><button class="btn ghost sm" type="button" data-swap="1:D">🎧 DECK D</button></div>
+  <div class="dj-decks" data-show="C" style="margin-top:16px">
     ${deckHTML("C")}
     <div class="mixer m2"><small>DECKS C / D</small>
       <small>CROSSFADER C/D</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf2" aria-label="Crossfader decks C and D">
@@ -380,6 +386,9 @@ html.popdj .popdj-hint{display:block}`;
     boothHome.insertBefore(ptabs, boothEl);
   }
   document.addEventListener("click", (e) => { const pb = e.target.closest && e.target.closest("[data-ptab]"); if (!pb) return; const o = document.getElementById("dj-owner"); if (o) o.dataset.ptab = pb.dataset.ptab; document.querySelectorAll("#dj-ptabs [data-ptab]").forEach((x) => x.classList.toggle("on", x === pb)); });
+  // phone deck switcher: panels SWAP (one tap, no sliding/scrolling through pages) —
+  // each decks row shows exactly one panel: a deck or its mixer
+  document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-swap]"); if (!b) return; const [ri, v] = b.dataset.swap.split(":"); const rows = document.querySelectorAll(".dj-decks"); const row = rows[+ri]; if (row) row.dataset.show = v; b.parentElement.querySelectorAll("[data-swap]").forEach((x) => x.classList.toggle("on", x === b)); });
   // music browser tabs (Serato-style: one browser, three sources, right under the decks)
   document.addEventListener("click", (e) => { const bt = e.target.closest && e.target.closest("[data-brow]"); if (!bt) return; document.querySelectorAll("[data-brow]").forEach((x) => { const on = x === bt; x.classList.toggle("on", on); x.classList.toggle("ghost", !on); }); document.querySelectorAll("[data-browpane]").forEach((p) => { p.hidden = p.dataset.browpane !== bt.dataset.brow; }); });
   const $ = (s) => document.querySelector(s);
@@ -638,9 +647,12 @@ html.popdj .popdj-hint{display:block}`;
     if (pkTab === "mine" && !pkItems.length && TRACKS().length) paintPkList();
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) el.textContent = fmt(decks[k].el.currentTime) + (decks[k].el.duration ? " / " + fmt(decks[k].el.duration) : "");
+      // watchdog: an element that reached the end without firing 'ended' still hands over
+      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
+    document.querySelectorAll("[data-swap]").forEach((b) => { const v = b.dataset.swap.split(":")[1]; b.classList.toggle("hot", !!S[v] && !!S[v].playing); });
     if (listening) DECKS.forEach((k) => follow(k));
     // station clock + show timer
     const ck = $("#dj-clock"); if (ck && OWNER()) ck.textContent = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "America/New_York" }) + " ET";
@@ -925,7 +937,15 @@ html.popdj .popdj-hint{display:block}`;
     onMainRaw("pointerup", () => { if (!drag) return; const d = deck(k); if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
   });
   // deck ended -> owner bookkeeping + Auto-DJ
-  DECKS.forEach((k) => setTimeout(() => deck(k).el.addEventListener("ended", () => { if (OWNER() && !listening) { S[k].playing = false; S[k].pos = 0; paintOwner(); save(true); if (k === "A" || k === "B") autoNext(k); } if (listening && !OWNER()) { /* listeners follow the doc */ } }), 0));
+  // dead-air guard: a deck that runs out (or stalls at the end) while the station is
+  // LIVE hands over automatically — listener pick first, then the queue, then the mix —
+  // even with Auto-DJ switched off, because a live set should never just stop
+  function deckEnded(k) {
+    if (!OWNER() || listening || !S[k].playing) return;
+    S[k].playing = false; S[k].pos = 0; paintOwner(); save(true);
+    if (S.live && !DECKS.some((x) => S[x].playing)) { say("⏭️ Deck " + k + " ended — rolling the next song so the station never goes quiet."); autoNext(k, true); }
+  }
+  DECKS.forEach((k) => setTimeout(() => deck(k).el.addEventListener("ended", () => deckEnded(k)), 0));
 
   /* ---------- Auto-DJ queue ---------- */
   let queue = []; try { queue = JSON.parse(localStorage.getItem("mw-dj-queue") || "[]"); } catch (_) {}
@@ -956,8 +976,8 @@ html.popdj .popdj-hint{display:block}`;
     return null;
   }
   let xfAnim = null, adTimer = null;
-  async function autoNext(endedK) {
-    if (!S.autodj || !boothLead) return;
+  async function autoNext(endedK, force) {
+    if ((!S.autodj && !force) || !boothLead) return;
     let item = null;
     const pick = reqCache.filter((r) => r.data && r.data.kind === "pick").sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
