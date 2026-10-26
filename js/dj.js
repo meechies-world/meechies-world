@@ -658,7 +658,7 @@ html.popdj .popdj-hint{display:block}`;
     });
     const qz = $("#dj-quant"); if (qz && document.activeElement !== qz) qz.checked = S.quant !== false;
     const fsx = $("#dj-fxsync"); if (fsx && document.activeElement !== fsx) fsx.checked = (S.fx && S.fx.sync) !== false;
-    const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
+    const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live; paintXfPads();
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = S.live ? "ON AIR" : "OFF AIR";
@@ -965,6 +965,11 @@ html.popdj .popdj-hint{display:block}`;
   // circular pan pads: drag the gold dot anywhere in the circle — the further it
   // moves toward a deck, the more that deck plays. Same mix as the sliders and the
   // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
+  function paintXfPads() { // THE ONE FADER dot: left/right = the crossfaders' spot, up/down = which pair rules (up A/B, down C/D)
+    const dot = $("#dj-xfdot"); if (!dot) return;
+    dot.style.left = (50 + (S.xf - 0.5) * 74) + "%";
+    dot.style.top = (50 + (S.panY || 0) * 37) + "%";
+  }
   // ONE pan dot for all four decks: left/right rides both crossfaders together,
   // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
@@ -1065,7 +1070,7 @@ html.popdj .popdj-hint{display:block}`;
     load(target, item).then(async () => {
       await togglePlay(target);
       const from = S.xf, to = target === "A" ? 0 : 1, t0 = performance.now();
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500);  paintXfPads(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500); S.xf = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
     });
   }
 
