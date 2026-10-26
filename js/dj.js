@@ -88,9 +88,10 @@
 
   /* ---------- a deck: one audio element with its own EQ + gain ---------- */
   function Deck() {
-    const d = { el: new Audio(), gain: null, eq: null, flt: null, stem: null, src: "", level: 1, cors: true, peaks: null, rate: 1, vinyl: false, cues: [null, null, null], loop: null, loopBeats: 0 };
+    const d = { el: new Audio(), gain: null, eq: null, flt: null, stem: null, src: "", level: 1, cors: true, peaks: null, rate: 1, vinyl: false, cues: [null, null, null], loop: null, loopBeats: 0, ytId: "", shim: null, _audioEl: null, letter: "" };
     d.el.preload = "auto"; d.el.playsInline = true; d.el.crossOrigin = "anonymous";
     d.set = (src) => new Promise((res) => {
+      if (d.shim) d.clearYt();
       if (d.src === src) return res(true);
       d.src = src; d.cors = true; d.el.crossOrigin = "anonymous"; d.el.src = src; d.peaks = null;
       const ok = () => { clean(); wire(); res(true); };
@@ -120,14 +121,68 @@
         d.eq = { lo, mid, hi }; d.flt = flt; d.stem = { hp, nrm, oop };
       } catch (_) { d.gain = null; d.eq = null; } d.apply(); }
     d.vol = (v) => { d.level = Math.max(0, Math.min(1, v)); d.apply(); };
-    d.apply = () => { if (d.gain) { d.gain.gain.value = d.level; d.el.volume = 1; } else d.el.volume = d.level; };
+    d.apply = () => { if (d.shim) { try { d.shim._p && d.shim._p.setVolume(Math.round(Math.max(0, Math.min(1, d.level)) * 100)); } catch (_) {} return; } if (d.gain) { d.gain.gain.value = d.level; d.el.volume = 1; } else d.el.volume = d.level; };
     d.stop = () => { try { d.el.pause(); } catch (_) {} };
+    // a YouTube deck: the video plays in the deck's own frame and a shim stands in
+    // for the audio element, so play / pause / seek / position all work as usual and
+    // the deck's volume (the X fader included) rides the player's own volume. What
+    // cannot work: EQ, effects, stems and the waveform — YouTube keeps its audio
+    // locked inside its player, no site can touch it.
+    d.setYt = async (vid) => {
+      if (d.ytId === vid && d.shim) return true;
+      d.clearYt(); d.ytId = vid; d.src = "yt:" + vid; d.peaks = null;
+      await ytApi(); if (!window.YT || !YT.Player) { d.ytId = ""; return false; }
+      const wrap = document.getElementById("ytw-" + d.letter); if (!wrap) return false;
+      wrap.hidden = false;
+      let mount = document.getElementById("yt-" + d.letter);
+      if (!mount) { wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; mount = document.getElementById("yt-" + d.letter); }
+      if (!d._audioEl) d._audioEl = d.el;
+      const sh = ytShim(d, vid, (title, dur) => { if (OWNER() && S[d.letter] && S[d.letter].yt === vid) { let dirty = false; if (title && (!S[d.letter].title || S[d.letter].title === "YouTube video")) { S[d.letter].title = title; dirty = true; } if (dur && !S[d.letter].dur) { S[d.letter].dur = Math.round(dur); dirty = true; } if (dirty) { paintOwner(); save(); } } });
+      d.shim = sh; d.el = sh;
+      const okP = await sh._mount(mount); if (d.shim !== sh) return false;
+      try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing) sh.play(); } catch (_) {}
+      return okP;
+    };
+    d.clearYt = () => { if (d.shim) { try { d.shim._p && d.shim._p.destroy(); } catch (_) {} d.shim = null; if (d._audioEl) d.el = d._audioEl; } if (d.ytId) d.ytId = ""; const wrap = document.getElementById("ytw-" + d.letter); if (wrap) { wrap.hidden = true; wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; } };
     return d;
+  }
+  /* ---------- YouTube decks: the official iframe player, driven like a deck ---------- */
+  let ytApiP = null;
+  function ytApi() { if (window.YT && YT.Player) return Promise.resolve(); if (ytApiP) return ytApiP; ytApiP = new Promise((res) => { const tag = document.createElement("script"); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag); const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { try { prev && prev(); } catch (_) {} res(); }; setTimeout(res, 7000); }); return ytApiP; }
+  const ytParse = (v) => { v = String(v || "").trim(); const m = v.match(/(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/) || v.match(/^([A-Za-z0-9_-]{11})$/); return m ? m[1] : ""; };
+  function ytShim(d, vid, onTitle) {
+    const sh = { _p: null, _dur: 0, _rate: 1, _h: {}, seeking: false, readyState: 0 };
+    Object.defineProperties(sh, {
+      currentTime: { get() { try { return sh._p ? sh._p.getCurrentTime() || 0 : 0; } catch (_) { return 0; } }, set(t) { try { sh._p && sh._p.seekTo(Math.max(0, +t || 0), true); } catch (_) {} } },
+      duration: { get() { try { return (sh._p && sh._p.getDuration()) || sh._dur || 0; } catch (_) { return sh._dur || 0; } } },
+      paused: { get() { try { return !sh._p || sh._p.getPlayerState() !== 1; } catch (_) { return true; } } },
+      playbackRate: { get() { return sh._rate; }, set(r) { sh._rate = +r || 1; try { if (sh._p) { const av = sh._p.getAvailablePlaybackRates() || [1]; let best = av[0]; av.forEach((x) => { if (Math.abs(x - sh._rate) < Math.abs(best - sh._rate)) best = x; }); sh._p.setPlaybackRate(best); } } catch (_) {} } },
+      volume: { get() { return 1; }, set(_) {} },
+      preservesPitch: { get() { return true; }, set(_) {} },
+      src: { get() { return "yt:" + vid; }, set(_) {} },
+    });
+    sh.play = () => { try { sh._p && sh._p.playVideo(); } catch (_) {} return Promise.resolve(); };
+    sh.pause = () => { try { sh._p && sh._p.pauseVideo(); } catch (_) {} };
+    sh.addEventListener = (ev, fn) => { (sh._h[ev] = sh._h[ev] || []).push(fn); };
+    sh.removeEventListener = (ev, fn) => { if (sh._h[ev]) sh._h[ev] = sh._h[ev].filter((f) => f !== fn); };
+    sh._fire = (ev) => (sh._h[ev] || []).slice().forEach((f) => { try { f(); } catch (_) {} });
+    sh._mount = (mountEl) => new Promise((res) => {
+      let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+      try {
+        sh._p = new YT.Player(mountEl, { videoId: vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 1 }, events: {
+          onReady: (e) => { sh.readyState = 4; try { sh._dur = e.target.getDuration() || 0; const vd = e.target.getVideoData && e.target.getVideoData(); if (vd && onTitle) onTitle(vd.title || "", sh._dur); } catch (_) {} fin(true); },
+          onStateChange: (e) => { if (e.data === 0) sh._fire("ended"); if (e.data === 1) { try { sh._dur = sh._p.getDuration() || sh._dur; } catch (_) {} } },
+          onError: () => fin(false),
+        } });
+      } catch (_) { fin(false); }
+      setTimeout(() => fin(!!sh._p), 6000);
+    });
+    return sh;
   }
   const xfGain = (xf, side) => Math.cos((side === "A" ? xf : 1 - xf) * Math.PI / 2); // equal-power crossfade
 
   /* ---------- shared station state (doc radio/dj) ---------- */
-  const blank = () => ({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
+  const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0, crush: 0, sync: true, boost: 1 });
   let S = { live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
@@ -297,6 +352,8 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .dsec-a{font-size:13px;transition:transform .15s}
 .dsec.shut .dsec-a{transform:rotate(-90deg)}
 .dsec.shut .dsec-b{display:none}
+.ytbox{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;margin:8px 0}
+.ytbox iframe{width:100%;height:100%;border:0;display:block}
 border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gold));border:2px solid #0d0b08;box-shadow:0 2px 10px rgba(0,0,0,.65);transform:translate(-50%,-50%);pointer-events:none;left:50%;top:50%}
 .xfpl{position:absolute;top:50%;transform:translateY(-50%);font:800 12px var(--body);color:var(--gold-hi)}
 .xfpl.a{left:8px}.xfpl.b{right:8px}
@@ -327,6 +384,7 @@ html.popdj .popdj-hint{display:block}`;
   const secShut = (n) => (secState[n] ? "" : " shut");
   const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div>
     <canvas class="wave" id="wv-${k}" width="520" height="84"></canvas>
+    <div class="ytbox" id="ytw-${k}" hidden><div id="yt-${k}"></div></div>
     <div class="ttl" id="ttl-${k}">Load a song</div><div class="tm" id="tm-${k}">0:00</div>
     <div class="beatbox"><span class="bpmv" id="bpm-${k}">BPM —</span><span class="keyv" id="key-${k}"></span><span class="bdots" id="dots-${k}"><i></i><i></i><i></i><i></i></span></div>
     <div class="dsec${secShut("tempo")}" data-dsec="tempo"><button class="dsec-h" type="button" data-dsecbtn="tempo">⏱ Tempo & grid<span class="dsec-a">▾</span></button><div class="dsec-b"><div class="row"><button class="btn ghost sm" type="button" data-tap="${k}">👆 TAP</button><button class="btn ghost sm" type="button" data-bpmadj="${k}:-0.1">BPM −</button><button class="btn ghost sm" type="button" data-bpmadj="${k}:0.1">BPM +</button><button class="btn ghost sm" type="button" data-bpmx="${k}:2">×2</button><button class="btn ghost sm" type="button" data-bpmx="${k}:0.5">÷2</button><button class="btn ghost sm" type="button" data-nudge="${k}:-1">◀ grid</button><button class="btn ghost sm" type="button" data-nudge="${k}:1">grid ▶</button></div></div></div>
@@ -349,6 +407,7 @@ html.popdj .popdj-hint{display:block}`;
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
   <div id="st-show"></div>
+  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="ytbox"><div id="st-yt"></div></div></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
@@ -400,6 +459,7 @@ html.popdj .popdj-hint{display:block}`;
 
 </div>
   <div class="dj-panel" id="dj-browser" style="margin-top:16px">
+    <div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px"><b style="font-size:13px;letter-spacing:.08em">▶️ DJ YOUTUBE — PLAY THE MUSIC VIDEO</b><small class="muted" style="display:block;margin:4px 0 8px">Paste any YouTube link, put the video on a deck, and mix it: play, pause, seek and the X fader volume all work, and your listeners see the video on the station. YouTube keeps its audio locked in its player, so EQ, effects and scratch stay on your own files.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a YouTube link..." style="flex:1;min-width:200px" aria-label="YouTube link"><span style="font-size:12px;color:var(--muted)">Load on:</span><button class="btn ghost sm" type="button" data-ytload="A">A</button><button class="btn ghost sm" type="button" data-ytload="B">B</button><button class="btn ghost sm" type="button" data-ytload="C">C</button><button class="btn ghost sm" type="button" data-ytload="D">D</button></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4>
       <button class="btn sm browtab on" type="button" data-brow="lib">Your Library</button>
       <button class="btn ghost sm browtab" type="button" data-brow="net">Free Music Search</button>
@@ -452,7 +512,7 @@ html.popdj .popdj-hint{display:block}`;
   const $ = (s) => document.querySelector(s);
   const decks = { A: null, B: null, C: null, D: null };
   const DECKS = ["A", "B", "C", "D"]; const PAIR = { A: "B", B: "A", C: "D", D: "C" };
-  const deck = (k) => decks[k] || (decks[k] = Deck());
+  const deck = (k) => { if (!decks[k]) { decks[k] = Deck(); decks[k].letter = k; } return decks[k]; };
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   const agoT = (at) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 
@@ -462,6 +522,24 @@ html.popdj .popdj-hint{display:block}`;
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
     DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * duck * mix); } });
+    stageApply(mix, duck);
+  }
+  /* listeners' ON AIR video stage: one shared player in the station card shows the
+   * loudest playing YouTube deck's music video, at the mix volume the fader gives it */
+  let stageP = null, stageVid = "";
+  const stageGain = (k) => { const s = S[k], cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); return (s.vol ?? 0.9) * xfGain(x, side) * pairG; };
+  async function stageApply(mix, duck) {
+    if (OWNER()) return;
+    let best = "", bg = 0.02;
+    DECKS.forEach((k) => { if (S[k].yt && S[k].playing) { const g = stageGain(k); if (g > bg) { bg = g; best = k; } } });
+    const box = $("#st-ytbox");
+    if (!best) { if (stageP) { try { stageP.pauseVideo(); } catch (_) {} } if (box) box.hidden = true; return; }
+    if (box) box.hidden = false;
+    await ytApi(); if (!window.YT || !YT.Player) return;
+    const vid = S[best].yt;
+    if (!stageP) { const mount = $("#st-yt"); if (!mount) return; try { stageP = new YT.Player(mount, { videoId: vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 1 }, events: { onReady: () => { stageVid = vid; } } }); } catch (_) {} return; }
+    if (stageVid !== vid) { stageVid = vid; try { stageP.loadVideoById(vid, Math.max(0, posOf(best))); } catch (_) {} }
+    try { const want = posOf(best), cur = stageP.getCurrentTime ? stageP.getCurrentTime() : 0; if (Math.abs(cur - want) > 4) stageP.seekTo(want, true); if (stageP.getPlayerState && stageP.getPlayerState() !== 1) stageP.playVideo(); stageP.setVolume(Math.round(Math.max(0, Math.min(1, bg * (duck || 1) * (mix || 1))) * 100)); } catch (_) {}
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
   function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
@@ -504,11 +582,19 @@ html.popdj .popdj-hint{display:block}`;
   }
   async function follow(k) {
     const s = S[k], d = deck(k);
-    if (!okUrl(s.src) || DEAD(s.src)) { d.stop(); return; }
-    // cues and loops live in the shared state too, so a cue set or a loop armed in the
-    // pop-out exists on the window playing the sound (and the other way round)
-    if (OWNER()) { if (Array.isArray(s.cues)) { d.cues = s.cues.slice(0, 3); while (d.cues.length < 3) d.cues.push(null); } if (s.loop) { d.loop = s.loop; d.loopBeats = s.loopBeats || 0; } else if (s.loop === null) { d.loop = null; d.loopBeats = 0; } paintCues(k); }
-    await d.set(s.src);
+    if (s.yt) {
+      // a YouTube deck: listeners watch it on the station's ON AIR video stage;
+      // the booth (and its mirrors) run a real player in the deck itself
+      if (!OWNER()) { d.stop(); stageApply(listening ? mixVol : 1, (S.duck || micHot > 0.04) ? 0.28 : 1); return; }
+      const okY = await d.setYt(s.yt); if (!okY) return;
+    } else {
+      if (d.shim) d.clearYt();
+      if (!okUrl(s.src) || DEAD(s.src)) { d.stop(); return; }
+      // cues and loops live in the shared state too, so a cue set or a loop armed in the
+      // pop-out exists on the window playing the sound (and the other way round)
+      if (OWNER()) { if (Array.isArray(s.cues)) { d.cues = s.cues.slice(0, 3); while (d.cues.length < 3) d.cues.push(null); } if (s.loop) { d.loop = s.loop; d.loopBeats = s.loopBeats || 0; } else if (s.loop === null) { d.loop = null; d.loopBeats = 0; } paintCues(k); }
+      await d.set(s.src);
+    }
     d.el.playbackRate = s.rate || 1;
     const want = posOf(k);
     if (s.playing) {
@@ -518,7 +604,7 @@ html.popdj .popdj-hint{display:block}`;
     }
     else { d.el.pause(); if (Math.abs(d.el.currentTime - want) > 0.5) { try { d.el.currentTime = want; } catch (_) {} } }
     applyFx(); levels();
-    if (OWNER() && !(S[k].bpm > 0)) analyze(k);
+    if (OWNER() && !(S[k].bpm > 0) && !s.yt) analyze(k);
   }
   function playVoice() {
     const v = S.voice; if (!v || !okUrl(v.url) || DEAD(v.url) || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
@@ -873,21 +959,22 @@ html.popdj .popdj-hint{display:block}`;
     const d = deck(k); actx();
     if (!boothLead) {
       // mirror window: put the song on the shared deck — the window playing the sound loads it for real
-      S[k] = Object.assign(blank(), { src: item.src, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
+      S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
       d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k); paintOwner(); save();
       say("Loaded on deck " + k + " — the window playing the sound picked it up.");
       return;
     }
-    S[k] = Object.assign(blank(), { src: item.src, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
+    S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
     d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k);
     paintOwner(); $("#ttl-" + k).textContent = "Loading " + item.title + "...";
+    if (item.yt) { const okY = await d.setYt(item.yt); if (!okY) { say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} paintOwner(); levels(); save(); return; }
     const ok = await d.set(item.src);
     if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
     d.el.currentTime = 0; d.el.playbackRate = S[k].rate || 1; paintOwner(); levels(); save(); analyze(k);
   }
   function paintCues(k) { document.querySelectorAll(`[data-hot^="${k}:"]`).forEach((b, i) => b.classList.toggle("on", deck(k).cues[i] != null)); document.querySelectorAll(`[data-loopb^="${k}:"]`).forEach((b) => b.classList.toggle("on", !!deck(k).loopBeats && +b.dataset.loopb.split(":")[1] === deck(k).loopBeats)); }
   async function togglePlay(k) {
-    const s = S[k], d = deck(k); if (!okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
+    const s = S[k], d = deck(k); if (!s.yt && !okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
     actx(); try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
     if (!boothLead) {
       // mirror window: flip the shared state only — the window holding the sound plays it
@@ -898,7 +985,7 @@ html.popdj .popdj-hint{display:block}`;
     }
     if (s.playing) { s.pos = d.el.currentTime; s.playing = false; d.el.pause(); }
     else {
-      await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
+      if (s.yt) await d.setYt(s.yt); else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title);
@@ -933,6 +1020,7 @@ html.popdj .popdj-hint{display:block}`;
       applyFx(); levels(); paintOwner(); save(true); say(P.msg); return;
     }
     if (b.dataset.curplay != null) { const ci = CURATED[+b.dataset.curplay]; if (ci) { b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (src) playPadUrl(src); else say("That sound wouldn't load. Try another."); } return; }
+    if (b.dataset.ytload) { const inp = $("#dj-yt"), vid = ytParse(inp && inp.value); if (!vid) { say("Paste a YouTube link first — then pick the deck."); return; } load(b.dataset.ytload, { yt: vid, src: "", title: "YouTube video", cover: "https://i.ytimg.com/vi/" + vid + "/hqdefault.jpg", dur: 0 }); return; }
     if (b.dataset.load) {
       if (b.dataset.cur != null) { const ci = CURATED[+b.dataset.cur]; if (!ci) return; b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (!src) { say("That sound wouldn't load. Try another."); return; } load(b.dataset.load, { src, title: ci.name, cover: "" }); }
       else if (b.dataset.lib != null) { const t = TRACKS()[+b.dataset.lib]; if (t) load(b.dataset.load, { src: URLOF(t), title: t.title, cover: t.cover, dur: +t.duration || 0, bpm: +t.bpm || 0, key: t.key || "", cam: t.cam || "" }); }
