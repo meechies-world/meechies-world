@@ -283,6 +283,12 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 @media(max-width:640px){.online-chip{margin-left:6px;padding:3px 8px;font-size:11px}}
 #dj-browser .dj-search{position:sticky;top:0;z-index:3;background:#0d0b08;padding:6px 0}
 .ptab-on{align-self:center;font:800 12.5px var(--body);color:#45bd62;white-space:nowrap;padding:0 4px}
+.xfpad{position:relative;width:150px;height:150px;border-radius:50%;border:2px solid var(--gold-lo);background:radial-gradient(circle,#1a1409 0 55%,#0d0b08 75%);touch-action:none;cursor:grab;margin:2px auto}
+.xfpad::before{content:"";position:absolute;inset:16px;border-radius:50%;border:1px dashed #3a2f16}
+.xfpad::after{content:"";position:absolute;left:50%;top:6px;bottom:6px;width:1px;background:#2c2413}
+.xfdot{position:absolute;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gold));border:2px solid #0d0b08;box-shadow:0 2px 10px rgba(0,0,0,.65);transform:translate(-50%,-50%);pointer-events:none;left:50%;top:50%}
+.xfpl{position:absolute;top:50%;transform:translateY(-50%);font:800 12px var(--body);color:var(--gold-hi)}
+.xfpl.a{left:8px}.xfpl.b{right:8px}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -330,6 +336,8 @@ html.popdj .popdj-hint{display:block}`;
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
       <small>CROSSFADER</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf" aria-label="Crossfader">
       <div style="display:flex;justify-content:space-between;width:100%;font:700 11px var(--body);color:var(--gold-hi)"><span>A</span><span>B</span></div>
+      <div class="xfpad" id="dj-xfpad" title="Drag the dot toward the deck you want louder"><span class="xfpl a">A</span><span class="xfpl b">B</span><div class="xfdot" id="dj-xfdot"></div></div>
+      <small>◉ PAN — drag the dot toward a deck to play it more</small>
       <small>BEAT ENGINE</small>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-quant" checked style="width:auto"> Quantize — cues &amp; loops snap to the beat</label>
       <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-fxsync" checked style="width:auto"> Effects follow the live tempo</label>
@@ -360,6 +368,8 @@ html.popdj .popdj-hint{display:block}`;
     ${deckHTML("C")}
     <div class="mixer m2"><small>DECKS C / D</small>
       <small>CROSSFADER C/D</small><input type="range" min="0" max="1" step="0.01" value="0.5" id="dj-xf2" aria-label="Crossfader decks C and D">
+      <div class="xfpad" id="dj-xfpad2" title="Drag the dot toward the deck you want louder"><span class="xfpl a">C</span><span class="xfpl b">D</span><div class="xfdot" id="dj-xfdot2"></div></div>
+      <small>◉ PAN C/D — drag the dot toward a deck to play it more</small>
       <div style="display:flex;justify-content:space-between;width:100%;font:700 11px var(--body);color:var(--gold-hi)"><span>C</span><span>D</span></div>
       <canvas class="pairwave" id="pw-CD" width="480" height="72"></canvas>
       <small id="ph-CD" style="letter-spacing:0;text-transform:none">Phase meter for decks C and D.</small>
@@ -637,7 +647,7 @@ html.popdj .popdj-hint{display:block}`;
     });
     const qz = $("#dj-quant"); if (qz && document.activeElement !== qz) qz.checked = S.quant !== false;
     const fsx = $("#dj-fxsync"); if (fsx && document.activeElement !== fsx) fsx.checked = (S.fx && S.fx.sync) !== false;
-    $("#dj-xf").value = S.xf; const xb0 = $("#dj-xfbar"); if (xb0 && document.activeElement !== xb0) xb0.value = S.xf; const x2 = $("#dj-xf2"); if (x2) x2.value = S.xf2 ?? 0.5; const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
+    $("#dj-xf").value = S.xf; const xb0 = $("#dj-xfbar"); if (xb0 && document.activeElement !== xb0) xb0.value = S.xf; paintXfPads(); const x2 = $("#dj-xf2"); if (x2) x2.value = S.xf2 ?? 0.5; const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live;
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = S.live ? "ON AIR" : "OFF AIR";
@@ -924,9 +934,9 @@ html.popdj .popdj-hint{display:block}`;
     if (t.dataset.pitch) { const k = t.dataset.pitch; S[k].rate = +t.value; deck(k).el.playbackRate = S[k].rate; deck(k).el.preservesPitch = !deck(k).vinyl; $("#pit-v-" + k).textContent = ((S[k].rate - 1) * 100).toFixed(1).replace("-", "−") + "%"; save(); }
     if (t.dataset.eq) { const [k, band] = t.dataset.eq.split(":"), d = deck(k); if (d.eq) d.eq[band].gain.value = +t.value; S[k].eq = Object.assign({ lo: 0, mid: 0, hi: 0 }, S[k].eq || {}); S[k].eq[band] = +t.value; save(); }
     if (t.dataset.flt) { const k = t.dataset.flt; S[k].flt = +t.value; if (deck(k).flt) fltFreq(deck(k).flt, +t.value); save(); }
-    if (t.id === "dj-xf") { S.xf = +t.value; const xb2 = $("#dj-xfbar"); if (xb2) xb2.value = t.value; levels(); save(); }
-    if (t.id === "dj-xfbar") { S.xf = +t.value; const mx2 = $("#dj-xf"); if (mx2) mx2.value = t.value; levels(); save(); }
-    if (t.id === "dj-xf2") { S.xf2 = +t.value; levels(); save(); }
+    if (t.id === "dj-xf") { S.xf = +t.value; const xb2 = $("#dj-xfbar"); if (xb2) xb2.value = t.value; levels(); save(); paintXfPads(); }
+    if (t.id === "dj-xfbar") { S.xf = +t.value; const mx2 = $("#dj-xf"); if (mx2) mx2.value = t.value; levels(); save(); paintXfPads(); }
+    if (t.id === "dj-xf2") { S.xf2 = +t.value; levels(); save(); paintXfPads(); }
     if (t.id === "dj-crush") { S.fx.crush = +t.value; applyFx(); save(); }
     if (t.id === "dj-master") { localMaster = +t.value; applyMaster(); }
     if (t.id === "dj-boost") { S.fx.boost = +t.value; applyFx(); save(); }
@@ -937,6 +947,23 @@ html.popdj .popdj-hint{display:block}`;
     if (t.id === "dj-fla") { S.fx.fla = +t.value; applyFx(); save(); }
   });
   onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
+  // circular pan pads: drag the gold dot anywhere in the circle — the further it
+  // moves toward a deck, the more that deck plays. Same mix as the sliders and the
+  // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
+  const padY = { 1: 0, 2: 0 };
+  function paintXfPads() {
+    const d1 = $("#dj-xfdot"); if (d1) { d1.style.left = (50 + (S.xf - 0.5) * 76) + "%"; d1.style.top = (50 + padY[1] * 34) + "%"; }
+    const d2 = $("#dj-xfdot2"); if (d2) { d2.style.left = (50 + ((S.xf2 ?? 0.5) - 0.5) * 76) + "%"; d2.style.top = (50 + padY[2] * 34) + "%"; }
+  }
+  [["#dj-xfpad", 1], ["#dj-xfpad2", 2]].forEach(([sel, pair]) => {
+    const pad = $(sel); if (!pad) return;
+    let drag = false;
+    const apply = (e) => { const r = pad.getBoundingClientRect(); let dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2), dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2); const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } padY[pair] = dy; const v = Math.min(1, Math.max(0, (dx + 1) / 2)); if (pair === 1) { S.xf = v; const s1 = $("#dj-xf"); if (s1) s1.value = v; const xb = $("#dj-xfbar"); if (xb) xb.value = v; } else { S.xf2 = v; const s2 = $("#dj-xf2"); if (s2) s2.value = v; } levels(); paintXfPads(); };
+    pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = true; try { pad.setPointerCapture(e.pointerId); } catch (_) {} apply(e); e.preventDefault(); });
+    pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
+    pad.addEventListener("pointerup", () => { if (drag) { drag = false; save(true); } });
+    pad.addEventListener("pointercancel", () => { drag = false; });
+  });
   $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
     // Auto-DJ is the station's play method: if nothing is playing it starts the rotation itself,
     // and it primes the idle deck so the first crossfade is ready
@@ -1012,7 +1039,7 @@ html.popdj .popdj-hint{display:block}`;
     load(target, item).then(async () => {
       await togglePlay(target);
       const from = S.xf, to = target === "A" ? 0 : 1, t0 = performance.now();
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500); S.xf = from + (to - from) * p; $("#dj-xf").value = S.xf; const xb1 = $("#dj-xfbar"); if (xb1) xb1.value = S.xf; levels(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 3500); S.xf = from + (to - from) * p; $("#dj-xf").value = S.xf; const xb1 = $("#dj-xfbar"); if (xb1) xb1.value = S.xf; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); save(true); } }, 100);
     });
   }
 
