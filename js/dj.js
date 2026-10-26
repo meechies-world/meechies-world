@@ -443,6 +443,7 @@ html.popdj .popdj-hint{display:block}
 @media (orientation:landscape) and (max-height:540px) and (max-width:1100px){.dj-decks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}.dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}.dj-decks>.deck[data-deck="C"]{grid-column:3;grid-row:1}.dj-decks>.deck[data-deck="D"]{grid-column:4;grid-row:1}.dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}.dj-decks>.mixer.m2{grid-column:1/-1;grid-row:3}.dj-decks>.swapbar{display:none!important}#dj-owner .deck{padding:8px;gap:5px}#dj-owner .deck .platter{width:92px}#dj-owner .deck .wave{height:40px}}
 .vstage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .vslot{position:absolute;inset:0;opacity:0;transition:opacity .12s linear;pointer-events:none}
+#app-poll [data-appvote].on{outline:2px solid #f0cf78;outline-offset:2px}
 .vslot iframe{width:100%;height:100%;border:0}
 .vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
@@ -1261,6 +1262,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     body.innerHTML = '<p class="muted">Your table is the DJ Playground above — yours any time, and the real radio can\'t hear it. Want the station to hear you? Ask Meechie — if he approves you in his booth, you get a live slot (up to 2 hours) and your table drives the real radio.</p><button class="btn" type="button" id="djlive-ask">🎧 Ask Meechie to DJ live</button>';
     const a = document.getElementById("djlive-ask"); if (a) a.addEventListener("click", async () => { const d = DBF(); if (!d) { say("Still loading — try again in a second"); return; } const name = (user.name || user.email || "Member").toString().slice(0, 60); try { await d.doc("requests/djlive-" + uid).set({ kind: "djlive", uid, name, title: "🎧 " + name + " wants to DJ live", at: Date.now(), status: "pending" }); djLivePend = true; say("Request sent to Meechie's booth 🎧"); } catch (_) { say("Couldn't send — try again"); } djLiveSig = ""; renderDjLive(); });
   }
+  /* radio-app demand poll (owner, 2026-10-26): ask the listeners before building
+     the standalone app — votes ride the requests collection as kind:"appvote",
+     one live vote per member (latest doc per uid wins) */
+  (() => {
+    const card = document.getElementById("app-poll"); if (!card || SANDBOX) return;
+    let myChoice = ""; try { myChoice = localStorage.getItem("mw-appvote") || ""; } catch (_) {}
+    let tally = { yes: 0, no: 0, total: 0 };
+    const paint = () => {
+      card.querySelectorAll("[data-appvote]").forEach((b) => b.classList.toggle("on", b.dataset.appvote === myChoice));
+      const res = document.getElementById("apppoll-results"), note = document.getElementById("apppoll-note");
+      const yp = tally.total ? Math.round(tally.yes / tally.total * 100) : 0, np = tally.total ? 100 - yp : 0;
+      if (res) { res.hidden = !(tally.total || myChoice); const yb = document.getElementById("apppoll-yes"), nb = document.getElementById("apppoll-no"), yn = document.getElementById("apppoll-yes-n"), nn = document.getElementById("apppoll-no-n"); if (yb) yb.style.width = yp + "%"; if (nb) nb.style.width = np + "%"; if (yn) yn.textContent = yp + "%"; if (nn) nn.textContent = np + "%"; }
+      if (note) note.textContent = tally.total ? (tally.total + (tally.total === 1 ? " vote" : " votes") + " so far" + (myChoice ? " — you voted " + (myChoice === "yes" ? "📲 Yes" : "🌐 Nah") + " (tap the other button to change it)" : "")) : "Be the first to vote.";
+    };
+    const sub = () => { const d = DB(); if (!d) { setTimeout(sub, 1500); return; } try { d.collection("requests").limit(500).onSnapshot((s) => { const byUid = {}; s.docs.forEach((x) => { const r = x.data() || {}; if (r.kind === "appvote" && r.uid && (!byUid[r.uid] || (r.at || 0) > (byUid[r.uid].at || 0))) byUid[r.uid] = r; }); tally = { yes: 0, no: 0, total: 0 }; Object.values(byUid).forEach((r) => { if (r.choice === "yes" || r.choice === "no") { tally[r.choice]++; tally.total++; } }); const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (uid && byUid[uid]) { myChoice = byUid[uid].choice; try { localStorage.setItem("mw-appvote", myChoice); } catch (_) {} } paint(); }, () => {}); } catch (_) {} };
+    card.addEventListener("click", async (e) => { const b = e.target.closest && e.target.closest("[data-appvote]"); if (!b) return; const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to vote — members decide what gets built."); return; } const d = DB(); if (!d) return; myChoice = b.dataset.appvote; try { localStorage.setItem("mw-appvote", myChoice); } catch (_) {} paint(); try { await d.collection("requests").add({ kind: "appvote", choice: myChoice, uid, at: Date.now() }); say(myChoice === "yes" ? "📲 Vote counted — you want the app!" : "🌐 Vote counted — the website's enough for you."); } catch (_) {} });
+    sub(); paint();
+  })();
+
   if (!SANDBOX) { renderDjLive(); setInterval(() => { renderDjLive(); }, 5000); }
   /* gentle mouse-wheel on the Radio page (desktop): the booth is a long page and stock
    * wheel notches jump it too far — ease wheel steps to about half speed. Trackpads
