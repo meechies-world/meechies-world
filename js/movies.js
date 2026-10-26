@@ -38,7 +38,7 @@
   SHELVES.halloween = { q: kwQ(["halloween", "horror", "ghost", "haunted", "vampire", "zombie", "witch", "terror", "demon", "monster", "dracula", "frankenstein", "mummy", "werewolf"]), label: "Halloween horror & spooky classics" };
   SHELVES.thanksgiving = { q: kwQ(["thanksgiving", "turkey", "pilgrim", "harvest"]), label: "Thanksgiving films, cartoons & vintage specials" };
   SHELVES.christmas = { q: kwQ(["christmas", "santa", "scrooge", "rudolph", "noel"]), label: "Christmas films, cartoons & vintage specials" };
-  let cur = { mode: "fame", q: "", page: 1 }, busy = false, started = false;
+  let cur = { mode: "fame", q: "", page: 1 }, busy = false;
 
   async function iaSearch(q, page) {
     const p = new URLSearchParams();
@@ -96,21 +96,15 @@
     }
   }
 
-  function setTab(which) {
-    const wrap = document.querySelector("#v-videos .wrap"); if (!wrap) return;
-    const movies = which === "movies";
-    document.querySelectorAll("[data-vtab]").forEach((b) => { const on = b.dataset.vtab === which; b.classList.toggle("ghost", !on); });
-    $("#vtab-movies").hidden = !movies;
-    wrap.querySelectorAll(":scope > *").forEach((el) => {
-      if (el.classList.contains("section-head") || el.classList.contains("vtab-bar") || el.id === "vtab-movies") return;
-      el.hidden = movies;
-    });
-    if (movies && !started) { started = true; load(false); }
-    if (!movies) { const f = $("#mv-frame"); if (f) f.innerHTML = ""; const st = $("#mv-stage"); if (st) st.hidden = true; }
-  }
+  // the cinema is its own TV view: load the first shelf the first time the
+  // view is opened (the router unhides the section when you tap the TV tab)
+  let kicked = false;
+  const kick = () => { if (kicked) return; const sec = $("#v-tv"); if (sec && !sec.hidden) { kicked = true; load(false); } };
+  const tvSec = $("#v-tv");
+  if (tvSec && window.MutationObserver) new MutationObserver(kick).observe(tvSec, { attributes: true, attributeFilter: ["hidden"] });
 
   document.addEventListener("click", (e) => {
-    const tb = e.target.closest("[data-vtab]"); if (tb) { setTab(tb.dataset.vtab); return; }
+    if (e.target.closest('[data-go="tv"]')) setTimeout(kick, 80);
     const sh = e.target.closest(".mv-shelf");
     if (sh) {
       document.querySelectorAll(".mv-shelf").forEach((b) => b.classList.toggle("ghost", b !== sh));
@@ -131,4 +125,5 @@
     cur = { mode: "search", q: `(title:(${terms}) OR description:(${terms})) AND mediatype:movies AND ${SEARCH_SET}`, page: 1 };
     load(false);
   });
+  kick();
 })();
