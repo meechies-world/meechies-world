@@ -636,7 +636,7 @@ html.popdj .popdj-hint{display:block}`;
     if (echoFb) echoFb.gain.value = f.fb == null ? 0.34 : f.fb;
     if (verbWet) verbWet.gain.value = Math.min(f.verb || 0, 0.3);
     if (flaWet) flaWet.gain.value = Math.min(f.fla || 0, 0.25) * 0.8;
-    setCrushCurve(Math.min(f.crush || 0, 40));
+    setCrushCurve(Math.min(f.crush || 0, 12));
     
     if (gateOsc && gateDepth && gateGain) {
       const g = +f.gate || 0;

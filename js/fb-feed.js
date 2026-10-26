@@ -38,6 +38,9 @@ body[data-view=clips] #fb-right,body[data-view=world] #fb-right,body[data-view=d
 #fb-right #fb-contacts h3{color:var(--fb-mute);font:700 15px system-ui;margin:2px 8px 8px}
 @media(min-width:1100px){body:not([data-view=clips]):not([data-view=world]) main{margin-left:240px}}
 @media(min-width:1280px){body:not([data-view=clips]):not([data-view=world]) main{margin-right:280px}}
+@media(min-width:1100px){body:not([data-view=clips]):not([data-view=world]) .announce .wrap{margin-left:240px}}
+@media(min-width:1280px){body:not([data-view=clips]):not([data-view=world]) .announce .wrap{margin-right:280px}}
+body.dj-on .announce .wrap,body.dj-past .announce .wrap{margin-left:0!important;margin-right:0!important}
 #fb-left a{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;color:var(--fb-text);text-decoration:none;font:600 15px system-ui}
 #fb-left a:hover{background:var(--fb-hover)}
 #fb-left a span{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--fb-hover);font-size:19px;overflow:hidden}

@@ -157,6 +157,20 @@ export async function onRequestGet({ request, env }) {
     break;
   }
   if (!S.live) { S.live = true; S.liveSince = now; changed = true; }
+  // Unattended rule: while no booth is at the tables, the 24/7 station rests on the
+  // clean broadcast profile. Performance FX a DJ left cranked (bitcrush grit, the
+  // transformer chop, heavy flanger/reverb, a slammed boost) are for a live set —
+  // left on the unattended rotation they just read as static and wash, and they
+  // made the station sound like it kept "switching off" Pro Radio. The moment
+  // Malik opens the booth (boothAt fresh, above) his settings rule again.
+  if (S.fx) {
+    const fx = S.fx;
+    if ((+fx.crush || 0) !== 0) { fx.crush = 0; changed = true; }
+    if ((+fx.gate || 0) !== 0) { fx.gate = 0; changed = true; }
+    if ((+fx.fla || 0) > 0.25) { fx.fla = 0.25; changed = true; }
+    if ((+fx.verb || 0) > 0.3) { fx.verb = 0.3; changed = true; }
+    if ((+fx.boost || 1) > 1.3) { fx.boost = 1.3; changed = true; }
+  }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
   if (changed) await writeDoc(env, "radio/dj", "radio", S);
   return json({ ok: true, mode: "autodj", changed, online: counts.online, listening: counts.listening });
