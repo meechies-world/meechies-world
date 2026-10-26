@@ -300,6 +300,11 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 /* compact decks on desktop: smaller platters, waves, buttons and gaps so a whole
    table fits the screen without a long scroll (Malik: "make these tabs smaller") */
 @media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:150px;height:150px}}
+/* three-zone console on wide screens (Malik: "deck A and B on one side, C and D on
+   the other, the mixer and song pick in the middle"): the deck bank unwraps so its
+   pieces place straight into the booth grid — A/B left, C/D right, and the middle
+   column stacks main mixer, SONG PICKER, C/D mixer. Pick and load without scrolling. */
+@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:3}#dj-owner #dj-browser{grid-column:3;grid-row:4;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
@@ -338,7 +343,7 @@ html.popdj .popdj-hint{display:block}`;
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
+  <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-decks" data-show="C">
     ${deckHTML("A")}
     ${deckHTML("B")}
