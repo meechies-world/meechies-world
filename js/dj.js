@@ -813,6 +813,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
         const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
         sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; mount.innerHTML = "<div></div>";
+        mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
         try { sl.p = new YT.Player(mount.firstChild, { videoId: sl.vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: (e) => { try { if (muted) e.target.mute(); e.target.seekTo(Math.max(0, posOf(t.k)), true); e.target.playVideo(); } catch (_) {} } } }); } catch (_) {}
         continue;
       }
@@ -1122,6 +1123,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     });
     document.querySelectorAll("[data-swap]").forEach((b) => { const v = b.dataset.swap.split(":")[1]; b.classList.toggle("hot", !!S[v] && !!S[v].playing); });
     if (listening) DECKS.forEach((k) => follow(k));
+    // the booth's master screen re-renders on the same heartbeat the listeners
+    // get — slots start at opacity 0 and only a render pass raises them, so a
+    // booth that only re-rendered on control touches could play a video on a
+    // deck (chip naming it) while the big screen stayed dark (owner report
+    // 2026-10-26: deck C playing, master screen black)
+    if (OWNER() && boothLead) stageApply(1, 1);
     // station clock + show timer
     const ck = $("#dj-clock"); if (ck && OWNER()) ck.textContent = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", second: "2-digit", timeZone: "America/New_York" }) + " ET";
     const st = $("#dj-showtime"); if (st && OWNER()) st.textContent = S.live && S.liveSince ? "⏱ On air " + fmt((Date.now() - S.liveSince) / 1000) : "";
