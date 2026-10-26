@@ -506,6 +506,48 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .mixer.m1>#dj-xfpad+small{order:2}
 #dj-booth-root #dj-owner .mixer.m1>#dj-xfpad+small+div{order:3}
 #dj-booth-root #dj-owner .xfpad.big{width:190px;height:190px}
+}
+/* ===== PRO HARDWARE SKIN — the owner's reference unit (AlphaTheta XDJ-AZ),
+   2026-10-26: same booth, hardware body. Charcoal panels, jog wheels with
+   ticked rims and color-coded decks, performance pads, silver fader caps,
+   and a real bezel on the master screen. Skin only — no layout moves. ===== */
+#dj-owner .deck[data-deck="A"]{--dk:#f0cf78}
+#dj-owner .deck[data-deck="B"]{--dk:#38bdf8}
+#dj-owner .deck[data-deck="C"]{--dk:#4ade80}
+#dj-owner .deck[data-deck="D"]{--dk:#f472b6}
+#dj-owner .deck,#dj-owner .mixer,#dj-owner .dj-panel{background:linear-gradient(180deg,#17181a,#0b0b0d);border:1px solid #26272b;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 24px rgba(0,0,0,.45)}
+#dj-station{background:linear-gradient(180deg,#17181a,#0b0b0d);border-color:#26272b}
+#dj-owner .deck h4{letter-spacing:.22em;font-size:12px;color:#d8d4c9;border-left:4px solid var(--dk,#f0cf78);padding-left:8px;text-align:left}
+#dj-owner .platter{border:3px solid #33343a;background:repeating-radial-gradient(circle,#1a1b1d 0 2px,#101012 2px 4px);box-shadow:inset 0 0 0 5px #0a0a0c,inset 0 0 26px #000,0 10px 22px rgba(0,0,0,.65)}
+#dj-owner .platter::before{content:"";position:absolute;inset:-3px;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(235,235,240,.55) 0deg 2deg,transparent 2deg 10deg);-webkit-mask:radial-gradient(circle,transparent 0 76%,#000 77%);mask:radial-gradient(circle,transparent 0 76%,#000 77%);pointer-events:none}
+#dj-owner .platter::after{box-shadow:0 0 0 3px #0c0a07,0 0 0 5px var(--dk,#f0cf78),inset 0 2px 6px rgba(255,255,255,.35)}
+#dj-owner .deck[data-deck="A"] .platter:not(.has-cover)::after{content:"A";display:grid;place-items:center;font:800 22px var(--body);color:#15130f}
+#dj-owner .deck[data-deck="B"] .platter:not(.has-cover)::after{content:"B";display:grid;place-items:center;font:800 22px var(--body);color:#15130f}
+#dj-owner .deck[data-deck="C"] .platter:not(.has-cover)::after{content:"C";display:grid;place-items:center;font:800 22px var(--body);color:#15130f}
+#dj-owner .deck[data-deck="D"] .platter:not(.has-cover)::after{content:"D";display:grid;place-items:center;font:800 22px var(--body);color:#15130f}
+@media(max-width:760px){#dj-owner .deck[data-deck="A"] .platter:not(.has-cover)::after,#dj-owner .deck[data-deck="B"] .platter:not(.has-cover)::after,#dj-owner .deck[data-deck="C"] .platter:not(.has-cover)::after,#dj-owner .deck[data-deck="D"] .platter:not(.has-cover)::after{font-size:11px}}
+#dj-owner .platter.spin{box-shadow:inset 0 0 0 5px #0a0a0c,inset 0 0 26px #000,0 0 24px color-mix(in srgb,var(--dk,#f0cf78) 45%,transparent),0 10px 22px rgba(0,0,0,.65)}
+#dj-owner [data-play]{border-radius:999px;border:2px solid #4ade80!important;background:#0c1710;color:#dcffe6;box-shadow:0 0 0 3px #050d08,0 4px 10px rgba(0,0,0,.55)}
+#dj-owner [data-cue0]{border-radius:999px;border:2px solid var(--gold)!important;background:#171106;color:#ffe9b0}
+#dj-owner [data-brake]{border-radius:999px}
+#dj-owner .dsec[data-dsec="cues"] .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#dj-owner .cuebtn,#dj-owner .loopbtn{border-radius:8px;background:#101013;border:2px solid #3a3a40;color:#e8e4da;font-weight:800;letter-spacing:.03em;box-shadow:inset 0 0 0 2px #000,0 3px 0 #000;min-height:44px}
+#dj-owner .cuebtn:nth-of-type(1){border-color:#f0cf78}
+#dj-owner .cuebtn:nth-of-type(2){border-color:#4ade80}
+#dj-owner .cuebtn:nth-of-type(3){border-color:#38bdf8}
+#dj-owner .cuebtn.on,#dj-owner .loopbtn.on{background:#26200c;box-shadow:0 0 12px rgba(240,207,120,.35),inset 0 0 0 2px #000}
+#dj-owner input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;height:24px}
+#dj-owner input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(180deg,#08080a,#26262b);box-shadow:inset 0 1px 3px #000,0 1px 0 rgba(255,255,255,.06)}
+#dj-owner input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:15px;margin-top:-5.5px;border-radius:3px;background:linear-gradient(180deg,#f2f2f5,#a7a7ae 46%,#43434a 54%,#d7d7dc);border:1px solid #000;box-shadow:0 2px 5px rgba(0,0,0,.65)}
+#dj-owner input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:#1b1b1f}
+#dj-owner input[type=range]::-moz-range-thumb{width:24px;height:15px;border-radius:3px;background:linear-gradient(180deg,#f2f2f5,#a7a7ae 46%,#43434a 54%,#d7d7dc);border:1px solid #000}
+#dj-owner .eqrow label{background:#0f0f11;border:1px solid #232327;border-radius:8px;padding:5px 6px;text-align:center}
+#dj-screen .vstage{border:8px solid #0a0a0c;outline:1px solid #2c2c30;border-radius:6px;box-shadow:0 16px 36px rgba(0,0,0,.6)}
+#st-ytbox .vstage{border:6px solid #0a0a0c;outline:1px solid #2c2c30}
+#dj-mini{border:3px solid #0a0a0c;outline:1px solid #2c2c30}
+#dj-owner .xfpad{background:linear-gradient(135deg,#17181a,#0b0b0d);border:1px solid #2e2e33;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 18px #000}
+#dj-owner .xfdot{background:linear-gradient(180deg,#f2f2f5,#9a9aa2 50%,#55555c);border:1px solid #000;box-shadow:0 3px 8px rgba(0,0,0,.6)}
+#dj-owner .dj-top{border-bottom:2px solid #26272b;box-shadow:0 1px 0 rgba(240,207,120,.25)}
 }`;
   document.head.appendChild(css);
 
