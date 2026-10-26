@@ -397,7 +397,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
 .xfpl{position:absolute;top:50%;transform:translateY(-50%);font:800 12px var(--body);color:var(--gold-hi)}
 .xfpl.a{left:8px}.xfpl.b{right:8px}
 .deck .wave{cursor:pointer;touch-action:none}
-.xfpad.big{width:172px;height:172px}
+.xfpad.big{width:128px;height:128px}
 .xfpad .xfpl.tl{left:10px;top:8px;transform:none}
 .xfpad .xfpl.tr{right:10px;top:8px;left:auto;transform:none}
 .xfpad .xfpl.bl{left:10px;bottom:8px;top:auto;transform:none}
@@ -408,7 +408,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
 @media(min-width:1100px){body[data-view="radio"] #fb-left,body[data-view="radio"] #fb-right{display:none!important}body[data-view="radio"] main{margin-left:0!important;margin-right:0!important}body[data-view="radio"] #v-radio .wrap{max-width:1740px}}
 /* compact decks on desktop: smaller platters, waves, buttons and gaps so a whole
    table fits the screen without a long scroll (Malik: "make these tabs smaller") */
-@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:190px;height:190px}}
+@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:148px;height:148px}}
 /* three-zone console on wide screens (Malik: "A and B decks on the left, C and D on
    the right, make the song pick and mixer in the middle"): the deck bank unwraps so
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
@@ -425,7 +425,14 @@ html.popdj .popdj-hint{display:block}
 .vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
 .vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
-.vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}`;
+.vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
+#dj-owner [data-ckey]{position:relative}
+#dj-owner [data-ckey].ck-off{display:none!important}
+#dj-owner.ck-on [data-ckey]{outline:1.5px dashed rgba(212,168,67,.55);outline-offset:2px}
+.ck-chip{position:absolute;top:6px;right:6px;z-index:6;display:none;background:#1d1a14;border:1px solid var(--gold);color:var(--gold-hi);border-radius:999px;padding:5px 11px;font:700 12px var(--body);cursor:pointer}
+#dj-owner.ck-on .ck-chip{display:block}
+#dj-ckbar{display:none;flex-wrap:wrap;gap:6px;align-items:center;background:#12100c;border:1px dashed var(--gold-lo);border-radius:10px;padding:8px 10px;margin-bottom:10px;grid-column:1/-1}
+#dj-owner.ck-on #dj-ckbar{display:flex}`;
   document.head.appendChild(css);
 
   // collapsible deck sections: one shared open/shut choice per section, remembered
@@ -478,12 +485,12 @@ html.popdj .popdj-hint{display:block}
     ${deckHTML("A")}
     ${deckHTML("B")}
     <div class="mixer m1">
-      <div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
-      <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes</small>
-      <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
       <small>📺 MASTER — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
       <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div></div>
       <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
+      <div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
+      <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes, and the picture above blends with it</small>
+      <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
       <small>MIC DROP</small>
       <button class="talk" type="button" id="dj-talk" aria-label="Hold to talk">🎙️<br>HOLD TO TALK</button>
       <small id="dj-talk-st">Hold, talk, let go — it goes out over the music</small>
@@ -585,6 +592,28 @@ html.popdj .popdj-hint{display:block}
     });
   }
   foldPanels();
+  /* ---------- make it yours: hide whole booth blocks, remembered per device.
+   * Folding shrinks a block; Customize (the 🛠 button in the booth top bar)
+   * removes the ones you never touch — decks, mixers, the browser, studio
+   * panels — and the restore bar brings any of them back. State and sound are
+   * never touched: a hidden deck keeps playing. */
+  const ckBlocks = [];
+  const ckReg = (el, key, label) => { if (!el || el.dataset.ckey) return; el.dataset.ckey = key; const c = document.createElement("button"); c.type = "button"; c.className = "ck-chip"; c.dataset.ckhide = key; c.textContent = "✕ Hide"; el.appendChild(c); ckBlocks.push({ el, key, label }); };
+  ckReg(document.getElementById("dj-browser"), "browser", "🎵 Music browser");
+  DECKS.forEach((k) => ckReg(boothEl.querySelector('.deck[data-deck="' + k + '"]'), "deck" + k, "🎚️ Deck " + k));
+  ckReg(boothEl.querySelector(".mixer.m1"), "mixer1", "🎛️ Mixer + X fader");
+  ckReg(boothEl.querySelector(".mixer.m2"), "mixer2", "🎛️ C/D strip");
+  ckReg(boothEl.querySelector(".dj-setups"), "setups", "⚙️ Setups row");
+  boothEl.querySelectorAll(".dj-grid2 > .dj-panel").forEach((p) => { const h = p.querySelector("h4"); const label = h ? h.textContent.trim().slice(0, 26) : "Studio panel"; ckReg(p, "panel-" + label.replace(/[^a-z0-9]+/gi, "-").toLowerCase(), label); });
+  let ckHidden = []; try { ckHidden = JSON.parse(localStorage.getItem("mw-booth-hide") || "[]"); if (!Array.isArray(ckHidden)) ckHidden = []; } catch (_) {}
+  const ckBar = document.createElement("div"); ckBar.id = "dj-ckbar"; boothEl.querySelector(".dj-top").after(ckBar);
+  const ckPaint = () => { ckBlocks.forEach(({ el, key }) => el.classList.toggle("ck-off", ckHidden.includes(key))); ckBar.innerHTML = "<b style='font-size:13px'>🛠 Customize — tap ✕ Hide on any block you don't use. Hidden:</b> " + (ckHidden.length ? ckBlocks.filter((b) => ckHidden.includes(b.key)).map((b) => `<button class='btn ghost sm' type='button' data-ckshow='${b.key}'>👁 ${b.label}</button>`).join(" ") : "<span class='muted' style='font-size:13px'>nothing hidden</span>") + " <button class='btn ghost sm' type='button' data-ckreset='1'>↺ Reset layout</button>"; };
+  const ckSave = () => { try { localStorage.setItem("mw-booth-hide", JSON.stringify(ckHidden)); } catch (_) {} ckPaint(); };
+  const ckBtn = document.createElement("button"); ckBtn.type = "button"; ckBtn.className = "btn ghost sm"; ckBtn.id = "dj-ck"; ckBtn.textContent = "🛠 Customize";
+  boothEl.querySelector(".dj-top").appendChild(ckBtn);
+  ckBtn.addEventListener("click", () => { const on = boothEl.classList.toggle("ck-on"); ckBtn.classList.toggle("on", on); if (on) say("🛠 Customize: tap ✕ Hide on anything you don't use — it's remembered on this device. Tap Customize again when you're done."); ckPaint(); });
+  document.addEventListener("click", (e) => { const h = e.target.closest && e.target.closest("[data-ckhide],[data-ckshow],[data-ckreset]"); if (!h || !e.target.closest("#dj-booth-root")) return; if (h.dataset.ckhide) { if (!ckHidden.includes(h.dataset.ckhide)) ckHidden.push(h.dataset.ckhide); ckSave(); } else if (h.dataset.ckshow) { ckHidden = ckHidden.filter((x) => x !== h.dataset.ckshow); ckSave(); } else if (h.dataset.ckreset != null) { ckHidden = []; try { Object.keys(localStorage).filter((k) => k.indexOf("mw-fold") === 0).forEach((k) => localStorage.removeItem(k)); } catch (_) {} ckSave(); say("Layout reset — every block is back, and folds reset on the next load."); } });
+  ckPaint();
   // console panels: tag the booth's panel groups so the phone console can tab them
   if (boothEl && boothHome) {
     const g2 = boothEl.querySelectorAll(".dj-grid2"); if (g2[0]) g2[0].classList.add("pg-studio"); if (g2[1]) g2[1].classList.add("pg-music");
@@ -641,6 +670,12 @@ html.popdj .popdj-hint{display:block}
   }
   async function renderScreen(scr, muted, mix, duck) {
     const tg = vmixTargets();
+    // a true dissolve, full brightness at every point of the fade: the weaker
+    // picture sits underneath at full strength and the stronger one fades in
+    // over it by its share — slide the fader to a deck's 100% and the screen
+    // is 100% that deck; park it in the middle and the two videos blend
+    const srt = tg.slice().sort((a, b) => a.op - b.op), disp = {};
+    if (srt.length === 2) { disp[srt[0].k] = 1; disp[srt[1].k] = srt[1].op; } else if (srt.length === 1) disp[srt[0].k] = 1;
     scr.slots.forEach((sl, i) => { if (sl.deck && !tg.some((x) => x.k === sl.deck)) { sl.deck = ""; const el = $(scr.ids[i]); if (el) el.style.opacity = 0; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } } });
     const stb = scr.standby ? $(scr.standby) : null; if (stb) stb.style.display = tg.length ? "none" : "grid";
     const chip = $(scr.chip);
@@ -657,7 +692,7 @@ html.popdj .popdj-hint{display:block}
       }
       const sl = scr.slots[i];
       if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, posOf(t.k))); } catch (_) {} } }
-      const el = $(scr.ids[i]); if (el) { el.style.opacity = t.op.toFixed(2); el.style.zIndex = t.op >= 0.5 ? 2 : 1; }
+      const el = $(scr.ids[i]); if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
         const want = posOf(t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
         if (Math.abs(cur - want) > 3) sl.p.seekTo(want, true);
