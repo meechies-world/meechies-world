@@ -148,7 +148,7 @@
         d.eq = { lo, mid, hi }; d.flt = flt; d.stem = { hp, nrm, oop };
       } catch (_) { d.gain = null; d.eq = null; } d.apply(); }
     d.vol = (v) => { d.level = Math.max(0, Math.min(1, v)); d.apply(); };
-    d.apply = () => { if (d.shim) { try { d.shim._p && d.shim._p.setVolume(Math.round(Math.max(0, Math.min(1, d.level)) * 100)); } catch (_) {} return; } if (d.gain) { d.gain.gain.value = d.level; d.el.volume = 1; } else d.el.volume = d.level; };
+    d.apply = () => { if (d.shim) { try { d.shim._p && d.shim._p.setVolume(Math.round(Math.max(0, Math.min(1, d.level * boostMk())) * 100)); } catch (_) {} return; } if (d.gain) { d.gain.gain.value = d.level; d.el.volume = 1; } else d.el.volume = d.level; };
     d.stop = () => { try { d.el.pause(); } catch (_) {} };
     // a YouTube deck: the video plays in the deck's own frame and a shim stands in
     // for the audio element, so play / pause / seek / position all work as usual and
@@ -225,6 +225,11 @@
     return sh;
   }
   let XFCURVE = "smooth"; // crossfader curve, synced from S.xfCurve by paintXfPads
+  // YouTube decks never enter the Web Audio graph, so the master BOOST knob used
+  // to do nothing for them (owner: "boost the sound its too low", 2026-10-26 —
+  // his boost was already at max 2 while a centered fader left a video deck near
+  // 64%). Video volume now gets a makeup factor from the same boost setting.
+  const boostMk = () => Math.min(1.5, Math.max(1, +(S.fx && S.fx.boost) || 1));
   const xfGain = (xf, side) => { const t = side === "A" ? xf : 1 - xf, c = Math.cos(t * Math.PI / 2); if (XFCURVE === "sharp") return Math.sqrt(Math.max(0, c)); if (XFCURVE === "cut") return t < 0.5 ? 1 : (t > 0.5 ? 0 : 0.7071); return c; }; // equal-power smooth by default; sharp = louder middle for scratch work; cut = instant switch at center
 
   /* ---------- shared station state (doc radio/dj) ---------- */
@@ -954,7 +959,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
         if (stt !== 1 && S[t.k].playing) sl.p.playVideo();
         if (stt === 1 && !S[t.k].playing) sl.p.pauseVideo();
-        if (!muted) sl.p.setVolume(Math.round(Math.max(0, Math.min(1, stageGain(t.k) * (duck || 1) * (mix || 1))) * 100));
+        if (!muted) sl.p.setVolume(Math.round(Math.max(0, Math.min(1, stageGain(t.k) * (duck || 1) * (mix || 1) * boostMk())) * 100));
       } catch (_) {} }
     }
     const top = tg.slice().sort((a, b) => b.op - a.op)[0];
