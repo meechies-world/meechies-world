@@ -299,6 +299,9 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .xfpad .xfpl.bl{left:10px;bottom:8px;top:auto;transform:none}
 .xfpad .xfpl.br{right:10px;bottom:8px;top:auto;left:auto;transform:none}
 @media(min-width:1100px){body.dj-on main{margin-left:0!important;margin-right:0!important}body.dj-on #v-radio .wrap{max-width:1740px}}
+/* the Radio view is a console: the Book rails get out of the way completely and the
+   booth spreads edge to edge (the scroll-triggered hiding alone left them in the way) */
+@media(min-width:1100px){body[data-view="radio"] #fb-left,body[data-view="radio"] #fb-right{display:none!important}body[data-view="radio"] main{margin-left:0!important;margin-right:0!important}body[data-view="radio"] #v-radio .wrap{max-width:1740px}}
 html.popdj .popdj-hint{display:block}`;
   document.head.appendChild(css);
 
