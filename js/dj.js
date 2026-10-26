@@ -380,6 +380,8 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .dsec.shut .dsec-b{display:none}
 .ytbox{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;margin:8px 0}
 .ytbox iframe{width:100%;height:100%;border:0;display:block}
+.pfold{display:contents}
+.pfold.shut{display:none}
 border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gold));border:2px solid #0d0b08;box-shadow:0 2px 10px rgba(0,0,0,.65);transform:translate(-50%,-50%);pointer-events:none;left:50%;top:50%}
 .xfpl{position:absolute;top:50%;transform:translateY(-50%);font:800 12px var(--body);color:var(--gold-hi)}
 .xfpl.a{left:8px}.xfpl.b{right:8px}
@@ -487,15 +489,17 @@ html.popdj .popdj-hint{display:block}`;
 
 </div>
   <div class="dj-panel" id="dj-browser" style="margin-top:16px">
-    <div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px"><b style="font-size:13px;letter-spacing:.08em">▶️ DJ YOUTUBE — PLAY THE MUSIC VIDEO</b><small class="muted" style="display:block;margin:4px 0 8px">Paste any YouTube link, put the video on a deck, and mix it: play, pause, seek and the X fader volume all work, and your listeners see the video on the station. YouTube keeps its audio locked in its player, so EQ, effects and scratch stay on your own files.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a YouTube link..." style="flex:1;min-width:200px" aria-label="YouTube link"><span style="font-size:12px;color:var(--muted)">Load on:</span><button class="btn ghost sm" type="button" data-ytload="A">A</button><button class="btn ghost sm" type="button" data-ytload="B">B</button><button class="btn ghost sm" type="button" data-ytload="C">C</button><button class="btn ghost sm" type="button" data-ytload="D">D</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px"><input type="search" id="dj-ytq" placeholder="Search YouTube — any artist, any song..." aria-label="Search YouTube"><button class="btn sm" type="submit">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:260px;margin-top:8px"></div></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4>
+    <div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:13px;letter-spacing:.08em">▶️ DJ YOUTUBE — PLAY THE MUSIC VIDEO</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the YouTube panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:4px 0 8px">Paste any YouTube link, put the video on a deck, and mix it: play, pause, seek and the X fader volume all work, and your listeners see the video on the station. YouTube keeps its audio locked in its player, so EQ, effects and scratch stay on your own files.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a YouTube link..." style="flex:1;min-width:200px" aria-label="YouTube link"><span style="font-size:12px;color:var(--muted)">Load on:</span><button class="btn ghost sm" type="button" data-ytload="A">A</button><button class="btn ghost sm" type="button" data-ytload="B">B</button><button class="btn ghost sm" type="button" data-ytload="C">C</button><button class="btn ghost sm" type="button" data-ytload="D">D</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px"><input type="search" id="dj-ytq" placeholder="Search YouTube — any artist, any song..." aria-label="Search YouTube"><button class="btn sm" type="submit">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:260px;margin-top:8px"></div></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4><button class="btn ghost sm" type="button" data-fold="br-panes" aria-label="Fold the music lists">▾</button>
       <button class="btn sm browtab on" type="button" data-brow="lib">Your Library</button>
       <button class="btn ghost sm browtab" type="button" data-brow="net">Free Music Search</button>
       <button class="btn ghost sm browtab" type="button" data-brow="cur">🏆 Pro DJ Sounds</button></div>
+    <div id="br-panes">
     <div data-browpane="lib"><div class="dj-list" id="dj-lib" style="max-height:300px"></div></div>
     <div data-browpane="net" hidden><form class="dj-search" id="dj-sf"><input type="search" id="dj-q" placeholder="Search: hip hop, jazz, beats..." aria-label="Search free music"><button class="btn sm" type="submit">Search</button></form>
       <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net" style="max-height:260px"></div></div>
     <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
+    </div>
   </div>
     <div class="dj-grid2">
     <div class="dj-panel"><h4>🎤 LIVE MIC</h4>
@@ -529,6 +533,26 @@ html.popdj .popdj-hint{display:block}`;
   const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
   document.addEventListener("click", (e) => { const b = e.target.closest("[data-fold]"); if (!b) return; const t = document.getElementById(b.dataset.fold); if (!t) return; t.hidden = !t.hidden; b.textContent = (t.hidden ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); try { localStorage.setItem("mw-fold-" + b.dataset.fold, t.hidden ? "1" : ""); if (!t.hidden) localStorage.removeItem("mw-fold-" + b.dataset.fold); } catch (_) {} });
   applyFolds(); if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyFolds);
+  // every deck and studio panel folds too: the header keeps a ▾ button, the body
+  // wraps in a .pfold (display:contents, so the grid layout is untouched until it
+  // is shut), and the choice sticks on this device like the page folds
+  function foldPanels() {
+    document.querySelectorAll("#dj-owner .deck, #dj-owner .dj-panel").forEach((p) => {
+      if (p.dataset.folded || p.id === "dj-browser") return;
+      const h = p.querySelector(":scope > h4"); if (!h) return;
+      p.dataset.folded = "1";
+      const body = document.createElement("div"); body.className = "pfold";
+      while (h.nextSibling) body.appendChild(h.nextSibling);
+      p.appendChild(body);
+      const key = "mw-fold-p-" + (p.dataset.deck ? "deck" + p.dataset.deck : (h.textContent || "panel").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 24));
+      const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost sm"; b.setAttribute("aria-label", "Fold this section");
+      const paint = () => { b.textContent = body.classList.contains("shut") ? "▸" : "▾"; };
+      try { if (localStorage.getItem(key)) body.classList.add("shut"); } catch (_) {}
+      b.addEventListener("click", () => { body.classList.toggle("shut"); try { body.classList.contains("shut") ? localStorage.setItem(key, "1") : localStorage.removeItem(key); } catch (_) {} paint(); });
+      h.style.display = "flex"; h.style.alignItems = "center"; h.style.justifyContent = "space-between"; h.style.width = "100%"; h.appendChild(b); paint();
+    });
+  }
+  foldPanels();
   // console panels: tag the booth's panel groups so the phone console can tab them
   if (boothEl && boothHome) {
     const g2 = boothEl.querySelectorAll(".dj-grid2"); if (g2[0]) g2[0].classList.add("pg-studio"); if (g2[1]) g2[1].classList.add("pg-music");
