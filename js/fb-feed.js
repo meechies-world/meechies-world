@@ -229,7 +229,7 @@ body.dj-on .announce .wrap,body.dj-past .announce .wrap{margin-left:0!important;
   const dot = document.querySelector(".dm-dot"); if (dot) new MutationObserver(paintBadge).observe(dot, { attributes: true });
   /* Facebook-style tab row: Home · Friends · Video · Marketplace · Notifications · Menu */
   const tcss = document.createElement("style");
-  tcss.textContent = `#fb-tabs{display:flex;background:#242526;border-bottom:1px solid var(--fb-line);margin:0 0 14px;padding:0 clamp(16px,3.2vw,56px);position:sticky;top:56px;z-index:14}
+  tcss.textContent = `#fb-tabs{display:flex;background:#242526;border-bottom:1px solid var(--fb-line);margin:0 0 14px;padding:0 clamp(16px,3.2vw,56px);position:sticky;top:56px;z-index:14;transform:translateZ(0)}
 #fb-tabs button{flex:1;max-width:120px;height:48px;border:0;border-bottom:3px solid transparent;background:none;color:var(--fb-mute);font-size:21px;cursor:pointer;position:relative;display:grid;place-items:center;border-radius:0}
 #fb-tabs button:hover{background:var(--fb-hover)}
 #fb-tabs button[aria-pressed=true]{color:var(--fb-blue);border-bottom-color:var(--fb-blue)}
