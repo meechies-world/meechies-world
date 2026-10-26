@@ -363,11 +363,12 @@ body.dj-on #dj-booth-root{padding-bottom:70px}
 #dj-browser .dj-item{min-height:48px}
 #dj-browser .dj-item .btn{min-height:42px;min-width:42px}
 }
-html.popdj header.bar,html.popdj #player-bar,html.popdj footer,html.popdj #fb-left,html.popdj #fb-right,html.popdj #ai-fab,html.popdj #mx-heads{display:none!important}
+html.popdj header.bar,html.popdj #player-bar,html.popdj footer,html.popdj #fb-left,html.popdj #fb-right,html.popdj #ai-fab,html.popdj #mx-heads,html.popdj #fb-top,html.popdj #fb-tabs,html.popdj #fb-notes,html.popdj .announce,html.popdj .apptab,html.popdj #mx-fab,html.popdj #mw-fab,html.popdj #mw-show,html.popdj #mw-show-pill,html.popdj #vz-pill{display:none!important}
 html.popdj main{margin:0!important;padding:10px!important}
 html.popdj #v-radio .wrap{max-width:none!important;width:100%!important}
 html.popdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
-html.playdj header.bar,html.playdj #player-bar,html.playdj footer,html.playdj #fb-left,html.playdj #fb-right,html.playdj #ai-fab,html.playdj #mx-heads{display:none!important}
+html.popdj.popdj-guest #v-radio .wrap>#dj-root{display:block!important}
+html.playdj header.bar,html.playdj #player-bar,html.playdj footer,html.playdj #fb-left,html.playdj #fb-right,html.playdj #ai-fab,html.playdj #mx-heads,html.playdj #fb-top,html.playdj #fb-tabs,html.playdj #fb-notes,html.playdj .announce,html.playdj .apptab,html.playdj #mx-fab,html.playdj #mw-fab,html.playdj #mw-show,html.playdj #mw-show-pill,html.playdj #vz-pill{display:none!important}
 html.playdj main{margin:0!important;padding:10px!important}
 html.playdj #v-radio .wrap{max-width:none!important;width:100%!important}
 html.playdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
@@ -1223,6 +1224,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   if (SANDBOX) { document.documentElement.classList.add("playdj"); try { go("radio"); } catch (_) {} }
   const pgB = document.getElementById("pg-open"), pgW = document.getElementById("pg-wrap"), pgF = document.getElementById("pg-frame");
   if (pgB && pgW && pgF) pgB.addEventListener("click", () => { if (!pgF.getAttribute("src")) pgF.src = "/?playdj=1#radio"; pgW.hidden = false; pgB.textContent = "🎛️ The Playground is open below — play all you want, the real radio can't hear it"; pgW.scrollIntoView({ behavior: "smooth", block: "start" }); });
+  /* the tables' page cuts the site's other music (owner, 2026-10-26: "when the
+     dj tables turn on I want everything to cut off") — entering the DJ view or
+     opening the Playground pauses the library/radio player in this tab */
+  const cutOtherAudio = () => { try { if (typeof media !== "undefined" && media && !media.paused) { media.pause(); if (typeof updIcons === "function") updIcons(); } } catch (_) {} };
+  if (pgB) pgB.addEventListener("click", cutOtherAudio);
+  window.addEventListener("hashchange", () => { if (location.hash.replace(/^#/, "") === "dj") cutOtherAudio(); });
+  if (location.hash.replace(/^#/, "") === "dj") cutOtherAudio();
   /* member DJ table → live on the real radio, by Meechie's approval only: a signed-in
      member asks from this page, the request lands in the booth's LIVE DJ REQUESTS
      panel, and an approval (S.djGuest) unlocks their GO LIVE button. Their table is
@@ -1968,7 +1976,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
-    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; if (own) { libList(); paintOwner(); paintQueue(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
+    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; document.documentElement.classList.toggle("popdj-guest", document.documentElement.classList.contains("popdj") && !own); if (own) { libList(); paintOwner(); paintQueue(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
     show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
     // scroll past the tables and the side buttons/floats fold away — nothing covers the decks
