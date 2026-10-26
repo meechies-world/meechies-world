@@ -253,7 +253,11 @@ body.dj-on .announce .wrap,body.dj-past .announce .wrap{margin-left:0!important;
   tabs.innerHTML = [["home", "🏠", "Home"], ["friends", "👥", "Friends"], ["video", "📺", "Video"], ["market", "🛍️", "Marketplace"], ["notes", "🔔", "Notifications"], ["menu", "☰", "Menu"]]
     .map(([k, ic, n]) => `<button type="button" data-fbt="${k}" aria-label="${n}" aria-pressed="${k === "home"}">${ic}<i hidden></i><small>${n}</small></button>`).join("");
   top.after(tabs);
-  const stickTabs = () => { const h = document.querySelector("header.bar"); const hh = h ? h.offsetHeight : 60; let ah = 0; document.querySelectorAll(".announce").forEach((a) => { if (!a.hidden) ah += a.offsetHeight; }); const top = hh + ah; tabs.style.top = top + "px"; document.documentElement.style.setProperty("--rail-top", (top + 56) + "px"); const nt = document.getElementById("fb-notes"); if (nt) nt.style.top = (top + 54) + "px"; };
+  const stickTabs = () => { const h = document.querySelector("header.bar"); const hh = h ? h.offsetHeight : 56; const top = hh; tabs.style.top = top + "px"; document.documentElement.style.setProperty("--rail-top", (top + 56) + "px"); const nt = document.getElementById("fb-notes"); if (nt) nt.style.top = (top + 54) + "px"; };
+  // The sticky offset is the header height ONLY. An earlier version added the
+  // announcement bar's height too — but the announcement scrolls away while the
+  // tabs stay stuck, so the tabs floated that far below the header with page
+  // content showing in the gap (owner photo + two test passes, 2026-10-26).
   stickTabs(); addEventListener("resize", stickTabs);
   document.querySelectorAll(".announce").forEach((a) => new MutationObserver(stickTabs).observe(a, { attributes: true, attributeFilter: ["hidden"] }));
   const notes = document.createElement("div"); notes.id = "fb-notes"; notes.hidden = true;
