@@ -128,7 +128,7 @@
 
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
-  const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0, crush: 0, sync: true });
+  const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, gate: 0, crush: 0, sync: true, boost: 1 });
   let S = { live: false, xf: 0.5, xf2: 0.5, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx() };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
@@ -315,6 +315,7 @@ html.popdj .popdj-hint{display:block}`;
       <canvas class="pairwave" id="pw-AB" width="480" height="72"></canvas>
       <small id="ph-AB" style="letter-spacing:0;text-transform:none">Phase meter: play both decks with a measured BPM and this shows how far apart the beats sit.</small>
       <small>MASTER</small><input type="range" min="0" max="1" step="0.01" value="0.95" id="dj-master" aria-label="Master volume">
+      <small>🔊 BOOST — EVERYONE HEARS IT · <span id="dj-boost-v">100%</span></small><input type="range" min="1" max="2" step="0.01" value="1" id="dj-boost" aria-label="Volume boost">
       <small>FILTER</small><input type="range" min="0" max="100" step="1" value="100" id="dj-filter" aria-label="Master filter">
       <small>ECHO</small><input type="range" min="0" max="0.6" step="0.02" value="0" id="dj-echo" aria-label="Echo level">
       <small>ECHO REPEAT</small><input type="range" min="0" max="0.7" step="0.02" value="0.34" id="dj-fb" aria-label="Echo repeat">
@@ -408,7 +409,9 @@ html.popdj .popdj-hint{display:block}`;
     else { const steps = Math.pow(2, Math.max(1.5, 8 - (v / 100) * 6.5)); for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; curve[i] = Math.round(x * steps) / steps; } }
     crushNode.curve = curve;
   }
-  function applyFx() {
+  let localMaster = 0.95; // this window's own master volume (the MASTER slider)
+  function applyMaster() { if (masterGain) masterGain.gain.value = localMaster * (S.fx.boost || 1); const bv = $("#dj-boost-v"); if (bv) bv.textContent = Math.round((S.fx.boost || 1) * 100) + "%"; const bs = $("#dj-boost"); if (bs && document.activeElement !== bs) bs.value = S.fx.boost || 1; }
+  function applyFx() { applyMaster();
     DECKS.forEach((k) => {
       const d = decks[k]; if (!d) return;
       const eq = S[k].eq || { lo: 0, mid: 0, hi: 0 };
@@ -896,7 +899,8 @@ html.popdj .popdj-hint{display:block}`;
     if (t.id === "dj-xf") { S.xf = +t.value; levels(); save(); }
     if (t.id === "dj-xf2") { S.xf2 = +t.value; levels(); save(); }
     if (t.id === "dj-crush") { S.fx.crush = +t.value; applyFx(); save(); }
-    if (t.id === "dj-master" && masterGain) masterGain.gain.value = +t.value;
+    if (t.id === "dj-master") { localMaster = +t.value; applyMaster(); }
+    if (t.id === "dj-boost") { S.fx.boost = +t.value; applyFx(); save(); }
     if (t.id === "dj-filter") { S.fx.mf = +t.value; applyFx(); save(); }
     if (t.id === "dj-echo") { S.fx.echo = +t.value; applyFx(); save(); }
     if (t.id === "dj-fb") { S.fx.fb = +t.value; applyFx(); save(); }
