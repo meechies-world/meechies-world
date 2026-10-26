@@ -59,22 +59,22 @@ export async function onRequestGet({ request, env }) {
     try { const ur = await env.DB.prepare("select uid, name, max(at) as at from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); counts.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "" })); } catch (_) {}
   } catch (_) {}
   let S = await readDoc(env, "radio/dj");
-  if (!S) return json({ ok: true, mode: "empty", online: counts.online, listening: counts.listening, users: counts.users });
+  if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users });
   S.A = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.A || {});
   S.B = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.B || {});
 
   // The booth has the tables — hands off.
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return json({ ok: true, mode: "booth", online: counts.online, listening: counts.listening, users: counts.users });
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "playlist", online: counts.online, listening: counts.listening, users: counts.users });
+    return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users });
   }
 
   const { results } = await env.DB.prepare("select data from docs where coll = 'tracks'").all();
   const lib = (results || []).map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
     .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
-  if (!lib.length) return json({ ok: true, mode: "empty-lib", online: counts.online, listening: counts.listening, users: counts.users });
+  if (!lib.length) return json({ ok: true, mode: "empty-lib", now, online: counts.online, listening: counts.listening, users: counts.users });
   const byAsset = new Map(lib.map((t) => [t.assetId, t]));
   const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
@@ -152,7 +152,7 @@ export async function onRequestGet({ request, env }) {
   // naturally never sets the stamp, so the rotation still never goes quiet.)
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
     if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "paused", online: counts.online, listening: counts.listening, users: counts.users });
+    return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
 
@@ -199,7 +199,7 @@ export async function onRequestGet({ request, env }) {
   }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
   if (changed) await writeDoc(env, "radio/dj", "radio", S);
-  return json({ ok: true, mode: "autodj", changed, online: counts.online, listening: counts.listening, users: counts.users });
+  return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users });
 }
 
 /* Guest song requests: the picker in js/dj.js first tries the member write; when
