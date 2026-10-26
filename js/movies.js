@@ -50,7 +50,7 @@
     const j = await r.json();
     return j.response || { docs: [], numFound: 0 };
   }
-  const card = (d) => `<button class="mv-card" type="button" data-mv="${E(d.identifier)}" data-mvt="${E(d.title || d.identifier)}" style="text-align:left;background:#0d0b08;border:1px solid var(--gold-lo);border-radius:12px;padding:8px;cursor:pointer;color:inherit;font:inherit"><img loading="lazy" src="${IA}/services/img/${E(d.identifier)}" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#000"><b style="display:block;font-size:13px;margin-top:6px;line-height:1.3">${E(d.title || d.identifier)}</b>${d.year ? `<small class="muted">${E(d.year)}</small>` : ""}</button>`;
+  const card = (d) => `<button class="mv-card" type="button" data-mv="${E(d.identifier)}" data-mvt="${E(d.title || d.identifier)}" style="text-align:left;background:#0d0b08;border:1px solid var(--gold-lo);border-radius:12px;padding:8px;cursor:pointer;color:inherit;font:inherit"><img loading="lazy" decoding="async" onerror="this.style.display='none'" src="${IA}/services/img/${E(d.identifier)}" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;background:#000"><b style="display:block;font-size:13px;margin-top:6px;line-height:1.3">${E(d.title || d.identifier)}</b>${d.year ? `<small class="muted">${E(d.year)}</small>` : ""}</button>`;
 
   async function load(append) {
     if (busy) return; busy = true;
