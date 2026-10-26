@@ -49,12 +49,20 @@
         masterIn = ctx.createGain();
         fxFilter = ctx.createBiquadFilter(); fxFilter.type = "lowpass"; fxFilter.frequency.value = 18000; fxFilter.Q.value = 0.4;
         masterGain = ctx.createGain(); masterGain.gain.value = 0.95;
-        limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -3; limiter.knee.value = 0; limiter.ratio.value = 20; limiter.attack.value = 0.002; limiter.release.value = 0.18;
+        limiter = ctx.createDynamicsCompressor(); limiter.threshold.value = -1.2; limiter.knee.value = 0; limiter.ratio.value = 20; limiter.attack.value = 0.001; limiter.release.value = 0.24;
         analyser = ctx.createAnalyser(); analyser.fftSize = 256;
         // transformer/gate chopper sits in the master path (depth 0 = open)
         gateGain = ctx.createGain(); gateGain.gain.value = 1;
         crushNode = ctx.createWaveShaper(); crushNode.oversample = "2x";
-        masterIn.connect(gateGain); gateGain.connect(crushNode); crushNode.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(limiter); limiter.connect(analyser); analyser.connect(ctx.destination);
+        // broadcast polish (always on): sub-rumble out, a bass shelf voiced for phone
+        // speakers, a touch of presence for clarity, gentle glue compression and a soft
+        // ceiling — the station comes out loud, clear and full in the low end
+        const polHp = ctx.createBiquadFilter(); polHp.type = "highpass"; polHp.frequency.value = 30; polHp.Q.value = 0.5;
+        const polBass = ctx.createBiquadFilter(); polBass.type = "lowshelf"; polBass.frequency.value = 110; polBass.gain.value = 4;
+        const polPres = ctx.createBiquadFilter(); polPres.type = "peaking"; polPres.frequency.value = 3200; polPres.Q.value = 0.9; polPres.gain.value = 1.5;
+        const polGlue = ctx.createDynamicsCompressor(); polGlue.threshold.value = -18; polGlue.knee.value = 18; polGlue.ratio.value = 2.5; polGlue.attack.value = 0.03; polGlue.release.value = 0.24;
+        const polClip = ctx.createWaveShaper(); polClip.oversample = "4x"; { const n = 512, cv = new Float32Array(n), norm = Math.tanh(1.15); for (let i = 0; i < n; i++) { const x = (i / (n - 1)) * 2 - 1; cv[i] = Math.tanh(1.15 * x) / norm; } polClip.curve = cv; }
+        masterIn.connect(gateGain); gateGain.connect(crushNode); crushNode.connect(fxFilter); fxFilter.connect(masterGain); masterGain.connect(polHp); polHp.connect(polBass); polBass.connect(polPres); polPres.connect(polGlue); polGlue.connect(polClip); polClip.connect(limiter); limiter.connect(analyser); analyser.connect(ctx.destination);
         gateOsc = ctx.createOscillator(); gateOsc.type = "square"; gateOsc.frequency.value = 4;
         const gateShaper = ctx.createWaveShaper(); gateShaper.curve = new Float32Array([-1, 1]);
         gateDepth = ctx.createGain(); gateDepth.gain.value = 0;
@@ -450,7 +458,7 @@ html.popdj .popdj-hint{display:block}`;
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
-  <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
+  <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-decks" data-show="C">
     ${deckHTML("A")}
     ${deckHTML("B")}
@@ -626,8 +634,9 @@ html.popdj .popdj-hint{display:block}`;
     if (fxFilter) fxFilter.frequency.value = 200 * Math.pow(90, (f.mf == null ? 100 : f.mf) / 100);
     if (echoWet) echoWet.gain.value = f.echo || 0;
     if (echoFb) echoFb.gain.value = f.fb == null ? 0.34 : f.fb;
-    if (verbWet) verbWet.gain.value = f.verb || 0;
-    if (flaWet) flaWet.gain.value = (f.fla || 0) * 0.8;
+    if (verbWet) verbWet.gain.value = Math.min(f.verb || 0, 0.3);
+    if (flaWet) flaWet.gain.value = Math.min(f.fla || 0, 0.25) * 0.8;
+    setCrushCurve(Math.min(f.crush || 0, 40));
     
     if (gateOsc && gateDepth && gateGain) {
       const g = +f.gate || 0;
@@ -1071,14 +1080,15 @@ html.popdj .popdj-hint{display:block}`;
     if (b.dataset.dsecbtn) { const n = b.dataset.dsecbtn; secState[n] = secState[n] ? 0 : 1; try { localStorage.setItem("mw-dsec-v1", JSON.stringify(secState)); } catch (_) {} document.querySelectorAll('.dsec[data-dsec="' + n + '"]').forEach((s) => s.classList.toggle("shut", !secState[n])); return; }
     if (b.dataset.preset) {
       const P = {
+        loud: { fx: { mf: 100, echo: 0, fb: 0.3, verb: 0.1, fla: 0, gate: 0, crush: 0, boost: 1.25 }, vinyl: false, keepMix: true, msg: "🔊 Loud & Clear: the phone setup — mud off, boost set, and the broadcast polish brings the bass and clarity. Your mix and deck volumes stay right where they are." },
         radio: { fx: { mf: 100, echo: 0, fb: 0.34, verb: 0.12, fla: 0, gate: 0, crush: 0 }, vinyl: false, msg: "🏆 Pro Radio setup: clean broadcast sound, a touch of reverb, echo armed for drops." },
         club: { fx: { mf: 100, echo: 0.22, fb: 0.45, verb: 0.3, fla: 0.25, gate: 0, crush: 0 }, vinyl: false, msg: "🔥 Club setup: echo, reverb and flanger up — big-room energy on everything you play." },
         scratch: { fx: { mf: 100, echo: 0.1, fb: 0.3, verb: 0.05, fla: 0, gate: 0, crush: 15 }, vinyl: true, msg: "🎺 Scratch Session: vinyl mode on every deck and a little grit — grab a platter and cut." },
         chop: { fx: { mf: 100, echo: 0.15, fb: 0.4, verb: 0.1, fla: 0, gate: 4, crush: 0 }, vinyl: false, msg: "⚡ Transformer setup: the chop is ON at medium speed — the beat gets sliced live for everyone." },
       }[b.dataset.preset];
       if (!P) return;
-      S.fx = Object.assign(defFx(), P.fx); S.xf = 0.5; S.xf2 = 0.5;
-      DECKS.forEach((k) => { const d = deck(k); d.vinyl = P.vinyl; d.el.preservesPitch = !P.vinyl; const vc = document.querySelector(`[data-vinyl="${k}"]`); if (vc) vc.checked = P.vinyl; S[k].vol = 0.9; });
+      S.fx = Object.assign(defFx(), P.fx); if (!P.keepMix) { S.xf = 0.5; S.xf2 = 0.5; }
+      DECKS.forEach((k) => { const d = deck(k); d.vinyl = P.vinyl; d.el.preservesPitch = !P.vinyl; const vc = document.querySelector(`[data-vinyl="${k}"]`); if (vc) vc.checked = P.vinyl; if (!P.keepMix) S[k].vol = 0.9; });
       document.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate));
       applyFx(); levels(); paintOwner(); save(true); say(P.msg); return;
     }
