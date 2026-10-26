@@ -165,7 +165,25 @@
       preservesPitch: { get() { return true; }, set(_) {} },
       src: { get() { return "yt:" + vid; }, set(_) {} },
     });
-    sh.play = () => { try { sh._p && sh._p.playVideo(); } catch (_) {} return Promise.resolve(); };
+    sh.play = () => {
+      try {
+        if (!sh._p) return Promise.resolve();
+        sh._p.playVideo();
+        // some browsers refuse to start a video with sound until it has been
+        // interacted with: if it is not rolling shortly, start it muted (always
+        // allowed) and bring the sound up the moment it is actually playing
+        let muted = false; const t0 = Date.now();
+        const iv = setInterval(() => {
+          try {
+            const st = sh._p.getPlayerState();
+            if (st === 1) { if (muted) { sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } clearInterval(iv); return; }
+            if (Date.now() - t0 > 4000) { clearInterval(iv); return; }
+            if (!muted && st !== 3 && Date.now() - t0 > 800) { muted = true; sh._p.mute(); sh._p.playVideo(); }
+          } catch (_) { clearInterval(iv); }
+        }, 250);
+      } catch (_) {}
+      return Promise.resolve();
+    };
     sh.pause = () => { try { sh._p && sh._p.pauseVideo(); } catch (_) {} };
     sh.addEventListener = (ev, fn) => { (sh._h[ev] = sh._h[ev] || []).push(fn); };
     sh.removeEventListener = (ev, fn) => { if (sh._h[ev]) sh._h[ev] = sh._h[ev].filter((f) => f !== fn); };
@@ -1006,7 +1024,7 @@ html.popdj .popdj-hint{display:block}`;
     }
     if (s.playing) { s.pos = d.el.currentTime; s.playing = false; d.el.pause(); }
     else {
-      if (s.yt) await d.setYt(s.yt); else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
+      if (s.yt) { const okY = await d.setYt(s.yt); if (!okY) { say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title);
@@ -1365,17 +1383,30 @@ html.popdj .popdj-hint{display:block}`;
     showT0 = Date.now(); showRec.start(1000); $("#rec-btn").textContent = "⏹ Stop recording"; $("#rec-st").innerHTML = '<span class="rec-on">● REC</span> Recording the show...';
   });
 
-  /* ---------- YouTube search: public Piped mirrors, no key needed ---------- */
+  /* ---------- YouTube search: Invidious mirrors, no key needed. The mirrors
+   * come and go, so after the one verified working, the booth asks the official
+   * instances list which ones are up and browser-friendly and tries those too.
+   * If every mirror is down, the paste-a-link box above still always works. */
   let ytRes = [];
-  const PIPED = ["https://pipedapi.kavin.rocks", "https://pipedapi.adminforge.de", "https://pipedapi.leptons.xyz", "https://pipedapi-libre.kavin.rocks", "https://api.piped.yt"];
+  async function ytHosts() {
+    const out = ["https://yt.chocolatemoo53.com"];
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(6000) } : {};
+      const r = await fetch("https://api.invidious.io/instances.json", ctl);
+      const j = await r.json();
+      if (Array.isArray(j)) j.forEach((pair) => { const info = pair && pair[1]; if (info && info.api && info.cors && info.uri && !out.includes(info.uri)) out.push(info.uri); });
+    } catch (_) {}
+    return out.slice(0, 5);
+  }
   async function ytSearch(q) {
-    for (const base of PIPED) {
+    const hosts = await ytHosts();
+    for (const base of hosts) {
       try {
-        const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {};
-        const r = await fetch(base + "/search?q=" + encodeURIComponent(q) + "&filter=videos", ctl);
+        const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(7000) } : {};
+        const r = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video", ctl);
         if (!r.ok) continue;
         const j = await r.json();
-        if (j && Array.isArray(j.items)) return j.items.map((it) => { const m = String(it.url || "").match(/v=([A-Za-z0-9_-]{11})/); return m ? { id: m[1], title: it.title || "YouTube video", dur: it.duration || 0 } : null; }).filter(Boolean).slice(0, 12);
+        if (Array.isArray(j) && j.length) return j.filter((it) => it && it.videoId).slice(0, 12).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
       } catch (_) {}
     }
     return null;
