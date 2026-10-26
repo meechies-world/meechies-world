@@ -539,6 +539,12 @@ html.popdj .popdj-hint{display:block}`;
   // the booth moves into its own DJ view — its own section, nothing but DJing
   const boothEl = document.getElementById("dj-owner"), boothHome = document.getElementById("dj-booth-root");
   if (boothEl && boothHome) boothHome.appendChild(boothEl);
+  // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
+  // decks — on wide screens the console grid still parks it at the top of the
+  // middle column; everywhere else it now leads the booth instead of hiding
+  // below all four decks
+  const brEl = document.getElementById("dj-browser"), dkEl = boothEl && boothEl.querySelector(".dj-decks");
+  if (brEl && dkEl) dkEl.before(brEl);
   // foldable page sections: a [data-fold] button hides its block and everything
   // below pulls up to fill the space; the choice sticks on this device
   const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
