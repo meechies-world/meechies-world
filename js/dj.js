@@ -432,7 +432,47 @@ html.popdj .popdj-hint{display:block}
 .ck-chip{position:absolute;top:6px;right:6px;z-index:6;display:none;background:#1d1a14;border:1px solid var(--gold);color:var(--gold-hi);border-radius:999px;padding:5px 11px;font:700 12px var(--body);cursor:pointer}
 #dj-owner.ck-on .ck-chip{display:block}
 #dj-ckbar{display:none;flex-wrap:wrap;gap:6px;align-items:center;background:#12100c;border:1px dashed var(--gold-lo);border-radius:10px;padding:8px 10px;margin-bottom:10px;grid-column:1/-1}
-#dj-owner.ck-on #dj-ckbar{display:flex}`;
+#dj-owner.ck-on #dj-ckbar{display:flex}
+#dj-booth-root #dj-owner{max-width:100%}
+#dj-booth-root #dj-owner .dj-decks>*{min-width:0}
+@media (max-width:760px){
+#dj-booth-root #dj-owner .dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:stretch}
+#dj-booth-root #dj-owner .deck{padding:8px;gap:5px}
+#dj-booth-root #dj-owner .deck .platter{width:76px;margin-inline:auto}
+#dj-booth-root #dj-owner .deck .wave{height:38px}
+#dj-booth-root #dj-owner .deck h4{font-size:12px}
+#dj-booth-root #dj-owner .btn{min-height:40px;font-size:12.5px;padding:5px 8px}
+#dj-booth-root #dj-owner .mixer{padding:8px;gap:6px}
+#dj-booth-root #dj-owner .xfpad.big{width:118px;height:118px}
+#dj-booth-root #dj-owner .dj-panel{padding:9px}
+}
+@media (orientation:landscape) and (max-height:600px) and (max-width:1200px){
+#dj-booth-root #dj-owner .dj-decks{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:stretch}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:3;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:4;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:3}
+#dj-booth-root #dj-owner .deck{padding:7px;gap:4px}
+#dj-booth-root #dj-owner .deck .platter{width:80px;margin-inline:auto}
+#dj-booth-root #dj-owner .deck .wave{height:34px}
+#dj-booth-root #dj-owner .deck h4{font-size:12px}
+#dj-booth-root #dj-owner .btn{min-height:38px;font-size:12px;padding:4px 7px}
+#dj-booth-root #dj-owner .mixer{padding:8px;gap:6px}
+#dj-booth-root #dj-owner .xfpad.big{width:110px;height:110px}
+}
+@media (min-width:1100px){
+#dj-booth-root #dj-owner .mixer.m1{display:flex;flex-direction:column}
+#dj-booth-root #dj-owner .mixer.m1>*{order:7}
+#dj-booth-root #dj-owner .mixer.m1>#dj-xfpad{order:1}
+#dj-booth-root #dj-owner .mixer.m1>#dj-xfpad+small{order:2}
+#dj-booth-root #dj-owner .mixer.m1>#dj-xfpad+small+div{order:3}
+#dj-booth-root #dj-owner .mixer.m1>small:has(+ #dj-vstage){order:4}
+#dj-booth-root #dj-owner .mixer.m1>#dj-vstage{order:5}
+#dj-booth-root #dj-owner .mixer.m1>.vmixrow{order:6}
+#dj-booth-root #dj-owner .xfpad.big{width:190px;height:190px}
+}`;
   document.head.appendChild(css);
 
   // collapsible deck sections: one shared open/shut choice per section, remembered
