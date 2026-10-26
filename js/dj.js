@@ -724,11 +724,18 @@ html.popdj .popdj-hint{display:block}`;
   let boothLead = false;
   const leaseKey = "mw-booth-lease";
   function leaseBeat() {
-    const boothOpen = OWNER() && !!document.getElementById("dj-owner")?.offsetParent;
+    // The lease belongs to a WINDOW, not to whichever view is on screen. Once this
+    // window holds the sound it keeps it — Malik can walk the whole site or switch
+    // tabs and the tables keep broadcasting, because the tables ARE the live radio.
+    // A window may only TAKE the lease when its booth is actually on screen and the
+    // current holder is gone (stale) — that keeps the pop-out mirror honest.
+    const el = document.getElementById("dj-owner");
+    const boothShown = OWNER() && !!el?.offsetParent;
     let L = null; try { L = JSON.parse(localStorage.getItem(leaseKey) || "null"); } catch (_) {}
     const now = Date.now();
+    const held = !!L && L.id === tabId && now - (L.at || 0) <= 7000;
     let mine = false;
-    if (boothOpen) { mine = !L || L.id === tabId || now - (L.at || 0) > 7000; if (mine) { try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: now })); } catch (_) {} } }
+    if (OWNER() && el && (held || boothShown)) { mine = held || !L || now - (L.at || 0) > 7000; if (mine) { try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: now })); } catch (_) {} } }
     const was = boothLead; boothLead = mine;
     const badge = document.getElementById("dj-lead");
     if (badge && OWNER()) badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror — the other window plays the sound, this one is the remote";
@@ -736,6 +743,7 @@ html.popdj .popdj-hint{display:block}`;
     if (!boothLead && was) DECKS.forEach((k) => { try { decks[k]?.stop(); } catch (_) {} });
   }
   leaseBeat(); setInterval(leaseBeat, 3000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { leaseBeat(); if (boothLead && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].src) follow(k); }); } });
   addEventListener("pagehide", () => { if (boothLead) { try { const L = JSON.parse(localStorage.getItem(leaseKey) || "null"); if (L && L.id === tabId) localStorage.removeItem(leaseKey); } catch (_) {} } });
   setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } paintStation(); }, 30000);
   function startListening() {
