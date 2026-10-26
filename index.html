@@ -1172,7 +1172,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       </a>
       <a class="tile" href="#community" data-go="community"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m3 18 5-5 4 4 3-3 6 6"/></svg></span><h3>Meechie's Book</h3><p>Post photos, comment, react, and send gifts.</p><span class="go">Open Meechie's Book →</span></a>
       <a class="tile" href="#chat" data-go="chat"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 6h4M12 2V0M9 12h6M9 15h6"/></svg></span><h3>Chat &amp; Walkie-Talkie</h3><p>Channels for every topic, plus voice clips.</p><span class="go">Start talking →</span></a>
-      <a class="tile" href="#community" data-go="community"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span><h3>Go Live</h3><p>Share your live. When Meechie goes live, everybody knows.</p><span class="go">Go live →</span></a>
+      <a class="tile" href="#live" data-go="live"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span><h3>Go Live</h3><p>Share your live. When Meechie goes live, everybody knows.</p><span class="go">Go live →</span></a>
       <a class="tile" href="#ads" data-go="ads"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9h18l-2 11H5zM7 9l2-5h6l2 5"/></svg></span><h3>Shops &amp; Free Ads</h3><p>Link your Printify or Shopify. List your business free.</p><span class="go">Browse →</span></a>
       <a class="tile wide" href="#promote" data-go="promote"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 11v2a2 2 0 0 0 2 2h2l6 5V4L7 9H5a2 2 0 0 0-2 2zM17 8a5 5 0 0 1 0 8"/></svg></span><h3>Promote With Us</h3><p>Spotlight, Featured, and Takeover campaigns from $50.</p><span class="go">See packages →</span></a>
       <a class="tile wide" href="#contact" data-go="contact"><span class="t-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></span><h3>Meechie's AI</h3><p>Ask about services and pricing any time, day or night. Or DM us.</p><span class="go">Ask now →</span></a>
@@ -2178,7 +2178,7 @@ function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)re
 
 /* ---------- Tabs ---------- */
 const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","tv","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
-const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"],dj:["dj","dj-booth-root"]};
+const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"]};
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
     let n=0; const t=setInterval(()=>{ const e=document.getElementById(el); if(e||++n>30){ clearInterval(t); e&&e.scrollIntoView({behavior:"smooth",block:"start"}); } },100); return; }
@@ -2680,10 +2680,11 @@ let playTok=0;
 async function tuneIn(afterEnd){ const tok=++playTok;
   if (window.MW_DJ_LIVE && window.MW_DJ_LIVE()) { window.MW_DJ.start(); return; }
   let a=airNow(); if(a && afterEnd===true && a.i===curIdx) a={i:(curIdx+1)%tracks.length,offset:0}; // song file shorter than listed: move on instead of replaying
+  if(!a && tracks.length) a={i:0,offset:0}; // station clock not ready but the music is here: start the playlist — never a dead button
   if(!a){ toast("The station starts when the first track is added."); return; }
   // After a song ends: pick up exactly where the crossfade left the next song, or near its start if there was no crossfade
   const handoff=afterEnd===true ? xfOffset(a.i) : null;
-  const off=afterEnd===true ? (handoff!=null ? handoff : Math.max(0,a.offset-XF)) : airNow().offset;
+  const off=afterEnd===true ? (handoff!=null ? handoff : Math.max(0,a.offset-XF)) : a.offset;
   mode="radio"; curIdx=a.i; await load(tracks[a.i], off, true); if(tok!==playTok) return;
   media.play().catch(()=>{ if(!document.hidden) toast("Tap play to start the audio."); }); showBar(tracks[a.i],"Meechie's World Radio · LIVE");
   room?.presence({radio:true}); renderTracks(); updIcons();
@@ -3451,7 +3452,7 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792982000"></script>
+<script src="js/appnav.js?v=1792991000"></script>
 <script src="js/fb-feed.js?v=1792985000"></script>
 <script src="js/fb-feed-plus.js?v=1792580555"></script>
 <script src="js/stories.js?v=1792607566"></script>
