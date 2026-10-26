@@ -175,6 +175,7 @@ html.lux .gift[aria-pressed=true]{background:var(--foil-grad) !important;color:#
 
 /* ---------- phone fit-and-finish ---------- */
 html.lux #mw-stats{display:flex !important;flex-wrap:nowrap !important;justify-content:safe center;gap:14px !important;overflow-x:auto;scrollbar-width:none;white-space:nowrap;font:600 12px var(--body) !important;padding:6px 12px !important;background:rgba(6,5,4,.85) !important;border-bottom:1px solid rgba(214,170,74,.25) !important;color:#d9cfb6}
+@media (max-width:640px){html.lux #mw-stats{flex-wrap:wrap !important;white-space:normal !important;overflow-x:visible !important;justify-content:center !important}}
 html.lux #mw-stats::-webkit-scrollbar{display:none}
 html.lux #mw-stats b{color:#ffe08a}
 @media (max-width:640px){

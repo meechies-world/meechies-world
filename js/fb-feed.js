@@ -250,8 +250,9 @@ body[data-view=clips] #fb-right,body[data-view=world] #fb-right,body[data-view=d
   tabs.innerHTML = [["home", "🏠", "Home"], ["friends", "👥", "Friends"], ["video", "📺", "Video"], ["market", "🛍️", "Marketplace"], ["notes", "🔔", "Notifications"], ["menu", "☰", "Menu"]]
     .map(([k, ic, n]) => `<button type="button" data-fbt="${k}" aria-label="${n}" aria-pressed="${k === "home"}">${ic}<i hidden></i><small>${n}</small></button>`).join("");
   top.after(tabs);
-  const stickTabs = () => { const h = document.querySelector("header.bar"); const hh = h ? h.offsetHeight : 60; tabs.style.top = hh + "px"; document.documentElement.style.setProperty("--rail-top", (hh + 56) + "px"); const nt = document.getElementById("fb-notes"); if (nt) nt.style.top = (hh + 54) + "px"; };
+  const stickTabs = () => { const h = document.querySelector("header.bar"); const hh = h ? h.offsetHeight : 60; let ah = 0; document.querySelectorAll(".announce").forEach((a) => { if (!a.hidden) ah += a.offsetHeight; }); const top = hh + ah; tabs.style.top = top + "px"; document.documentElement.style.setProperty("--rail-top", (top + 56) + "px"); const nt = document.getElementById("fb-notes"); if (nt) nt.style.top = (top + 54) + "px"; };
   stickTabs(); addEventListener("resize", stickTabs);
+  document.querySelectorAll(".announce").forEach((a) => new MutationObserver(stickTabs).observe(a, { attributes: true, attributeFilter: ["hidden"] }));
   const notes = document.createElement("div"); notes.id = "fb-notes"; notes.hidden = true;
   tabs.after(notes); stickTabs();
   /* the members/online strip goes under the Book tabs, so the Book bar sits flush under the site header — no gap */

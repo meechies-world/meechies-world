@@ -36,7 +36,7 @@
   .apptab{display:grid!important}
 }
 #hdr-right{display:flex;align-items:center;gap:6px;flex:none;margin-left:8px}
-@media (max-width:640px){#hdr-right{position:absolute;right:16px;top:12px;margin:0}#hdr-right .authbar{position:static!important;margin:0}}
+@media (max-width:640px){#hdr-right{position:static;margin-left:auto}#hdr-right .authbar{position:static!important;margin:0}}
 #hdr-menu{display:inline-flex!important;align-items:center;place-items:center;gap:0;border:1px solid var(--gold,#d4a843);background:#15130f;color:var(--gold-hi,#f0cf78);border-radius:12px;padding:7px 12px;font:800 13px var(--body,system-ui);cursor:pointer;margin-left:8px}
 /* computers: one clean row with the main sections; everything else is under "☰ Menu" */
 @media (min-width:761px), (pointer:fine){
