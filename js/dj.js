@@ -414,7 +414,11 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
    column stacks main mixer, SONG PICKER, C/D mixer. */
 @media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
-html.popdj .popdj-hint{display:block}`;
+html.popdj .popdj-hint{display:block}
+.dj-rotate{display:none}
+@media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
+@media (max-width:760px){.dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#dj-browser .dj-item{grid-template-columns:minmax(0,1fr) repeat(5,44px)}#dj-browser .dj-item .btn{min-width:44px;width:44px;padding:0}}
+@media (orientation:landscape) and (max-height:540px) and (max-width:1100px){.dj-decks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}.dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}.dj-decks>.deck[data-deck="C"]{grid-column:3;grid-row:1}.dj-decks>.deck[data-deck="D"]{grid-column:4;grid-row:1}.dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}.dj-decks>.mixer.m2{grid-column:1/-1;grid-row:3}.dj-decks>.swapbar{display:none!important}#dj-owner .deck{padding:8px;gap:5px}#dj-owner .deck .platter{width:92px}#dj-owner .deck .wave{height:40px}}`;
   document.head.appendChild(css);
 
   // collapsible deck sections: one shared open/shut choice per section, remembered
@@ -461,6 +465,7 @@ html.popdj .popdj-hint{display:block}`;
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
+  <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-decks" data-show="C">
     ${deckHTML("A")}
