@@ -1350,6 +1350,20 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       </div>
     </div>
 
+    <div class="card" id="app-poll" style="margin:18px 0">
+      <h3 style="margin-top:0">📻 The Meechie's World RADIO APP — want it?</h3>
+      <p class="muted" style="margin:6px 0 12px">We're thinking about a separate app that's ONLY the radio + DJ station — watch the music videos on the big screen, request songs, and keep the music playing with your phone screen OFF. Would you download it?</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn gold" type="button" data-appvote="yes">📲 Yes — I'd download it</button>
+        <button class="btn ghost" type="button" data-appvote="no">🌐 Nah — the website's enough</button>
+      </div>
+      <div id="apppoll-results" hidden style="margin-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin:5px 0"><span style="width:118px;font-size:13px">📲 Yes</span><div style="flex:1;background:#241d10;border-radius:99px;height:14px;overflow:hidden"><div id="apppoll-yes" style="height:100%;width:0;background:linear-gradient(90deg,#b8860b,#f0cf78);border-radius:99px;transition:width .4s ease"></div></div><b id="apppoll-yes-n" style="font-size:13px">0%</b></div>
+        <div style="display:flex;align-items:center;gap:8px;margin:5px 0"><span style="width:118px;font-size:13px">🌐 Nah</span><div style="flex:1;background:#1c1c20;border-radius:99px;height:14px;overflow:hidden"><div id="apppoll-no" style="height:100%;width:0;background:#8a8f98;border-radius:99px;transition:width .4s ease"></div></div><b id="apppoll-no-n" style="font-size:13px">0%</b></div>
+      </div>
+      <small class="muted" id="apppoll-note" style="display:block;margin-top:10px">Be the first to vote.</small>
+    </div>
+
     <div id="dj-root"></div>
     <div style="margin-top:14px"><a class="btn" href="#dj" data-go="dj">🎛️ Open the DJ Station — 4 decks</a></div>
     <div style="display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-top:18px">
@@ -3469,7 +3483,7 @@ boot();
 <script src="js/preach.js?v=1792580555"></script>
 <script src="js/world3d.js?v=1792580555"></script>
 <script src="js/clips.js?v=1792929000"></script>
-<script src="js/dj.js?v=1793000000"></script>
+<script src="js/dj.js?v=1793001000"></script>
 <script src="js/live.js?v=1792580555"></script>
 <script src="js/autotune.js?v=1792580555"></script>
 <script src="js/beatmaker.js?v=1792580555"></script>
