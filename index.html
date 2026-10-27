@@ -1399,6 +1399,14 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     </div>
     <div class="tracks" id="tracks"><div class="empty" style="border:0;border-radius:0">No tracks yet. New music from Meechie's World shows up here.</div></div>
     </div>
+    <div class="card" id="offline-card" style="margin:18px 0">
+      <p class="eyebrow">Take it with you</p>
+      <h3 class="sub-h" style="margin:4px 0 6px">📥 Offline music</h3>
+      <p class="muted" style="margin:0 0 10px">Save songs to this device and they keep playing with no internet — on a plane, in a tunnel, anywhere. Songs you play save themselves here too. The live station still needs a signal, like any radio.</p>
+      <p id="off-status" style="margin:0 0 10px;font-weight:700"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" id="off-save">⬇ Save the station rotation (15 songs)</button><button class="btn ghost sm" type="button" id="off-clear">Remove all saved</button></div>
+      <div id="off-list" style="margin-top:8px"></div>
+    </div>
     <div class="rn-box">
       <div class="rn-head"><div><p class="eyebrow">More music</p><h3 class="sub-h" style="margin:4px 0 0">Meechie on ReverbNation</h3></div>
         <a class="btn ghost sm" href="https://www.reverbnation.com/halalmusic" target="_blank" rel="noopener">Become a fan on ReverbNation →</a></div>
@@ -2696,7 +2704,7 @@ function renderTracks(){
     <div class="cv" style="${safeImg(t.cover)?`background-image:url('${esc(safeImg(t.cover))}')`:""}"></div>
     <div class="t"><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></div>
     <span class="d">${fmt(t.duration)}</span>
-    <span class="ops">${isOwner?`<button class="act" data-onair="${i}">Play on air</button><button class="act" data-tdel="${t.id}">Delete</button>`:""}</span></div>`).join("");
+    <span class="ops"><button class="act" data-off="${i}">⬇ Save</button>${isOwner?`<button class="act" data-onair="${i}">Play on air</button><button class="act" data-tdel="${t.id}">Delete</button>`:""}</span></div>`).join("");
   paintAir();
 }
 function showBar(t,sub){ lockScreen(t,sub); $("#player-bar").hidden=false; document.body.classList.add("has-player"); $("#pb-title").textContent=t.title; $("#pb-sub").textContent=sub; const c=$("#pb-cover"); c.style.backgroundImage=""; c.innerHTML=$("#air-cover").innerHTML||c.innerHTML; setCover(c,t); }
@@ -3537,5 +3545,94 @@ boot();
 <script src="js/visitors.js?v=1792580555"></script>
 <script src="js/ai-widget.js?v=1792982000"></script>
 <script src="js/house-ads.js?v=1793026000"></script>
+<script>
+/* Offline music shelf: songs saved to this device (from here, or automatically
+ * when played — the service worker stores them) keep playing with no internet. */
+(function () {
+  var CACHE = "mw-music", META = "mw-offline-meta";
+  function meta() { try { return JSON.parse(localStorage.getItem(META) || "{}"); } catch (_) { return {}; } }
+  function setMeta(m) { try { localStorage.setItem(META, JSON.stringify(m)); } catch (_) {} }
+  function byUrl(u) { try { return tracks.findIndex(function (t) { return trackUrl(t) === u; }); } catch (_) { return -1; } }
+  function paintButtons() {
+    var m = meta();
+    document.querySelectorAll("[data-off]").forEach(function (b) {
+      var t = tracks[+b.dataset.off]; if (!t) return;
+      var saved = !!m[trackUrl(t)];
+      b.textContent = saved ? "✓ Saved" : "⬇ Save";
+    });
+  }
+  async function refresh() {
+    var list = document.getElementById("off-list"); if (!list) return;
+    var m = meta(), keys = [];
+    if ("caches" in window) { try { var c = await caches.open(CACHE); keys = (await c.keys()).map(function (r) { return r.url; }); } catch (_) {} }
+    var changed = false;
+    Object.keys(m).forEach(function (u) { if (keys.indexOf(u) < 0) { delete m[u]; changed = true; } });
+    if (changed) setMeta(m);
+    if (!keys.length) { list.innerHTML = '<p class="muted" style="margin:0">Nothing saved yet. Save the rotation above, or tap ⬇ Save on any song in the library.</p>'; paintButtons(); return; }
+    list.innerHTML = keys.map(function (u) {
+      var ix = byUrl(u), t = ix >= 0 ? tracks[ix] : null, it = m[u] || {};
+      var title = t ? t.title : (it.title || "Saved song"), artist = t ? t.artist : (it.artist || "");
+      return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><span style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(title) + '</b><small class="muted">' + esc(artist || "") + '</small></span><button class="btn sm" type="button" data-offplay="' + esc(u) + '">▶ Play</button><button class="btn ghost sm" type="button" data-offdel="' + esc(u) + '">Remove</button></div>';
+    }).join("");
+    paintButtons();
+  }
+  async function saveTrack(t) {
+    var u = trackUrl(t);
+    var r = await fetch(u, { headers: { "x-mw-save": "1" } });
+    if (!r || !r.ok) throw new Error("fetch failed");
+    if ("caches" in window) { var c = await caches.open(CACHE); await c.put(u, r.clone()); }
+    var m = meta(); m[u] = { title: t.title || "", artist: t.artist || "", assetId: t.assetId || "", cover: t.cover || "" }; setMeta(m);
+  }
+  document.addEventListener("click", async function (e) {
+    var b = e.target.closest("[data-off],[data-offplay],[data-offdel]"); if (!b) return;
+    if (b.dataset.off != null) {
+      var t = tracks[+b.dataset.off]; if (!t) return;
+      var u = trackUrl(t), m = meta();
+      if (m[u]) { toast("Already saved for offline."); return; }
+      b.textContent = "Saving...";
+      try { await saveTrack(t); toast("Saved — it plays offline now."); } catch (_) { toast("Could not save that one right now."); }
+      refresh(); return;
+    }
+    if (b.dataset.offplay) {
+      var url = b.dataset.offplay, ix = byUrl(url);
+      if (ix >= 0) { playLib(ix); return; }
+      var it = meta()[url] || {};
+      try { media.src = url; media.play().catch(function () {}); showBar({ title: it.title || "Saved song", artist: it.artist || "", cover: it.cover || "" }, "Offline · saved on this device"); document.getElementById("player-bar").hidden = false; } catch (_) {}
+      return;
+    }
+    if (b.dataset.offdel) {
+      var u2 = b.dataset.offdel;
+      if ("caches" in window) { try { var c2 = await caches.open(CACHE); await c2.delete(u2); } catch (_) {} }
+      var m2 = meta(); delete m2[u2]; setMeta(m2); refresh(); return;
+    }
+  });
+  var sv = document.getElementById("off-save");
+  if (sv) sv.addEventListener("click", async function () {
+    var st = document.getElementById("off-status");
+    var todo = tracks.filter(function (t) { return !meta()[trackUrl(t)]; }).slice(0, 15);
+    if (!todo.length) { if (st) st.textContent = "The rotation is already saved on this device."; return; }
+    sv.disabled = true;
+    var done = 0, failed = 0;
+    for (var i = 0; i < todo.length; i++) {
+      if (st) st.textContent = "Saving songs for offline... " + (done + failed + 1) + " of " + todo.length;
+      try { await saveTrack(todo[i]); done++; } catch (_) { failed++; }
+    }
+    sv.disabled = false;
+    if (st) st.textContent = done + " song" + (done === 1 ? "" : "s") + " saved — they play with no internet now." + (failed ? " (" + failed + " could not be saved.)" : "");
+    refresh();
+  });
+  var cl = document.getElementById("off-clear");
+  if (cl) cl.addEventListener("click", async function () {
+    if ("caches" in window) { try { await caches.delete(CACHE); } catch (_) {} }
+    setMeta({}); refresh(); toast("Saved songs removed from this device.");
+  });
+  function paintNet() { var st = document.getElementById("off-status"); if (st && !navigator.onLine) st.textContent = "🔴 You are offline — your saved songs still play."; }
+  window.addEventListener("offline", paintNet);
+  window.addEventListener("online", function () { var st = document.getElementById("off-status"); if (st && st.textContent.indexOf("offline") >= 0) st.textContent = ""; });
+  var tk = document.getElementById("tracks");
+  if (tk && window.MutationObserver) new MutationObserver(function () { paintButtons(); }).observe(tk, { childList: true });
+  refresh(); paintNet(); setTimeout(refresh, 4000);
+})();
+</script>
 </body>
 </html>
