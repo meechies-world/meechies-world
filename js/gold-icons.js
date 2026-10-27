@@ -194,9 +194,21 @@
     D.addEventListener("visibilitychange", run); run();
   }
 
+  // phones: tuck the Book tab row away while scrolling down, bring it back on any scroll up
+  function scrollChrome() {
+    let last = scrollY, acc = 0;
+    addEventListener("scroll", () => {
+      const y = scrollY, d = y - last; last = y;
+      if (innerWidth > 760) { H.classList.remove("gi-down"); return; }
+      if (y < 140) { acc = 0; H.classList.remove("gi-down"); return; }
+      acc = (d > 0) === (acc > 0) ? acc + d : d;
+      if (acc > 24) H.classList.add("gi-down"); else if (acc < -12) H.classList.remove("gi-down");
+    }, { passive: true });
+  }
+
   function init() {
     if (!H.classList.contains("lux")) H.classList.add("lux");
-    defs(); scan(D.body); medallions(); dust();
+    defs(); scan(D.body); medallions(); dust(); scrollChrome();
     let pend = new Set(), tm = 0;
     new MutationObserver((ms) => {
       for (const m of ms) for (const n of m.addedNodes) { if (n.nodeType === 1) pend.add(n); else if (n.nodeType === 3 && n.parentElement) pend.add(n.parentElement); }
