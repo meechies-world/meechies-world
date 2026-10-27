@@ -104,6 +104,7 @@
 <p class="mw-sub">Free — no app store, no searching. Pick one and it lands right on your home screen:</p>
 <a class="appbtn" href="/radio-app/">📻 <span>MW Radio<small>The live station + DJ booth in one tap</small></span></a>
 <a class="appbtn" href="/ai-app/">🎙️ <span>Meechie AI<small>Talk to Meechie out loud — he talks back and shows you around</small></span></a>
+<a class="appbtn" href="/apps/">📲 <span>Just one section?<small>Meechie's Book, Dating, Legal Help, Shop, Live, Studio, TV and more — each one its own app</small></span></a>
 ${deferred ? '<button class="appbtn" type="button" id="mw-inst-go">🌐 <span>Full Meechie\'s World app<small>The whole site, full screen</small></span></button>' : ""}
 ${ios ? '<p class="mw-sub">On iPhone: tap an app above, then the Share button, then “Add to Home Screen”.</p>' : ""}
 <button class="mw-x" type="button" id="mw-inst-x">Not now</button>`;

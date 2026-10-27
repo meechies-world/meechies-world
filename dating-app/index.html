@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meechie&#x27;s Dating — the App</title>
+<meta name="description" content="Just Dating: your dating profile, swiping, matches and messages, in its own app. 18+ only. Free — no app store needed.">
+<link rel="manifest" href="/manifest-dating.webmanifest">
+<meta name="theme-color" content="#0b0a08">
+<link rel="icon" href="/img/apps/dating-192.png">
+<link rel="apple-touch-icon" href="/img/apps/dating-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MW Dating">
+<meta property="og:title" content="Meechie&#x27;s Dating — the App">
+<meta property="og:description" content="Just Dating: your dating profile, swiping, matches and messages, in its own app. 18+ only. Free — no app store needed.">
+<meta property="og:image" content="https://meechiesworldinc.com/img/apps/dating-512.png">
+<script>/* opened from the home-screen icon: go straight into the app */
+if ((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone) location.replace("/?app=dating#dating");</script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 60% at 50% -10%,rgba(255,190,80,.16),transparent 60%),#0b0a08;color:#f3ead2;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:center;padding:34px 20px 48px;min-height:100vh}
+  .logo{width:128px;height:128px;border-radius:30px;box-shadow:0 0 0 2px #8a6d1f,0 10px 40px rgba(240,207,120,.28)}
+  h1{margin:18px 0 2px;font:700 27px Georgia,serif;letter-spacing:.06em;color:#f0cf78}
+  .sub{margin:0 0 20px;color:#cbb26a;letter-spacing:.28em;font-size:12px}
+  .pitch{max-width:520px;margin:0 auto 22px;color:#d8d2c0;font-size:16px;line-height:1.55}
+  .pitch b{color:#ffe08a}
+  ul{list-style:none;padding:0;margin:0 auto 26px;max-width:440px;text-align:left}
+  li{padding:10px 2px 10px 30px;border-bottom:1px solid #241d10;font-size:15.5px;line-height:1.45;position:relative}
+  li::before{content:"";position:absolute;left:6px;top:16px;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#fff4c2,#d49a2c);box-shadow:0 0 8px rgba(255,200,90,.6)}
+  .install{display:inline-block;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.06em;font-size:18px;padding:15px 30px;border-radius:14px;border:0;cursor:pointer;box-shadow:0 6px 22px rgba(240,207,120,.3);text-decoration:none}
+  .open{display:inline-block;margin:14px auto 0;background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:16px;padding:13px 26px;border-radius:14px;text-decoration:none}
+  .how{max-width:440px;margin:24px auto 0;color:#a79c7e;font-size:14.5px;line-height:1.6;background:#120f09;border:1px solid #2c2413;border-radius:14px;padding:12px 14px}
+  .how b{color:#e9d9a6}
+  .more{margin-top:28px;font-size:14px} .more a{color:#d9b65c}
+  .back{display:inline-block;margin-top:14px;color:#8a8268;font-size:13.5px}
+</style>
+</head>
+<body>
+  <img class="logo" src="/img/apps/dating-512.png" alt="Meechie&#x27;s Dating app icon" width="128" height="128">
+  <h1>MEECHIE&#x27;S DATING</h1>
+  <p class="sub">D A T I N G</p>
+  <p class="pitch">Just <b>Dating</b>: your dating profile, swiping, matches and messages, in its own app. 18+ only.</p>
+  <ul><li>Make a profile with your photos and a video</li><li>Swipe, and when you both like each other it&#x27;s a match</li><li>Message your matches privately</li><li>Adults 18+ only</li></ul>
+  <button class="install" id="install-btn" type="button" hidden>📲 INSTALL THE APP</button>
+  <p class="how" id="how-ios" hidden><b>On iPhone:</b> tap the <b>Share</b> button at the bottom of Safari, then <b>“Add to Home Screen.”</b> The MW Dating app lands on your home screen like a real app.</p>
+  <p class="how" id="how-other" hidden><b>Put it on your home screen:</b> open your browser menu (⋮) and choose <b>“Install app”</b> or <b>“Add to Home screen.”</b></p>
+  <br>
+  <a class="open" href="/?app=dating#dating">▶ Open it now in your browser</a>
+  <p class="more">Want a different section? <a href="/apps/">See all the Meechie's World apps</a></p>
+  <a class="back" href="/">← Back to the full Meechie's World site</a>
+<script>
+  (function () {
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var btn = document.getElementById("install-btn"), deferred = null;
+    if (isIOS) document.getElementById("how-ios").hidden = false;
+    else setTimeout(function () { if (!deferred) document.getElementById("how-other").hidden = false; }, 2500);
+    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; btn.hidden = false; document.getElementById("how-other").hidden = true; });
+    btn.addEventListener("click", function () { if (!deferred) return; deferred.prompt(); deferred.userChoice.then(function () { deferred = null; btn.hidden = true; }); });
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(function () {});
+  })();
+</script>
+</body>
+</html>

@@ -8,7 +8,7 @@ const PREVIEW = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|Discordbot|Tele
 // AI assistants that open a page because a person asked about it (not training or scraping crawlers).
 const ASSISTANTS = /ChatGPT-User|Claude-User|Perplexity-User/i;
 // Paths that must never be served from the public site.
-const INTERNAL = /^\/(supabase|lib|functions)\/|^\/(wrangler\.toml|tools-bump\.py|AGENTS\.md|CLAUDE\.md|GEMINI\.md|README\.md|\.gitignore)$/i;
+const INTERNAL = /^\/(supabase|lib|functions|tools)\/|^\/(wrangler\.toml|tools-bump\.py|AGENTS\.md|CLAUDE\.md|GEMINI\.md|README\.md|\.gitignore)$/i;
 
 import { install } from "../lib/sbshim.js";
 let ENV = null; install(() => ENV); // server helpers read the new free database once the move is done (lib/sbshim.js)

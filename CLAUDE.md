@@ -36,3 +36,4 @@ This is the website and app for **Meechie's World Inc** (owner: Daryl "Meechie" 
 - Welcome videos and choice card (Text/Call Meechie): `js/welcome-show.js`
 - Phone notifications: `js/push.js` and `functions/api/push.js`
 - Bottom tabs on phones: `js/appnav.js`
+- Section apps (one home-screen app per section, `/<id>-app/` + `/apps/`): edit `tools/apps.json`, run `python3 tools/make-apps.py`. App mode lives in the first script in `index.html`; the "get this app" card is `js/app-offer.js`.
