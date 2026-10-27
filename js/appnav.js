@@ -75,7 +75,7 @@ nav.tabs a{letter-spacing:.02em}
 .appmore .grid a[aria-current=page]{border-color:var(--gold,#d4a843);color:var(--gold-hi,#f0cf78)}`;
   document.head.appendChild(css);
 
-  const ICON = { live: "🔴", predict: "🔮", jobs: "💼", books: "📚", liveradio: "📡", livetv: "📺", home: "🏠", services: "🧰", shop: "🛍️", community: "👥", radio: "📻", tv: "🍿", clips: "🎬", videos: "📺", world: "🌐", games: "🎮", creators: "🎨", chat: "💬", messages: "✉️", ads: "📌", promote: "📣", contact: "📞", friends: "🤝", dating: "💘", fans: "🔞", studio: "🎚️", preach: "✝️", markets: "📈", coin: "🪙", legal: "⚖️" };
+  const ICON = { live: "🔴", predict: "🔮", jobs: "💼", books: "📚", liveradio: "📡", livetv: "📺", home: "🏠", services: "🧰", shop: "🛍️", community: "👥", radio: "📻", tv: "🍿", dj: "🎛️", clips: "🎬", videos: "📺", world: "🌐", games: "🎮", creators: "🎨", chat: "💬", messages: "✉️", ads: "📌", promote: "📣", contact: "📞", friends: "🤝", dating: "💘", fans: "🔞", studio: "🎚️", preach: "✝️", markets: "📈", coin: "🪙", legal: "⚖️" };
   // the sections that always show in the computer header row (the rest live under "☰ Menu")
   const CORE = ["home", "legal", "services", "community", "radio", "tv", "videos", "shop", "messages", "live"];
   document.querySelectorAll("header nav.tabs a[data-go]").forEach((a) => { if (CORE.includes(a.dataset.go)) a.classList.add("core"); });
