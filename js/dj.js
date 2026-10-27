@@ -1692,8 +1692,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY;
     e.preventDefault();
     const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
-    wheelTgt = Math.max(0, Math.min(max, scrollY + Math.max(-40, Math.min(40, d * 0.05))));
-    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.4); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
+    wheelTgt = Math.max(0, Math.min(max, scrollY + Math.max(-14, Math.min(14, d * 0.0125))));
+    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.18); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
   }, { passive: false });
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
   if (typeof media !== "undefined") media.addEventListener("play", () => {
