@@ -797,6 +797,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner .xfpad{background:linear-gradient(135deg,#17181a,#0b0b0d);border:1px solid #2e2e33;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 18px #000}
 #dj-owner .xfdot{background:linear-gradient(180deg,#f2f2f5,#9a9aa2 50%,#55555c);border:1px solid #000;box-shadow:0 3px 8px rgba(0,0,0,.6)}
 #dj-owner .dj-top{border-bottom:2px solid #26272b;box-shadow:0 1px 0 rgba(240,207,120,.25)}
+/* ===== PRO POLISH (owner: booth to its highest level, 2026-10-27) — one
+   machined-hardware finish across every booth block so the owner and member
+   tables match: matched panel chrome, deck nameplates lit in the deck accent
+   color, pressed-metal buttons, a framed master screen, and the same finish
+   on the listener station card. NO layout change: positions, sizes and the
+   owner's console arrangement are untouched. ===== */
+#dj-booth-root #dj-owner .deck,#dj-booth-root #dj-owner .mixer,#dj-booth-root #dj-owner .dj-panel{background:linear-gradient(180deg,#17181b,#0b0b0d);border:1px solid #33333a;border-radius:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 -1px 0 rgba(0,0,0,.6),0 6px 18px rgba(0,0,0,.45)}
+#dj-booth-root #dj-owner .deck h4{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #2b2b30;border-radius:8px;padding:6px 9px;letter-spacing:.18em}
+#dj-booth-root #dj-owner .deck h4::before{content:"";width:9px;height:9px;border-radius:50%;flex:none;background:var(--dk,#f0cf78);box-shadow:0 0 8px var(--dk,#f0cf78)}
+#dj-booth-root #dj-owner .btn{border-radius:9px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 2px 0 rgba(0,0,0,.55)}
+#dj-booth-root #dj-owner .btn:active{transform:translateY(1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 1px 0 rgba(0,0,0,.55)}
+#dj-booth-root #dj-owner .xv i{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 3px 8px rgba(0,0,0,.6),0 0 0 1px #000}
+#dj-booth-root #dj-owner #dj-screen .vstage{border:1px solid #3a3a41;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 0 1px rgba(240,207,120,.12)}
+#dj-booth-root #dj-owner button:focus-visible,#dj-booth-root #dj-owner input:focus-visible{outline:2px solid rgba(240,207,120,.75);outline-offset:1px}
+#dj-station{background:linear-gradient(180deg,#141518,#0b0b0d);border-color:#33333a;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 18px rgba(0,0,0,.4)}
 }`;
   document.head.appendChild(css);
 
@@ -1552,7 +1567,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   setInterval(() => {
     const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) show();
-    if (pkTab === "mine" && !(pkItems || []).length && TRACKS().length) paintPkList();
+    if (pkTab === "mine" && !pkItems.length && TRACKS().length) paintPkList();
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
       // watchdog: an element that reached the end without firing 'ended' still hands over
@@ -2312,7 +2327,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const r = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video&page=" + page, ctl);
         if (!r.ok) continue;
         const j = await r.json();
-        if (Array.isArray(j) && (j.length || page > 1)) return j.filter((it) => it && it.videoId).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
+        if (Array.isArray(j)) return j.filter((it) => it && it.videoId).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
       } catch (_) {}
     }
     return null;
