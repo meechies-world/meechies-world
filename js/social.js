@@ -37,7 +37,8 @@
   }
   function paintBar() {
     const mine = ME() ? window.MW_FOLLOWERS(ME()) : 0, fol = window.MW_FOLLOWING.size;
-    bar.innerHTML = `<span>👥 ${countsKnown ? `<b>${memberCount.toLocaleString()}</b> ` : ""}members</span><span class="on">● ${countsKnown ? `<b style="color:#4ade80">${window.MW_ONLINE.size}</b> ` : ""}online now</span>` + (ME() ? `<span>❤️ <b>${mine}</b> followers</span><span>➕ <b>${fol}</b> following</span>` : "");
+    const html = `<span>👥 ${countsKnown ? `<b>${memberCount.toLocaleString()}</b> ` : ""}members</span><span class="on">● ${countsKnown ? `<b style="color:#4ade80">${window.MW_ONLINE.size}</b> ` : ""}online now</span>` + (ME() ? `<span>❤️ <b>${mine}</b> followers</span><span>➕ <b>${fol}</b> following</span>` : "");
+    if (bar._h === html) return; bar._h = html; bar.innerHTML = html; /* repaint only when the numbers change, so a tap never lands on a button that was just swapped out */
   }
 
   /* ---------- follows ---------- */
