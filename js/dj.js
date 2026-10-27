@@ -455,7 +455,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
    the right, make the song pick and mixer in the middle"): the deck bank unwraps so
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
    column stacks main mixer, SONG PICKER, C/D mixer. */
-@media(min-width:1580px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
+@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
 html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
 @media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
@@ -615,24 +615,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 .xv span{display:block;font:700 9.5px var(--body);letter-spacing:.08em;color:var(--gold-hi,#f0cf78);margin-top:4px}
 .xv b{display:block;font-size:10.5px;color:#e8e2d0;font-weight:600}
 @media(max-width:760px){.xv{width:54px}.xv i{width:44px;height:44px}.xfrow{gap:10px}.xfvols{gap:8px}}
-/* console alignment — line everything up like hardware (owner ask, 2026-10-26):
- * nothing overflows its column, decks share one height, the crossfader bridge
- * sits wide under the browser, and a loaded video deck stays the same height
- * as an empty one. */
-#dj-owner{max-width:1680px;margin-inline:auto}
+/* layout safety only (kept after the owner asked his console arrangement back,
+ * 2026-10-26): these two rules change nothing visually — they just stop a deck
+ * from ever spilling outside its column. */
 #dj-booth-root{overflow-x:clip}
 #dj-owner .deck{min-width:0}
-@media(min-width:761px){#dj-owner .deck .ytbox{max-height:128px}}
-@media(min-width:1580px){
-#dj-owner{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(350px,430px) minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:stretch}
-#dj-owner .deck[data-deck="A"]{grid-row:3/span 4}
-#dj-owner .deck[data-deck="B"]{grid-row:3/span 4}
-#dj-owner .deck[data-deck="C"]{grid-row:3/span 4}
-#dj-owner .deck[data-deck="D"]{grid-row:3/span 4}
-#dj-owner>#dj-xfbar{grid-column:2/5;grid-row:4;align-self:start}
-#dj-owner .mixer.m1{grid-row:5}
-#dj-owner .mixer.m2{grid-row:6}
-}
 #dj-livealert .la-txt{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.3}
 #dj-booth-root #dj-owner .xfpad{background:linear-gradient(135deg,#1b1c1f,#0c0c0e);border:1.5px solid #3f3f46;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 22px #000}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
