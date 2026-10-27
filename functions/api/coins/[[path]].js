@@ -101,6 +101,16 @@ function settleGame(game, bet, choice) {
   return { pay: total >= 21 ? bet * 5 : total >= 17 ? Math.floor(bet * 1.8) : total >= 13 ? bet : 0, detail: { rolls, total } };
 }
 const poolRow = async (env) => ((await env.DB.prepare("select coins from game_pool where id = 1").first()) || { coins: 0 }).coins;
+
+/* ---------------- Daily check-in ----------------
+ * One claim per member per America/New_York day: 10 free coins, and every
+ * 7th straight day pays a 40-coin bonus (50 total). The claim is a coin_tx
+ * row with kind "daily" and a deterministic id, so a double claim can never
+ * pay twice; the wallet is credited only when the insert actually landed. */
+const DAILY_BASE = 10, DAILY_BONUS_EVERY = 7, DAILY_BONUS = 40;
+const dayET = (back = 0) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() - back * 864e5));
+const dailyDays = async (env, uid) => new Set(((await env.DB.prepare("select id from coin_tx where uid = ? and kind = 'daily' order by at desc limit 90").bind(uid).all()).results || []).map((r) => String(r.id).split(":").pop()));
+const streakFrom = (days, includeToday) => { let n = 0; for (let i = includeToday ? 0 : 1; ; i++) { if (days.has(dayET(i))) n++; else break; } return n; };
 const isUnder18 = async (env, uid) => { const r = await env.DB.prepare("select data from docs where path = ?").bind("members/" + uid).first(); try { return !!(r && JSON.parse(r.data || "{}").under18); } catch (_) { return false; } };
 
 export async function onRequest({ request, env, params }) {
@@ -148,6 +158,24 @@ export async function onRequest({ request, env, params }) {
     const wins = (await env.DB.prepare("select uid, kind, coins, other, at from coin_tx where kind in ('game_win','pot_win') order by at desc limit 12").all()).results || [];
     const mine = (await env.DB.prepare("select kind, coins, other, at from coin_tx where (uid = ? and kind like 'game%') or (uid = ? and kind like 'pot%') order by at desc limit 10").bind(me.id, me.id).all()).results || [];
     return json({ pool, games: Object.fromEntries(Object.entries(GAMES).map(([k, g]) => [k, { name: g.name, maxMult: g.maxMult }])), maxBet, minBet: GAME_MIN_BET, fee: GAME_FEE, pots, wins, mine, admin, paid });
+  }
+
+  if (route === "daily" && method === "GET") {
+    const days = await dailyDays(env, me.id);
+    const claimed = days.has(dayET(0));
+    return json({ claimed, base: DAILY_BASE, bonusEvery: DAILY_BONUS_EVERY, bonus: DAILY_BONUS, streak: streakFrom(days, claimed), coins: (await wallet(env, me.id)).coins });
+  }
+
+  if (route === "daily/claim" && method === "POST") {
+    if (!(await take(env, "daily:" + me.id, 60, 10))) return err("Slow down a little.", 429);
+    const days = await dailyDays(env, me.id);
+    const streak = streakFrom(days, false) + 1;
+    const amount = DAILY_BASE + (streak % DAILY_BONUS_EVERY === 0 ? DAILY_BONUS : 0);
+    const now = Date.now();
+    const ins = await env.DB.prepare("insert or ignore into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("daily:" + me.id + ":" + dayET(0), me.id, "daily", amount, 0, "checkin", now).run();
+    if (!ins.meta.changes) return err("You already claimed today's coins. Come back tomorrow for more.");
+    await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(me.id, amount, now).run();
+    return json({ ok: true, amount, streak, bonus: amount - DAILY_BASE, coins: (await wallet(env, me.id)).coins });
   }
 
   if (route === "play" && method === "POST") {
