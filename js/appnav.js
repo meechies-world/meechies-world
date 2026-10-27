@@ -119,7 +119,14 @@ nav.tabs a{letter-spacing:.02em}
     if (!mine) return;
     try {
       const j = await fetch("/version.json?t=" + Date.now(), { cache: "no-store" }).then((r) => r.json());
-      if (j && j.build && j.build !== mine) { pending = true; if (!busy() && document.visibilityState === "visible") location.reload(); else showUpdate(); }
+      if (j && j.build && j.build !== mine) {
+        /* Reload at most once per new build. If the page still says the old build after that reload,
+           the two version stamps are out of step: stop, so the site never reloads itself in a loop (owner bug report, 2026-10-27). */
+        let tried = ""; try { tried = sessionStorage.getItem("mw_upd_tried") || ""; } catch (_) {}
+        if (tried === j.build) return;
+        try { sessionStorage.setItem("mw_upd_tried", j.build); } catch (_) {}
+        pending = true; if (!busy() && document.visibilityState === "visible") location.reload(); else showUpdate();
+      }
     } catch (_) {}
   }
   setTimeout(check, 4000); setInterval(check, 5 * 60e3);
