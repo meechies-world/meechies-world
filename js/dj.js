@@ -712,6 +712,41 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 .xv span{display:block;font:700 9.5px var(--body);letter-spacing:.08em;color:var(--gold-hi,#f0cf78);margin-top:4px}
 .xv b{display:block;font-size:10.5px;color:#e8e2d0;font-weight:600}
 @media(max-width:760px){.xv{width:54px}.xv i{width:44px;height:44px}.xfrow{gap:10px}.xfvols{gap:8px}}
+/* PHONE DECK SETUPS (owner ask, 2026-10-27): on a portrait phone the booth is
+ * a compact controller — tap 1, 2, 3 or 4 decks. 1-deck mode shows ONE deck
+ * with an A B C D switch on it (red dot = that deck is playing). Hidden decks
+ * keep playing; only the view changes. This replaces the old phone DECK LOCK
+ * for portrait phones at the owner's direct ask. Desktop + landscape untouched. */
+#dj-phset{display:none}
+@media (max-width:760px) and (orientation:portrait){
+#dj-phset{display:grid;gap:8px;margin:0 0 10px}
+#dj-phset .phrow{display:flex;gap:6px;align-items:center}
+#dj-phset .phlab{font:800 10.5px var(--body);letter-spacing:.12em;color:var(--muted,#a99f8b);margin-right:2px;flex:none}
+#dj-phset button{flex:1;min-height:42px;border-radius:11px;border:1px solid #3a3223;background:#14110b;color:#e8e2d0;font:800 13.5px var(--body);cursor:pointer;position:relative;padding:6px 2px}
+#dj-phset button.on{border-color:var(--gold,#d4a843);background:rgba(212,168,67,.18);color:var(--gold-hi,#f0cf78)}
+#dj-phset #dj-phdeck{display:none}
+#dj-phset[data-n="1"] #dj-phdeck{display:flex}
+#dj-phset .phdot{display:none;width:8px;height:8px;border-radius:50%;background:#ff4747;position:absolute;top:6px;right:8px;box-shadow:0 0 8px #ff4747}
+#dj-phset button.playing .phdot{display:block}
+#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.deck{display:none}
+#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.deck.ph-on{display:grid;grid-column:1/-1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.mixer.m1{grid-column:1/-1;grid-row:2}
+#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.mixer.m2{grid-column:1/-1;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks[data-phn="1"] .deck .platter{width:min(210px,62vw)}
+#dj-booth-root #dj-owner .dj-decks[data-phn="2"]>.deck[data-deck="C"],#dj-booth-root #dj-owner .dj-decks[data-phn="2"]>.deck[data-deck="D"]{display:none}
+#dj-booth-root #dj-owner .dj-decks[data-phn="2"]>.mixer.m2{grid-row:3}
+#dj-booth-root #dj-owner .dj-decks[data-phn="3"]>.deck[data-deck="D"]{display:none}
+#dj-booth-root #dj-owner .dj-decks[data-phn="3"]>.deck[data-deck="C"]{grid-column:1/-1;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks[data-phn="3"]>.mixer.m2{grid-row:4}
+#dj-booth-root{overflow-x:clip}
+#dj-booth-root #dj-owner .xfrow{gap:8px}
+#dj-booth-root #dj-owner .xfvols{gap:6px}
+#dj-booth-root #dj-owner .xv{width:46px}
+#dj-booth-root #dj-owner .xv i{width:38px;height:38px}
+#dj-booth-root #dj-owner .xfpad.big{width:104px;height:104px}
+#dj-yt{min-width:0!important}
+#dj-ytform input{min-width:0}
+}
 /* layout safety only (kept after the owner asked his console arrangement back,
  * 2026-10-26): these two rules change nothing visually — they just stop a deck
  * from ever spilling outside its column. */
@@ -849,7 +884,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
       <div class="xfcurve" role="group" aria-label="Crossfader curve"><span>CURVE</span><button type="button" data-xfc="smooth">Smooth</button><button type="button" data-xfc="sharp">Sharp</button><button type="button" data-xfc="cut">Cut</button></div>
   </div>
-  <div class="dj-decks" data-show="C">
+  <div id="dj-phset" data-n="1"><div class="phrow"><span class="phlab">📱 SETUP</span><button type="button" data-phn="1" class="on">1 DECK</button><button type="button" data-phn="2">2</button><button type="button" data-phn="3">3</button><button type="button" data-phn="4">4</button></div><div class="phrow" id="dj-phdeck"><span class="phlab">DECK</span><button type="button" data-phd="A" class="on">A<i class="phdot"></i></button><button type="button" data-phd="B">B<i class="phdot"></i></button><button type="button" data-phd="C">C<i class="phdot"></i></button><button type="button" data-phd="D">D<i class="phdot"></i></button></div></div>
+  <div class="dj-decks" data-show="C" data-phn="1">
     ${deckHTML("A")}
     ${deckHTML("B")}
     <div class="mixer m1">
@@ -1290,6 +1326,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function midiWakeToggle() { const b = document.getElementById("dj-midi-wake"); if (midiWake) { wakeWanted = false; try { midiWake.release(); } catch (_) {} midiWake = null; if (b) b.textContent = "🔆 Keep screen on: off"; return; } try { midiWake = await navigator.wakeLock.request("screen"); wakeWanted = true; midiWake.addEventListener("release", () => { midiWake = null; const bb = document.getElementById("dj-midi-wake"); if (bb) bb.textContent = "🔆 Keep screen on: off"; }); if (b) b.textContent = "🔆 Keep screen on: ON"; } catch (_) { midiStat("Keep-screen-on isn't available in this browser."); } }
   document.addEventListener("visibilitychange", async () => { if (!document.hidden && wakeWanted && !midiWake) { try { midiWake = await navigator.wakeLock.request("screen"); const b = document.getElementById("dj-midi-wake"); if (b) b.textContent = "🔆 Keep screen on: ON"; } catch (_) {} } });
   { const onB = document.getElementById("dj-midi-on"); if (onB) onB.addEventListener("click", midiEnable); const wkB = document.getElementById("dj-midi-wake"); if (wkB) wkB.addEventListener("click", midiWakeToggle); const clB = document.getElementById("dj-midi-clear"); if (clB) clB.addEventListener("click", () => { midiMap = {}; midiLearnKey = null; midiSaveMap(); midiPaintList(); midiStat("Mapping cleared. Tap LEARN on a row and move a control to bind it again."); }); const list = document.getElementById("dj-midi-list"); if (list) list.addEventListener("click", (e) => { const lb = e.target.closest("[data-mlearn]"), cb = e.target.closest("[data-mclear]"); if (lb) { midiLearnKey = midiLearnKey === lb.dataset.mlearn ? null : lb.dataset.mlearn; midiPaintList(); if (midiLearnKey) midiStat("Learning… move the knob, press the button, or spin the jog on your controller."); } if (cb) { delete midiMap[cb.dataset.mclear]; midiSaveMap(); midiPaintList(); } }); midiPaintList(); }
+  /* PHONE DECK SETUPS wiring: the switcher only exists on portrait phones
+   * (CSS hides it elsewhere). It changes which decks are SHOWN, never what
+   * plays — a hidden deck keeps its sound, exactly like a folded panel. */
+  let phN = "1", phDeck = "A";
+  try { phN = localStorage.getItem("mw-ph-n") || "1"; phDeck = localStorage.getItem("mw-ph-deck") || "A"; } catch (_) {}
+  if (!["1", "2", "3", "4"].includes(phN)) phN = "1";
+  if (!DECKS.includes(phDeck)) phDeck = "A";
+  function phApply() {
+    const row = document.querySelector(".dj-decks"); if (!row) return;
+    row.dataset.phn = phN;
+    const shown = phN === "1" ? [phDeck] : phN === "2" ? ["A", "B"] : phN === "3" ? ["A", "B", "C"] : DECKS;
+    DECKS.forEach((k) => { const el = row.querySelector('.deck[data-deck="' + k + '"]'); if (el) el.classList.toggle("ph-on", shown.includes(k)); });
+    const ps = document.getElementById("dj-phset");
+    if (ps) { ps.dataset.n = phN; ps.querySelectorAll("[data-phn]").forEach((b) => b.classList.toggle("on", b.dataset.phn === phN)); ps.querySelectorAll("[data-phd]").forEach((b) => b.classList.toggle("on", b.dataset.phd === phDeck)); }
+  }
+  function phPaint() { const ps = document.getElementById("dj-phset"); if (!ps || !ps.offsetParent) return; ps.querySelectorAll("[data-phd]").forEach((b) => b.classList.toggle("playing", !!(S[b.dataset.phd] && S[b.dataset.phd].playing))); }
+  { const ps = document.getElementById("dj-phset"); if (ps) { ps.addEventListener("click", (e) => { const bn = e.target.closest("[data-phn]"), bd = e.target.closest("[data-phd]"); if (bn) { phN = bn.dataset.phn; try { localStorage.setItem("mw-ph-n", phN); } catch (_) {} phApply(); } else if (bd) { phDeck = bd.dataset.phd; try { localStorage.setItem("mw-ph-deck", phDeck); } catch (_) {} phApply(); const el = document.querySelector('.dj-decks>.deck[data-deck="' + phDeck + '"]'); if (el) el.scrollIntoView({ block: "nearest" }); } }); phApply(); setInterval(phPaint, 900); } }
   /* deck volume KNOBS flanking the X fader (owner ask, 2026-10-26): A+B on the
    * left, C+D on the right. Drag up/down to ride a deck volume; the knob drives
    * the deck's own volume slider so state, sound and saves follow the one path.
