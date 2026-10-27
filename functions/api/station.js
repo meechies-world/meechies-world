@@ -62,6 +62,8 @@ export async function onRequestGet({ request, env }) {
   if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users });
   S.A = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.A || {});
   S.B = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.B || {});
+  S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
+  S.D = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.D || {});
 
   // The booth has the tables — hands off.
   if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
@@ -150,13 +152,19 @@ export async function onRequestGet({ request, env }) {
   // when Malik pauses with nothing else playing, and the keeper respects it for
   // up to 30 minutes instead of restarting deck A over him. (A track that ends
   // naturally never sets the stamp, so the rotation still never goes quiet.)
+  // Park stale C/D decks: the keeper only ever runs A/B, so a C or D deck left
+  // flagged "playing" by a closed booth or an ended guest set (its timeline
+  // long past the end of the track) is a ghost — clients chase its position
+  // past the end of the video forever, which sounds like skipping. Park it.
+  let parked = false;
+  for (const k of ["C", "D"]) { const dk = S[k]; if (dk && dk.playing) { const dur = +dk.dur || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
-    if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
+    if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
     return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
 
-  let changed = false;
+  let changed = parked;
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
   if (!cur) { // dead air — start the rotation on deck A right now
     startDeckItem("A", await nextItem(""), now); S.xf = 0; changed = true; cur = "A";
