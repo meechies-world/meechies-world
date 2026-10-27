@@ -607,6 +607,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 .midilist .mrow b{flex:1;min-width:0;font-weight:600}
 .midilist .mrow .mb{font-size:10.5px;color:var(--gold-hi,#f0cf78);white-space:nowrap}
 .midilist .mrow.learning{background:rgba(240,207,120,.14);outline:1px solid var(--gold-lo)}
+.xfrow{display:flex;align-items:center;justify-content:center;gap:18px}
+.xfvols{display:flex;gap:14px}
+.xv{width:64px;text-align:center;cursor:ns-resize;touch-action:none;user-select:none;-webkit-user-select:none}
+.xv i{display:block;width:52px;height:52px;margin:0 auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,#3a3a40,#131315 70%);border:2px solid #000;outline:2px solid #77777f;position:relative;transform:rotate(var(--rot,-45deg))}
+.xv i::after{content:"";position:absolute;left:50%;top:3px;width:3px;height:16px;margin-left:-1.5px;border-radius:2px;background:var(--dk)}
+.xv span{display:block;font:700 9.5px var(--body);letter-spacing:.08em;color:var(--gold-hi,#f0cf78);margin-top:4px}
+.xv b{display:block;font-size:10.5px;color:#e8e2d0;font-weight:600}
+@media(max-width:760px){.xv{width:54px}.xv i{width:44px;height:44px}.xfrow{gap:10px}.xfvols{gap:8px}}
 #dj-livealert .la-txt{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.3}
 #dj-booth-root #dj-owner .xfpad{background:linear-gradient(135deg,#1b1c1f,#0c0c0e);border:1.5px solid #3f3f46;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 22px #000}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
@@ -727,7 +735,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     </div>
   </div>
   <div class="mixer xfbar" id="dj-xfbar">
-      <div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div>
+      <div class="xfrow"><div class="xfvols"><div class="xv" data-xv="A" style="--dk:#f0cf78" title="Deck A volume — drag up or down, double-tap for 90%"><i></i><span>VOL A</span><b>90%</b></div><div class="xv" data-xv="B" style="--dk:#38bdf8" title="Deck B volume — drag up or down, double-tap for 90%"><i></i><span>VOL B</span><b>90%</b></div></div><div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div><div class="xfvols"><div class="xv" data-xv="C" style="--dk:#4ade80" title="Deck C volume — drag up or down, double-tap for 90%"><i></i><span>VOL C</span><b>90%</b></div><div class="xv" data-xv="D" style="--dk:#f472b6" title="Deck D volume — drag up or down, double-tap for 90%"><i></i><span>VOL D</span><b>90%</b></div></div></div>
       <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes, and the master screen up top blends with it</small>
       <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
       <div class="xfcurve" role="group" aria-label="Crossfader curve"><span>CURVE</span><button type="button" data-xfc="smooth">Smooth</button><button type="button" data-xfc="sharp">Sharp</button><button type="button" data-xfc="cut">Cut</button></div>
@@ -1115,6 +1123,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function midiWakeToggle() { const b = document.getElementById("dj-midi-wake"); if (midiWake) { wakeWanted = false; try { midiWake.release(); } catch (_) {} midiWake = null; if (b) b.textContent = "🔆 Keep screen on: off"; return; } try { midiWake = await navigator.wakeLock.request("screen"); wakeWanted = true; midiWake.addEventListener("release", () => { midiWake = null; const bb = document.getElementById("dj-midi-wake"); if (bb) bb.textContent = "🔆 Keep screen on: off"; }); if (b) b.textContent = "🔆 Keep screen on: ON"; } catch (_) { midiStat("Keep-screen-on isn't available in this browser."); } }
   document.addEventListener("visibilitychange", async () => { if (!document.hidden && wakeWanted && !midiWake) { try { midiWake = await navigator.wakeLock.request("screen"); const b = document.getElementById("dj-midi-wake"); if (b) b.textContent = "🔆 Keep screen on: ON"; } catch (_) {} } });
   { const onB = document.getElementById("dj-midi-on"); if (onB) onB.addEventListener("click", midiEnable); const wkB = document.getElementById("dj-midi-wake"); if (wkB) wkB.addEventListener("click", midiWakeToggle); const clB = document.getElementById("dj-midi-clear"); if (clB) clB.addEventListener("click", () => { midiMap = {}; midiLearnKey = null; midiSaveMap(); midiPaintList(); midiStat("Mapping cleared. Tap LEARN on a row and move a control to bind it again."); }); const list = document.getElementById("dj-midi-list"); if (list) list.addEventListener("click", (e) => { const lb = e.target.closest("[data-mlearn]"), cb = e.target.closest("[data-mclear]"); if (lb) { midiLearnKey = midiLearnKey === lb.dataset.mlearn ? null : lb.dataset.mlearn; midiPaintList(); if (midiLearnKey) midiStat("Learning… move the knob, press the button, or spin the jog on your controller."); } if (cb) { delete midiMap[cb.dataset.mclear]; midiSaveMap(); midiPaintList(); } }); midiPaintList(); }
+  /* deck volume KNOBS flanking the X fader (owner ask, 2026-10-26): A+B on the
+   * left, C+D on the right. Drag up/down to ride a deck volume; the knob drives
+   * the deck's own volume slider so state, sound and saves follow the one path.
+   * Double-tap resets to 90%. */
+  document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv; let drag = null; el.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = { y: e.clientY, v: S[k] ? S[k].vol : 0 }; try { el.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); }); el.addEventListener("pointermove", (e) => { if (!drag) return; const v = Math.max(0, Math.min(1, drag.v + (drag.y - e.clientY) / 140)); midiSetSlider("[data-vol=\"" + k + "\"]", v); paintXfPads(); }); const end = () => { drag = null; }; el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("dblclick", () => { if (!OWNER()) return; midiSetSlider("[data-vol=\"" + k + "\"]", 0.9); paintXfPads(); }); });
 
   function playVoice() {
     const v = S.voice; if (!v || !okUrl(v.url) || DEAD(v.url) || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
@@ -1756,6 +1769,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     XFCURVE = S.xfCurve || "smooth"; document.querySelectorAll("[data-xfc]").forEach((x) => x.classList.toggle("on", x.dataset.xfc === XFCURVE));
     const dot = $("#dj-xfdot"); if (dot) { dot.style.left = (50 + (S.xf - 0.5) * 84) + "%"; dot.style.top = (50 + (S.panY || 0) * 42) + "%"; }
     const rd = $("#dj-pan-read"); if (rd) { const py = S.panY || 0, ab = py > 0 ? 1 - py : 1, cd = py < 0 ? 1 + py : 1; const g = { A: xfGain(S.xf, "A") * ab, B: xfGain(S.xf, "B") * ab, C: xfGain(S.xf2 ?? 0.5, "A") * cd, D: xfGain(S.xf2 ?? 0.5, "B") * cd }; const mx = Math.max(g.A, g.B, g.C, g.D, 0.0001); rd.textContent = ["A", "B", "C", "D"].map((k) => k + " " + Math.round(g[k] / mx * 100) + "%").join(" · "); }
+    document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv, v = S[k] ? (S[k].vol || 0) : 0; el.style.setProperty("--rot", (-135 + v * 270) + "deg"); const b = el.querySelector("b"); if (b) b.textContent = Math.round(v * 100) + "%"; });
   }
   // ONE pan dot for all four decks: left/right rides both crossfaders together,
   // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
