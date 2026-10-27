@@ -1236,6 +1236,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     d.el.playbackRate = s.rate || 1;
     const want = posOf(k);
+    // a deck whose shared timeline already ran past the end of its track is
+    // OVER, whatever the doc still claims: park it locally instead of seeking
+    // past the end on every sync tick (the seek loop sounds like skipping)
+    if (s.playing && +s.dur > 0 && want > +s.dur + 2) { try { d.el.pause(); } catch (_) {} levels(); return; }
     if (s.playing) {
       if (d.el.duration && want >= d.el.duration - 0.3) { d.el.pause(); levels(); return; }
       if (!d.el.seeking && d.el.readyState >= 3 && Math.abs(d.el.currentTime - want) > 4) { try { d.el.currentTime = want; } catch (_) {} }
@@ -1251,7 +1255,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // drift seeks clean. Loops, paused elements (a scratch in progress), and
   // brake/spin moves (noSync stamp) are left alone. Video decks can only be
   // re-seeked, and coarsely (their player lands on keyframes).
-  function syncDecks() { if (document.hidden) return; const now = Date.now() + clockOff; DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; const target = Math.max(0, (now - (s.start || now)) / 1000); if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 2) follow(k); return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
+  function syncDecks() { if (document.hidden) return; const now = Date.now() + clockOff; DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; const target = Math.max(0, (now - (s.start || now)) / 1000); const durT = +s.dur || 0; if (durT > 0 && target > durT + 2) { try { d.el.pause(); } catch (_) {} return; } if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 2) follow(k); return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
   setInterval(syncDecks, 500);
   // the screens follow the shared state on their own clock: a booth window that
   // is not the one driving the sound, and a visitor who has not tuned in yet,
