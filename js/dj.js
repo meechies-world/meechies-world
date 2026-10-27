@@ -28,6 +28,7 @@
   const SANDBOX = (() => { try { return /[?&]playdj=1/.test(location.search); } catch (_) { return false; } })();
   const DB = () => (typeof db !== "undefined" ? db : null);
   const OWNER = () => SANDBOX || (typeof isOwner !== "undefined" && isOwner);
+  let showOwnerUI = () => {}; // set by init(); the timers below call it (calling init's own show() from out here threw "show is not defined" every second)
   const TRACKS = () => (typeof tracks !== "undefined" ? tracks : []);
   const URLOF = (t) => (typeof trackUrl === "function" ? trackUrl(t) : "");
   const okUrl = (u) => /^https:\/\/[^\s"'<>]+$/i.test(u || "");
@@ -1566,7 +1567,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     renderLog($("#st-log"));
   }
   setInterval(() => {
-    const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) show();
+    const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) showOwnerUI();
     if (pkTab === "mine" && !(pkItems && pkItems.length) && TRACKS().length) paintPkList();
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
@@ -1790,7 +1791,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // guest DJ) is actually at the tables, every visitor sees it, with a one-tap
   // tune-in that mutes everything else and lands them on the radio
   const gName = (g) => { const n = ((g && g.name) || "").trim(); return n ? (n.includes("@") ? n.split("@")[0] : n) : "Guest DJ"; }; // a DJ is never shown as a raw email address
-  const guestLiveOn = () => { try { return sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) { return false; } };
+  function guestLiveOn() { try { return sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) { return false; } } // hoisted: the lamp paints before this line runs
   function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const host = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const setId = guest ? ("g" + (S.djGuest.uid || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
   function onState(d) {
     paintVEdit(); try { paintLiveAlert(); } catch (_) {}
@@ -1820,7 +1821,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (listening) DECKS.forEach((k) => follow(k));
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
-    if (firstOwnerLoad) { show(); DECKS.forEach((k) => { if (S[k].playing && boothLead) follow(k); }); }
+    if (firstOwnerLoad) { showOwnerUI(); DECKS.forEach((k) => { if (S[k].playing && boothLead) follow(k); }); }
     playVoice(); paintStation();
     if (OWNER()) paintOwner();
   }
@@ -2599,7 +2600,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
     const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; document.documentElement.classList.toggle("popdj-guest", document.documentElement.classList.contains("popdj") && !own); if (own) { libList(); paintOwner(); paintQueue(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
-    show(); setTimeout(show, 1500); setTimeout(show, 5000);
+    showOwnerUI = show; show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
     // scroll past the tables and the side buttons/floats fold away — nothing covers the decks
     const boothHome2 = document.getElementById("dj-booth-root");

@@ -182,3 +182,38 @@ html.lux #gift-grid .gift{min-width:0 !important}
   html.lux header.bar .authbar .btn,html.lux header.bar #authbar .btn{padding:7px 12px !important;font-size:11.5px !important;letter-spacing:.06em !important}
   html.lux header.bar .brand b{font-size:13.5px !important;letter-spacing:.04em !important}
 }
+
+/* DJ booth on phones: nothing may run past the right edge (owner screenshots, 2026-10-27).
+   The music/video browser was a one-column grid sized to its widest child (449px on a 390px phone). */
+#dj-browser{grid-template-columns:minmax(0,1fr) !important;min-width:0;max-width:100%}
+#dj-browser > *,#br-panes,#br-panes > *{min-width:0 !important;max-width:100%}
+#dj-browser input,#dj-browser select{min-width:0;max-width:100%}
+@media (max-width:760px){
+  #dj-browser > div{flex-wrap:wrap}
+  #dj-browser .btn{white-space:normal}
+  #dj-owner small:has(#dj-boost-v){white-space:normal}
+}
+#dj-xfbar{grid-template-columns:minmax(0,1fr) !important;min-width:0}
+#dj-xfbar > *{min-width:0;max-width:100%}
+@media (max-width:420px){
+  #dj-xfbar .xfvols{display:flex;flex-direction:column;gap:6px}
+  #dj-xfbar small{white-space:normal}
+}
+@media (max-width:760px){
+  #dj-browser input[aria-label="Video link"]{flex:1 1 100% !important;min-width:0 !important;width:100%}
+}
+/* phones: the header "online" chip becomes a green dot + number, so MEECHIE'S WORLD isn't cut off */
+@media (max-width:760px){
+  header.bar .online-chip{font-size:0 !important;gap:4px !important;padding:4px 8px !important;margin-left:4px !important}
+  header.bar .online-chip::before{content:"";width:8px;height:8px;border-radius:50%;background:#45bd62;box-shadow:0 0 6px #45bd62}
+  header.bar .online-chip b{font-size:11.5px !important}
+}
+/* the Book tab row is solid, so the page never shows through behind its icons */
+html.lux #fb-tabs{background:#0a0805 !important}
+@media (max-width:420px){
+  html.lux header.bar #authbar .btn,html.lux header.bar .authbar .btn{padding:6px 10px !important;font-size:10.5px !important;letter-spacing:.04em !important}
+  html.lux header.bar .brand b{font-size:12.5px !important;letter-spacing:.02em !important}
+  html.lux header.bar .brand svg{width:34px !important;height:34px !important}
+  html.lux header.bar .bar-in{gap:6px !important}
+  html.lux #hdr-menu{padding:6px 9px !important}
+}
