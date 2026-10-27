@@ -17,7 +17,7 @@
   const css = document.createElement("style");
   css.textContent = `#gift-grid.gp{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:8px!important;max-height:44dvh;overflow:auto;padding:2px}
 #gift-grid.gp .gift{display:grid;justify-items:center;gap:2px;padding:10px 4px 8px;border-radius:14px;border:1px solid rgba(214,170,74,.3);background:rgba(10,8,5,.7);color:#f3ecdc;font:700 11.5px system-ui;cursor:pointer;position:relative}
-#gift-grid.gp .gift span{font-size:30px;line-height:1.1}
+#gift-grid.gp .gift span:not(.gn){font-size:30px;line-height:1.1}#gift-grid.gp .gift .gn{display:block;font-size:11px;line-height:1.2}
 #gift-grid.gp .gift .price{color:#ffd76a;font:800 11px system-ui}
 #gift-grid.gp .gift.fx::after{content:"✨";position:absolute;top:3px;right:5px;font-size:11px}
 #gift-grid.gp .gift[aria-pressed=true]{background:linear-gradient(172deg,#fff6cf,#ffd76a 30%,#e0a93a 60%,#ffe08a)!important;color:#130e04!important;border-color:#ffe08a;transform:scale(1.04)}
@@ -51,7 +51,7 @@
     const grid = $("#gift-grid"); if (!grid || !CAT.length) return;
     grid.classList.add("gp");
     const cur = (() => { try { return typeof giftKind !== "undefined" ? giftKind : "rose"; } catch (_) { return "rose"; } })();
-    grid.innerHTML = CAT.map((g) => `<button class="gift${g.fx ? " fx" : ""}" type="button" data-gift="${g.k}" aria-pressed="${g.k === cur}" title="${E(g.n)}: ${g.c} coins"><span>${g.e}</span>${E(g.n)}<small class="price">🪙 ${g.c.toLocaleString()}</small></button>`).join("");
+    grid.innerHTML = CAT.map((g) => `<button class="gift${g.fx ? " fx" : ""}" type="button" data-gift="${g.k}" aria-pressed="${g.k === cur}" title="${E(g.n)}: ${g.c} coins"><span>${g.e}</span><span class="gn">${E(g.n)}</span><small class="price">🪙 ${g.c.toLocaleString()}</small></button>`).join("");
     if (!BY[cur]) { try { giftKind = "rose"; } catch (_) {} grid.querySelector('[data-gift="rose"]')?.setAttribute("aria-pressed", "true"); }
     const form = $("#gift-form");
     if (form && !$("#gp-qty")) {

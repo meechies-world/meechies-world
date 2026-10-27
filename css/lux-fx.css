@@ -103,3 +103,59 @@ html.lux .apptab a[aria-current] svg{filter:drop-shadow(0 0 6px rgba(255,205,100
 @media (prefers-reduced-motion:reduce){
   html.lux .section-head h2,html.lux .lux-foil,html.lux .gi-live path,html.lux .btn::after,html.lux nav.tabs a::after{animation:none !important}
 }
+
+/* ======================= round 2: richer still ======================= */
+
+/* icons inside buttons sit nicely; on gold buttons they turn dark so they read */
+html.lux .btn .gi,html.lux .act .gi,html.lux .acts .gi{width:1.15em;height:1.15em;margin-right:.35em}
+html.lux .btn:not(.ghost) .gi{stroke:#2a1c05;filter:drop-shadow(0 1px 0 rgba(255,240,190,.6))}
+
+/* header crest: slow breathing glow, wordmark foil shine */
+html.lux .brand svg{animation:gi-breathe 5s ease-in-out infinite}
+@keyframes gi-breathe{50%{filter:drop-shadow(0 0 10px rgba(255,205,100,.85)) drop-shadow(0 0 2px #fff3c4)}}
+html.lux .brand b{background:linear-gradient(100deg,#c8902e 0%,#ffe9a6 18%,#d6aa4a 36%,#fff4c2 50%,#b67d22 68%,#ffe08a 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:gi-shine2 6s linear infinite}
+@keyframes gi-shine2{to{background-position:250% 0}}
+
+/* stats strip: one tidy row that slides sideways on phones */
+@media (max-width:760px){
+  html.lux #mw-stats{flex-wrap:nowrap !important;justify-content:flex-start !important;overflow-x:auto;scrollbar-width:none;-webkit-mask:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 22px),transparent);mask:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 22px),transparent);padding:7px 14px !important;gap:8px !important}
+  html.lux #mw-stats::-webkit-scrollbar{display:none}
+  html.lux #mw-stats > span{flex:none;padding:4px 10px;font-size:12px}
+}
+html.lux #mw-stats{background:linear-gradient(180deg,#0f0c07,#070605) !important;border-bottom:1px solid rgba(214,170,74,.3) !important}
+
+/* sections glide in when you open them */
+html.lux .view:not([hidden]) > .wrap > .section-head,html.lux .view:not([hidden]) .lux-banner{animation:gi-rise .55s cubic-bezier(.2,.7,.2,1) both}
+@keyframes gi-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* floating pills: black-and-gold glass */
+html.lux #mw-show-pill,html.lux #ai-fab{background:linear-gradient(180deg,rgba(30,24,14,.88),rgba(8,7,5,.92)) !important;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:inset 0 0 0 1.5px rgba(232,190,100,.75),0 8px 24px rgba(0,0,0,.6),0 0 16px rgba(255,190,70,.18) !important}
+html.lux #mx-fab{background:var(--foil-grad) !important;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 8px 24px rgba(0,0,0,.55),0 0 22px rgba(255,200,90,.45) !important}
+
+/* ---------- gift picker: rarity tiers like a treasure chest ---------- */
+html.lux #gift-grid .gift{position:relative;overflow:clip;border-radius:16px !important;background:radial-gradient(100% 80% at 50% 0%,var(--t2,rgba(255,215,120,.12)),transparent 70%),linear-gradient(180deg,#17130c,#080705) !important;box-shadow:inset 0 0 0 1.5px var(--t1,rgba(214,170,74,.45)),0 6px 16px rgba(0,0,0,.5) !important;transition:transform .15s}
+html.lux #gift-grid .gift > span:first-child{display:block;font-size:30px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.6)) drop-shadow(0 0 8px var(--t1,transparent))}
+html.lux #gift-grid .gift[aria-pressed=true]{transform:translateY(-2px) scale(1.04);box-shadow:inset 0 0 0 2.5px var(--t1,#ffd76a),0 0 22px var(--t1,rgba(255,200,90,.6)) !important}
+html.lux #gift-grid .gift .price{color:#ffe08a !important}
+/* common · rare · epic · legendary · mythic */
+html.lux #gift-grid .gift:is([data-gift=rose],[data-gift=heart],[data-gift=mic],[data-gift=gg]){--t1:rgba(205,150,95,.6);--t2:rgba(205,150,95,.14)}
+html.lux #gift-grid .gift:is([data-gift=fire],[data-gift=crown],[data-gift=cash],[data-gift=gold]){--t1:rgba(255,214,110,.75);--t2:rgba(255,214,110,.18)}
+html.lux #gift-grid .gift:is([data-gift=diamond],[data-gift=chain]){--t1:rgba(140,215,255,.8);--t2:rgba(140,215,255,.18)}
+html.lux #gift-grid .gift:is([data-gift=moneygun],[data-gift=lion],[data-gift=ride]){--t1:rgba(200,130,255,.85);--t2:rgba(200,130,255,.2)}
+html.lux #gift-grid .gift:is([data-gift=jet],[data-gift=mansion],[data-gift=world]){--t1:rgba(255,120,90,.9);--t2:rgba(255,150,80,.22)}
+html.lux #gift-grid .gift.fx::before{content:"";position:absolute;inset:-60%;background:conic-gradient(from 0deg,transparent 0 70%,var(--t1) 80%,transparent 90%);animation:gi-spin 3.2s linear infinite;z-index:0;opacity:.85}
+html.lux #gift-grid .gift.fx::after{content:"";position:absolute;inset:2px;border-radius:14px;background:radial-gradient(100% 80% at 50% 0%,var(--t2),transparent 70%),linear-gradient(180deg,#17130c,#080705);z-index:0}
+html.lux #gift-grid .gift.fx > *{position:relative;z-index:1}
+@keyframes gi-spin{to{transform:rotate(1turn)}}
+
+@media (prefers-reduced-motion:reduce){
+  html.lux .brand svg,html.lux .brand b,html.lux .view .section-head,html.lux .lux-banner,html.lux #gift-grid .gift.fx::before{animation:none !important}
+}
+html.lux #gift-grid .gift{height:auto !important;min-height:max-content !important;padding:9px 4px 8px !important;display:flex !important;flex-direction:column;align-items:center;gap:2px}
+html.lux #gift-grid .gift > *{flex:none}
+html.lux #gift-grid .gift .gn{display:block;max-width:100%;min-height:1.2em;font:700 11.5px/1.2 var(--body,system-ui) !important;letter-spacing:0 !important;text-transform:none !important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fbf5e6}
+html.lux #gift-grid .gift .price{display:block;font:700 10.5px/1.2 var(--body,system-ui) !important;white-space:nowrap}
+html.lux #gift-grid .gift[aria-pressed=true] .gn{color:#1a1305}
+html.lux #gift-grid .gift[aria-pressed=true] .price{color:#3a2806 !important}
+html.lux #gift-grid.gp{grid-template-columns:repeat(4,minmax(0,1fr)) !important;grid-auto-rows:minmax(86px,max-content) !important;grid-template-rows:none !important}
+html.lux #gift-grid .gift{min-width:0 !important}
