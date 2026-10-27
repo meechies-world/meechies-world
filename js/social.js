@@ -17,8 +17,14 @@
 #mw-stats b{color:var(--gold-hi)}#mw-stats .on{color:#4ade80}
 .avatar{position:relative}.avatar.online::after{content:"";position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid #0b0a08}
 .fl-btn{margin-left:6px}.fl-btn.on{background:transparent;border:1px solid var(--line);color:var(--muted)}
-#mw-install{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar,0px) + 12px);z-index:10030;display:flex;align-items:center;gap:10px;background:#15130f;border:1px solid var(--gold);border-radius:16px;padding:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);max-width:520px;margin:0 auto}
-#mw-install img{width:44px;height:44px;border-radius:10px}#mw-install div{flex:1;min-width:0;font-size:14px}#mw-install b{display:block;color:var(--gold-hi)}`;
+#mw-install{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar,0px) + 12px);z-index:10030;display:grid;gap:10px;background:linear-gradient(180deg,#1d180e,#100d08);border:1.5px solid var(--gold);border-radius:20px;padding:18px;box-shadow:0 18px 50px rgba(0,0,0,.7);max-width:520px;margin:0 auto;animation:mwPop .35s ease}
+@keyframes mwPop{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+#mw-install .mw-q{font:800 19px var(--body,system-ui);color:var(--gold-hi);margin:0}
+#mw-install .mw-sub{margin:0;color:var(--muted,#cbbf9f);font-size:13.5px}
+#mw-install .appbtn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--gold-lo,#8a6a2a);background:#171208;color:#fff;border-radius:14px;padding:13px 14px;font:700 15.5px var(--body,system-ui);cursor:pointer;text-decoration:none;box-sizing:border-box}
+#mw-install .appbtn small{display:block;font:600 12.5px var(--body,system-ui);color:var(--muted,#cbbf9f)}
+#mw-install .appbtn:active{transform:scale(.99)}
+#mw-install .mw-x{justify-self:center;background:none;border:0;color:var(--muted,#a99f8b);font:600 13.5px var(--body,system-ui);cursor:pointer;padding:2px 8px}`;
   document.head.appendChild(css);
 
   /* ---------- top bar: members, online, my followers ---------- */
@@ -88,18 +94,24 @@
   const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   function showInstall() {
     if (standalone() || document.getElementById("mw-install")) return;
+    if (document.documentElement.classList.contains("appmode")) return; /* already inside one of the apps */
     if (window.MW_screenClear && !window.MW_screenClear("mw-install")) return;
     try { if (+localStorage.getItem("mw_inst_skip") > Date.now()) return; } catch (_) {}
     const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
-    if (!deferred && !ios) return;
-    const d = document.createElement("div"); d.id = "mw-install";
-    d.innerHTML = `<img src="/img/icon-192.png" alt=""><div><b>Get the Meechie's World app</b>${ios ? "Tap the Share button, then “Add to Home Screen”." : "Free. Opens full screen, right from your home screen."}</div>${ios ? "" : '<button class="btn sm" type="button" id="mw-inst-go">Install</button>'}<button class="act" type="button" id="mw-inst-x" aria-label="Not now">✕</button>`;
+    const d = document.createElement("div"); d.id = "mw-install"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "Download the Meechie's World apps");
+    d.innerHTML = `<p class="mw-q">📲 Want the Meechie's World apps?</p>
+<p class="mw-sub">Free — no app store, no searching. Pick one and it lands right on your home screen:</p>
+<a class="appbtn" href="/radio-app/">📻 <span>MW Radio<small>The live station + DJ booth in one tap</small></span></a>
+<a class="appbtn" href="/ai-app/">🎙️ <span>Meechie AI<small>Talk to Meechie out loud — he talks back and shows you around</small></span></a>
+${deferred ? '<button class="appbtn" type="button" id="mw-inst-go">🌐 <span>Full Meechie\'s World app<small>The whole site, full screen</small></span></button>' : ""}
+${ios ? '<p class="mw-sub">On iPhone: tap an app above, then the Share button, then “Add to Home Screen”.</p>' : ""}
+<button class="mw-x" type="button" id="mw-inst-x">Not now</button>`;
     document.body.appendChild(d);
     d.querySelector("#mw-inst-x").onclick = () => { d.remove(); try { localStorage.setItem("mw_inst_skip", Date.now() + 3 * 864e5); } catch (_) {} };
     const go2 = d.querySelector("#mw-inst-go"); if (go2) go2.onclick = async () => { d.remove(); if (deferred) { deferred.prompt(); try { await deferred.userChoice; } catch (_) {} deferred = null; } };
   }
   /* wait until nothing else is on screen (welcome, profile setup, other pop-ups), so cards never pile up */
-  setTimeout(function waitClear(n) { if (window.MW_screenClear && !window.MW_screenClear()) { if (n < 40) setTimeout(() => waitClear(n + 1), 15000); return; } showInstall(); }, 45000, 0); /* first offer 45s in, not the moment people land */
+  setTimeout(function waitClear(n) { if (window.MW_screenClear && !window.MW_screenClear()) { if (n < 40) setTimeout(() => waitClear(n + 1), 15000); return; } showInstall(); }, 15000, 0); /* first offer ~15s in, once the screen is clear */
   if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 
   /* ---------- quiet error reporting (the owner sees these and they get fixed) ---------- */
