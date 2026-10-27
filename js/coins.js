@@ -22,6 +22,10 @@
 .coin-packs button{display:grid;gap:2px;justify-items:center;padding:10px 6px;border-radius:12px;border:1px solid var(--gold,#d4a843);background:#120f09;color:#fff;font:700 13px var(--body,system-ui);cursor:pointer}
 .coin-packs button span{font-size:18px;color:var(--gold-hi,#f0cf78)}
 .coin-packs button small{color:var(--muted,#bbb);font-weight:600}
+#daily-card{border:1px solid var(--gold-lo,#8a6a2a);background:linear-gradient(180deg,#1a150b,#0d0b07);display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+#daily-card .dc-t{font:700 16px var(--body,system-ui);color:var(--gold-hi,#f0cf78)}
+#daily-card .dc-s{color:var(--muted,#a99f8b);font-size:13px}
+#daily-card .dc-fire{color:#ff9d45;font-weight:700}
 .gift small.price{display:block;color:var(--gold-hi,#f0cf78);font:700 11px var(--body,system-ui)}
 #coin-dlg{border:1px solid var(--gold,#d4a843);border-radius:20px;background:linear-gradient(180deg,#17120a,#0b0a07);color:var(--text,#fff);width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:0}
 #coin-dlg::backdrop{background:rgba(0,0,0,.75)}
@@ -117,6 +121,27 @@ ${open.length ? open.map((c) => `<div class="p"><span><b>${E(c.name || "Member")
     const r = await api("cashout", { method: $("#co-m").value, handle: $("#co-h").value.trim() });
     say(r.ok ? "Cash-out requested: " + usd(r.j.cents) + ". Meechie will send it soon." : r.j.error || "Couldn't request it."); if (r.ok) openWallet();
   });
+  /* ---------- Daily check-in card (top of Meechie's Book) ---------- */
+  async function paintDaily() {
+    const el = $("#daily-card"); if (!el) return;
+    if (!tok()) { el.hidden = false; el.innerHTML = `<div><div class="dc-t">📅 Daily check-in</div><div class="dc-s">Members claim <b>🪙 10 free coins</b> every day — every 7th straight day pays 🪙 50.</div></div><button class="btn sm" type="button" data-daily-signin>Join free & claim</button>`; return; }
+    const r = await api("daily"); if (!r.ok) { el.hidden = true; return; }
+    const j = r.j; el.hidden = false;
+    if (j.claimed) el.innerHTML = `<div><div class="dc-t">✅ Checked in today</div><div class="dc-s"><span class="dc-fire">🔥 ${j.streak}-day streak</span> · you have <b>🪙 ${(j.coins || 0).toLocaleString()}</b> · come back tomorrow for more</div></div><span style="display:flex;gap:6px"><a class="btn sm" href="#games" data-go="games">🎰 Play the Jackpot</a><button class="btn sm ghost" type="button" data-coins-open>My coins</button></span>`;
+    else el.innerHTML = `<div><div class="dc-t">📅 Daily check-in ${j.streak ? `· <span class="dc-fire">🔥 ${j.streak}-day streak</span>` : ""}</div><div class="dc-s">Claim <b>🪙 ${j.base} free coins</b> today${(j.streak + 1) % j.bonusEvery === 0 ? ` — <b>streak bonus day: 🪙 ${j.base + j.bonus}!</b>` : ` · every ${j.bonusEvery}th straight day pays 🪙 ${j.base + j.bonus}`}</div></div><button class="btn" type="button" data-daily-claim>🪙 Claim ${j.base} coins</button>`;
+  }
+  document.addEventListener("click", async (e) => {
+    const s = e.target.closest("[data-daily-signin]"); if (s) { if (typeof openAuth === "function") openAuth("signup"); return; }
+    const b = e.target.closest("[data-daily-claim]"); if (!b) return;
+    b.disabled = true; b.textContent = "Claiming…";
+    const r = await api("daily/claim", {});
+    if (r.ok) { C.coins = r.j.coins; say(`🪙 +${r.j.amount} coins! ${r.j.bonus ? "Streak bonus! " : ""}🔥 ${r.j.streak}-day streak. Go play the Jackpot.`); bar(); }
+    else say(r.j.error || "Couldn't claim right now.");
+    paintDaily();
+  });
+  setTimeout(paintDaily, 1600);
+  window.addEventListener("hashchange", () => { if (location.hash === "#community") setTimeout(paintDaily, 400); });
+
   // coming back from Stripe
   if (location.hash === "#coins-thanks") { history.replaceState(null, "", "#home"); setTimeout(() => { say("Thanks! Your coins will show up in a few seconds."); setTimeout(openWallet, 2500); }, 1500); }
   if (location.hash === "#coins") setTimeout(openWallet, 1500);

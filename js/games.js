@@ -1,4 +1,4 @@
-/* Coin Casino — games for Meechie's World coins, mounted at the top of the Games view.
+/* Coin Jackpot — games for Meechie's World coins, mounted at the top of the Games view.
  * Server: functions/api/coins/[[path]].js (routes games / play / pot/* / pool/seed / admin/grant).
  * The house can never lose: every payout comes out of the prize pool, which is filled only by
  * players' lost bets (minus the 10% house fee) and by coins the owner seeds in. Winnings are
@@ -113,13 +113,13 @@
     if (!d.pots.length) return `<p class="cz-muted">No open pots. Start one: put up coins on heads or tails and another member can take the other side. Winner takes the pot, minus the 10% house fee.</p>`;
     return d.pots.map((p) => `<div class="cz-pot"><span><b>${E(nameOf(p.creator))}</b> put up <b>🪙 ${p.bet}</b> on <b>${p.side === "heads" ? "🪙 Heads" : "Tails"}</b> · <span class="cz-muted">${ago(p.at)}</span></span>${p.creator === mine ? `<button type="button" class="btn sm ghost" data-pot-cancel="${p.id}">Cancel & refund</button>` : `<button type="button" class="btn sm" data-pot-join="${p.id}">Take ${p.side === "heads" ? "Tails" : "🪙 Heads"} · 🪙 ${p.bet}</button>`}</div>`).join("");
   }
-  const KIND_LABEL = { game_bet: "Bet", game_win: "Won", game_fee: "House fee", pot_bet: "Pot bet", pot_win: "Won a pot", pot_refund: "Pot refund", pool_seed: "Seeded the pool", grant: "Granted coins" };
+  const KIND_LABEL = { game_bet: "Bet", game_win: "Won", game_fee: "House fee", pot_bet: "Pot bet", pot_win: "Won a pot", daily: "Daily check-in", pot_refund: "Pot refund", pool_seed: "Seeded the pool", grant: "Granted coins" };
   function render() {
     const d = S.data; if (!d) return;
     const poolPct = Math.min(100, Math.round((d.pool / 5000) * 100));
     root.innerHTML = `
     <div class="cz-head">
-      <h3>🎰 Coin Casino</h3>
+      <h3>🎰 Coin Jackpot</h3>
       <div class="cz-pool"><small>🏆 PRIZE POOL · <b style="color:var(--gold-hi,#f0cf78)">🪙 ${d.pool.toLocaleString()}</b> — every win pays from here</small><div class="bar"><i style="width:${poolPct}%"></i></div></div>
       <div class="cz-bal">Your coins: <b>🪙 ${(d.myCoins ?? 0).toLocaleString()}</b> <button type="button" class="btn sm" data-coins-open style="margin-left:6px">My coins</button>${d.paid ? ` <button type="button" class="btn sm ghost" data-coins-open>＋ Buy</button>` : ""}</div>
     </div>
@@ -137,9 +137,9 @@
     </div></div>` : ""}`;
   }
   async function load() {
-    if (!tok()) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Casino</h3></div><p class="cz-safe">Sign in (or join free) to play for coins — win coins, gift them, and the people you gift earn real cash value.</p>`; return; }
+    if (!tok()) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">Sign in (or join free) to play for coins — win coins, gift them, and the people you gift earn real cash value.</p>`; return; }
     const r = await api("games");
-    if (!r.ok) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Casino</h3></div><p class="cz-safe">${E(r.j.error || "The casino couldn't load right now.")}</p>`; return; }
+    if (!r.ok) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Casino</h3></div><p class="cz-safe">${E(r.j.error || "The Jackpot couldn't load right now.")}</p>`; return; }
     const me = await api("me").catch(() => null);
     S.data = r.j; S.data.myCoins = me && me.ok ? me.j.coins : 0;
     for (const g of Object.keys(S.bet)) S.bet[g] = Math.max(S.data.minBet, Math.min(S.bet[g], Math.max(S.data.minBet, S.data.maxBet[g] || S.data.minBet)));
