@@ -1439,7 +1439,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div><p class="eyebrow">Meechie's World Radio</p><h2>🎛️ DJ Station</h2></div>
       <p class="muted">The turntables live at the top of the Radio — and they pop out onto their own screen. Whatever plays on them IS the live radio: everyone hears the same song at the same time.</p>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn" type="button" id="dj-pop2">⛶ Pop out the decks — their own screen</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn" type="button" id="dj-pop2">⛶ Pop out the decks — their own screen</button></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><a class="btn ghost" href="/equipment/">🎚️ The gear — one page per piece</a><button class="btn ghost" type="button" id="dj-midi-btn">🎹 Connect a MIDI controller (optional)</button></div><div id="dj-midi-panel" hidden></div><script>(function(){var b=document.getElementById("dj-midi-btn");if(!b)return;b.addEventListener("click",function(){if(window.MW_MIDI_OPEN){window.MW_MIDI_OPEN();return;}window.MW_MIDI_WANT=true;var s=document.createElement("script");s.src="/js/dj-midi.js?v=1793200001";document.head.appendChild(s);});})();</script>
     <p class="muted popdj-hint" style="margin:0 0 12px">⛶ Popped-out decks screen — just the tables, nothing else. Close this window anytime; the station keeps playing.</p>
     <div class="card" style="margin-top:18px"><h3 style="margin-top:0">🎛️ The DJ Playground</h3>
       <p class="muted" style="margin:0 0 12px">A copy of the tables that anybody can play with — load songs, mix, scratch, ride the X fader, even DJ YouTube. It's just for fun: this copy runs on its own and <b>never touches the live radio</b>. What plays here stays here.</p>
@@ -3526,7 +3526,7 @@ boot();
 <script src="js/preach.js?v=1793110476"></script>
 <script src="js/world3d.js?v=1793110476"></script>
 <script src="js/clips.js?v=1793110476"></script>
-<script src="js/dj.js?v=1793110476"></script>
+<script src="js/dj.js?v=1793200001"></script>
 <script src="js/live.js?v=1793110476"></script>
 <script src="js/autotune.js?v=1793110476"></script>
 <script src="js/beatmaker.js?v=1793110476"></script>
