@@ -70,6 +70,25 @@
     adult: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM7.5 9.5l1.5-1v7M13.5 12a1.75 1.75 0 1 1 0-3.5 1.75 1.75 0 0 1 0 3.5zm0 0a1.9 1.9 0 1 1 0 3.8 1.9 1.9 0 0 1 0-3.8z",
     crystal: "M12 17a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM6 21h12M8 17.5 7 21M16 17.5l1 4M10 7.5a3 3 0 0 1 3-1.5",
     pinned: "M9 3h6l-1 6 4 3v2H6v-2l4-3zM12 14v7",
+    save: "M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 3v5h8V3M7 21v-7h10v7",
+    folder: "M3 6a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+    pen: "M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10zM14 7.5l3 3M4 20h16",
+    check: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 12.3l2.8 2.8L16.5 9.5",
+    doc: "M6 3h8l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM14 3v5h5M8 13h8M8 17h6",
+    print: "M7 9V3h10v6M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v7H7z",
+    clip: "M9 4h6v3H9zM9 5.5H6a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6.5a1 1 0 0 0-1-1h-3M8.5 12h7M8.5 16h5",
+    repeat: "M4 11V9a3 3 0 0 1 3-3h12l-3-3M20 13v2a3 3 0 0 1-3 3H5l3 3",
+    send: "M21 3 3 10.5l7 2.5 2.5 7zM10 13l5-5",
+    card: "M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM2 10h20M6 15h4",
+    trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
+    upload: "M12 16V4M7 9l5-5 5 5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3",
+    download: "M12 4v12M7 11l5 5 5-5M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3",
+    share: "M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4",
+    thumb: "M7 11v10H4V11zM7 11l4-8c1.7 0 2.8 1.3 2.4 3l-.7 3H19a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.8 21H7",
+    play: "f:M8 5v14l11-7z",
+    speaker: "M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12",
+    bulb: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.8.6 1.5 1.5 1.5 2.6V17h4v-.5c0-1.1.7-2 1.5-2.6A6 6 0 0 0 12 3z",
+    rocket: "M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2M9 15l-3-3c1.5-5 5.5-9 12-9 0 6.5-4 10.5-9 12zM14.5 9.5a1.5 1.5 0 1 0 0-.01",
   };
   // emoji → icon (only in the site's own menus/buttons)
   const E = {
@@ -83,11 +102,13 @@
     "🪙": "coin", "📍": "pin", "📌": "pinned", "🎬": "clap", "🏆": "trophy", "⚔️": "swords", "⚔": "swords", "🎮": "game", "🎨": "palette",
     "📈": "chart", "📊": "chart", "📣": "megaphone", "📢": "megaphone", "🧰": "tools", "🛠️": "tools", "🛠": "tools", "🔧": "tools", "🤖": "bot",
     "📡": "satellite", "🔥": "flame", "💎": "diamond", "👁️": "eye", "🔗": "link", "🔞": "adult", "🔮": "crystal", "🤝": "handshake",
-    "✝️": "cross", "🎚️": "sliders", "🎚": "sliders", "💘": "heart", "💕": "heart", "🧾": "board",
+    "✝️": "cross", "💾": "save", "📂": "folder", "📁": "folder", "✍️": "pen", "✏️": "pen", "📝": "pen", "✅": "check", "☑️": "check", "🧐": "search", "📄": "doc", "📃": "doc",
+    "🖨️": "print", "🖨": "print", "📋": "clip", "🔁": "repeat", "🔄": "repeat", "📨": "send", "📤": "upload", "⬆️": "upload", "📥": "download", "⬇️": "download", "💳": "card",
+    "🗑️": "trash", "🗑": "trash", "👍": "thumb", "♥": "heart", "↗": "share", "🔊": "speaker", "💡": "bulb", "🚀": "rocket", "▶️": "play", "🎚️": "sliders", "🎚": "sliders", "🎛️": "sliders", "🎛": "sliders", "🍿": "tv", "💘": "heart", "💕": "heart", "🧾": "board",
   };
   // Places that are the site's own menus and buttons. Members' posts, chats and gifts are never touched.
   const ZONES = [
-    ".stats", "#mw-stats", "nav.tabs", ".st.add .top", "[data-st-kind]", "#fb-tabs", "#fb-left", "#fb-top", "#fb-mind .r2", ".fb-story.make", ".appmore .grid", ".gi-hero",
+    ".stats", "#mw-stats", "nav.tabs", ".st.add .top", "[data-st-kind]", "#fb-tabs", "#fb-left", "#fb-top", "#fb-mind .r2", ".fb-story.make", ".appmore .grid", ".gi-hero", "button.btn", "a.btn", "label.btn", "button.act", ".acts", ".tabs button",
     ".section-head", ".lux-hero .btn", ".hero .btn", ".bar", "#authbar", ".svc-grid h3", ".tiles h3", ".tile h3", ".chips", "#fb-notes h3",
     "#v-services .card h3", "#v-legal .card h3", "#v-contact .card h3", ".quick-links", "#ai-panel .hd", ".sheet .grid",
   ].join(",");
