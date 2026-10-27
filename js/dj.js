@@ -155,16 +155,20 @@
     // the deck's volume (the X fader included) rides the player's own volume. What
     // cannot work: EQ, effects, stems and the waveform — YouTube keeps its audio
     // locked inside its player, no site can touch it.
-    d.setYt = async (vid) => {
-      if (d.ytId === vid && d.shim) return true;
-      d.clearYt(); d.ytId = vid; d.src = "yt:" + vid; d.peaks = null;
-      await ytApi(); if (!window.YT || !YT.Player) { d.ytId = ""; return false; }
+    d.setYt = async (tok) => {
+      if (d.ytId === tok && d.shim) return true;
+      d.clearYt(); d.ytId = tok; d.src = "yt:" + tok; d.peaks = null;
+      const vp = vparseTok(tok);
       const wrap = document.getElementById("ytw-" + d.letter); if (!wrap) return false;
       wrap.hidden = false;
       let mount = document.getElementById("yt-" + d.letter);
       if (!mount) { wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; mount = document.getElementById("yt-" + d.letter); }
       if (!d._audioEl) d._audioEl = d.el;
-      const sh = ytShim(d, vid, (title, dur) => { if (OWNER() && S[d.letter] && S[d.letter].yt === vid) { let dirty = false; if (title && (!S[d.letter].title || S[d.letter].title === "YouTube video")) { S[d.letter].title = title; dirty = true; } if (dur && !S[d.letter].dur) { S[d.letter].dur = Math.round(dur); dirty = true; } if (dirty) { paintOwner(); save(); } } });
+      const onT = (title, dur) => { if (OWNER() && S[d.letter] && S[d.letter].yt === tok) { let dirty = false; if (title && (!S[d.letter].title || /^(YouTube|Vimeo|Dailymotion) video$/.test(S[d.letter].title))) { S[d.letter].title = title; dirty = true; } if (dur && !S[d.letter].dur) { S[d.letter].dur = Math.round(dur); dirty = true; } if (dirty) { paintOwner(); save(); } } };
+      let sh = null;
+      if (vp.p === "dm") { await dmApi(); if (!window.DM || !DM.player) { d.ytId = ""; return false; } sh = dmShim(d, vp.id, onT); }
+      else if (vp.p === "vm") { await vmApi(); if (!window.Vimeo || !Vimeo.Player) { d.ytId = ""; return false; } sh = vmShim(d, vp.id, onT); }
+      else { await ytApi(); if (!window.YT || !YT.Player) { d.ytId = ""; return false; } sh = ytShim(d, vp.id, onT); }
       d.shim = sh; d.el = sh;
       const okP = await sh._mount(mount); if (d.shim !== sh) return false;
       try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing) sh.play(); } catch (_) {}
@@ -177,6 +181,15 @@
   let ytApiP = null;
   function ytApi() { if (window.YT && YT.Player) return Promise.resolve(); if (ytApiP) return ytApiP; ytApiP = new Promise((res) => { const tag = document.createElement("script"); tag.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(tag); const prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = () => { try { prev && prev(); } catch (_) {} res(); }; setTimeout(res, 7000); }); return ytApiP; }
   const ytParse = (v) => { v = String(v || "").trim(); const m = v.match(/(?:youtube\.com\/(?:watch\?[^#]*v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/) || v.match(/^([A-Za-z0-9_-]{11})$/); return m ? m[1] : ""; };
+  const vparseTok = (tok) => { tok = String(tok || ""); if (tok.indexOf("dm:") === 0) return { p: "dm", id: tok.slice(3) }; if (tok.indexOf("vm:") === 0) return { p: "vm", id: tok.slice(3) }; return { p: "yt", id: tok }; };
+  const vidParse = (v) => {
+    v = String(v || "").trim(); if (!v) return null;
+    const y = ytParse(v); if (y) return { yt: y, src: "", title: "YouTube video", cover: "https://i.ytimg.com/vi/" + y + "/hqdefault.jpg", dur: 0 };
+    let m = v.match(/vimeo\.com\/(?:video\/)?(\d{6,})/); if (m) return { yt: "vm:" + m[1], src: "", title: "Vimeo video", cover: "https://vumbnail.com/" + m[1] + ".jpg", dur: 0 };
+    m = v.match(/dailymotion\.com\/video\/([a-z0-9]+)/i) || v.match(/dai\.ly\/([a-z0-9]+)/i); if (m) return { yt: "dm:" + m[1], src: "", title: "Dailymotion video", cover: "https://www.dailymotion.com/thumbnail/video/" + m[1], dur: 0 };
+    m = v.match(/archive\.org\/details\/([A-Za-z0-9_.-]+)/); if (m) return { iaId: m[1], title: "Archive video" };
+    return null;
+  };
   function ytShim(d, vid, onTitle) {
     const sh = { _p: null, _dur: 0, _rate: 1, _h: {}, seeking: false, readyState: 0 };
     Object.defineProperties(sh, {
@@ -224,6 +237,90 @@
     });
     return sh;
   }
+  let dmApiP = null;
+  function dmApi() { if (window.DM && DM.player) return Promise.resolve(); if (dmApiP) return dmApiP; dmApiP = new Promise((res) => { const tag = document.createElement("script"); tag.src = "https://api.dmcdn.net/all.js"; tag.onload = () => res(); tag.onerror = () => res(); document.head.appendChild(tag); setTimeout(res, 7000); }); return dmApiP; }
+  let vmApiP = null;
+  function vmApi() { if (window.Vimeo && Vimeo.Player) return Promise.resolve(); if (vmApiP) return vmApiP; vmApiP = new Promise((res) => { const tag = document.createElement("script"); tag.src = "https://player.vimeo.com/api/player.js"; tag.onload = () => res(); tag.onerror = () => res(); document.head.appendChild(tag); setTimeout(res, 7000); }); return vmApiP; }
+  /* Dailymotion + Vimeo decks: same shim surface as ytShim — the players keep
+   * their audio locked in just like YouTube, and position comes from their
+   * timeupdate events because neither offers a synchronous clock. */
+  function dmShim(d, vid, onTitle) {
+    const sh = { _p: null, _dur: 0, _rate: 1, _h: {}, _cur: 0, _state: -1, seeking: false, readyState: 0 };
+    const wrap = { _dm: null,
+      setVolume(v100) { try { wrap._dm && wrap._dm.setVolume(Math.max(0, Math.min(1, v100 / 100))); } catch (_) {} },
+      destroy() { try { const el = wrap._dm && (wrap._dm.iframe || wrap._dm.element); if (el && el.parentNode) el.parentNode.removeChild(el); } catch (_) {} wrap._dm = null; } };
+    sh._p = wrap;
+    Object.defineProperties(sh, {
+      currentTime: { get() { return sh._cur || 0; }, set(t) { try { wrap._dm && wrap._dm.seek(Math.max(0, +t || 0)); } catch (_) {} } },
+      duration: { get() { return sh._dur || 0; } },
+      paused: { get() { return sh._state !== 1; } },
+      playbackRate: { get() { return sh._rate; }, set(r) { sh._rate = +r || 1; try { if (wrap._dm && wrap._dm.setPlaybackRate) wrap._dm.setPlaybackRate(sh._rate); } catch (_) {} } },
+      volume: { get() { return 1; }, set(_) {} },
+      preservesPitch: { get() { return true; }, set(_) {} },
+      src: { get() { return "yt:dm:" + vid; }, set(_) {} },
+    });
+    sh.play = () => { try { wrap._dm && wrap._dm.play(); } catch (_) {} return Promise.resolve(); };
+    sh.pause = () => { try { wrap._dm && wrap._dm.pause(); } catch (_) {} };
+    sh.addEventListener = (ev, fn) => { (sh._h[ev] = sh._h[ev] || []).push(fn); };
+    sh.removeEventListener = (ev, fn) => { if (sh._h[ev]) sh._h[ev] = sh._h[ev].filter((f) => f !== fn); };
+    sh._fire = (ev) => (sh._h[ev] || []).slice().forEach((f) => { try { f(); } catch (_) {} });
+    sh._mount = (mountEl) => new Promise((res) => {
+      let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+      try {
+        const p = DM.player(mountEl, { video: vid, width: "100%", height: "100%", params: { autoplay: false, controls: true, "endscreen-enable": false } });
+        wrap._dm = p;
+        const on = (ev, fn) => { try { p.addEventListener(ev, fn); } catch (_) {} };
+        on("apiready", () => { sh.readyState = 4; fin(true); });
+        on("loadedmetadata", (e) => { try { if (e && e.duration) sh._dur = e.duration; } catch (_) {} });
+        on("durationchange", (e) => { try { if (e && e.duration) sh._dur = e.duration; } catch (_) {} });
+        on("timeupdate", (e) => { try { if (e && typeof e.time === "number") sh._cur = e.time; if (e && typeof e.time === "number" && e.duration) sh._dur = e.duration; } catch (_) {} });
+        on("play", () => { sh._state = 1; });
+        on("pause", () => { if (sh._state !== 0) sh._state = 2; });
+        on("ended", () => { sh._state = 0; sh._fire("ended"); });
+        on("error", () => fin(false));
+        fetch("https://api.dailymotion.com/video/" + encodeURIComponent(vid) + "?fields=title,duration").then((r) => r.json()).then((j) => { if (j && onTitle) onTitle(j.title || "", j.duration || sh._dur); }).catch(() => {});
+      } catch (_) { fin(false); }
+      setTimeout(() => fin(!!wrap._dm), 6000);
+    });
+    return sh;
+  }
+  function vmShim(d, vid, onTitle) {
+    const sh = { _p: null, _dur: 0, _rate: 1, _h: {}, _cur: 0, _state: -1, seeking: false, readyState: 0 };
+    const wrap = { _vm: null,
+      setVolume(v100) { try { wrap._vm && wrap._vm.setVolume(Math.max(0, Math.min(1, v100 / 100))); } catch (_) {} },
+      destroy() { try { wrap._vm && wrap._vm.destroy(); } catch (_) {} wrap._vm = null; } };
+    sh._p = wrap;
+    Object.defineProperties(sh, {
+      currentTime: { get() { return sh._cur || 0; }, set(t) { try { wrap._vm && wrap._vm.setCurrentTime(Math.max(0, +t || 0)).catch(() => {}); } catch (_) {} } },
+      duration: { get() { return sh._dur || 0; } },
+      paused: { get() { return sh._state !== 1; } },
+      playbackRate: { get() { return sh._rate; }, set(r) { sh._rate = +r || 1; try { wrap._vm && wrap._vm.setPlaybackRate(sh._rate).catch(() => {}); } catch (_) {} } },
+      volume: { get() { return 1; }, set(_) {} },
+      preservesPitch: { get() { return true; }, set(_) {} },
+      src: { get() { return "yt:vm:" + vid; }, set(_) {} },
+    });
+    sh.play = () => { try { wrap._vm && wrap._vm.play().catch(() => {}); } catch (_) {} return Promise.resolve(); };
+    sh.pause = () => { try { wrap._vm && wrap._vm.pause().catch(() => {}); } catch (_) {} };
+    sh.addEventListener = (ev, fn) => { (sh._h[ev] = sh._h[ev] || []).push(fn); };
+    sh.removeEventListener = (ev, fn) => { if (sh._h[ev]) sh._h[ev] = sh._h[ev].filter((f) => f !== fn); };
+    sh._fire = (ev) => (sh._h[ev] || []).slice().forEach((f) => { try { f(); } catch (_) {} });
+    sh._mount = (mountEl) => new Promise((res) => {
+      let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+      try {
+        const p = new Vimeo.Player(mountEl, { id: vid, width: "100%", height: "100%", controls: true, title: false, byline: false, portrait: false });
+        wrap._vm = p;
+        p.ready().then(() => { sh.readyState = 4; fin(true); p.getDuration().then((s) => { if (s) sh._dur = s; if (onTitle) p.getVideoTitle().then((t) => onTitle(t || "", sh._dur)).catch(() => {}); }).catch(() => {}); }).catch(() => fin(false));
+        p.on("timeupdate", (e) => { try { if (e && typeof e.seconds === "number") sh._cur = e.seconds; } catch (_) {} });
+        p.on("play", () => { sh._state = 1; });
+        p.on("pause", () => { if (sh._state !== 0) sh._state = 2; });
+        p.on("ended", () => { sh._state = 0; sh._fire("ended"); });
+        p.on("error", () => fin(false));
+      } catch (_) { fin(false); }
+      setTimeout(() => fin(!!wrap._vm), 6000);
+    });
+    return sh;
+  }
+
   let XFCURVE = "smooth"; // crossfader curve, synced from S.xfCurve by paintXfPads
   // YouTube decks never enter the Web Audio graph, so the master BOOST knob used
   // to do nothing for them (owner: "boost the sound its too low", 2026-10-26 —
@@ -791,7 +888,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
 </div>
   <div class="dj-panel" id="dj-browser" style="margin-top:16px">
-    <div style="border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:13px;letter-spacing:.08em">▶️ DJ YOUTUBE — PLAY THE MUSIC VIDEO</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the YouTube panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:4px 0 8px">Paste any YouTube link, put the video on a deck, and mix it: play, pause, seek and the X fader volume all work, and your listeners see the video on the station. YouTube keeps its audio locked in its player, so EQ, effects and scratch stay on your own files.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a YouTube link..." style="flex:1;min-width:200px" aria-label="YouTube link"><span style="font-size:12px;color:var(--muted)">Load on:</span><button class="btn ghost sm" type="button" data-ytload="A">A</button><button class="btn ghost sm" type="button" data-ytload="B">B</button><button class="btn ghost sm" type="button" data-ytload="C">C</button><button class="btn ghost sm" type="button" data-ytload="D">D</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px"><input type="search" id="dj-ytq" placeholder="Search YouTube — any artist, any song..." aria-label="Search YouTube"><button class="btn sm" type="submit">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:260px;margin-top:8px"></div></div></div>
+    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">🎬 VIDEO SEARCH — MUSIC VIDEOS FROM EVERYWHERE</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the video panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Search YouTube, Dailymotion or the Internet Archive, or paste a link (YouTube, Vimeo and Dailymotion all work) — put the video on a deck and mix it: play, pause, seek and the X fader volume all work, and your listeners see it on the master screen. Video sites keep their audio locked in their own players, so EQ, effects and scratch stay on your own files. Archive videos load as real files — full deck control on those.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a video link — YouTube, Vimeo, Dailymotion..." style="flex:1;min-width:220px;font-size:16px;padding:12px" aria-label="Video link"><span style="font-size:13px;color:var(--muted)">Load on:</span><button class="btn ghost" type="button" data-ytload="A">A</button><button class="btn ghost" type="button" data-ytload="B">B</button><button class="btn ghost" type="button" data-ytload="C">C</button><button class="btn ghost" type="button" data-ytload="D">D</button></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm vtab" type="button" data-vtab="yt">▶ YouTube</button><button class="btn ghost sm vtab" type="button" data-vtab="dm">Dailymotion</button><button class="btn ghost sm vtab" type="button" data-vtab="ia">🎞 Archive videos</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px;display:flex;gap:8px"><input type="search" id="dj-ytq" placeholder="Search — any artist, any song..." aria-label="Search videos" style="flex:1;font-size:17px;padding:13px"><button class="btn" type="submit" style="font-size:16px;padding:13px 22px">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:430px;margin-top:10px"></div></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4><button class="btn ghost sm" type="button" data-fold="br-panes" aria-label="Fold the music lists">▾</button>
       <button class="btn sm browtab on" type="button" data-brow="lib">Your Library</button>
       <button class="btn ghost sm browtab" type="button" data-brow="net">Free Music Search</button>
@@ -969,6 +1066,42 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const sum = gs.reduce((a, x) => a + x.g, 0) || 1;
     return gs.map((x) => ({ k: x.k, op: Math.max(0.02, x.g / sum) }));
   }
+  /* one screen player for any video platform: the wrapper speaks the YT-ish
+   * surface renderScreen already uses, whatever player is underneath */
+  function mkVidPlayer(mountEl, tok, muted, deckK) {
+    const vp = vparseTok(tok);
+    const w = { _raw: null, _st: -1, _cur: 0,
+      playVideo() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.playVideo(); else if (vp.p === "dm") w._raw.play(); else { const r = w._raw.play(); if (r && r.catch) r.catch(() => {}); } } catch (_) {} },
+      pauseVideo() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.pauseVideo(); else if (vp.p === "dm") w._raw.pause(); else w._raw.pause(); } catch (_) {} },
+      seekTo(t) { try { if (!w._raw) return; if (vp.p === "yt") w._raw.seekTo(t, true); else if (vp.p === "dm") w._raw.seek(t); else { const r = w._raw.setCurrentTime(t); if (r && r.catch) r.catch(() => {}); } w._cur = t; } catch (_) {} },
+      getCurrentTime() { try { if (vp.p === "yt" && w._raw) return w._raw.getCurrentTime() || 0; } catch (_) {} return w._cur || 0; },
+      getPlayerState() { try { if (vp.p === "yt" && w._raw) return w._raw.getPlayerState(); } catch (_) {} return w._st; },
+      setVolume(v) { try { if (!w._raw) return; if (vp.p === "yt") w._raw.setVolume(v); else w._raw.setVolume(Math.max(0, Math.min(1, v / 100))); } catch (_) {} },
+      mute() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.mute(); else w._raw.setVolume(0); } catch (_) {} },
+      loadVideoById(tok2, t) { const v2 = vparseTok(tok2); try { if (!w._raw) return; if (vp.p === "yt") w._raw.loadVideoById(v2.id, t); else if (vp.p === "dm") { if (w._raw.load) w._raw.load(v2.id); if (t) setTimeout(() => w.seekTo(t), 900); } else { const r = w._raw.loadVideo(v2.id); if (r && r.then) r.then(() => { if (t) w.seekTo(t); w.playVideo(); }); } } catch (_) {} },
+      destroy() { try { if (w._raw && vp.p !== "dm") w._raw.destroy(); } catch (_) {} w._raw = null; } };
+    const ready = () => { try { if (muted) w.mute(); w.seekTo(Math.max(0, posOf(deckK))); w.playVideo(); } catch (_) {} };
+    try {
+      if (vp.p === "yt") {
+        w._raw = new YT.Player(mountEl, { videoId: vp.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: () => ready(), onStateChange: (e) => { w._st = e.data; } } });
+      } else if (vp.p === "dm") {
+        const p = DM.player(mountEl, { video: vp.id, width: "100%", height: "100%", params: { autoplay: false, controls: false, "endscreen-enable": false } });
+        w._raw = p;
+        const on = (ev, fn) => { try { p.addEventListener(ev, fn); } catch (_) {} };
+        on("apiready", () => ready());
+        on("timeupdate", (e) => { try { if (e && typeof e.time === "number") w._cur = e.time; } catch (_) {} });
+        on("play", () => { w._st = 1; }); on("pause", () => { if (w._st !== 0) w._st = 2; }); on("ended", () => { w._st = 0; });
+      } else {
+        const p = new Vimeo.Player(mountEl, { id: vp.id, width: "100%", height: "100%", controls: false, title: false, byline: false, portrait: false });
+        w._raw = p;
+        p.ready().then(() => ready()).catch(() => {});
+        p.on("timeupdate", (e) => { try { if (e && typeof e.seconds === "number") w._cur = e.seconds; } catch (_) {} });
+        p.on("play", () => { w._st = 1; }); p.on("pause", () => { if (w._st !== 0) w._st = 2; }); p.on("ended", () => { w._st = 0; });
+      }
+    } catch (_) {}
+    return w;
+  }
+
   async function renderScreen(scr, muted, mix, duck) {
     const tg = vmixTargets();
     // a true dissolve, full brightness at every point of the fade: the weaker
@@ -981,7 +1114,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const stb = scr.standby ? $(scr.standby) : null; if (stb) stb.style.display = tg.length ? "none" : "grid";
     const chip = $(scr.chip);
     if (!tg.length) { if (chip) chip.hidden = true; return; }
-    await ytApi(); if (!window.YT || !YT.Player) return;
+    const provs = new Set(tg.map((t) => vparseTok(S[t.k].yt).p));
+    if (provs.has("yt")) await ytApi();
+    if (provs.has("dm")) await dmApi();
+    if (provs.has("vm")) await vmApi();
     for (const t of tg) {
       let i = scr.slots.findIndex((sl) => sl.deck === t.k);
       if (i < 0) {
@@ -989,7 +1125,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
         sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; mount.innerHTML = "<div></div>";
         mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
-        try { sl.p = new YT.Player(mount.firstChild, { videoId: sl.vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: (e) => { try { if (muted) e.target.mute(); e.target.seekTo(Math.max(0, posOf(t.k)), true); e.target.playVideo(); } catch (_) {} } } }); } catch (_) {}
+        const prov = vparseTok(sl.vid).p;
+        if ((prov === "yt" && (!window.YT || !YT.Player)) || (prov === "dm" && (!window.DM || !DM.player)) || (prov === "vm" && (!window.Vimeo || !Vimeo.Player))) { sl.deck = ""; continue; }
+        sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k);
         continue;
       }
       const sl = scr.slots[i];
@@ -1701,8 +1839,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       applyFx(); levels(); paintOwner(); save(true); say(P.msg); return;
     }
     if (b.dataset.curplay != null) { const ci = CURATED[+b.dataset.curplay]; if (ci) { b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (src) playPadUrl(src); else say("That sound wouldn't load. Try another."); } return; }
-    if (b.dataset.ytput) { const [dk, ix] = b.dataset.ytput.split(":"), it = ytRes[+ix]; if (it) load(dk, { yt: it.id, src: "", title: it.title, cover: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg", dur: it.dur || 0 }); return; }
-    if (b.dataset.ytload) { const inp = $("#dj-yt"), vid = ytParse(inp && inp.value); if (!vid) { say("Paste a YouTube link first — then pick the deck."); return; } load(b.dataset.ytload, { yt: vid, src: "", title: "YouTube video", cover: "https://i.ytimg.com/vi/" + vid + "/hqdefault.jpg", dur: 0 }); return; }
+    if (b.dataset.vput) { const [dk, ix] = b.dataset.vput.split(":"), it = vRes[+ix]; if (!it) return; if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } load(dk, { src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }); return; } const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; load(dk, { yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); return; }
+    if (b.dataset.ytload) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a YouTube, Vimeo or Dailymotion link first — then pick the deck."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } load(b.dataset.ytload, { src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }); return; } load(b.dataset.ytload, item); return; }
     if (b.dataset.load) {
       if (b.dataset.cur != null) { const ci = CURATED[+b.dataset.cur]; if (!ci) return; b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (!src) { say("That sound wouldn't load. Try another."); return; } load(b.dataset.load, { src, title: ci.name, cover: "" }); }
       else if (b.dataset.lib != null) { const t = TRACKS()[+b.dataset.lib]; if (t) load(b.dataset.load, { src: URLOF(t), title: t.title, cover: t.cover, dur: +t.duration || 0, bpm: +t.bpm || 0, key: t.key || "", cam: t.cam || "" }); }
@@ -2076,11 +2214,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     showT0 = Date.now(); showRec.start(1000); $("#rec-btn").textContent = "⏹ Stop recording"; $("#rec-st").innerHTML = '<span class="rec-on">● REC</span> Recording the show...';
   });
 
-  /* ---------- YouTube search: Invidious mirrors, no key needed. The mirrors
-   * come and go, so after the one verified working, the booth asks the official
-   * instances list which ones are up and browser-friendly and tries those too.
-   * If every mirror is down, the paste-a-link box above still always works. */
-  let ytRes = [];
+  /* ---------- Video search everywhere: YouTube (Invidious mirrors, no key),
+   * Dailymotion (public API, no key) and Internet Archive videos (no key).
+   * YouTube decks carry a plain id in S[k].yt; Dailymotion rides as "dm:<id>"
+   * and Vimeo (paste-a-link) as "vm:<id>" — setYt and the screens dispatch on
+   * the prefix. Archive videos resolve to a real file and load as file decks. */
+  let vRes = [], vSrc = "yt";
   async function ytHosts() {
     const out = ["https://yt.chocolatemoo53.com"];
     try {
@@ -2104,18 +2243,54 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     return null;
   }
-  function paintYtRes(msg) {
-    const box = $("#dj-ytres"); if (!box) return;
-    box.innerHTML = msg ? `<small class="muted">${msg}</small>` : ytRes.map((it, i) => `<div class="dj-item"><span style="display:flex;gap:8px;align-items:center;min-width:0"><img src="https://i.ytimg.com/vi/${it.id}/default.jpg" alt="" style="width:64px;height:36px;object-fit:cover;border-radius:6px;flex:none"><span title="${E(it.title)}">${E(it.title)}${it.dur ? ` <small class="muted">${fmt(it.dur)}</small>` : ""}</span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost sm" type="button" data-ytput="${dk}:${i}">${dk}</button>`).join("")}</div>`).join("");
+  async function dmSearch(q) {
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(7000) } : {};
+      const r = await fetch("https://api.dailymotion.com/videos?fields=id,title,duration,thumbnail_480_url&limit=14&sort=relevance&search=" + encodeURIComponent(q), ctl);
+      if (!r.ok) return null;
+      const j = await r.json();
+      if (!j || !Array.isArray(j.list)) return null;
+      return j.list.filter((it) => it && it.id).map((it) => ({ kind: "dm", id: it.id, title: it.title || "Dailymotion video", dur: it.duration || 0, thumb: it.thumbnail_480_url || "" }));
+    } catch (_) { return null; }
   }
-  const ytf = $("#dj-ytform");
-  if (ytf) ytf.addEventListener("submit", async (e) => {
+  async function iaVidSearch(q) {
+    try {
+      const u = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent("mediatype:movies AND (" + q + ")") + "&fl[]=identifier&fl[]=title&rows=14&page=1&sort[]=downloads%20desc&output=json";
+      const r = await fetch(u); if (!r.ok) return null;
+      const j = await r.json(); const docs = (j && j.response && j.response.docs) || [];
+      return docs.filter((d) => d && d.identifier).map((d) => ({ kind: "ia", id: d.identifier, title: d.title || "Archive video", dur: 0, thumb: "https://archive.org/services/img/" + encodeURIComponent(d.identifier) }));
+    } catch (_) { return null; }
+  }
+  async function iaVideoFile(id) {
+    try {
+      const j = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(id))).json();
+      const files = (j.files || []).filter((x) => /\.(mp4|webm)$/i.test(x.name || "") && !/sample|preview|trailer/i.test(x.name || ""));
+      files.sort((a, b) => (+b.size || 0) - (+a.size || 0));
+      const f = files.find((x) => /\.mp4$/i.test(x.name)) || files[0];
+      return f ? "https://archive.org/download/" + encodeURIComponent(id) + "/" + f.name.split("/").map(encodeURIComponent).join("/") : "";
+    } catch (_) { return ""; }
+  }
+  function paintTabs() { document.querySelectorAll("[data-vtab]").forEach((b) => { b.className = b.dataset.vtab === vSrc ? "btn sm vtab" : "btn ghost sm vtab"; }); }
+  function paintVRes(msg) {
+    const box = $("#dj-ytres"); if (!box) return;
+    if (msg) { box.innerHTML = `<small class="muted">${msg}</small>`; return; }
+    const srcName = { yt: "YouTube", dm: "Dailymotion", ia: "Archive" };
+    box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:15px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}</div>`).join("");
+  }
+  const vtf = $("#dj-ytform");
+  if (vtf) vtf.addEventListener("submit", async (e) => {
     e.preventDefault(); const q = $("#dj-ytq").value.trim(); if (!q) return;
-    paintYtRes("Searching YouTube...");
-    const res = await ytSearch(q);
-    if (!res) { ytRes = []; paintYtRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
-    ytRes = res; paintYtRes(res.length ? "" : "Nothing found for that — try another name.");
+    paintVRes("Searching " + ({ yt: "YouTube", dm: "Dailymotion", ia: "the Archive" })[vSrc] + "...");
+    let res = null;
+    if (vSrc === "yt") { const r = await ytSearch(q); res = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })) : null; }
+    else if (vSrc === "dm") res = await dmSearch(q);
+    else res = await iaVidSearch(q);
+    if (!res) { vRes = []; paintVRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
+    vRes = res; paintVRes(res.length ? "" : "Nothing found for that — try another name.");
   });
+  document.querySelectorAll("[data-vtab]").forEach((b) => b.addEventListener("click", () => { vSrc = b.dataset.vtab; paintTabs(); const q = $("#dj-ytq"); if (q) q.focus(); }));
+  paintTabs();
+
 
   /* ---------- session video: film the tab, so a music-video mix lands in one file.
    * The show recorder above only hears the audio graph, and YouTube decks never
