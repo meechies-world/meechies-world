@@ -159,3 +159,26 @@ html.lux #gift-grid .gift[aria-pressed=true] .gn{color:#1a1305}
 html.lux #gift-grid .gift[aria-pressed=true] .price{color:#3a2806 !important}
 html.lux #gift-grid.gp{grid-template-columns:repeat(4,minmax(0,1fr)) !important;grid-auto-rows:minmax(86px,max-content) !important;grid-template-rows:none !important}
 html.lux #gift-grid .gift{min-width:0 !important}
+
+/* ======================= round 3: phones get their screen back ======================= */
+/* On phones the floating buttons shrink to gold coins (no long pills over the page).
+   Same buttons, same spots and still draggable. Long-press labels are kept for screen readers. */
+@media (max-width:760px){
+  html.lux #ai-fab{font-size:0 !important;padding:3px !important;gap:0 !important;width:52px;height:52px;justify-content:center;border-radius:50% !important;position:fixed}
+  html.lux #ai-fab .ai-av{width:44px !important;height:44px !important;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #0b0906,0 0 0 3.5px #e8be64}
+  html.lux #ai-fab .dot{position:absolute;right:3px;bottom:3px;width:12px !important;height:12px !important;margin:0 !important;border:2px solid #0b0906}
+  html.lux #mw-show-pill{font-size:0 !important;width:48px;height:48px;padding:0 !important;border-radius:50% !important;display:grid;place-items:center}
+  html.lux #mw-show-pill::before{content:"";width:0;height:0;margin-left:4px;border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent #ffe08a;filter:drop-shadow(0 0 6px rgba(255,205,100,.8))}
+  html.lux #mx-fab{width:50px !important;height:50px !important}
+}
+/* Phones: the Book tab row tucks away while you scroll down and slides back the moment you scroll up (like the Facebook app).
+   The member/online strip shows on Home and Meechie's Book only, so every other page starts higher up. */
+@media (max-width:760px){
+  html.lux #fb-tabs{transition:transform .28s ease,opacity .28s ease !important}
+  html.lux.gi-down #fb-tabs{transform:translateY(-115%) !important;opacity:0 !important;pointer-events:none !important}
+  html.lux body[data-view]:not([data-view=home]):not([data-view=community]) #mw-stats{display:none !important}
+}
+@media (max-width:760px){
+  html.lux header.bar .authbar .btn,html.lux header.bar #authbar .btn{padding:7px 12px !important;font-size:11.5px !important;letter-spacing:.06em !important}
+  html.lux header.bar .brand b{font-size:13.5px !important;letter-spacing:.04em !important}
+}
