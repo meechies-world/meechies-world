@@ -139,7 +139,7 @@
   async function load() {
     if (!tok()) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">Sign in (or join free) to play for coins — win coins, gift them, and the people you gift earn real cash value.</p>`; return; }
     const r = await api("games");
-    if (!r.ok) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Casino</h3></div><p class="cz-safe">${E(r.j.error || "The Jackpot couldn't load right now.")}</p>`; return; }
+    if (!r.ok) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">${E(r.j.error || "The Jackpot couldn't load right now.")}</p>`; return; }
     const me = await api("me").catch(() => null);
     S.data = r.j; S.data.myCoins = me && me.ok ? me.j.coins : 0;
     for (const g of Object.keys(S.bet)) S.bet[g] = Math.max(S.data.minBet, Math.min(S.bet[g], Math.max(S.data.minBet, S.data.maxBet[g] || S.data.minBet)));

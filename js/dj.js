@@ -2312,7 +2312,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const r = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video&page=" + page, ctl);
         if (!r.ok) continue;
         const j = await r.json();
-        if (Array.isArray(j)) return j.filter((it) => it && it.videoId).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
+        if (Array.isArray(j) && (j.length || page > 1)) return j.filter((it) => it && it.videoId).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
       } catch (_) {}
     }
     return null;
