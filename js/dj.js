@@ -1686,8 +1686,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY;
     e.preventDefault();
     const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
-    wheelTgt = Math.max(0, Math.min(max, (wheelTgt ?? scrollY) + Math.max(-85, Math.min(85, d * 0.2))));
-    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.3); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
+    wheelTgt = Math.max(0, Math.min(max, (wheelTgt ?? scrollY) + Math.max(-45, Math.min(45, d * 0.1))));
+    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.25); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
   }, { passive: false });
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
   if (typeof media !== "undefined") media.addEventListener("play", () => {
