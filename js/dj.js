@@ -108,6 +108,13 @@
     if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
     return ctx;
   }
+  // Phones pause web audio when the screen locks, a call comes in or another app plays sound. The decks keep
+  // "playing" but go silent until something resumes it, so the very next touch, key or return to the page
+  // brings the sound back (owner, 2026-10-27: "there is no sound on my dj booth").
+  function wakeAudio() { if (ctx && ctx.state !== "running" && ctx.state !== "closed") ctx.resume().catch(() => {}); }
+  ["pointerdown", "touchend", "keydown"].forEach((t) => addEventListener(t, wakeAudio, { capture: true, passive: true }));
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) wakeAudio(); });
+  let muteHintAt = 0;
   function impulse(dur, decay) {
     const rate = ctx.sampleRate, len = rate * dur, buf = ctx.createBuffer(2, len, rate);
     for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay); }
@@ -1568,6 +1575,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   setInterval(() => {
     const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) showOwnerUI();
+    if (ctx && ctx.state !== "running" && ctx.state !== "closed" && DECKS.some((k) => S[k] && S[k].playing) && (boothLead || listening)) { wakeAudio(); if (Date.now() - muteHintAt > 20000) { muteHintAt = Date.now(); setTimeout(() => { if (ctx && ctx.state !== "running") say("🔇 Your phone paused the sound. Tap anywhere on the page to bring it back."); }, 600); } }
     if (pkTab === "mine" && !(pkItems && pkItems.length) && TRACKS().length) paintPkList();
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
@@ -1650,7 +1658,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (OWNER() && el && (held || boothShown)) { mine = held || !L || now - (L.at || 0) > 7000; if (mine) { try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: now })); } catch (_) {} } }
     const was = boothLead; boothLead = mine;
     const badge = document.getElementById("dj-lead");
-    if (badge && OWNER()) badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror — the other window plays the sound, this one is the remote";
+    if (badge && OWNER()) {
+      badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror: another window has the sound. Tap here to play it in this window";
+      badge.style.cursor = boothLead ? "" : "pointer"; badge.setAttribute("role", "button");
+      if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (boothLead || !OWNER()) return; try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
+    }
     if (boothLead && !was && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].playing) follow(k); });
     if (!boothLead && was) DECKS.forEach((k) => { try { decks[k]?.stop(); } catch (_) {} });
   }
