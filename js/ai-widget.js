@@ -19,6 +19,7 @@
 body.has-player #ai-fab,body.has-player #ai-panel{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 body.has-player #ai-panel{height:min(520px,calc(100vh - 180px))}
 @media(max-width:600px){#ai-fab{padding:9px 13px;font-size:13px}}
+#ai-hi{position:fixed;right:16px;bottom:78px;z-index:9996;max-width:272px;background:#171208;border:1px solid var(--gold-hi,#f0cf78);color:#f3e6c8;border-radius:14px;padding:10px 34px 10px 12px;font:500 13px/1.45 system-ui,sans-serif;box-shadow:0 10px 28px rgba(0,0,0,.55);cursor:pointer}body.has-player #ai-hi{bottom:calc(152px + env(safe-area-inset-bottom,0px))}#ai-hi button{position:absolute;top:2px;right:7px;background:none;border:0;color:#cbb26a;font-size:17px;cursor:pointer;padding:2px}
 #ai-panel{position:fixed;right:16px;bottom:16px;z-index:9998;width:min(380px,calc(100vw - 32px));height:min(560px,calc(100vh - 100px));display:flex;flex-direction:column;background:#100e0a;border:1px solid var(--gold,#d4a843);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.7);overflow:hidden;color:var(--text,#f3ecdc)}
 #ai-panel[hidden],#ai-fab[hidden]{display:none!important}
 #ai-panel header{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line,#3a3223);background:linear-gradient(180deg,#1d1810,#100e0a)}
@@ -155,7 +156,7 @@ body.mw-editing #ai-fab{display:none!important}`;
     if (viaTalk) playReply(reply); else speak(reply);
   }
   /* read answers out loud */
-  let talkBack = false; try { talkBack = localStorage.getItem("mw_ai_voice") === "1"; } catch (_) {}
+  let talkBack = true; try { const v0 = localStorage.getItem("mw_ai_voice"); talkBack = v0 === null ? true : v0 === "1"; } catch (_) {}
   const spk = panel.querySelector("#ai-spk"); const paintSpk = () => { spk.textContent = talkBack ? "🔊" : "🔈"; spk.title = talkBack ? "Reading answers out loud (tap to stop)" : "Read answers out loud"; };
   paintSpk();
   spk.addEventListener("click", () => { talkBack = !talkBack; try { localStorage.setItem("mw_ai_voice", talkBack ? "1" : "0"); } catch (_) {} if (!talkBack) window.speechSynthesis?.cancel(); else unlockSpeech(); paintSpk(); });
@@ -192,7 +193,10 @@ body.mw-editing #ai-fab{display:none!important}`;
       inp.focus();
     } catch (_) { pending = ""; }
   });
-  fab.addEventListener("click", () => { panel.hidden = false; fab.hidden = true; draw(false); setTimeout(() => inp.focus(), 50); });
+  const GREET = "Hey, I am Meechie, the AI guide for Meechie's World. I talk out loud, and you can talk right back to me: tap Talk to Meechie up top for a full voice chat, tap the mic and speak, or just type below. I can take you anywhere here: the live radio and DJ tables, the shop, the videos and movies, your messages, or help you book and buy. What are you looking for today?";
+  fab.addEventListener("click", () => { panel.hidden = false; fab.hidden = true; if (!hist.length) { hist.push({ role: "assistant", content: GREET }); try { localStorage.setItem("mw_ai2", JSON.stringify(hist)); } catch (_) {} draw(false); speak(GREET); } else draw(false); setTimeout(() => inp.focus(), 50); });
+  /* says hello when people arrive: one small bubble by the button, once per visit */
+  try { if (!sessionStorage.getItem("mw_ai_hi")) { sessionStorage.setItem("mw_ai_hi", "1"); setTimeout(() => { if (!panel.hidden || fab.hidden || document.getElementById("ai-hi")) return; const bub = document.createElement("div"); bub.id = "ai-hi"; bub.setAttribute("role", "button"); bub.innerHTML = "<b>Meechie AI</b> is here. Tap me and I will show you around, and we can talk out loud. <button type=\"button\" aria-label=\"Dismiss\">×</button>"; bub.addEventListener("click", (e) => { bub.remove(); if (!e.target.closest("button")) fab.click(); }); document.body.appendChild(bub); setTimeout(() => { bub.remove(); }, 16000); }, 4500); } } catch (_) {}
   panel.querySelector("#ai-close").addEventListener("click", () => { stopTalk(); panel.hidden = true; sync(); });
   chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/take me to the radio/.test(b.textContent)) { goTo("radio"); return; } if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; sync(); return; } ask(b.textContent); });
   panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} window.speechSynthesis?.cancel(); draw(false); inp.focus(); });

@@ -24,11 +24,12 @@
 /* Meechie's World RADIO app mode — entered via ?app=radio (the standalone Radio
    app's start_url, see /radio-app/). The app is just the radio + DJ station:
    slim chrome, its own bottom bar, and a Full site escape hatch. */
-(function(){ try { var q = new URLSearchParams(location.search); if (q.get("app") === "radio") sessionStorage.setItem("mw-appmode", "radio"); if (sessionStorage.getItem("mw-appmode") === "radio") { document.documentElement.classList.add("appmode"); document.addEventListener("DOMContentLoaded", function () { if (document.getElementById("appbar")) return; var bar = document.createElement("nav"); bar.id = "appbar"; bar.setAttribute("aria-label", "Radio app"); bar.innerHTML = '<a href="#radio" data-go="radio">📻<span>Radio</span></a><a href="#dj" data-go="dj">🎛️<span>DJ Station</span></a><a href="#tv" data-go="tv">📺<span>Watch</span></a><a href="#videos" data-go="videos">🎬<span>Videos</span></a><a href="/" id="appbar-full">🌐<span>Full site</span></a>'; document.body.appendChild(bar); document.getElementById("appbar-full").addEventListener("click", function () { try { sessionStorage.removeItem("mw-appmode"); } catch (e) {} }); }); } } catch (e) {} })();
+(function(){ try { var q = new URLSearchParams(location.search); var qa = q.get("app"); if (qa === "radio" || qa === "ai") sessionStorage.setItem("mw-appmode", qa); var am = sessionStorage.getItem("mw-appmode"); if (am === "radio" || am === "ai") { document.documentElement.classList.add("appmode"); if (am === "ai") document.documentElement.classList.add("appmode-ai"); if (navigator.wakeLock) { var wl = null; var grab = function () { if (document.visibilityState === "visible" && !wl) { try { navigator.wakeLock.request("screen").then(function (w) { wl = w; w.addEventListener("release", function () { wl = null; }); }).catch(function () {}); } catch (e) {} } }; document.addEventListener("visibilitychange", grab); document.addEventListener("pointerdown", grab); document.addEventListener("DOMContentLoaded", grab); } document.addEventListener("DOMContentLoaded", function () { if (document.getElementById("appbar")) return; var bar = document.createElement("nav"); bar.id = "appbar"; bar.setAttribute("aria-label", am === "ai" ? "Meechie AI app" : "Radio app");  bar.innerHTML = '<a href="#radio" data-go="radio">📻<span>Radio</span></a><a href="#dj" data-go="dj">🎛️<span>DJ Station</span></a><a href="#tv" data-go="tv">📺<span>Watch</span></a><a href="#videos" data-go="videos">🎬<span>Videos</span></a><a href="/" id="appbar-full">🌐<span>Full site</span></a>'; if (am === "ai") bar.innerHTML = '<a href="#" id="appbar-ai">🎙️<span>Meechie AI</span></a>' + bar.innerHTML; document.body.appendChild(bar); document.getElementById("appbar-full").addEventListener("click", function () { try { sessionStorage.removeItem("mw-appmode"); } catch (e) {} }); if (am === "ai") { var aib = document.getElementById("appbar-ai"); if (aib) aib.addEventListener("click", function (e) { e.preventDefault(); var f = document.getElementById("ai-fab"); if (f) f.click(); }); var tr = 0; var iv = setInterval(function () { var f2 = document.getElementById("ai-fab"); tr++; if (f2) { clearInterval(iv); f2.click(); } else if (tr > 40) clearInterval(iv); }, 250); } }); } } catch (e) {} })();
 </script>
 <style>
 html.appmode #fb-tabs,html.appmode #fb-left,html.appmode #fb-right,html.appmode .announce,html.appmode .apptab,html.appmode #mx-fab,html.appmode #mw-fab,html.appmode #ai-fab,html.appmode #vz-pill,html.appmode footer{display:none!important}
 html.appmode .player-bar{bottom:56px!important}
+html.appmode.appmode-ai #ai-fab{display:flex!important}
 html.appmode body{padding-bottom:124px}
 #appbar{position:fixed;left:0;right:0;bottom:0;height:56px;z-index:9995;display:none;background:#0d0b08;border-top:1px solid #8a6d1f;align-items:stretch;justify-content:space-around}
 html.appmode #appbar{display:flex}
@@ -1367,6 +1368,15 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       </div>
     </div>
 
+    <div class="card" id="apps-card" style="margin:18px 0">
+      <h3 style="margin-top:0">📲 Meechie's World APPS — free, no app store</h3>
+      <p class="muted" style="margin:6px 0 12px">Put Meechie's World on your home screen like a real app. Two of them:</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn gold" href="/radio-app/" style="text-decoration:none">📻 Get the Radio App</a>
+        <a class="btn gold" href="/ai-app/" style="text-decoration:none">🎙️ Get the Meechie AI App</a>
+      </div>
+      <small class="muted" style="display:block;margin-top:10px">The Radio App keeps the station playing with your screen off. The AI App opens straight into Meechie AI: talk to it out loud, it talks back and shows you around.</small>
+    </div>
     <div class="card" id="app-poll" style="margin:18px 0">
       <h3 style="margin-top:0">📻 The Meechie's World RADIO APP — want it?</h3>
       <p class="muted" style="margin:6px 0 12px">We're thinking about a separate app that's ONLY the radio + DJ station — watch the music videos on the big screen, request songs, and keep the music playing with your phone screen OFF. Would you download it?</p>
@@ -3543,7 +3553,7 @@ boot();
 <script src="js/biolock.js?v=1792989000"></script>
 <script src="js/engage.js?v=1792580555"></script>
 <script src="js/visitors.js?v=1792580555"></script>
-<script src="js/ai-widget.js?v=1792982000"></script>
+<script src="js/ai-widget.js?v=1793043000"></script>
 <script src="js/house-ads.js?v=1793026000"></script>
 <script>
 /* Offline music shelf: songs saved to this device (from here, or automatically
