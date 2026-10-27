@@ -2293,7 +2293,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * YouTube decks carry a plain id in S[k].yt; Dailymotion rides as "dm:<id>"
    * and Vimeo (paste-a-link) as "vm:<id>" — setYt and the screens dispatch on
    * the prefix. Archive videos resolve to a real file and load as file decks. */
-  let vRes = [], vSrc = "yt";
+  let vRes = [], vSrc = "yt", vQuery = "", vMoreOn = false, vNextPage = 3;
   async function ytHosts() {
     const out = ["https://yt.chocolatemoo53.com"];
     try {
@@ -2304,32 +2304,42 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     } catch (_) {}
     return out.slice(0, 5);
   }
-  async function ytSearch(q) {
+  async function ytPage(q, page) {
     const hosts = await ytHosts();
     for (const base of hosts) {
       try {
         const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(7000) } : {};
-        const r = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video", ctl);
+        const r = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video&page=" + page, ctl);
         if (!r.ok) continue;
         const j = await r.json();
-        if (Array.isArray(j) && j.length) return j.filter((it) => it && it.videoId).slice(0, 12).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
+        if (Array.isArray(j)) return j.filter((it) => it && it.videoId).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
       } catch (_) {}
     }
     return null;
   }
+  async function ytSearch(q) {
+    const a = await ytPage(q, 1);
+    if (!a) return null;
+    const b = await ytPage(q, 2);
+    const seen = new Set(), out = [];
+    for (const it of a.concat(b || [])) { if (!seen.has(it.id)) { seen.add(it.id); out.push(it); } }
+    return out.slice(0, 30);
+  }
+  let dmPage = 1;
   async function dmSearch(q) {
     try {
       const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(7000) } : {};
-      const r = await fetch("https://api.dailymotion.com/videos?fields=id,title,duration,thumbnail_480_url&limit=14&sort=relevance&search=" + encodeURIComponent(q), ctl);
+      const r = await fetch("https://api.dailymotion.com/videos?fields=id,title,duration,thumbnail_480_url&limit=24&sort=relevance&page=" + dmPage + "&search=" + encodeURIComponent(q), ctl);
       if (!r.ok) return null;
       const j = await r.json();
       if (!j || !Array.isArray(j.list)) return null;
       return j.list.filter((it) => it && it.id).map((it) => ({ kind: "dm", id: it.id, title: it.title || "Dailymotion video", dur: it.duration || 0, thumb: it.thumbnail_480_url || "" }));
     } catch (_) { return null; }
   }
+  let iaPage = 1;
   async function iaVidSearch(q) {
     try {
-      const u = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent("mediatype:movies AND (" + q + ")") + "&fl[]=identifier&fl[]=title&rows=14&page=1&sort[]=downloads%20desc&output=json";
+      const u = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent("mediatype:movies AND (" + q + ")") + "&fl[]=identifier&fl[]=title&rows=24&page=" + iaPage + "&sort[]=downloads%20desc&output=json";
       const r = await fetch(u); if (!r.ok) return null;
       const j = await r.json(); const docs = (j && j.response && j.response.docs) || [];
       return docs.filter((d) => d && d.identifier).map((d) => ({ kind: "ia", id: d.identifier, title: d.title || "Archive video", dur: 0, thumb: "https://archive.org/services/img/" + encodeURIComponent(d.identifier) }));
@@ -2349,20 +2359,32 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const box = $("#dj-ytres"); if (!box) return;
     if (msg) { box.innerHTML = `<small class="muted">${msg}</small>`; return; }
     const srcName = { yt: "YouTube", dm: "Dailymotion", ia: "Archive" };
-    box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:15px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}</div>`).join("");
+    box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:15px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}</div>`).join("") + (vMoreOn ? `<button class="btn" type="button" data-vmore="1" style="width:100%;margin-top:10px">🔁 MORE RESULTS</button>` : "");
   }
   const vtf = $("#dj-ytform");
   if (vtf) vtf.addEventListener("submit", async (e) => {
     e.preventDefault(); const q = $("#dj-ytq").value.trim(); if (!q) return;
+    vQuery = q; dmPage = 1; iaPage = 1; vNextPage = 3; vMoreOn = false;
     paintVRes("Searching " + ({ yt: "YouTube", dm: "Dailymotion", ia: "the Archive" })[vSrc] + "...");
     let res = null;
-    if (vSrc === "yt") { const r = await ytSearch(q); res = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })) : null; }
-    else if (vSrc === "dm") res = await dmSearch(q);
-    else res = await iaVidSearch(q);
-    if (!res) { vRes = []; paintVRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
+    if (vSrc === "yt") { const r = await ytSearch(q); res = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: it.thumb || ("https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg") })) : null; if (res) vMoreOn = res.length >= 20; }
+    else if (vSrc === "dm") { res = await dmSearch(q); if (res) vMoreOn = res.length >= 24; }
+    else { res = await iaVidSearch(q); if (res) vMoreOn = res.length >= 24; }
+    if (!res) { vRes = []; vMoreOn = false; paintVRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
     vRes = res; paintVRes(res.length ? "" : "Nothing found for that — try another name.");
   });
   document.querySelectorAll("[data-vtab]").forEach((b) => b.addEventListener("click", () => { vSrc = b.dataset.vtab; paintTabs(); const q = $("#dj-ytq"); if (q) q.focus(); }));
+  document.addEventListener("click", async (e) => {
+    const m = e.target.closest && e.target.closest("[data-vmore]"); if (!m || !vQuery) return;
+    m.disabled = true; m.textContent = "Loading more...";
+    let add = null;
+    if (vSrc === "yt") { const r = await ytPage(vQuery, vNextPage); if (r) { add = r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })); vNextPage++; vMoreOn = r.length >= 15; } }
+    else if (vSrc === "dm") { dmPage++; const r = await dmSearch(vQuery); if (r) { add = r; vMoreOn = r.length >= 24; } else dmPage--; }
+    else { iaPage++; const r = await iaVidSearch(vQuery); if (r) { add = r; vMoreOn = r.length >= 24; } else iaPage--; }
+    if (add && add.length) { const seen = new Set(vRes.map((x) => x.kind + ":" + x.id)); vRes = vRes.concat(add.filter((x) => !seen.has(x.kind + ":" + x.id))); }
+    else vMoreOn = false;
+    paintVRes("");
+  });
   paintTabs();
 
 
