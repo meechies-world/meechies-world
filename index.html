@@ -2,8 +2,8 @@
 <html lang="en" class="lux">
 <head>
 <meta charset="utf-8">
-<script src="js/media-cdn.js?v=1792928600"></script>
-<meta name="mw-build" content="1792580555">
+<script src="js/media-cdn.js?v=1793110093"></script>
+<meta name="mw-build" content="1793110093">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc. — Conscientia</title>
 <meta name="description" content="Meechie's World Inc. — music, media, AI, artist development, legal document preparation, creator exclusives, books, apparel, and a community built to grow together.">
@@ -43,6 +43,7 @@ html.appmode #appbar{display:flex}
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Meechie's World Inc","url":"https://meechiesworldinc.com/","logo":"https://meechiesworldinc.com/img/icon-512.png","email":"meechiesworldinc@aol.com","sameAs":["https://www.tiktok.com/@meechiesworldinc","https://www.snapchat.com/add/elpesidentay","https://meechiesworld-inc.printify.me"]}</script>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Kaushan+Script&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&family=Nosifer&display=swap">
 <style>
 /* Layout: black-and-gold house style. Sticky crest bar, tabbed sections (Home, Services, Community, Chat, Ad Board, Promote, Contact), one column on phones. */
@@ -680,6 +681,9 @@ footer .f-links a:hover{color:var(--gold-hi)}
 #enter .btn{font-size:17px;padding:15px 34px;letter-spacing:.08em;animation:enPulse 2.2s ease-in-out infinite}
 #enter .en-mute{background:none;border:0;color:var(--muted);font:500 13px var(--body);cursor:pointer;text-decoration:underline;padding:8px}
 #enter .en-mute:hover{color:var(--gold-hi)}
+#enter .en-links{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;margin:0}
+#enter .en-links a{color:var(--gold);font:600 13px var(--body);text-decoration:none;padding:8px;letter-spacing:.04em}
+#enter .en-links a:hover{color:var(--gold-hi);text-decoration:underline}
 @keyframes enPulse{0%,100%{box-shadow:0 0 0 0 rgba(212,168,67,.5)}50%{box-shadow:0 0 0 14px rgba(212,168,67,0)}}
 @media (prefers-reduced-motion:reduce){#enter .btn{animation:none}#enter.out{transition:none}}
 @keyframes rnIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
@@ -1011,6 +1015,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <p class="en-tag">Enter. The station is live.</p>
     <button class="btn" id="en-go" type="button">▶ ENTER MEECHIE'S WORLD</button>
     <button class="en-mute" id="en-mute" type="button">Enter without sound</button>
+    <nav class="en-links" aria-label="Quick links"><a href="/websites">Our services</a><a href="https://meechiesworld-inc.printify.me/products" target="_blank" rel="noopener">Shop</a></nav>
   </div>
 </div>
 <script>
@@ -1302,7 +1307,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <div class="card" id="daily-card" hidden></div>
         <div class="card composer" id="composer" hidden>
           <div class="field"><label for="p-text">Share something with the community</label><textarea id="p-text" maxlength="2000" placeholder="What's on your mind?"></textarea></div>
-          <img id="p-preview" class="preview-img" alt="Photo to post" hidden>
+          <img id="p-preview" class="preview-img" alt="Photo to post" hidden loading="lazy">
           <div class="vid-pick" id="p-vwrap" hidden><video id="p-vprev" controls playsinline muted></video><small class="muted" id="p-vinfo"></small><div class="vid-bar"><i id="p-vbar"></i></div><button class="act" type="button" id="p-vclear" style="justify-self:start">Remove video</button></div>
           <label id="announce-opt" hidden style="display:flex;gap:8px;align-items:center;font-size:14px;font-weight:600;color:var(--gold-hi)"><input type="checkbox" id="p-announce"> Send to everybody as an announcement (banner on every page)</label>
           <div class="row">
@@ -1743,7 +1748,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
           <a href="https://www.courtlistener.com/" target="_blank" rel="noopener"><b>CourtListener</b><small>Search millions of real court opinions, free</small></a>
           <a href="https://www.law.cornell.edu/" target="_blank" rel="noopener"><b>Cornell Legal Information Institute</b><small>Federal laws, court rules and plain-English guides</small></a>
           <a href="https://www.uscourts.gov/forms-rules/forms" target="_blank" rel="noopener"><b>U.S. Courts forms</b><small>Official federal forms, including pro se forms</small></a>
-          <a href="https://www.uscourts.gov/court-programs/pro-se-litigants" target="_blank" rel="noopener"><b>Federal pro se help</b><small>How to represent yourself in federal court</small></a>
+          <a href="https://www.uscourts.gov/forms-rules/forms" target="_blank" rel="noopener"><b>Federal pro se help</b><small>How to represent yourself in federal court</small></a>
           <a href="https://www.lawhelp.org/" target="_blank" rel="noopener"><b>LawHelp.org</b><small>Find free legal aid in your state</small></a>
           <a href="https://scholar.google.com/" target="_blank" rel="noopener"><b>Google Scholar</b><small>Pick "Case law" to search cases</small></a>
           <a href="#contact" data-go="contact"><b>Meechie's World paralegal services</b><small>Want us to prepare your packet? Book document prep</small></a>
@@ -2082,7 +2087,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <p class="muted">DM us on TikTok or Snapchat for the fastest reply, or ask our AI assistant right now.</p>
     </div>
     <div class="card" id="ai-card" style="margin-bottom:24px">
-      <h3 style="font-size:22px;display:flex;align-items:center;gap:12px"><img src="/img/meechie-ai.jpg" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-hi)">Ask Meechie (AI assistant)</h3>
+      <h3 style="font-size:22px;display:flex;align-items:center;gap:12px"><img src="/img/meechie-ai.jpg" loading="lazy" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-hi)">Ask Meechie (AI assistant)</h3>
       <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
       <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
       <form class="reply-form" id="ai-form"><input type="text" id="ai-q" aria-label="Ask Meechie" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
@@ -2211,11 +2216,11 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1792580555"></script>
-<script src="js/outage.js?v=1792580555"></script>
-<script src="js/float-layout.js?v=1792995000"></script>
-<script src="js/cf-client.js?v=1792618908"></script>
-<script src="js/platform.js?v=1792927200"></script>
+<script src="js/config.js?v=1793110093"></script>
+<script src="js/outage.js?v=1793110093"></script>
+<script src="js/float-layout.js?v=1793110093"></script>
+<script src="js/cf-client.js?v=1793110093"></script>
+<script src="js/platform.js?v=1793110093"></script>
 <script>
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
@@ -3502,60 +3507,60 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   b.disabled=false; });
 boot();
 </script>
-<script src="js/appnav.js?v=1792991000"></script>
-<script src="js/fb-feed.js?v=1793018000"></script>
-<script src="js/fb-feed-plus.js?v=1792580555"></script>
-<script src="js/stories.js?v=1792607566"></script>
-<script src="js/book-plus.js?v=1792607145"></script>
-<script src="js/studio.js?v=1792580555"></script>
-<script src="js/owner.js?v=1792580555"></script>
-<script src="js/site-coder-ui.js?v=1792580555"></script>
-<script src="js/messages.js?v=1792935000"></script>
-<script src="js/videos.js?v=1792580555"></script>
-<script src="js/movies.js?v=1792982000"></script>
-<script src="js/markets.js?v=1792580555"></script>
-<script src="js/legal.js?v=1792928500"></script>
-<script src="js/coin.js?v=1792580555"></script>
-<script src="js/preach.js?v=1792580555"></script>
-<script src="js/world3d.js?v=1792580555"></script>
-<script src="js/clips.js?v=1793008000"></script>
-<script src="js/dj.js?v=1793054000"></script>
-<script src="js/live.js?v=1792580555"></script>
-<script src="js/autotune.js?v=1792580555"></script>
-<script src="js/beatmaker.js?v=1792580555"></script>
-<script src="js/beatlab.js?v=1793055000"></script>
-<script src="js/friends.js?v=1792580555"></script>
-<script src="js/dating.js?v=1792928600"></script>
-<script src="js/books.js?v=1792580555"></script>
-<script src="js/social.js?v=1793052000"></script>
-<script src="js/jobs.js?v=1792580555"></script>
-<script src="js/shop-gift.js?v=1792600603"></script>
-<script src="js/fans.js?v=1792602872"></script>
-<script src="js/coins.js?v=1793050000"></script>
-<script src="js/games.js?v=1793050000"></script>
-<script src="js/share.js?v=1792936000"></script>
-<script src="js/gifts-plus.js?v=1792618621"></script>
-<script src="js/gold-icons.js?v=1792626191"></script>
-<script src="js/golive.js?v=1792946000"></script>
-<script src="js/obs.js?v=1792928200"></script>
-<script src="js/connect.js?v=1792928300"></script>
-<script src="js/predict.js?v=1792580555"></script>
-<script src="js/people.js?v=1792989000"></script>
-<script src="js/originals.js?v=1792934000"></script>
-<script src="js/welcome-show.js?v=1792934000"></script>
-<script src="js/profile-setup.js?v=1792932000"></script>
-<script src="js/profile-page.js?v=1792932000"></script>
-<script src="js/social-login.js?v=1792580555"></script>
-<script src="js/radio-keep.js?v=1792928000"></script>
-<script src="js/share-song.js?v=1792927800"></script>
-<script src="js/push.js?v=1792580555"></script>
-<script src="js/email-find.js?v=1792580555"></script>
-<script src="js/verify.js?v=1792580555"></script>
-<script src="js/biolock.js?v=1792989000"></script>
-<script src="js/engage.js?v=1792580555"></script>
-<script src="js/visitors.js?v=1792580555"></script>
-<script src="js/ai-widget.js?v=1793043000"></script>
-<script src="js/house-ads.js?v=1793026000"></script>
+<script src="js/appnav.js?v=1793110093"></script>
+<script src="js/fb-feed.js?v=1793110093"></script>
+<script src="js/fb-feed-plus.js?v=1793110093"></script>
+<script src="js/stories.js?v=1793110093"></script>
+<script src="js/book-plus.js?v=1793110093"></script>
+<script src="js/studio.js?v=1793110093"></script>
+<script src="js/owner.js?v=1793110093"></script>
+<script src="js/site-coder-ui.js?v=1793110093"></script>
+<script src="js/messages.js?v=1793110093"></script>
+<script src="js/videos.js?v=1793110093"></script>
+<script src="js/movies.js?v=1793110093"></script>
+<script src="js/markets.js?v=1793110093"></script>
+<script src="js/legal.js?v=1793110093"></script>
+<script src="js/coin.js?v=1793110093"></script>
+<script src="js/preach.js?v=1793110093"></script>
+<script src="js/world3d.js?v=1793110093"></script>
+<script src="js/clips.js?v=1793110093"></script>
+<script src="js/dj.js?v=1793110093"></script>
+<script src="js/live.js?v=1793110093"></script>
+<script src="js/autotune.js?v=1793110093"></script>
+<script src="js/beatmaker.js?v=1793110093"></script>
+<script src="js/beatlab.js?v=1793110093"></script>
+<script src="js/friends.js?v=1793110093"></script>
+<script src="js/dating.js?v=1793110093"></script>
+<script src="js/books.js?v=1793110093"></script>
+<script src="js/social.js?v=1793110093"></script>
+<script src="js/jobs.js?v=1793110093"></script>
+<script src="js/shop-gift.js?v=1793110093"></script>
+<script src="js/fans.js?v=1793110093"></script>
+<script src="js/coins.js?v=1793110093"></script>
+<script src="js/games.js?v=1793110093"></script>
+<script src="js/share.js?v=1793110093"></script>
+<script src="js/gifts-plus.js?v=1793110093"></script>
+<script src="js/gold-icons.js?v=1793110093"></script>
+<script src="js/golive.js?v=1793110093"></script>
+<script src="js/obs.js?v=1793110093"></script>
+<script src="js/connect.js?v=1793110093"></script>
+<script src="js/predict.js?v=1793110093"></script>
+<script src="js/people.js?v=1793110093"></script>
+<script src="js/originals.js?v=1793110093"></script>
+<script src="js/welcome-show.js?v=1793110093"></script>
+<script src="js/profile-setup.js?v=1793110093"></script>
+<script src="js/profile-page.js?v=1793110093"></script>
+<script src="js/social-login.js?v=1793110093"></script>
+<script src="js/radio-keep.js?v=1793110093"></script>
+<script src="js/share-song.js?v=1793110093"></script>
+<script src="js/push.js?v=1793110093"></script>
+<script src="js/email-find.js?v=1793110093"></script>
+<script src="js/verify.js?v=1793110093"></script>
+<script src="js/biolock.js?v=1793110093"></script>
+<script src="js/engage.js?v=1793110093"></script>
+<script src="js/visitors.js?v=1793110093"></script>
+<script src="js/ai-widget.js?v=1793110093"></script>
+<script src="js/house-ads.js?v=1793110093"></script>
 <script>
 /* Offline music shelf: songs saved to this device (from here, or automatically
  * when played — the service worker stores them) keep playing with no internet. */

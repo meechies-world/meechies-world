@@ -5,6 +5,8 @@
  * so shared links show the picture and people can find the site on Google. */
 const AI_BOTS = /GPTBot|ChatGPT|OAI-SearchBot|ClaudeBot|Claude-User|Claude-SearchBot|Claude-Web|anthropic|Google-Extended|GoogleOther|Applebot-Extended|PerplexityBot|Perplexity-User|CCBot|Bytespider|Amazonbot|meta-externalagent|meta-externalfetcher|FacebookBot|cohere|Diffbot|YouBot|DuckAssistBot|MistralAI|AI2Bot|Ai2Bot|ImagesiftBot|Omgili|Timpibot|img2dataset|PanguBot|Kangaroo Bot|Webzio|iaskspider|Scrapy|python-requests|python-urllib|aiohttp|httpx|Go-http-client|node-fetch|axios\/|okhttp|libwww-perl|Java\/|curl\/|Wget|HTTrack|Firecrawl|Apify|scrapingbee|ScraperAPI|Crawl4AI|SemrushBot|AhrefsBot|MJ12bot|DotBot|DataForSeoBot|PetalBot|Barkrowler/i;
 const PREVIEW = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|Discordbot|TelegramBot|Slackbot|LinkedInBot|Pinterest|SkypeUriPreview|iMessage|Googlebot|bingbot|DuckDuckBot|Applebot\//i;
+// AI assistants that open a page because a person asked about it (not training or scraping crawlers).
+const ASSISTANTS = /ChatGPT-User|Claude-User|Perplexity-User/i;
 
 import { install } from "../lib/sbshim.js";
 let ENV = null; install(() => ENV); // server helpers read the new free database once the move is done (lib/sbshim.js)
@@ -17,7 +19,7 @@ export async function onRequest(ctx) {
     return Response.redirect("https://meechiesworldinc.com" + url.pathname + url.search, 301);
   }
   const ua = ctx.request.headers.get("user-agent") || "";
-  const allowed = url.pathname === "/robots.txt" || url.pathname.startsWith("/api/voice") || (PREVIEW.test(ua) && !/Applebot-Extended|GoogleOther|Google-Extended/i.test(ua));
+  const allowed = url.pathname === "/robots.txt" || url.pathname.startsWith("/api/voice") || ASSISTANTS.test(ua) || (PREVIEW.test(ua) && !/Applebot-Extended|GoogleOther|Google-Extended/i.test(ua));
   if (!allowed && (AI_BOTS.test(ua) || !ua.trim())) {
     return new Response("Access denied. AI bots and scrapers are not allowed on Meechie's World.\n", {
       status: 403, headers: { "content-type": "text/plain; charset=utf-8", "x-robots-tag": "noindex, noai, noimageai", "cache-control": "no-store" },
