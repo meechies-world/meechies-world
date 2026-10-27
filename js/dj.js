@@ -596,6 +596,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .dsec .row{flex-wrap:wrap;row-gap:6px}
 #dj-screen .vstage{border:14px solid #0c0c0e;outline:3px solid #77777f;box-shadow:0 18px 40px rgba(0,0,0,.65),0 0 0 6px #000,inset 0 0 0 2px rgba(240,207,120,.28)}
 #st-ytbox .vstage{border:10px solid #0c0c0e;outline:3px solid #77777f}
+#dj-mini .vstage{border:6px solid #0c0c0e;outline:2px solid #77777f;box-shadow:inset 0 0 0 2px rgba(240,207,120,.28)}
+.deck.playing{box-shadow:0 0 0 2px var(--dk),0 0 26px -4px var(--dk)}
+.deck.playing [data-play]{animation:mwpulse 1.6s ease-in-out infinite}
+@keyframes mwpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,70,70,.55)}50%{box-shadow:0 0 0 8px rgba(255,70,70,0)}}
+.loglist{overflow-x:hidden}.loglist>div{white-space:normal;word-break:break-word}.loglist div span{min-width:0;overflow-wrap:anywhere}
+#dj-livealert .la-txt{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.3}
 #dj-booth-root #dj-owner .xfpad{background:linear-gradient(135deg,#1b1c1f,#0c0c0e);border:1.5px solid #3f3f46;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 22px #000}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
 #dj-booth-root #dj-owner .platter{border-color:#45454c}
@@ -1265,7 +1271,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
     const now = live ? DECKS.filter((k) => S[k].playing && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000)).map((k) => S[k].title).filter(Boolean) : [];
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
-    $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
+    const gN = S.djGuest && S.djGuest.until > Date.now() ? (S.djGuest.name || "A guest DJ") : null;
+    $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? "<b style=\"font-size:13px;letter-spacing:.1em\">" + (S.show.video ? "🎬 LATEST SESSION VIDEO" : "🎙️ LATEST RECORDED SHOW") + "</b>" + (S.show.video ? "<video controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px;border-radius:10px;background:#000\"></video>" : "<audio controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px\"></audio>") + "<small class=\"muted\">Recorded " + new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + "</small>" : "";
     renderLog($("#st-log"));
   }
@@ -1273,7 +1280,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) show();
     if (pkTab === "mine" && !pkItems.length && TRACKS().length) paintPkList();
     DECKS.forEach((k) => {
-      const el = $("#tm-" + k); if (el && decks[k]) el.textContent = fmt(decks[k].el.currentTime) + (decks[k].el.duration ? " / " + fmt(decks[k].el.duration) + " · −" + fmt(Math.max(0, decks[k].el.duration - decks[k].el.currentTime)) : "");
+      const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
       // watchdog: an element that reached the end without firing 'ended' still hands over
       if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
@@ -1378,10 +1385,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!isLive()) return null;
     const fresh = S.boothAt && Date.now() - S.boothAt < 90000;
     const playing = DECKS.filter((k) => S[k].playing && S[k].title && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000));
-    if (!playing.length) return { title: "Live on the decks", sub: fresh ? "🎧 Meechie's set is live — the tables are running the station" : "🤖 Auto-DJ is running the station from the tables", cover: "" };
+    const g = S.djGuest, gOn = !!(g && g.until > Date.now() && fresh);
+    if (!playing.length) return { title: "Live on the decks", sub: gOn ? "🎧 " + (g.name || "A guest DJ") + " is live on the tables — guest set on Meechie's World Radio" : fresh ? "🎧 Meechie's set is live — the tables are running the station" : "🤖 Auto-DJ is running the station from the tables", cover: "" };
     const d = S[playing[0]];
     const left = d.dur && d.start ? Math.max(0, Math.round(d.dur - (Date.now() - d.start) / 1000)) : 0;
-    return { title: playing.length > 1 ? d.title + " × " + S[playing[1]].title : d.title, sub: (fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : ""), cover: d.cover || "" };
+    return { title: playing.length > 1 ? d.title + " × " + S[playing[1]].title : d.title, sub: (gOn ? "🎧 " + (g.name || "Guest DJ") + " live" : fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : ""), cover: d.cover || "" };
   };
   /* pop the decks out onto their own screen: a clean window with only the DJ view */
   function popOut() {
@@ -1429,7 +1437,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (approved) { body.innerHTML = `<p>✅ <b>Meechie put you on!</b> Your live slot runs until ${new Date(g.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Open your table (the Playground above), flip this on, and play — the whole station hears your mix.</p><button class="btn" type="button" id="djlive-toggle">${liveOn ? "⏹ Stop — take me off the radio" : "🔴 GO LIVE on the radio"}</button>`; const t = document.getElementById("djlive-toggle"); if (t) t.addEventListener("click", () => { try { if (sessionStorage.getItem("mw-guestlive") === "1") sessionStorage.removeItem("mw-guestlive"); else { sessionStorage.setItem("mw-guestlive", "1"); if (pgB) pgB.click(); say("🔴 You are LIVE — your table is driving the radio"); } } catch (_) {} djLiveSig = ""; renderDjLive(); }); return; }
     if (djLivePend) { body.innerHTML = '<p>⏳ <b>Request sent.</b> Meechie sees it in his booth — when he approves you, your GO LIVE button appears right here.</p><button class="btn ghost" type="button" id="djlive-cancel">Cancel my request</button>'; const c = document.getElementById("djlive-cancel"); if (c) c.addEventListener("click", async () => { try { const d = DBF(); if (d) await d.doc("requests/djlive-" + uid).delete(); } catch (_) {} djLivePend = false; djLiveSig = ""; renderDjLive(); }); return; }
     body.innerHTML = '<p class="muted">Your table is the DJ Playground above — yours any time, and the real radio can\'t hear it. Want the station to hear you? Ask Meechie — if he approves you in his booth, you get a live slot (up to 2 hours) and your table drives the real radio.</p><button class="btn" type="button" id="djlive-ask">🎧 Ask Meechie to DJ live</button>';
-    const a = document.getElementById("djlive-ask"); if (a) a.addEventListener("click", async () => { const d = DBF(); if (!d) { say("Still loading — try again in a second"); return; } const name = (user.name || user.email || "Member").toString().slice(0, 60); try { await d.doc("requests/djlive-" + uid).set({ kind: "djlive", uid, name, title: "🎧 " + name + " wants to DJ live", at: Date.now(), status: "pending" }); djLivePend = true; say("Request sent to Meechie's booth 🎧"); } catch (_) { say("Couldn't send — try again"); } djLiveSig = ""; renderDjLive(); });
+    const a = document.getElementById("djlive-ask"); if (a) a.addEventListener("click", async () => { const d = DBF(); if (!d) { say("Still loading — try again in a second"); return; } const name = ((typeof members !== "undefined" && members && members[uid] && members[uid].handle) || user.name || user.email || "Member").toString().slice(0, 60); try { await d.doc("requests/djlive-" + uid).set({ kind: "djlive", uid, name, title: "🎧 " + name + " wants to DJ live", at: Date.now(), status: "pending" }); djLivePend = true; say("Request sent to Meechie's booth 🎧"); } catch (_) { say("Couldn't send — try again"); } djLiveSig = ""; renderDjLive(); });
   }
   /* radio-app demand poll (owner, 2026-10-26): ask the listeners before building
      the standalone app — votes ride the requests collection as kind:"appvote",
