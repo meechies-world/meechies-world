@@ -1572,10 +1572,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
       // watchdog: an element that reached the end without firing 'ended' still hands over
-      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
+      if (OWNER() && boothLead && S.live && S.autodj && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
-      if (OWNER() && boothLead && S.live && !listening && S[k].playing && decks[k] && !decks[k].loop && !handoverBusy && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
+      if (OWNER() && boothLead && S.live && S.autodj && !listening && S[k].playing && decks[k] && !decks[k].loop && !handoverBusy && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
@@ -2082,7 +2082,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function deckEnded(k) {
     if (!OWNER() || listening || !S[k].playing) return;
     S[k].playing = false; S[k].pos = 0; paintOwner(); save(true);
-    if (S.live && !DECKS.some((x) => S[x].playing)) { say("⏭️ Deck " + k + " ended — rolling the next song so the station never goes quiet."); autoNext(k, true); }
+    // Only Auto-DJ picks songs by itself. With Auto-DJ off the DJ is in charge: a deck that ends just stops
+    // (owner, 2026-10-27: "it keeps forcing songs to change").
+    if (S.live && S.autodj && !DECKS.some((x) => S[x].playing)) { say("⏭️ Deck " + k + " ended — Auto-DJ is rolling the next song."); autoNext(k, true); }
   }
   DECKS.forEach((k) => setTimeout(() => deck(k).el.addEventListener("ended", () => deckEnded(k)), 0));
 
@@ -2115,12 +2117,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     return null;
   }
   let xfAnim = null, adTimer = null, handoverBusy = false;
+  const usedPicks = new Set((() => { try { return JSON.parse(localStorage.getItem("mw-dj-usedpicks") || "[]"); } catch (_) { return []; } })());
   async function autoNext(endedK, force, fadeMs) {
     if ((!S.autodj && !force) || !boothLead) return;
     if (handoverBusy) return; handoverBusy = true;
     let item = null;
-    const pick = reqCache.filter((r) => r.data && r.data.kind === "pick").sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
+    const pick = reqCache.filter((r) => r.data && r.data.kind === "pick" && !usedPicks.has(r.id)).sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
+      // a pick plays once, even if deleting its request fails (it used to come back on every handover)
+      usedPicks.add(pick.id); try { localStorage.setItem("mw-dj-usedpicks", JSON.stringify([...usedPicks].slice(-200))); } catch (_) {}
       if (pick.data.src && okUrl(pick.data.src)) item = { src: pick.data.src, title: pick.data.title || "", cover: pick.data.cover || "", dur: pick.data.dur || 0 };
       else if (pick.data.iaId) { const src = await iaFile(pick.data.iaId); if (src) item = { src, title: pick.data.title || "", cover: "https://archive.org/services/img/" + encodeURIComponent(pick.data.iaId) }; }
       DBF()?.doc("requests/" + pick.id).delete().catch(() => {});

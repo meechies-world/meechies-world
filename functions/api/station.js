@@ -171,7 +171,10 @@ export async function onRequestGet({ request, env }) {
   }
   for (let i = 0; i < 60; i++) {
     const other = cur === "A" ? "B" : "A";
-    const dur = durOf(S[cur]) || 240;
+    // unknown length: a music file is assumed ~4 min, but a video deck (YouTube/Dailymotion/Vimeo) is left alone
+    // for 30 min, so the keeper never cuts a long video off halfway (owner, 2026-10-27: songs forced to change)
+    const isVid = /^(yt|dm|vm):/.test(String(S[cur].src || "")) || !!S[cur].yt;
+    const dur = durOf(S[cur]) || (isVid ? 1800 : 240);
     const endAt = (S[cur].start || now) + dur * 1000;
     if (now >= endAt) { // song fully over: stop it; the other deck (already started at the fade) takes the wheel
       if (S[cur].playing) { S[cur].playing = false; S[cur].pos = 0; changed = true; }
