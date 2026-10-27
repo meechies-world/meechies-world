@@ -16,6 +16,12 @@ async function member(request) {
 const stripe = (env, path, init = {}) => fetch("https://api.stripe.com/v1/" + path, { ...init, headers: { authorization: "Bearer " + env.STRIPE_SECRET_KEY, "content-type": "application/x-www-form-urlencoded", ...(init.headers || {}) } }).then((r) => r.json());
 
 export async function onRequestPost({ request, env }) {
+  // ID checks are PAUSED (2026-10-27): this endpoint still authenticates through
+  // the retired Supabase backend, so with the site on Cloudflare-native sessions
+  // every start failed (401) and members were trapped at the check with no way
+  // through. Until idv is migrated to lib/cf.js auth + D1, report not_set_up so
+  // verify.js takes its designed path: age step done = member is all set.
+  return json({ error: "not_set_up" }, 501);
   if (!env.STRIPE_SECRET_KEY) return json({ error: "not_set_up" }, 501);
   const m = await member(request); if (!m) return json({ error: "sign_in" }, 401);
   const origin = new URL(request.url).origin;
@@ -26,6 +32,12 @@ export async function onRequestPost({ request, env }) {
 }
 
 export async function onRequestGet({ request, env }) {
+  // ID checks are PAUSED (2026-10-27): this endpoint still authenticates through
+  // the retired Supabase backend, so with the site on Cloudflare-native sessions
+  // every start failed (401) and members were trapped at the check with no way
+  // through. Until idv is migrated to lib/cf.js auth + D1, report not_set_up so
+  // verify.js takes its designed path: age step done = member is all set.
+  return json({ error: "not_set_up" }, 501);
   if (!env.STRIPE_SECRET_KEY) return json({ error: "not_set_up" }, 501);
   const m = await member(request); if (!m) return json({ error: "sign_in" }, 401);
   const id = new URL(request.url).searchParams.get("id") || "";
