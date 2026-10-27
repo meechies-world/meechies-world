@@ -182,3 +182,4 @@ html.lux #gift-grid .gift{min-width:0 !important}
   html.lux header.bar .authbar .btn,html.lux header.bar #authbar .btn{padding:7px 12px !important;font-size:11.5px !important;letter-spacing:.06em !important}
   html.lux header.bar .brand b{font-size:13.5px !important;letter-spacing:.04em !important}
 }
+@media (max-width:760px){html.lux header.bar .brand small{display:none !important}}
