@@ -7,6 +7,8 @@ const AI_BOTS = /GPTBot|ChatGPT|OAI-SearchBot|ClaudeBot|Claude-User|Claude-Searc
 const PREVIEW = /facebookexternalhit|Facebot|Twitterbot|WhatsApp|Discordbot|TelegramBot|Slackbot|LinkedInBot|Pinterest|SkypeUriPreview|iMessage|Googlebot|bingbot|DuckDuckBot|Applebot\//i;
 // AI assistants that open a page because a person asked about it (not training or scraping crawlers).
 const ASSISTANTS = /ChatGPT-User|Claude-User|Perplexity-User/i;
+// Paths that must never be served from the public site.
+const INTERNAL = /^\/(supabase|lib|functions)\/|^\/(wrangler\.toml|tools-bump\.py|AGENTS\.md|CLAUDE\.md|GEMINI\.md|README\.md|\.gitignore)$/i;
 
 import { install } from "../lib/sbshim.js";
 let ENV = null; install(() => ENV); // server helpers read the new free database once the move is done (lib/sbshim.js)
@@ -17,6 +19,10 @@ export async function onRequest(ctx) {
   // www.meechiesworldinc.com → meechiesworldinc.com. meechies-world.pages.dev keeps working on its own (owner's choice).
   if (url.hostname === "www.meechiesworldinc.com") {
     return Response.redirect("https://meechiesworldinc.com" + url.pathname + url.search, 301);
+  }
+  // Internal project files are never public: database scripts, library code, deploy settings, team notes.
+  if (INTERNAL.test(url.pathname)) {
+    return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
   }
   const ua = ctx.request.headers.get("user-agent") || "";
   const allowed = url.pathname === "/robots.txt" || url.pathname.startsWith("/api/voice") || ASSISTANTS.test(ua) || (PREVIEW.test(ua) && !/Applebot-Extended|GoogleOther|Google-Extended/i.test(ua));
@@ -31,6 +37,7 @@ export async function onRequest(ctx) {
   h.set("X-Robots-Tag", "noai, noimageai");
   h.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   h.set("X-Content-Type-Options", "nosniff");
+  h.set("X-Permitted-Cross-Domain-Policies", "none");
   h.set("Referrer-Policy", "strict-origin-when-cross-origin");
   h.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   if (!h.has("X-Frame-Options")) h.set("X-Frame-Options", "SAMEORIGIN");
