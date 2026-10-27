@@ -485,12 +485,13 @@ html.popdj .popdj-hint{display:block}
 /* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
    top of every page in a little rectangle; it steps aside whenever a big screen
    (the booth's or the station card's) is already in front of them */
-#dj-livealert{position:fixed;top:112px;left:50%;transform:translateX(-50%);z-index:66;display:flex;gap:8px;align-items:center;background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #f0cf78;border-radius:999px;padding:7px 10px;box-shadow:0 12px 32px rgba(0,0,0,.6);max-width:min(94vw,560px)}
+#dj-livealert{position:fixed;top:124px;left:50%;transform:translateX(-50%);z-index:66;display:flex;gap:8px;align-items:center;background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #f0cf78;border-radius:999px;padding:7px 10px;box-shadow:0 12px 32px rgba(0,0,0,.6);max-width:min(94vw,560px)}
 #dj-livealert[hidden]{display:none}
 #dj-livealert .la-txt{font:700 12.5px var(--body);color:#ffe9b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dj-livealert .btn{white-space:nowrap}
 body.dj-on #dj-livealert,html.popdj #dj-livealert,html.gated #dj-livealert{display:none!important}
-@media (max-width:760px){#dj-livealert{top:106px}#dj-livealert .la-txt{font-size:11.5px}}
+@media (max-width:760px){#dj-livealert{top:118px}#dj-livealert .la-txt{font-size:11.5px}}
+body[data-view="dj"] #dj-livealert{display:none}
 #dj-mini{position:fixed;top:64px;right:10px;width:208px;z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px}
@@ -1258,7 +1259,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", Math.abs((+x.dataset.ediv) - ((S.fx && S.fx.ediv) || 0.75)) < 0.01));
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
-    const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = SANDBOX ? (S.live ? "PRACTICE" : "STANDBY") : (S.live ? "ON AIR" : "OFF AIR");
+    const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : S.live ? "PRACTICE" : "STANDBY") : (S.live ? "ON AIR" : "OFF AIR");
     renderLog($("#dj-log")); paintPads();
   }
   function renderLog(box) {
@@ -1267,11 +1268,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function paintStation() {
     const live = isLive();
-    const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = SANDBOX ? (live ? "PRACTICE" : "STANDBY") : (live ? "ON AIR" : "OFF AIR");
+    const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : live ? "PRACTICE" : "STANDBY") : (live ? "ON AIR" : "OFF AIR");
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
     const now = live ? DECKS.filter((k) => S[k].playing && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000)).map((k) => S[k].title).filter(Boolean) : [];
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
-    const gN = S.djGuest && S.djGuest.until > Date.now() ? (S.djGuest.name || "A guest DJ") : null;
+    const gN = S.djGuest && S.djGuest.until > Date.now() ? gName(S.djGuest) : null;
     $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? "<b style=\"font-size:13px;letter-spacing:.1em\">" + (S.show.video ? "🎬 LATEST SESSION VIDEO" : "🎙️ LATEST RECORDED SHOW") + "</b>" + (S.show.video ? "<video controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px;border-radius:10px;background:#000\"></video>" : "<audio controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px\"></audio>") + "<small class=\"muted\">Recorded " + new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + "</small>" : "";
     renderLog($("#st-log"));
@@ -1345,7 +1346,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   let boothLead = false;
   const leaseKey = "mw-booth-lease";
   function leaseBeat() {
-    if (SANDBOX) { boothLead = true; const b2 = document.getElementById("dj-lead"); if (b2) b2.textContent = "🎛 Playground — just for fun, this copy never touches the radio"; return; }
+    if (SANDBOX) { boothLead = true; const b2 = document.getElementById("dj-lead"); if (b2) b2.textContent = guestLiveOn() ? "🔴 LIVE ON THE RADIO — your guest set is on air" : "🎛 Playground — just for fun, this copy never touches the radio"; const gl2 = document.querySelector("#dj-golive"); if (gl2 && gl2.closest(".dj-live")) gl2.closest(".dj-live").lastChild.textContent = guestLiveOn() ? " Guest set — LIVE on the radio" : " Practice set (never on air)"; return; }
     // The lease belongs to a WINDOW, not to whichever view is on screen. Once this
     // window holds the sound it keeps it — Malik can walk the whole site or switch
     // tabs and the tables keep broadcasting, because the tables ARE the live radio.
@@ -1386,10 +1387,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const fresh = S.boothAt && Date.now() - S.boothAt < 90000;
     const playing = DECKS.filter((k) => S[k].playing && S[k].title && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000));
     const g = S.djGuest, gOn = !!(g && g.until > Date.now() && fresh);
-    if (!playing.length) return { title: "Live on the decks", sub: gOn ? "🎧 " + (g.name || "A guest DJ") + " is live on the tables — guest set on Meechie's World Radio" : fresh ? "🎧 Meechie's set is live — the tables are running the station" : "🤖 Auto-DJ is running the station from the tables", cover: "" };
+    if (!playing.length) return { title: "Live on the decks", sub: gOn ? "🎧 " + gName(g) + " is live on the tables — guest set on Meechie's World Radio" : fresh ? "🎧 Meechie's set is live — the tables are running the station" : "🤖 Auto-DJ is running the station from the tables", cover: "" };
     const d = S[playing[0]];
     const left = d.dur && d.start ? Math.max(0, Math.round(d.dur - (Date.now() - d.start) / 1000)) : 0;
-    return { title: playing.length > 1 ? d.title + " × " + S[playing[1]].title : d.title, sub: (gOn ? "🎧 " + (g.name || "Guest DJ") + " live" : fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : ""), cover: d.cover || "" };
+    return { title: playing.length > 1 ? d.title + " × " + S[playing[1]].title : d.title, sub: (gOn ? "🎧 " + gName(g) + " live" : fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : ""), cover: d.cover || "" };
   };
   /* pop the decks out onto their own screen: a clean window with only the DJ view */
   function popOut() {
@@ -1500,7 +1501,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the site-wide LIVE pill (owner ask 2026-10-26): when Meechie (or an approved
   // guest DJ) is actually at the tables, every visitor sees it, with a one-tap
   // tune-in that mutes everything else and lands them on the radio
-  function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const host = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const setId = guest ? ("g" + (S.djGuest.uid || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + (S.djGuest.name || "A guest DJ") + " is DJing on Meechie's World Radio") : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
+  const gName = (g) => { const n = ((g && g.name) || "").trim(); return n ? (n.includes("@") ? n.split("@")[0] : n) : "Guest DJ"; }; // a DJ is never shown as a raw email address
+  const guestLiveOn = () => { try { return sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) { return false; } };
+  function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const host = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const setId = guest ? ("g" + (S.djGuest.uid || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
   function onState(d) {
     paintVEdit(); try { paintLiveAlert(); } catch (_) {}
     const firstOwnerLoad = OWNER() && !ownerLoaded;
@@ -2112,7 +2115,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const nowBox = $("#djguest-now"), list = $("#djreq-list"); if (!list) return;
     const g = S.djGuest;
     if (nowBox) nowBox.innerHTML = (g && g.until > Date.now())
-      ? `<div class="req"><span>🔴 <b>${E(g.name || "Guest DJ")}</b> is LIVE on the tables until ${new Date(g.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span><span><button class="btn sm" type="button" data-djend="1">⏹ End their set</button></span></div>`
+      ? `<div class="req"><span>🔴 <b>${E(gName(g))}</b> is LIVE on the tables until ${new Date(g.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span><span><button class="btn sm" type="button" data-djend="1">⏹ End their set</button></span></div>`
       : '<small class="muted">No guest DJ on the tables right now. Approve a request below and that member plays on the real radio for up to 2 hours — opening your own booth takes the tables back instantly.</small>';
     const rows = (reqCache || []).filter((r) => r.data && r.data.kind === "djlive").sort((a, b) => (a.data.at || 0) - (b.data.at || 0));
     list.innerHTML = rows.length ? rows.map((r) => `<div class="req"><span>🎧 <b>${E(r.data.name || "Member")}</b> wants to DJ live</span><small>${agoT(r.data.at || Date.now())}</small><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-djok="${E(r.id)}|${E(r.data.uid || "")}|${E(r.data.name || "Member")}">✅ Put them on</button><button class="btn ghost sm" type="button" data-djno="${E(r.id)}">✕ Not now</button></span></div>`).join("") : '<small class="muted">No requests waiting.</small>';
