@@ -1552,7 +1552,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   setInterval(() => {
     const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) show();
-    if (pkTab === "mine" && !pkItems.length && TRACKS().length) paintPkList();
+    if (pkTab === "mine" && !(pkItems || []).length && TRACKS().length) paintPkList();
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
       // watchdog: an element that reached the end without firing 'ended' still hands over
