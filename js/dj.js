@@ -1668,11 +1668,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* pop the decks out onto their own screen: a clean window with only the DJ view */
   function popOut() {
     const url = location.pathname + "?popdj=1#radio";
-    const w = window.open(url, "mw-dj-decks", "popup=yes,width=1440,height=920");
+    const w = window.open(url, "mw-dj-decks", "popup=yes,width=1640,height=980");
     if (w) { try { w.focus(); } catch (_) {} say("Decks popped out on their own screen ⛶"); }
     else { document.documentElement.classList.add("popdj"); try { go("dj"); } catch (_) {} say("Pop-ups are blocked here — decks went full-screen on this page instead. Allow pop-ups for a separate window."); }
   }
-  if (/[?&]popdj=1/.test(location.search)) document.documentElement.classList.add("popdj");
+  if (/[?&]popdj=1/.test(location.search)) { document.documentElement.classList.add("popdj"); if (innerWidth < 1500) { try { resizeTo(1640, 980); } catch (_) {} } }
   if (SANDBOX) { document.documentElement.classList.add("playdj"); try { go("radio"); } catch (_) {} }
   const pgB = document.getElementById("pg-open"), pgW = document.getElementById("pg-wrap"), pgF = document.getElementById("pg-frame");
   if (pgB && pgW && pgF) pgB.addEventListener("click", () => { if (!pgF.getAttribute("src")) pgF.src = "/?playdj=1#radio"; pgW.hidden = false; pgB.textContent = "🎛️ The Playground is open below — play all you want, the real radio can't hear it"; pgW.scrollIntoView({ behavior: "smooth", block: "start" }); });
