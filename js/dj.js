@@ -1078,6 +1078,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       getPlayerState() { try { if (vp.p === "yt" && w._raw) return w._raw.getPlayerState(); } catch (_) {} return w._st; },
       setVolume(v) { try { if (!w._raw) return; if (vp.p === "yt") w._raw.setVolume(v); else w._raw.setVolume(Math.max(0, Math.min(1, v / 100))); } catch (_) {} },
       mute() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.mute(); else w._raw.setVolume(0); } catch (_) {} },
+      unMute() { try { if (vp.p === "yt" && w._raw) w._raw.unMute(); } catch (_) {} },
       loadVideoById(tok2, t) { const v2 = vparseTok(tok2); try { if (!w._raw) return; if (vp.p === "yt") w._raw.loadVideoById(v2.id, t); else if (vp.p === "dm") { if (w._raw.load) w._raw.load(v2.id); if (t) setTimeout(() => w.seekTo(t), 900); } else { const r = w._raw.loadVideo(v2.id); if (r && r.then) r.then(() => { if (t) w.seekTo(t); w.playVideo(); }); } } catch (_) {} },
       destroy() { try { if (w._raw && vp.p !== "dm") w._raw.destroy(); } catch (_) {} w._raw = null; } };
     const ready = () => { try { if (muted) w.mute(); w.seekTo(Math.max(0, posOf(deckK))); w.playVideo(); } catch (_) {} };
@@ -1139,7 +1140,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
         if (stt !== 1 && S[t.k].playing) sl.p.playVideo();
         if (stt === 1 && !S[t.k].playing) sl.p.pauseVideo();
-        if (!muted) sl.p.setVolume(Math.round(Math.max(0, Math.min(1, stageGain(t.k) * (duck || 1) * (mix || 1) * boostMk())) * 100));
+        if (!muted) { if (sl.p.unMute) sl.p.unMute(); sl.p.setVolume(Math.round(Math.max(0, Math.min(1, stageGain(t.k) * (duck || 1) * (mix || 1) * boostMk())) * 100)); }
+        else if (sl.p.mute) sl.p.mute();
       } catch (_) {} }
     }
     const top = tg.slice().sort((a, b) => b.op - a.op)[0];
@@ -1152,7 +1154,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (OWNER()) { await renderScreen(scrBooth, true, 1, 1); const box = $("#st-ytbox"); if (box) box.hidden = true; }
       else {
         const has = vmixTargets().length > 0, box = $("#st-ytbox"); if (box) box.hidden = !has;
-        if (has) await renderScreen(scrView, false, mix, duck);
+        if (has) await renderScreen(scrView, !listening, listening ? mix : 1, duck);
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
       await miniApply(mix, duck);
@@ -1249,6 +1251,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // re-seeked, and coarsely (their player lands on keyframes).
   function syncDecks() { if (document.hidden) return; const now = Date.now() + clockOff; DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; const target = Math.max(0, (now - (s.start || now)) / 1000); if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 2) follow(k); return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
   setInterval(syncDecks, 500);
+  // the screens follow the shared state on their own clock: a booth window that
+  // is not the one driving the sound, and a visitor who has not tuned in yet,
+  // still see the picture (muted until they tune in) instead of a dead screen
+  setInterval(() => { if (document.hidden) return; stageApply(listening ? mixVol : 1, (S.duck || micHot > 0.04) ? 0.28 : 1); }, 700);
   /* MIDI controllers (owner ask, 2026-10-26): any MIDI DJ table or controller
    * hooks up by USB. LEARN binds a physical control to a booth function —
    * knobs drive the booth's real sliders (the same input events a finger
