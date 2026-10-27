@@ -620,6 +620,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
  * from ever spilling outside its column. */
 #dj-booth-root{overflow-x:clip}
 #dj-owner .deck{min-width:0}
+/* the MASTER FX strip: even cells, labels lined up over their sliders */
+.fxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 16px;align-items:start}
+.fxgrid .fxcell{display:grid;gap:3px;min-width:0}
+.fxgrid .fxcell small{letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fxgrid .fxcell input[type="range"]{width:100%}
+.fxgrid .fxcell.wide{grid-column:span 2}
+@media(max-width:760px){.fxgrid{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}.fxgrid .fxcell.wide{grid-column:span 2}}
 #dj-livealert .la-txt{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.3}
 #dj-booth-root #dj-owner .xfpad{background:linear-gradient(135deg,#1b1c1f,#0c0c0e);border:1.5px solid #3f3f46;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 22px #000}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
@@ -852,6 +859,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the X fader rides right under the music browser / YouTube search (owner,
   // 2026-10-26: "put the cross fader at the top under the youtube search")
   const xfEl = document.getElementById("dj-xfbar"); if (xfEl && brEl) brEl.after(xfEl);
+  // MASTER FX strip (owner ask, 2026-10-26): the FX slider stack leaves the
+  // center mixer — it ran long with empty space beside it — and becomes a
+  // full-width panel under the console, sliders lined up in even cells. Same
+  // elements, same ids: every painter, the edit panel and MIDI keep working.
+  { const m1El = document.querySelector("#dj-owner .mixer.m1"), g2El = document.querySelector("#dj-owner .dj-grid2"), mstEl = document.getElementById("dj-master"); if (m1El && g2El && mstEl) { const panel = document.createElement("div"); panel.className = "dj-panel"; panel.id = "dj-fxpanel"; panel.innerHTML = "<h4>🎛️ MASTER FX</h4><div class='fxgrid'></div>"; g2El.insertBefore(panel, g2El.firstChild); const fxg = panel.querySelector(".fxgrid"); const chain = []; let n = mstEl.previousElementSibling; while (n) { chain.push(n); n = n.nextElementSibling; } let cell = null; chain.forEach((el) => { if (el.tagName === "SMALL" || !cell) { cell = document.createElement("div"); cell.className = "fxcell"; fxg.appendChild(cell); } cell.appendChild(el); if (el.querySelector && el.querySelector(".edivb, .gatebtn")) cell.classList.add("wide"); }); } }
   // foldable page sections: a [data-fold] button hides its block and everything
   // below pulls up to fill the space; the choice sticks on this device
   const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
