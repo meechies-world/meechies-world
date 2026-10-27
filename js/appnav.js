@@ -48,6 +48,15 @@
   .appmore .grid{grid-template-columns:repeat(4,1fr)}
 }
 header.bar{backdrop-filter:blur(16px)}
+/* phones: the header is one fixed 56px row (brand · Join · Menu). The section links live in the bottom tabs and ☰ Menu,
+   so the header's link row is hidden here; before, it wrapped to a second row and spilled under the Book bar (visitor check, 2026-10-27). */
+@media (max-width:760px){
+  header.bar nav.tabs{display:none!important}
+  header.bar .bar-in{flex-wrap:nowrap!important;gap:8px!important}
+  header.bar .brand{min-width:0;flex:1 1 auto}
+  header.bar .brand b{font-size:14px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  header.bar .brand svg{flex:none}
+}
 nav.tabs a{letter-spacing:.02em}
 .apptab{display:none;position:fixed;left:0;right:0;bottom:0;z-index:9990;height:var(--tabbar);padding-bottom:env(safe-area-inset-bottom,0px);grid-template-columns:repeat(6,1fr);background:color-mix(in srgb,#0b0a08 94%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--gold-lo,#8c6d26)}
 .apptab a,.apptab button{display:grid;justify-items:center;align-content:center;gap:3px;white-space:nowrap;letter-spacing:-.01em;color:var(--muted,#a99f8b);text-decoration:none;font:700 10.5px var(--body,system-ui);background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}

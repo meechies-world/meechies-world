@@ -4,7 +4,7 @@
  *    and a plain tap still works normally. window.MW_resetFloats() (or any [data-reset-floats] button) puts them back. */
 (function () {
   "use strict";
-  const CARDS = ["gl-perm", "mw-install", "mw-push-ask", "mw-choices", "wv-box", "pp", "ct-box"];
+  const CARDS = ["gl-perm", "ai-hi", "mw-install", "mw-push-ask", "mw-choices", "wv-box", "pp", "ct-box"];
   window.MW_screenClear = function (self) {
     if (document.querySelector("dialog[open]")) return false;
     if (document.body && document.body.classList.contains("dj-on")) return false; /* the DJ tables are on: pop-up cards wait until the set is over (owner, 2026-10-26) */
