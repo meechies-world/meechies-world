@@ -352,7 +352,7 @@
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } };
+  let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   let guestPostAt = 0;
@@ -925,7 +925,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
-    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button></div>
+    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button></div>
   <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
@@ -1539,6 +1539,30 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * the tables, and listeners tuned in hear the hit too. */
   let heardPad = "";
   function stampPad(hit) { if (SANDBOX || !OWNER()) return; S.padHit = Object.assign({}, hit, { at: Date.now(), by: tabId }); heardPad = S.padHit.at + ":" + S.padHit.by; save(true); }
+  /* ---------- transition horn (owner, 2026-10-28) ----------
+   * Every AUTOMATED handover (booth autoNext below, and the station
+   * keeper stamping S.fxHornAt on its own crossfades) fires one air-horn
+   * stab on every audible client at the same moment — a real DJ working
+   * the transition. Manual deck moves never stamp it. The sound mirrors
+   * the booth Air Horn pad (detuned saws into the master chain), so the
+   * broadcast polish shapes it and it rides over any deck source,
+   * YouTube included. One stab per distinct stamp, per client. */
+  function hornStab() {
+    try {
+      const c = actx(); if (!c || !masterIn) return;
+      if (c.state !== "running") c.resume().catch(() => {});
+      const t = c.currentTime;
+      [392, 494, 587].forEach((f) => { const o = c.createOscillator(), g = c.createGain(); o.type = "sawtooth"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.03); g.gain.setValueAtTime(0.09, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.75); o.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 0.8); });
+    } catch (_) {}
+  }
+  let hornHeard = 0, hornInit = false;
+  function watchHorn() {
+    const t = +(S && S.fxHornAt) || 0; if (!t) return;
+    if (!hornInit) { hornInit = true; hornHeard = t; return; }
+    if (t === hornHeard) return;
+    hornHeard = t;
+    if (boothLead || listening) hornStab();
+  }
   function firePadHit() {
     if (SANDBOX) return;
     const h = S.padHit; if (!h || !h.at || h.by === tabId) return;
@@ -1739,6 +1763,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", Math.abs((+x.dataset.ediv) - ((S.fx && S.fx.ediv) || 0.75)) < 0.01));
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
+    const adT = $("#dj-ad-top"); if (adT) adT.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : S.live ? "PRACTICE" : "STANDBY") : (S.live ? "ON AIR" : "OFF AIR");
     renderLog($("#dj-log")); paintPads();
   }
@@ -1782,9 +1807,31 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // otherwise parks it) whatever the player claims. Fires once: deckEnded
       // clears the playing flag, so the tick cannot re-trigger it.
       if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durH = +S[k].dur || (decks[k].el && decks[k].el.duration) || 0; if (durH > 0 && posOf(k) > durH + 15) deckEnded(k); }
+      // Stall watchdog (owner, 2026-10-28: if the music stops for any
+      // reason it cuts back on by itself): on the DRIVING booth, a deck the
+      // station says is playing whose own player has sat paused — or
+      // frozen at one spot with nothing buffered — for over 5 seconds is
+      // not a pause Malik made (his pauses clear the playing flag, and a
+      // full stop stamps S.pausedAt). Nudge it back into play once; still
+      // stuck 5 seconds later, hand the song over through deckEnded so
+      // Auto-DJ or the queue rolls the next one. Visible tab only: a
+      // hidden tab's frozen player is the browser's doing, and the keeper
+      // covers the station meanwhile. An active grain scratch on the deck
+      // is a hand on the record, never a stall.
+      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S.pausedAt && !document.hidden && !(grainSess && grainSess.k === k)) {
+        const dd = decks[k], ct = dd.el.currentTime || 0;
+        const frozen = !dd.el.paused && dd.el.readyState < 3 && Math.abs(ct - (dd._stallCt ?? ct)) < 0.05;
+        const stalled = (dd.el.paused && !dd.el.ended) || frozen;
+        if (!stalled) { dd._stallAt = 0; dd._stallTried = false; dd._stallCt = ct; }
+        else if (!dd._stallAt) { dd._stallAt = Date.now(); dd._stallCt = ct; dd._stallTried = false; }
+        else if (Date.now() - dd._stallAt > 5000) {
+          if (!dd._stallTried) { dd._stallTried = true; dd._stallAt = Date.now(); dd._stallCt = ct; try { const pp = dd.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} }
+          else { dd._stallAt = 0; dd._stallTried = false; deckEnded(k); }
+        }
+      }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
-      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
+      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 5) autoNext(k, true, Math.max(1200, rem * 1000)); /* blend lead 5s (owner, 2026-10-28): the next song is audibly IN before this one ends — never a pause between songs */ }
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
@@ -1853,7 +1900,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199300;
+  const MW_DJ_BUILD = 1793199400;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2104,7 +2151,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
     m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0 }, m.vmix || {});
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
@@ -2127,6 +2174,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (d && d.by !== tabId && (d.updatedAt || 0) > (S.updatedAt || 0)) {
         S = mergeState(d);
         adoptQueue(d);
+        watchHorn();
         paintOwner(); paintStation();
         if (boothLead) DECKS.forEach((k) => { if (S[k].src) follow(k); });
       }
@@ -2136,6 +2184,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const was = isLive();
     S = mergeState(d);
     adoptQueue(d);
+    watchHorn();
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; DECKS.forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
     const live = isLive();
@@ -2341,7 +2390,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
-  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
   // circular pan pads: drag the gold dot anywhere in the circle — the further it
   // moves toward a deck, the more that deck plays. Same mix as the sliders and the
   // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
@@ -2522,6 +2571,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const target = PAIR[endedK] || "A";
     const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; }
     load(target, item).then(async () => {
+      // Automated transition: stamp the horn so every audible client plays
+      // the same stab at the same moment, and play it here on the driver.
+      S.fxHornAt = Date.now(); hornStab();
       await togglePlay(target);
       // the crossfade rides the pair's own axis: A/B on S.xf, C/D on S.xf2
       const cd = target === "C" || target === "D", key = cd ? "xf2" : "xf";
