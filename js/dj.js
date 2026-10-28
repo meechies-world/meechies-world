@@ -1093,10 +1093,18 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // to make the little screen bigger or smaller; the size is remembered
     // per device, and the stage keeps its 16:9 shape on its own
     const mnGrip = mn.querySelector(".mn-grip");
-    const mnSize = (w) => { w = Math.max(140, Math.min(Math.round(w), Math.min(640, innerWidth - 8))); mn.style.width = w + "px"; return w; };
+    // As big as it wants (owner, 2026-10-28): no artificial cap — the
+    // mini can grow to the full viewport width. Where the screen is wider
+    // than it is tall, the height caps it instead: the 16:9 stage plus its
+    // title bar must fit the viewport height, so the whole box (grip
+    // included) always stays reachable on screen. The saved width routes
+    // through mnSize too, so a huge desktop size is re-clamped to a small
+    // phone viewport on load instead of stranding off-screen.
+    const mnMaxW = () => Math.max(140, Math.min(innerWidth, (innerHeight - 30) * 16 / 9));
+    const mnSize = (w) => { w = Math.max(140, Math.min(Math.round(w), mnMaxW())); mn.style.width = w + "px"; return w; };
     try { const w = +localStorage.getItem("mw-mini-w"); if (w) mnSize(w); } catch (_) {}
     if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = mn.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = mn.getBoundingClientRect(); mnPlace(r2.left, r2.top); try { localStorage.setItem("mw-mini-w", String(Math.round(mn.getBoundingClientRect().width))); } catch (_) {} }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
-    mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); }
+    mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); addEventListener("resize", () => { const r = mn.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); }); }
   // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
   // decks — on wide screens the console grid still parks it at the top of the
   // middle column; everywhere else it now leads the booth instead of hiding
@@ -2004,7 +2012,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793200000;
+  const MW_DJ_BUILD = 1793200100;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
