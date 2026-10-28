@@ -110,6 +110,15 @@ const poolRow = async (env) => ((await env.DB.prepare("select coins from game_po
 const DAILY_BASE = 10, DAILY_BONUS_EVERY = 7, DAILY_BONUS = 40;
 const dayET = (back = 0) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() - back * 864e5));
 const dailyDays = async (env, uid) => new Set(((await env.DB.prepare("select id from coin_tx where uid = ? and kind = 'daily' order by at desc limit 90").bind(uid).all()).results || []).map((r) => String(r.id).split(":").pop()));
+
+/* ---------------- Welcome promo drop ----------------
+ * One-time 100 free coins per member (owner promo, 2026-10-27). Same
+ * insert-or-ignore claim shape as the daily, so nobody can claim twice.
+ * The drop costs the owner nothing out of pocket by design: game payouts
+ * only ever come out of the player-funded prize pool, and every game pays
+ * back less than fair odds, so promo coins played here mostly flow back
+ * into the pool and the house fee — and players who run out buy packs. */
+const PROMO_ID = "launch100", PROMO_COINS = 100;
 const streakFrom = (days, includeToday) => { let n = 0; for (let i = includeToday ? 0 : 1; ; i++) { if (days.has(dayET(i))) n++; else break; } return n; };
 const isUnder18 = async (env, uid) => { const r = await env.DB.prepare("select data from docs where path = ?").bind("members/" + uid).first(); try { return !!(r && JSON.parse(r.data || "{}").under18); } catch (_) { return false; } };
 
@@ -157,7 +166,8 @@ export async function onRequest({ request, env, params }) {
     const pots = (await env.DB.prepare("select id, creator, bet, side, at from game_pots where status = 'open' order by at desc limit 20").all()).results || [];
     const wins = (await env.DB.prepare("select uid, kind, coins, other, at from coin_tx where kind in ('game_win','pot_win') order by at desc limit 12").all()).results || [];
     const mine = (await env.DB.prepare("select kind, coins, other, at from coin_tx where (uid = ? and kind like 'game%') or (uid = ? and kind like 'pot%') order by at desc limit 10").bind(me.id, me.id).all()).results || [];
-    return json({ pool, games: Object.fromEntries(Object.entries(GAMES).map(([k, g]) => [k, { name: g.name, maxMult: g.maxMult }])), maxBet, minBet: GAME_MIN_BET, fee: GAME_FEE, pots, wins, mine, admin, paid });
+    const promoClaimed = !!(await env.DB.prepare("select 1 from coin_tx where id = ?").bind("promo:" + PROMO_ID + ":" + me.id).first());
+    return json({ pool, games: Object.fromEntries(Object.entries(GAMES).map(([k, g]) => [k, { name: g.name, maxMult: g.maxMult }])), maxBet, minBet: GAME_MIN_BET, fee: GAME_FEE, pots, wins, mine, admin, paid, promo: { amount: PROMO_COINS, claimed: promoClaimed } });
   }
 
   if (route === "daily" && method === "GET") {
@@ -176,6 +186,15 @@ export async function onRequest({ request, env, params }) {
     if (!ins.meta.changes) return err("You already claimed today's coins. Come back tomorrow for more.");
     await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(me.id, amount, now).run();
     return json({ ok: true, amount, streak, bonus: amount - DAILY_BASE, coins: (await wallet(env, me.id)).coins });
+  }
+
+  if (route === "promo/claim" && method === "POST") {
+    if (!(await take(env, "promo:" + me.id, 60, 10))) return err("Slow down a little.", 429);
+    const now = Date.now();
+    const ins = await env.DB.prepare("insert or ignore into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("promo:" + PROMO_ID + ":" + me.id, me.id, "promo", PROMO_COINS, 0, "welcome drop", now).run();
+    if (!ins.meta.changes) return err("You already claimed your welcome drop.");
+    await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(me.id, PROMO_COINS, now).run();
+    return json({ ok: true, amount: PROMO_COINS, coins: (await wallet(env, me.id)).coins });
   }
 
   if (route === "play" && method === "POST") {
