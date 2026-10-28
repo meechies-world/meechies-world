@@ -75,7 +75,9 @@ body.dj-on .announce .wrap,body.dj-past .announce .wrap{margin-left:0!important;
 #v-community .feed{gap:14px!important;margin-top:0!important}
 #v-community .post{padding:12px 0 4px!important;gap:10px!important}
 #v-community .post-body>*{margin-left:16px;margin-right:16px}
-#v-community .post-body>.photo,#v-community .post-body>.vid{margin-left:0;margin-right:0;width:100%;border-radius:0!important;max-height:min(74vh,660px)}
+#v-community .grid-2>*{min-width:0}
+#v-community .post-body{min-width:0}
+#v-community .post-body>.photo,#v-community .post-body>.vid{margin-left:0;margin-right:0;width:100%;max-width:100%;border-radius:0!important;max-height:min(74vh,660px)}
 #v-community .post-body>.photo{object-fit:cover}
 #v-community .post-body>.vid{object-fit:contain;background:#000}
 #v-community .post-head .who b{color:var(--fb-text);font:600 15px system-ui}
