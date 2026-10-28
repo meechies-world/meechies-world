@@ -855,7 +855,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
   <div id="st-show"></div>
-  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vchip" id="st-vchip" hidden></div></div></div>
+  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vchip" id="st-vchip" hidden></div></div></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
@@ -1113,7 +1113,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const stageGain = (k) => { const s = S[k], cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); return (s.vol ?? 0.9) * xfGain(x, side) * pairG; };
   const mkScreen = (ids, standby, chip) => ({ ids, standby, chip, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
   const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
-  const scrView = mkScreen(["#st-vs1", "#st-vs2"], null, "#st-vchip");
+  const scrView = mkScreen(["#st-vs1", "#st-vs2"], "#st-vstandby", "#st-vchip");
   const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, "#mn-vchip");
   function vmixTargets() {
     const vm = S.vmix || { mode: "auto", a: "", b: "", t: 0 };
@@ -1208,14 +1208,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const top = tg.slice().sort((a, b) => b.op - a.op)[0];
     if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : ""); }
   }
+  /* the member master screen never vanishes while Meechie is live (owner,
+   * 2026-10-27): with no video playing yet it shows the table lineup — what is
+   * loaded on each deck — so members always see his setup. View only: this
+   * screen takes no input and cannot touch the radio. */
+  function stSlate() {
+    const rows = DECKS.filter((k) => S[k] && (S[k].title || S[k].yt)).map((k) => "DECK " + k + " — " + (S[k].title || "Music video") + (S[k].playing ? " ▶ PLAYING" : ""));
+    return "🔴 MEECHIE IS LIVE ON THE TABLES\n" + (rows.length ? rows.join("\n") : "Setting up the decks…") + "\nThe video mix appears right here the moment a music video plays.";
+  }
   let stageBusy = false;
   async function stageApply(mix, duck) {
     if (stageBusy) return; stageBusy = true;
     try {
       if (OWNER()) { await renderScreen(scrBooth, true, 1, 1); const box = $("#st-ytbox"); if (box) box.hidden = true; }
       else {
-        const has = vmixTargets().length > 0, box = $("#st-ytbox"); if (box) box.hidden = !has;
+        const has = vmixTargets().length > 0, box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
         if (has) await renderScreen(scrView, !listening, listening ? mix : 1, duck);
+        else if (S.live) { const sb = $("#st-vstandby"); if (sb) sb.textContent = stSlate(); await renderScreen(scrView, true, 1, 1); }
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
       await miniApply(mix, duck);
