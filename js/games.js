@@ -115,7 +115,81 @@
 .cz-feed{display:grid;gap:5px;font-size:13.5px;color:var(--muted,#cbbf9f)}
 .cz-feed b{color:var(--gold-hi,#f0cf78)}
 .cz-owner{display:grid;gap:10px;border:1px dashed var(--gold-lo,#8a6a2a);border-radius:12px;padding:12px}
-.cz-muted{color:var(--muted,#a99f8b);font-size:13px}`;
+.cz-muted{color:var(--muted,#a99f8b);font-size:13px}
+/* ===== realism pass 2 (2026-10-28): materials, light and weight — presentation only.
+   Nothing below changes a rule, a price or an outcome; it only changes how the
+   games look and move. ===== */
+.cz-card::before{content:"";position:absolute;inset:0 0 auto;height:70px;background:linear-gradient(180deg,rgba(255,240,190,.08),transparent);pointer-events:none;z-index:1}
+.cz-stage{position:relative;background:radial-gradient(90% 70% at 50% 16%,rgba(240,207,120,.14),transparent 65%),radial-gradient(130% 110% at 50% 50%,transparent 52%,rgba(0,0,0,.52)),#0d0b07;box-shadow:inset 0 1px 0 rgba(240,207,120,.10),inset 0 -18px 30px rgba(0,0,0,.55)}
+@keyframes czglow{0%,100%{box-shadow:inset 0 0 0 1px #3a2f16}50%{box-shadow:inset 0 0 0 2px var(--gold,#d4a843),0 0 34px rgba(240,207,120,.45),inset 0 0 44px rgba(240,207,120,.14)}}
+.cz-stage.celebrate::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 20%,rgba(255,240,190,.17) 50%,transparent 80%);transform:translateX(-110%);animation:czsweep .8s ease 3;pointer-events:none;z-index:4}
+@keyframes czsweep{to{transform:translateX(110%)}}
+#casino .cz-play{background:linear-gradient(180deg,#f0cf78,#d4a843 55%,#b98f2e);color:#241a05;border:1px solid #8a6a2a;font-weight:800;letter-spacing:.02em;border-radius:12px;box-shadow:0 4px 0 #7c5f22,0 10px 20px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.6);transition:transform .06s ease,box-shadow .06s ease,filter .15s ease}
+#casino .cz-play:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #7c5f22,0 4px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.6)}
+#casino .cz-play:disabled{filter:grayscale(.45) brightness(.72);box-shadow:0 2px 0 #57451c,0 6px 12px rgba(0,0,0,.35)}
+.cz-chips button{box-shadow:0 2px 0 rgba(0,0,0,.45),inset 0 1px 0 rgba(255,240,190,.25)}
+/* slots: a real cabinet — brushed gold frame, glass streak, inset drums */
+.cz-reels{position:relative;padding:12px 10px;border-radius:16px;background:linear-gradient(180deg,#3a2c12,#1c1509 30%,#241a0c);border:1px solid #8a6a2a;box-shadow:inset 0 1px 0 rgba(255,240,190,.35),inset 0 -8px 16px rgba(0,0,0,.6),0 10px 22px rgba(0,0,0,.5)}
+.cz-reels::after{content:"";position:absolute;inset:0;border-radius:16px;background:linear-gradient(112deg,transparent 25%,rgba(255,255,255,.13) 42%,rgba(255,255,255,.03) 55%,transparent 72%);pointer-events:none;z-index:3}
+.cz-reels::before{content:"";position:absolute;left:8px;right:8px;top:50%;height:2px;margin-top:-1px;background:linear-gradient(90deg,transparent,#f0cf78,transparent);box-shadow:0 0 12px rgba(240,207,120,.85);opacity:0;z-index:2;transition:opacity .25s ease}
+.cz-reels.winline::before{opacity:1}
+.cz-reel{background:linear-gradient(180deg,#0a0805,#1a1409 18%,#241b0f 50%,#1a1409 82%,#060503);border-color:#6d551f;box-shadow:inset 0 14px 18px rgba(0,0,0,.85),inset 0 -14px 18px rgba(0,0,0,.85),inset 0 0 0 1px rgba(240,207,120,.07)}
+.cz-strip{transition-timing-function:cubic-bezier(.16,.84,.3,1.07)}
+.cz-strip span{text-shadow:0 2px 3px rgba(0,0,0,.65),0 0 1px rgba(0,0,0,.4)}
+.cz-reels.spinning .cz-strip span{filter:blur(1.6px)}
+/* wheel: flapper pointer + cabinet shadow (the wheel drawing itself is canvas) */
+.cz-wheelwrap{filter:drop-shadow(0 14px 16px rgba(0,0,0,.5))}
+.cz-pointer{top:-13px;font-size:0;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:19px solid #d4a843;filter:drop-shadow(0 3px 3px rgba(0,0,0,.65)) drop-shadow(0 0 5px rgba(240,207,120,.45));transform-origin:50% 0}
+.cz-wheelwrap.spinning .cz-pointer{animation:cztick .09s ease-in-out infinite alternate}
+@keyframes cztick{from{transform:translateX(-50%) rotate(11deg)}to{transform:translateX(-50%) rotate(-13deg)}}
+/* plinko board chrome (pins and ball are painted on canvas) */
+.cz-plkcv{border-radius:12px;box-shadow:0 10px 22px rgba(0,0,0,.55),0 0 0 1px #3a2f16}
+.cz-plkslots i{transition:background .2s ease,box-shadow .2s ease}
+.cz-plkslots i.hit{box-shadow:0 0 16px rgba(240,207,120,.75),inset 0 1px 0 rgba(255,255,255,.5)}
+/* dice: shaded ivory cubes, indented pips, table shadow */
+.cz-dice{position:relative;perspective:520px;padding-bottom:9px}
+.cz-dice::after{content:"";position:absolute;left:50%;bottom:-3px;width:128px;height:12px;transform:translateX(-50%);background:radial-gradient(50% 50% at 50% 50%,rgba(0,0,0,.55),transparent 70%);border-radius:50%;opacity:.35;transition:opacity .2s ease;pointer-events:none}
+.cz-dice.rolling::after{opacity:.7;animation:czshadow .26s ease-in-out infinite alternate}
+@keyframes czshadow{from{transform:translateX(-50%) scaleX(.86)}to{transform:translateX(-50%) scaleX(1.06)}}
+.die{background:linear-gradient(145deg,#fffef8,#f1e5c4 55%,#d9c48f);box-shadow:0 8px 18px rgba(0,0,0,.55),inset 0 1px 2px #fff,inset 0 -3px 6px rgba(122,92,30,.35),inset 0 0 0 1px #c9b586}
+.die i{background:radial-gradient(circle at 35% 30%,#4a3a1c,#171106);box-shadow:inset 0 1px 2px rgba(0,0,0,.85),0 1px 0 rgba(255,255,255,.35)}
+@keyframes cztumble{0%{transform:rotate(-8deg) rotateX(14deg) translateY(0)}30%{transform:rotate(7deg) rotateX(-18deg) rotateY(12deg) translateY(-7px)}55%{transform:rotate(-5deg) rotateY(-14deg) translateY(1px)}80%{transform:rotate(6deg) rotateX(10deg) translateY(-4px)}100%{transform:rotate(-6deg) translateY(0)}}
+/* coin: reeded rim shading, embossed faces, landing glint */
+.cz-coin .cf{border:3px solid #7c5f22;background:radial-gradient(circle at 35% 28%,#ffedb0,#e9c860 45%,#c39a2e 75%,#8a6a2a);box-shadow:0 8px 20px rgba(0,0,0,.55),inset 0 0 0 3px rgba(255,244,200,.55),inset 0 0 0 6px rgba(138,106,42,.55),inset 0 -6px 10px rgba(122,92,30,.45)}
+.cz-coin .cface{filter:drop-shadow(0 1px 0 rgba(255,246,205,.65)) drop-shadow(0 -1px 1px rgba(90,66,18,.6))}
+.cz-coin .cface.m{font:800 36px Georgia,serif;color:#7c5f22}
+.cz-coin.sm .cface.m{font-size:24px}
+.cz-coin.landed{animation:czglint .55s ease}
+@keyframes czglint{0%{filter:brightness(1)}30%{filter:brightness(1.75) saturate(1.2)}100%{filter:brightness(1)}}
+/* cards: real stock — sheen, patterned back, pip layouts, court cards */
+.fcard .in{transition:transform .72s cubic-bezier(.25,.8,.3,1.06)}
+.fcard.go .in{transform:rotateY(180deg) rotateZ(-1.1deg)}
+.fcard .fc.bk{background:radial-gradient(circle at 50% 50%,rgba(240,207,120,.30) 0 17%,transparent 18.5%),repeating-linear-gradient(45deg,rgba(212,168,67,.20) 0 2px,transparent 2px 8px),repeating-linear-gradient(-45deg,rgba(212,168,67,.20) 0 2px,transparent 2px 8px),linear-gradient(160deg,#241a0d,#120e07);box-shadow:inset 0 0 0 3px #0d0b07,inset 0 0 0 5px rgba(212,168,67,.5);text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.fcard .fc.fr{display:block;font-size:15px;background:linear-gradient(155deg,#fffdf6,#f3e8cb 55%,#e6d5ab);box-shadow:0 8px 18px rgba(0,0,0,.55),inset 0 0 0 1px #d8c491,inset 0 -8px 14px rgba(138,106,42,.14)}
+.fcard .fc.fr::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(115deg,transparent 55%,rgba(255,255,255,.45) 76%,transparent 92%);pointer-events:none}
+.fcard .fc.fr .pips{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(5,1fr);padding:13px 10px;box-sizing:border-box}
+.fcard .fc.fr .pip{font-size:11px;line-height:1;place-self:center;font-style:normal;color:#221a0c}
+.fcard .fc.fr .pip.dn{transform:rotate(180deg)}
+.fcard .fc.fr .red{color:#a33327}
+.fcard .fc.fr .cor{position:absolute;font-size:10px;font-weight:800;line-height:1.05;text-align:center;color:#221a0c;z-index:2}
+.fcard .fc.fr .cor i{display:block;font-style:normal;font-size:9px}
+.fcard .fc.fr .cor.tl{top:3px;left:4px}
+.fcard .fc.fr .cor.br{bottom:3px;right:4px;transform:rotate(180deg)}
+.fcard .fc.fr .court{position:absolute;inset:15px 10px;border:1.5px solid var(--gold-lo,#8a6a2a);border-radius:6px;background:linear-gradient(160deg,rgba(240,207,120,.30),rgba(212,168,67,.06));display:grid;place-items:center;align-content:center;gap:1px;box-shadow:inset 0 0 0 2px #fffaf0,inset 0 0 12px rgba(212,168,67,.35)}
+.fcard .fc.fr .court b{font:800 25px Georgia,serif;color:#8a6a2a;line-height:1}
+.fcard .fc.fr .court i{font-style:normal;font-size:13px;color:#221a0c}
+.fcard .fc.fr .court.red i{color:#a33327}
+.fcard .fc.fr .acepip{position:absolute;inset:0;display:grid;place-items:center;font-size:34px;color:#221a0c}
+.fcard .fc.fr .acepip.red{color:#a33327}
+/* race: a believable track — lanes, stride bounce, dust, checkered finish */
+.cz-board{gap:5px;padding:10px;background:linear-gradient(180deg,#1a1307,#0c0a06);border:1px solid #3a2f16;border-radius:12px;box-shadow:inset 0 2px 14px rgba(0,0,0,.7),inset 0 0 0 1px rgba(240,207,120,.05)}
+.cz-board i{background:linear-gradient(180deg,#171410,#100e0a);box-shadow:inset 0 1px 3px rgba(0,0,0,.65),inset 0 0 0 1px rgba(240,207,120,.04)}
+.cz-board i[data-cell="23"]{background:repeating-conic-gradient(#e8e2cf 0 25%,#171208 0 50%);background-size:9px 9px;color:#171208;font-weight:800}
+.cz-board i.lit{background:linear-gradient(180deg,rgba(240,207,120,.34),rgba(212,168,67,.16));color:#ffeec2}
+.cz-board i.here{position:relative;background:radial-gradient(circle at 35% 28%,#ffeeb2,#d4a843 58%,#8a6a2a);color:#241a05;box-shadow:0 4px 10px rgba(0,0,0,.55),0 0 14px rgba(240,207,120,.6),inset 0 1px 1px rgba(255,255,255,.7);animation:czstride .34s ease}
+.cz-board i.here::after{content:"";position:absolute;left:50%;bottom:-4px;width:17px;height:5px;transform:translateX(-50%);background:radial-gradient(50% 50% at 50% 50%,rgba(203,191,159,.55),transparent 70%);border-radius:50%;pointer-events:none}
+@keyframes czstride{0%{transform:translateY(0) scale(1)}35%{transform:translateY(-4px) scale(1.07)}100%{transform:translateY(0) scale(1)}}
+`;
   document.head.appendChild(css);
 
   const wrap = document.querySelector("#v-games .wrap");
@@ -132,7 +206,7 @@
     return `<div class="cz-chips" data-chips="${g}">${CHIP_AMTS.map((a) => `<button type="button" data-amt="${a}" ${a > max ? "disabled" : ""} class="${betOf(g) === a ? "on" : ""}">🪙 ${a}</button>`).join("")}</div>`;
   }
   function coinHtml(sm) {
-    return `<div class="cz-coin${sm ? " sm" : ""}" data-coin><div class="cf fr">🪙</div><div class="cf bk">💰</div></div>`;
+    return `<div class="cz-coin${sm ? " sm" : ""}" data-coin><div class="cf fr"><span class="cface">👑</span></div><div class="cf bk"><span class="cface m">M</span></div></div>`;
   }
   function dieHtml() {
     return `<div class="die" data-die>${Array.from({ length: 9 }, (_, i) => `<i data-pip="${i + 1}"></i>`).join("")}</div>`;
@@ -153,19 +227,49 @@
     const ctx = cv.getContext("2d"); if (!ctx) return;
     const C = 120, R = 114;
     ctx.clearRect(0, 0, 240, 240);
+    /* cabinet rim: dark ring with a gold trim line */
+    ctx.beginPath(); ctx.arc(C, C, 117, 0, Math.PI * 2); ctx.fillStyle = "#0a0805"; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = "#8a6a2a"; ctx.stroke();
     for (let i = 0; i < 12; i++) {
       const m = WHEEL_SEGS[i], a0 = -Math.PI / 2 + i * Math.PI / 6, a1 = a0 + Math.PI / 6;
+      const g = ctx.createRadialGradient(C, C, 24, C, C, R);
+      g.addColorStop(0, WHEEL_COL[String(m)]); g.addColorStop(0.72, WHEEL_COL[String(m)]); g.addColorStop(1, "rgba(0,0,0,0.30)");
       ctx.beginPath(); ctx.moveTo(C, C); ctx.arc(C, C, R, a0, a1); ctx.closePath();
-      ctx.fillStyle = WHEEL_COL[String(m)]; ctx.fill();
+      ctx.fillStyle = g; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(C, C); ctx.arc(C, C, R * 0.60, a0, a1); ctx.closePath();
+      ctx.fillStyle = "rgba(255,244,200,0.08)"; ctx.fill();
       ctx.lineWidth = i === hi ? 5 : 2; ctx.strokeStyle = i === hi ? "#fff3c4" : "#0b0906"; ctx.stroke();
+      if (i === hi) { ctx.beginPath(); ctx.moveTo(C, C); ctx.arc(C, C, R, a0, a1); ctx.closePath(); ctx.fillStyle = "rgba(255,243,196,.22)"; ctx.fill(); }
       ctx.save(); ctx.translate(C, C); ctx.rotate(a0 + Math.PI / 12);
       ctx.textAlign = "right"; ctx.font = "700 15px system-ui"; ctx.fillStyle = m >= 1.5 ? "#241a05" : "#e9d9a6";
-      ctx.fillText(m + "×", R - 9, 5); ctx.restore();
+      ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
+      ctx.fillText(m + "\u00d7", R - 12, 5); ctx.restore();
     }
-    ctx.beginPath(); ctx.arc(C, C, 27, 0, Math.PI * 2); ctx.fillStyle = "#120f09"; ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = "#d4a843"; ctx.stroke();
-    ctx.fillStyle = "#f0cf78"; ctx.font = "800 13px Georgia,serif"; ctx.textAlign = "center"; ctx.fillText("MW", C, C + 4);
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    /* metal pegs on every segment seam */
+    for (let i = 0; i < 12; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 6, x = C + Math.cos(a) * (R - 3), y = C + Math.sin(a) * (R - 3);
+      const pg = ctx.createRadialGradient(x - 1, y - 1, 0.5, x, y, 3.4);
+      pg.addColorStop(0, "#fff6d8"); pg.addColorStop(0.55, "#d4a843"); pg.addColorStop(1, "#6d551f");
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = pg; ctx.fill();
+    }
+    /* chasing marquee bulbs around the rim (drawn lit/unlit in turn) */
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2, x = C + Math.cos(a) * 117, y = C + Math.sin(a) * 117;
+      ctx.beginPath(); ctx.arc(x, y, 2.1, 0, Math.PI * 2);
+      ctx.fillStyle = i % 2 ? "#8a6a2a" : "#ffe9a8"; ctx.fill();
+    }
+    /* heavy branded hub */
+    const hg = ctx.createRadialGradient(C - 8, C - 10, 4, C, C, 30);
+    hg.addColorStop(0, "#ffeeb2"); hg.addColorStop(0.55, "#d4a843"); hg.addColorStop(1, "#7c5f22");
+    ctx.beginPath(); ctx.arc(C, C, 29, 0, Math.PI * 2); ctx.fillStyle = hg; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = "#4a3a1a"; ctx.stroke();
+    ctx.beginPath(); ctx.arc(C, C, 23.5, 0, Math.PI * 2); ctx.lineWidth = 1.5; ctx.strokeStyle = "rgba(255,246,216,.65)"; ctx.stroke();
+    ctx.fillStyle = "#241a05"; ctx.font = "800 13px Georgia,serif"; ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(255,246,216,.5)"; ctx.shadowOffsetY = 1;
+    ctx.fillText("MW", C, C + 4); ctx.shadowOffsetY = 0;
   }
+
   function plinkoBallPos(path, hops) {
     let rights = 0; for (let i = 0; i < hops; i++) rights += path[i] ? 1 : 0;
     const slots = 4 + (rights - (hops - rights)) * 0.5;
@@ -174,21 +278,39 @@
   function drawPlinko(cv, path, hops, doneSlot) {
     const ctx = cv.getContext("2d"); if (!ctx) return;
     ctx.clearRect(0, 0, 284, 216);
-    for (let s = 0; s <= 8; s++) { ctx.beginPath(); ctx.moveTo(s * 35.5, 196); ctx.lineTo(s * 35.5, 216); ctx.lineWidth = 1.5; ctx.strokeStyle = "#3a2f16"; ctx.stroke(); }
-    if (doneSlot != null && doneSlot >= 0) { ctx.fillStyle = "rgba(240,207,120,.30)"; ctx.fillRect(doneSlot * 35.5 + 1, 196, 33.5, 20); }
-    ctx.fillStyle = "#a37f27";
+    /* deep inset felt with a pool of light at the top */
+    const bg = ctx.createLinearGradient(0, 0, 0, 216);
+    bg.addColorStop(0, "#131a0e"); bg.addColorStop(0.6, "#0d1109"); bg.addColorStop(1, "#090b06");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, 284, 216);
+    const pool = ctx.createRadialGradient(142, 26, 10, 142, 110, 195);
+    pool.addColorStop(0, "rgba(240,207,120,.13)"); pool.addColorStop(1, "rgba(240,207,120,0)");
+    ctx.fillStyle = pool; ctx.fillRect(0, 0, 284, 216);
+    for (let s = 0; s <= 8; s++) {
+      ctx.beginPath(); ctx.moveTo(s * 35.5, 196); ctx.lineTo(s * 35.5, 216); ctx.lineWidth = 2; ctx.strokeStyle = "#4a3a1a"; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s * 35.5 + 1, 196); ctx.lineTo(s * 35.5 + 1, 216); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(255,240,190,.25)"; ctx.stroke();
+    }
+    if (doneSlot != null && doneSlot >= 0) { ctx.fillStyle = "rgba(240,207,120,.34)"; ctx.fillRect(doneSlot * 35.5 + 1, 196, 33.5, 20); }
+    /* pins as little metal studs: cast shadow, gold body, specular dot */
     for (let r = 0; r < 7; r++) for (let c = 0; c < 9; c++) {
       const x = 18 + c * 31 + (r % 2 ? 15 : 0); if (x > 282) continue;
-      ctx.beginPath(); ctx.arc(x, 30 + r * 24, 3, 0, Math.PI * 2); ctx.fill();
+      const y = 30 + r * 24;
+      ctx.beginPath(); ctx.arc(x + 1, y + 1.6, 3.1, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fill();
+      const pg = ctx.createRadialGradient(x - 1.1, y - 1.1, 0.4, x, y, 3.4);
+      pg.addColorStop(0, "#fff3c4"); pg.addColorStop(0.5, "#d4a843"); pg.addColorStop(1, "#7c5f22");
+      ctx.beginPath(); ctx.arc(x, y, 3.1, 0, Math.PI * 2); ctx.fillStyle = pg; ctx.fill();
+      ctx.beginPath(); ctx.arc(x - 1.1, y - 1.1, 0.9, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,.85)"; ctx.fill();
     }
     if (path) {
-      const p = plinkoBallPos(path, hops);
-      ctx.beginPath(); ctx.arc(p.x, Math.min(p.y, 190), 7.5, 0, Math.PI * 2);
-      const gr = ctx.createRadialGradient(p.x - 2, Math.min(p.y, 190) - 2, 1, p.x, Math.min(p.y, 190), 8);
-      gr.addColorStop(0, "#ffe9a8"); gr.addColorStop(1, "#c39a2e");
-      ctx.fillStyle = gr; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "#8a6a2a"; ctx.stroke();
+      if (hops > 0) { const gp = plinkoBallPos(path, hops - 1); ctx.beginPath(); ctx.arc(gp.x, Math.min(gp.y, 190), 7, 0, Math.PI * 2); ctx.fillStyle = "rgba(212,168,67,.28)"; ctx.fill(); }
+      const p = plinkoBallPos(path, hops), by = Math.min(p.y, 190);
+      ctx.beginPath(); ctx.ellipse(p.x, by + 8.5, 8.5, 2.6, 0, 0, Math.PI * 2); ctx.fillStyle = "rgba(0,0,0,.4)"; ctx.fill();
+      const gr = ctx.createRadialGradient(p.x - 2.4, by - 2.6, 1, p.x, by, 8.5);
+      gr.addColorStop(0, "#fff6d8"); gr.addColorStop(0.45, "#f0cf78"); gr.addColorStop(1, "#a37f27");
+      ctx.beginPath(); ctx.arc(p.x, by, 7.5, 0, Math.PI * 2); ctx.fillStyle = gr; ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = "#8a6a2a"; ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x - 2.4, by - 2.8, 1.7, 0, Math.PI * 2); ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fill();
     }
   }
+
   function paintIdle() {
     root.querySelectorAll(".cz-wheelcv").forEach((cv) => drawWheel(cv, -1));
     root.querySelectorAll(".cz-plkcv").forEach((cv) => drawPlinko(cv, null, 0, -1));
@@ -198,11 +320,22 @@
     if (!d) return;
     d.querySelectorAll("[data-pip]").forEach((p) => p.classList.toggle("on", (PIPS[n] || []).includes(+p.dataset.pip)));
   }
+  /* real card faces: standard pip layouts for number cards (bottom pips
+     flipped, like printed stock), gold-framed court cards, one big ace pip */
+  const PIPS5 = { 2: [[1, 0], [1, 4]], 3: [[1, 0], [1, 2], [1, 4]], 4: [[0, 0], [2, 0], [0, 4], [2, 4]], 5: [[0, 0], [2, 0], [1, 2], [0, 4], [2, 4]], 6: [[0, 0], [2, 0], [0, 2], [2, 2], [0, 4], [2, 4]], 7: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2], [0, 4], [2, 4]], 8: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2], [1, 3], [0, 4], [2, 4]], 9: [[0, 0], [2, 0], [0, 1], [2, 1], [1, 2], [0, 3], [2, 3], [0, 4], [2, 4]], 10: [[0, 0], [2, 0], [0, 1], [2, 1], [1, 1], [1, 3], [0, 3], [2, 3], [0, 4], [2, 4]] };
+  function cardFace(v, suit) {
+    const red = suit === "\u2665" || suit === "\u2666";
+    const cor = `<span class="cor tl">${rank(v)}<i>${suit}</i></span><span class="cor br">${rank(v)}<i>${suit}</i></span>`;
+    if (v >= 11 && v <= 13) return cor + `<div class="court${red ? " red" : ""}"><b>${rank(v)}</b><i>${suit}</i></div>`;
+    if (v === 14) return cor + `<div class="acepip${red ? " red" : ""}">${suit}</div>`;
+    const ps = (PIPS5[v] || [[1, 2]]).map(([c, r]) => `<span class="pip${red ? " red" : ""}${r > 2 ? " dn" : ""}" style="grid-column:${c + 1};grid-row:${r + 1}">${suit}</span>`).join("");
+    return cor + `<div class="pips">${ps}</div>`;
+  }
   /* gold confetti burst inside the winning card — never covers the screen */
   function celebrate(card, big) {
     if (!card) return;
     const box = document.createElement("div"); box.className = "cz-confetti";
-    const cols = ["#f0cf78", "#d4a843", "#fff3c4", "#7dd87d", "#ffe9a8"];
+    const cols = ["#f0cf78", "#d4a843", "#fff3c4", "#b98f2e", "#ffe9a8"];
     const n = big ? 46 : 24;
     for (let i = 0; i < n; i++) {
       const p = document.createElement("i");
@@ -210,6 +343,7 @@
       p.style.background = cols[i % cols.length];
       p.style.animationDuration = (0.9 + Math.random() * 0.8) + "s";
       p.style.animationDelay = (Math.random() * 0.15) + "s";
+      if (i % 3 === 0) { p.style.borderRadius = "50%"; p.style.width = "5px"; p.style.height = "5px"; }
       box.appendChild(p);
     }
     card.appendChild(box);
@@ -371,19 +505,20 @@
       const coin = st.querySelector("[data-coin]");
       if (cap) cap.textContent = "Flipping…";
       if (coin) {
+        coin.classList.remove("landed");
         coin.style.transition = "none"; coin.style.transform = "rotateX(0deg)";
         void coin.offsetWidth;
         coin.style.transition = "transform 1.5s cubic-bezier(.2,.7,.25,1)";
         coin.style.transform = `rotateX(${dt.land === "heads" ? 1800 : 1980}deg)`;
       }
-      setTimeout(() => { if (cap) cap.innerHTML = `It landed <b>${E(dt.land)}</b> — you called ${E(S.pick.flip)}`; resultLine(g, r, true); finish(g, r); }, 1600);
+      setTimeout(() => { if (coin) coin.classList.add("landed"); if (cap) cap.innerHTML = `It landed <b>${E(dt.land)}</b> — you called ${E(S.pick.flip)}`; resultLine(g, r, true); finish(g, r); }, 1600);
       return;
     }
     if (g === "highcard" && st) {
       const s1 = SUITS[Math.floor(Math.random() * 4)], s2 = SUITS[Math.floor(Math.random() * 4)];
       const fr1 = st.querySelector('[data-fr="you"]'), fr2 = st.querySelector('[data-fr="dealer"]');
-      if (fr1) fr1.innerHTML = `${rank(dt.you)}<small>${s1}</small>`;
-      if (fr2) fr2.innerHTML = `${rank(dt.dealer)}<small>${s2}</small>`;
+      if (fr1) fr1.innerHTML = cardFace(dt.you, s1);
+      if (fr2) fr2.innerHTML = cardFace(dt.dealer, s2);
       const you = st.querySelector('[data-fc="you"]'), dl = st.querySelector('[data-fc="dealer"]');
       if (you) you.classList.add("go");
       setTimeout(() => { if (dl) dl.classList.add("go"); }, 280);
@@ -393,12 +528,14 @@
     if (g === "dice" && st) {
       const dice = st.querySelectorAll("[data-die]");
       if (cap) cap.textContent = "Rolling…";
+      const dbox = st.querySelector(".cz-dice"); if (dbox) dbox.classList.add("rolling");
       dice.forEach((d) => d.classList.add("tumble"));
       let n = 0;
       const iv = setInterval(() => {
         dice.forEach((d) => setDie(d, 1 + Math.floor(Math.random() * 6)));
         if (++n > 7) {
           clearInterval(iv);
+          if (dbox) dbox.classList.remove("rolling");
           dice.forEach((d) => d.classList.remove("tumble"));
           setDie(dice[0], dt.d1 || 1); setDie(dice[1], dt.d2 || 1);
           if (cap) cap.innerHTML = `Total <b>${dt.sum}</b> — you called ${E(S.pick.dice === "seven" ? "exactly 7" : S.pick.dice + " 7")}`;
@@ -410,6 +547,7 @@
     if (g === "slots" && st) {
       const strips = st.querySelectorAll(".cz-strip");
       const finals = dt.reels || ["👑", "👑", "👑"];
+      const reelsBox = st.querySelector(".cz-reels"); if (reelsBox) reelsBox.classList.add("spinning");
       if (cap) cap.textContent = "Spinning…";
       strips.forEach((strip, i) => {
         const cells = [];
@@ -421,7 +559,7 @@
         strip.style.transitionDuration = (1 + i * 0.45) + "s";
         strip.style.transform = `translateY(${-(cells.length - 1) * 66}px)`;
       });
-      setTimeout(() => { if (cap) cap.innerHTML = r.j.pay > r.j.bet ? "Jackpot line!" : r.j.pay > 0 ? "A pair pays out." : "No match."; resultLine(g, r, true); finish(g, r); }, 2080);
+      setTimeout(() => { const rb = st.querySelector(".cz-reels"); if (rb) { rb.classList.remove("spinning"); rb.classList.toggle("winline", r.j.pay > 0); } if (cap) cap.innerHTML = r.j.pay > r.j.bet ? "Jackpot line!" : r.j.pay > 0 ? "A pair pays out." : "No match."; resultLine(g, r, true); finish(g, r); }, 2080);
       return;
     }
     if (g === "race" && st) {
@@ -443,12 +581,13 @@
       if (cap) cap.textContent = "Spinning…";
       if (cv) {
         drawWheel(cv, -1);
+        const wwrap = cv.closest(".cz-wheelwrap"); if (wwrap) wwrap.classList.add("spinning");
         cv.style.transition = "none"; cv.style.transform = "rotate(0deg)";
         void cv.offsetWidth;
         cv.style.transition = "transform 3.4s cubic-bezier(.1,.7,.08,1)";
         cv.style.transform = `rotate(${2160 - (seg * 30 + 15)}deg)`;
       }
-      setTimeout(() => { if (cv) drawWheel(cv, seg); if (cap) cap.innerHTML = `It stopped on <b>${WHEEL_SEGS[seg]}×</b>`; resultLine(g, r, true); finish(g, r); }, 3520);
+      setTimeout(() => { if (cv) drawWheel(cv, seg); const ww2 = cv ? cv.closest(".cz-wheelwrap") : null; if (ww2) ww2.classList.remove("spinning"); if (cap) cap.innerHTML = `It stopped on <b>${WHEEL_SEGS[seg]}×</b>`; resultLine(g, r, true); finish(g, r); }, 3520);
       return;
     }
     if (g === "plinko" && st) {
@@ -475,13 +614,14 @@
       const flips = dt.flips || [0, 0, 0];
       if (cap) cap.textContent = "Flipping…";
       coins.forEach((coin, i) => {
+        coin.classList.remove("landed");
         coin.style.transition = "none"; coin.style.transform = "rotateX(0deg)";
         void coin.offsetWidth;
         coin.style.transition = "transform 1.3s cubic-bezier(.2,.7,.25,1)";
         coin.style.transitionDelay = (i * 0.16) + "s";
         coin.style.transform = `rotateX(${flips[i] ? 1800 : 1980}deg)`;
       });
-      setTimeout(() => { if (cap) cap.innerHTML = `<b>${dt.heads} heads</b>, ${3 - (dt.heads || 0)} tails`; resultLine(g, r, true); finish(g, r); }, 1750);
+      setTimeout(() => { coins.forEach((c2) => c2.classList.add("landed")); if (cap) cap.innerHTML = `<b>${dt.heads} heads</b>, ${3 - (dt.heads || 0)} tails`; resultLine(g, r, true); finish(g, r); }, 1750);
       return;
     }
     resultLine(g, r, true); finish(g, r);
