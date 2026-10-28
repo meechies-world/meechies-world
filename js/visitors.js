@@ -14,10 +14,10 @@
 
   // Every alert goes through the site's server (/api/visit), which checks it's real before it reaches the owner's phone.
   // Nobody's browser ever sees the alert channel, so nobody can send fake alerts to it.
-  async function ping(kind) {
-    if (typeof isOwner !== "undefined" && isOwner) return; // your own visits aren't announced
+  async function ping(kind, extra) {
+    if (typeof isOwner !== "undefined" && isOwner) return; // your own visits aren't announced or counted
     const t = tok();
-    fetch("/api/visit", { method: "POST", keepalive: true, headers: { "content-type": "application/json", ...(t ? { authorization: "Bearer " + t } : {}) }, body: JSON.stringify({ kind: t ? kind : "gate" }) }).catch(() => {});
+    fetch("/api/visit", { method: "POST", keepalive: true, headers: { "content-type": "application/json", ...(t ? { authorization: "Bearer " + t } : {}) }, body: JSON.stringify({ kind, ...(extra || {}) }) }).catch(() => {});
   }
   window.MW_VISIT = ping;
   // the owner's visit lets the site's server learn the alert channel (for sign-up screen alerts)
@@ -25,6 +25,35 @@
 
   // someone on the sign-up screen
   setTimeout(() => { if (gated() && !ss("mw_v_gate")) { ss("mw_v_gate", "1"); ping("gate"); } }, 3000);
+
+  /* ---------- traffic counting: every visit + link clicks (owner, 2026-10-27) ---------- */
+  // Guests browsing free count too — not just members and the sign-up screen.
+  // One count per section per visit, so the numbers stay honest.
+  const vSeen = new Set();
+  function viewPing() {
+    const v = ((document.body && document.body.dataset.view) || (location.hash || "").replace(/^#/, "") || "home").slice(0, 24);
+    if (!v || vSeen.has(v)) return;
+    vSeen.add(v);
+    ping("view", { v });
+  }
+  setTimeout(viewPing, 1500);
+  addEventListener("hashchange", () => setTimeout(viewPing, 300));
+  setInterval(viewPing, 5000);
+  // Link clicks: outside sites counted by their name, inside jumps by section.
+  let clicksSent = 0;
+  document.addEventListener("click", (e) => {
+    if (clicksSent >= 25) return;
+    const a = e.target && e.target.closest && e.target.closest("a[href], [data-track]");
+    if (!a) return;
+    let label = a.dataset && a.dataset.track;
+    if (!label) {
+      const href = a.getAttribute && a.getAttribute("href");
+      if (!href) return;
+      if (/^https?:\/\//i.test(href)) { try { const h = new URL(href).hostname.replace(/^www\./, ""); if (h && !h.includes("meechiesworldinc.com") && !h.includes("meechies-world.pages.dev")) label = h; } catch (_) {} }
+      else if (href.charAt(0) === "#") label = "go:" + href.slice(1, 25);
+    }
+    if (label) { clicksSent++; ping("click", { label: String(label).slice(0, 48) }); }
+  }, true);
 
   // a signed-in member came on (once per visit); a brand-new account also says "new member"
   let started = false; const wasNew = !!ls("mw_join_name"); // they just made their account on the sign-up screen
@@ -93,6 +122,7 @@ body.has-player #vz-pill{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-i
       const t = (ms) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       sh.innerHTML = `<div class="in" role="dialog" aria-label="Visitors">
         <h3>👁 Visitors</h3>
+        <div id="vz-traffic"><h4>📊 Traffic</h4><p class="muted" style="margin:0">Loading…</p></div>
         <h4>On the site right now (${here.length})</h4>${here.length ? here.map((id) => `<div class="row"><b>${E(nameOf(id))}</b><small>here now</small></div>`).join("") : '<p class="muted" style="margin:0">Nobody else is on right now.</p>'}
         <h4>Came on since you opened the site</h4>${today.length ? today.slice(0, 50).map((v) => `<div class="row"><b>${E(v.nm)}</b><small>${t(v.at)}</small></div>`).join("") : '<p class="muted" style="margin:0">No one yet.</p>'}
         <h4>📱 Alerts on your phone (even when the site is closed)</h4>
@@ -105,6 +135,23 @@ body.has-player #vz-pill{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-i
         <div class="acts"><button class="btn sm ghost" type="button" data-a="desk">${"Notification" in window && Notification.permission === "granted" ? "✓ On" : "Turn on"}</button></div>
         <div class="acts" style="margin-top:18px"><button class="btn" type="button" data-a="close">Close</button></div></div>`;
       document.body.appendChild(sh);
+      // traffic totals (server counts every visit — guests included — and link clicks)
+      (async () => {
+        try {
+          const t = tok(); if (!t) return;
+          const r = await fetch("/api/visit?days=7", { headers: { authorization: "Bearer " + t } });
+          const j = await r.json(); const box = sh.querySelector("#vz-traffic");
+          if (!box || !j || !j.days) return;
+          const td = j.days[j.days.length - 1] || {};
+          const top = (o, n) => Object.entries(o || {}).sort((a, b) => b[1] - a[1]).slice(0, n);
+          const secs = top(td.sections, 6), clks = top(td.clicks, 8);
+          box.innerHTML = `<h4>📊 Traffic — today</h4>
+          <div class="row"><b>${td.views || 0} visits</b><small>${td.uniques || 0} different people · ${td.members || 0} member · ${td.guests || 0} guest</small></div>
+          ${secs.map(([k, n]) => `<div class="row"><span>${E(k)}</span><small>${n} visits</small></div>`).join("")}
+          <h4>🔗 Most clicked links — today</h4>${clks.length ? clks.map(([k, n]) => `<div class="row"><span>${E(k)}</span><small>${n} clicks</small></div>`).join("") : '<p class="muted" style="margin:0">No link clicks counted yet today.</p>'}
+          <h4>Last 7 days</h4>${j.days.map((d) => `<div class="row"><span>${E(d.date)}</span><small>${d.views} visits · ${d.uniques} people</small></div>`).join("")}`;
+        } catch (_) {}
+      })();
       sh.addEventListener("click", async (e) => {
         if (e.target === sh) { sh.remove(); return; }
         const a = e.target.closest("[data-a]"); if (!a) return; const k = a.dataset.a;
