@@ -622,6 +622,12 @@ html.popdj .popdj-hint{display:block}
 #dj-blackout[hidden]{display:none}
 #dj-blackout span{color:#9a9a9a;font:600 13px var(--body);letter-spacing:.08em;opacity:.4;transition:opacity 1.4s ease 2.4s;pointer-events:none}
 #dj-blackout.bo-dim span{opacity:0}
+/* the Blackout button, impossible to miss (owner, 2026-10-28: "I dont see the
+   blackout mode — I want that very noticeable"): a full-width black-and-gold
+   slab on the station card with a slow gold pulse, plus one in the booth top
+   bar next to Go live */
+.bobig{display:block;width:100%;min-height:56px;margin:10px 0;padding:12px 14px;background:#000;color:#f0cf78;border:2px solid #f0cf78;border-radius:12px;font:800 16px var(--body);letter-spacing:.04em;cursor:pointer;animation:bopulse 2s ease-in-out infinite}
+@keyframes bopulse{0%,100%{box-shadow:0 0 0 0 rgba(240,207,120,0)}50%{box-shadow:0 0 18px 2px rgba(240,207,120,.45)}}
 #dj-livealert .la-txt{font:700 12.5px var(--body);color:#ffe9b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dj-livealert .btn{white-space:nowrap}
 body.dj-on #dj-livealert,html.popdj #dj-livealert,html.gated #dj-livealert{display:none!important}
@@ -890,7 +896,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <label class="lab">Volume<input type="range" min="0" max="2" step="0.01" value="0.9" data-vol="${k}" aria-label="Deck ${k} volume"></label></div></div></div>`;
 
   root.innerHTML = `
-<div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button><button class="btn sm ghost" type="button" id="dj-bobtn">🌑 Blackout</button></div>
+<div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button><button class="btn sm ghost" type="button" id="dj-bobtn" data-bobtn>🌑 Blackout</button></div>
 <div class="station" id="dj-station" hidden>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span style="display:flex;gap:8px;align-items:center"><span class="onair-lamp" id="st-lamp"><span class="dot"></span>OFF AIR</span><button class="btn ghost sm" type="button" data-fold="st-body" aria-label="Fold the station panel">▾</button></span></div>
   <div id="st-body">
@@ -898,6 +904,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
   <div id="st-show"></div>
+  <button class="bobig" type="button" data-bobtn>🌑 BLACKOUT MODE — screen goes black, music keeps playing</button>
   <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vchip" id="st-vchip" hidden></div></div></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
@@ -911,7 +918,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
-    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label></div>
+    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button></div>
   <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
@@ -1939,7 +1946,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!OWNER() && isLive() && typeof mode !== "undefined" && mode === "radio") { autoMoved = true; startListening(); }
   });
   $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : isLive() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
-  $("#dj-bobtn").addEventListener("click", () => { if (!listening && (isLive() || OWNER())) startListening(); blackout(true); });
+  document.querySelectorAll("[data-bobtn]").forEach((b) => b.addEventListener("click", () => { if (!listening && (isLive() || OWNER())) startListening(); blackout(true); }));
 
   let ownerLoaded = false;
   function mergeState(d) {
