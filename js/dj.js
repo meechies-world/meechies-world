@@ -222,14 +222,19 @@
         sh._p.playVideo();
         // some browsers refuse to start a video with sound until it has been
         // interacted with: if it is not rolling shortly, start it muted (always
-        // allowed) and bring the sound up the moment it is actually playing
+        // allowed) and bring the sound up the moment it is actually playing.
+        // The mute is a loan, never a gift: sh._rescued remembers that WE muted
+        // it, and the PLAYING state change (see _mount) always pays the sound
+        // back — even when a slow phone takes longer than this watch window.
+        // (Owner, 2026-10-28: the radio plays until someone presses stop; the
+        // mute only ever changes by a person's press, never by the site.)
         let muted = false; const t0 = Date.now();
         const iv = setInterval(() => {
           try {
             const st = sh._p.getPlayerState();
-            if (st === 1) { if (muted) { sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } clearInterval(iv); return; }
+            if (st === 1) { if (muted) { sh._rescued = false; sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } clearInterval(iv); return; }
             if (Date.now() - t0 > 4000) { clearInterval(iv); return; }
-            if (!muted && st !== 3 && Date.now() - t0 > 800) { muted = true; sh._p.mute(); sh._p.playVideo(); }
+            if (!muted && st !== 3 && Date.now() - t0 > 800) { muted = true; sh._rescued = true; sh._p.mute(); sh._p.playVideo(); }
           } catch (_) { clearInterval(iv); }
         }, 250);
       } catch (_) {}
@@ -244,7 +249,7 @@
       try {
         sh._p = new YT.Player(mountEl, { videoId: vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 1 }, events: {
           onReady: (e) => { sh.readyState = 4; try { sh._dur = e.target.getDuration() || 0; const vd = e.target.getVideoData && e.target.getVideoData(); if (vd && onTitle) onTitle(vd.title || "", sh._dur); } catch (_) {} fin(true); },
-          onStateChange: (e) => { if (e.data === 0) sh._fire("ended"); if (e.data === 1) { try { sh._dur = sh._p.getDuration() || sh._dur; } catch (_) {} } },
+          onStateChange: (e) => { if (e.data === 0) sh._fire("ended"); if (e.data === 1) { try { sh._dur = sh._p.getDuration() || sh._dur; } catch (_) {} if (sh._rescued) { sh._rescued = false; try { sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } catch (_) {} } } },
           onError: () => fin(false),
         } });
       } catch (_) { fin(false); }
