@@ -125,13 +125,20 @@
   function Deck() {
     const d = { el: new Audio(), gain: null, eq: null, flt: null, stem: null, src: "", level: 1, cors: true, peaks: null, rate: 1, vinyl: false, cues: [null, null, null], loop: null, loopBeats: 0, ytId: "", shim: null, _audioEl: null, letter: "" };
     d.el.preload = "auto"; d.el.playsInline = true; d.el.crossOrigin = "anonymous";
+    // The end-of-song hook lives on the DECK, not on one element: a deck's sound
+    // element gets replaced over its life (video shim in, shim out, CORS fallback
+    // swap), and a listener bolted to one element dies with it — that is why the
+    // turntables ran past the end of their song (owner, 2026-10-27).
+    d.onEnded = null;
+    d._hookEnd = (el) => { if (el && typeof el.addEventListener === "function" && !el._endHooked) { el._endHooked = true; el.addEventListener("ended", () => { if (d.el === el && d.onEnded) d.onEnded(); }); } };
+    d._hookEnd(d.el);
     d.set = (src) => new Promise((res) => {
       if (d.shim) d.clearYt();
       if (d.src === src) return res(true);
       d.src = src; d.cors = true; d.el.crossOrigin = "anonymous"; d.el.src = src; d.peaks = null;
       const ok = () => { clean(); wire(); res(true); };
       const bad = () => { clean(); if (d.cors) { d.cors = false;
-          if (d.gain) { const old = d.el; old.pause(); d.el = new Audio(); d.el.preload = "auto"; d.el.playsInline = true; d.gain = null; d.eq = null; d.flt = null; d.stem = null; d.onswap && d.onswap(old); }
+          if (d.gain) { const old = d.el; old.pause(); d.el = new Audio(); d.el.preload = "auto"; d.el.playsInline = true; d._hookEnd(d.el); d.gain = null; d.eq = null; d.flt = null; d.stem = null; d.onswap && d.onswap(old); }
           d.el.removeAttribute("crossorigin"); d.el.src = src; d.el.addEventListener("loadedmetadata", () => res(true), { once: true }); d.el.addEventListener("error", () => res(false), { once: true }); } else res(false); };
       const clean = () => { d.el.removeEventListener("loadedmetadata", ok); d.el.removeEventListener("error", bad); };
       d.el.addEventListener("loadedmetadata", ok); d.el.addEventListener("error", bad);
@@ -177,12 +184,12 @@
       if (vp.p === "dm") { await dmApi(); if (!window.DM || !DM.player) { d.ytId = ""; return false; } sh = dmShim(d, vp.id, onT); }
       else if (vp.p === "vm") { await vmApi(); if (!window.Vimeo || !Vimeo.Player) { d.ytId = ""; return false; } sh = vmShim(d, vp.id, onT); }
       else { await ytApi(); if (!window.YT || !YT.Player) { d.ytId = ""; return false; } sh = ytShim(d, vp.id, onT); }
-      d.shim = sh; d.el = sh;
+      d.shim = sh; d.el = sh; d._hookEnd(sh);
       const okP = await sh._mount(mount); if (d.shim !== sh) return false;
       try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing) sh.play(); } catch (_) {}
       return okP;
     };
-    d.clearYt = () => { if (d.shim) { try { d.shim._p && d.shim._p.destroy(); } catch (_) {} d.shim = null; if (d._audioEl) d.el = d._audioEl; } if (d.ytId) d.ytId = ""; const wrap = document.getElementById("ytw-" + d.letter); if (wrap) { wrap.hidden = true; wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; } };
+    d.clearYt = () => { if (d.shim) { try { d.shim._p && d.shim._p.destroy(); } catch (_) {} d.shim = null; if (d._audioEl) { d.el = d._audioEl; d._hookEnd(d.el); } } if (d.ytId) d.ytId = ""; const wrap = document.getElementById("ytw-" + d.letter); if (wrap) { wrap.hidden = true; wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; } };
     return d;
   }
   /* ---------- YouTube decks: the official iframe player, driven like a deck ---------- */
@@ -1344,7 +1351,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     else { d.el.pause(); if (Math.abs(d.el.currentTime - want) > 0.5) { try { d.el.currentTime = want; } catch (_) {} } }
     applyFx(); levels();
-    if (OWNER() && !(S[k].bpm > 0) && !s.yt) analyze(k);
+    if (OWNER() && !(S[k].bpm > 0) && !s.yt) anaLater(k);
   }
   // tight sync across devices (owner ask, 2026-10-26): every playing deck is
   // held to the shared timeline — posOf() corrected by the server-clock offset.
@@ -1509,6 +1516,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const kk = detectKey(ch);
     return { bpm: +bpm.toFixed(1), beat0, key: kk.key, cam: kk.cam, pk };
   }
+  // Song analysis (BPM and key) downloads and decodes the whole file. Doing it
+  // the moment a song loads starves the deck that is playing (owner,
+  // 2026-10-27: loading a song made the other deck stop or lag), so it waits
+  // for a gap: it runs right away when nothing is playing, otherwise when the
+  // booth goes quiet. Each song is only ever analyzed once — results cache.
+  const anaQueue = [];
+  function anaLater(k) { if (!anaQueue.includes(k)) anaQueue.push(k); anaPump(); }
+  function anaPump() { if (DECKS.some((x) => S[x] && S[x].playing)) return; const k = anaQueue.shift(); if (k) analyze(k); }
+  setInterval(anaPump, 4000);
   async function analyze(k) {
     if (!OWNER()) return;
     const d = deck(k), src = d.src || S[k].src; if (!src || DEAD(src) || S[k].bpm > 0) return;
@@ -1640,6 +1656,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
       // watchdog: an element that reached the end without firing 'ended' still hands over
       if (OWNER() && boothLead && S.live && S.autodj && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
+      // wall-clock backstop (owner, 2026-10-27: "the turntables dont stop at the
+      // end of their song"): a deck whose clock has run past the end of its song
+      // and whose player has stopped — or which is a video deck, whose shim has
+      // no "ended" property for the check above — still stops here, Auto-DJ or
+      // not. deckEnded itself decides: with Auto-DJ or a queue it rolls on,
+      // otherwise the deck just stops, like a real turntable at the runout.
+      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durT = (decks[k].el && decks[k].el.duration) || +S[k].dur || 0; if (durT > 0 && posOf(k) > durT + 2 && (decks[k].shim || decks[k].el.ended || decks[k].el.paused)) deckEnded(k); }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
       if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && !listening && S[k].playing && decks[k] && !decks[k].loop && !handoverBusy && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
@@ -1940,7 +1963,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (item.yt) { const okY = await d.setYt(item.yt); if (!okY) { say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
     const ok = await d.set(item.src);
     if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
-    d.el.currentTime = 0; d.el.playbackRate = S[k].rate || 1; if (cueDeck) { try { d.el.pause(); } catch (_) {} } paintOwner(); levels(); save(); analyze(k);
+    d.el.currentTime = 0; d.el.playbackRate = S[k].rate || 1; if (cueDeck) { try { d.el.pause(); } catch (_) {} } paintOwner(); levels(); save(); anaLater(k);
   }
   function paintCues(k) { document.querySelectorAll(`[data-hot^="${k}:"]`).forEach((b, i) => b.classList.toggle("on", deck(k).cues[i] != null)); document.querySelectorAll(`[data-loopb^="${k}:"]`).forEach((b) => b.classList.toggle("on", !!deck(k).loopBeats && +b.dataset.loopb.split(":")[1] === deck(k).loopBeats)); document.querySelectorAll(`[data-roll^="${k}:"]`).forEach((b) => b.classList.toggle("on", !!deck(k).roll && +b.dataset.roll.split(":")[1] === deck(k).loopBeats)); document.querySelectorAll(`[data-slip="${k}"]`).forEach((b) => b.classList.toggle("on", !!deck(k).slip)); }
   // loop roll: the loop cycles on the speakers while a shadow playhead keeps
@@ -2185,7 +2208,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // (owner, 2026-10-27: "it keeps forcing songs to change").
     if (S.live && (S.autodj || queue.length) && !DECKS.some((x) => S[x].playing)) { say("⏭️ Deck " + k + " ended — rolling the next song."); autoNext(k, true); }
   }
-  DECKS.forEach((k) => setTimeout(() => deck(k).el.addEventListener("ended", () => deckEnded(k)), 0));
+  DECKS.forEach((k) => { deck(k).onEnded = () => deckEnded(k); });
 
   /* ---------- Auto-DJ queue ---------- */
   let queue = []; try { queue = JSON.parse(localStorage.getItem("mw-dj-queue") || "[]"); } catch (_) {}
