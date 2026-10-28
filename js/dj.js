@@ -1387,6 +1387,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     voiceEl = new Audio(v.url); voiceEl.playsInline = true; levels();
     voiceEl.addEventListener("ended", levels); voiceEl.addEventListener("error", levels); voiceEl.play().catch(levels);
   }
+  /* ---------- one set, every device (owner, 2026-10-27) ----------
+   * Pad taps are events, not state: a tap on any of his devices stamps
+   * S.padHit, and the window playing the sound fires it through the
+   * broadcast — so the phone works the sound pad while the computer runs
+   * the tables, and listeners tuned in hear the hit too. */
+  let heardPad = "";
+  function stampPad(hit) { if (SANDBOX || !OWNER()) return; S.padHit = Object.assign({}, hit, { at: Date.now(), by: tabId }); heardPad = S.padHit.at + ":" + S.padHit.by; save(true); }
+  function firePadHit() {
+    if (SANDBOX) return;
+    const h = S.padHit; if (!h || !h.at || h.by === tabId) return;
+    const id = h.at + ":" + h.by; if (heardPad === id || Date.now() - h.at > 15000) return;
+    if (OWNER() && boothLead) {
+      heardPad = id;
+      if (h.kind === "synth" && SYNTH[h.i]) SYNTH[h.i].fn();
+      else if (h.url && okUrl(h.url)) playPadUrl(h.url);
+      const pb = document.querySelector(h.kind === "synth" ? '[data-synth="' + h.i + '"]' : '[data-pad="' + h.i + '"]'); if (pb) { pb.classList.add("hit"); setTimeout(() => pb.classList.remove("hit"), 200); }
+    } else if (!OWNER() && listening && h.url && okUrl(h.url)) {
+      heardPad = id;
+      const a = new Audio(h.url); a.playsInline = true; a.play().catch(() => {});
+    }
+  }
   /* waveform peaks (decoded once per song; flat line if the file won't decode) */
   const peakCache = new Map();
   async function peaks(k) {
@@ -1649,7 +1670,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * leader: the first booth window actually showing the decks holds it; a mirror's
    * buttons write the shared state and the leader plays them. Close the leader and
    * the mirror takes over within seconds. */
-  let boothLead = false;
+  let boothLead = false, driveWant = 0;
   const leaseKey = "mw-booth-lease";
   function leaseBeat() {
     if (SANDBOX) { boothLead = true; const b2 = document.getElementById("dj-lead"); if (b2) b2.textContent = guestLiveOn() ? "🔴 LIVE ON THE RADIO — your guest set is on air" : "🎛 Playground — just for fun, this copy never touches the radio"; const gl2 = document.querySelector("#dj-golive"); if (gl2 && gl2.closest(".dj-live")) gl2.closest(".dj-live").lastChild.textContent = guestLiveOn() ? " Guest set — LIVE on the radio" : " Practice set (never on air)"; return; }
@@ -1665,14 +1686,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const held = !!L && L.id === tabId && now - (L.at || 0) <= 7000;
     let mine = false;
     if (OWNER() && el && (held || boothShown)) { mine = held || !L || now - (L.at || 0) > 7000; if (mine) { try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: now })); } catch (_) {} } }
-    const was = boothLead; boothLead = mine;
+    // one DRIVER across every device (owner, 2026-10-27: devices share the
+    // set): the local lease settles windows on this machine; S.driveBy in the
+    // shared state settles devices. A fresh driver heartbeat (12s) means
+    // another device has the sound — this one mirrors and controls. The
+    // driver re-stamps driveAt on every beat, so a closed or crashed driver
+    // hands over within seconds, and the badge tap can pull the sound here
+    // on purpose (driveWant).
+    const drvFresh = now - (S.driveAt || 0) < 12000;
+    const lead = mine && (S.driveBy === tabId || !drvFresh || now - (driveWant || 0) < 15000);
+    if (lead) { S.driveBy = tabId; S.driveAt = now; }
+    const was = boothLead; boothLead = lead;
     const badge = document.getElementById("dj-lead");
     if (badge && OWNER()) {
-      badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror: another window has the sound. Tap here to play it in this window";
+      badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror: the sound is on your other window or device. Tap here to play it here";
       badge.style.cursor = boothLead ? "" : "pointer"; badge.setAttribute("role", "button");
-      if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (boothLead || !OWNER()) return; try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
+      if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (boothLead || !OWNER()) return; driveWant = Date.now(); try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
     }
     if (boothLead && !was && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].playing) follow(k); });
+    if (boothLead && !was && OWNER()) setTimeout(() => save(true), 400);
     if (!boothLead && was) DECKS.forEach((k) => { try { decks[k]?.stop(); } catch (_) {} });
   }
   leaseBeat(); setInterval(leaseBeat, 3000);
@@ -1843,7 +1875,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
     if (firstOwnerLoad) { showOwnerUI(); DECKS.forEach((k) => { if (S[k].playing && boothLead) follow(k); }); }
-    playVoice(); paintStation();
+    playVoice(); firePadHit(); paintStation();
     if (OWNER()) paintOwner();
   }
 
@@ -1940,7 +1972,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       document.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate));
       applyFx(); levels(); paintOwner(); save(true); say(P.msg); return;
     }
-    if (b.dataset.curplay != null) { const ci = CURATED[+b.dataset.curplay]; if (ci) { b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (src) playPadUrl(src); else say("That sound wouldn't load. Try another."); } return; }
+    if (b.dataset.curplay != null) { const ci = CURATED[+b.dataset.curplay]; if (ci) { b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (src) { if (boothLead) playPadUrl(src); stampPad({ kind: "url", i: -1, url: src }); } else say("That sound wouldn't load. Try another."); } return; }
     if (b.dataset.freeload) { const [dk, kind, ix] = b.dataset.freeload.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (it) load(dk, { src: it.src, yt: "", title: it.t, cover: it.cover, dur: it.dur || 0 }); return; }
     if (b.dataset.vput) { const [dk, ix] = b.dataset.vput.split(":"), it = vRes[+ix]; if (!it) return; if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } load(dk, { src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }); return; } const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; load(dk, { yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); return; }
     if (b.dataset.ytload) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a YouTube, Vimeo or Dailymotion link first — then pick the deck."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } load(b.dataset.ytload, { src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }); return; } load(b.dataset.ytload, item); return; }
@@ -2225,8 +2257,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   onMain("pointerdown", (e) => { const b = e.target.closest("[data-pad]"); if (!b) return; padPress = setTimeout(() => { const p = (S.pads || [])[+b.dataset.pad]; if (p && okUrl(p.url)) { S.voice = { id: p.id, url: p.url, at: Date.now() }; heardVoice = p.id; save(true); say("Drop sent out over the air 📡"); } padPress = "done"; }, 650); });
   onMainRaw("pointerup", () => { clearTimeout(padPress); if (padPress !== "done") padPress = null; }, true);
   onMain("click", async (e) => {
-    const s = e.target.closest("[data-synth]"); if (s && OWNER()) { s.classList.add("hit"); setTimeout(() => s.classList.remove("hit"), 200); SYNTH[+s.dataset.synth].fn(); return; }
-    const pb = e.target.closest("[data-pad]"); if (pb && OWNER()) { if (padPress === "done") { padPress = null; return; } const p = (S.pads || [])[+pb.dataset.pad]; if (p) { pb.classList.add("hit"); setTimeout(() => pb.classList.remove("hit"), 200); playPadUrl(p.url); } return; }
+    const s = e.target.closest("[data-synth]"); if (s && OWNER()) { s.classList.add("hit"); setTimeout(() => s.classList.remove("hit"), 200); if (boothLead) SYNTH[+s.dataset.synth].fn(); stampPad({ kind: "synth", i: +s.dataset.synth }); return; }
+    const pb = e.target.closest("[data-pad]"); if (pb && OWNER()) { if (padPress === "done") { padPress = null; return; } const p = (S.pads || [])[+pb.dataset.pad]; if (p) { pb.classList.add("hit"); setTimeout(() => pb.classList.remove("hit"), 200); if (boothLead) playPadUrl(p.url); stampPad({ kind: "url", i: +pb.dataset.pad, url: p.url }); } return; }
     const pr = e.target.closest("[data-padrec]"); if (pr && OWNER()) return recordPad(+pr.dataset.padrec, pr);
   });
   async function recordPad(i, btn) {
