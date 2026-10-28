@@ -201,7 +201,6 @@
     v = String(v || "").trim(); if (!v) return null;
     const y = ytParse(v); if (y) return { yt: y, src: "", title: "YouTube video", cover: "https://i.ytimg.com/vi/" + y + "/hqdefault.jpg", dur: 0 };
     let m = v.match(/vimeo\.com\/(?:video\/)?(\d{6,})/); if (m) return { yt: "vm:" + m[1], src: "", title: "Vimeo video", cover: "https://vumbnail.com/" + m[1] + ".jpg", dur: 0 };
-    m = v.match(/dailymotion\.com\/video\/([a-z0-9]+)/i) || v.match(/dai\.ly\/([a-z0-9]+)/i); if (m) return { yt: "dm:" + m[1], src: "", title: "Dailymotion video", cover: "https://www.dailymotion.com/thumbnail/video/" + m[1], dur: 0 };
     m = v.match(/archive\.org\/details\/([A-Za-z0-9_.-]+)/); if (m) return { iaId: m[1], title: "Archive video" };
     return null;
   };
@@ -1005,7 +1004,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
 </div>
   <div class="dj-panel" id="dj-browser" style="margin-top:16px">
-    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">🎬 VIDEO SEARCH — MUSIC VIDEOS FROM EVERYWHERE</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the video panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Search YouTube, Dailymotion or the Internet Archive, or paste a link (YouTube, Vimeo and Dailymotion all work) — put the video on a deck and mix it: play, pause, seek and the X fader volume all work, and your listeners see it on the master screen. Video sites keep their audio locked in their own players, so EQ, effects and scratch stay on your own files. Archive videos load as real files — full deck control on those.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a video link — YouTube, Vimeo, Dailymotion..." style="flex:1;min-width:220px;font-size:16px;padding:12px" aria-label="Video link"><span style="font-size:13px;color:var(--muted)">Load on:</span><button class="btn ghost" type="button" data-ytload="A">A</button><button class="btn ghost" type="button" data-ytload="B">B</button><button class="btn ghost" type="button" data-ytload="C">C</button><button class="btn ghost" type="button" data-ytload="D">D</button><button class="btn ghost" type="button" data-ytqueue="1">＋Q</button></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm vtab" type="button" data-vtab="yt">▶ YouTube</button><button class="btn ghost sm vtab" type="button" data-vtab="dm">Dailymotion</button><button class="btn ghost sm vtab" type="button" data-vtab="ia">🎞 Archive videos</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px;display:flex;gap:8px"><input type="search" id="dj-ytq" placeholder="Search — any artist, any song..." aria-label="Search videos" style="flex:1;font-size:17px;padding:13px"><button class="btn" type="submit" style="font-size:16px;padding:13px 22px">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:430px;margin-top:10px"></div></div></div>
+    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">🎬 VIDEO SEARCH — MUSIC VIDEOS FROM EVERYWHERE</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the video panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Search YouTube or the Internet Archive, or paste a link (YouTube and Vimeo both work) — put the video on a deck and mix it: play, pause, seek and the X fader volume all work, and your listeners see it on the master screen. Video sites keep their audio locked in their own players, so EQ, effects and scratch stay on your own files. Archive videos load as real files — full deck control on those.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a video link — YouTube or Vimeo..." style="flex:1;min-width:220px;font-size:16px;padding:12px" aria-label="Video link"><span style="font-size:13px;color:var(--muted)">Load on:</span><button class="btn ghost" type="button" data-ytload="A">A</button><button class="btn ghost" type="button" data-ytload="B">B</button><button class="btn ghost" type="button" data-ytload="C">C</button><button class="btn ghost" type="button" data-ytload="D">D</button><button class="btn ghost" type="button" data-ytqueue="1">＋Q</button></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm vtab" type="button" data-vtab="yt">▶ YouTube</button><button class="btn ghost sm vtab" type="button" data-vtab="ia">🎞 Archive videos</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px;display:flex;gap:8px"><input type="search" id="dj-ytq" placeholder="Search — any artist, any song..." aria-label="Search videos" style="flex:1;font-size:17px;padding:13px"><button class="btn" type="submit" style="font-size:16px;padding:13px 22px">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:430px;margin-top:10px"></div></div></div>
     <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">🎶 UP NEXT — YOUR QUEUE</b><button class="btn ghost sm" type="button" data-fold="queue-body" aria-label="Fold the queue">▾</button></span><div id="queue-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Add songs and videos with ＋Q anywhere in the picker. When a deck finishes, the next one in line loads on the open deck and plays — straight through the list. Save the list as a playlist to run it again any time, or put a playlist on the schedule below.</small><div class="dj-list" id="dj-queue" style="max-height:260px"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" type="button" data-qact="play">▶ Play the queue</button><button class="btn ghost sm" type="button" data-qact="save">💾 Save as playlist</button><button class="btn ghost sm" type="button" data-qact="open">📂 Playlists</button><button class="btn ghost sm" type="button" data-qact="clear">🗑 Clear</button></div><div id="dj-playlists" style="margin-top:6px"></div></div></div>
     <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">📅 SCHEDULE — WHAT PLAYS WHEN</b><button class="btn ghost sm" type="button" data-fold="sched-body" aria-label="Fold the schedule">▾</button></span><div id="sched-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Pick a time and one of your playlists. Every day at that time the station switches to that list and plays it through in order — even while the booth is closed. Videos in a list play while the booth is open; with the booth closed the list runs its songs and files.</small><div id="dj-sched-list"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center"><input type="time" id="sched-time" style="padding:9px;font-size:15px" aria-label="Time of day"><select id="sched-sel" style="padding:9px;font-size:15px;flex:1;min-width:160px" aria-label="Playlist"></select><button class="btn sm" type="button" data-sched="add">＋ Add</button></div></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4><button class="btn ghost sm" type="button" data-fold="br-panes" aria-label="Fold the music lists">▾</button>
@@ -2148,7 +2147,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (b.dataset.fsave) { const [kind, ix] = b.dataset.fsave.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (!it) return; const u = it.src; let om = {}; try { om = JSON.parse(localStorage.getItem("mw-offline-meta") || "{}"); } catch (_) {} if (om[u]) { say("Already saved for offline — it is in the 📥 Offline shelf on the Radio page."); return; } b.disabled = true; const oldT = b.textContent; b.textContent = "Saving…"; try { const r = await fetch(u, { headers: { "x-mw-save": "1" } }); if (!r.ok) throw new Error("fetch"); const len = +r.headers.get("content-length") || 0; if (len && len < 100000) throw new Error("tiny"); if (len > 200 * 1024 * 1024) { try { r.body && r.body.cancel(); } catch (_) {} say("That one is too big to save on a phone (" + Math.round(len / 1048576) + " MB)."); b.disabled = false; b.textContent = oldT; return; } if ("caches" in window) { const c = await caches.open("mw-music"); await c.put(u, r); } else await r.arrayBuffer(); om[u] = { title: it.t, artist: it.a, cover: it.cover || "", kind: kind === "v" ? "video" : "audio" }; try { localStorage.setItem("mw-offline-meta", JSON.stringify(om)); } catch (_) {} b.textContent = "✓ Saved"; say("⬇ Saved offline: " + it.t + " — find it in the 📥 Offline shelf on the Radio page. It plays with no internet now."); } catch (_) { b.disabled = false; b.textContent = oldT; say("That save didn't go through — check your signal (or the phone's storage) and try again."); } return; }
     if (b.dataset.freeload) { const [dk, kind, ix] = b.dataset.freeload.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (it) load(dk, { src: it.src, yt: "", title: it.t, cover: it.cover, dur: it.dur || 0 }, { cue: true }); return; }
     if (b.dataset.vput) { const [dk, ix] = b.dataset.vput.split(":"), it = vRes[+ix]; if (!it) return; if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } load(dk, { src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }, { cue: true }); return; } const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; load(dk, { yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; }
-    if (b.dataset.ytload) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a YouTube, Vimeo or Dailymotion link first — then pick the deck."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } load(b.dataset.ytload, { src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }, { cue: true }); return; } load(b.dataset.ytload, item, { cue: true }); return; }
+    if (b.dataset.ytload) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a YouTube or Vimeo link first — then pick the deck."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } load(b.dataset.ytload, { src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }, { cue: true }); return; } load(b.dataset.ytload, item, { cue: true }); return; }
     if (b.dataset.load) {
       if (b.dataset.cur != null) { const ci = CURATED[+b.dataset.cur]; if (!ci) return; b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (!src) { say("That sound wouldn't load. Try another."); return; } load(b.dataset.load, { src, title: ci.name, cover: "" }, { cue: true }); }
       else if (b.dataset.lib != null) { const t = TRACKS()[+b.dataset.lib]; if (t) load(b.dataset.load, { src: URLOF(t), title: t.title, cover: t.cover, dur: +t.duration || 0, bpm: +t.bpm || 0, key: t.key || "", cam: t.cam || "" }, { cue: true }); }
@@ -2576,11 +2575,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (ev) ev.innerHTML = FREE_MEDIA.videos.map((it, i) => row(it, i, "v")).join("");
   }
   paintFree();
-  /* ---------- Video search everywhere: YouTube (Invidious mirrors, no key),
-   * Dailymotion (public API, no key) and Internet Archive videos (no key).
-   * YouTube decks carry a plain id in S[k].yt; Dailymotion rides as "dm:<id>"
-   * and Vimeo (paste-a-link) as "vm:<id>" — setYt and the screens dispatch on
-   * the prefix. Archive videos resolve to a real file and load as file decks. */
+  /* ---------- Video search everywhere: YouTube (Invidious mirrors, no key)
+   * and Internet Archive videos (no key). Dailymotion was taken off
+   * 2026-10-28 (owner's call): no search tab, no new loads — the "dm:<id>"
+   * playback shim stays so anything already queued still plays.
+   * YouTube decks carry a plain id in S[k].yt; Vimeo (paste-a-link) rides
+   * as "vm:<id>" — setYt and the screens dispatch on the prefix. Archive
+   * videos resolve to a real file and load as file decks. */
   let vRes = [], vSrc = "yt", vQuery = "", vMoreOn = false, vNextPage = 3;
   async function ytHosts() {
     const out = ["https://yt.chocolatemoo53.com"];
@@ -2613,17 +2614,6 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     for (const it of a.concat(b || [])) { if (!seen.has(it.id)) { seen.add(it.id); out.push(it); } }
     return out.slice(0, 30);
   }
-  let dmPage = 1;
-  async function dmSearch(q) {
-    try {
-      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(7000) } : {};
-      const r = await fetch("https://api.dailymotion.com/videos?fields=id,title,duration,thumbnail_480_url&limit=24&sort=relevance&page=" + dmPage + "&search=" + encodeURIComponent(q), ctl);
-      if (!r.ok) return null;
-      const j = await r.json();
-      if (!j || !Array.isArray(j.list)) return null;
-      return j.list.filter((it) => it && it.id).map((it) => ({ kind: "dm", id: it.id, title: it.title || "Dailymotion video", dur: it.duration || 0, thumb: it.thumbnail_480_url || "" }));
-    } catch (_) { return null; }
-  }
   let iaPage = 1;
   async function iaVidSearch(q) {
     try {
@@ -2646,17 +2636,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function paintVRes(msg) {
     const box = $("#dj-ytres"); if (!box) return;
     if (msg) { box.innerHTML = `<small class="muted">${msg}</small>`; return; }
-    const srcName = { yt: "YouTube", dm: "Dailymotion", ia: "Archive" };
+    const srcName = { yt: "YouTube", ia: "Archive" };
     box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:15px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-vqueue="${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") + (vMoreOn ? `<button class="btn" type="button" data-vmore="1" style="width:100%;margin-top:10px">🔁 MORE RESULTS</button>` : "");
   }
   const vtf = $("#dj-ytform");
   if (vtf) vtf.addEventListener("submit", async (e) => {
     e.preventDefault(); const q = $("#dj-ytq").value.trim(); if (!q) return;
-    vQuery = q; dmPage = 1; iaPage = 1; vNextPage = 3; vMoreOn = false;
-    paintVRes("Searching " + ({ yt: "YouTube", dm: "Dailymotion", ia: "the Archive" })[vSrc] + "...");
+    vQuery = q; iaPage = 1; vNextPage = 3; vMoreOn = false;
+    paintVRes("Searching " + ({ yt: "YouTube", ia: "the Archive" })[vSrc] + "...");
     let res = null;
     if (vSrc === "yt") { const r = await ytSearch(q); res = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: it.thumb || ("https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg") })) : null; if (res) vMoreOn = res.length >= 20; }
-    else if (vSrc === "dm") { res = await dmSearch(q); if (res) vMoreOn = res.length >= 24; }
     else { res = await iaVidSearch(q); if (res) vMoreOn = res.length >= 24; }
     if (!res) { vRes = []; vMoreOn = false; paintVRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
     vRes = res; paintVRes(res.length ? "" : "Nothing found for that — try another name.");
@@ -2667,7 +2656,6 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     m.disabled = true; m.textContent = "Loading more...";
     let add = null;
     if (vSrc === "yt") { const r = await ytPage(vQuery, vNextPage); if (r) { add = r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })); vNextPage++; vMoreOn = r.length >= 15; } }
-    else if (vSrc === "dm") { dmPage++; const r = await dmSearch(vQuery); if (r) { add = r; vMoreOn = r.length >= 24; } else dmPage--; }
     else { iaPage++; const r = await iaVidSearch(vQuery); if (r) { add = r; vMoreOn = r.length >= 24; } else iaPage--; }
     if (add && add.length) { const seen = new Set(vRes.map((x) => x.kind + ":" + x.id)); vRes = vRes.concat(add.filter((x) => !seen.has(x.kind + ":" + x.id))); }
     else vMoreOn = false;
