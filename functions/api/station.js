@@ -77,7 +77,7 @@ export async function onRequestGet({ request, env }) {
   if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
-    if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
+    if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
     return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users });
   }
 
@@ -184,7 +184,7 @@ export async function onRequestGet({ request, env }) {
   let parked = false;
   for (const k of ["C", "D"]) { const dk = S[k]; if (dk && dk.playing) { const dur = +dk.dur || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
-    if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
+    if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
     return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
@@ -257,7 +257,7 @@ export async function onRequestGet({ request, env }) {
     if ((+fx.boost || 1) > 1.3) { fx.boost = 1.3; changed = true; }
   }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
-  if (changed) await writeDoc(env, "radio/dj", "radio", S);
+  if (changed) { S.by = "keeper"; /* mwFlapFix: keeper writes carry their own stamp, so a booth tab never mistakes a rescue for its own save echo */ await writeDoc(env, "radio/dj", "radio", S); }
   return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users });
 }
 
