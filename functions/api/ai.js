@@ -51,7 +51,12 @@ async function runKind(env, model, body) {
     if (kind === "tts") {
       const text = String(body.text || "").slice(0, 1200);
       if (!text) return json({ error: "bad_request" }, 400);
-      const out = await env.AI.run(model, model.includes("melotts") ? { prompt: text } : { text });
+      // Meechie speaks with a man's voice (owner, 2026-10-27): Aura's Arcas.
+      // If the voice field is ever refused, fall back to the plain call rather
+      // than going silent.
+      let out;
+      if (model.includes("aura")) { try { out = await env.AI.run(model, { text, speaker: "arcas" }); } catch (_) { out = await env.AI.run(model, { text }); } }
+      else out = await env.AI.run(model, model.includes("melotts") ? { prompt: text } : { text });
       if (out instanceof ArrayBuffer || ArrayBuffer.isView(out) || (out && typeof out.getReader === "function")) return new Response(out, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
       if (out && typeof out.audio === "string") { const u8 = b64ToBytes(out.audio); return new Response(u8, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } }); }
       return json({ error: "bad_audio_result" }, 502);
