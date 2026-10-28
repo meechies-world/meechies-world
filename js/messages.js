@@ -639,8 +639,8 @@ body.mw-editing #mx-fab{display:none}
     document.addEventListener("click", (e) => {
       const h = e.target.closest("[data-head]"); if (h) { e.preventDefault(); const id = h.dataset.head; if (mini === id && h.classList.contains("mx-head-b")) closeMini(); else openMini(id); return; }
       const x = e.target.closest("[data-headx]"); if (x) { heads = heads.filter((id) => id !== x.dataset.headx); saveHeads(); if (mini === x.dataset.headx) closeMini(); paintHeads(); return; }
-      if (e.target.closest("[data-popx]")) { document.getElementById("mx-pop").hidden = true; return; }
-      if (e.target.closest("[data-mmclose]")) { closeMini(); return; }
+      if (e.target.closest("[data-popx]")) { const card = document.getElementById("mx-pop"); if (card) { card.hidden = true; const id = card.dataset.from; if (id) { heads = heads.filter((h) => h !== id); saveHeads(); if (mini === id) closeMini(); paintHeads(); } } return; }
+      if (e.target.closest("[data-mmclose]")) { const id = mini; closeMini(); if (id) { heads = heads.filter((h) => h !== id); saveHeads(); paintHeads(); } return; }
       if (e.target.closest("[data-mmfull]")) { const id = mini; closeMini(); open(id); return; }
     });
     document.addEventListener("submit", async (e) => {
