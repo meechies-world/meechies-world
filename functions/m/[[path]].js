@@ -1,9 +1,9 @@
 /* /m/<bucket>/<file> — free media relay.
- * Songs, videos and pictures live in Supabase storage, but Supabase's free plan only allows 5 GB of
- * downloads a month. This serves each file from Cloudflare's cache (free, unlimited), so Supabase is
- * only asked for a file the first time a Cloudflare location needs it. Supports seeking (Range). */
-const ORIGIN = "https://yjouaysczttqbytksejq.supabase.co/storage/v1/object/public/";
-const KEEP = ["content-type", "content-length", "etag", "last-modified", "content-range"];
+ * Songs, videos and pictures live in the site's own Cloudflare storage (KV), fronted by the
+ * Cloudflare cache (free, unlimited), so a stored file is read from KV only the first time a
+ * Cloudflare location needs it. Supports seeking (Range). A path found in neither the cache
+ * nor KV is a miss and gets a fast 404 here — the old relay to the retired outside storage
+ * origin is gone, so dead media ids no longer burn a slow upstream trip before failing. */
 
 export async function onRequest({ request, params, env }) {
   if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
@@ -52,25 +52,7 @@ export async function onRequest({ request, params, env }) {
       return res;
     }
   }
-  if (!res) {
-    const up = await fetch(ORIGIN + path, { headers: range ? { range } : {}, cf: { cacheEverything: true, cacheTtl: 31536000 } });
-    if (!up.ok) return new Response(up.status === 404 || up.status === 400 ? "Not found" : "Unavailable", { status: up.status === 400 ? 404 : up.status });
-    const h = new Headers();
-    for (const k of KEEP) { const v = up.headers.get(k); if (v) h.set(k, v); }
-    h.set("cache-control", "public, max-age=31536000, immutable");
-    h.set("accept-ranges", "bytes");
-    h.set("access-control-allow-origin", "*");
-    if (up.status === 206) { // the origin honored the range: hand the slice straight to the player, never cache partials
-      if (request.method === "HEAD") return new Response(null, { status: 206, headers: h });
-      return new Response(up.body, { status: 206, headers: h });
-    }
-    const full = new Response(up.body, { status: 200, headers: h });
-    try {
-      await cache.put(asKey(false), full.clone());
-      if (range) res = await cache.match(asKey(true));
-    } catch (e) { /* cache refused; still serve the file */ }
-    if (!res) res = full;
-  }
+  if (!res) return new Response("Not found", { status: 404, headers: { "access-control-allow-origin": "*" } });
   if (request.method === "HEAD") return new Response(null, { status: res.status, headers: res.headers });
   return res;
 }
