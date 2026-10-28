@@ -68,15 +68,20 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
     });
   }
   function quietRadio() { try { if (typeof media !== "undefined" && media && !media.paused) media.pause(); } catch (_) {} }
-  function pause(pill) {
+  /* Close means CLOSE (owner, 2026-10-28, after a customer told Nadia the
+   * pop-ups "just shrink to bubbles but still be in the way"): the × used to
+   * shrink the show into a pill that sat on the page, and a timer kept
+   * bringing the pill back. Now closing shuts it for the whole visit —
+   * no pill, no resurrection. */
+  function pause() {
     on = false; if (v) v.pause(); if (box) box.hidden = true;
-    let p = $("#mw-show-pill");
-    if (!p) { p = document.createElement("button"); p.type = "button"; p.id = "mw-show-pill"; p.textContent = "▶ Meechie's videos"; p.addEventListener("click", () => resume(true)); document.body.appendChild(p); }
-    p.hidden = false;
+    const p = $("#mw-show-pill"); if (p) p.remove();
+    try { sessionStorage.setItem("mw_show_off", "1"); } catch (_) {}
   }
   function resume(sound) {
     if (!box) return start();
-    on = true; box.hidden = false; const p = $("#mw-show-pill"); if (p) p.hidden = true;
+    try { sessionStorage.removeItem("mw_show_off"); } catch (_) {}
+    on = true; box.hidden = false; const p = $("#mw-show-pill"); if (p) p.remove();
     if (sound) { quietRadio(); v.muted = false; paintTap(); }
     v.play().catch(() => { v.muted = true; paintTap(); v.play().catch(() => {}); });
   }
@@ -124,18 +129,13 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
     list = window.MW_ORIGINALS || [];
     if (!list.length) { choices(); return; }
     if (!box) build();
-    on = true; box.hidden = false; const p = $("#mw-show-pill"); if (p) p.hidden = true;
+    let off = false; try { off = !!sessionStorage.getItem("mw_show_off"); } catch (_) {}
+    if (off) { choices(); return; }
+    on = true; box.hidden = false; const p = $("#mw-show-pill"); if (p) p.remove();
     quietRadio(); play(i, true); choices();
   }
   window.MW_show = { start, pause: () => pause(true), resume, active: () => on, loud };
-  // the "▶ Meechie's videos" button is always there in the bottom-left, even on visits where the
-  // welcome videos didn't start by themselves (coming straight to a page, or already signed in)
-  let tries = 0;
-  const keepPill = setInterval(() => {
-    if (++tries > 40) return clearInterval(keepPill);
-    if (on || !(window.MW_ORIGINALS || []).length) return;
-    const en = document.getElementById("enter"); if (en && !en.hidden) return;
-    if (!$("#mw-show-pill")) pause(true);
-    clearInterval(keepPill);
-  }, 1500);
+  /* (The always-on "Meechie's videos" pill that used to be forced in here is
+   * gone on purpose — see pause(). Nothing on this page resurrects a pop-up
+   * the visitor closed.) */
 })();
