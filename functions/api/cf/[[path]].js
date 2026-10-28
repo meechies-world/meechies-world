@@ -11,6 +11,34 @@ const ip = (r) => r.headers.get("cf-connecting-ip") || "0";
 const err = (message, status = 400, code = "bad_request") => json({ data: null, error: { message, code } }, status);
 const parse = (row) => { if (!row) return row; const o = { ...row }; if (typeof o.data === "string") { try { o.data = JSON.parse(o.data); } catch (_) { o.data = {}; } } return o; };
 
+/* mwCorpseGuard (2026-10-28): the station deadlock that client-side fixes could
+ * not stop. A stuck booth tab whose adoption gate never lets it take a keeper
+ * rescue keeps re-saving a deck that claims to still be playing long past its
+ * own end, and every save re-stamps boothAt, so the keeper stands down
+ * forever. Client cooperation cannot be relied on, so the block lives here,
+ * at the client write door, for the radio/dj doc only: a poisoned deck
+ * (flagged playing, more than 2 minutes past its own end) is parked in the
+ * stored copy, and boothAt is frozen at the stored value, so once the keeper
+ * freshness window lapses the station keeper takes ownership and its Auto-DJ
+ * rotation keeps the music playing. Legit writes pass through untouched.
+ * Keeper-originated writes never pass through this handler (station.js
+ * writes the doc directly), so they are never guarded. */
+async function corpseGuard(env, path, data) {
+  if (path !== "radio/dj" || !data || typeof data !== "object" || Array.isArray(data)) return data;
+  const nowMs = Date.now();
+  let poisoned = false;
+  const out = { ...data };
+  for (const k of ["A", "B", "C", "D"]) {
+    const dk = data[k];
+    if (dk && typeof dk === "object" && dk.playing === true && +dk.dur > 0 && +dk.start > 0 && (nowMs - +dk.start) > (+dk.dur * 1000 + 120000)) { out[k] = { ...dk, playing: false }; poisoned = true; }
+  }
+  if (!poisoned) return data;
+  const row = await env.DB.prepare("select data from docs where path = ?").bind(path).first();
+  let stored = null; try { stored = row ? JSON.parse(row.data || "{}") : null; } catch (_) {}
+  if (stored && stored.boothAt != null) out.boothAt = stored.boothAt; else delete out.boothAt;
+  return out;
+}
+
 export async function onRequest(ctx) {
   const { request, env, params } = ctx;
   if (!env.DB) return err("The new database isn't connected yet.", 503, "not_ready");
@@ -203,6 +231,7 @@ async function rest(request, env) {
       const r = rows[0] || {}, path = String(r.path || ""), coll = String(r.coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins. Update the page and try again."); // gifts only come from /api/coins/gift (paid)
       checkInsert(path, coll, r.data, uid, await isAdmin(env, uid));
+      r.data = await corpseGuard(env, path, r.data); /* mwCorpseGuard */
       const now = new Date().toISOString();
       const res = await env.DB.batch([
         env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(r.data), now, now),
@@ -290,13 +319,15 @@ async function rpc(request, env) {
       const coll = String(args.p_coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins.");
       checkInsert(path, coll, args.p_data, uid, admin);
-      await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(args.p_data), now, now), change(env, "docs", path, coll)]);
+      const freshData = await corpseGuard(env, path, args.p_data); /* mwCorpseGuard */
+      await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)]);
       return json({ data: null, error: null });
     }
     let next;
     if (name === "set_doc") next = args.p_data;
     else { const patch = args.p_patch; if (!patch || typeof patch !== "object" || Array.isArray(patch)) return err("Bad change."); next = { ...JSON.parse(row.data || "{}"), ...patch }; }
     checkUpdate(row, next, uid, admin);
+    next = await corpseGuard(env, path, next); /* mwCorpseGuard */
     await env.DB.batch([env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(next), now, path), change(env, "docs", path, row.coll)]);
     return json({ data: null, error: null });
   }
