@@ -159,23 +159,81 @@ body.mw-editing #ai-fab{display:none!important}`;
   let talkBack = true; try { const v0 = localStorage.getItem("mw_ai_voice"); talkBack = v0 === null ? true : v0 === "1"; } catch (_) {}
   const spk = panel.querySelector("#ai-spk"); const paintSpk = () => { spk.textContent = talkBack ? "🔊" : "🔈"; spk.title = talkBack ? "Reading answers out loud (tap to stop)" : "Read answers out loud"; };
   paintSpk();
-  spk.addEventListener("click", () => { talkBack = !talkBack; try { localStorage.setItem("mw_ai_voice", talkBack ? "1" : "0"); } catch (_) {} if (!talkBack) window.speechSynthesis?.cancel(); else unlockSpeech(); paintSpk(); });
-  function unlockSpeech() { try { if (window.speechSynthesis && !unlockSpeech.done) { unlockSpeech.done = true; speechSynthesis.speak(new SpeechSynthesisUtterance("")); } } catch (_) {} }
+  spk.addEventListener("click", () => { talkBack = !talkBack; try { localStorage.setItem("mw_ai_voice", talkBack ? "1" : "0"); } catch (_) {} if (!talkBack) haltSpeak(); else unlockSpeech(); paintSpk(); });
+  function unlockSpeech() { try { primeSpeakAudio(); if (window.speechSynthesis && !unlockSpeech.done) { unlockSpeech.done = true; speechSynthesis.speak(new SpeechSynthesisUtterance("")); } } catch (_) {} }
   /* Meechie speaks with a man's voice (owner, 2026-10-27): prefer a male device
      voice by name, and never land on a known female voice when a natural
-     alternative exists */
+     alternative exists.
+     iPhone fix (2026-10-28, owner: the AI voice "sounds crazy" on iPhone):
+     Apple ships NOVELTY voices (Zarvox, Trinoids, Bells, Bubbles, Cellos,
+     Organ, Wobble, Deranged, Hysterical, Whisper, Good News and friends) plus
+     legacy robotic ones — and the old picker could actually CHOOSE the
+     robotic set, because its male-name list included Fred, Ralph, Bruce and
+     Albert. It also returned nothing whenever the voice list had not loaded
+     yet (iOS fills it late, through voiceschanged), leaving the utterance
+     voiceless so iOS picked a fallback by itself. Now novelty and legacy
+     voices are excluded by name at every step, the list is cached and kept
+     fresh on voiceschanged, the first speak waits briefly for the list, and
+     pitch and rate are pinned to a natural 1. On iPhone his spoken answers
+     use the server voice instead (see speakServer below). */
+  const NOVELTY = /zarvox|trinoids|bells|bubbles|cellos|organ|wobble|superstar|bahh|boing|deranged|hysterical|whisper|good news|bad news|\bfred\b|junior|\bralph\b|kathy|\balbert\b|\bbruce\b|grandma|grandpa|\beddy\b|\bflo\b|rocko|sandy|shelley|\breed\b/i;
+  let voiceCache = [];
+  function refreshVoices() { try { voiceCache = speechSynthesis.getVoices() || []; } catch (_) {} }
+  if ("speechSynthesis" in window) { refreshVoices(); try { speechSynthesis.addEventListener("voiceschanged", refreshVoices); } catch (_) { try { speechSynthesis.onvoiceschanged = refreshVoices; } catch (_) {} } }
   function maleVoice() {
     try {
-      const vs = speechSynthesis.getVoices(), MALE = /\bguy\b|david|mark|daniel|george|james|christopher|\beric\b|andrew|brian|\btom\b|\balex\b|fred|ralph|bruce|aaron|arthur|albert|\bmale\b/i, FEM = /samantha|\baria\b|jenny|zira|susan|catherine|allison|\bava\b|joanna|salli|kimberly|\bamy\b|\bemma\b|female/i;
-      return vs.find((x) => /en[-_]US/i.test(x.lang) && MALE.test(x.name)) || vs.find((x) => /^en/i.test(x.lang) && MALE.test(x.name)) || vs.find((x) => /en[-_]US/i.test(x.lang) && !FEM.test(x.name) && /natural|neural|google/i.test(x.name)) || null;
+      const vs = voiceCache.length ? voiceCache : (speechSynthesis.getVoices() || []), MALE = /aaron|\bguy\b|david|mark|daniel|george|james|christopher|\beric\b|andrew|brian|\btom\b|\balex\b|arthur|\bmale\b/i, FEM = /samantha|\baria\b|jenny|zira|susan|catherine|allison|\bava\b|joanna|salli|kimberly|\bamy\b|\bemma\b|female/i;
+      const ok = (x) => !NOVELTY.test(x.name) && !FEM.test(x.name);
+      return vs.find((x) => /en[-_]US/i.test(x.lang) && MALE.test(x.name) && ok(x)) || vs.find((x) => /^en/i.test(x.lang) && MALE.test(x.name) && ok(x)) || vs.find((x) => /en[-_]US/i.test(x.lang) && ok(x) && /natural|neural|google/i.test(x.name)) || null;
     } catch (_) { return null; }
   }
-  function speak(t) {
-    if (!talkBack || !("speechSynthesis" in window)) return;
-    const clean = String(t).split("\n\nSources:")[0].replace(/\[\d+\]/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*#_`]/g, "");
-    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(clean.slice(0, 1200));
+  const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent || "") || ((navigator.platform || "") === "MacIntel" && (navigator.maxTouchPoints || 0) > 1);
+  /* One reusable audio element plays the server voice for spoken answers.
+     It is primed with a silent clip inside real taps (unlockSpeech, the
+     speaker toggle, Talk start): that priming is what lets iOS allow the
+     same element to play the real answer when it arrives a moment later. */
+  let spkAudio = null, spkPrimed = false, speakSeq = 0;
+  function primeSpeakAudio() { try { if (spkPrimed) return; if (!spkAudio) { spkAudio = new Audio(); spkAudio.preload = "auto"; spkAudio.playsInline = true; spkAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA="; } spkAudio.muted = true; const p = spkAudio.play(); const settle = () => { try { spkAudio.pause(); spkAudio.muted = false; } catch (_) {} }; if (p && p.then) p.then(() => { spkPrimed = true; settle(); }).catch(settle); else { spkPrimed = true; settle(); } } catch (_) {} }
+  function haltSpeak() { speakSeq++; try { if (spkAudio) spkAudio.pause(); } catch (_) {} try { window.speechSynthesis && speechSynthesis.cancel(); } catch (_) {} }
+  function speakDevice(clean, seq) {
+    if (seq !== speakSeq || !("speechSynthesis" in window)) return;
+    speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(clean);
     const v = maleVoice(); if (v) u.voice = v;
-    u.rate = 1.03; speechSynthesis.speak(u);
+    u.pitch = 1; u.rate = 1; speechSynthesis.speak(u);
+  }
+  /* the server voice (same Deepgram Aura man, arcas, as Talk Mode): used for
+     spoken answers on iPhone when he is signed in, because the iPhone device
+     voices are the crazy-sounding part. Any failure drops back to the device
+     voice instead of going silent. */
+  async function speakServer(clean, seq) {
+    const chunks = []; let cur = "";
+    for (const s of clean.split(/(?<=[.!?])\s+/)) { if ((cur + " " + s).length > 850 && cur) { chunks.push(cur); cur = s; } else cur = cur ? cur + " " + s : s; }
+    if (cur) chunks.push(cur);
+    primeSpeakAudio();
+    for (const part of chunks.slice(0, 4)) {
+      if (seq !== speakSeq || !talkBack) return;
+      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + aiTok() }, body: JSON.stringify({ model: TTS_MODEL, text: part }) });
+      if (seq !== speakSeq) return;
+      if (!r.ok || !/^audio\//.test(r.headers.get("content-type") || "")) throw new Error("tts");
+      const url = URL.createObjectURL(await r.blob());
+      await new Promise((res, rej) => { if (!spkAudio) return rej(new Error("noaudio")); const a = spkAudio; a.muted = false; a.onended = () => { URL.revokeObjectURL(url); res(); }; a.onerror = () => { URL.revokeObjectURL(url); rej(new Error("play")); }; a.src = url; const p = a.play(); if (p && p.catch) p.catch(() => { URL.revokeObjectURL(url); rej(new Error("blocked")); }); });
+    }
+  }
+  function speak(t) {
+    if (!talkBack) return;
+    const clean = String(t).split("\n\nSources:")[0].replace(/\[\d+\]/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*#_`]/g, "").trim().slice(0, 1200);
+    if (!clean) return;
+    const seq = ++speakSeq;
+    try { if (spkAudio) spkAudio.pause(); } catch (_) {}
+    try { window.speechSynthesis && speechSynthesis.cancel(); } catch (_) {}
+    if (IS_IOS && signedIn() && aiTok()) { speakServer(clean, seq).catch(() => speakDevice(clean, seq)); return; }
+    if (!("speechSynthesis" in window)) return;
+    if (!voiceCache.length) { // iOS loads its voices late: give the list a brief moment so the first words do not land on a fallback voice
+      let fired = false; const go = () => { if (fired) return; fired = true; speakDevice(clean, seq); };
+      try { speechSynthesis.addEventListener("voiceschanged", function h() { try { speechSynthesis.removeEventListener("voiceschanged", h); } catch (_) {} refreshVoices(); go(); }); } catch (_) {}
+      setTimeout(go, 700); return;
+    }
+    speakDevice(clean, seq);
   }
   /* talk instead of typing */
   const mic = panel.querySelector("#ai-mic"), SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -214,7 +272,7 @@ body.mw-editing #ai-fab{display:none!important}`;
   try { if (!aiAppMode && !sessionStorage.getItem("mw_ai_spoke")) { const hello = () => { window.removeEventListener("pointerdown", hello); window.removeEventListener("keydown", hello); if (!panel.hidden || hist.length) return; try { sessionStorage.setItem("mw_ai_spoke", "1"); } catch (_) {} speak("Hey, I'm Meechie, Meechie's assistant. I look after everybody here — tap my gold button and I'll show you around."); }; window.addEventListener("pointerdown", hello); window.addEventListener("keydown", hello); } } catch (_) {}
   panel.querySelector("#ai-close").addEventListener("click", () => { stopTalk(); panel.hidden = true; sync(); });
   chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/take me to the radio/.test(b.textContent)) { goTo("radio"); return; } if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; sync(); return; } ask(b.textContent); });
-  panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} window.speechSynthesis?.cancel(); draw(false); inp.focus(); });
+  panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} haltSpeak(); draw(false); inp.focus(); });
   log.addEventListener("click", async (e) => {
     const nb = e.target.closest("[data-nav]"); if (nb) { goTo(nb.dataset.nav); return; }
     const k = e.target.closest("[data-check-i]"); if (k) {
@@ -259,7 +317,7 @@ body.mw-editing #ai-fab{display:none!important}`;
     if (talk.stream) { try { talk.stream.getTracks().forEach((t) => t.stop()); } catch (_) {} talk.stream = null; }
     if (talk.ac) { try { talk.ac.close(); } catch (_) {} talk.ac = null; }
     if (talk.audio) { try { talk.audio.pause(); } catch (_) {} talk.audio = null; }
-    try { window.speechSynthesis?.cancel(); } catch (_) {}
+    haltSpeak();
     if (goBtn) { goBtn.hidden = false; stopBtn.hidden = true; }
     if (stage && !stage.hidden) setState("idle", "Call ended. Tap Start talking whenever you're ready.");
   }
@@ -283,7 +341,7 @@ body.mw-editing #ai-fab{display:none!important}`;
       if (!talk.on) return;
       if (!played) await new Promise((res) => { // device voice as a fallback
         if (!("speechSynthesis" in window)) return res();
-        const u = new SpeechSynthesisUtterance(part); const mv = maleVoice(); if (mv) u.voice = mv; u.onend = () => res(); u.onerror = () => res();
+        const u = new SpeechSynthesisUtterance(part); const mv = maleVoice(); if (mv) u.voice = mv; u.pitch = 1; u.rate = 1; u.onend = () => res(); u.onerror = () => res();
         try { speechSynthesis.speak(u); } catch (_) { res(); }
       });
     }
