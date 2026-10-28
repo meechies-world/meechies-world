@@ -1835,6 +1835,56 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) clockOff = clockOff * 0.7 + (j.now - Date.now()) * 0.3; if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users); }).catch(() => {}); };
   let clockOff = 0; // this device's clock error vs the server, learned from keeper pings — the sync math below trusts it over the local clock
   if (!SANDBOX) { pingKeeper(); setInterval(pingKeeper, 12000); }
+  /* ---------- stale-tab guardian (mwGuardian, 2026-10-28) ----------
+   * The flap war: a booth tab left open since morning kept running code from
+   * before three emergency fixes and re-saved its dead state over every
+   * rescue. From this build on, every client checks /version.json (served
+   * no-store) once a minute for the current dj build. Three stamps carry
+   * that one number and move together on every dj.js ship: the "dj" field
+   * in version.json, MW_DJ_BUILD below, and dj.js ?v= in index.html.
+   * A listener reloads once, right away. A booth is never yanked mid-set:
+   * it shows a notice, reloads itself the moment every deck is stopped,
+   * and in all cases within 10 minutes of the update first being seen.
+   * A sessionStorage stamp per build makes a reload loop impossible. */
+  const MW_DJ_BUILD = 1793199200;
+  (() => {
+    let updBuild = 0, updSince = 0, updTimer = null;
+    const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
+    const showUpdNote = (playing) => {
+      let n = document.getElementById("dj-upd-note");
+      if (!n) {
+        n = document.createElement("div"); n.id = "dj-upd-note";
+        n.style.cssText = "position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 78px);transform:translateX(-50%);z-index:10045;max-width:min(92vw,520px);background:#141109;border:1px solid #d4a843;color:#f3e5c0;font:600 13px system-ui,sans-serif;padding:10px 14px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.55);text-align:center";
+        n.innerHTML = "<span class='dj-upd-txt'></span> <button type='button' class='dj-upd-btn' style='margin-left:8px;background:#d4a843;color:#0b0a08;border:0;font:800 13px system-ui,sans-serif;padding:6px 12px;border-radius:999px;cursor:pointer'>Refresh now</button>";
+        n.querySelector(".dj-upd-btn").addEventListener("click", () => { try { sessionStorage.setItem("mw-guard-" + updBuild, "1"); } catch (_) {} location.reload(); });
+        document.body.appendChild(n);
+      }
+      const t = n.querySelector(".dj-upd-txt");
+      if (t) t.textContent = playing ? "🔄 Booth update ready — this tab is running old DJ code. It refreshes itself when the music stops." : "🔄 Booth update ready — refreshing in a few seconds…";
+    };
+    const doReload = () => {
+      try { if (sessionStorage.getItem("mw-guard-" + updBuild) === "1") return; sessionStorage.setItem("mw-guard-" + updBuild, "1"); } catch (_) {}
+      location.reload();
+    };
+    const evaluate = () => {
+      if (!updBuild) return;
+      if (!OWNER()) { doReload(); return; }
+      if (Date.now() - updSince > 10 * 60e3) { doReload(); return; }
+      if (anyPlaying()) { showUpdNote(true); return; }
+      showUpdNote(false);
+      if (!updTimer) updTimer = setTimeout(() => { updTimer = null; if (!anyPlaying()) doReload(); else evaluate(); }, 5000);
+    };
+    const check = async () => {
+      try {
+        const j = await fetch("/version.json?t=" + Date.now(), { cache: "no-store" }).then((r) => r.json());
+        const b = +(j && j.dj) || 0;
+        if (b > MW_DJ_BUILD) { if (!updBuild) { updBuild = b; updSince = Date.now(); } evaluate(); }
+      } catch (_) {}
+    };
+    setTimeout(check, 20000);
+    setInterval(() => { check(); if (updBuild && OWNER()) evaluate(); }, 60000);
+  })();
+
   /* one booth plays the sound; the other is its remote. The main tab and the pop-out
    * are two full booths sharing one station — without a leader they would each play
    * their own copy and overwrite each other's saves. A localStorage lease picks the
