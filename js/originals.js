@@ -68,7 +68,15 @@
   }
 
   /* ---------- right after login: Meechie's welcome video (full screen, then the welcome song) ---------- */
-  window.MW_welcome = function (done) {
+  /* Pop-up rules (owner, 2026-10-28): the welcome video is a pop-up, so it
+   * plays only on a visitor's first-ever visit and never in app mode. When
+   * it is gated off, done() still runs so the music flow after it continues.
+   * MW_welcome(done, true) is the manual-replay path and is never gated. */
+  const popAppMode = () => { try { return document.documentElement.classList.contains("appmode") || (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!window.navigator.standalone; } catch (_) { return false; } };
+  const popSeen = () => { try { return !!localStorage.getItem("mw_popup_seen"); } catch (_) { return false; } };
+  window.MW_welcome = function (done, manual) {
+    if (!manual && (popAppMode() || (popSeen() && !window.__mwPopupChain))) { if (done) done(); return; }
+    if (!manual) { try { localStorage.setItem("mw_popup_seen", "1"); } catch (_) {} window.__mwPopupChain = true; }
     let finished = false;
     const fin = () => { if (finished) return; finished = true; try { v.pause(); } catch (_) {} b.remove(); done && done(); };
     const b = document.createElement("div"); b.id = "wv-box"; b.setAttribute("role", "dialog"); b.setAttribute("aria-label", "Welcome to Meechie's World");
