@@ -1854,26 +1854,29 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   })();
 
   if (!SANDBOX) { renderDjLive(); setInterval(() => { renderDjLive(); }, 5000); }
-  /* gentle mouse-wheel on the Radio + DJ Station pages (desktop): the booth is a
-   * long page and stock wheel notches jump it too far. Ease to 20% AND cap each
-   * notch at 85px of travel — page-mode wheels (deltaMode 2, e.g. Windows set to
-   * "one screen at a time") used to sail ~430px per notch even eased, which the
-   * owner reported 2026-10-26 as "one scroll moves down too fast and far".
-   * Trackpads (small pixel deltas), pinch zoom, and the inner song lists keep
-   * their native feel. */
+  /* Gentle mouse-wheel everywhere on desktop (owner, 2026-10-27, twice: "when
+   * im scrolling my mouse it still jumps on the desktop — slow it down 500%").
+   * It used to cover only the Radio + DJ views, so the rest of the site still
+   * scrolled in stock 100px jumps; and its target re-anchored to the live
+   * scroll position on every notch, so a second notch mid-glide juddered.
+   * Now: every view, one slow glide — a standard notch travels about 10px and
+   * eases there, and notches stack onto the glide target instead of fighting
+   * it. Trackpads (small pixel deltas), pinch zoom, and the inner song lists
+   * keep their native feel. */
   let wheelTgt = null, wheelRaf = 0;
   const wheelStop = () => { if (wheelRaf) cancelAnimationFrame(wheelRaf); wheelRaf = 0; wheelTgt = null; };
   addEventListener("pointerdown", wheelStop, true);
   addEventListener("wheel", (e) => {
-    if (!matchMedia("(pointer:fine)").matches || !/^(radio|dj)$/.test(document.body.dataset.view || "") || e.ctrlKey) return;
+    if (!matchMedia("(pointer:fine)").matches || e.ctrlKey) return;
     let n = e.target;
     while (n && n !== document.body) { const st = getComputedStyle(n); if ((st.overflowY === "auto" || st.overflowY === "scroll") && n.scrollHeight > n.clientHeight + 1) { if ((e.deltaY > 0 && n.scrollTop + n.clientHeight < n.scrollHeight - 1) || (e.deltaY < 0 && n.scrollTop > 0)) { wheelStop(); return; } } n = n.parentElement; }
     if (e.deltaMode === 0 && Math.abs(e.deltaY) < 40) { wheelStop(); return; }
     const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * innerHeight : e.deltaY;
     e.preventDefault();
     const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
-    wheelTgt = Math.max(0, Math.min(max, scrollY + Math.max(-14, Math.min(14, d * 0.0125))));
-    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.18); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
+    const base = wheelTgt != null ? wheelTgt : scrollY;
+    wheelTgt = Math.max(0, Math.min(max, base + Math.max(-12, Math.min(12, d * 0.10))));
+    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.09); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
   }, { passive: false });
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
   if (typeof media !== "undefined") media.addEventListener("play", () => {
