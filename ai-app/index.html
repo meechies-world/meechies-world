@@ -22,8 +22,8 @@
   .pitch{max-width:520px;margin:0 auto 22px;color:#d8d2c0;font-size:16px;line-height:1.55}
   ul{list-style:none;padding:0;margin:0 auto 26px;max-width:440px;text-align:left}
   li{padding:9px 2px;border-bottom:1px solid #241d10;font-size:15.5px;line-height:1.45}
-  .open{display:inline-block;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.06em;font-size:18px;padding:15px 30px;border-radius:14px;text-decoration:none;box-shadow:0 6px 22px rgba(240,207,120,.3)}
-  .install{display:none;margin:14px auto 0;background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:16px;padding:13px 26px;border-radius:14px;cursor:pointer}
+  .open{display:inline-block;margin:14px auto 0;background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:16px;padding:13px 26px;border-radius:14px;text-decoration:none}
+  .install{display:inline-block;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.06em;font-size:18px;padding:15px 30px;border-radius:14px;border:0;cursor:pointer;box-shadow:0 6px 22px rgba(240,207,120,.3)}
   .how{max-width:440px;margin:26px auto 0;color:#a79c7e;font-size:14px;line-height:1.6}
   .how b{color:#e9d9a6}
   .back{display:inline-block;margin-top:30px;color:#8a8268;font-size:13.5px}
@@ -42,22 +42,13 @@
     <li>✍️ &nbsp;Answers, ideas and drafts, 24/7</li>
     <li>🆓 &nbsp;Free — no app store, no download wait</li>
   </ul>
-  <a class="open" id="open-btn" href="/?app=ai">▶ OPEN MEECHIE AI</a>
-  <br>
   <button class="install" id="install-btn" type="button">📲 INSTALL THE APP</button>
-  <p class="how" id="how-android"><b>Put it on your home screen:</b> tap <b>Install</b> above — or open your browser menu (⋮) and choose <b>“Add to Home screen.”</b> It lands like a real app, icon and all.</p>
+  <br>
+  <a class="open" id="open-btn" href="/?app=ai">▶ OPEN MEECHIE AI</a>
+  <p class="how" id="how-other" hidden><b>Put it on your home screen:</b> tap <b>Install</b> above — or open your browser menu (⋮) and choose <b>“Add to Home screen.”</b> It lands like a real app, icon and all.</p>
   <p class="how" id="how-ios" hidden><b>On iPhone:</b> tap the <b>Share</b> button, then <b>“Add to Home Screen.”</b> The Meechie AI app lands on your home screen like a real app.</p>
   <br>
   <a class="back" href="/">← Back to the full Meechie's World site</a>
-<script>
-  (function () {
-    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    if (isIOS) { document.getElementById("how-ios").hidden = false; document.getElementById("how-android").hidden = true; }
-    var deferred = null, btn = document.getElementById("install-btn");
-    window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); deferred = e; btn.style.display = "inline-block"; });
-    btn.addEventListener("click", function () { if (!deferred) return; deferred.prompt(); deferred.userChoice.then(function () { deferred = null; btn.style.display = "none"; }); });
-    if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) document.getElementById("open-btn").textContent = "▶ TALK TO MEECHIE";
-  })();
-</script>
+<script src="/js/install.js"></script>
 </body>
 </html>

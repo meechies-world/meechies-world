@@ -37,8 +37,7 @@
   }
   function paintBar() {
     const mine = ME() ? window.MW_FOLLOWERS(ME()) : 0, fol = window.MW_FOLLOWING.size;
-    const html = `<span>👥 ${countsKnown ? `<b>${memberCount.toLocaleString()}</b> ` : ""}members</span><span class="on">● ${countsKnown ? `<b style="color:#4ade80">${window.MW_ONLINE.size}</b> ` : ""}online now</span>` + (ME() ? `<span>❤️ <b>${mine}</b> followers</span><span>➕ <b>${fol}</b> following</span>` : "");
-    if (bar._h === html) return; bar._h = html; bar.innerHTML = html; /* repaint only when the numbers change, so a tap never lands on a button that was just swapped out */
+    bar.innerHTML = `<span>👥 ${countsKnown ? `<b>${memberCount.toLocaleString()}</b> ` : ""}members</span><span class="on">● ${countsKnown ? `<b style="color:#4ade80">${window.MW_ONLINE.size}</b> ` : ""}online now</span>` + (ME() ? `<span>❤️ <b>${mine}</b> followers</span><span>➕ <b>${fol}</b> following</span>` : "");
   }
 
   /* ---------- follows ---------- */
@@ -104,7 +103,7 @@
 <p class="mw-sub">Free — no app store, no searching. Pick one and it lands right on your home screen:</p>
 <a class="appbtn" href="/radio-app/">📻 <span>MW Radio<small>The live station + DJ booth in one tap</small></span></a>
 <a class="appbtn" href="/ai-app/">🎙️ <span>Meechie AI<small>Talk to Meechie out loud — he talks back and shows you around</small></span></a>
-<a class="appbtn" href="/apps/">📲 <span>Just one section?<small>Meechie's Book, Dating, Legal Help, Shop, Live, Studio, TV and more — each one its own app</small></span></a>
+<a class="appbtn" href="/apps/">🛒 <span>The App Store<small>Every Meechie's World app in one place — take your pick</small></span></a>
 ${deferred ? '<button class="appbtn" type="button" id="mw-inst-go">🌐 <span>Full Meechie\'s World app<small>The whole site, full screen</small></span></button>' : ""}
 ${ios ? '<p class="mw-sub">On iPhone: tap an app above, then the Share button, then “Add to Home Screen”.</p>' : ""}
 <button class="mw-x" type="button" id="mw-inst-x">Not now</button>`;
