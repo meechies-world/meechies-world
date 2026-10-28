@@ -1908,6 +1908,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // advances land here too, so an open booth never shows a stale station.
       if (d && d.by !== tabId && (d.updatedAt || 0) > (S.updatedAt || 0)) {
         S = mergeState(d);
+        adoptQueue(d);
         paintOwner(); paintStation();
         if (boothLead) DECKS.forEach((k) => { if (S[k].src) follow(k); });
       }
@@ -1916,6 +1917,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
     S = mergeState(d);
+    adoptQueue(d);
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; DECKS.forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
     const live = isLive();
@@ -2212,7 +2214,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   /* ---------- Auto-DJ queue ---------- */
   let queue = []; try { queue = JSON.parse(localStorage.getItem("mw-dj-queue") || "[]"); } catch (_) {}
-  const saveQueue = () => { try { localStorage.setItem("mw-dj-queue", JSON.stringify(queue)); } catch (_) {} };
+  const saveQueue = () => { try { localStorage.setItem("mw-dj-queue", JSON.stringify(queue)); } catch (_) {} if (OWNER() && !SANDBOX) { S.queue = queue.slice(); save(); } };
+  /* The queue also lives in the shared station state (S.queue) so the 24/7
+     keeper can play HIS set after he closes the booth (owner, 2026-10-27:
+     "make my dj session continue even if im not on"). When state arrives with
+     a queue that differs from this window's — the keeper played some of it, or
+     his other booth window changed it — adopt the server's truth. */
+  function adoptQueue(d) { if (!d || !Array.isArray(d.queue)) return; if (JSON.stringify(d.queue) === JSON.stringify(queue)) return; queue = d.queue.slice(); try { localStorage.setItem("mw-dj-queue", JSON.stringify(queue)); } catch (_) {} paintQueue(); }
   function paintQueue() { const rich = $("#dj-queue"); if (rich) rich.innerHTML = queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${q.yt ? "🎬 " : ""}${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qup="${i}" aria-label="Move up">▲</button><button class="btn ghost sm" type="button" data-qdn="${i}" aria-label="Move down">▼</button><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : '<small class="muted">Nothing queued — tap ＋Q on any song or video and it plays next, in order.</small>'; const box = $("#ad-queue"); if (box) box.innerHTML = queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : '<small class="muted">Queue is empty — Auto-DJ pulls from the full library rotation.</small>'; }
   onMain("click", (e) => { const b = e.target.closest("[data-qdel],[data-qup],[data-qdn]"); if (!b) return; if (b.dataset.qdel != null) queue.splice(+b.dataset.qdel, 1); else if (b.dataset.qup != null) { const i = +b.dataset.qup; if (i > 0) { const t = queue[i - 1]; queue[i - 1] = queue[i]; queue[i] = t; } } else if (b.dataset.qdn != null) { const i = +b.dataset.qdn; if (i < queue.length - 1) { const t = queue[i + 1]; queue[i + 1] = queue[i]; queue[i] = t; } } saveQueue(); paintQueue(); });
   /* playlists: name a queue and keep it (owner ask, 2026-10-27 — "que that

@@ -91,7 +91,7 @@ export async function onRequestGet({ request, env }) {
     return byAsset.get(id) || lib[0];
   };
   const startDeckItem = (k, item, startMs) => {
-    S[k] = { src: item.src, title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
+    S[k] = { src: item.src || "", yt: item.yt || "", title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
     S.log = [{ t: item.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== item.title)).slice(0, 30);
   };
   const startDeck = (k, t, startMs) => startDeckItem(k, { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 }, startMs);
@@ -143,6 +143,22 @@ export async function onRequestGet({ request, env }) {
     const pk = await takePick();
     if (pk) return pk;
     if (Array.isArray(S.schedQ) && S.schedQ.length) return S.schedQ.shift();
+    /* the DJ's own queue (owner, 2026-10-27: "make my dj session continue even
+       if im not on"): the booth mirrors its UP NEXT queue into S.queue, so when
+       the booth closes the keeper plays HIS set through in order before falling
+       back to the rotation. File items play as-is; video items play when their
+       length is known (an unknown-length or unplayable video must never stall
+       the unattended station — the booth can still play it when he is back). */
+    if (Array.isArray(S.queue) && S.queue.length) {
+      while (S.queue.length) {
+        const it = S.queue.shift(); changed = true;
+        if (!it) continue;
+        const title = String(it.title || "").slice(0, 120), cover = String(it.cover || "").slice(0, 300);
+        if (it.yt) { if (+it.dur > 0) return { src: "", yt: String(it.yt), title, cover, dur: +it.dur }; continue; }
+        const src = String(it.src || "");
+        if (src && !src.includes("supabase.co")) return { src, title, cover, dur: +it.dur || 0 };
+      }
+    }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
     if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
     const t = bagPick(avoidSrc);
