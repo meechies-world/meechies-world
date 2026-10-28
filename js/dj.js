@@ -1784,11 +1784,18 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durH = +S[k].dur || (decks[k].el && decks[k].el.duration) || 0; if (durH > 0 && posOf(k) > durH + 15) deckEnded(k); }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
-      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && !listening && S[k].playing && decks[k] && !decks[k].loop && !handoverBusy && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
+      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
     document.querySelectorAll("[data-swap]").forEach((b) => { const v = b.dataset.swap.split(":")[1]; b.classList.toggle("hot", !!S[v] && !!S[v].playing); });
+    // Silence recovery (2026-10-28): if a handover died mid-flight — an
+    // unsettled load or play promise can hold the latch and leave every deck
+    // parked with nothing left to retry — a lead booth on a live station
+    // with a roll wanted and nothing playing starts the next song itself.
+    // A deliberate all-deck pause (S.pausedAt) always wins; this never
+    // fires over the DJ's own stop.
+    if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && !S.pausedAt && !DECKS.some((x) => S[x].playing) && !(handoverBusy && Date.now() - handoverAt < 20000)) autoNext(lastEndedK, true);
     if (listening) DECKS.forEach((k) => follow(k));
     // the booth's master screen re-renders on the same heartbeat the listeners
     // get — slots start at opacity 0 and only a render pass raises them, so a
@@ -1846,7 +1853,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199200;
+  const MW_DJ_BUILD = 1793199300;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2416,11 +2423,18 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // LIVE hands over automatically — listener pick first, then the queue, then the mix —
   // even with Auto-DJ switched off, because a live set should never just stop
   function deckEnded(k) {
-    if (!OWNER() || listening || !S[k].playing) return;
-    S[k].playing = false; S[k].pos = 0; paintOwner(); save(true);
+    // The booth LEAD owns the advance even when this same tab is also
+    // listening to the station: gating on listening alone can leave a lead
+    // booth unable to end or roll a deck while the keeper stands down for
+    // its fresh heartbeat (2026-10-28, the song that ended and rolled nothing).
+    if (!OWNER() || (listening && !boothLead) || !S[k].playing) return;
+    S[k].playing = false; S[k].pos = 0; lastEndedK = k; paintOwner(); save(true);
     // Only Auto-DJ picks songs by itself. With Auto-DJ off the DJ is in charge: a deck that ends just stops
     // (owner, 2026-10-27: "it keeps forcing songs to change").
-    if (S.live && (S.autodj || queue.length) && !DECKS.some((x) => S[x].playing)) { say("⏭️ Deck " + k + " ended — rolling the next song."); autoNext(k, true); }
+    // Another deck flagged playing blocks the roll only when it is genuinely
+    // mid-song — a corpse flag (playing, but already past its own end) must
+    // never veto the next song.
+    if (S.live && (S.autodj || queue.length) && !DECKS.some((x) => S[x].playing && !(+S[x].dur > 0 && posOf(x) > +S[x].dur + 15))) { say("⏭️ Deck " + k + " ended — rolling the next song."); autoNext(k, true); }
   }
   DECKS.forEach((k) => { deck(k).onEnded = () => deckEnded(k); });
 
@@ -2479,11 +2493,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     return null;
   }
-  let xfAnim = null, adTimer = null, handoverBusy = false;
+  let xfAnim = null, adTimer = null, handoverBusy = false, handoverAt = 0, lastEndedK = "A";
   const usedPicks = new Set((() => { try { return JSON.parse(localStorage.getItem("mw-dj-usedpicks") || "[]"); } catch (_) { return []; } })());
   async function autoNext(endedK, force, fadeMs) {
     if ((!S.autodj && !force) || !boothLead) return;
-    if (handoverBusy) return; handoverBusy = true;
+    // A handover that died mid-flight (an unsettled load or play promise)
+    // must not hold this latch forever: one older than 20s is stuck, and
+    // this call takes over (2026-10-28: a stuck latch meant the song ended
+    // and nothing ever rolled again).
+    if (handoverBusy && Date.now() - handoverAt < 20000) return; handoverBusy = true; handoverAt = Date.now();
     let item = null;
     const pick = reqCache.filter((r) => r.data && r.data.kind === "pick" && !usedPicks.has(r.id)).sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
@@ -2494,7 +2512,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       DBF()?.doc("requests/" + pick.id).delete().catch(() => {});
       if (item) say("🎵 Listener pick up next: " + item.title);
     }
-    if (!item && queue.length) item = queue.shift();
+    // The queue SHUFFLES through the decks (owner, 2026-10-28): draw at
+    // random and remove the pick, so nothing repeats until the queue is empty.
+    if (!item && queue.length) { const qi = Math.floor(Math.random() * queue.length); item = queue.splice(qi, 1)[0]; }
     if (!item && !S.autodj) { handoverBusy = false; return; }
     if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
     if (!item) { handoverBusy = false; return; }
