@@ -74,7 +74,7 @@
   root.id = "casino";
   wrap.insertBefore(root, wrap.firstChild);
 
-  const S = { data: null, bet: { flip: 25, highcard: 25, dice: 25, slots: 25, race: 25 }, pick: { flip: "heads", dice: "under", potSide: "heads" }, potBet: 50, busy: {}, auto: null, autoPick: {} };
+  const S = { data: null, bet: { flip: 25, highcard: 25, dice: 25, slots: 25, race: 25, wheel: 25, plinko: 25, triple: 25 }, pick: { flip: "heads", dice: "under", triple: "mixed", potSide: "heads" }, potBet: 50, busy: {}, auto: null, autoPick: {} };
   const betOf = (g) => Math.max(S.data ? S.data.minBet : 5, Math.min(S.bet[g] || 25, (S.data && S.data.maxBet[g]) || 0));
 
   function chipsHtml(g) {
@@ -86,6 +86,9 @@
     if (g === "highcard") return `<div class="cards"><span>?</span><span>?</span></div><div>Your card vs the dealer's</div>`;
     if (g === "dice") return `<div class="big">🎲 🎲</div><div>Two dice — call the total</div>`;
     if (g === "slots") return `<div class="reels">🌹 🎤 🔥</div><div>Three of a kind pays big</div>`;
+    if (g === "wheel") return `<div class="big">🎡</div><div>Twelve segments — gold pays 4.5×</div>`;
+    if (g === "plinko") return `<div class="big">🎯</div><div>Seven bounces — the edge slots pay 8×</div>`;
+    if (g === "triple") return `<div class="big">🪙 🪙 🪙</div><div>Three coins, one call</div>`;
     return `<div class="cz-board">${Array.from({ length: 24 }, (_, i) => `<i data-cell="${i}">${i + 1}</i>`).join("")}</div><div>4 dice carry your 👑 down the board</div>`;
   }
   /* auto-bet (owner, 2026-10-27 — "set their bets to auto, like DraftKings"):
@@ -106,6 +109,9 @@
     else if (g === "dice") st.innerHTML = `<div class="big">${"⚀⚁⚂⚃⚄⚅"[dt.d1 - 1]} ${"⚀⚁⚂⚃⚄⚅"[dt.d2 - 1]}</div><div>Total <b>${dt.sum}</b></div>`;
     else if (g === "slots") st.innerHTML = `<div class="reels">${(dt.reels || []).map(E).join(" ")}</div><div>${r.j.pay > r.j.bet ? "Jackpot line!" : r.j.pay > 0 ? "A pair pays out." : "No match."}</div>`;
     else if (g === "race") st.innerHTML = `<div class="big">🏁 ${dt.total}</div><div>Final total <b>${dt.total}</b> of 24</div>`;
+    else if (g === "wheel") st.innerHTML = `<div class="big">🎡 ${dt.mult}×</div><div>The wheel paid <b>${dt.mult}×</b></div>`;
+    else if (g === "plinko") st.innerHTML = `<div class="big">🎯 Slot ${dt.slot + 1} — ${dt.mult}×</div><div>It landed in slot <b>${dt.slot + 1}</b> of 8</div>`;
+    else if (g === "triple") st.innerHTML = `<div class="big">${(dt.flips || []).map((f) => f ? "🪙" : "💰").join(" ")}</div><div>${dt.heads} heads, ${3 - dt.heads} tails</div>`;
   }
   function syncMoney(r) {
     if (r.j.coins != null && S.data) S.data.myCoins = r.j.coins;
@@ -140,14 +146,18 @@
     const picks = {
       flip: `<div class="cz-pick" data-pick="flip"><button type="button" data-v="heads" class="${S.pick.flip === "heads" ? "on" : ""}">🪙 Heads</button><button type="button" data-v="tails" class="${S.pick.flip === "tails" ? "on" : ""}">Tails</button></div>`,
       dice: `<div class="cz-pick" data-pick="dice"><button type="button" data-v="under" class="${S.pick.dice === "under" ? "on" : ""}">Under 7 · 2.2×</button><button type="button" data-v="seven" class="${S.pick.dice === "seven" ? "on" : ""}">Exactly 7 · 5.4×</button><button type="button" data-v="over" class="${S.pick.dice === "over" ? "on" : ""}">Over 7 · 2.2×</button></div>`,
-      highcard: "", slots: "", race: ""
+      triple: `<div class="cz-pick" data-pick="triple"><button type="button" data-v="heads3" class="${S.pick.triple === "heads3" ? "on" : ""}">All heads · 7×</button><button type="button" data-v="mixed" class="${S.pick.triple === "mixed" ? "on" : ""}">Mixed · 1.2×</button><button type="button" data-v="tails3" class="${S.pick.triple === "tails3" ? "on" : ""}">All tails · 7×</button></div>`,
+      highcard: "", slots: "", race: "", wheel: "", plinko: ""
     };
     const notes = {
       flip: "Call heads or tails. Right call pays 1.9× your bet.",
       highcard: "Beat the dealer's card, win 1.9×. A tie gives your bet back.",
       dice: "Under 7 or over 7 pays 2.2×. Exactly 7 pays 5.4×.",
       slots: "Any pair pays 1.2×. Triples: 🌹 6× · 🎤 8× · 🔥/💵 10× · 💎 15× · 👑 25×.",
-      race: "Four dice roll your 👑 down a 24-space board. Total 21+ pays 5× · 17–20 pays 1.8× · 13–16 your bet back."
+      race: "Four dice roll your 👑 down a 24-space board. Total 21+ pays 5× · 17–20 pays 1.8× · 13–16 your bet back.",
+      wheel: "Twelve segments: six pay nothing, three hand your bet back, and 1.5×, 2× and the gold 4.5× pay out.",
+      plinko: "The ball bounces seven times and drops in a slot. The middle pays 0.3×–1× — the two edge slots pay 8×.",
+      triple: "Call all three coins at once: all heads or all tails pays 7×, any mix pays 1.2×."
     };
     return `<div class="cz-card" data-card="${g}">
       <h4>${E(info.name)}</h4>
@@ -177,7 +187,7 @@
     </div>
     <p class="cz-safe">🛡️ <b>How winning works:</b> winnings are coins, paid only out of the prize pool. The pool fills up from players' lost bets (minus a 10% house fee) — so play is always covered before you bet. Spend winnings on gifts and the person you gift earns <b>real cash value</b> (40%), or cash out your own gift earnings from My coins. ${d.paid ? "" : "The coin shop (buying coins with a card) switches on with payments — until then, play with the coins you have."}</p>
     ${d.promo && !d.promo.claimed ? `<div class="cz-promo"><span>🎁 <b>Welcome drop:</b> 🪙 ${d.promo.amount} free coins, on the house — one per member, yours to play right now.</span><button type="button" class="btn" data-promo-claim>🪙 Claim ${d.promo.amount} coins</button></div>` : ""}
-    <div class="cz-grid">${["flip", "highcard", "dice", "slots", "race"].map(cardHtml).join("")}</div>
+    <div class="cz-grid">${["flip", "highcard", "dice", "slots", "race", "wheel", "plinko", "triple"].map(cardHtml).join("")}</div>
     <div class="cz-sec"><h4>⚔️ Player vs Player — Coin Flip Pots</h4>
       <div id="cz-pots">${potsHtml()}</div>
       <form class="cz-form" id="cz-potform"><span>Start a pot:</span><input type="number" id="cz-potbet" min="${d.minBet}" max="1000" step="1" value="${S.potBet}"><div class="cz-pick" data-pick="potSide" style="flex:none"><button type="button" data-v="heads" class="${S.pick.potSide === "heads" ? "on" : ""}">🪙 Heads</button><button type="button" data-v="tails" class="${S.pick.potSide === "tails" ? "on" : ""}">Tails</button></div><button type="submit" class="btn sm">Put up the pot</button></form>
@@ -251,6 +261,21 @@
         else { clearInterval(iv); note.textContent = `🏁 Final total ${dt.total} of 24`; resultLine(g, r); finish(g, r); }
       }, 620);
       drawBoard();
+      return;
+    }
+    if (g === "wheel" && st) {
+      const SEGL = ["0", "0", "0", "0", "0", "0", "1×", "1×", "1×", "1.5×", "2×", "4.5×"]; let n = 0;
+      const iv = setInterval(() => { st.innerHTML = `<div class="big">🎡 ${SEGL[Math.floor(Math.random() * 12)]}</div><div>Spinning…</div>`; if (++n > 8) { clearInterval(iv); st.innerHTML = `<div class="big">🎡 ${SEGL[dt.seg]}</div><div>It stopped on <b>${SEGL[dt.seg]}</b></div>`; resultLine(g, r); finish(g, r); } }, 90);
+      return;
+    }
+    if (g === "plinko" && st) {
+      let n = 0;
+      const iv = setInterval(() => { st.innerHTML = `<div class="big">🪙</div><div>Bouncing${".".repeat(n % 4)}</div>`; if (++n > 7) { clearInterval(iv); st.innerHTML = `<div class="big">🎯 Slot ${dt.slot + 1} — ${dt.mult}×</div><div>It landed in slot <b>${dt.slot + 1}</b> of 8</div>`; resultLine(g, r); finish(g, r); } }, 100);
+      return;
+    }
+    if (g === "triple" && st) {
+      let n = 0;
+      const iv = setInterval(() => { st.innerHTML = `<div class="big">${[0, 1, 2].map(() => Math.random() < 0.5 ? "🪙" : "💰").join(" ")}</div><div>Flipping…</div>`; if (++n > 7) { clearInterval(iv); st.innerHTML = `<div class="big">${dt.flips.map((f) => f ? "🪙" : "💰").join(" ")}</div><div>${dt.heads} heads, ${3 - dt.heads} tails</div>`; resultLine(g, r); finish(g, r); } }, 110);
       return;
     }
     resultLine(g, r); finish(g, r);

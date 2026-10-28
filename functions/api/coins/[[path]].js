@@ -22,7 +22,7 @@ export const GIFTS = [
 export const GIFT_COINS = Object.fromEntries(GIFTS.map((g) => [g[0], g[3]]));
 GIFT_COINS.gold = 100; // older gift name, still accepted
 const MEMBER_SHARE = 0.4;          // the person who receives the gift
-const MIN_CASHOUT_CENTS = 2000;    // $20
+const MIN_CASHOUT_CENTS = 1000;    // $10 — a 1000-coin cashout minimum (owner, 2026-10-27)
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
 const SCHEMA = [
   "create table if not exists wallets (uid text primary key, coins integer not null default 0, earned_cents integer not null default 0, paid_cents integer not null default 0, updated_at integer)",
@@ -68,6 +68,9 @@ const GAMES = {
   dice: { name: "Lucky Dice", maxMult: 5.4 },
   slots: { name: "Gold Slots", maxMult: 25 },
   race: { name: "Meechie Race", maxMult: 5 },
+  wheel: { name: "Wheel of Gold", maxMult: 4.5 },
+  plinko: { name: "Gold Drop", maxMult: 8 },
+  triple: { name: "Triple Flip", maxMult: 7 },
 };
 const GAME_MIN_BET = 5, GAME_MAX_BET = 1000, GAME_FEE = 0.10;
 const rnd = (n) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
@@ -96,6 +99,24 @@ function settleGame(game, bet, choice) {
     if (reels[0] === reels[1] && reels[1] === reels[2]) pay = Math.floor(bet * TRIPLE[reels[0]]);
     else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) pay = Math.floor(bet * 1.2);
     return { pay, detail: { reels } };
+  }
+  if (game === "wheel") {
+    // 12 segments; pays back about 92 per 100 bet over time, same house math as the rest of the floor
+    const SEGS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1.5, 2, 4.5];
+    const seg = rnd(12), mult = SEGS[seg];
+    return { pay: Math.floor(bet * mult), detail: { seg, mult } };
+  }
+  if (game === "plinko") {
+    // 7 bounces, 8 slots: the middle is common and pays small, the edges are rare and pay big — about 89 back per 100
+    const MULTS = [8, 2.5, 1, 0.3, 0.3, 1, 2.5, 8];
+    const path = Array.from({ length: 7 }, () => rnd(2));
+    const slot = path.reduce((a, b) => a + b, 0), mult = MULTS[slot];
+    return { pay: Math.floor(bet * mult), detail: { path, slot, mult } };
+  }
+  if (game === "triple") {
+    const flips = [rnd(2), rnd(2), rnd(2)], heads = flips.reduce((a, b) => a + b, 0);
+    const win = choice === "heads3" ? heads === 3 : choice === "tails3" ? heads === 0 : heads === 1 || heads === 2;
+    return { pay: win ? Math.floor(bet * (choice === "mixed" ? 1.2 : 7)) : 0, detail: { flips, heads } };
   }
   const rolls = [die(), die(), die(), die()], total = rolls.reduce((a, b) => a + b, 0); // race: 4 dice down a 24-space board
   return { pay: total >= 21 ? bet * 5 : total >= 17 ? Math.floor(bet * 1.8) : total >= 13 ? bet : 0, detail: { rolls, total } };
@@ -207,6 +228,7 @@ export async function onRequest({ request, env, params }) {
     let choice = String(b.choice || "");
     if (game === "flip" && !["heads", "tails"].includes(choice)) return err("Pick heads or tails.");
     if (game === "dice" && !["under", "over", "seven"].includes(choice)) return err("Pick under 7, over 7, or exactly 7.");
+    if (game === "triple" && !["heads3", "tails3", "mixed"].includes(choice)) return err("Pick all heads, all tails, or mixed.");
     const pool = await poolRow(env);
     const maxNow = Math.min(GAME_MAX_BET, Math.floor(pool / (G.maxMult - 1)));
     if (bet > maxNow) return err(pool < GAME_MIN_BET ? "The prize pool is empty right now. PvP pots are still open, and every lost bet refills the pool." : "The prize pool (" + pool + " coins) caps this game's bet at " + maxNow + " right now.");
