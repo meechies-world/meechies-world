@@ -11,10 +11,50 @@ function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)re
 /* ---------- Tabs ---------- */
 const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","tv","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"]};
+/* ---------- Lazy feature scripts ----------
+   Standalone feature files load once, the first time their view opens (any entry
+   path: tab tap, deep-link hash, in-page button), in their original tag order.
+   Everything with homepage or cross-page duties stays eager. */
+const LAZY_SRC={
+  live:["js/golive.js?v=1793185302","js/obs.js?v=1793185302"],
+  predict:["js/predict.js?v=1793185302"],
+  jobs:["js/jobs.js?v=1793185302"],
+  connect:["js/connect.js?v=1793185302"],
+  fans:["js/fans.js?v=1793185302"],
+  tv:["js/movies.js?v=1793185302"],
+  clips:["js/clips.js?v=1793185302"],
+  studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],
+  books:["js/books.js?v=1793185302"],
+  dating:["js/dating.js?v=1793185302"],
+  videos:["js/videos.js?v=1793185302"],
+  preach:["js/preach.js?v=1793185302"],
+  markets:["js/markets.js?v=1793185302"],
+  coin:["js/coin.js?v=1793185302"],
+  legal:["js/legal.js?v=1793185302"],
+  world:["js/world3d.js?v=1793185302"],
+  games:["js/games.js?v=1793194000"],
+  creators:["js/studio.js?v=1793185302"],
+};
+const lazyAt={}, lazyBusy={};
+function lazyKick(v){
+  const list=LAZY_SRC[v]; if(!list) return;
+  if(lazyBusy[v]||(lazyAt[v]||0)>=list.length) return;
+  lazyBusy[v]=true;
+  const step=()=>{
+    const i=lazyAt[v]||0;
+    if(i>=list.length){ lazyBusy[v]=false; if(v==="world"){ try{ mount3D(); }catch(_){} } return; }
+    const s=document.createElement("script"); s.src=list[i];
+    s.onload=()=>{ lazyAt[v]=i+1; step(); };
+    s.onerror=()=>{ lazyBusy[v]=false; }; /* a later visit retries from this file */
+    document.head.appendChild(s);
+  };
+  step();
+}
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
     let n=0; const t=setInterval(()=>{ const e=document.getElementById(el); if(e||++n>30){ clearInterval(t); e&&e.scrollIntoView({behavior:"smooth",block:"start"}); } },100); return; }
   if(!VIEWS.includes(v)) v="home";
+  lazyKick(v);
   const prevView=VIEWS.find(x=>!$("#v-"+x).hidden);
   if(prevView && prevView!==v){ // stop videos that would keep playing on a hidden page
     $$("#v-"+prevView+" .htt.playing").forEach(x=>{ x.classList.remove("playing"); x.querySelector("iframe")?.remove(); });
