@@ -6,6 +6,15 @@
   "use strict";
   let box = null, v = null, i = 0, on = false, list = [];
   const $ = (s, r = document) => r.querySelector(s);
+  /* Pop-up rules (owner, 2026-10-28, after his sales caller called the
+   * pop-ups annoying and he agreed): the pop-up videos play ONLY on a
+   * visitor's first-ever visit to the site, never on later visits, and
+   * never inside one of his apps, where the app is only about that app.
+   * A deliberate manual replay (MW_show.resume(), or start(true)) still
+   * works on the regular site. */
+  const appMode = () => { try { return document.documentElement.classList.contains("appmode") || (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!window.navigator.standalone; } catch (_) { return false; } };
+  const popSeen = () => { try { return !!localStorage.getItem("mw_popup_seen"); } catch (_) { return false; } };
+  const popMark = () => { try { localStorage.setItem("mw_popup_seen", "1"); } catch (_) {} window.__mwPopupChain = true; };
 
   const css = document.createElement("style");
   css.textContent = `
@@ -79,7 +88,7 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
     try { sessionStorage.setItem("mw_show_off", "1"); } catch (_) {}
   }
   function resume(sound) {
-    if (!box) return start();
+    if (!box) return start(true);
     try { sessionStorage.removeItem("mw_show_off"); } catch (_) {}
     on = true; box.hidden = false; const p = $("#mw-show-pill"); if (p) p.remove();
     if (sound) { quietRadio(); v.muted = false; paintTap(); }
@@ -125,7 +134,9 @@ body.mw-editing #mw-show,body.mw-editing #mw-choices,body.mw-editing #mw-show-pi
     });
   }
 
-  function start() {
+  function start(manual) {
+    if (appMode()) return; /* no pop-ups inside his apps */
+    if (!manual) { if (popSeen() && !window.__mwPopupChain) return; popMark(); }
     list = window.MW_ORIGINALS || [];
     if (!list.length) { choices(); return; }
     if (!box) build();
