@@ -1770,6 +1770,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // not. deckEnded itself decides: with Auto-DJ or a queue it rolls on,
       // otherwise the deck just stops, like a real turntable at the runout.
       if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durT = (decks[k].el && decks[k].el.duration) || +S[k].dur || 0; const elD = decks[k].el; /* a video deck must be done on its OWN clock too: the wall clock runs ahead of its player by the load delay, so firing on the wall clock alone cut video decks that were still playing their final seconds */ const elDone = decks[k].shim ? (elD.paused && durT > 0 && (elD.currentTime || 0) >= durT - 0.5) : (elD.ended || elD.paused); if (durT > 0 && posOf(k) > durT + 2 && elDone) deckEnded(k); }
+      // HARD-END WATCHDOG (mwHardEnd, 2026-10-28 station-down fix): element-state
+      // independent. Every check above trusts the player — a YouTube shim in a
+      // throttled tab can keep reporting "playing" forever after its video has
+      // actually ended, which left the station silent 26 minutes past the end of
+      // a song: the booth thought the deck was still playing and no code path
+      // would ever end it. If the shared wall clock is 15s past a known duration
+      // the song IS over — end the deck through deckEnded (rolls Auto-DJ/queue,
+      // otherwise parks it) whatever the player claims. Fires once: deckEnded
+      // clears the playing flag, so the tick cannot re-trigger it.
+      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durH = +S[k].dur || (decks[k].el && decks[k].el.duration) || 0; if (durH > 0 && posOf(k) > durH + 15) deckEnded(k); }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
       if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && !listening && S[k].playing && decks[k] && !decks[k].loop && !handoverBusy && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }

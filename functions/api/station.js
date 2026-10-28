@@ -65,8 +65,16 @@ export async function onRequestGet({ request, env }) {
   S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
   S.D = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.D || {});
 
-  // The booth has the tables — hands off.
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
+  // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
+  // 2026-10-28): unless a deck is impossibly past its end — flagged playing
+  // with a known duration, its timeline more than 60s beyond the end of the
+  // song, while the station is live. A live booth never legitimately sits a
+  // minute past a song's end; that state means the booth's own end detection
+  // was fooled (a YouTube shim reporting "playing" forever) and the station
+  // is silent, so the keeper falls through and advances the rotation anyway,
+  // fresh booth or not.
+  const deadDeck = S.live && ["A", "B"].some((k) => { const dk = S[k]; return dk && dk.playing && +dk.dur > 0 && dk.start && now > dk.start + (+dk.dur) * 1000 + 60000; });
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; await writeDoc(env, "radio/dj", "radio", S); }
