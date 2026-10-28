@@ -1446,11 +1446,12 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     </div>
     <div class="card" id="offline-card" style="margin:18px 0">
       <p class="eyebrow">Take it with you</p>
-      <h3 class="sub-h" style="margin:4px 0 6px">📥 Offline music</h3>
-      <p class="muted" style="margin:0 0 10px">Save songs to this device and they keep playing with no internet — on a plane, in a tunnel, anywhere. Songs you play save themselves here too. The live station still needs a signal, like any radio.</p>
+      <h3 class="sub-h" style="margin:4px 0 6px">📥 Offline music & videos</h3>
+      <p class="muted" style="margin:0 0 10px">Save songs to this device and they keep playing with no internet — on a plane, in a tunnel, anywhere. Songs you play save themselves here too. Free Shelf videos you save from the DJ booth land here as well — tap ▶ Watch to play one with no internet. The live station still needs a signal, like any radio.</p>
       <p id="off-status" style="margin:0 0 10px;font-weight:700"></p>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" id="off-save">⬇ Save the station rotation (15 songs)</button><button class="btn ghost sm" type="button" id="off-clear">Remove all saved</button></div>
       <div id="off-list" style="margin-top:8px"></div>
+      <div id="off-video" style="margin-top:10px"></div>
     </div>
     <div class="rn-box">
       <div class="rn-head"><div><p class="eyebrow">More music</p><h3 class="sub-h" style="margin:4px 0 0">Meechie on ReverbNation</h3></div>
@@ -3552,7 +3553,7 @@ boot();
 <script src="js/preach.js?v=1793185302"></script>
 <script src="js/world3d.js?v=1793185302"></script>
 <script src="js/clips.js?v=1793185302"></script>
-<script src="js/dj.js?v=1793185302"></script>
+<script src="js/dj.js?v=1793186000"></script>
 <script src="js/live.js?v=1793185302"></script>
 <script src="js/autotune.js?v=1793185302"></script>
 <script src="js/beatmaker.js?v=1793185302"></script>
@@ -3640,7 +3641,13 @@ boot();
       refresh(); return;
     }
     if (b.dataset.offplay) {
-      var url = b.dataset.offplay, ix = byUrl(url);
+      var url = b.dataset.offplay, it0 = meta()[url] || {};
+      if (it0.kind === "video") {
+        var box = document.getElementById("off-video");
+        if (box) { box.innerHTML = '<video controls playsinline preload="metadata" style="width:100%;border-radius:12px;background:#000" src="' + esc(url) + '"></video>'; box.scrollIntoView({ behavior: "smooth", block: "center" }); var vv = box.querySelector("video"); if (vv) vv.play().catch(function () {}); }
+        return;
+      }
+      var ix = byUrl(url);
       if (ix >= 0) { playLib(ix); return; }
       var it = meta()[url] || {};
       try { media.src = url; media.play().catch(function () {}); showBar({ title: it.title || "Saved song", artist: it.artist || "", cover: it.cover || "" }, "Offline · saved on this device"); document.getElementById("player-bar").hidden = false; } catch (_) {}
@@ -3648,6 +3655,7 @@ boot();
     }
     if (b.dataset.offdel) {
       var u2 = b.dataset.offdel;
+      var ob = document.getElementById("off-video"); if (ob && ob.querySelector("video") && ob.querySelector("video").getAttribute("src") === u2) ob.innerHTML = "";
       if ("caches" in window) { try { var c2 = await caches.open(CACHE); await c2.delete(u2); } catch (_) {} }
       var m2 = meta(); delete m2[u2]; setMeta(m2); refresh(); return;
     }
