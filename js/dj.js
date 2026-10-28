@@ -455,6 +455,13 @@ header.bar,#fb-top,.announce,.apptab{transition:transform .3s ease,opacity .3s e
 body.dj-on #fb-top,body.dj-past #fb-top{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
 body.dj-on .announce,body.dj-past .announce{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
 body.dj-on .apptab,body.dj-past .apptab{opacity:0!important;pointer-events:none!important;transform:translateY(130%)}
+/* NAV + TABS SLIDE AWAY TOO (owner, 2026-10-27: "make sure the site map and
+   buttons slide out of their way"): the header and the Book icon tabs were
+   pinned at the booth by an earlier call — this reverses that at the tables.
+   They slide up out of the way while the booth is on screen and slide back
+   the moment the visitor scrolls away from it. */
+body.dj-on header.bar,body.dj-past header.bar{opacity:0!important;pointer-events:none!important;transform:translateY(-130%)}
+body.dj-on #fb-tabs,body.dj-past #fb-tabs{opacity:0!important;pointer-events:none!important;transform:translateY(-320%)}
 /* the DJ Station view is tables territory too: same chrome off; the header stays as the way out */
 body[data-view="dj"] #fb-left{transform:translateX(-110%);opacity:0;pointer-events:none}
 body[data-view="dj"] #fb-right{transform:translateX(110%);opacity:0;pointer-events:none}
@@ -727,33 +734,24 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 .xv span{display:block;font:700 9.5px var(--body);letter-spacing:.08em;color:var(--gold-hi,#f0cf78);margin-top:4px}
 .xv b{display:block;font-size:10.5px;color:#e8e2d0;font-weight:600}
 @media(max-width:760px){.xv{width:54px}.xv i{width:44px;height:44px}.xfrow{gap:10px}.xfvols{gap:8px}}
-/* PHONE DECK SETUPS (owner ask, 2026-10-27): on a portrait phone the booth is
- * a compact controller — tap 1, 2, 3 or 4 decks. 1-deck mode shows ONE deck
- * with an A B C D switch on it (red dot = that deck is playing). Hidden decks
- * keep playing; only the view changes. This replaces the old phone DECK LOCK
- * for portrait phones at the owner's direct ask. Desktop + landscape untouched. */
-#dj-phset{display:none}
+/* SAME CONSOLE EVERYWHERE (owner, 2026-10-27 late: "make all set ups the same
+ * as desktops version just make it smaller so everything fits — not so big
+ * like people are blind"): the portrait-phone setup switcher below is retired
+ * by this. Every screen gets the full desktop console — all four decks, both
+ * mixers, in the desktop arrangement — just sized down to fit the screen it
+ * is on. Nothing hidden, nothing rearranged. The phset element and its JS
+ * stay in the file but are never shown again, and the data-phn attributes
+ * they stamp have no rules left to read them. */
+#dj-phset{display:none!important}
 @media (max-width:760px) and (orientation:portrait){
-#dj-phset{display:grid;gap:8px;margin:0 0 10px}
-#dj-phset .phrow{display:flex;gap:6px;align-items:center}
-#dj-phset .phlab{font:800 10.5px var(--body);letter-spacing:.12em;color:var(--muted,#a99f8b);margin-right:2px;flex:none}
-#dj-phset button{flex:1;min-height:42px;border-radius:11px;border:1px solid #3a3223;background:#14110b;color:#e8e2d0;font:800 13.5px var(--body);cursor:pointer;position:relative;padding:6px 2px}
-#dj-phset button.on{border-color:var(--gold,#d4a843);background:rgba(212,168,67,.18);color:var(--gold-hi,#f0cf78)}
-#dj-phset #dj-phdeck{display:none}
-#dj-phset[data-n="1"] #dj-phdeck{display:flex}
-#dj-phset .phdot{display:none;width:8px;height:8px;border-radius:50%;background:#ff4747;position:absolute;top:6px;right:8px;box-shadow:0 0 8px #ff4747}
-#dj-phset button.playing .phdot{display:block}
-#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.deck{display:none}
-#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.deck.ph-on{display:grid;grid-column:1/-1;grid-row:1}
-#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.mixer.m1{grid-column:1/-1;grid-row:2}
-#dj-booth-root #dj-owner .dj-decks[data-phn="1"]>.mixer.m2{grid-column:1/-1;grid-row:3}
-#dj-booth-root #dj-owner .dj-decks[data-phn="1"] .deck .platter{width:min(210px,62vw)}
-#dj-booth-root #dj-owner .dj-decks[data-phn="2"]>.deck[data-deck="C"],#dj-booth-root #dj-owner .dj-decks[data-phn="2"]>.deck[data-deck="D"]{display:none}
-#dj-booth-root #dj-owner .dj-decks[data-phn="2"]>.mixer.m2{grid-row:3}
-#dj-booth-root #dj-owner .dj-decks[data-phn="3"]>.deck[data-deck="D"]{display:none}
-#dj-booth-root #dj-owner .dj-decks[data-phn="3"]>.deck[data-deck="C"]{grid-column:1/-1;grid-row:3}
-#dj-booth-root #dj-owner .dj-decks[data-phn="3"]>.mixer.m2{grid-row:4}
 #dj-booth-root{overflow-x:clip}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:1;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:2;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:4}
+#dj-booth-root #dj-owner .dj-decks>.swapbar{display:none!important}
 #dj-booth-root #dj-owner .xfrow{gap:8px}
 #dj-booth-root #dj-owner .xfvols{gap:6px}
 #dj-booth-root #dj-owner .xv{width:46px}
@@ -761,6 +759,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .xfpad.big{width:104px;height:104px}
 #dj-yt{min-width:0!important}
 #dj-ytform input{min-width:0}
+.dj-rotate{display:none!important}
+}
+/* portrait tablets: the same full console in the same desktop order, two
+   decks across at a roomier size than the phones */
+@media (min-width:761px) and (max-width:1100px) and (orientation:portrait){
+#dj-booth-root #dj-owner .dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:stretch}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:1;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:2;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:4}
+#dj-booth-root #dj-owner .dj-decks>.swapbar{display:none!important}
+#dj-booth-root #dj-owner .deck{padding:9px;gap:6px}
+#dj-booth-root #dj-owner .deck .platter{width:150px;margin-inline:auto}
+#dj-booth-root #dj-owner .deck .wave{height:48px}
+#dj-booth-root #dj-owner .deck h4{font-size:12.5px}
+#dj-booth-root #dj-owner .btn{min-height:40px;font-size:12.5px;padding:5px 8px}
+#dj-booth-root #dj-owner .mixer{padding:9px;gap:6px}
+#dj-booth-root #dj-owner .xfpad.big{width:132px;height:132px}
+.dj-rotate{display:none!important}
 }
 /* layout safety only (kept after the owner asked his console arrangement back,
  * 2026-10-26): these two rules change nothing visually — they just stop a deck
