@@ -618,7 +618,8 @@ html.popdj .popdj-hint{display:block}
    holds the device awake (see blackout() in the script); one tap anywhere
    brings the site back. A website cannot reach the phones real brightness
    control — pure black is the closest thing the web is allowed to do. */
-#dj-blackout{position:fixed;inset:0;background:#000;z-index:9999;display:grid;place-items:center;cursor:pointer}
+#dj-blackout{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:9999;display:grid;place-items:center;cursor:pointer;overscroll-behavior:none}
+#dj-blackout:fullscreen,#dj-blackout:-webkit-full-screen{width:100%;height:100%}
 #dj-blackout[hidden]{display:none}
 #dj-blackout span{color:#9a9a9a;font:600 13px var(--body);letter-spacing:.08em;opacity:.4;transition:opacity 1.4s ease 2.4s;pointer-events:none}
 #dj-blackout.bo-dim span{opacity:0}
@@ -1180,13 +1181,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     } catch (_) {}
   };
   document.addEventListener("visibilitychange", () => { if (!document.hidden && boOn) boWake(true); });
+  /* Take the overlay itself fullscreen so Android can hide the status-bar
+     clock and navigation chrome too; the fixed overlay remains the fallback
+     on browsers that refuse or do not support element fullscreen. */
+  const boFullscreen = (on) => {
+    try {
+      if (on && boEl && !document.fullscreenElement) {
+        const req = boEl.requestFullscreen || boEl.webkitRequestFullscreen;
+        if (req) { const p = req.call(boEl, { navigationUI: "hide" }); if (p && p.catch) p.catch(() => { try { req.call(boEl); } catch (_) {} }); }
+      } else if (!on && document.fullscreenElement && document.exitFullscreen) {
+        const p = document.exitFullscreen(); if (p && p.catch) p.catch(() => {});
+      }
+    } catch (_) { try { if (on && boEl && boEl.requestFullscreen) boEl.requestFullscreen(); } catch (__) {} }
+  };
+  document.addEventListener("fullscreenchange", () => { if (boOn && !document.fullscreenElement) blackout(false); });
   function blackout(on) {
     boOn = !!on;
     if (boOn) {
       if (!boEl) { boEl = document.createElement("div"); boEl.id = "dj-blackout"; boEl.innerHTML = "<span>Playing in the dark — tap anywhere to come back</span>"; boEl.addEventListener("click", () => blackout(false)); document.body.appendChild(boEl); }
       boEl.hidden = false; boEl.classList.remove("bo-dim"); void boEl.offsetWidth; boEl.classList.add("bo-dim");
+      boFullscreen(true);
       boWake(true);
-    } else { if (boEl) boEl.hidden = true; boWake(false); }
+    } else { if (boEl) boEl.hidden = true; boFullscreen(false); boWake(false); }
   }
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
