@@ -13,7 +13,7 @@
  * updatedAt touch so clients keep reading the station as live. */
 import { userFrom } from "../../lib/cf.js";
 
-const XF = 3.5; // crossfade seconds, same as the booth
+const XF = 5; // crossfade lead in seconds: the next song starts this long before the current one ends, so the two are audibly playing together with no pause (Malik, 2026-10-28: widened from 3.5; the booth lead in dj.js matches)
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
@@ -102,15 +102,15 @@ export async function onRequestGet({ request, env }) {
     if (boothFreshSB && !deadDeck) { S.updatedAt = now; S.by = "keeper"; await writeDoc(env, "radio/dj", "radio", S); }
   }
   // HANDOVER BREAKER (mwHandBreak, 2026-10-28): no dead air and no late
-  // starts. When a playing A/B deck reaches its crossfade point (3.5s left,
-  // the booth XF window) and its pair deck is not playing, the keeper falls
+  // starts. When a playing A/B deck reaches its crossfade point (XF seconds
+  // left, the booth XF window) and its pair deck is not playing, the keeper falls
   // through and starts the pair itself with the next item through the normal
   // rotation crossfade below, even while boothAt is fresh. The rotation loop
   // re-tests that the pair is still not playing at the moment it starts the
   // deck, so a booth that began its own handover in the meantime is never
   // double-started. Same gates as the silence backstop: station live,
   // Auto-DJ on, no deliberate pause stamped.
-  const handBreak = !!(S.live && S.autodj && !S.pausedAt && ["A", "B"].some((k) => { const dk = S[k]; const pk = S[k === "A" ? "B" : "A"]; return dk && dk.playing && +dk.dur > 0 && +dk.start > 0 && now >= +dk.start + (+dk.dur) * 1000 - 3500 && !(pk && pk.playing); }));
+  const handBreak = !!(S.live && S.autodj && !S.pausedAt && ["A", "B"].some((k) => { const dk = S[k]; const pk = S[k === "A" ? "B" : "A"]; return dk && dk.playing && +dk.dur > 0 && +dk.start > 0 && now >= +dk.start + (+dk.dur) * 1000 - XF * 1000 && !(pk && pk.playing); }));
   if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
@@ -273,6 +273,13 @@ export async function onRequestGet({ request, env }) {
     }
     if (now >= endAt - XF * 1000 && !S[other].playing) { // crossfade point: bring the next song in under this one
       startDeckItem(other, await nextItem(S[cur].src), endAt - XF * 1000);
+      /* mwHornStamp (2026-10-28): every automated crossfade start stamps
+         fxHornAt; dj.js clients watch the field and fire one air-horn stab
+         per new value, so an Auto-DJ transition sounds DJed on every device
+         at the same moment. Only this crossfade branch stamps it — cold
+         starts (dead air, silence-breaker rescues, schedule/pool starts
+         with nothing playing) never do. */
+      S.fxHornAt = now;
       S.xf = other === "A" ? 0 : 1; changed = true;
     }
     break;
