@@ -1266,6 +1266,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     box.hidden = !show;
     if (!tg.length) scrMini.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
     if (!show) return;
+    // keep the mini clear of the bottom player bar: if a saved spot leaves it
+    // under the bar, lift it above the bar while the bar is up (the saved spot
+    // itself is untouched — the lift is re-applied on the next pass)
+    try { const pb = document.querySelector(".player-bar"); if (pb && document.body.classList.contains("has-player")) { const pr = pb.getBoundingClientRect(), mr = box.getBoundingClientRect(); if (pr.height > 0 && mr.bottom > pr.top - 4 && mr.left < pr.right && mr.right > pr.left) { box.style.top = Math.max(2, Math.round(pr.top - mr.height - 8)) + "px"; box.style.left = Math.round(mr.left) + "px"; box.style.right = "auto"; } } } catch (_) {}
     await renderScreen(scrMini, true, 1, 1);
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
