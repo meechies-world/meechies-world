@@ -2,7 +2,7 @@
 // The owner has two pop-up stores; both are merged so every product he sells shows on the site.
 // The storefront grid page can lag behind publishing, so each store's sitemap is checked too and
 // any product missing from the grid is read from its own product page. No Printify login or key
-// needed. Results are cached for 10 minutes.
+// needed. Results are cached at the edge for 2 minutes.
 const STORES = ["https://meechiesworld-inc.printify.me", "https://meechies-world.printify.me"];
 
 const decode = (s) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
@@ -57,15 +57,17 @@ async function storeProducts(store) {
 
 export async function onRequestGet({ request }) {
   const cache = caches.default;
-  const key = new Request(new URL("/api/store?v=3", request.url).toString());
+  const key = new Request(new URL("/api/store?v=4", request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
 
+  // Both stores are read in parallel; the merge below still runs in STORES order,
+  // so the earlier store keeps winning on shared titles exactly as before.
+  const perStore = await Promise.all(STORES.map((s) => storeProducts(s)));
   const products = [];
   const seenIds = new Set();
   const earlierTitles = new Set();
-  for (const store of STORES) {
-    const mine = await storeProducts(store);
+  for (const mine of perStore) {
     for (const it of mine) {
       if (seenIds.has(it.id)) continue;
       // Same title already listed from an earlier store: keep the earlier store's listing.
@@ -76,7 +78,7 @@ export async function onRequestGet({ request }) {
     for (const it of mine) earlierTitles.add(it.title.trim().toLowerCase());
   }
   const body = JSON.stringify({ store: STORES[0], stores: STORES, products, updated: Date.now() });
-  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=600" } });
+  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=120, s-maxage=120" } });
   if (products.length) await cache.put(key, res.clone());
   return res;
 }

@@ -1,5 +1,5 @@
 // Meechie's World Shopify store: reads the store's public product list and returns it for the website.
-// No Shopify login or key needed. New products show up on the site by themselves. Cached for 10 minutes.
+// No Shopify login or key needed. New products show up on the site by themselves. Cached at the edge for 2 minutes.
 const STORE = "https://meechiesworldinc.myshopify.com";
 
 const toItem = (p) => {
@@ -25,7 +25,7 @@ const toItem = (p) => {
 
 export async function onRequestGet({ request }) {
   const cache = caches.default;
-  const key = new Request(new URL("/api/shopify?v=2", request.url).toString());
+  const key = new Request(new URL("/api/shopify?v=3", request.url).toString());
   const hit = await cache.match(key);
   if (hit) return hit;
 
@@ -39,7 +39,7 @@ export async function onRequestGet({ request }) {
     if (list.length < 250) break;
   }
   const body = JSON.stringify({ store: STORE, products: [...seen.values()], updated: Date.now() });
-  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=600" } });
+  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=120, s-maxage=120" } });
   if (seen.size) await cache.put(key, res.clone());
   return res;
 }
