@@ -362,7 +362,7 @@
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } };
+  let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   let guestPostAt = 0;
@@ -627,6 +627,40 @@ html.popdj .popdj-hint{display:block}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
 .vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
 .vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
+/* VIDEO TRANSITIONS + VIDEO FX (owner, 2026-10-28): discrete master-screen
+   switches animate the incoming slot (wrapper only - the player inside is
+   never reloaded, so the picture cannot lose its place against the sound);
+   one-shot FX ride S.vfx stamps and animate every .vstage the same way. */
+.vtrrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.vtrrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
+.vslot.vtr-wipe{animation:vtrWipe var(--vtrd,.65s) ease both}
+@keyframes vtrWipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.vslot.vtr-slide{animation:vtrSlide var(--vtrd,.65s) cubic-bezier(.2,.8,.25,1) both}
+@keyframes vtrSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.vslot.vtr-zoom{animation:vtrZoom var(--vtrd,.65s) ease both}
+@keyframes vtrZoom{from{transform:scale(.55)}to{transform:scale(1)}}
+.vslot.vtr-blur{animation:vtrBlur var(--vtrd,.65s) ease both}
+@keyframes vtrBlur{from{filter:blur(16px)}to{filter:blur(0)}}
+.vslot.vtr-glitch{animation:vtrGlitch .38s steps(2,end) both}
+.vslot.vtr-fade::after,.vslot.vtr-flash::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5}
+.vslot.vtr-fade::after{background:#000;animation:vfxOut var(--vtrd,.65s) ease both}
+.vslot.vtr-flash::after{background:#fff;animation:vfxOut calc(var(--vtrd,.65s)*.7) ease both}
+@keyframes vfxOut{from{opacity:1}to{opacity:0}}
+@keyframes vtrGlitch{0%{transform:translate(0);clip-path:inset(12% 0 62% 0)}20%{transform:translate(-6px,2px);clip-path:inset(58% 0 8% 0)}40%{transform:translate(5px,-2px);clip-path:inset(28% 0 40% 0)}60%{transform:translate(-4px,1px);clip-path:inset(70% 0 4% 0)}80%{transform:translate(3px,0);clip-path:inset(6% 0 78% 0)}100%{transform:translate(0);clip-path:inset(0 0 0 0)}}
+.vstage.vfx-flash::after,.vstage.vfx-strobe::after{content:"";position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6}
+.vstage.vfx-flash::after{animation:vfxFlashA .3s ease-out both}
+@keyframes vfxFlashA{0%{opacity:1}100%{opacity:0}}
+.vstage.vfx-strobe::after{animation:vfxStrobeA .66s steps(1,end) both}
+@keyframes vfxStrobeA{0%{opacity:1}12%{opacity:0}25%{opacity:1}37%{opacity:0}50%{opacity:1}62%{opacity:0}100%{opacity:0}}
+.vstage.vfx-glitch{animation:vtrGlitch .4s steps(2,end) both}
+.vstage.vfx-blurp .vslot{animation:vfxBlurP .7s ease both}
+@keyframes vfxBlurP{0%{filter:blur(0)}35%{filter:blur(14px)}100%{filter:blur(0)}}
+.vstage.vfx-zoomp .vslot{animation:vfxZoomP .55s ease both}
+@keyframes vfxZoomP{0%{transform:scale(1)}40%{transform:scale(1.14)}100%{transform:scale(1)}}
+.vstage.vfx-mono .vslot iframe{filter:grayscale(1) brightness(var(--vb,1)) contrast(var(--vc,1))}
+.vstage.vfx-invert .vslot iframe{filter:invert(1)}
+.vstage.vfx-hue .vslot iframe{animation:vfxHueA 1.2s linear both}
+@keyframes vfxHueA{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
 /* MASTER SCREEN above the table (Malik, 2026-10-26): out of the mixer, full booth
    width, cinema height — tall enough to star, capped so the decks stay in reach */
 #dj-screen{position:relative;margin:0 0 12px}
@@ -1119,6 +1153,26 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // full-width panel under the console, sliders lined up in even cells. Same
   // elements, same ids: every painter, the edit panel and MIDI keep working.
   { const m1El = document.querySelector("#dj-owner .mixer.m1"), g2El = document.querySelector("#dj-owner .dj-grid2"), mstEl = document.getElementById("dj-master"); if (m1El && g2El && mstEl) { const panel = document.createElement("div"); panel.className = "dj-panel"; panel.id = "dj-fxpanel"; panel.innerHTML = "<h4>🎛️ MASTER FX</h4><div class='fxgrid'></div>"; g2El.insertBefore(panel, g2El.firstChild); const fxg = panel.querySelector(".fxgrid"); const chain = []; let n = mstEl.previousElementSibling; while (n) { chain.push(n); n = n.nextElementSibling; } let cell = null; chain.forEach((el) => { if (el.tagName === "SMALL" || !cell) { cell = document.createElement("div"); cell.className = "fxcell"; fxg.appendChild(cell); } cell.appendChild(el); if (el.querySelector && el.querySelector(".edivb, .gatebtn")) cell.classList.add("wide"); }); } }
+  // VIDEO FX pad (owner, 2026-10-28): appended as the LAST child of the studio
+  // grid - nothing else in the booth moves. It is created before foldPanels()
+  // and the Customize registration below run, so it folds and hides exactly
+  // like every other panel. Buttons carry data attributes only; the wiring
+  // lives in the booth click delegation and the S.vfx watcher further down.
+  { const g2v = document.querySelector("#dj-owner .dj-grid2"); if (g2v && !document.getElementById("dj-vfxpanel")) { const vp = document.createElement("div"); vp.className = "dj-panel"; vp.id = "dj-vfxpanel"; vp.innerHTML = "<h4>\uD83D\uDCFA VIDEO FX</h4>"
+    + "<div class='vtrrow'><span style='font-size:11px;letter-spacing:.1em;color:var(--muted)'>TRANSITION</span>"
+    + "<button class='btn ghost sm' type='button' data-vtr='cut'>\u2702\uFE0F Cut</button><button class='btn ghost sm' type='button' data-vtr='fade'>\uD83C\uDF2B\uFE0F Fade</button><button class='btn ghost sm' type='button' data-vtr='wipe'>\u25E7 Wipe</button><button class='btn ghost sm' type='button' data-vtr='slide'>\u27A1\uFE0F Slide</button><button class='btn ghost sm' type='button' data-vtr='zoom'>\uD83D\uDD0D Zoom</button><button class='btn ghost sm' type='button' data-vtr='blur'>\uD83C\uDF2B Blur</button><button class='btn ghost sm' type='button' data-vtr='flash'>\u26A1 Flash</button><button class='btn ghost sm' type='button' data-vtr='glitch'>\uD83D\uDCFA Glitch</button></div>"
+    + "<div class='vtrrow'><span style='font-size:11px;letter-spacing:.1em;color:var(--muted)'>SPEED</span>"
+    + "<button class='btn ghost sm' type='button' data-vspd='350'>Fast</button><button class='btn ghost sm' type='button' data-vspd='650'>Med</button><button class='btn ghost sm' type='button' data-vspd='1200'>Slow</button></div>"
+    + "<div class='pads'>"
+    + "<button class='pad' type='button' data-vfx='flash'>\u26A1 FLASH<small>white blast</small></button>"
+    + "<button class='pad' type='button' data-vfx='strobe'>\uD83D\uDD06 STROBE<small>3 quick flashes</small></button>"
+    + "<button class='pad' type='button' data-vfx='glitch'>\uD83D\uDCFA GLITCH<small>signal tear</small></button>"
+    + "<button class='pad' type='button' data-vfx='blurp'>\uD83C\uDF2B BLUR PULSE<small>soft hit</small></button>"
+    + "<button class='pad' type='button' data-vfx='zoomp'>\uD83D\uDD0D ZOOM PULSE<small>punch in / out</small></button>"
+    + "<button class='pad' type='button' data-vfx='mono'>\uD83C\uDF9E\uFE0F B&amp;W DROP<small>mono, 2 seconds</small></button>"
+    + "<button class='pad' type='button' data-vfx='invert'>\uD83D\uDD04 INVERT<small>color flip</small></button>"
+    + "<button class='pad' type='button' data-vfx='hue'>\uD83C\uDF08 HUE SPIN<small>color wheel</small></button>"
+    + "</div><small class='muted'>Transitions dress the master-screen switch; the pads fire one-shot picture hits on EVERY screen at once - booth, station and mini. Wrappers only: the video itself never reloads, so the picture stays locked to the sound.</small>"; g2v.appendChild(vp); } }
   // foldable page sections: a [data-fold] button hides its block and everything
   // below pulls up to fill the space; the choice sticks on this device
   const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
@@ -1330,6 +1384,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     return w;
   }
 
+  /* animate one slot with the chosen transition, then lock it to the sound:
+   * the wrapper takes the animation (transform / clip / filter / overlay) and
+   * the player inside is never reloaded; on landing, if the slot's player is
+   * more than ~1s off the deck's live position it is seeked once (and the
+   * follow loop's cooldown is stamped so it does not immediately re-seek) */
+  function vtrSlot(scr, k, tr, ms) {
+    const i = scr.slots.findIndex((sl) => sl.deck === k); if (i < 0) return;
+    const el = $(scr.ids[i]); if (!el) return;
+    const cls = "vtr-" + tr;
+    ["vtr-fade", "vtr-wipe", "vtr-slide", "vtr-zoom", "vtr-blur", "vtr-flash", "vtr-glitch"].forEach((c) => el.classList.remove(c));
+    void el.offsetWidth;
+    el.style.setProperty("--vtrd", (ms || 650) + "ms");
+    el.classList.add(cls);
+    setTimeout(() => el.classList.remove(cls), (ms || 650) + 600);
+    const sl = scr.slots[i];
+    if (sl.p) { try { const want = posOf(k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : want, stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1; if (Math.abs(cur - want) > 1 && stt !== 3) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); } } catch (_) {} }
+  }
   async function renderScreen(scr, muted, mix, duck) {
     const tg = vmixTargets();
     // a true dissolve, full brightness at every point of the fade: the weaker
@@ -1341,7 +1412,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     scr.slots.forEach((sl, i) => { if (sl.deck && !tg.some((x) => x.k === sl.deck)) { sl.deck = ""; const el = $(scr.ids[i]); if (el) el.style.opacity = 0; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } } });
     const stb = scr.standby ? $(scr.standby) : null; if (stb) stb.style.display = tg.length ? "none" : "grid";
     const chip = $(scr.chip);
-    if (!tg.length) { if (chip) chip.hidden = true; return; }
+    if (!tg.length) { scr._vTop = ""; if (chip) chip.hidden = true; return; }
     const provs = new Set(tg.map((t) => vparseTok(S[t.k].yt).p));
     if (provs.has("yt")) await ytApi();
     if (provs.has("dm")) await dmApi();
@@ -1374,6 +1445,24 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       } catch (_) {} }
     }
     const top = tg.slice().sort((a, b) => b.op - a.op)[0];
+    // VIDEO TRANSITIONS (owner, 2026-10-28): a discrete switch of the
+    // dominant deck - a stamped S.vmix.at action (Cut / Fade / solo / Auto
+    // buttons) or a hard swap where the old deck leaves the mix entirely
+    // (an Auto-DJ handover) - animates the incoming slot with the chosen
+    // S.vmix.tr. A continuous fader ride never triggers this: both decks
+    // stay in the targets while the dissolve does the work. During a manual
+    // Fade (vmix.b set) the dissolve IS the transition, so the stamp is
+    // consumed silently. The animation touches the slot wrapper only; the
+    // player is never reloaded, and on landing the player is aligned to
+    // the deck's live position so picture and sound stay locked (vtrSlot).
+    const vmNow = S.vmix || {}, vTop = top ? top.k : "";
+    if (scr._vAt == null) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
+    else if (vmNow.b) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
+    else if (vTop && vTop !== scr._vTop) {
+      const stamped = (vmNow.at || 0) !== scr._vAt, hardSwap = !!scr._vTop && !tg.some((x) => x.k === scr._vTop);
+      if (stamped || hardSwap) { const tr2 = vmNow.tr || "fade"; if (tr2 !== "cut") vtrSlot(scr, vTop, tr2, vmNow.trMs || 650); }
+      scr._vAt = vmNow.at || 0; scr._vTop = vTop;
+    } else if (vTop) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
     if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : ""); }
   }
   /* the member master screen never vanishes while Meechie is live (owner,
@@ -1661,6 +1750,34 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     hornHeard = t;
     if (boothLead || listening) hornStab();
   }
+  /* ---------- video FX one-shots (owner, 2026-10-28) ----------
+   * The VIDEO FX pad fires stamped events, exactly like the transition
+   * horn: the owner stamps S.vfx {kind, at} and EVERY client (booth,
+   * station card, mini) plays the hit once per stamp by animating its
+   * .vstage wrappers. The players underneath are never paused, restarted
+   * or re-seeked - the picture cannot drift from the sound. In the
+   * Playground the pad animates this copy only and stamps nothing. */
+  const VFX_DUR = { flash: 330, strobe: 700, glitch: 430, blurp: 730, zoomp: 580, mono: 2000, invert: 900, hue: 1250 };
+  function vfxStage(kind) {
+    if (!VFX_DUR[kind]) return;
+    document.querySelectorAll(".vstage").forEach((st) => { const cls = "vfx-" + kind; st.classList.remove(cls); void st.offsetWidth; st.classList.add(cls); setTimeout(() => st.classList.remove(cls), VFX_DUR[kind] + 80); });
+  }
+  let vfxHeard = 0, vfxInit = false;
+  function watchVfx() {
+    const v = S && S.vfx, t = +(v && v.at) || 0; if (!t) return;
+    if (!vfxInit) { vfxInit = true; vfxHeard = t; return; }
+    if (t === vfxHeard) return;
+    vfxHeard = t;
+    if (Date.now() - t > 15000) return;
+    vfxStage(v.kind);
+  }
+  function fireVfx(kind) {
+    if (!VFX_DUR[kind]) return;
+    vfxStage(kind);
+    const pb = document.querySelector('[data-vfx="' + kind + '"]'); if (pb) { pb.classList.add("hit"); setTimeout(() => pb.classList.remove("hit"), 200); }
+    if (SANDBOX || !OWNER()) return;
+    S.vfx = { kind: kind, at: Date.now() }; vfxHeard = S.vfx.at; vfxInit = true; save(true);
+  }
   function firePadHit() {
     if (SANDBOX) return;
     const h = S.padHit; if (!h || !h.at || h.by === tabId) return;
@@ -1840,6 +1957,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function paintOwner() {
     document.querySelectorAll("[data-vmix]").forEach((x) => x.classList.toggle("on", x.dataset.vmix === "auto" && (!S.vmix || S.vmix.mode === "auto")));
     document.querySelectorAll("[data-vsrc]").forEach((x) => x.classList.toggle("on", !!S.vmix && S.vmix.mode === "man" && S.vmix.a === x.dataset.vsrc && !S.vmix.b));
+    document.querySelectorAll("[data-vtr]").forEach((x) => x.classList.toggle("on", ((S.vmix && S.vmix.tr) || "fade") === x.dataset.vtr));
+    document.querySelectorAll("[data-vspd]").forEach((x) => x.classList.toggle("on", ((S.vmix && +S.vmix.trMs) || 650) === +x.dataset.vspd));
     DECKS.forEach((k) => {
       const s = S[k], pl = $("#pl-" + k);
       $("#ttl-" + k).textContent = s.title || "Load a song";
@@ -2287,9 +2406,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0 } }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 } }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
-    m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0 }, m.vmix || {});
+    m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, m.vmix || {});
+    if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
+    m.vmix.trMs = Math.max(250, Math.min(1600, +m.vmix.trMs || 650)); m.vmix.at = +m.vmix.at || 0;
+    m.vfx = Object.assign({ kind: "", at: 0 }, m.vfx || {});
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     return m;
   }
@@ -2311,7 +2433,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         S = mergeState(d);
         lastBaseAt = d.updatedAt || 0;
         adoptQueue(d);
-        watchHorn();
+        watchHorn(); watchVfx();
         paintOwner(); paintStation();
         if (boothLead) DECKS.forEach((k) => { if (S[k].src) follow(k); });
       }
@@ -2322,7 +2444,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     S = mergeState(d);
     if (d && d.by !== tabId) lastBaseAt = d.updatedAt || 0;
     adoptQueue(d);
-    watchHorn();
+    watchHorn(); watchVfx();
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; DECKS.forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
     const live = isLive();
@@ -2408,20 +2530,34 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
     if (b.dataset.pop != null) { popOut(); return; }
     if (b.dataset.dsecbtn) { const n = b.dataset.dsecbtn; secState[n] = secState[n] ? 0 : 1; try { localStorage.setItem("mw-dsec-v1", JSON.stringify(secState)); } catch (_) {} document.querySelectorAll('.dsec[data-dsec="' + n + '"]').forEach((s) => s.classList.toggle("shut", !secState[n])); return; }
+    if (b.dataset.vtr || b.dataset.vspd || b.dataset.vfx) {
+      if (b.dataset.vfx) { fireVfx(b.dataset.vfx); return; }
+      if (b.dataset.vtr) { S.vmix = Object.assign({}, S.vmix || {}, { tr: b.dataset.vtr }); paintOwner(); save(true); say("\uD83D\uDCFA Video transition: " + b.dataset.vtr.toUpperCase() + " - it dresses the next master-screen switch on every screen."); return; }
+      S.vmix = Object.assign({}, S.vmix || {}, { trMs: +b.dataset.vspd || 650 }); paintOwner(); save(true); say("\uD83D\uDCFA Video transition speed set."); return;
+    }
     if (b.dataset.vmix || b.dataset.vsrc) {
       const ytDecks = () => DECKS.filter((k) => S[k].yt && S[k].playing).sort((x, y) => stageGain(y) - stageGain(x));
-      if (b.dataset.vsrc) { const k = b.dataset.vsrc; if (S[k] && S[k].yt) { S.vmix = { mode: "man", a: k, b: "", t: 0 }; say("📺 Master screen: deck " + k + " full screen — viewers see it too."); } else say("No video on deck " + k + " — put a YouTube video there first."); paintOwner(); save(true); return; }
+      // every discrete switch keeps the chosen transition + speed and stamps
+      // S.vmix.at, so every screen animates the same switch (renderScreen)
+      const vKeep = () => ({ tr: (S.vmix && S.vmix.tr) || "fade", trMs: (S.vmix && S.vmix.trMs) || 650, at: Date.now() });
+      if (b.dataset.vsrc) { const k = b.dataset.vsrc; if (S[k] && S[k].yt) { S.vmix = Object.assign({ mode: "man", a: k, b: "", t: 0 }, vKeep()); say("📺 Master screen: deck " + k + " full screen — viewers see it too."); } else say("No video on deck " + k + " — put a YouTube video there first."); paintOwner(); save(true); return; }
       const a = b.dataset.vmix;
-      if (a === "auto") { S.vmix = { mode: "auto", a: "", b: "", t: 0 }; say("📺 Video screen on AUTO — the picture now fades with the X fader, just like the sound."); paintOwner(); save(true); return; }
+      if (a === "auto") { S.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0 }, vKeep()); say("📺 Video screen on AUTO — the picture now fades with the X fader, just like the sound."); paintOwner(); save(true); return; }
       const top2 = ytDecks(), cur = vmixTargets()[0];
       if (top2.length < 2 || !cur) { say("Put videos on two decks first — then Cut and Fade mix the pictures."); return; }
       const other = top2.find((k) => k !== cur.k);
-      if (a === "cut") { S.vmix = { mode: "man", a: other, b: "", t: 0 }; say("✂️ Video CUT to deck " + other + "."); paintOwner(); save(true); return; }
+      if (a === "cut") { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); say("✂️ Video CUT to deck " + other + "."); paintOwner(); save(true); return; }
+      // the chosen transition dresses this switch too: Cut lands instantly
+      // and any other non-Fade pick switches now (renderScreen animates it
+      // from the S.vmix.at stamp); Fade keeps the classic dissolve below
+      const trSel = (S.vmix && S.vmix.tr) || "fade";
+      if (trSel === "cut") { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); say("\u2702\uFE0F Video CUT to deck " + other + "."); paintOwner(); save(true); return; }
+      if (trSel !== "fade") { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); say("\uD83D\uDCFA Video switch (" + trSel + ") to deck " + other + "."); paintOwner(); save(true); return; }
       // fade: dissolve from the deck on screen to the other one over ~1.2s,
       // saving as it goes so viewers dissolve with the booth
-      S.vmix = { mode: "man", a: cur.k, b: other, t: 0 }; save(true);
+      S.vmix = Object.assign({ mode: "man", a: cur.k, b: other, t: 0 }, vKeep()); save(true);
       const t0 = performance.now(); say("🌫️ Fading the picture to deck " + other + "…");
-      const step = () => { const p = Math.min(1, (performance.now() - t0) / 1200); S.vmix.t = p; stageApply(1, 1); save(); if (p < 1) requestAnimationFrame(step); else { S.vmix = { mode: "man", a: other, b: "", t: 0 }; paintOwner(); save(true); } };
+      const step = () => { const p = Math.min(1, (performance.now() - t0) / 1200); S.vmix.t = p; stageApply(1, 1); save(); if (p < 1) requestAnimationFrame(step); else { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); paintOwner(); save(true); } };
       requestAnimationFrame(step); return;
     }
     if (b.dataset.preset) {
