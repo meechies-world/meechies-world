@@ -2,12 +2,20 @@
 // Every Workers AI model in lib/ai-catalog.js is wired through here: chat brains answer in the
 // chat box (members can pick their brain), image makers return a picture, and the ears / voice /
 // language-plumbing models answer their own JSON shapes for the site's features to use.
-import { answer, verifyAnswer, take, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { answer, verifyAnswer, take, logQuestion, recentQuestions, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { userFrom, isAdmin } from "../../lib/cf.js";
 import { MODELS, MODEL_BY_ID } from "../../lib/ai-catalog.js";
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const CHAT_KINDS = new Set(["chat", "reasoning", "code", "vision"]);
 
-export async function onRequestGet() {
+export async function onRequestGet({ request, env }) {
+  const url = new URL(request.url);
+  if (url.searchParams.has("log")) {
+    // the AI's memory, owner-only: what members have been asking Meechie AI
+    const me = await userFrom(request, env).catch(() => null);
+    if (!me || !(await isAdmin(env, me.id).catch(() => false))) return json({ error: "owner_only" }, 403);
+    return json({ questions: await recentQuestions(env, 50) });
+  }
   return json({ models: MODELS, count: MODELS.length });
 }
 
@@ -75,7 +83,7 @@ async function runKind(env, model, body) {
   }
 }
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   if (!env.AI) return json({ error: "ai_off" }, 501);
   const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "sign_in" }, 401);
@@ -109,5 +117,12 @@ export async function onRequestPost({ request, env }) {
   if ((await take(env, token, "ai", 3600, 60)) === false || (await take(env, token, "ai-day", 86400, 300)) === false)
     return json({ reply: "You've used Meechie's AI a lot this hour. Take a short break and try again later.", limited: true });
   const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true });
+  // the brain remembers what members ask (private table, never in the public
+  // docs): it feeds the "lately members have been asking" facts on the next
+  // answers, and the owner can read the log at GET /api/ai?log.
+  if (!out.error && !out.limited && typeof waitUntil === "function") {
+    const lastUser = turns[turns.length - 1].content;
+    waitUntil((async () => { try { const me = await userFrom(request, env); await logQuestion(env, me ? me.id : "", lastUser); } catch (_) {} })());
+  }
   return json(out, out.error ? 503 : 200);
 }
