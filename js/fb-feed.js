@@ -36,10 +36,10 @@ body[data-view=clips] #fb-left,body[data-view=world] #fb-left,body[data-view=dj]
 body[data-view=clips] #fb-right,body[data-view=world] #fb-right,body[data-view=dj] #fb-right{display:none}
 #fb-right #fb-contacts{background:var(--fb-card);border-radius:10px;padding:12px 8px;box-shadow:0 1px 2px rgba(0,0,0,.3)}
 #fb-right #fb-contacts h3{color:var(--fb-mute);font:700 15px system-ui;margin:2px 8px 8px}
-@media(min-width:1100px){body:not([data-view=clips]):not([data-view=world]) main{margin-left:240px}}
-@media(min-width:1280px){body:not([data-view=clips]):not([data-view=world]) main{margin-right:280px}}
-@media(min-width:1100px){body:not([data-view=clips]):not([data-view=world]) .announce .wrap{margin-left:240px}}
-@media(min-width:1280px){body:not([data-view=clips]):not([data-view=world]) .announce .wrap{margin-right:280px}}
+@media(min-width:1100px){html:not(.appmode) body:not([data-view=clips]):not([data-view=world]) main{margin-left:240px}}
+@media(min-width:1280px){html:not(.appmode) body:not([data-view=clips]):not([data-view=world]) main{margin-right:280px}}
+@media(min-width:1100px){html:not(.appmode) body:not([data-view=clips]):not([data-view=world]) .announce .wrap{margin-left:240px}}
+@media(min-width:1280px){html:not(.appmode) body:not([data-view=clips]):not([data-view=world]) .announce .wrap{margin-right:280px}}
 body.dj-on .announce .wrap,body.dj-past .announce .wrap{margin-left:0!important;margin-right:0!important}
 #fb-left a{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:8px;color:var(--fb-text);text-decoration:none;font:600 15px system-ui}
 #fb-left a:hover{background:var(--fb-hover)}
@@ -75,7 +75,9 @@ body.dj-on .announce .wrap,body.dj-past .announce .wrap{margin-left:0!important;
 #v-community .feed{gap:14px!important;margin-top:0!important}
 #v-community .post{padding:12px 0 4px!important;gap:10px!important}
 #v-community .post-body>*{margin-left:16px;margin-right:16px}
-#v-community .post-body>.photo,#v-community .post-body>.vid{margin-left:0;margin-right:0;width:100%;border-radius:0!important;max-height:none}
+#v-community .post-body>.photo,#v-community .post-body>.vid{margin-left:0;margin-right:0;width:100%;border-radius:0!important;max-height:min(74vh,660px)}
+#v-community .post-body>.photo{object-fit:cover}
+#v-community .post-body>.vid{object-fit:contain;background:#000}
 #v-community .post-head .who b{color:var(--fb-text);font:600 15px system-ui}
 #v-community .post-head .who small{color:var(--fb-mute)}
 #v-community .post-text{font:400 15px/1.35 system-ui;color:var(--fb-text)}
