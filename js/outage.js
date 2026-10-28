@@ -1,4 +1,4 @@
-/* Outage mode (owner's rule): if the account system (Supabase) is down or blocked, the website still opens.
+/* Outage mode (owner's rule): if the account system is down or blocked, the website still opens.
  * Visitors can look around (videos, books, shop, pages); only signed-in features and saved data wait.
  * Checks the sign-in service once on load (and again if a sign-in attempt fails to reach it). */
 (function () {
@@ -22,11 +22,10 @@
   }
   window.MW_guestMode = guest;
   async function probe() {
-    if (!c.SUPABASE_URL && c.BACKEND !== "cf") return;
+    if (c.BACKEND !== "cf") return;
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 7000);
     try {
-      const r = c.BACKEND === "cf" ? await fetch("/api/cf/health", { signal: ctl.signal, cache: "no-store" })
-        : await fetch(c.SUPABASE_URL + "/auth/v1/health", { headers: { apikey: c.SUPABASE_ANON_KEY || "" }, signal: ctl.signal, cache: "no-store" });
+      const r = await fetch("/api/cf/health", { signal: ctl.signal, cache: "no-store" });
       if (!r.ok) guest("auth " + r.status);
     } catch (e) { guest("auth unreachable"); }
     clearTimeout(t);

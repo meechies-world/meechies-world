@@ -1,36 +1,29 @@
 /*
  * Meechie's World platform layer.
  * Gives the site the same small API it used while it lived on Claude
- * (claude.use("db" | "user" | "room" | "assets" | "sample")), backed by Supabase:
- *   db     -> table `docs` (path, coll, owner, data jsonb) + Realtime for live updates
- *   user   -> Supabase Auth (email + password)
- *   room   -> Supabase Realtime presence channels (live rooms, game, radio listeners)
- *   assets -> Supabase Storage bucket `assets` (radio tracks)
+ * (claude.use("db" | "user" | "room" | "assets" | "sample")), backed by Meechie's
+ * World's own Cloudflare backend (window.MW_CF, see js/cf-client.js):
+ *   db     -> docs store plus a change feed for live updates
+ *   user   -> site accounts (email + password and social sign-in)
+ *   room   -> presence channels (live rooms, game, radio listeners)
+ *   assets -> media storage bucket `assets` (radio tracks)
  *   sample -> AI assistant, off until an AI key is added (returns null so the page hides it)
  */
 (function () {
   const cfg = window.MW_CONFIG || {};
   const CF = cfg.BACKEND === "cf" && !!window.MW_CF; // Meechie's World's own free backend on Cloudflare
-  const ready = CF || !!(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY && window.supabase);
-  const sb = CF ? window.MW_CF.createClient() : ready ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
-    realtime: { params: { eventsPerSecond: 20 } }
-  }) : null;
+  const ready = CF;
+  const sb = CF ? window.MW_CF.createClient() : null;
   window.MW = { sb, ready, cf: CF };
-  // where uploads go: Cloudflare (free) or the old Supabase storage
-  const upURL = (bucket, path) => (CF ? "/api/cf/upload/" + bucket + "/" + path : cfg.SUPABASE_URL + "/storage/v1/object/" + bucket + "/" + path);
-  const upHeaders = (x, type) => { x.setRequestHeader("authorization", "Bearer " + session.access_token); if (!CF) x.setRequestHeader("apikey", cfg.SUPABASE_ANON_KEY); x.setRequestHeader("content-type", type); };
+  // where uploads go: Meechie's World's own Cloudflare storage (free)
+  const upURL = (bucket, path) => "/api/cf/upload/" + bucket + "/" + path;
+  const upHeaders = (x, type) => { x.setRequestHeader("authorization", "Bearer " + session.access_token); x.setRequestHeader("content-type", type); };
 
   let session = null, adminFlag = false;
   const sessionReady = (async () => {
     if (!sb) return;
     const { data } = await sb.auth.getSession();
     session = data.session;
-    // A saved sign-in whose hourly token is being renewed can come back empty for a moment:
-    // try renewing it before treating the person as signed out.
-    if (!session && !CF && Object.keys(localStorage).some((k) => /^sb-.*-auth-token$/.test(k) && localStorage.getItem(k))) {
-      try { const r = await Promise.race([sb.auth.refreshSession(), new Promise((res) => setTimeout(() => res({}), 6000))]); if (r && r.data && r.data.session) session = r.data.session; } catch (_) {}
-    }
     if (session) {
       const r = await sb.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
       adminFlag = !!r.data;
@@ -262,7 +255,6 @@
     const x = new XMLHttpRequest();
     x.open("POST", upURL("media", path));
     upHeaders(x, type);
-    if (!CF) x.setRequestHeader("x-upsert", "false");
     x.upload.onprogress = (e) => { if (e.lengthComputable && onProg) onProg(e.loaded / e.total); };
     x.onload = () => {
       if (x.status >= 200 && x.status < 300) return res({ path, url: sb.storage.from("media").getPublicUrl(path).data.publicUrl });

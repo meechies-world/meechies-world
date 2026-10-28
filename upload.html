@@ -47,10 +47,9 @@ a{color:var(--gold-hi)}
     <p class="note" style="margin:0">Songs go into your Library and onto the radio rotation. Keep this page open until each song says “Done.” <a href="/#radio">Back to the Radio</a></p>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/config.js?v=1792580555"></script>
+<script src="js/config.js?v=1793202000"></script>
 <script src="js/cf-client.js?v=1792618908"></script>
-<script src="js/platform.js?v=1792927200"></script>
+<script src="js/platform.js?v=1793202000"></script>
 <script>
 (function(){
   const $=s=>document.querySelector(s);
@@ -67,10 +66,8 @@ a{color:var(--gold-hi)}
   function newId(){ return (crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Date.now().toString(36)).replace(/-/g,"").slice(0,20); }
   function uploadXHR(file,id,type,onProg){ return new Promise((res,rej)=>{
     const x=new XMLHttpRequest();
-    const cf=MW_CONFIG.BACKEND==="cf";
-    x.open("POST", cf ? "/api/cf/upload/assets/"+id : MW_CONFIG.SUPABASE_URL+"/storage/v1/object/assets/"+id);
+    x.open("POST", "/api/cf/upload/assets/"+id);
     x.setRequestHeader("authorization","Bearer "+MW.session().access_token);
-    if(!cf){ x.setRequestHeader("apikey",MW_CONFIG.SUPABASE_ANON_KEY); x.setRequestHeader("x-upsert","false"); }
     x.setRequestHeader("content-type",type);
     x.upload.onprogress=e=>{ if(e.lengthComputable) onProg(e.loaded/e.total); };
     x.onload=()=>{ if(x.status>=200&&x.status<300) res(); else { let m="Upload failed ("+x.status+")"; try{ const j=JSON.parse(x.responseText); m=j.message||j.error||m; }catch(_){} rej(new Error(m)); } };
