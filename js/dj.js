@@ -373,7 +373,19 @@
     const ses = (window.MW && MW.session && MW.session()) || null; const tok = ses && ses.access_token; if (!tok) return;
     fetch("/api/station", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ kind: "guestdj", A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panY: S.panY, fx: S.fx, voice: S.voice }) }).then((r) => r.json()).then((j) => { if (j && j.ok === false) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended — thanks for spinning 🎧"); } }).catch(() => {});
   }
-  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; DB()?.doc("radio/dj").set(JSON.parse(JSON.stringify(S))).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  /* ---------- multi-screen lead claim (mwLeadLock client, 2026-10-28) ----------
+   * The radio/dj doc can carry leadTab/leadAt: whichever booth screen
+   * holds a fresh claim is the one whose deck and transport writes the
+   * server stores; every other booth is a mirror of it — all screens
+   * control the program together instead of fighting over it. Claims
+   * ride ordinary saves as an _lead field {tab, base, take?}; base is
+   * the updatedAt this tab last adopted, so a takeover must prove it has
+   * seen the current state (a stale tab guessing gets refused). While
+   * nobody has ever claimed, saves pass exactly as they always have. */
+  let lastBaseAt = 0, leadTakeAt = 0, padSentAt = 0;
+  const leadFresh = () => !!(S && S.leadTab && Date.now() - (S.leadAt || 0) < 20000);
+  const serverMirror = () => leadFresh() && S.leadTab !== tabId;
+  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking) { if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
@@ -1917,11 +1929,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // listening to the decks; the keeper answers with the live counts, painted into
   // the header chip, the booth top bar and the station card
   let myCid = ""; try { myCid = sessionStorage.getItem("mw-cid") || ""; if (!myCid) { myCid = rid(); sessionStorage.setItem("mw-cid", myCid); } } catch (_) { myCid = rid(); }
+  let onlineN = 0;
   function paintOnline(o, l, users) {
     // ONE presence list for the whole site: when the keeper answers with the
     // signed-in members who are on right now, that list is the count everywhere
     // (header chip, booth, station card AND the Book strip via MW_ONLINE), so
     // the numbers can never disagree again
+    onlineN = o || 0;
     let n = o;
     if (Array.isArray(users)) {
       n = users.length;
@@ -1950,7 +1964,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199600;
+  const MW_DJ_BUILD = 1793199700;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2024,13 +2038,37 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const was = boothLead; boothLead = lead;
     const badge = document.getElementById("dj-lead");
     if (badge && OWNER()) {
-      badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror: the sound is on your other window or device. Tap here to play it here";
-      badge.style.cursor = boothLead ? "" : "pointer"; badge.setAttribute("role", "button");
-      if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (boothLead || !OWNER()) return; driveWant = Date.now(); try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
+      // The server lead claim (leadTab) outranks the local sound lease for
+      // STATE: while another screen holds a fresh claim this booth is a
+      // state mirror — it renders everything and writes nothing but pad
+      // hits. The local lease still settles which same-machine window
+      // plays the sound.
+      if (serverMirror()) badge.textContent = "🪞 MIRROR — another screen is driving · Tap TAKE CONTROL to drive from here";
+      else if (leadFresh()) badge.textContent = "🎛 Driving: THIS SCREEN" + (boothLead ? " · 🔊 sound here" : " · 🔊 sound elsewhere — tap to play it here") + (onlineN > 1 ? " · 👥 " + onlineN + " on the site" : "");
+      else badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror: the sound is on your other window or device. Tap here to play it here";
+      badge.style.cursor = (serverMirror() || !boothLead) ? "pointer" : ""; badge.setAttribute("role", "button");
+      if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (!OWNER()) return; if (serverMirror()) { takeControl(); return; } if (boothLead) return; driveWant = Date.now(); try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
     }
     if (boothLead && !was && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].playing) adoptDeck(k); });
     if (boothLead && !was && OWNER()) setTimeout(() => save(true), 400);
     if (!boothLead && was) DECKS.forEach((k) => { try { decks[k]?.stop(); } catch (_) {} });
+  }
+  /* TAKE CONTROL (2026-10-28): a mirror seizes the lead claim with one
+   * takeover save — base is the updatedAt this tab last adopted, so the
+   * server can tell a true handoff from a stale tab guessing — and it
+   * pulls the sound lease here too, so state and sound land on the same
+   * screen. The adopted state goes up unchanged: the song on air keeps
+   * its shared start, and adoptDeck (fired by the lease gain) joins it
+   * in position. Nothing restarts. */
+  function takeControl() {
+    if (!serverMirror()) return;
+    driveWant = Date.now();
+    try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {}
+    leadTakeAt = Date.now();
+    save(true);
+    leaseBeat();
+    actx();
+    say("🎛 Taking the wheel on this screen…");
   }
   leaseBeat(); setInterval(leaseBeat, 3000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { leaseBeat(); if (boothLead && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].src) adoptDeck(k); }); } });
@@ -2223,6 +2261,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // advances land here too, so an open booth never shows a stale station.
       if (d && d.by !== tabId && (d.updatedAt || 0) > (S.updatedAt || 0)) {
         S = mergeState(d);
+        lastBaseAt = d.updatedAt || 0;
         adoptQueue(d);
         watchHorn();
         paintOwner(); paintStation();
@@ -2233,6 +2272,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
     S = mergeState(d);
+    if (d && d.by !== tabId) lastBaseAt = d.updatedAt || 0;
     adoptQueue(d);
     watchHorn();
     // heal the booth: anything still pointing at the dead storage comes off the decks
@@ -2262,6 +2302,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function paintPrep() { const box = $("#dj-prep"); if (!box) return; const set = prepSet(), list = TRACKS(); const rows = list.map((t, i) => [t, i]).filter(([t]) => set.has(URLOF(t))); box.innerHTML = rows.length ? rows.map(([t, i]) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button><button class="btn ghost sm" type="button" data-prep="${i}">⭐</button></div>`).join("") : '<small class="muted">Nothing prepared yet — tap ☆ on any song in Your Library.</small>'; const hb = $("#dj-hist"); if (hb) { const h = histList(); hb.innerHTML = h.length ? h.map((x, i) => `<div class="dj-item"><span title="${E(x.title || "")}">${E(x.title || "")}</span>${["A", "B", "C", "D"].map((L) => `<button class="btn ghost sm" type="button" data-hload="${L}" data-hist="${i}">${L}</button>`).join("")}</div>`).join("") : '<small class="muted">Nothing loaded yet — the booth history builds as you play.</small>'; } }
   let net = [];
   async function load(k, item, opts) {
+    if (serverMirror()) leadTakeAt = Date.now();
     const d = deck(k); actx();
     // a pick from his own hand loads STOPPED (owner, 2026-10-27): the deck
     // cues up and waits for his Play. The station's own flows (Auto-DJ, the
@@ -2289,6 +2330,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // travelling; ending the roll lands exactly where the song would have been
   function endRoll(k) { const d = deck(k); if (!d.roll) return; const sh = d.roll.pos + (performance.now() - d.roll.at) / 1000 * (S[k].rate || 1); d.roll = null; d.loop = null; d.loopBeats = 0; S[k].loop = null; S[k].loopBeats = 0; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; paintCues(k); save(true); }
   async function togglePlay(k) {
+    if (serverMirror()) leadTakeAt = Date.now();
     const s = S[k], d = deck(k); if (!s.yt && !okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
     actx(); try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
     if (!boothLead) {
