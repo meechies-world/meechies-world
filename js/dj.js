@@ -643,10 +643,11 @@ html.popdj .popdj-hint{display:block}
    screen goes pure black while the radio keeps playing — on an OLED phone
    black pixels are off, so it looks (and sips power) like the screen is off,
    but the page never sleeps, so even YouTube decks keep playing. A wake lock
-   holds the device awake (see blackout() in the script); one tap anywhere
-   brings the site back. A website cannot reach the phones real brightness
+   holds the device awake (see blackout() in the script). The screen comes
+   back when the listener locks the phone and returns, or presses any key
+   on a computer — tapping the black screen does nothing, by design. A website cannot reach the phones real brightness
    control — pure black is the closest thing the web is allowed to do. */
-#dj-blackout{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:9999;display:grid;place-items:center;cursor:pointer;overscroll-behavior:none}
+#dj-blackout{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:9999;display:grid;place-items:center;cursor:none;overscroll-behavior:none}
 #dj-blackout:fullscreen,#dj-blackout:-webkit-full-screen{width:100%;height:100%}
 #dj-blackout[hidden]{display:none}
 #dj-blackout span{color:#9a9a9a;font:600 13px var(--body);letter-spacing:.08em;opacity:.4;transition:opacity 1.4s ease 2.4s;pointer-events:none}
@@ -1200,7 +1201,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   };
   document.addEventListener("visibilitychange", () => { if (!document.hidden && listening) { wakeForListening(true); setTimeout(resumeDjAudio, 350); } });
   /* BLACKOUT MODE (see the CSS note above): pure black over everything, the
-     sound untouched, a wake lock holding the phone awake — tap to return. */
+     sound untouched, a wake lock holding the phone awake. Exits: lock the
+     phone and come back in, or press any key on a computer. Taps do nothing. */
   let boEl = null, boWakeLock = null, boOn = false, boLockOff = false;
   const boWake = async (on) => {
     try {
@@ -1232,7 +1234,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       }
     } catch (_) { try { if (on && boEl && boEl.requestFullscreen) boEl.requestFullscreen(); } catch (__) {} }
   };
-  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) { if (document.hidden) { if (boOn) boLockOff = true; } else if (boOn) blackout(false); } });
+  /* A system fullscreen exit by itself (Android back gesture, Esc) no
+   * longer closes blackout (owner, 2026-10-28, reversing the morning
+   * rule): the overlay is fixed-position and keeps covering the viewport
+   * without fullscreen. The only exits are lock-and-return on a phone
+   * (a fullscreen drop while hidden still feeds that dismissal) and any
+   * key on a desktop. Tapping the black screen does nothing. */
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && document.hidden && boOn) boLockOff = true; });
   /* Any key exits blackout (owner, 2026-10-28 — a desktop has no tap):
    * the same exit path as tapping. The listener only acts while blackout
    * is on; with blackout off, keypresses pass through untouched. */
@@ -1240,7 +1248,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function blackout(on) {
     boOn = !!on;
     if (boOn) {
-      if (!boEl) { boEl = document.createElement("div"); boEl.id = "dj-blackout"; boEl.innerHTML = "<span>Playing in the dark — tap or press any key to come back</span>"; boEl.addEventListener("click", () => blackout(false)); document.body.appendChild(boEl); }
+      if (!boEl) { boEl = document.createElement("div"); boEl.id = "dj-blackout"; boEl.innerHTML = "<span>Playing in the dark — your screen comes back when you lock your phone and come back in · any key on a computer</span>"; document.body.appendChild(boEl); }
       boEl.hidden = false; boEl.classList.remove("bo-dim"); void boEl.offsetWidth; boEl.classList.add("bo-dim");
       boFullscreen(true);
       boWake(true);
@@ -1996,7 +2004,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199900;
+  const MW_DJ_BUILD = 1793200000;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
