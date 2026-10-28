@@ -74,7 +74,44 @@ export async function onRequestGet({ request, env }) {
   // is silent, so the keeper falls through and advances the rotation anyway,
   // fresh booth or not.
   const deadDeck = S.live && ["A", "B"].some((k) => { const dk = S[k]; return dk && dk.playing && +dk.dur > 0 && dk.start && now > dk.start + (+dk.dur) * 1000 + 60000; });
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
+  // SILENT-BOOTH BREAKER (mwSilentBreak, 2026-10-28): the mirror image of the
+  // deadlock breaker above. There the booth failed to END a deck; here the
+  // booth ended one cleanly (it parked at the end of the song) and then never
+  // advanced, leaving the station silent while boothAt stays fresh, so every
+  // other keeper path stands down. When the station is live with Auto-DJ on,
+  // nothing is playing on any deck, no deliberate pause is stamped, and an
+  // A/B deck timeline has run past its end, the keeper stamps S.silentSince,
+  // persisted with the keeper by-stamp so the booth adopts the write and
+  // carries the field in its own saves instead of wiping it. If that same
+  // silence is still there 20 seconds later, the keeper falls through and
+  // runs the rotation itself. Hard protections: a deliberate pause
+  // (pausedAt set) never fires, Auto-DJ off never fires, any deck playing
+  // never fires, and a deck stopped by hand mid-song (its timeline still in
+  // the future) never fires -- only a song that ended and parked counts.
+  const boothFreshSB = !!(S.boothAt && now - S.boothAt < BOOTH_FRESH);
+  const anyPlayingSB = ["A", "B", "C", "D"].some((k) => S[k] && S[k].playing);
+  const endedAB = ["A", "B"].some((k) => { const dk = S[k]; return dk && +dk.dur > 0 && +dk.start > 0 && now > +dk.start + (+dk.dur) * 1000; });
+  const silentNow = !!(S.live && S.autodj && !S.pausedAt && !anyPlayingSB && endedAB);
+  const ssValid = +S.silentSince > 0 && +S.silentSince <= now;
+  let silentBreak = false;
+  if (silentNow) {
+    if (!ssValid) { if (boothFreshSB) { S.silentSince = now; S.updatedAt = now; S.by = "keeper"; await writeDoc(env, "radio/dj", "radio", S); } }
+    else if (now - S.silentSince > 20000) { silentBreak = true; delete S.silentSince; }
+  } else if (S.silentSince) {
+    delete S.silentSince;
+    if (boothFreshSB && !deadDeck) { S.updatedAt = now; S.by = "keeper"; await writeDoc(env, "radio/dj", "radio", S); }
+  }
+  // HANDOVER BREAKER (mwHandBreak, 2026-10-28): no dead air and no late
+  // starts. When a playing A/B deck reaches its crossfade point (3.5s left,
+  // the booth XF window) and its pair deck is not playing, the keeper falls
+  // through and starts the pair itself with the next item through the normal
+  // rotation crossfade below, even while boothAt is fresh. The rotation loop
+  // re-tests that the pair is still not playing at the moment it starts the
+  // deck, so a booth that began its own handover in the meantime is never
+  // double-started. Same gates as the silence backstop: station live,
+  // Auto-DJ on, no deliberate pause stamped.
+  const handBreak = !!(S.live && S.autodj && !S.pausedAt && ["A", "B"].some((k) => { const dk = S[k]; const pk = S[k === "A" ? "B" : "A"]; return dk && dk.playing && +dk.dur > 0 && +dk.start > 0 && now >= +dk.start + (+dk.dur) * 1000 - 3500 && !(pk && pk.playing); }));
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
@@ -159,7 +196,11 @@ export async function onRequestGet({ request, env }) {
        the unattended station — the booth can still play it when he is back). */
     if (Array.isArray(S.queue) && S.queue.length) {
       while (S.queue.length) {
-        const it = S.queue.shift(); changed = true;
+        /* mwShufflePick: shuffle draw from the queue (Malik, 2026-10-28) --
+           a random entry each draw instead of always the head of the list;
+           the drawn entry is removed from the stored queue, so the list
+           shuffles through the decks without repeats until it empties. */
+        const it = S.queue.splice(Math.floor(Math.random() * S.queue.length), 1)[0]; changed = true;
         if (!it) continue;
         const title = String(it.title || "").slice(0, 120), cover = String(it.cover || "").slice(0, 300);
         if (it.yt) { if (+it.dur > 0) return { src: "", yt: String(it.yt), title, cover, dur: +it.dur }; continue; }
@@ -188,6 +229,7 @@ export async function onRequestGet({ request, env }) {
     return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
+  if (S.silentSince && anyPlayingSB) delete S.silentSince; // mwSilentBreak: a playing deck ends any silence episode
 
   let changed = parked;
   // schedule (owner, 2026-10-27): at a set time each day the station switches
@@ -246,7 +288,7 @@ export async function onRequestGet({ request, env }) {
   // left on the unattended rotation they just read as static and wash, and they
   // made the station sound like it kept "switching off" Pro Radio. The moment
   // Malik opens the booth (boothAt fresh, above) his settings rule again.
-  if (S.fx) {
+  if (S.fx && !boothFreshSB) { // breaker fall-throughs (mwHandBreak/mwSilentBreak/mwDeadDeck) can reach here with a fresh booth -- the clean profile below is for the unattended station only
     const fx = S.fx;
     if ((+fx.crush || 0) !== 0) { fx.crush = 0; changed = true; }
     if ((+fx.gate || 0) !== 0) { fx.gate = 0; changed = true; }
