@@ -1201,14 +1201,24 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   document.addEventListener("visibilitychange", () => { if (!document.hidden && listening) { wakeForListening(true); setTimeout(resumeDjAudio, 350); } });
   /* BLACKOUT MODE (see the CSS note above): pure black over everything, the
      sound untouched, a wake lock holding the phone awake — tap to return. */
-  let boEl = null, boWakeLock = null, boOn = false;
+  let boEl = null, boWakeLock = null, boOn = false, boLockOff = false;
   const boWake = async (on) => {
     try {
       if (on) { if (!boWakeLock && navigator.wakeLock && !document.hidden) { boWakeLock = await navigator.wakeLock.request("screen"); boWakeLock.addEventListener("release", () => { boWakeLock = null; }); } }
       else if (boWakeLock) { const w = boWakeLock; boWakeLock = null; w.release(); }
     } catch (_) {}
   };
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && boOn) boWake(true); });
+  /* Lock-button exit (owner, 2026-10-28): a page cannot hear the phone's
+   * power button, but locking the phone hides the page — so going hidden
+   * while blackout is on marks it dismissed, and the exit is fully
+   * applied when the page shows again: overlay off, fullscreen out, and
+   * NO wake-lock re-grab. The re-grab survives only for a visible return
+   * where blackout is still legitimately on. */
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { if (boOn) boLockOff = true; return; }
+    if (boLockOff) { boLockOff = false; blackout(false); return; }
+    if (boOn) boWake(true);
+  });
   /* Take the overlay itself fullscreen so Android can hide the status-bar
      clock and navigation chrome too; the fixed overlay remains the fallback
      on browsers that refuse or do not support element fullscreen. */
@@ -1222,11 +1232,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       }
     } catch (_) { try { if (on && boEl && boEl.requestFullscreen) boEl.requestFullscreen(); } catch (__) {} }
   };
-  document.addEventListener("fullscreenchange", () => { if (boOn && !document.fullscreenElement) blackout(false); });
+  document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) { if (document.hidden) { if (boOn) boLockOff = true; } else if (boOn) blackout(false); } });
+  /* Any key exits blackout (owner, 2026-10-28 — a desktop has no tap):
+   * the same exit path as tapping. The listener only acts while blackout
+   * is on; with blackout off, keypresses pass through untouched. */
+  document.addEventListener("keydown", () => { if (boOn) blackout(false); });
   function blackout(on) {
     boOn = !!on;
     if (boOn) {
-      if (!boEl) { boEl = document.createElement("div"); boEl.id = "dj-blackout"; boEl.innerHTML = "<span>Playing in the dark — tap anywhere to come back</span>"; boEl.addEventListener("click", () => blackout(false)); document.body.appendChild(boEl); }
+      if (!boEl) { boEl = document.createElement("div"); boEl.id = "dj-blackout"; boEl.innerHTML = "<span>Playing in the dark — tap or press any key to come back</span>"; boEl.addEventListener("click", () => blackout(false)); document.body.appendChild(boEl); }
       boEl.hidden = false; boEl.classList.remove("bo-dim"); void boEl.offsetWidth; boEl.classList.add("bo-dim");
       boFullscreen(true);
       boWake(true);
@@ -1982,7 +1996,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199800;
+  const MW_DJ_BUILD = 1793199900;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
