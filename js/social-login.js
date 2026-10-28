@@ -1,6 +1,6 @@
-/* "Continue with Google / Apple / X / Discord / ..." buttons on the sign-in screens.
- * Only shows the apps that are switched on in Supabase (Authentication > Providers),
- * so a new one appears here by itself as soon as it's set up. Facebook keeps its own button. */
+/* "Continue with Google / Facebook" buttons on the sign-in screens.
+ * Shows the providers switched on in the site's own backend settings
+ * (/api/cf/auth/settings). Facebook keeps its own button. */
 (function () {
   "use strict";
   const LABEL = { google: ["Google", "#fff", "#1f1f1f"], apple: ["Apple", "#000", "#fff"], twitter: ["X", "#000", "#fff"], x: ["X", "#000", "#fff"], discord: ["Discord", "#5865f2", "#fff"],
@@ -11,7 +11,7 @@
 .mw-sso small{color:var(--muted,#bbb);text-align:center;font-size:12px}`;
   document.head.appendChild(css);
 
-  /* Meechie's World's own backend (Cloudflare): Google's official "Sign in with Google" button, no Supabase needed */
+  /* Meechie's World's own backend (Cloudflare): Google's official "Sign in with Google" button, no outside auth service needed */
   const CF = (window.MW_CONFIG || {}).BACKEND === "cf";
   let gid = null, gisLoading = null;
   function loadGIS() {
@@ -32,23 +32,7 @@
   }
   window.MW_googleSignIn = () => { if (gid) gisInit().then(() => google.accounts.id.prompt()).catch(() => {}); };
   async function providers() {
-    if (CF) {
-      try { const r = await fetch("/api/cf/auth/settings").then((x) => x.json()); gid = r.google || null; return [...(gid ? ["google"] : []), ...(r.facebook ? ["facebook"] : [])]; } catch (_) { return []; }
-    }
-    try {
-      const c = window.MW_CONFIG || {};
-      const r = await fetch(c.SUPABASE_URL + "/auth/v1/settings", { headers: { apikey: c.SUPABASE_ANON_KEY } }).then((x) => x.json());
-      const on = Object.entries(r.external || {}).filter(([k, v]) => v === true && LABEL[k] && k !== "twitter").map(([k]) => k);
-      // the settings list doesn't include the newer X (OAuth 2.0) sign-in, so ask for it directly: a redirect means it's switched on
-      // X sign-in is set up but X refuses it for now (pay-per-use account with no credits); set MW_CONFIG.X_LOGIN = true to show it
-      if (c.X_LOGIN && !on.includes("x")) { const t = await fetch(c.SUPABASE_URL + "/auth/v1/authorize?provider=x&redirect_to=" + encodeURIComponent(location.origin + "/"), { redirect: "manual", headers: { apikey: c.SUPABASE_ANON_KEY } }).catch(() => null); if (t && (t.type === "opaqueredirect" || (t.status >= 300 && t.status < 400))) on.push("x"); }
-      return on;
-    } catch (_) { return []; }
-  }
-  function go(p, msgEl) {
-    if (!window.MW || !MW.sb) return;
-    if (msgEl) msgEl.textContent = "Opening " + LABEL[p][0] + "…";
-    MW.sb.auth.signInWithOAuth({ provider: p, options: { redirectTo: location.origin + "/" } }).then((r) => { if (r.error && msgEl) msgEl.textContent = r.error.message; });
+    try { const r = await fetch("/api/cf/auth/settings").then((x) => x.json()); gid = r.google || null; return [...(gid ? ["google"] : []), ...(r.facebook ? ["facebook"] : [])]; } catch (_) { return []; }
   }
   function bar(list, msgEl) {
     const d = document.createElement("div"); d.className = "mw-sso";
@@ -63,9 +47,6 @@
       gisInit(msgEl).then(() => google.accounts.id.renderButton(slot, { theme: "outline", size: "large", shape: "pill", text: "continue_with", width: Math.min(360, (slot.parentElement && slot.parentElement.clientWidth) || 320) })).catch(() => { slot.textContent = "Google sign-in couldn't load. Check your connection."; });
       return d;
     }
-    if (CF) return d;
-    d.innerHTML = list.map((p) => { const [n, bg, fg] = LABEL[p]; return `<button type="button" data-sso="${p}" style="background:${bg};color:${fg}">Continue with ${n}</button>`; }).join("");
-    d.addEventListener("click", (e) => { const b = e.target.closest("[data-sso]"); if (b) go(b.dataset.sso, msgEl); });
     return d;
   }
   async function init() {
