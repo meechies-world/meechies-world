@@ -1604,17 +1604,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* ---------- transition horn (owner, 2026-10-28) ----------
    * Every AUTOMATED handover (booth autoNext below, and the station
    * keeper stamping S.fxHornAt on its own crossfades) fires one air-horn
-   * stab on every audible client at the same moment — a real DJ working
+   * PATTERN on every audible client at the same moment — a real DJ working
    * the transition. Manual deck moves never stamp it. The sound mirrors
    * the booth Air Horn pad (detuned saws into the master chain), so the
    * broadcast polish shapes it and it rides over any deck source,
    * YouTube included. One stab per distinct stamp, per client. */
+  function hornHit(c, t0, dur) {
+    [392, 494, 587].forEach((f) => { const o = c.createOscillator(), bp = c.createBiquadFilter(), g = c.createGain(); o.type = "sawtooth"; o.frequency.setValueAtTime(f * 1.01, t0); o.frequency.exponentialRampToValueAtTime(f * 0.97, t0 + dur); bp.type = "bandpass"; bp.frequency.value = 1200; bp.Q.value = 0.7; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.085, t0 + 0.02); g.gain.setValueAtTime(0.085, t0 + Math.max(0.02, dur - 0.05)); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); o.connect(bp); bp.connect(g); g.connect(masterIn); o.start(t0); o.stop(t0 + dur + 0.05); });
+  }
   function hornStab() {
     try {
       const c = actx(); if (!c || !masterIn) return;
       if (c.state !== "running") c.resume().catch(() => {});
-      const t = c.currentTime;
-      [392, 494, 587].forEach((f) => { const o = c.createOscillator(), g = c.createGain(); o.type = "sawtooth"; o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.09, t + 0.03); g.gain.setValueAtTime(0.09, t + 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.75); o.connect(g); g.connect(masterIn); o.start(t); o.stop(t + 0.8); });
+      const t = c.currentTime + 0.02;
+      // A DJ working the horn across the blend, not one flat beep: a long
+      // blast, three quick re-trigger stabs, and a final long blast with
+      // the pitch sagging as the pressure drops — about 1.8 seconds.
+      hornHit(c, t, 0.5); hornHit(c, t + 0.56, 0.13); hornHit(c, t + 0.74, 0.13); hornHit(c, t + 0.92, 0.13); hornHit(c, t + 1.12, 0.68);
     } catch (_) {}
   }
   let hornHeard = 0, hornInit = false;
@@ -1891,6 +1897,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
           else { dd._stallAt = 0; dd._stallTried = false; deckEnded(k); }
         }
       }
+      // Preload (owner, 2026-10-28: transitions took too long because the
+      // next song only started LOADING at the 5-second mark): once the
+      // playing deck is inside its last 15 seconds, pick the next item and
+      // load it onto the pair deck — file decks buffer, video decks mount
+      // their player (setYt only presses play when the deck is flagged
+      // playing, so a preload mount sits cued and silent) — and the
+      // handover at 5 seconds becomes just play + fade.
+      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !S[PAIR[k]].playing && !(handoverBusy && Date.now() - handoverAt < 20000) && !(preLoad && preLoad.forStart === S[k].start)) { const elP = decks[k].el, remP = elP && elP.duration && isFinite(elP.duration) ? elP.duration - elP.currentTime : 99; if (remP > 5 && remP <= 15) { const tgtP = PAIR[k]; preLoad = { target: tgtP, forStart: S[k].start, item: null }; pickNextItem().then(async (it) => { if (!it || !preLoad || preLoad.forStart !== S[k].start || preLoad.target !== tgtP) return; preLoad.item = it; saveQueue(); paintQueue(); try { await load(tgtP, it); if (it.yt) { const dp = decks[tgtP]; if (dp) { await dp.setYt(it.yt); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {} }).catch(() => {}); } }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
       if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 5) autoNext(k, true, Math.max(1200, rem * 1000)); /* blend lead 5s (owner, 2026-10-28): the next song is audibly IN before this one ends — never a pause between songs */ }
@@ -1898,13 +1912,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
     document.querySelectorAll("[data-swap]").forEach((b) => { const v = b.dataset.swap.split(":")[1]; b.classList.toggle("hot", !!S[v] && !!S[v].playing); });
-    // Silence recovery (2026-10-28): if a handover died mid-flight — an
-    // unsettled load or play promise can hold the latch and leave every deck
-    // parked with nothing left to retry — a lead booth on a live station
-    // with a roll wanted and nothing playing starts the next song itself.
-    // A deliberate all-deck pause (S.pausedAt) always wins; this never
-    // fires over the DJ's own stop.
-    if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && !S.pausedAt && !DECKS.some((x) => S[x].playing) && !(handoverBusy && Date.now() - handoverAt < 20000)) autoNext(lastEndedK, true);
+    // Dead-air backstop (2026-10-28): Auto-DJ on, station live, nothing
+    // playing, no deliberate pause — that state may not persist. Five
+    // seconds of it and the booth advances on its own, retrying every
+    // few seconds (a stale handover latch is forced open at 6s, not 20s)
+    // until something is actually playing. This is the booth-side rescue
+    // that does not depend on the keeper: the keeper's own rescue is a
+    // doc write that a live booth's next heartbeat can overwrite.
+    if (OWNER() && boothLead && !serverMirror() && S.live && (S.autodj || queue.length) && !S.pausedAt && !DECKS.some((x) => S[x].playing)) {
+      if (!deadAirAt) deadAirAt = Date.now();
+      if (Date.now() - deadAirAt > 5000) { if (handoverBusy && Date.now() - handoverAt >= 6000) handoverBusy = false; if (!handoverBusy) autoNext(lastEndedK, true); }
+    } else deadAirAt = 0;
     if (listening) DECKS.forEach((k) => follow(k));
     // the booth's master screen re-renders on the same heartbeat the listeners
     // get — slots start at opacity 0 and only a render pass raises them, so a
@@ -1964,7 +1982,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199700;
+  const MW_DJ_BUILD = 1793199800;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2634,15 +2652,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     return null;
   }
-  let xfAnim = null, adTimer = null, handoverBusy = false, handoverAt = 0, lastEndedK = "A";
+  let xfAnim = null, adTimer = null, handoverBusy = false, handoverAt = 0, lastEndedK = "A", deadAirAt = 0, preLoad = null;
   const usedPicks = new Set((() => { try { return JSON.parse(localStorage.getItem("mw-dj-usedpicks") || "[]"); } catch (_) { return []; } })());
-  async function autoNext(endedK, force, fadeMs) {
-    if ((!S.autodj && !force) || !boothLead) return;
-    // A handover that died mid-flight (an unsettled load or play promise)
-    // must not hold this latch forever: one older than 20s is stuck, and
-    // this call takes over (2026-10-28: a stuck latch meant the song ended
-    // and nothing ever rolled again).
-    if (handoverBusy && Date.now() - handoverAt < 20000) return; handoverBusy = true; handoverAt = Date.now();
+  /* pickNextItem: what plays next, in the booth's order — a listener pick
+   * first (played once, then deleted), then the queue (shuffled: drawn at
+   * random and removed, no repeats until it empties), then, with Auto-DJ
+   * on, the pool and the library rotation. Null when nothing is available. */
+  async function pickNextItem() {
     let item = null;
     const pick = reqCache.filter((r) => r.data && r.data.kind === "pick" && !usedPicks.has(r.id)).sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
@@ -2656,22 +2672,51 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // The queue SHUFFLES through the decks (owner, 2026-10-28): draw at
     // random and remove the pick, so nothing repeats until the queue is empty.
     if (!item && queue.length) { const qi = Math.floor(Math.random() * queue.length); item = queue.splice(qi, 1)[0]; }
-    if (!item && !S.autodj) { handoverBusy = false; return; }
+    if (!item && !S.autodj) return null;
     if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
-    if (!item) { handoverBusy = false; return; }
-    saveQueue(); paintQueue();
+    return item;
+  }
+  async function autoNext(endedK, force, fadeMs) {
+    if ((!S.autodj && !force) || !boothLead) return;
+    // A handover that died mid-flight (an unsettled load or play promise)
+    // must not hold this latch forever: one older than 20s is stuck, and
+    // this call takes over (2026-10-28: a stuck latch meant the song ended
+    // and nothing ever rolled again).
+    if (handoverBusy && Date.now() - handoverAt < 20000) return; handoverBusy = true; handoverAt = Date.now();
     const target = PAIR[endedK] || "A";
     const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; }
-    load(target, item).then(async () => {
+    // A preloaded pair deck (loaded during the last 15 seconds, see the
+    // booth tick) skips the pick and the load entirely — play and fade only.
+    let preItem = null;
+    if (preLoad && preLoad.item && preLoad.target === target && (S[target].yt || "") === (preLoad.item.yt || "") && (S[target].src || "") === (preLoad.item.src || "")) { preItem = preLoad.item; preLoad = null; }
+    // Pick, load, play — then CHECK the deck actually started. One
+    // unplayable pick (an embed-blocked video, a player that will not
+    // mount in this tab) used to eat the whole transition silently: the
+    // horn stamped, the fade animated, nothing played, and the booth
+    // burned one item every 20 seconds without making a sound (the
+    // 2026-10-28 13:58 dead air: three silent minutes, full queue). A
+    // failed start now rolls straight to the next candidate, up to 4.
+    let started = false;
+    for (let attempt = 0; attempt < 4 && !started; attempt++) {
+      const item = attempt === 0 && preItem ? preItem : await pickNextItem();
+      if (!item) break;
+      if (!(attempt === 0 && preItem)) { saveQueue(); paintQueue(); try { await load(target, item); } catch (_) {} }
+      try { await togglePlay(target); } catch (_) {}
+      started = !!S[target].playing;
+      if (!started) say("⏭ That one would not play — rolling the next.");
+    }
+    if (started) {
       // Automated transition: stamp the horn so every audible client plays
-      // the same stab at the same moment, and play it here on the driver.
+      // the same pattern at the same moment, and play it here on the
+      // driver. The stamp lands only on a REAL start — no more horns
+      // over silence.
       S.fxHornAt = Date.now(); hornStab();
-      await togglePlay(target);
       // the crossfade rides the pair's own axis: A/B on S.xf, C/D on S.xf2
       const cd = target === "C" || target === "D", key = cd ? "xf2" : "xf";
       const from = S[key] ?? 0.5, to = target === "B" || target === "D" ? 1 : 0, t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); S[key] = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; handoverBusy = false; save(true); } }, 100);
-    }).catch(() => { handoverBusy = false; });
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); S[key] = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+    }
+    handoverBusy = false; save(true);
   }
 
   /* ---------- pro DJ sounds: best of the free market (curated, verified) ---------- */
