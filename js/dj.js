@@ -204,10 +204,18 @@
     m = v.match(/archive\.org\/details\/([A-Za-z0-9_.-]+)/); if (m) return { iaId: m[1], title: "Archive video" };
     return null;
   };
+  /* Honest seeking on all three video shims (2026-10-28): a seek marks
+   * the shim seeking=true (with its target kept in _skTo) until the player
+   * settles — a state change on YouTube, a seeked event or a timeupdate
+   * landing near the target on Dailymotion/Vimeo — with a 4 second timer
+   * as the backstop so the flag can never stick. follow() and the sync
+   * code already refuse to seek while an element reports seeking; until
+   * now the shims hardcoded it false, so those guards were dead on video
+   * decks and seeks could pile onto a player still landing the last one. */
   function ytShim(d, vid, onTitle) {
     const sh = { _p: null, _dur: 0, _rate: 1, _h: {}, seeking: false, readyState: 0 };
     Object.defineProperties(sh, {
-      currentTime: { get() { try { return sh._p ? sh._p.getCurrentTime() || 0 : 0; } catch (_) { return 0; } }, set(t) { try { sh._p && sh._p.seekTo(Math.max(0, +t || 0), true); } catch (_) {} } },
+      currentTime: { get() { try { return sh._p ? sh._p.getCurrentTime() || 0 : 0; } catch (_) { return 0; } }, set(t) { try { if (sh._p) { sh.seeking = true; sh._skTo = Math.max(0, +t || 0); clearTimeout(sh._skTm); sh._skTm = setTimeout(() => { sh.seeking = false; }, 4000); sh._p.seekTo(sh._skTo, true); } } catch (_) {} } },
       duration: { get() { try { return (sh._p && sh._p.getDuration()) || sh._dur || 0; } catch (_) { return sh._dur || 0; } } },
       paused: { get() { try { return !sh._p || sh._p.getPlayerState() !== 1; } catch (_) { return true; } } },
       playbackRate: { get() { return sh._rate; }, set(r) { sh._rate = +r || 1; try { if (sh._p) { const av = sh._p.getAvailablePlaybackRates() || [1]; let best = av[0]; av.forEach((x) => { if (Math.abs(x - sh._rate) < Math.abs(best - sh._rate)) best = x; }); sh._p.setPlaybackRate(best); } } catch (_) {} } },
@@ -249,7 +257,7 @@
       try {
         sh._p = new YT.Player(mountEl, { videoId: vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 1 }, events: {
           onReady: (e) => { sh.readyState = 4; try { sh._dur = e.target.getDuration() || 0; const vd = e.target.getVideoData && e.target.getVideoData(); if (vd && onTitle) onTitle(vd.title || "", sh._dur); } catch (_) {} fin(true); },
-          onStateChange: (e) => { if (e.data === 0) sh._fire("ended"); if (e.data === 1) { try { sh._dur = sh._p.getDuration() || sh._dur; } catch (_) {} if (sh._rescued) { sh._rescued = false; try { sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } catch (_) {} } } },
+          onStateChange: (e) => { sh.seeking = false; if (e.data === 0) sh._fire("ended"); if (e.data === 1) { try { sh._dur = sh._p.getDuration() || sh._dur; } catch (_) {} if (sh._rescued) { sh._rescued = false; try { sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } catch (_) {} } } },
           onError: () => fin(false),
         } });
       } catch (_) { fin(false); }
@@ -271,7 +279,7 @@
       destroy() { try { const el = wrap._dm && (wrap._dm.iframe || wrap._dm.element); if (el && el.parentNode) el.parentNode.removeChild(el); } catch (_) {} wrap._dm = null; } };
     sh._p = wrap;
     Object.defineProperties(sh, {
-      currentTime: { get() { return sh._cur || 0; }, set(t) { try { wrap._dm && wrap._dm.seek(Math.max(0, +t || 0)); } catch (_) {} } },
+      currentTime: { get() { return sh._cur || 0; }, set(t) { try { if (wrap._dm) { sh.seeking = true; sh._skTo = Math.max(0, +t || 0); clearTimeout(sh._skTm); sh._skTm = setTimeout(() => { sh.seeking = false; }, 4000); wrap._dm.seek(sh._skTo); } } catch (_) {} } },
       duration: { get() { return sh._dur || 0; } },
       paused: { get() { return sh._state !== 1; } },
       playbackRate: { get() { return sh._rate; }, set(r) { sh._rate = +r || 1; try { if (wrap._dm && wrap._dm.setPlaybackRate) wrap._dm.setPlaybackRate(sh._rate); } catch (_) {} } },
@@ -293,7 +301,8 @@
         on("apiready", () => { sh.readyState = 4; fin(true); });
         on("loadedmetadata", (e) => { try { if (e && e.duration) sh._dur = e.duration; } catch (_) {} });
         on("durationchange", (e) => { try { if (e && e.duration) sh._dur = e.duration; } catch (_) {} });
-        on("timeupdate", (e) => { try { if (e && typeof e.time === "number") sh._cur = e.time; if (e && typeof e.time === "number" && e.duration) sh._dur = e.duration; } catch (_) {} });
+        on("timeupdate", (e) => { try { if (e && typeof e.time === "number") sh._cur = e.time; if (e && typeof e.time === "number" && e.duration) sh._dur = e.duration; if (sh.seeking && Math.abs(sh._cur - (sh._skTo || 0)) < 2) sh.seeking = false; } catch (_) {} });
+        on("seeked", () => { sh.seeking = false; });
         on("play", () => { sh._state = 1; });
         on("pause", () => { if (sh._state !== 0) sh._state = 2; });
         on("ended", () => { sh._state = 0; sh._fire("ended"); });
@@ -311,7 +320,7 @@
       destroy() { try { wrap._vm && wrap._vm.destroy(); } catch (_) {} wrap._vm = null; } };
     sh._p = wrap;
     Object.defineProperties(sh, {
-      currentTime: { get() { return sh._cur || 0; }, set(t) { try { wrap._vm && wrap._vm.setCurrentTime(Math.max(0, +t || 0)).catch(() => {}); } catch (_) {} } },
+      currentTime: { get() { return sh._cur || 0; }, set(t) { try { if (wrap._vm) { sh.seeking = true; sh._skTo = Math.max(0, +t || 0); clearTimeout(sh._skTm); sh._skTm = setTimeout(() => { sh.seeking = false; }, 4000); wrap._vm.setCurrentTime(sh._skTo).catch(() => {}); } } catch (_) {} } },
       duration: { get() { return sh._dur || 0; } },
       paused: { get() { return sh._state !== 1; } },
       playbackRate: { get() { return sh._rate; }, set(r) { sh._rate = +r || 1; try { wrap._vm && wrap._vm.setPlaybackRate(sh._rate).catch(() => {}); } catch (_) {} } },
@@ -330,7 +339,8 @@
         const p = new Vimeo.Player(mountEl, { id: vid, width: "100%", height: "100%", controls: true, title: false, byline: false, portrait: false });
         wrap._vm = p;
         p.ready().then(() => { sh.readyState = 4; fin(true); p.getDuration().then((s) => { if (s) sh._dur = s; if (onTitle) p.getVideoTitle().then((t) => onTitle(t || "", sh._dur)).catch(() => {}); }).catch(() => {}); }).catch(() => fin(false));
-        p.on("timeupdate", (e) => { try { if (e && typeof e.seconds === "number") sh._cur = e.seconds; } catch (_) {} });
+        p.on("timeupdate", (e) => { try { if (e && typeof e.seconds === "number") sh._cur = e.seconds; if (sh.seeking && Math.abs(sh._cur - (sh._skTo || 0)) < 2) sh.seeking = false; } catch (_) {} });
+        p.on("seeked", () => { sh.seeking = false; });
         p.on("play", () => { sh._state = 1; });
         p.on("pause", () => { if (sh._state !== 0) sh._state = 2; });
         p.on("ended", () => { sh._state = 0; sh._fire("ended"); });
@@ -1408,7 +1418,22 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // beat-synced FX: echo, flanger and the chopper follow the tempo of what's playing
     if (f.sync !== false) { const rb = refBpm(); if (rb > 0) { const bl = 60 / rb; if (echoDly) echoDly.delayTime.value = bl * (f.ediv || 0.75); if (flaLfo) flaLfo.frequency.value = 1 / (bl * 2); if (phaLfo) phaLfo.frequency.value = 1 / (bl * 4); if (gateOsc && (+f.gate || 0) > 0) gateOsc.frequency.value = (+f.gate / 2) * (rb / 60); } }
   }
+  /* follow() single-flight wrapper (2026-10-28): follow is called from
+   * the booth tick, onState, syncDecks, the lease gain and visibility
+   * returns, and overlapping runs for the same deck interleaved their
+   * awaits — two mounts racing on one video deck, seeks landing on top
+   * of each other. One run per deck at a time; a call that arrives
+   * mid-run asks for exactly one more pass when the current one ends.
+   * The synchronous prefix is preserved: followRun still issues its
+   * play() before its first await, so the Listen-tap chain on iPhones
+   * (play must ride the tap) is untouched. */
   async function follow(k) {
+    const d = deck(k); if (!d) return;
+    if (d._fIn) { d._fAgain = true; return; }
+    d._fIn = true;
+    try { await followRun(k); } finally { d._fIn = false; if (d._fAgain) { d._fAgain = false; follow(k); } }
+  }
+  async function followRun(k) {
     const s = S[k], d = deck(k);
     if (s.yt) {
       // a YouTube deck: listeners watch it on the station's ON AIR video stage;
@@ -1900,7 +1925,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199400;
+  const MW_DJ_BUILD = 1793199500;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
