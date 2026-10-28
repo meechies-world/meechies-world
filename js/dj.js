@@ -431,7 +431,8 @@ html{scrollbar-gutter:stable}
 .pad.custom{border-style:dashed}
 .pad small{display:block;color:var(--muted);font-weight:600;font-size:10px;margin-top:3px}
 .dj-list{display:grid;gap:6px;max-height:240px;overflow:auto;min-width:0}
-.dj-item{display:grid;grid-template-columns:minmax(0,1fr) repeat(5,auto);gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-width:0}
+.dj-item{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-width:0}
+.dj-item>span{flex:1 1 130px;min-width:0}
 .dj-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dj-search{display:flex;gap:8px}.dj-search input,.dj-panel input[type=text],.dj-panel textarea{flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}
 .req{display:grid;gap:4px;padding:9px;border:1px solid var(--line);border-radius:10px;font-size:14px}
@@ -584,7 +585,12 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
 html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
 @media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
-@media (max-width:760px){.dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#dj-browser .dj-item{grid-template-columns:minmax(0,1fr) repeat(5,44px)}#dj-browser .dj-item .btn{min-width:44px;width:44px;padding:0}}
+@media (max-width:760px){.dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#dj-browser .dj-item .btn{min-width:44px;min-height:44px;padding:0 6px}}
+/* song rows must be READABLE (owner, 2026-10-28: on the song search you cant
+   scroll over to see what song youre choosing): on narrow screens the title
+   wraps in full instead of truncating to a sliver, and the deck buttons wrap
+   under it instead of running off the clipped right edge */
+@media (max-width:900px){.dj-item span{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}}
 @media (orientation:landscape) and (max-height:540px) and (max-width:1100px){.dj-decks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}.dj-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}.dj-decks>.deck[data-deck="C"]{grid-column:3;grid-row:1}.dj-decks>.deck[data-deck="D"]{grid-column:4;grid-row:1}.dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}.dj-decks>.mixer.m2{grid-column:1/-1;grid-row:3}.dj-decks>.swapbar{display:none!important}#dj-owner .deck{padding:8px;gap:5px}#dj-owner .deck .platter{width:92px}#dj-owner .deck .wave{height:40px}}
 .vstage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .vslot{position:absolute;inset:0;opacity:0;transition:opacity .12s linear;pointer-events:none}
