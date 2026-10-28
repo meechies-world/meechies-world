@@ -1487,6 +1487,31 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     applyFx(); levels();
     if (OWNER() && !(S[k].bpm > 0) && !s.yt) anaLater(k);
   }
+  /* adoptDeck (2026-10-28): the smooth booth takeover. When this window
+   * becomes the sound — lease gain, booth open, visibility return — a deck
+   * the station says is playing must JOIN the song where it actually is,
+   * not restart it: follow() loads and plays it, then this lands the
+   * element on the shared wall-clock position, retrying briefly while
+   * the player warms up (a video shim especially can take a moment to
+   * accept a seek, and follow() gets exactly one seek attempt). It never
+   * writes S.start — the shared timeline is the station's truth and the
+   * element is what moves. If the DJ grabs the deck himself meanwhile
+   * (pause, reload, a fresh state), adoption stops and his hands win. */
+  async function adoptDeck(k) {
+    await follow(k);
+    const s0 = S[k], d = deck(k);
+    if (!s0 || !s0.playing || !d || !d.el || s0.loop) return;
+    if (d.noSync && Date.now() < d.noSync) return;
+    if (+s0.dur > 0 && posOf(k) > +s0.dur - 4) return;
+    for (let i = 0; i < 6; i++) {
+      if (S[k] !== s0 || !S[k].playing) return;
+      const want = posOf(k); if (!(want > 1)) return;
+      let ct = 0; try { ct = d.el.currentTime || 0; } catch (_) {}
+      if (Math.abs(ct - want) <= 1.5) return;
+      try { d.el.currentTime = want; } catch (_) {}
+      await new Promise((r) => setTimeout(r, 450));
+    }
+  }
   // tight sync across devices (owner ask, 2026-10-26): every playing deck is
   // held to the shared timeline — posOf() corrected by the server-clock offset.
   // Small drift glides back with a brief rate nudge (no audible jump); big
@@ -1925,7 +1950,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793199500;
+  const MW_DJ_BUILD = 1793199600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2003,12 +2028,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       badge.style.cursor = boothLead ? "" : "pointer"; badge.setAttribute("role", "button");
       if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (boothLead || !OWNER()) return; driveWant = Date.now(); try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
     }
-    if (boothLead && !was && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].playing) follow(k); });
+    if (boothLead && !was && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].playing) adoptDeck(k); });
     if (boothLead && !was && OWNER()) setTimeout(() => save(true), 400);
     if (!boothLead && was) DECKS.forEach((k) => { try { decks[k]?.stop(); } catch (_) {} });
   }
   leaseBeat(); setInterval(leaseBeat, 3000);
-  document.addEventListener("visibilitychange", () => { if (!document.hidden) { leaseBeat(); if (boothLead && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].src) follow(k); }); } });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { leaseBeat(); if (boothLead && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].src) adoptDeck(k); }); } });
   addEventListener("pagehide", () => { if (boothLead) { try { const L = JSON.parse(localStorage.getItem(leaseKey) || "null"); if (L && L.id === tabId) localStorage.removeItem(leaseKey); } catch (_) {} } });
   setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } paintStation(); }, 30000);
   /* Never-stop listening (owner, 2026-10-28): pressing Listen is remembered
@@ -2220,7 +2245,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (listening) DECKS.forEach((k) => follow(k));
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
-    if (firstOwnerLoad) { showOwnerUI(); DECKS.forEach((k) => { if (S[k].playing && boothLead) follow(k); }); }
+    if (firstOwnerLoad) { showOwnerUI(); DECKS.forEach((k) => { if (S[k].playing && boothLead) adoptDeck(k); }); }
     playVoice(); firePadHit(); paintStation();
     if (OWNER()) paintOwner();
   }
