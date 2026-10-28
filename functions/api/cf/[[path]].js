@@ -39,6 +39,70 @@ async function corpseGuard(env, path, data) {
   return out;
 }
 
+/* mwLeadLock (2026-10-28): server-side booth leadership for the radio/dj doc.
+ * Two booth screens open at once must never fight over the decks again (a
+ * zombie booth tab once re-saved dead decks over the live station for 40
+ * minutes). The deck/transport fields in LEAD_PROTECTED may only be changed
+ * by the current booth leader, enforced here, at the same client write door
+ * as mwCorpseGuard. Leadership lives in the doc itself (leadTab + leadAt, a
+ * 20-second lease renewed by every leader save). A non-leader save keeps the
+ * stored protected fields and may only change the rest — unless it carries an
+ * informed takeover claim: _lead.take set and _lead.base equal to the stored
+ * updated_at, i.e. the writer based its takeover on the CURRENT state, not a
+ * stale copy (the one-tap take-control path). The _lead claim object is
+ * consumed here and never stored as-is. The keeper never passes this handler
+ * (station.js writes the doc directly), so it is never gated.
+ * Client note (dj.js follow-up): booth saves will send
+ * _lead: { tab, base, take? } on each write and renew the lease by saving.
+ * Compat window: until some client has claimed leadership on this doc (no
+ * leadTab stored), writes pass through whole, exactly as before mwLeadLock —
+ * so the current client, which sends no _lead, is completely unaffected.
+ * Enforcement activates the moment the first claim is recorded.
+ * Order vs mwCorpseGuard: the lock runs first (it decides WHICH fields a
+ * write may change), then corpseGuard evaluates the surviving deck claims —
+ * a leader writing a corpse still gets parked, and a stripped non-leader
+ * write exposes only stored decks that were already validated. */
+const LEAD_LEASE_MS = 20000;
+const LEAD_PROTECTED = ["A", "B", "C", "D", "xf", "xf2", "vmix", "voice", "pausedAt", "boothAt", "live", "queue"];
+async function leadLock(env, path, data) {
+  if (path !== "radio/dj" || !data || typeof data !== "object" || Array.isArray(data)) return data;
+  const nowMs = Date.now();
+  const lead = (data._lead && typeof data._lead === "object" && !Array.isArray(data._lead)) ? data._lead : null;
+  const claimTab = lead && typeof lead.tab === "string" && lead.tab ? lead.tab : null;
+  const out = { ...data };
+  delete out._lead;
+  const row = await env.DB.prepare("select data, updated_at from docs where path = ?").bind(path).first();
+  let S0 = null;
+  if (row) { try { S0 = JSON.parse(row.data || "{}"); } catch (_) { S0 = null; } }
+  if (!S0) {
+    /* no stored doc yet: a claimed write is stored whole and becomes the
+     * first leader; an unclaimed write stores only unprotected fields */
+    if (claimTab) { out.leadTab = claimTab; out.leadAt = nowMs; return out; }
+    for (const k of LEAD_PROTECTED) delete out[k];
+    delete out.leadTab; delete out.leadAt;
+    return out;
+  }
+  if (!S0.leadTab) {
+    /* compat window: leadership has never been claimed on this doc, so
+     * legacy writes keep passing whole. A claim, when one arrives, is
+     * recorded — and enforcement is on from that write onward. */
+    if (claimTab) { out.leadTab = claimTab; out.leadAt = nowMs; }
+    else { delete out.leadTab; delete out.leadAt; }
+    return out;
+  }
+  const leader = (nowMs - (+S0.leadAt || 0)) <= LEAD_LEASE_MS ? S0.leadTab : null;
+  const takeover = !!claimTab && !!lead && lead.take === true && row.updated_at != null && lead.base === row.updated_at;
+  if (claimTab && (leader === null || leader === claimTab || takeover)) {
+    out.leadTab = claimTab; out.leadAt = nowMs; /* claim, renew, or informed takeover: stored whole */
+    return out;
+  }
+  /* not the leader: protected fields stay at the stored values, everything
+   * else in the write passes through, leadership fields are untouchable */
+  for (const k of LEAD_PROTECTED) { if (k in S0) out[k] = S0[k]; else delete out[k]; }
+  out.leadTab = S0.leadTab; out.leadAt = S0.leadAt;
+  return out;
+}
+
 export async function onRequest(ctx) {
   const { request, env, params } = ctx;
   if (!env.DB) return err("The new database isn't connected yet.", 503, "not_ready");
@@ -231,6 +295,7 @@ async function rest(request, env) {
       const r = rows[0] || {}, path = String(r.path || ""), coll = String(r.coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins. Update the page and try again."); // gifts only come from /api/coins/gift (paid)
       checkInsert(path, coll, r.data, uid, await isAdmin(env, uid));
+      r.data = await leadLock(env, path, r.data); /* mwLeadLock */
       r.data = await corpseGuard(env, path, r.data); /* mwCorpseGuard */
       const now = new Date().toISOString();
       const res = await env.DB.batch([
@@ -319,7 +384,8 @@ async function rpc(request, env) {
       const coll = String(args.p_coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins.");
       checkInsert(path, coll, args.p_data, uid, admin);
-      const freshData = await corpseGuard(env, path, args.p_data); /* mwCorpseGuard */
+      let freshData = await leadLock(env, path, args.p_data); /* mwLeadLock */
+      freshData = await corpseGuard(env, path, freshData); /* mwCorpseGuard */
       await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)]);
       return json({ data: null, error: null });
     }
@@ -327,6 +393,7 @@ async function rpc(request, env) {
     if (name === "set_doc") next = args.p_data;
     else { const patch = args.p_patch; if (!patch || typeof patch !== "object" || Array.isArray(patch)) return err("Bad change."); next = { ...JSON.parse(row.data || "{}"), ...patch }; }
     checkUpdate(row, next, uid, admin);
+    next = await leadLock(env, path, next); /* mwLeadLock */
     next = await corpseGuard(env, path, next); /* mwCorpseGuard */
     await env.DB.batch([env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(next), now, path), change(env, "docs", path, row.coll)]);
     return json({ data: null, error: null });
