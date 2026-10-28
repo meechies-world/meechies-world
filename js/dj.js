@@ -611,6 +611,17 @@ html.popdj .popdj-hint{display:block}
    (the booth's or the station card's) is already in front of them */
 #dj-livealert{position:fixed;top:124px;left:50%;transform:translateX(-50%);z-index:66;display:flex;gap:8px;align-items:center;background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #f0cf78;border-radius:999px;padding:7px 10px;box-shadow:0 12px 32px rgba(0,0,0,.6);max-width:min(94vw,560px)}
 #dj-livealert[hidden]{display:none}
+/* BLACKOUT MODE (owner, 2026-10-28): a listener taps Blackout and the whole
+   screen goes pure black while the radio keeps playing — on an OLED phone
+   black pixels are off, so it looks (and sips power) like the screen is off,
+   but the page never sleeps, so even YouTube decks keep playing. A wake lock
+   holds the device awake (see blackout() in the script); one tap anywhere
+   brings the site back. A website cannot reach the phones real brightness
+   control — pure black is the closest thing the web is allowed to do. */
+#dj-blackout{position:fixed;inset:0;background:#000;z-index:9999;display:grid;place-items:center;cursor:pointer}
+#dj-blackout[hidden]{display:none}
+#dj-blackout span{color:#9a9a9a;font:600 13px var(--body);letter-spacing:.08em;opacity:.4;transition:opacity 1.4s ease 2.4s;pointer-events:none}
+#dj-blackout.bo-dim span{opacity:0}
 #dj-livealert .la-txt{font:700 12.5px var(--body);color:#ffe9b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dj-livealert .btn{white-space:nowrap}
 body.dj-on #dj-livealert,html.popdj #dj-livealert,html.gated #dj-livealert{display:none!important}
@@ -879,7 +890,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <label class="lab">Volume<input type="range" min="0" max="2" step="0.01" value="0.9" data-vol="${k}" aria-label="Deck ${k} volume"></label></div></div></div>`;
 
   root.innerHTML = `
-<div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button></div>
+<div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button><button class="btn sm ghost" type="button" id="dj-bobtn">🌑 Blackout</button></div>
 <div class="station" id="dj-station" hidden>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span style="display:flex;gap:8px;align-items:center"><span class="onair-lamp" id="st-lamp"><span class="dot"></span>OFF AIR</span><button class="btn ghost sm" type="button" data-fold="st-body" aria-label="Fold the station panel">▾</button></span></div>
   <div id="st-body">
@@ -1152,6 +1163,24 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     } catch (_) {}
   };
   document.addEventListener("visibilitychange", () => { if (!document.hidden && listening) wakeForListening(true); });
+  /* BLACKOUT MODE (see the CSS note above): pure black over everything, the
+     sound untouched, a wake lock holding the phone awake — tap to return. */
+  let boEl = null, boWakeLock = null, boOn = false;
+  const boWake = async (on) => {
+    try {
+      if (on) { if (!boWakeLock && navigator.wakeLock && !document.hidden) { boWakeLock = await navigator.wakeLock.request("screen"); boWakeLock.addEventListener("release", () => { boWakeLock = null; }); } }
+      else if (boWakeLock) { const w = boWakeLock; boWakeLock = null; w.release(); }
+    } catch (_) {}
+  };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && boOn) boWake(true); });
+  function blackout(on) {
+    boOn = !!on;
+    if (boOn) {
+      if (!boEl) { boEl = document.createElement("div"); boEl.id = "dj-blackout"; boEl.innerHTML = "<span>Playing in the dark — tap anywhere to come back</span>"; boEl.addEventListener("click", () => blackout(false)); document.body.appendChild(boEl); }
+      boEl.hidden = false; boEl.classList.remove("bo-dim"); void boEl.offsetWidth; boEl.classList.add("bo-dim");
+      boWake(true);
+    } else { if (boEl) boEl.hidden = true; boWake(false); }
+  }
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
@@ -1910,6 +1939,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!OWNER() && isLive() && typeof mode !== "undefined" && mode === "radio") { autoMoved = true; startListening(); }
   });
   $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : isLive() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
+  $("#dj-bobtn").addEventListener("click", () => { if (!listening && (isLive() || OWNER())) startListening(); blackout(true); });
 
   let ownerLoaded = false;
   function mergeState(d) {
