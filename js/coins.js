@@ -86,7 +86,7 @@ ${showPacks ? `<small class="muted">Pick a pack. You'll pay securely with Stripe
     const d = dlg(), box = $("#coin-in"); box.innerHTML = `<h3>🪙 My coins</h3><p class="muted">Loading…</p>`; if (!d.open) d.showModal();
     await refresh(); const m = C.me || {}; const owner = (() => { try { return typeof isOwner !== "undefined" && !!isOwner; } catch (_) { return false; } })();
     const minC = (C.info && C.info.minCashout) || 2000;
-    const label = { buy: "Bought coins", gift_sent: "Sent a gift", gift_received: "Earned from a gift", gift_fee: "Your share of a gift" };
+    const label = { buy: "Bought coins", gift_sent: "Sent a gift", gift_received: "Earned from a gift", gift_fee: "Your share of a gift", daily: "Daily check-in", promo: "Welcome drop" };
     box.innerHTML = `<h3>🪙 My coins</h3>
 ${C.paid ? "" : `<p class="muted" style="margin:0">The coin shop opens as soon as Meechie switches on payments. Until then, gifts are free.</p>`}
 <div class="stats"><div><b>${(m.coins || 0).toLocaleString()}</b><small>coins to spend</small></div><div><b>${usd(m.availableCents || 0)}</b><small>earned, ready to cash out</small></div><div><b>${usd(m.paidOutCents || 0)}</b><small>paid to you so far</small></div></div>

@@ -29,6 +29,7 @@
 .cz-pool .bar i{display:block;height:100%;background:linear-gradient(90deg,#8a6a2a,#f0cf78);border-radius:99px;transition:width .6s}
 .cz-pool small{color:var(--muted,#a99f8b)}
 #casino .cz-safe{margin:10px 0 0;color:var(--muted,#a99f8b);font-size:13px}
+#casino .cz-promo{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:12px;border:1px solid var(--gold,#d4a843);border-radius:14px;padding:12px 14px;background:linear-gradient(90deg,rgba(212,168,67,.18),rgba(212,168,67,.05));font-size:15px}
 .cz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:14px}
 .cz-card{border:1px solid #3a3223;border-radius:14px;padding:14px;background:#100d08;display:grid;gap:10px;align-content:start}
 .cz-card h4{margin:0;font-size:18px;color:var(--gold-hi,#f0cf78)}
@@ -113,7 +114,7 @@
     if (!d.pots.length) return `<p class="cz-muted">No open pots. Start one: put up coins on heads or tails and another member can take the other side. Winner takes the pot, minus the 10% house fee.</p>`;
     return d.pots.map((p) => `<div class="cz-pot"><span><b>${E(nameOf(p.creator))}</b> put up <b>🪙 ${p.bet}</b> on <b>${p.side === "heads" ? "🪙 Heads" : "Tails"}</b> · <span class="cz-muted">${ago(p.at)}</span></span>${p.creator === mine ? `<button type="button" class="btn sm ghost" data-pot-cancel="${p.id}">Cancel & refund</button>` : `<button type="button" class="btn sm" data-pot-join="${p.id}">Take ${p.side === "heads" ? "Tails" : "🪙 Heads"} · 🪙 ${p.bet}</button>`}</div>`).join("");
   }
-  const KIND_LABEL = { game_bet: "Bet", game_win: "Won", game_fee: "House fee", pot_bet: "Pot bet", pot_win: "Won a pot", daily: "Daily check-in", pot_refund: "Pot refund", pool_seed: "Seeded the pool", grant: "Granted coins" };
+  const KIND_LABEL = { game_bet: "Bet", game_win: "Won", game_fee: "House fee", pot_bet: "Pot bet", pot_win: "Won a pot", daily: "Daily check-in", promo: "Welcome drop", pot_refund: "Pot refund", pool_seed: "Seeded the pool", grant: "Granted coins" };
   function render() {
     const d = S.data; if (!d) return;
     const poolPct = Math.min(100, Math.round((d.pool / 5000) * 100));
@@ -124,6 +125,7 @@
       <div class="cz-bal">Your coins: <b>🪙 ${(d.myCoins ?? 0).toLocaleString()}</b> <button type="button" class="btn sm" data-coins-open style="margin-left:6px">My coins</button>${d.paid ? ` <button type="button" class="btn sm ghost" data-coins-open>＋ Buy</button>` : ""}</div>
     </div>
     <p class="cz-safe">🛡️ <b>How winning works:</b> winnings are coins, paid only out of the prize pool. The pool fills up from players' lost bets (minus a 10% house fee) — so play is always covered before you bet. Spend winnings on gifts and the person you gift earns <b>real cash value</b> (40%), or cash out your own gift earnings from My coins. ${d.paid ? "" : "The coin shop (buying coins with a card) switches on with payments — until then, play with the coins you have."}</p>
+    ${d.promo && !d.promo.claimed ? `<div class="cz-promo"><span>🎁 <b>Welcome drop:</b> 🪙 ${d.promo.amount} free coins, on the house — one per member, yours to play right now.</span><button type="button" class="btn" data-promo-claim>🪙 Claim ${d.promo.amount} coins</button></div>` : ""}
     <div class="cz-grid">${["flip", "highcard", "dice", "slots", "race"].map(cardHtml).join("")}</div>
     <div class="cz-sec"><h4>⚔️ Player vs Player — Coin Flip Pots</h4>
       <div id="cz-pots">${potsHtml()}</div>
@@ -139,7 +141,7 @@
   async function load() {
     if (!tok()) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">Sign in (or join free) to play for coins — win coins, gift them, and the people you gift earn real cash value.</p>`; return; }
     const r = await api("games");
-    if (!r.ok) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">${E(r.j.error || "The Jackpot couldn't load right now.")}</p>`; return; }
+    if (!r.ok) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Casino</h3></div><p class="cz-safe">${E(r.j.error || "The Jackpot couldn't load right now.")}</p>`; return; }
     const me = await api("me").catch(() => null);
     S.data = r.j; S.data.myCoins = me && me.ok ? me.j.coins : 0;
     for (const g of Object.keys(S.bet)) S.bet[g] = Math.max(S.data.minBet, Math.min(S.bet[g], Math.max(S.data.minBet, S.data.maxBet[g] || S.data.minBet)));
@@ -209,6 +211,8 @@
     if (pk) { const key = pk.closest("[data-pick]").dataset.pick; S.pick[key] = pk.dataset.v; pk.closest("[data-pick]").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === pk)); return; }
     const pl = e.target.closest("[data-play]");
     if (pl) { play(pl.dataset.play); return; }
+    const pc = e.target.closest("[data-promo-claim]");
+    if (pc) { pc.disabled = true; pc.textContent = "Claiming…"; const r = await api("promo/claim", {}); if (r.ok) { say(`🎁 +${r.j.amount} coins — they're in your wallet. Good luck!`); if (S.data) { if (S.data.promo) S.data.promo.claimed = true; S.data.myCoins = r.j.coins; } load(); } else { say(r.j.error || "Couldn't claim right now."); pc.disabled = false; pc.textContent = "🪙 Claim coins"; } return; }
     const join = e.target.closest("[data-pot-join]");
     if (join) { join.disabled = true; const r = await api("pot/join", { id: join.dataset.potJoin }); if (!r.ok) { say(r.j.error || "Couldn't join that pot."); join.disabled = false; return; } say(r.j.youWon ? `🎉 The coin landed ${r.j.land} — you won 🪙 ${r.j.prize}!` : `The coin landed ${r.j.land} — the pot goes to the other player this time.`); load(); return; }
     const cancel = e.target.closest("[data-pot-cancel]");
