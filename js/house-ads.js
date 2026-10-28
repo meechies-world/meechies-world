@@ -1,7 +1,9 @@
 /* House ads (owner's request, 2026-10-25): a slim banner near the top of every view promoting
    the owner's own Printify products from /api/store. In-flow only: never fixed, never floating,
    never covers content (phones-first rule). Skips the Shop view (already the store) and Clips
-   (full-screen video). A visitor can close it for the rest of the session. */
+   (full-screen video). A visitor can close the ads for 24 hours — the hide used to last the
+   rest of the session, but inside an installed app a "session" can run for weeks, which
+   starved the apps of ads for good (owner, 2026-10-27: "make sure my ads are on all my apps"). */
 (function () {
   "use strict";
   if (window.__mwHouseAds) return;
@@ -10,8 +12,8 @@
   var SKIP = { "v-shop": true, "v-clips": true };
   var HIDE_KEY = "mw_ad_hide";
 
-  function isHidden() { try { return !!sessionStorage.getItem(HIDE_KEY); } catch (_) { return false; } }
-  function setHidden() { try { sessionStorage.setItem(HIDE_KEY, "1"); } catch (_) {} }
+  function isHidden() { try { return Date.now() < (+localStorage.getItem(HIDE_KEY) || 0); } catch (_) { return false; } }
+  function setHidden() { try { localStorage.setItem(HIDE_KEY, String(Date.now() + 24 * 3600 * 1000)); } catch (_) {} }
 
   var css = document.createElement("style");
   css.textContent =
