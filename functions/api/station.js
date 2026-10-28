@@ -142,6 +142,7 @@ export async function onRequestGet({ request, env }) {
   const nextItem = async (avoidSrc) => {
     const pk = await takePick();
     if (pk) return pk;
+    if (Array.isArray(S.schedQ) && S.schedQ.length) return S.schedQ.shift();
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
     if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
     const t = bagPick(avoidSrc);
@@ -165,16 +166,39 @@ export async function onRequestGet({ request, env }) {
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
 
   let changed = parked;
+  // schedule (owner, 2026-10-27): at a set time each day the station switches
+  // to a saved playlist and plays it through in order. The booth writes the
+  // entries to the station/schedule doc; ready items wait in S.schedQ and
+  // nextItem serves them first. File items only — video items need a real
+  // booth open, like every video deck. The 15-minute firing window means a
+  // station nobody pinged at the exact minute still picks the show up.
+  try {
+    const sd = await readDoc(env, "station/schedule");
+    const entries = sd && Array.isArray(sd.entries) ? sd.entries : [];
+    if (entries.length) {
+      const nowD = new Date(now);
+      const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(nowD);
+      const gp = (t) => +(parts.find((x) => x.type === t) || {}).value || 0;
+      const nowMin = gp("hour") * 60 + gp("minute");
+      const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(nowD);
+      for (const en of entries) {
+        const mm = /^(\d{1,2}):(\d{2})$/.exec(String(en.time || "")); if (!mm) continue;
+        const atMin = (+mm[1]) * 60 + (+mm[2]);
+        const key = en.id + "@" + day;
+        if (nowMin >= atMin && nowMin < atMin + 15 && S.schedFired !== key) {
+          S.schedQ = (en.items || []).filter((it) => it && it.src && !it.yt).map((it) => ({ src: String(it.src), title: String(it.title || ""), cover: String(it.cover || ""), dur: +it.dur || 0 }));
+          S.schedFired = key; changed = true;
+        }
+      }
+    }
+  } catch (_) {}
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
   if (!cur) { // dead air — start the rotation on deck A right now
     startDeckItem("A", await nextItem(""), now); S.xf = 0; changed = true; cur = "A";
   }
   for (let i = 0; i < 60; i++) {
     const other = cur === "A" ? "B" : "A";
-    // unknown length: a music file is assumed ~4 min, but a video deck (YouTube/Dailymotion/Vimeo) is left alone
-    // for 30 min, so the keeper never cuts a long video off halfway (owner, 2026-10-27: songs forced to change)
-    const isVid = /^(yt|dm|vm):/.test(String(S[cur].src || "")) || !!S[cur].yt;
-    const dur = durOf(S[cur]) || (isVid ? 1800 : 240);
+    const dur = durOf(S[cur]) || 240;
     const endAt = (S[cur].start || now) + dur * 1000;
     if (now >= endAt) { // song fully over: stop it; the other deck (already started at the fade) takes the wheel
       if (S[cur].playing) { S[cur].playing = false; S[cur].pos = 0; changed = true; }
