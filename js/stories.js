@@ -17,7 +17,7 @@
   const AV = (id) => { try { return typeof avatarOf === "function" ? avatarOf(id) : ""; } catch (_) { return ""; } };
   const MEM = () => { try { return typeof members !== "undefined" ? members : {}; } catch (_) { return {}; } };
   const okUrl = (u) => /^https:\/\/|^\/m\//.test(u || "") || String(u || "").startsWith(location.origin + "/m/");
-  const safe = (u) => (okUrl(u) ? u : "");
+  const safe = (u) => (okUrl(u) && !/[\s"'()<>\\]/.test(String(u)) ? u : ""); // no quotes/brackets: these go inside CSS url('…')
   const BGS = { gold: "linear-gradient(160deg,#fff1b8,#e3ad3c 45%,#8a5a12)", night: "radial-gradient(120% 90% at 50% 0%,#3a2a0c,#050505 70%)", royal: "linear-gradient(160deg,#2b0a3d,#7b3fb0 55%,#e3ad3c)", fire: "linear-gradient(160deg,#ffcc4d,#ff5a1f 55%,#5a0d0d)", ocean: "linear-gradient(160deg,#56ccf2,#2f80ed 55%,#0b1a3a)", rose: "linear-gradient(160deg,#ffd1dc,#e0559a 55%,#3a0a24)" };
   const REACT = ["😍", "🔥", "😂", "👏", "💯", "👑"];
   let db = null, stories = [], views = [], seen = new Set();

@@ -323,8 +323,9 @@ export async function onRequest({ request, env, params }) {
     const pot = await env.DB.prepare("select * from game_pots where id = ? and status = 'open' and creator = ?").bind(id, me.id).first();
     if (!pot) return err("No open pot of yours with that id.");
     const now = Date.now();
+    const shut = await env.DB.prepare("update game_pots set status = 'cancelled', done_at = ? where id = ? and status = 'open'").bind(now, id).run();
+    if (!shut.meta.changes) return err("That pot was just taken.");
     await env.DB.batch([
-      env.DB.prepare("update game_pots set status = 'cancelled', done_at = ? where id = ?").bind(now, id),
       env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pot.bet, now, me.id),
       env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pc:" + id, me.id, "pot_refund", pot.bet, 0, "flip-pvp", now),
     ]);
@@ -375,7 +376,7 @@ export async function onRequest({ request, env, params }) {
     if (!(await take(env, "gift:" + me.id, 60, 150))) return err("Slow down a little.", 429);
     const b = await request.json().catch(() => ({}));
     const qty = Math.max(1, Math.min(99, Math.round(+b.qty || 1)));
-    const to = String(b.to || ""), kind = String(b.kind || ""), cost = GIFT_COINS[kind] * qty;
+    const to = String(b.to || ""), kind = String(b.kind || ""), cost = (Object.prototype.hasOwnProperty.call(GIFT_COINS, kind) ? GIFT_COINS[kind] : NaN) * qty;
     if (!GIFT_COINS[kind]) return err("Pick a gift.");
     if (!/^[0-9a-f-]{36}$/.test(to) || to === me.id) return err("You can't send a gift to that person.");
     if (!(await env.DB.prepare("select 1 from docs where path = ?").bind("members/" + to).first())) return err("That member doesn't exist.");
@@ -406,7 +407,9 @@ export async function onRequest({ request, env, params }) {
     const w = await wallet(env, me.id), avail = w.earned_cents - w.paid_cents - (await pending(env, me.id));
     if (avail < MIN_CASHOUT_CENTS) return err("You can cash out once you've earned $" + (MIN_CASHOUT_CENTS / 100).toFixed(0) + ".");
     const now = Date.now();
-    await env.DB.prepare("insert into cashouts (uid, cents, method, handle, at) values (?,?,?,?,?)").bind(me.id, avail, methodName, handle, now).run();
+    // one statement re-checks the balance, so two taps at once can't ask for the same money twice
+    const ask = await env.DB.prepare("insert into cashouts (uid, cents, method, handle, at) select ?,?,?,?,? where (select earned_cents - paid_cents from wallets where uid = ?) - (select coalesce(sum(cents),0) from cashouts where uid = ? and status = 'requested') >= ?").bind(me.id, avail, methodName, handle, now, me.id, me.id, avail).run();
+    if (!ask.meta.changes) return err("That cash-out is already on its way.");
     // let Meechie know privately
     await env.DB.batch([
       env.DB.prepare("insert into dms (sender, recipient, body, created_at) values (?,?,?,?)").bind(me.id, OWNER_ID, `💸 Cash-out request: $${(avail / 100).toFixed(2)} by ${methodName} to ${handle}. Pay it, then mark it paid in Coins → Payouts.`, new Date(now).toISOString()),

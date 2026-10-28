@@ -27,6 +27,7 @@
   .player-bar{bottom:var(--tabbar)!important;padding-bottom:0!important}
   #ai-fab,#ai-panel,#mw-fab{bottom:calc(var(--tabbar) + 12px)!important}
   body.has-player #ai-fab,body.has-player #ai-panel,body.has-player #mw-fab{bottom:calc(var(--tabbar) + 84px)!important}
+  #ai-hi{bottom:calc(var(--tabbar) + 70px)!important}body.has-player #ai-hi{bottom:calc(var(--tabbar) + 142px)!important}
   #ai-panel{height:min(560px,calc(100dvh - var(--tabbar) - 120px))!important}
   .toast{bottom:calc(var(--tabbar) + 16px)!important}
   body.has-player .toast{bottom:calc(var(--tabbar) + 90px)!important}

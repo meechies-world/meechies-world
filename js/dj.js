@@ -229,7 +229,8 @@
         // (Owner, 2026-10-28: the radio plays until someone presses stop; the
         // mute only ever changes by a person's press, never by the site.)
         let muted = false; const t0 = Date.now();
-        const iv = setInterval(() => {
+        clearInterval(sh._iv); // a person's pause/stop ends the watch (see sh.pause)
+        const iv = sh._iv = setInterval(() => {
           try {
             const st = sh._p.getPlayerState();
             if (st === 1) { if (muted) { sh._rescued = false; sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } clearInterval(iv); return; }
@@ -240,7 +241,7 @@
       } catch (_) {}
       return Promise.resolve();
     };
-    sh.pause = () => { try { sh._p && sh._p.pauseVideo(); } catch (_) {} };
+    sh.pause = () => { clearInterval(sh._iv); try { sh._p && sh._p.pauseVideo(); } catch (_) {} };
     sh.addEventListener = (ev, fn) => { (sh._h[ev] = sh._h[ev] || []).push(fn); };
     sh.removeEventListener = (ev, fn) => { if (sh._h[ev]) sh._h[ev] = sh._h[ev].filter((f) => f !== fn); };
     sh._fire = (ev) => (sh._h[ev] || []).slice().forEach((f) => { try { f(); } catch (_) {} });

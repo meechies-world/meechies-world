@@ -10,7 +10,7 @@
   const tok = () => { try { return MW.session().access_token; } catch (_) { return ""; } };
   const meId = () => { try { return (MW.session().user || {}).id || ""; } catch (_) { return ""; } };
   const api = (path, body) => fetch("/api/coins/" + path, { method: body ? "POST" : "GET", headers: { "content-type": "application/json", authorization: "Bearer " + tok() }, body: body ? JSON.stringify(body) : undefined }).then(async (r) => ({ ok: r.ok, status: r.status, j: await r.json().catch(() => ({})) }));
-  const nameOf = (uid) => { try { const m = (window.members || {})[uid]; return (m && (m.name || m.username)) || "A member"; } catch (_) { return "A member"; } };
+  const nameOf = (uid) => { try { const all = typeof members !== "undefined" ? members : (window.members || {}); const m = all[uid]; return (m && (m.handle || m.name || m.username)) || "A member"; } catch (_) { return "A member"; } };
   const ago = (t) => { const s = Math.max(1, (Date.now() - t) / 1000); if (s < 90) return "just now"; if (s < 5400) return Math.round(s / 60) + "m ago"; if (s < 129600) return Math.round(s / 3600) + "h ago"; return Math.round(s / 86400) + "d ago"; };
   const CHIP_AMTS = [5, 25, 50, 100, 250, 1000];
   const FACE = { 11: "J", 12: "Q", 13: "K", 14: "A" };

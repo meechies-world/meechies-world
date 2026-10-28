@@ -8,7 +8,7 @@
   const ME = () => (typeof me !== "undefined" ? me : null);
   const MEM = () => (typeof members !== "undefined" ? members : {});
   const POSTS = () => (typeof posts !== "undefined" ? posts : []);
-  const img = (u) => (/^https:\/\//.test(u || "") || /^data:image\/(png|jpe?g|webp);base64,/.test(u || "") ? u : "");
+  const img = (u) => (/^https:\/\/[^\s"'()<>\\]+$/.test(u || "") || /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+\/=]+$/.test(u || "") ? u : ""); // used inside CSS url('…'): no quotes/brackets
   const COL = { gold: "#d4a843", royal: "#7b4fd6", red: "#d64545", blue: "#3d7fe0", green: "#2fa866", pink: "#e0559a", white: "#e8e4da" };
   const NAMES = { facebook: "Facebook", snapchat: "Snapchat", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube", x: "X", whatsapp: "WhatsApp", cashapp: "Cash App", threads: "Threads", linkedin: "LinkedIn", spotify: "Spotify", soundcloud: "SoundCloud", applemusic: "Apple Music", twitch: "Twitch", kick: "Kick", discord: "Discord", telegram: "Telegram", pinterest: "Pinterest", reddit: "Reddit", venmo: "Venmo", paypal: "PayPal", linktree: "Linktree", patreon: "Patreon", bluesky: "Bluesky", tumblr: "Tumblr", vimeo: "Vimeo", rumble: "Rumble", lemon8: "Lemon8", triller: "Triller", audiomack: "Audiomack", bandcamp: "Bandcamp", substack: "Substack", medium: "Medium", etsy: "Etsy", depop: "Depop", poshmark: "Poshmark", truthsocial: "Truth Social", mastodon: "Mastodon", signal: "Signal", tidal: "Tidal", amazonmusic: "Amazon Music", clubhouse: "Clubhouse", bereal: "BeReal", messenger: "Messenger", onlinestore: "Online store", other: "Link" };
   const DB = () => (typeof db !== "undefined" ? db : null);
