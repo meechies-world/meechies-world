@@ -1419,7 +1419,18 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // cues and loops live in the shared state too, so a cue set or a loop armed in the
       // pop-out exists on the window playing the sound (and the other way round)
       if (OWNER()) { if (Array.isArray(s.cues)) { d.cues = s.cues.slice(0, 3); while (d.cues.length < 3) d.cues.push(null); } if (s.loop) { d.loop = s.loop; d.loopBeats = s.loopBeats || 0; } else if (s.loop === null) { d.loop = null; d.loopBeats = 0; } paintCues(k); }
-      await d.set(s.src);
+      // iPhone fix (2026-10-28, "it wont play the radio"): start the element
+      // BEFORE waiting for the file to load. d.set() puts the new src on the
+      // element synchronously, so a play() issued right here still belongs to
+      // the tap that called follow() — the Listen button, a tap-to-resume.
+      // The old order (await the load, then play) broke that chain: iPhone
+      // Safari refuses a play() that waits on the network first, the refusal
+      // was swallowed, and the radio sat silent on iPhones while the button
+      // claimed it was playing. The library player in index.html has always
+      // played first and seeked after, for exactly this reason.
+      const setP = d.set(s.src);
+      if (s.playing) { try { const pp = d.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} }
+      await setP;
     }
     d.el.playbackRate = s.rate || 1;
     const want = posOf(k);
@@ -1864,15 +1875,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try { stageApply(listening ? mixVol : 1, (S.duck || micHot > 0.04) ? 0.28 : 1); } catch (_) {}
     try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch (_) {}
   }
+  /* iPhone sound rescue (2026-10-28): pokeScreens wakes the station video
+     screen players (unmute + play) and is called synchronously from inside
+     the Listen tap — doing the same thing later, from a timer, is refused
+     by iPhones for YouTube sound. tapStart is the safety net: while someone
+     is listening, if their phone still holds a playing deck silent, their
+     next tap anywhere re-runs follow() from inside a real tap, and
+     checkStuck tells them on screen that one tap is all it needs instead of
+     the radio failing silently. */
+  function pokeScreens() { try { [scrView, scrMini].forEach((scr) => { if (scr) scr.slots.forEach((sl) => { if (sl.p && sl.deck) { try { if (sl.p.unMute) sl.p.unMute(); if (sl.p.playVideo) sl.p.playVideo(); } catch (_) {} } }); }); } catch (_) {} }
+  function decksStuck() { return DECKS.some((k) => { const s = S[k], d = decks[k]; return s && s.playing && !s.yt && d && !d.shim && d.el && d.el.paused && d.el.readyState >= 3; }); }
+  function tapStart() { if (!listening) return; if (decksStuck()) DECKS.forEach((k) => follow(k)); pokeScreens(); }
+  function checkStuck() { if (listening && decksStuck()) say("👆 Your phone held the sound back — tap anywhere on the page and the radio starts."); }
   function startListening() {
     try { sessionStorage.removeItem("mw_mini_off"); } catch (_) {}
     listening = true; djKeepSet(true); actx(); wakeForListening(true);
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
     $("#dj-listen").textContent = "⏹ Stop listening"; DECKS.forEach((k) => follow(k));
+    pokeScreens(); document.removeEventListener("pointerdown", tapStart, true); document.addEventListener("pointerdown", tapStart, true); setTimeout(checkStuck, 2200);
     try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
     try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
-  function stopListening() { listening = false; djKeepSet(false); wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  function stopListening() { listening = false; document.removeEventListener("pointerdown", tapStart, true); djKeepSet(false); wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   try {
     if (!SANDBOX && djKeepWanted()) document.addEventListener("pointerdown", function djResumeTap() {
       if (listening) { document.removeEventListener("pointerdown", djResumeTap); return; }
