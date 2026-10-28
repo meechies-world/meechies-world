@@ -1170,7 +1170,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       else if (listenWake) { const w = listenWake; listenWake = null; w.release(); }
     } catch (_) {}
   };
-  document.addEventListener("visibilitychange", () => { if (!document.hidden && listening) wakeForListening(true); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && listening) { wakeForListening(true); setTimeout(resumeDjAudio, 350); } });
   /* BLACKOUT MODE (see the CSS note above): pure black over everything, the
      sound untouched, a wake lock holding the phone awake — tap to return. */
   let boEl = null, boWakeLock = null, boOn = false;
@@ -1839,14 +1839,38 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { leaseBeat(); if (boothLead && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].src) follow(k); }); } });
   addEventListener("pagehide", () => { if (boothLead) { try { const L = JSON.parse(localStorage.getItem(leaseKey) || "null"); if (L && L.id === tabId) localStorage.removeItem(leaseKey); } catch (_) {} } });
   setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } paintStation(); }, 30000);
+  /* Never-stop listening (owner, 2026-10-28): pressing Listen is remembered
+     for 12 hours. Android may freeze a video player while the app is in the
+     background, but the station itself keeps running on the server; when the
+     listener comes back, the decks are re-followed at the live position
+     instead of staying stopped. If Android killed the app outright, the
+     first tap after reopening restarts the music — browsers require that
+     one tap before any sound after a cold start. Pressing Stop clears the
+     memory, so a deliberate stop always wins. */
+  const DJ_KEEP_KEY = "mw-dj-keep";
+  const djKeepSet = (on) => { try { if (on) localStorage.setItem(DJ_KEEP_KEY, String(Date.now())); else localStorage.removeItem(DJ_KEEP_KEY); } catch (_) {} };
+  const djKeepWanted = () => { try { const t = +localStorage.getItem(DJ_KEEP_KEY) || 0; return !!t && Date.now() - t < 12 * 3600 * 1000; } catch (_) { return false; } };
+  function resumeDjAudio() {
+    if (!listening) return;
+    actx(); wakeForListening(true);
+    DECKS.forEach((k) => { if (S[k] && (S[k].playing || S[k].yt || S[k].src)) follow(k); });
+    try { stageApply(listening ? mixVol : 1, (S.duck || micHot > 0.04) ? 0.28 : 1); } catch (_) {}
+    try { if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; } catch (_) {}
+  }
   function startListening() {
-    listening = true; actx(); wakeForListening(true);
+    listening = true; djKeepSet(true); actx(); wakeForListening(true);
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
     $("#dj-listen").textContent = "⏹ Stop listening"; DECKS.forEach((k) => follow(k));
     try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
     try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
-  function stopListening() { listening = false; wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  function stopListening() { listening = false; djKeepSet(false); wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  try {
+    if (!SANDBOX && djKeepWanted()) document.addEventListener("pointerdown", function djResumeTap() {
+      if (listening) { document.removeEventListener("pointerdown", djResumeTap); return; }
+      if (isLive() || OWNER()) startListening();
+    });
+  } catch (_) {}
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
   window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
