@@ -30,6 +30,9 @@
 .cz-pool small{color:var(--muted,#a99f8b)}
 #casino .cz-safe{margin:10px 0 0;color:var(--muted,#a99f8b);font-size:13px}
 #casino .cz-promo{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:12px;border:1px solid var(--gold,#d4a843);border-radius:14px;padding:12px 14px;background:linear-gradient(90deg,rgba(212,168,67,.18),rgba(212,168,67,.05));font-size:15px}
+#casino .cz-auto{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-top:1px dashed #3a3223;padding-top:10px;font-size:13.5px}
+#casino .cz-auto .cz-chips button{font-size:12px;padding:4px 9px}
+#casino .cz-auto b{color:var(--gold-hi,#f0cf78)}
 .cz-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-top:14px}
 .cz-card{border:1px solid #3a3223;border-radius:14px;padding:14px;background:#100d08;display:grid;gap:10px;align-content:start}
 .cz-card h4{margin:0;font-size:18px;color:var(--gold-hi,#f0cf78)}
@@ -71,7 +74,7 @@
   root.id = "casino";
   wrap.insertBefore(root, wrap.firstChild);
 
-  const S = { data: null, bet: { flip: 25, highcard: 25, dice: 25, slots: 25, race: 25 }, pick: { flip: "heads", dice: "under", potSide: "heads" }, potBet: 50, busy: {} };
+  const S = { data: null, bet: { flip: 25, highcard: 25, dice: 25, slots: 25, race: 25 }, pick: { flip: "heads", dice: "under", potSide: "heads" }, potBet: 50, busy: {}, auto: null, autoPick: {} };
   const betOf = (g) => Math.max(S.data ? S.data.minBet : 5, Math.min(S.bet[g] || 25, (S.data && S.data.maxBet[g]) || 0));
 
   function chipsHtml(g) {
@@ -84,6 +87,53 @@
     if (g === "dice") return `<div class="big">🎲 🎲</div><div>Two dice — call the total</div>`;
     if (g === "slots") return `<div class="reels">🌹 🎤 🔥</div><div>Three of a kind pays big</div>`;
     return `<div class="cz-board">${Array.from({ length: 24 }, (_, i) => `<i data-cell="${i}">${i + 1}</i>`).join("")}</div><div>4 dice carry your 👑 down the board</div>`;
+  }
+  /* auto-bet (owner, 2026-10-27 — "set their bets to auto, like DraftKings"):
+     the player picks a round count, the game plays itself at their bet and
+     their call, and they can stop it any time. Same server play route, same
+     odds, same pool caps — it just presses the button for them. It stops on
+     its own when the rounds run out, the coins run low, or the pool caps
+     the bet, and it stops when they leave the Games view. */
+  function autoRow(g) {
+    if (S.auto && S.auto.g === g) return `<div class="cz-auto"><span>🔁 Auto — <b data-autoleft="${g}">${S.auto.left}</b> rounds left · net <b data-autonet="${g}">${S.auto.net >= 0 ? "+" : ""}${S.auto.net}</b></span><button type="button" class="btn sm" data-autostop="1">⏹ Stop</button></div>`;
+    const n = S.autoPick[g] || 10;
+    return `<div class="cz-auto"><span>🔁 Auto-bet</span><span class="cz-chips" data-autochips="${g}">${[10, 25, 50, 100].map((x) => `<button type="button" data-an="${x}" class="${n === x ? "on" : ""}" ${S.auto ? "disabled" : ""}>${x}</button>`).join("")}</span><button type="button" class="btn sm ghost" data-auto="${g}" ${S.auto ? "disabled" : ""}>▶ Start auto</button></div>`;
+  }
+  function autoStage(g, r) {
+    const st = stageEl(g); if (!st) return; const dt = r.j.detail || {};
+    if (g === "flip") st.innerHTML = `<div class="big">${dt.land === "heads" ? "🪙" : "💰"}</div><div>It landed <b>${E(dt.land)}</b> — you called ${E(S.pick.flip)}</div>`;
+    else if (g === "highcard") st.innerHTML = `<div class="cards"><span>${rank(dt.you)}</span><span>${rank(dt.dealer)}</span></div><div>You <b>${rank(dt.you)}</b> vs dealer <b>${rank(dt.dealer)}</b></div>`;
+    else if (g === "dice") st.innerHTML = `<div class="big">${"⚀⚁⚂⚃⚄⚅"[dt.d1 - 1]} ${"⚀⚁⚂⚃⚄⚅"[dt.d2 - 1]}</div><div>Total <b>${dt.sum}</b></div>`;
+    else if (g === "slots") st.innerHTML = `<div class="reels">${(dt.reels || []).map(E).join(" ")}</div><div>${r.j.pay > r.j.bet ? "Jackpot line!" : r.j.pay > 0 ? "A pair pays out." : "No match."}</div>`;
+    else if (g === "race") st.innerHTML = `<div class="big">🏁 ${dt.total}</div><div>Final total <b>${dt.total}</b> of 24</div>`;
+  }
+  function syncMoney(r) {
+    if (r.j.coins != null && S.data) S.data.myCoins = r.j.coins;
+    if (r.j.pool != null && S.data) S.data.pool = r.j.pool;
+    const bal = root.querySelector(".cz-bal b"); if (bal && S.data) bal.textContent = "🪙 " + S.data.myCoins.toLocaleString();
+    const poolB = root.querySelector(".cz-pool b"); if (poolB && S.data) poolB.textContent = "🪙 " + S.data.pool.toLocaleString();
+    const poolBar = root.querySelector(".cz-pool .bar i"); if (poolBar && S.data) poolBar.style.width = Math.min(100, Math.round((S.data.pool / 5000) * 100)) + "%";
+  }
+  async function autoRun(g) {
+    if (S.auto || !S.data) return;
+    const bet = betOf(g);
+    if (bet < S.data.minBet) { say("The prize pool is too low for that game right now."); return; }
+    if ((S.data.myCoins || 0) < bet) { say("Not enough coins for that bet — claim your welcome drop or grab a pack."); return; }
+    S.auto = { g, left: S.autoPick[g] || 10, net: 0, rounds: 0, stop: false };
+    render();
+    while (S.auto && S.auto.g === g && !S.auto.stop && S.auto.left > 0) {
+      if ((S.data.myCoins || 0) < bet) { say("🔁 Auto stopped — your coins ran below the bet."); break; }
+      const r = await api("play", { game: g, bet, choice: S.pick[g] || "" });
+      if (!r.ok) { say(r.j.error === "not_enough_coins" ? "🔁 Auto stopped — not enough coins for the next bet." : "🔁 Auto stopped: " + (r.j.error || "that play did not go through.")); break; }
+      S.auto.left--; S.auto.rounds++; S.auto.net += (r.j.pay || 0) - bet;
+      syncMoney(r); autoStage(g, r); resultLine(g, r);
+      const lf = root.querySelector(`[data-autoleft="${g}"]`); if (lf) lf.textContent = S.auto.left;
+      const nt = root.querySelector(`[data-autonet="${g}"]`); if (nt) nt.textContent = (S.auto.net >= 0 ? "+" : "") + S.auto.net;
+      if (S.auto.left > 0 && !S.auto.stop) await new Promise((res) => setTimeout(res, 700));
+    }
+    const done = S.auto; S.auto = null;
+    if (done && done.rounds) say(`🔁 Auto finished: ${done.rounds} rounds on ${S.data.games[g].name} — net ${done.net >= 0 ? "+" : ""}${done.net} coins.`);
+    load();
   }
   function cardHtml(g) {
     const d = S.data, info = d.games[g], max = d.maxBet[g], low = max < d.minBet;
@@ -104,8 +154,9 @@
       <div class="cz-stage" data-stage="${g}">${stageHtml(g)}</div>
       ${picks[g] || ""}
       ${chipsHtml(g)}
-      <button type="button" class="btn cz-play" data-play="${g}" ${low || S.busy[g] ? "disabled" : ""}>${low ? "Prize pool too low right now" : "Bet 🪙 " + betOf(g) + " — Play"}</button>
+      <button type="button" class="btn cz-play" data-play="${g}" ${low || S.busy[g] || S.auto ? "disabled" : ""}>${low ? "Prize pool too low right now" : S.auto && S.auto.g === g ? "🔁 Auto running…" : "Bet 🪙 " + betOf(g) + " — Play"}</button>
       <div class="cz-res" data-res="${g}"></div>
+      ${autoRow(g)}
       <p class="pay-note">${notes[g]}</p>
     </div>`;
   }
@@ -213,6 +264,12 @@
     if (pl) { play(pl.dataset.play); return; }
     const pc = e.target.closest("[data-promo-claim]");
     if (pc) { pc.disabled = true; pc.textContent = "Claiming…"; const r = await api("promo/claim", {}); if (r.ok) { say(`🎁 +${r.j.amount} coins — they're in your wallet. Good luck!`); if (S.data) { if (S.data.promo) S.data.promo.claimed = true; S.data.myCoins = r.j.coins; } load(); } else { say(r.j.error || "Couldn't claim right now."); pc.disabled = false; pc.textContent = "🪙 Claim coins"; } return; }
+    const ac = e.target.closest("[data-autochips] button");
+    if (ac) { const g = ac.closest("[data-autochips]").dataset.autochips; S.autoPick[g] = +ac.dataset.an; ac.closest("[data-autochips]").querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === ac)); return; }
+    const ab = e.target.closest("[data-auto]");
+    if (ab) { autoRun(ab.dataset.auto); return; }
+    const as = e.target.closest("[data-autostop]");
+    if (as) { if (S.auto) { S.auto.stop = true; as.disabled = true; as.textContent = "Stopping…"; } return; }
     const join = e.target.closest("[data-pot-join]");
     if (join) { join.disabled = true; const r = await api("pot/join", { id: join.dataset.potJoin }); if (!r.ok) { say(r.j.error || "Couldn't join that pot."); join.disabled = false; return; } say(r.j.youWon ? `🎉 The coin landed ${r.j.land} — you won 🪙 ${r.j.prize}!` : `The coin landed ${r.j.land} — the pot goes to the other player this time.`); load(); return; }
     const cancel = e.target.closest("[data-pot-cancel]");
@@ -229,6 +286,6 @@
     if (e.target.id === "cz-seed") { const amt = Math.round(+root.querySelector("#cz-seed-amt").value || 0); const r = await api("pool/seed", { coins: amt }); say(r.ok ? `Prize pool seeded — it's now 🪙 ${r.j.pool}.` : r.j.error || "Seeding failed."); if (r.ok) load(); }
   });
   const view = document.getElementById("v-games");
-  if (view) new MutationObserver(() => { if (!view.hidden) load(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
+  if (view) new MutationObserver(() => { if (!view.hidden) load(); else if (S.auto) S.auto.stop = true; }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   if (view && !view.hidden) load(); else setTimeout(() => { if (!S.data) load(); }, 2500);
 })();

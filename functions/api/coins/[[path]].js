@@ -199,7 +199,7 @@ export async function onRequest({ request, env, params }) {
 
   if (route === "play" && method === "POST") {
     if (await isUnder18(env, me.id)) return err("Members under 18 can't play coin games.");
-    if (!(await take(env, "play:" + me.id, 60, 30))) return err("Slow down a little.", 429);
+    if (!(await take(env, "play:" + me.id, 60, 120))) return err("Slow down a little.", 429);
     const b = await request.json().catch(() => ({}));
     const game = String(b.game || ""), G = GAMES[game]; if (!G) return err("Pick a game.");
     const bet = Math.round(+b.bet || 0);
