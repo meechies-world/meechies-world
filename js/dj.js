@@ -1104,6 +1104,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   /* ---------- levels, following the shared state, listener side ---------- */
   let listening = false, voiceEl = null, heardVoice = "", micHot = 0, mixVol = 1;
+  /* keep the screen awake while a listener is tuned in (owner, 2026-10-27):
+     a sleeping screen is what freezes video decks — the phone itself pauses
+     the page, and no website can override a real lock or a closed app. But
+     while the station is playing the lock never has to happen: hold a screen
+     wake lock for the listener, re-grab it whenever they come back to the
+     tab, and let it go when they stop. His own audio decks also keep playing
+     through a lock with the lock-screen controls (Media Session, below). */
+  let listenWake = null;
+  const wakeForListening = async (on) => {
+    try {
+      if (on) { if (!listenWake && navigator.wakeLock && !document.hidden) { listenWake = await navigator.wakeLock.request("screen"); listenWake.addEventListener("release", () => { listenWake = null; }); } }
+      else if (listenWake) { const w = listenWake; listenWake = null; w.release(); }
+    } catch (_) {}
+  };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && listening) wakeForListening(true); });
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
@@ -1720,13 +1735,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   addEventListener("pagehide", () => { if (boothLead) { try { const L = JSON.parse(localStorage.getItem(leaseKey) || "null"); if (L && L.id === tabId) localStorage.removeItem(leaseKey); } catch (_) {} } });
   setInterval(() => { if (!OWNER() && S.live) { const l = isLive(); $("#dj-banner").hidden = !l; if (!l && listening) endSet(); } paintStation(); }, 30000);
   function startListening() {
-    listening = true; actx();
+    listening = true; actx(); wakeForListening(true);
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
     $("#dj-listen").textContent = "⏹ Stop listening"; DECKS.forEach((k) => follow(k));
     try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
     try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
-  function stopListening() { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  function stopListening() { listening = false; wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
   window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
@@ -1833,7 +1848,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }, { passive: false });
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
   if (typeof media !== "undefined") media.addEventListener("play", () => {
-    if (listening) { listening = false; DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; return; }
+    if (listening) { listening = false; wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; return; }
     // The tables ARE the live radio while a set is live: any radio tune-in (player bar,
     // hero, lock-screen controls, radio-keep) hands over to the deck mix, not the playlist.
     if (!OWNER() && isLive() && typeof mode !== "undefined" && mode === "radio") { autoMoved = true; startListening(); }
