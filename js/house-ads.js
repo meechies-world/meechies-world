@@ -17,16 +17,17 @@
 
   var css = document.createElement("style");
   css.textContent =
-    ".mw-ad{margin:0 0 20px;border:1px solid rgba(212,175,55,.5);border-radius:14px;" +
+    ".mw-ad{margin:0 0 20px;border:1px solid rgba(212,175,55,.5);border-radius:14px;min-height:76px;box-sizing:border-box;" +
     "background:linear-gradient(90deg,rgba(212,175,55,.16),rgba(212,175,55,.05));padding:10px 14px;position:relative}" +
     ".mw-ad a{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;padding-right:22px}" +
     ".mw-ad img{width:54px;height:54px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:#141414}" +
+    ".mw-ad .mw-ad-mid{flex:1;min-width:0}" +
     ".mw-ad .mw-ad-tag{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#d4af37;font-weight:700}" +
-    ".mw-ad .mw-ad-title{display:block;font-weight:700;font-size:15px;line-height:1.3}" +
+    ".mw-ad .mw-ad-title{display:block;font-weight:700;font-size:15px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
     ".mw-ad .mw-ad-price{margin-left:auto;color:#d4af37;font-weight:800;font-size:15px;white-space:nowrap}" +
     ".mw-ad .mw-ad-cta{white-space:nowrap;font-weight:700;font-size:13px;color:#d4af37}" +
     ".mw-ad .mw-ad-x{position:absolute;top:2px;right:6px;background:none;border:0;color:inherit;opacity:.55;font-size:18px;cursor:pointer;line-height:1;padding:6px}" +
-    "@media (max-width:480px){.mw-ad{margin-bottom:14px;padding:8px 10px}.mw-ad img{width:44px;height:44px}.mw-ad .mw-ad-title{font-size:13px}.mw-ad .mw-ad-price{font-size:13px}}" +
+    "@media (max-width:480px){.mw-ad{margin-bottom:14px;padding:8px 10px;min-height:62px}.mw-ad img{width:44px;height:44px}.mw-ad .mw-ad-title{font-size:13px}.mw-ad .mw-ad-price{font-size:13px}}" +
     ".mw-shelf-h{font-size:13px;font-weight:800;letter-spacing:.12em;color:#d4af37;margin:18px 0 8px}" +
     ".mw-rail{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}" +
     ".mw-card{flex:0 0 148px;scroll-snap-align:start;display:block;background:#141414;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:8px;text-decoration:none;color:inherit}" +
@@ -54,6 +55,7 @@
       a.appendChild(img);
     }
     var mid = document.createElement("span");
+    mid.className = "mw-ad-mid";
     var tag = document.createElement("span");
     tag.className = "mw-ad-tag"; tag.textContent = "Meechie's World Merch · " + (p.src || "Ad");
     var ttl = document.createElement("span");
@@ -81,6 +83,11 @@
     slot.appendChild(a); slot.appendChild(x);
   }
 
+  /* No-jump rule (owner, 2026-10-27: "when they refresh it, it doesn't jump"):
+     the ad boxes are created IMMEDIATELY, empty, at their final size — the space
+     is reserved before the product fetch returns, so when the ads fill in (and
+     every 12 seconds when they rotate) nothing on the page moves. If the
+     products never arrive, the reserved boxes are taken back out. */
   function mount() {
     if (isHidden()) return;
     document.querySelectorAll("section.view").forEach(function (sec) {
@@ -95,8 +102,7 @@
       else wrap.appendChild(slot);
       slots.push(slot);
     });
-    slots.forEach(fill);
-    if (slots.length) setInterval(function () { if (!document.hidden) slots.forEach(fill); }, 12000);
+    mountRadioSlots();
   }
 
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -116,34 +122,49 @@
     var h = document.createElement("div"); h.className = "mw-shelf-h"; h.textContent = heading; w.appendChild(h);
     var row = document.createElement("div"); row.className = cls; w.appendChild(row);
     shelves.push(w);
-    return { wrap: w, row: row };
+    return { wrap: w, row: row, h: h };
   }
 
   /* The Radio page carries the full advertising load (owner's ask, 2026-10-26):
      a scrolling product rail under the station card and a product grid under
      the song library, Printify + Shopify mixed, on top of the rotating banner
-     every view already gets. */
-  function mountRadio() {
+     every view already gets. The shelves are placed empty with reserved height
+     the moment the page builds (see the no-jump rule above) and filled when
+     the products land. */
+  var radioRail = null, radioGrid = null;
+  function mountRadioSlots() {
     if (isHidden()) return;
     var sec = document.getElementById("v-radio");
     if (!sec || sec.dataset.mwAdsFull) return;
     sec.dataset.mwAdsFull = "1";
-    var mix = shuffle(products.slice());
     var station = document.getElementById("dj-root");
     if (station && station.parentNode) {
-      var rail = shelf("🛍️ MEECHIE'S WORLD MERCH — FROM THE STORES", "mw-rail");
-      mix.slice(0, 14).forEach(function (p) { rail.row.appendChild(card(p)); });
-      station.parentNode.insertBefore(rail.wrap, station.nextSibling);
+      radioRail = shelf("", "mw-rail");
+      radioRail.wrap.style.minHeight = "250px";
+      station.parentNode.insertBefore(radioRail.wrap, station.nextSibling);
     }
     var tracks = document.getElementById("tracks");
     if (tracks && tracks.parentNode) {
-      var grid = shelf("🔥 MORE FROM THE STORES", "mw-grid");
-      mix.slice(14, 22).forEach(function (p) { grid.row.appendChild(card(p)); });
-      tracks.parentNode.insertBefore(grid.wrap, tracks.nextSibling);
+      radioGrid = shelf("", "mw-grid");
+      radioGrid.wrap.style.minHeight = "250px";
+      tracks.parentNode.insertBefore(radioGrid.wrap, tracks.nextSibling);
       var tail = document.createElement("div");
       tail.className = "mw-ad";
-      grid.wrap.parentNode.insertBefore(tail, grid.wrap.nextSibling);
-      slots.push(tail); fill(tail);
+      radioGrid.wrap.parentNode.insertBefore(tail, radioGrid.wrap.nextSibling);
+      slots.push(tail);
+    }
+  }
+  function fillRadio() {
+    var mix = shuffle(products.slice());
+    if (radioRail) {
+      radioRail.h.textContent = "🛍️ MEECHIE'S WORLD MERCH — FROM THE STORES";
+      mix.slice(0, 14).forEach(function (p) { radioRail.row.appendChild(card(p)); });
+      radioRail.wrap.style.minHeight = "";
+    }
+    if (radioGrid) {
+      radioGrid.h.textContent = "🔥 MORE FROM THE STORES";
+      mix.slice(14, 22).forEach(function (p) { radioGrid.row.appendChild(card(p)); });
+      radioGrid.wrap.style.minHeight = "";
     }
   }
 
@@ -153,13 +174,22 @@
       var pf = got.printify.map(function (p) { return { title: p.title, img: p.img, price: p.price, url: p.url, src: "Printify" }; });
       var sh = got.shopify.filter(function (p) { return /^https:\/\//.test(p.url || ""); }).map(function (p) { return { title: p.title, img: p.img, price: p.price, url: (p.digital && p.buy) ? p.buy : p.url, src: "Shopify" }; });
       products = shuffle(pf.concat(sh));
-      if (products.length) { mount(); mountRadio(); }
+      if (!products.length) {
+        // no ads to show: hand the reserved space back so nothing sits empty
+        slots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); slots = [];
+        shelves.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); shelves = [];
+        return;
+      }
+      slots.forEach(fill);
+      fillRadio();
+      if (slots.length) setInterval(function () { if (!document.hidden) slots.forEach(fill); }, 12000);
     };
     var n = 0, step = function () { if (++n === 2) done(); };
     fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) { got.printify = (j && j.products) || []; }).catch(function () {}).then(step);
     fetch("/api/shopify").then(function (r) { return r.json(); }).then(function (j) { got.shopify = (j && j.products) || []; }).catch(function () {}).then(step);
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
+  function boot() { mount(); start(); }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
