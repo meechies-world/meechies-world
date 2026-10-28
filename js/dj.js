@@ -1439,8 +1439,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // past the end on every sync tick (the seek loop sounds like skipping)
     if (s.playing && +s.dur > 0 && want > +s.dur + 2) { try { d.el.pause(); } catch (_) {} levels(); return; }
     if (s.playing) {
-      if (d.el.duration && want >= d.el.duration - 0.3) { d.el.pause(); levels(); return; }
-      if (!d.el.seeking && d.el.readyState >= 3 && Math.abs(d.el.currentTime - want) > 4) { try { d.el.currentTime = want; } catch (_) {} }
+      // end zone (fix, 2026-10-28, "it starts skipping at the end of the song
+      // instead of fading"): judge the end by the ELEMENT and its own clock,
+      // never by the wall clock alone. A deck always trails the shared
+      // timeline by its load delay, so the old rule (wall position within
+      // 0.3s of the end -> pause) parked decks that still had seconds of
+      // song left, and the seek under it kept jerking the final seconds onto
+      // the wall position — the deck stuttered and skipped instead of
+      // playing out into the crossfade. With <=5s left on the element:
+      // hands off, no seek and no park. It plays out, and the handover
+      // (early crossfade, the ended event, the state park above) owns the
+      // transition.
+      const elDurF = (d.el && isFinite(d.el.duration) && d.el.duration > 0) ? d.el.duration : 0;
+      const elRemF = elDurF > 0 ? elDurF - (d.el.currentTime || 0) : 99;
+      if (elDurF > 0 && elRemF <= 0.35) { d.el.pause(); levels(); return; }
+      if (elRemF > 5 && !d.el.seeking && d.el.readyState >= 3 && Math.abs(d.el.currentTime - want) > 4) { try { d.el.currentTime = want; } catch (_) {} }
       if (d.el.paused) d.el.play().catch(() => {});
     }
     else { d.el.pause(); if (Math.abs(d.el.currentTime - want) > 0.5) { try { d.el.currentTime = want; } catch (_) {} } }
@@ -1453,7 +1466,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // drift seeks clean. Loops, paused elements (a scratch in progress), and
   // brake/spin moves (noSync stamp) are left alone. Video decks can only be
   // re-seeked, and coarsely (their player lands on keyframes).
-  function syncDecks() { if (document.hidden) return; const now = Date.now() + clockOff; DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; const target = Math.max(0, (now - (s.start || now)) / 1000); const durT = +s.dur || 0; if (durT > 0 && target > durT + 2) { try { d.el.pause(); } catch (_) {} return; } if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 2) follow(k); return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
+  function syncDecks() { if (document.hidden) return; const now = Date.now() + clockOff; DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; /* end zone (fix, 2026-10-28): with <=5s left on the element itself, no drift correction at all — it plays out into the crossfade */ const elDurZ = (d.el && isFinite(d.el.duration) && d.el.duration > 0) ? d.el.duration : 0; if (elDurZ > 0 && elDurZ - (d.el.currentTime || 0) <= 5) return; const target = Math.max(0, (now - (s.start || now)) / 1000); const durT = +s.dur || 0; if (durT > 0 && target > durT + 2) { try { d.el.pause(); } catch (_) {} return; } if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 2) follow(k); return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
   setInterval(syncDecks, 500);
   // the screens follow the shared state on their own clock: a booth window that
   // is not the one driving the sound, and a visitor who has not tuned in yet,
@@ -1756,7 +1769,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // no "ended" property for the check above — still stops here, Auto-DJ or
       // not. deckEnded itself decides: with Auto-DJ or a queue it rolls on,
       // otherwise the deck just stops, like a real turntable at the runout.
-      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durT = (decks[k].el && decks[k].el.duration) || +S[k].dur || 0; if (durT > 0 && posOf(k) > durT + 2 && (decks[k].shim || decks[k].el.ended || decks[k].el.paused)) deckEnded(k); }
+      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durT = (decks[k].el && decks[k].el.duration) || +S[k].dur || 0; const elD = decks[k].el; /* a video deck must be done on its OWN clock too: the wall clock runs ahead of its player by the load delay, so firing on the wall clock alone cut video decks that were still playing their final seconds */ const elDone = decks[k].shim ? (elD.paused && durT > 0 && (elD.currentTime || 0) >= durT - 0.5) : (elD.ended || elD.paused); if (durT > 0 && posOf(k) > durT + 2 && elDone) deckEnded(k); }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
       if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && !listening && S[k].playing && decks[k] && !decks[k].loop && !handoverBusy && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 3.5) autoNext(k, true, Math.max(1200, rem * 1000)); }
