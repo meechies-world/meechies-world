@@ -645,19 +645,34 @@ html.popdj .popdj-hint{display:block}
 #dj-camtag{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo,#8a6d2f);color:#f0cf78;border-radius:999px;padding:2px 8px;font:800 10.5px var(--body);letter-spacing:.08em;z-index:5}
 #dj-camwrap.novid #dj-camtag{display:none}
 /* CAMERA SUITE (owner, 2026-10-29): filters + background removal on his
-   camera box — the control strip is pinned to the BOTTOM of the camera
-   square itself — and the small live square of him on the viewers'
-   pop-out master screen (.mw-camov, bottom-right, draggable). */
-#dj-camfx{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);border:2px solid var(--gold,#f0cf78);box-sizing:border-box;display:none;background:#000;z-index:2}
+   camera box, and the small live square of him on the viewers' pop-out
+   master screen (.mw-camov, bottom-right, draggable).
+   CAMERA PRO (owner, 2026-10-29): the cramped chip strip on the square is
+   GONE — the square now carries only a slim [🎛 Edit] bar (top-right) and
+   the name banner (bottom); every control lives in the 📷 CAMERA PRO
+   panel in the studio grid. The composite canvas carries NO CSS mirror
+   any more: the pipeline bakes mirror + zoom + pan into its bitmap, so
+   the booth display and the broadcast frame are the same picture. */
+#dj-camfx{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:2px solid var(--gold,#f0cf78);box-sizing:border-box;display:none;background:#000;z-index:2}
 #dj-camwrap.fxbg #dj-camfx{display:block}
 #dj-camwrap.fxbg #dj-camvid{opacity:0}
 #dj-camwrap.novid #dj-camfx{display:none}
-#dj-camstrip{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;align-items:center;gap:4px;padding:5px 6px;background:rgba(5,5,8,.8);border-top:1px solid var(--gold-lo,#8a6d2f);overflow-x:auto;scrollbar-width:none}
-#dj-camstrip::-webkit-scrollbar{display:none}
-#dj-camstrip .cs-lab{font:800 9.5px var(--body);letter-spacing:.1em;color:var(--gold-hi,#f0cf78);flex:none}
-#dj-camstrip .cs-sep{width:1px;align-self:stretch;background:var(--gold-lo,#8a6d2f);opacity:.6;flex:none;margin:0 2px}
-#dj-camstrip .cs-chip{flex:none;background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);color:#e8e2d2;border-radius:999px;padding:3px 8px;font:700 10.5px var(--body);cursor:pointer;white-space:nowrap}
-#dj-camstrip .cs-chip.on{background:var(--gold,#f0cf78);color:#0b0a08;border-color:var(--gold,#f0cf78)}
+#dj-cambar{position:absolute;top:6px;right:6px;z-index:6;display:flex;align-items:center;gap:6px;background:rgba(5,5,8,.72);border:1px solid var(--gold-lo,#8a6d2f);border-radius:999px;padding:3px 4px 3px 8px}
+#dj-camlook{font:800 10.5px var(--body);letter-spacing:.06em;color:var(--gold-hi,#f0cf78);white-space:nowrap}
+#dj-camedit{background:var(--gold,#f0cf78);color:#0b0a08;border:0;border-radius:999px;padding:5px 11px;font:800 11.5px var(--body);cursor:pointer;white-space:nowrap}
+#dj-cambanner{position:absolute;left:0;right:0;bottom:0;height:11.5%;z-index:5;display:flex;align-items:center;justify-content:center;background:var(--gold,#f0cf78);color:#0b0a08;font-weight:800;letter-spacing:.04em;white-space:nowrap;overflow:hidden;padding:0 8px;box-sizing:border-box}
+#dj-cambanner[hidden]{display:none}
+#dj-camwrap.novid #dj-cambanner{display:none}
+.cp-sec{margin-top:14px}
+.cp-sec:first-of-type{margin-top:2px}
+.cp-lab{display:block;font:800 11px var(--body);letter-spacing:.1em;color:var(--gold-hi,#f0cf78);margin-bottom:7px}
+.cp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cp-chip{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);color:#e8e2d2;border-radius:999px;padding:9px 14px;min-height:38px;font:700 12.5px var(--body);cursor:pointer;white-space:nowrap}
+.cp-chip.on{background:var(--gold,#f0cf78);color:#0b0a08;border-color:var(--gold,#f0cf78)}
+.cp-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:9px}
+.cp-row span{color:#e9d9a6;font-weight:700}
+#dj-campro input[type=range]{width:100%;margin:2px 0 0}
+#dj-campro input[type=text]{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);border-radius:8px;color:#e8e2d2;padding:9px 10px;font:600 13.5px var(--body);box-sizing:border-box}
 .mw-camov{position:absolute;width:30%;aspect-ratio:1/1;z-index:8;border:2px solid var(--gold,#f0cf78);border-radius:8px;overflow:hidden;background:#000;box-shadow:0 6px 18px rgba(0,0,0,.5);touch-action:none;cursor:grab}
 .mw-camov:active{cursor:grabbing}
 .mw-camov img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
@@ -1037,7 +1052,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
     <small>📺 MASTER SCREEN — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
-    <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span></div></div>
+    <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span><div id="dj-cambanner" hidden></div></div><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="mw-sharp" x="-10%" y="-10%" width="120%" height="120%"><feConvolveMatrix id="mw-sharp-k" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" preserveAlpha="true"/></filter><filter id="mw-duo" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 1 0"/><feComponentTransfer><feFuncR type="table" tableValues="0.043 0.941"/><feFuncG type="table" tableValues="0.035 0.812"/><feFuncB type="table" tableValues="0.027 0.471"/></feComponentTransfer></filter></defs></svg></div>
     <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
   </div>
   <div class="dj-panel" id="dj-edit">
@@ -1151,6 +1166,31 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <div class="dj-list" id="ad-drops-list" style="max-height:120px"></div></div>
     <div class="dj-panel"><h4>🎛️ LIVE DJ REQUESTS</h4><div id="djguest-now"><small class="muted">No guest DJ on the tables right now.</small></div><div class="dj-list" id="djreq-list" style="max-height:180px"></div></div>
     <div class="dj-panel"><h4>⚔️ BATTLES</h4><div id="battle-box"><small class="muted">Loading…</small></div><small class="muted" style="display:block;margin-top:6px">Battles run from your open booth — if the booth closes mid-battle, the battle state stays but the turns stop advancing.</small></div>
+    <div class="dj-panel" id="dj-campro" hidden><h4>📷 CAMERA PRO</h4>
+      <div class="cp-sec"><span class="cp-lab">LOOKS — TAP ONE, THEN DIAL IT IN BELOW</span><div class="cp-chips" id="cp-looks"></div></div>
+      <div class="cp-sec"><span class="cp-lab">ADJUST</span>
+        <label class="cp-row">Brightness <span id="cp-b-v">100%</span></label><input type="range" id="cp-b" min="0.5" max="1.5" step="0.01" value="1" aria-label="Camera brightness">
+        <label class="cp-row">Contrast <span id="cp-c-v">100%</span></label><input type="range" id="cp-c" min="0.5" max="1.5" step="0.01" value="1" aria-label="Camera contrast">
+        <label class="cp-row">Saturation <span id="cp-s-v">100%</span></label><input type="range" id="cp-s" min="0" max="2" step="0.01" value="1" aria-label="Camera saturation">
+        <label class="cp-row">Warmth <span id="cp-warm-v">0</span></label><input type="range" id="cp-warm" min="-50" max="50" step="1" value="0" aria-label="Camera warmth">
+        <label class="cp-row">Detail (sharpen) <span id="cp-detail-v">0%</span></label><input type="range" id="cp-detail" min="0" max="100" step="1" value="0" aria-label="Camera detail sharpening">
+      </div>
+      <div class="cp-sec"><span class="cp-lab">FRAME</span>
+        <label class="cp-row">Zoom <span id="cp-zoom-v">1×</span></label><input type="range" id="cp-zoom" min="1" max="2.5" step="0.01" value="1" aria-label="Camera zoom">
+        <div class="cp-chips" style="margin-top:8px"><button type="button" class="cp-chip" id="cp-mirror">🪞 Mirror: ON</button><button type="button" class="cp-chip" id="cp-recenter">◎ Re-center</button></div>
+        <small class="muted" style="display:block;margin-top:6px">Zoom in, then drag on the camera picture itself to reframe. What you see is exactly what viewers get.</small>
+      </div>
+      <div class="cp-sec"><span class="cp-lab">BACKGROUND</span><div class="cp-chips" id="cp-bgs"></div>
+        <label class="cp-row">Blur strength <span id="cp-blur-v">16px</span></label><input type="range" id="cp-blur" min="4" max="40" step="1" value="16" aria-label="Background blur strength">
+        <label class="cp-row">Edge smoothness <span id="cp-edge-v">1.6</span></label><input type="range" id="cp-edge" min="0.8" max="3.2" step="0.1" value="1.6" aria-label="Background edge smoothness">
+        <input type="file" id="dj-cambg-file" accept="image/*" hidden>
+      </div>
+      <div class="cp-sec"><span class="cp-lab">BANNER — YOUR NAME ACROSS THE BOTTOM</span>
+        <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="cp-banner-on" style="width:auto"> Show the banner on my camera — viewers see it in their square too</label>
+        <input type="text" id="cp-banner-text" maxlength="42" value="DJ MEECHIE — LIVE" aria-label="Banner text" style="width:100%;margin-top:8px">
+      </div>
+      <small class="muted" style="display:block;margin-top:12px">The background engine warms up the moment your camera turns on, so tapping a background never stalls the music. On a phone that cannot keep up, the picture analysis steps down a size on its own — the edge stays clean and the song never skips.</small>
+    </div>
     <div class="dj-panel"><h4>📥 REQUESTS &amp; DROPS</h4><div class="dj-list" id="rq-list" style="max-height:220px"><small class="muted">Nothing yet. Listener requests land here.</small></div></div>
     <div class="dj-panel"><h4>🎹 MIDI CONTROLLER</h4>
       <div class="hint" id="dj-midi-stat">Plug any DJ controller into this device by USB, then tap Enable MIDI. Tap LEARN on a row and move the knob, button or jog wheel that should own it — the mapping saves on this device.</div>
@@ -1549,7 +1589,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (camBusy) return false;
     camBusy = true;
     try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 640 }, facingMode: "user" }, audio: false });
       camStream = s;
       const e = camEls();
       if (e.vid) { e.vid.srcObject = s; try { await e.vid.play(); } catch (_) {} }
@@ -1562,10 +1602,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function camSync() {
     try {
       const e = camEls(); if (!e.st) return;
-      camStripBuild();
+      camProBuild();
       if (e.btn) e.btn.style.display = SANDBOX ? "none" : "";
       const on = !SANDBOX && OWNER() && !!(S.vcam && S.vcam.on);
       if (e.btn && camBtnOn !== on) { camBtnOn = on; e.btn.classList.toggle("on", on); e.btn.textContent = on ? "📷 Cam · ON" : "📷 Cam"; }
+      const cp = document.getElementById("dj-campro"); if (cp && cp.hidden === on) cp.hidden = !on; // the Camera Pro panel only exists while the cam is on
       e.st.classList.toggle("cam-on", on);
       if (!on) { camWasOn = false; camStopLocal(); return; }
       if (!camWasOn) { camWasOn = true; camSize(); }
@@ -1585,25 +1626,34 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     camFailAt = 0;
     S.vcam = { on: true, at: Date.now() };
     camSync(); save(true);
-    say("📷 Camera is ON — it sits beside the master video on your booth screen.");
+    say("📷 Camera is ON — it sits beside the master video. Tap 🎛 Edit on the camera for looks, framing and backgrounds.");
   }
   let camRszT = null;
   addEventListener("resize", () => { if (camRszT) clearTimeout(camRszT); camRszT = setTimeout(() => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} }, 200); });
-  /* ================= CAMERA SUITE (owner, 2026-10-29) =================
-   * Two builds on top of the camera square:
-   * 1) FILTERS + BACKGROUND REMOVAL, edited from a control strip pinned
-   *    to the BOTTOM of his camera box ("put my camera filters at the
-   *    bottom of the master screen on my camera box so I can edit my
-   *    camera"). Filters are plain CSS on the cam surface. The background
-   *    engine is Robust Video Matting (free, open-source, off GitHub)
-   *    running in onnxruntime-web; the model file comes from a public
-   *    Hugging Face mirror that is byte-identical to the official
-   *    PeterL1n GitHub release (sha256 checked at build time) because
-   *    GitHub release downloads send no CORS header a browser can use.
-   *    If RVM cannot load, the fallback is MediaPipe Selfie Segmentation
-   *    (also free) — it is a per-frame mask, visibly less steady than
-   *    RVM's recurrent matte. Everything loads LAZILY, only when he
-   *    first taps a background chip other than Off.
+  /* ================= CAMERA PRO (owner, 2026-10-29) =================
+   * His four complaints, answered in one build: the camera LAGGED (the
+   * fp32 matte ran every frame on the main thread), tapping a filter
+   * made the SONG SKIP (a cold engine load + a two-surface filter write
+   * spiked that same thread his WebAudio plays through), he could not
+   * REACH all the filters (chips crammed inside the little square), and
+   * the looks were TOO BASIC — "give me OBS editing tools".
+   * So: the square keeps only a slim [🎛 Edit] bar and his name banner;
+   * every control lives in the 📷 CAMERA PRO panel (looks, adjust
+   * sliders, zoom/pan/mirror framing, background mode + blur + edge,
+   * banner). The background engine is Robust Video Matting (free,
+   * open-source, off GitHub) in onnxruntime-web — the "all" bundle,
+   * which carries the WebGPU backend next to wasm; the model file comes
+   * from a public Hugging Face mirror that is byte-identical to the
+   * official PeterL1n GitHub release (sha256 checked at build time)
+   * because GitHub release downloads send no CORS header a browser can
+   * use. If RVM cannot load, the fallback is MediaPipe Selfie
+   * Segmentation (also free) — a per-frame mask, visibly less steady.
+   * PERFORMANCE, the heart of it: the engine WARMS UP at cam-on (never
+   * at tap time), inference runs single-flight in its own loop (latest
+   * frame wins, an EMA of inference time steps the analysis square
+   * 320 → 256 → 224 when the device cannot keep up), the filter chain
+   * is written to the ONE visible surface only, and the broadcast frame
+   * encodes through async convertToBlob instead of blocking toDataURL.
    * 2) VIEWERS SEE HIM on the pop-out master screen: while his cam is on
    *    and the station is live, the lead booth publishes a fresh camera
    *    FRAME every ~4 seconds into S.vcam.frame and every viewer's
@@ -1611,49 +1661,231 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    *    HONESTY NOTE: this is a live photo relay — a fresh still every
    *    few seconds, NOT full-motion video. The same square becomes the
    *    real video surface when the Realtime streaming path lands.
-   * Booth-local only: filter/BG choices live in localStorage, never in
+   * Booth-local only: camera choices live in localStorage, never in
    * the shared state; the only shared writes are the frame relay. */
-  const CAM_FX_W = 320; // matte pipeline working square (px)
-  const CAM_FILTERS = { off: "", gold: "saturate(1.35) contrast(1.08) sepia(0.30) brightness(1.04)", bw: "grayscale(1) contrast(1.06)", vivid: "saturate(1.75) contrast(1.12)", soft: "brightness(1.13) contrast(0.92) saturate(1.08) blur(0.7px)", noir: "grayscale(1) contrast(1.32) brightness(0.86)" };
-  let camFx = { filter: "off", bg: "off" };
-  try { const sfx = JSON.parse(localStorage.getItem("mw-camfx") || "{}"); if (sfx && typeof sfx === "object") { if (CAM_FILTERS[String(sfx.filter)] != null) camFx.filter = String(sfx.filter); if (["off", "blur", "brand", "pic"].indexOf(String(sfx.bg)) >= 0) camFx.bg = String(sfx.bg); } } catch (_) {}
+  const CAM_FX_W = 320; // display + broadcast square (px); the matte analysis size adapts below it
+  /* A look = a base filter fragment + the ADJUST slider baseline it sets.
+     Duotone runs through the inline SVG filter #mw-duo (luminance mapped
+     onto the black-to-gold ramp); Detail sharpening runs through the
+     SVG feConvolveMatrix filter #mw-sharp, whose kernel interpolates
+     identity → sharpen as the slider climbs. */
+  const CAM_LOOKS = {
+    off: { label: "Off", base: "", b: 1, c: 1, s: 1 },
+    gold: { label: "Gold", base: "sepia(0.30)", b: 1.04, c: 1.08, s: 1.35 },
+    bw: { label: "B&W", base: "grayscale(1)", b: 1, c: 1.06, s: 1 },
+    vivid: { label: "Vivid", base: "", b: 1, c: 1.12, s: 1.75 },
+    soft: { label: "Soft", base: "blur(0.7px)", b: 1.13, c: 0.92, s: 1.08 },
+    noir: { label: "Noir", base: "grayscale(1)", b: 0.86, c: 1.32, s: 1, d: 20 },
+    cinematic: { label: "Cinematic", base: "sepia(0.18) hue-rotate(-8deg)", b: 1.02, c: 1.18, s: 0.88, d: 25 },
+    vintage: { label: "Vintage", base: "sepia(0.55)", b: 1.06, c: 0.94, s: 0.72 },
+    chrome: { label: "Chrome", base: "grayscale(0.35)", b: 1.10, c: 1.28, s: 0.60 },
+    night: { label: "Night", base: "hue-rotate(14deg)", b: 0.85, c: 1.15, s: 0.62 },
+    rose: { label: "Rose", base: "sepia(0.32) hue-rotate(-16deg)", b: 1.05, c: 1.02, s: 1.18 },
+    ice: { label: "Ice", base: "sepia(0.22) hue-rotate(185deg) saturate(1.35)", b: 1.06, c: 1.04, s: 0.90 },
+    duotone: { label: "Duotone", base: "url(#mw-duo)", b: 1, c: 1.05, s: 1 }
+  };
+  let camFx = { look: "off", b: 1, c: 1, s: 1, warm: 0, detail: 0, zoom: 1, panX: 0, panY: 0, mirror: true, bg: "off", blurPx: 16, feather: 1.6, bannerOn: false, bannerText: "DJ MEECHIE — LIVE" };
+  try {
+    const sfx = JSON.parse(localStorage.getItem("mw-camfx") || "{}");
+    if (sfx && typeof sfx === "object") {
+      // graceful migration: saves from before Camera Pro were {filter, bg}
+      if (CAM_LOOKS[String(sfx.look)] != null) camFx.look = String(sfx.look);
+      else if (CAM_LOOKS[String(sfx.filter)] != null) camFx.look = String(sfx.filter);
+      ["b", "c", "s", "warm", "detail"].forEach((k) => { if (isFinite(+sfx[k])) camFx[k] = +sfx[k]; });
+      if (isFinite(+sfx.zoom)) camFx.zoom = Math.min(2.5, Math.max(1, +sfx.zoom));
+      if (isFinite(+sfx.panX)) camFx.panX = Math.min(1, Math.max(-1, +sfx.panX));
+      if (isFinite(+sfx.panY)) camFx.panY = Math.min(1, Math.max(-1, +sfx.panY));
+      if (typeof sfx.mirror === "boolean") camFx.mirror = sfx.mirror;
+      if (["off", "blur", "brand", "pic"].indexOf(String(sfx.bg)) >= 0) camFx.bg = String(sfx.bg);
+      if (isFinite(+sfx.blurPx)) camFx.blurPx = Math.min(40, Math.max(4, +sfx.blurPx));
+      if (isFinite(+sfx.feather)) camFx.feather = Math.min(3.2, Math.max(0.8, +sfx.feather));
+      if (typeof sfx.bannerOn === "boolean") camFx.bannerOn = sfx.bannerOn;
+      if (typeof sfx.bannerText === "string" && sfx.bannerText) camFx.bannerText = sfx.bannerText.slice(0, 42);
+    }
+  } catch (_) {}
   function camFxSave() { try { localStorage.setItem("mw-camfx", JSON.stringify(camFx)); } catch (_) {} }
+  /* the one filter chain, rebuilt from look + sliders; the plain "off at
+     defaults" case returns "" so the surface carries NO filter at all
+     (a filter property — even a no-op one — costs the compositor). */
+  function camFilterCss() {
+    if (camFx.look === "off" && camFx.b === 1 && camFx.c === 1 && camFx.s === 1 && !camFx.warm && !camFx.detail) return "";
+    const L = CAM_LOOKS[camFx.look] || CAM_LOOKS.off, parts = [];
+    let base = L.base;
+    if (base.indexOf("url(#mw-duo)") >= 0 && !document.getElementById("mw-duo")) base = "grayscale(1)"; // defs missing: never hand the compositor a dead reference
+    if (base) parts.push(base);
+    parts.push("brightness(" + camFx.b + ")", "contrast(" + camFx.c + ")", "saturate(" + camFx.s + ")");
+    const w = camFx.warm;
+    if (w > 0) parts.push("sepia(" + Math.min(0.5, w / 100).toFixed(3) + ")", "hue-rotate(" + (-w * 0.15).toFixed(1) + "deg)");
+    else if (w < 0) parts.push("sepia(" + Math.min(0.4, -w / 140).toFixed(3) + ")", "hue-rotate(195deg)", "saturate(1.1)");
+    if (camFx.detail > 0 && document.getElementById("mw-sharp")) parts.push("url(#mw-sharp)");
+    return parts.join(" ");
+  }
+  let camSharpAt = 0;
+  function camSharpSync(force) { // keep the SVG sharpen kernel matched to the Detail slider (throttled — attr writes are cheap, but not free)
+    const now = Date.now(); if (!force && now - camSharpAt < 90) return; camSharpAt = now;
+    const k = document.getElementById("mw-sharp-k"); if (!k) return;
+    const a = Math.round(camFx.detail) / 100 * 1.2, ctr = 1 + 8 * a, r = (x) => Math.round(x * 1000) / 1000;
+    k.setAttribute("kernelMatrix", [r(-a), r(-a), r(-a), r(-a), r(ctr), r(-a), r(-a), r(-a), r(-a)].join(" "));
+  }
+  /* draw a feed into a W x H ctx with the booth framing baked in: cover
+     crop, zoom about the pan-shifted centre, mirror flipped at draw time.
+     Pan is stored in spare-range units (-1..1); the sample rect offsets
+     WITH the pan when mirrored and AGAINST it when not, so the sampled
+     picture moves exactly the way the CSS transform moves the element. */
+  function drawFramed(ctx, src, W, H) {
+    const sw = src.videoWidth || src.naturalWidth || src.width || 0, sh = src.videoHeight || src.naturalHeight || src.height || 0;
+    if (!sw || !sh) return;
+    const sc = Math.max(W / sw, H / sh), cw = W / sc, ch = H / sc;
+    const zw = cw / camFx.zoom, zh = ch / camFx.zoom;
+    let cx = (sw - zw) / 2 + (camFx.mirror ? camFx.panX : -camFx.panX) * (cw - zw) / 2;
+    let cy = (sh - zh) / 2 + camFx.panY * (ch - zh) / 2;
+    cx = Math.max(0, Math.min(cx, sw - zw)); cy = Math.max(0, Math.min(cy, sh - zh));
+    ctx.save();
+    if (camFx.mirror) { ctx.translate(W, 0); ctx.scale(-1, 1); }
+    ctx.drawImage(src, cx, cy, zw, zh, 0, 0, W, H);
+    ctx.restore();
+  }
+  /* the framing transform for the visible VIDEO element (BG off): pan in
+     screen space, zoom about the centre, mirror last — the same numbers
+     drawFramed samples with, so display and capture agree. */
+  function camFrameTransform() {
+    const mx = (1 - 1 / camFx.zoom) / 2;
+    return "translate(" + (camFx.panX * mx * 100).toFixed(2) + "%, " + (camFx.panY * mx * 100).toFixed(2) + "%) scale(" + camFx.zoom + ")" + (camFx.mirror ? " scaleX(-1)" : "");
+  }
+  /* filter + framing go to the ONE surface the eye can see — the video
+     when no background is up, the composite canvas when there is. The
+     canvas never gets a transform: its bitmap is already framed +
+     mirrored by the pipeline (which is also why the brand backdrop text
+     reads correctly now instead of mirror-flipped). */
+  function camProApplySurface() {
+    try {
+      const w = camEls().wrap, v = camEls().vid, fx = document.getElementById("dj-camfx");
+      const bgOn = !!(w && w.classList.contains("fxbg"));
+      const css = camFilterCss();
+      if (v) { v.style.filter = bgOn ? "" : css; v.style.transform = bgOn ? "" : camFrameTransform(); }
+      if (fx) { fx.style.filter = bgOn ? css : ""; fx.style.transform = ""; }
+      if (w) w.style.touchAction = camFx.zoom > 1.01 ? "none" : "";
+    } catch (_) {}
+  }
+  let camApplyRaf = 0;
+  function camProReqApply() { if (camApplyRaf) return; camApplyRaf = requestAnimationFrame(() => { camApplyRaf = 0; camProApplySurface(); camSharpSync(true); }); }
   let camBgImg = null, camBgImgURL = "", camBgQuotaSaid = false;
   try { camBgImgURL = localStorage.getItem("mw-cambg") || ""; } catch (_) {}
   if (camBgImgURL) { const bim = new Image(); bim.onload = () => { camBgImg = bim; }; bim.onerror = () => { camBgImgURL = ""; }; bim.src = camBgImgURL; }
   function drawCover(ctx, src, W, H) { const sw = src.videoWidth || src.naturalWidth || src.width || 0, sh = src.videoHeight || src.naturalHeight || src.height || 0; if (!sw || !sh) return; const sc = Math.max(W / sw, H / sh), dw = sw * sc, dh = sh * sc; ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh); }
-  function camStripBuild() {
+  /* the square itself now carries ONLY the slim bar: the active look name
+     + a [🎛 Edit] button that unfolds the CAMERA PRO panel and scrolls to
+     it. Every control moved into the panel — nothing is out of reach. */
+  function camProBuild() {
     try {
-      const w = camEls().wrap; if (!w || document.getElementById("dj-camstrip")) return;
-      const fx = document.createElement("canvas"); fx.id = "dj-camfx"; fx.width = CAM_FX_W; fx.height = CAM_FX_W; w.appendChild(fx);
-      const bar = document.createElement("div"); bar.id = "dj-camstrip";
-      const chip = (attr, val, label) => "<button type='button' class='cs-chip' data-cs" + attr + "='" + val + "'>" + label + "</button>";
-      bar.innerHTML = "<span class='cs-lab'>FX</span>" +
-        chip("f", "off", "Off") + chip("f", "gold", "Gold") + chip("f", "bw", "B&W") + chip("f", "vivid", "Vivid") + chip("f", "soft", "Soft") + chip("f", "noir", "Noir") +
-        "<span class='cs-sep'></span><span class='cs-lab'>BG</span>" +
-        chip("b", "off", "Off") + chip("b", "blur", "Blur") + chip("b", "brand", "Brand") + chip("b", "pic", "🖼 Pic") +
-        "<input type='file' id='dj-cambg-file' accept='image/*' hidden>";
-      w.appendChild(bar);
-      bar.addEventListener("click", (ev) => { const b = ev.target.closest("[data-csf],[data-csb]"); if (!b) return; if (b.hasAttribute("data-csf")) camFxSetFilter(b.getAttribute("data-csf")); else camFxSetBg(b.getAttribute("data-csb")); });
-      const fi = bar.querySelector("#dj-cambg-file");
-      fi.addEventListener("change", () => { const f = fi.files && fi.files[0]; try { fi.value = ""; } catch (_) {} if (f) camBgLoadFile(f); });
-      camFxPaint();
+      const w = camEls().wrap; if (!w) return;
+      if (!document.getElementById("dj-camfx")) { const fx = document.createElement("canvas"); fx.id = "dj-camfx"; fx.width = CAM_FX_W; fx.height = CAM_FX_W; w.appendChild(fx); }
+      if (!document.getElementById("dj-cambar")) {
+        const bar = document.createElement("div"); bar.id = "dj-cambar";
+        bar.innerHTML = "<span id='dj-camlook'></span><button type='button' id='dj-camedit'>🎛 Edit</button>";
+        w.appendChild(bar);
+        bar.querySelector("#dj-camedit").addEventListener("click", () => camProOpen());
+      }
+      if (!w._campan) {
+        w._campan = true;
+        w.addEventListener("pointerdown", camPanDown);
+        w.addEventListener("pointermove", camPanMove);
+        w.addEventListener("pointerup", camPanUp);
+        w.addEventListener("pointercancel", camPanUp);
+      }
+      camProWire();
+      camProPaint();
     } catch (_) {}
   }
-  function camFxPaint() {
+  function camProOpen() {
+    const p = document.getElementById("dj-campro"); if (!p) return;
+    p.hidden = false;
+    const body = p.querySelector(".pfold");
+    if (body && body.classList.contains("shut")) { const b = p.querySelector("h4 button"); if (b) b.click(); } // unfold it the way its own fold button would (state + label stay consistent)
+    try { p.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (_) { try { p.scrollIntoView(); } catch (__) {} }
+  }
+  function camProWire() {
+    const p = document.getElementById("dj-campro"); if (!p || p._wired) return; p._wired = true;
+    const looks = document.getElementById("cp-looks");
+    if (looks) looks.innerHTML = Object.keys(CAM_LOOKS).map((k) => "<button type='button' class='cp-chip' data-look='" + k + "'>" + CAM_LOOKS[k].label + "</button>").join("");
+    const bgs = document.getElementById("cp-bgs");
+    if (bgs) bgs.innerHTML = [["off", "Off"], ["blur", "Blur"], ["brand", "Brand"], ["pic", "🖼 Pic"]].map((x) => "<button type='button' class='cp-chip' data-bg='" + x[0] + "'>" + x[1] + "</button>").join("");
+    p.addEventListener("click", (ev) => { const b = ev.target.closest("[data-look],[data-bg]"); if (!b) return; if (b.hasAttribute("data-look")) camFxSetLook(b.getAttribute("data-look")); else camFxSetBg(b.getAttribute("data-bg")); });
+    const fi = document.getElementById("dj-cambg-file");
+    if (fi) fi.addEventListener("change", () => { const f = fi.files && fi.files[0]; try { fi.value = ""; } catch (_) {} if (f) camBgLoadFile(f); });
+    // sliders: the value lands in camFx on input (applied next frame via
+    // rAF, never synchronously in the gesture), persistence on release
+    const wire = (id, valId, fmt, set) => {
+      const el = document.getElementById(id), lab = document.getElementById(valId); if (!el) return;
+      el.addEventListener("input", () => { set(+el.value); if (lab) lab.textContent = fmt(+el.value); camProReqApply(); });
+      el.addEventListener("change", () => { camFxSave(); camProPaint(); });
+    };
+    const pct = (v) => Math.round(v * 100) + "%";
+    wire("cp-b", "cp-b-v", pct, (v) => { camFx.b = v; });
+    wire("cp-c", "cp-c-v", pct, (v) => { camFx.c = v; });
+    wire("cp-s", "cp-s-v", pct, (v) => { camFx.s = v; });
+    wire("cp-warm", "cp-warm-v", (v) => (v > 0 ? "+" + v : "" + v), (v) => { camFx.warm = v; });
+    wire("cp-detail", "cp-detail-v", (v) => Math.round(v) + "%", (v) => { camFx.detail = v; });
+    wire("cp-zoom", "cp-zoom-v", (v) => (Math.round(v * 100) / 100) + "×", (v) => { camFx.zoom = v; });
+    wire("cp-blur", "cp-blur-v", (v) => Math.round(v) + "px", (v) => { camFx.blurPx = v; });
+    wire("cp-edge", "cp-edge-v", (v) => (+v).toFixed(1), (v) => { camFx.feather = v; });
+    const mb = document.getElementById("cp-mirror");
+    if (mb) mb.addEventListener("click", () => { camFx.mirror = !camFx.mirror; camFxSave(); camProPaint(); });
+    const rc = document.getElementById("cp-recenter");
+    if (rc) rc.addEventListener("click", () => { camFx.panX = 0; camFx.panY = 0; camFxSave(); camProPaint(); });
+    const bo = document.getElementById("cp-banner-on");
+    if (bo) bo.addEventListener("change", () => { camFx.bannerOn = !!bo.checked; camFxSave(); camProPaint(); });
+    const bt = document.getElementById("cp-banner-text");
+    if (bt) { bt.addEventListener("input", () => { camFx.bannerText = bt.value.slice(0, 42); camProPaint(); }); bt.addEventListener("change", () => camFxSave()); }
+  }
+  function camProPaint() {
     try {
-      document.querySelectorAll("#dj-camstrip .cs-chip").forEach((c) => { if (c.hasAttribute("data-csf")) c.classList.toggle("on", camFx.filter === c.getAttribute("data-csf")); else c.classList.toggle("on", camFx.bg === c.getAttribute("data-csb")); });
-      const css = CAM_FILTERS[camFx.filter] || "";
-      const v = camEls().vid; if (v) v.style.filter = css;
-      const fx = document.getElementById("dj-camfx"); if (fx) fx.style.filter = css;
+      document.querySelectorAll("#cp-looks .cp-chip").forEach((c) => c.classList.toggle("on", c.getAttribute("data-look") === camFx.look));
+      document.querySelectorAll("#cp-bgs .cp-chip").forEach((c) => c.classList.toggle("on", c.getAttribute("data-bg") === camFx.bg));
+      const setR = (id, val, valId, txt) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = val; const lab = document.getElementById(valId); if (lab && document.activeElement !== el) lab.textContent = txt; };
+      setR("cp-b", camFx.b, "cp-b-v", Math.round(camFx.b * 100) + "%");
+      setR("cp-c", camFx.c, "cp-c-v", Math.round(camFx.c * 100) + "%");
+      setR("cp-s", camFx.s, "cp-s-v", Math.round(camFx.s * 100) + "%");
+      setR("cp-warm", camFx.warm, "cp-warm-v", (camFx.warm > 0 ? "+" + camFx.warm : "" + camFx.warm));
+      setR("cp-detail", camFx.detail, "cp-detail-v", Math.round(camFx.detail) + "%");
+      setR("cp-zoom", camFx.zoom, "cp-zoom-v", (Math.round(camFx.zoom * 100) / 100) + "×");
+      setR("cp-blur", camFx.blurPx, "cp-blur-v", Math.round(camFx.blurPx) + "px");
+      setR("cp-edge", camFx.feather, "cp-edge-v", (+camFx.feather).toFixed(1));
+      const mb = document.getElementById("cp-mirror"); if (mb) mb.textContent = camFx.mirror ? "🪞 Mirror: ON" : "🪞 Mirror: OFF";
+      const bo = document.getElementById("cp-banner-on"); if (bo && document.activeElement !== bo) bo.checked = !!camFx.bannerOn;
+      const bt = document.getElementById("cp-banner-text"); if (bt && document.activeElement !== bt) bt.value = camFx.bannerText;
+      const lk = document.getElementById("dj-camlook"); if (lk) lk.textContent = (CAM_LOOKS[camFx.look] || CAM_LOOKS.off).label + (camFx.bg !== "off" ? " · BG " + camFx.bg : "");
+      const bn = document.getElementById("dj-cambanner");
+      if (bn) { const show = camFx.bannerOn && !!camFx.bannerText; bn.hidden = !show; if (show) { bn.textContent = camFx.bannerText; const wh = (camEls().wrap && camEls().wrap.clientHeight) || 0; if (wh) bn.style.fontSize = Math.max(9, Math.round(wh * 0.058)) + "px"; } }
+      camProApplySurface();
+      camSharpSync(true);
     } catch (_) {}
   }
-  function camFxSetFilter(v) { if (CAM_FILTERS[v] == null) return; camFx.filter = v; camFxSave(); camFxPaint(); }
+  /* reframing by hand: while zoomed, dragging on the camera picture pans
+     the framing (the content follows the finger); the same pan numbers
+     drive the CSS transform on the video and the sampler in the pipe. */
+  let camPanDrag = null;
+  function camPanDown(ev) {
+    if (SANDBOX || camFx.zoom <= 1.01) return;
+    if (ev.target.closest("#dj-cambar, button, input, a, select, textarea")) return;
+    const w = camEls().wrap; if (!w) return;
+    camPanDrag = { id: ev.pointerId, x: ev.clientX, y: ev.clientY, px: camFx.panX, py: camFx.panY, w: w.clientWidth || 1, h: w.clientHeight || 1 };
+    try { w.setPointerCapture(ev.pointerId); } catch (_) {}
+  }
+  function camPanMove(ev) {
+    if (!camPanDrag || ev.pointerId !== camPanDrag.id) return;
+    const mx = (1 - 1 / camFx.zoom) / 2; if (mx <= 0) return;
+    camFx.panX = Math.min(1, Math.max(-1, camPanDrag.px + (ev.clientX - camPanDrag.x) / camPanDrag.w / mx));
+    camFx.panY = Math.min(1, Math.max(-1, camPanDrag.py + (ev.clientY - camPanDrag.y) / camPanDrag.h / mx));
+    camProApplySurface();
+  }
+  function camPanUp(ev) { if (!camPanDrag || (ev && ev.pointerId !== camPanDrag.id)) return; camPanDrag = null; camFxSave(); }
+  function camFxSetLook(v) { const L = CAM_LOOKS[v]; if (!L) return; camFx.look = v; camFx.b = L.b; camFx.c = L.c; camFx.s = L.s; camFx.warm = L.w || 0; camFx.detail = L.d || 0; camFxSave(); camProPaint(); }
   function camFxSetBg(v) {
     if (["off", "blur", "brand", "pic"].indexOf(v) < 0) return;
     if (v === "pic" && !camBgImg) { camBgPick(); say("🖼 Pick a picture for your background."); return; }
     if (v === "pic" && camFx.bg === "pic") { camBgPick(); return; } // tap Pic again to change the picture
-    camFx.bg = v; camFxSave(); camFxPaint(); camFxMaybeStart();
+    camFx.bg = v; camFxSave(); camProPaint(); camFxMaybeStart();
   }
   function camBgPick() { const fi = document.getElementById("dj-cambg-file"); if (fi) fi.click(); }
   function camBgLoadFile(f) {
@@ -1666,7 +1898,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       let data = ""; try { data = cv.toDataURL("image/jpeg", 0.85); } catch (_) {}
       camBgImg = im; camBgImgURL = data;
       if (data) { try { localStorage.setItem("mw-cambg", data); } catch (_) { if (!camBgQuotaSaid) { camBgQuotaSaid = true; say("🖼 That picture is too big to save for next time — it still works for this session."); } } }
-      camFx.bg = "pic"; camFxSave(); camFxPaint(); camFxMaybeStart();
+      camFx.bg = "pic"; camFxSave(); camProPaint(); camFxMaybeStart();
     };
     im.onerror = () => { URL.revokeObjectURL(url); say("🖼 That picture would not load."); };
     im.src = url;
@@ -1681,15 +1913,32 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     c.fillStyle = "rgba(240,207,120,0.55)"; c.font = "700 29px system-ui, sans-serif"; c.fillText("M E E C H I E ' S   W O R L D", W / 2, W * 0.88);
     fxBrand = cv; return cv;
   }
-  /* ---- the background engine: lazy script/model loading ---- */
+  /* ---- the background engine: warm-up at cam-on, WebGPU first,
+     single-flight adaptive inference, render decoupled from inference ----
+     Asset story (verified with real fetches at build time): the 1.19.2
+     dist on jsDelivr carries ort.all.min.js — the bundle with BOTH the
+     wasm and WebGPU backends registered — plus every wasm companion it
+     can ask for (ort-wasm-simd-threaded.wasm/.mjs for the wasm backend,
+     ort-wasm-simd-threaded.jsep.wasm/.mjs for the WebGPU/JSEP backend),
+     all answering 200 from the same folder ort.env.wasm.wasmPaths points
+     at. The WebGPU session is attempted first (only where navigator.gpu
+     exists); ANY failure — no adapter, create throws — falls back to a
+     wasm session, and if a WebGPU session creates but its first real
+     inference throws, the pipe re-creates itself on wasm once instead
+     of bailing. graphOptimizationLevel is "all" on both paths. */
   const ORT_CDN = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/";
+  const ORT_BUNDLE = "ort.all.min.js";
   const RVM_MODEL = "https://huggingface.co/LPDoctor/video_matting/resolve/main/rvm_mobilenetv3_fp32.onnx";
   const MP_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/";
-  let fxEngine = null, fxEngineKind = "", fxLoadP = null, fxStarting = false;
-  let fxRun = false, fxRaf = 0, fxBusy = false, fxFails = 0, fxLastAt = 0, fxLastStart = 0, fxBailed = false, fxRec = null;
+  let fxEngine = null, fxEngineKind = "", fxEp = "", fxModelBuf = null, fxLoadP = null, fxStarting = false;
+  let fxRun = false, fxLoopLive = false, fxRaf = 0, fxRenderNew = false, fxFails = 0, fxLastAt = 0, fxBailed = false, fxRec = null, fxOkOnce = false, fxDowngrading = false;
+  let fxSize = CAM_FX_W, fxEma = 0, fxSlow = 0, fxLastStep = 0, fxWarmed = false;
+  const FX_SIZES = [320, 256, 224];
+  const fxSizeOk = { 320: true }; // a smaller size is only trusted once a real inference has run at it (fxWarmSizes)
   const fxProc = document.createElement("canvas"); fxProc.width = CAM_FX_W; fxProc.height = CAM_FX_W;
   const fxAlpha = document.createElement("canvas"); fxAlpha.width = CAM_FX_W; fxAlpha.height = CAM_FX_W;
   const fxPerson = document.createElement("canvas"); fxPerson.width = CAM_FX_W; fxPerson.height = CAM_FX_W;
+  const fxOut = document.createElement("canvas"); fxOut.width = CAM_FX_W; fxOut.height = CAM_FX_W; // composites land here; the render loop blits to the visible canvas only when a new matte exists
   function loadScriptOnce(src) {
     return new Promise((resolve, reject) => {
       const old = document.querySelector("script[src='" + src + "']");
@@ -1700,20 +1949,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       document.head.appendChild(s);
     });
   }
+  /* recurrent states scale with the analysis square S: r1 [1,16,S/4,S/4],
+     r2 [1,20,S/8,S/8], r3 [1,40,S/16,S/16], r4 [1,64,S/32,S/32] — at
+     S=320 these are the shapes verified against the real model (python
+     onnxruntime, 2026-10-29): r1 80, r2 40, r3 20, r4 10, and each run's
+     r1o..r4o feed straight back as the next frame's r1i..r4i. */
+  function fxRecFor(S) { const z = (c, h, w) => new ort.Tensor("float32", new Float32Array(c * h * w), [1, c, h, w]); return [z(16, S / 4, S / 4), z(20, S / 8, S / 8), z(40, S / 16, S / 16), z(64, S / 32, S / 32)]; }
   async function fxLoadRvm() {
-    await loadScriptOnce(ORT_CDN + "ort.min.js");
+    await loadScriptOnce(ORT_CDN + ORT_BUNDLE);
     if (!window.ort) throw new Error("ort missing");
     ort.env.wasm.wasmPaths = ORT_CDN;
     ort.env.wasm.numThreads = 1; // no cross-origin isolation on the page — single-thread wasm is the safe path
     const resp = await fetch(RVM_MODEL); if (!resp.ok) throw new Error("model http " + resp.status);
     const buf = await resp.arrayBuffer();
-    const sess = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
-    // verified against the real model (python onnxruntime, 2026-10-29):
-    // input 320x320, downsample_ratio 0.5 → recurrent states are
-    // r1 [1,16,80,80], r2 [1,20,40,40], r3 [1,40,20,20], r4 [1,64,10,10],
-    // and each run's r1o..r4o feed straight back as the next frame's r1i..r4i.
-    const z = (c, h, w) => new ort.Tensor("float32", new Float32Array(c * h * w), [1, c, h, w]);
-    fxRec = [z(16, 80, 80), z(20, 40, 40), z(40, 20, 20), z(64, 10, 10)];
+    fxModelBuf = buf;
+    let sess = null, ep = "wasm";
+    if (navigator.gpu) { try { sess = await ort.InferenceSession.create(buf, { executionProviders: ["webgpu"], graphOptimizationLevel: "all" }); ep = "webgpu"; } catch (_) { sess = null; } }
+    if (!sess) sess = await ort.InferenceSession.create(buf.slice(0), { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+    fxEp = ep;
+    fxRec = fxRecFor(fxSize);
     return { kind: "rvm", sess };
   }
   async function fxLoadMp() {
@@ -1736,8 +1990,33 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     fxLoadP.catch(() => { fxLoadP = null; });
     return fxLoadP;
   }
+  /* warm-up (kicked from camFxOnStream, so it runs while he is settling
+     in — never inside a chip tap): one blank-frame inference per size.
+     The 320 run primes the session; the 256/224 runs PROVE the model's
+     dynamic axes accept those inputs before the adaptive ladder is
+     allowed to step down to them. */
+  async function fxWarmSizes() {
+    const sess = fxEngine && fxEngine.sess; if (!sess || !window.ort) return;
+    for (const S of FX_SIZES) {
+      try {
+        const rec = fxRecFor(S);
+        const srcT = new ort.Tensor("float32", new Float32Array(3 * S * S), [1, 3, S, S]);
+        const feeds = { src: srcT, r1i: rec[0], r2i: rec[1], r3i: rec[2], r4i: rec[3], downsample_ratio: new ort.Tensor("float32", new Float32Array([0.5]), [1]) };
+        const out = await sess.run(feeds);
+        fxSizeOk[S] = true;
+        try { srcT.dispose(); feeds.downsample_ratio.dispose(); Object.keys(out).forEach((k) => { if (out[k] && out[k].dispose) out[k].dispose(); }); rec.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {}
+      } catch (_) { fxSizeOk[S] = false; }
+    }
+    try { if (fxRec) fxRec.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {}
+    fxRec = fxRecFor(fxSize); // the real feed starts from clean recurrent states
+  }
+  function camProWarmup() {
+    if (fxWarmed || fxBailed) return; fxWarmed = true;
+    fxLoadEngine().then(async (eng) => { if (eng && eng.kind === "rvm") { try { await fxWarmSizes(); } catch (_) {} } })
+      .catch(() => { fxWarmed = false; }); // a failed warm-up stays silent; a later BG tap retries through the normal path and bails there if it must
+  }
   async function fxMatteRvm() {
-    const W = CAM_FX_W, sess = fxEngine.sess;
+    const W = fxSize, sess = fxEngine.sess;
     const img = fxProc.getContext("2d").getImageData(0, 0, W, W).data;
     const inp = new Float32Array(3 * W * W), n = W * W;
     for (let i = 0; i < n; i++) { inp[i] = img[i * 4] / 255; inp[n + i] = img[i * 4 + 1] / 255; inp[2 * n + i] = img[i * 4 + 2] / 255; }
@@ -1757,7 +2036,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         if (done) return; done = true;
         try {
           if (!r || !r.segmentationMask) { resolve(false); return; }
-          const W = CAM_FX_W, actx = fxAlpha.getContext("2d");
+          const W = fxSize, actx = fxAlpha.getContext("2d");
           actx.save(); actx.globalCompositeOperation = "copy"; actx.drawImage(r.segmentationMask, 0, 0, W, W); actx.restore();
           // the mask packet carries the matte in its alpha channel on some
           // builds and in the red channel on others — detect once, then
@@ -1776,71 +2055,173 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     });
   }
   function fxComposite() {
-    const W = CAM_FX_W, out = document.getElementById("dj-camfx"); if (!out) return;
-    const octx = out.getContext("2d");
-    if (camFx.bg === "blur") { octx.save(); try { octx.filter = "blur(16px) brightness(0.85)"; } catch (_) {} const m = 30; octx.drawImage(fxProc, -m, -m, W + 2 * m, W + 2 * m); octx.restore(); }
+    const S = fxSize, W = CAM_FX_W, octx = fxOut.getContext("2d");
+    if (camFx.bg === "blur") { octx.save(); try { octx.filter = "blur(" + camFx.blurPx + "px) brightness(0.85)"; } catch (_) {} const m = Math.ceil(camFx.blurPx * 2); octx.drawImage(fxProc, 0, 0, S, S, -m, -m, W + 2 * m, W + 2 * m); octx.restore(); }
     else if (camFx.bg === "brand") { octx.drawImage(fxBrandCanvas(), 0, 0, W, W); }
     else if (camFx.bg === "pic" && camBgImg) { octx.save(); octx.clearRect(0, 0, W, W); drawCover(octx, camBgImg, W, W); octx.restore(); }
     else { octx.clearRect(0, 0, W, W); }
     const pctx = fxPerson.getContext("2d");
     pctx.save(); pctx.globalCompositeOperation = "copy"; pctx.drawImage(fxProc, 0, 0);
-    pctx.globalCompositeOperation = "destination-in"; try { pctx.filter = "blur(1.6px)"; } catch (_) {} pctx.drawImage(fxAlpha, 0, 0); pctx.restore();
-    octx.drawImage(fxPerson, 0, 0);
+    pctx.globalCompositeOperation = "destination-in"; try { pctx.filter = "blur(" + camFx.feather + "px)"; } catch (_) {} pctx.drawImage(fxAlpha, 0, 0); pctx.restore();
+    octx.drawImage(fxPerson, 0, 0, S, S, 0, 0, W, W);
+    fxRenderNew = true;
   }
-  async function fxLoop() {
-    if (!fxRun) return;
+  /* one inference: sample the CURRENT frame (there is no queue — the
+     loop always works on the latest picture), matte it, composite it.
+     Returns false when the feed is not ready (neutral — not a failure). */
+  async function fxInferOnce() {
     const v = camEls().vid;
-    if (!fxBusy && camStream && v && v.readyState >= 2 && Date.now() - fxLastStart >= 60) {
-      fxBusy = true; fxLastStart = Date.now();
-      try {
-        drawCover(fxProc.getContext("2d"), v, CAM_FX_W, CAM_FX_W);
-        if (fxEngineKind === "rvm") await fxMatteRvm();
-        else { const ok = await fxMatteMp(); if (!ok) throw new Error("matte"); }
-        fxComposite(); fxFails = 0; fxLastAt = Date.now();
-      } catch (e) {
-        if (Date.now() - fxLastAt > 8000) { fxFails++; if (fxFails >= 5) camFxBail(); }
+    if (!camStream || !v || v.readyState < 2) return false;
+    drawFramed(fxProc.getContext("2d"), v, fxSize, fxSize);
+    if (fxEngineKind === "rvm") await fxMatteRvm();
+    else { const ok = await fxMatteMp(); if (!ok) throw new Error("matte"); }
+    fxComposite();
+    return true;
+  }
+  /* a WebGPU session that created fine can still throw on its first
+     real run (an op the GPU backend rejects) — rebuild on wasm ONCE
+     rather than killing the background over it. */
+  async function fxDowngradeWasm() {
+    if (fxDowngrading || !fxModelBuf || !window.ort) return false;
+    fxDowngrading = true;
+    try {
+      fxEngine.sess = await ort.InferenceSession.create(fxModelBuf.slice(0), { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+      fxEp = "wasm";
+      try { if (fxRec) fxRec.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {}
+      fxRec = fxRecFor(fxSize);
+      return true;
+    } catch (_) { return false; }
+    finally { fxDowngrading = false; }
+  }
+  function fxSetSize(S) {
+    fxSize = S;
+    [fxProc, fxAlpha, fxPerson].forEach((cv) => { cv.width = S; cv.height = S; });
+    if (fxEngineKind === "rvm" && window.ort) { try { if (fxRec) fxRec.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {} fxRec = fxRecFor(S); }
+    fxEma = 0; fxSlow = 0;
+  }
+  function fxAdapt(ms) {
+    fxEma = fxEma ? fxEma * 0.85 + ms * 0.15 : ms;
+    fxSlow = fxEma > 55 ? fxSlow + 1 : 0;
+    if (fxSlow < 30 || Date.now() - fxLastStep < 2000) return;
+    const ix = FX_SIZES.indexOf(fxSize);
+    const next = FX_SIZES.slice(ix + 1).find((s) => fxEngineKind !== "rvm" || fxSizeOk[s]);
+    if (next) { fxSetSize(next); fxLastStep = Date.now(); }
+    fxSlow = 0;
+  }
+  /* inference loop: single-flight, self-paced by rAF so the main thread
+     (and with it the booth audio) breathes between mattes. */
+  function fxInferLoop() {
+    (async () => {
+      while (fxRun) {
+        let ok = false, failed = false;
+        const t0 = performance.now();
+        try { ok = await fxInferOnce(); }
+        catch (e) {
+          if (fxEngineKind === "rvm" && fxEp === "webgpu" && !fxOkOnce) { if (await fxDowngradeWasm()) { ok = false; } else failed = true; }
+          else failed = true;
+        }
+        if (!fxRun) break;
+        if (ok) { fxOkOnce = true; fxFails = 0; fxLastAt = Date.now(); fxAdapt(performance.now() - t0); }
+        else if (failed && Date.now() - fxLastAt > 8000) { fxFails++; if (fxFails >= 5) { camFxBail(); break; } }
+        await new Promise((r) => requestAnimationFrame(r));
       }
-      fxBusy = false;
+    })();
+  }
+  /* render loop: a bare blit, and only when a fresh composite exists —
+     a slow matte lowers the picture rate, it never piles up work. */
+  function fxRenderLoop() {
+    if (!fxRun) return;
+    if (fxRenderNew) {
+      fxRenderNew = false;
+      const out = document.getElementById("dj-camfx");
+      if (out) { const c = out.getContext("2d"); c.clearRect(0, 0, CAM_FX_W, CAM_FX_W); c.drawImage(fxOut, 0, 0); }
     }
-    if (fxRun) fxRaf = requestAnimationFrame(fxLoop);
+    if (fxRun) fxRaf = requestAnimationFrame(fxRenderLoop);
+  }
+  function fxStartLoops() {
+    if (fxLoopLive) return; fxLoopLive = true;
+    fxRenderNew = false;
+    fxInferLoop();
+    cancelAnimationFrame(fxRaf); fxRaf = requestAnimationFrame(fxRenderLoop);
+  }
+  function fxSwapIn() {
+    const w = camEls().wrap; if (w) w.classList.add("fxbg");
+    camProApplySurface();
+    if (fxEngineKind === "rvm" && window.ort) { try { if (fxRec) fxRec.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {} fxRec = fxRecFor(fxSize); }
+    fxFails = 0; fxLastAt = Date.now(); fxEma = 0; fxSlow = 0;
+    fxStartLoops();
   }
   function camFxMaybeStart() {
-    camStripBuild(); camFxPaint();
+    camProBuild(); camProPaint();
     if (camFx.bg === "off" || fxBailed) { camFxStopPipe(); return; }
     if (!camStream) return; // the stream-start hook calls back in when the camera is live
-    if (fxEngine) { const w = camEls().wrap; if (w) w.classList.add("fxbg"); } // engine warm: swap surfaces now; a cold engine swaps in on load so he never stares at a black square while the model downloads
-    if (fxRun) return;
     fxRun = true;
+    if (fxEngine) { fxSwapIn(); return; } // engine warm (cam-on warm-up): a BG tap now only flips the mode — no load, no spike, no skip
     if (fxStarting) return;
     fxStarting = true;
-    fxLoadEngine().then(() => { fxStarting = false; if (!fxRun) return; const w = camEls().wrap; if (w) w.classList.add("fxbg"); fxFails = 0; cancelAnimationFrame(fxRaf); fxRaf = requestAnimationFrame(fxLoop); })
+    fxLoadEngine().then(() => { fxStarting = false; if (!fxRun) return; fxSwapIn(); })
       .catch(() => { fxStarting = false; camFxBail(); });
   }
-  function camFxStopPipe() { fxRun = false; cancelAnimationFrame(fxRaf); const w = camEls().wrap; if (w) w.classList.remove("fxbg"); }
+  function camFxStopPipe() { fxRun = false; fxLoopLive = false; cancelAnimationFrame(fxRaf); const w = camEls().wrap; if (w) w.classList.remove("fxbg"); camProApplySurface(); }
   function camFxBail() { camFxStopPipe(); fxBailed = true; say("📷 Background FX could not run on this device — showing the plain camera."); }
-  function camFxOnStream() { camFxPaint(); camFxMaybeStart(); }
+  function camFxOnStream() { camProPaint(); camProWarmup(); camFxMaybeStart(); }
   function camFxOnStop() { camFxStopPipe(); }
   /* ---- frame relay: the lead booth publishes a fresh still of him
    * every ~4s while he is on cam and the station is live; camToggle's
    * off write already clears frame/frameAt everywhere by replacing
-   * S.vcam wholesale. ---- */
-  let camFrameLast = 0;
+   * S.vcam wholesale. The capture composes what he SEES: the framed,
+   * mirrored picture (the pipeline bitmap when a background is up, a
+   * drawFramed sample of the raw feed when it is not), the look when it
+   * is plain CSS functions (canvas filters cannot resolve SVG-reference
+   * looks, so Duotone/Detail stay booth-side), then his banner — and
+   * encodes through async convertToBlob so the JPEG work never blocks
+   * the thread his music plays on. ---- */
+  let camFrameLast = 0, camFrameBusy = false;
+  const camCap = document.createElement("canvas"); camCap.width = 320; camCap.height = 320;
+  function camDrawBanner(ctx, W) {
+    if (!camFx.bannerOn || !camFx.bannerText) return;
+    const h = Math.round(W * 0.115);
+    ctx.save();
+    ctx.fillStyle = "#f0cf78"; ctx.fillRect(0, W - h, W, h);
+    ctx.fillStyle = "#0b0a08"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    let fs = Math.round(h * 0.52);
+    ctx.font = "800 " + fs + "px system-ui, sans-serif";
+    while (fs > 9 && ctx.measureText(camFx.bannerText).width > W - 16) { fs -= 1; ctx.font = "800 " + fs + "px system-ui, sans-serif"; }
+    ctx.fillText(camFx.bannerText, W / 2, W - h / 2 + 1);
+    ctx.restore();
+  }
   function camFrameTick() {
     try {
       if (!boothLead || !camStream || !S.live || !S.vcam || !S.vcam.on) return;
-      const now = Date.now(); if (now - camFrameLast < 4000) return;
+      const now = Date.now(); if (now - camFrameLast < 4000 || camFrameBusy) return;
       const w = camEls().wrap, v = camEls().vid; if (!v) return;
-      const src = (w && w.classList.contains("fxbg")) ? document.getElementById("dj-camfx") : v;
-      if (!src || (src === v && v.readyState < 2)) return;
+      const bgOn = !!(w && w.classList.contains("fxbg"));
+      if (!bgOn && v.readyState < 2) return;
       camFrameLast = now;
-      const cv = document.createElement("canvas"); cv.width = 320; cv.height = 320;
-      drawCover(cv.getContext("2d"), src, 320, 320);
-      let q = 0.62, url = cv.toDataURL("image/jpeg", q);
-      while (url.length > 46000 && q > 0.3) { q = Math.round((q - 0.08) * 100) / 100; url = cv.toDataURL("image/jpeg", q); }
-      if (url.length > 60000) return; // still too big — skip this frame rather than bloat the shared state
-      S.vcam = { on: true, at: S.vcam.at || now, frame: url, frameAt: now };
-      save();
-    } catch (_) {}
+      const ctx = camCap.getContext("2d");
+      const css = camFilterCss();
+      try { ctx.filter = (css && css.indexOf("url(") < 0) ? css : "none"; } catch (_) {}
+      if (bgOn) ctx.drawImage(fxOut, 0, 0); else drawFramed(ctx, v, 320, 320);
+      try { ctx.filter = "none"; } catch (_) {}
+      camDrawBanner(ctx, 320);
+      camFrameBusy = true;
+      const publish = (url) => { camFrameBusy = false; if (!url || url.length > 60000) return; if (!S.vcam || !S.vcam.on) return; S.vcam = { on: true, at: S.vcam.at || now, frame: url, frameAt: now }; save(); };
+      if (camCap.convertToBlob) {
+        let q = 0.62;
+        const step = () => {
+          camCap.convertToBlob((blob) => {
+            if (!blob) { publish(""); return; }
+            if (blob.size > 34500 && q > 0.3) { q = Math.round((q - 0.08) * 100) / 100; step(); return; } // ~34.5KB of JPEG lands at ~46KB as a data URL
+            const rd = new FileReader(); rd.onload = () => publish(String(rd.result || "")); rd.onerror = () => publish(""); rd.readAsDataURL(blob);
+          }, "image/jpeg", q);
+        };
+        step();
+      } else {
+        let q = 0.62, url = camCap.toDataURL("image/jpeg", q);
+        while (url.length > 46000 && q > 0.3) { q = Math.round((q - 0.08) * 100) / 100; url = camCap.toDataURL("image/jpeg", q); }
+        publish(url);
+      }
+    } catch (_) { camFrameBusy = false; }
   }
   /* ---- the viewer square on the pop-out master screen: small, bottom-
    * right by default, draggable anywhere over the screen, position kept
@@ -2781,7 +3162,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272200;
+  const MW_DJ_BUILD = 1793272300;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
