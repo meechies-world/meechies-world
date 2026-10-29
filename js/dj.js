@@ -638,6 +638,8 @@ html.popdj .popdj-hint{display:block}
 .vstage.vs-on .vslive{display:block}
 .vstage.vs-on .vstandby{display:none!important}
 .vstatus{position:absolute;top:8px;left:8px;z-index:7;background:rgba(0,0,0,.72);border:1px solid var(--gold-lo);color:#ffd766;border-radius:8px;padding:3px 9px;font:700 11.5px var(--body);letter-spacing:.02em;pointer-events:none}
+.vspause{position:absolute;right:8px;bottom:8px;z-index:8;background:rgba(0,0,0,.72);border:1px solid var(--gold-lo);color:#ffd766;border-radius:8px;padding:4px 10px;font:700 11.5px var(--body);cursor:pointer}
+.vspause[hidden]{display:none!important}
 .vshidden{position:absolute;inset:0;z-index:7;display:grid;place-items:center;background:#050505;color:#f0cf78;font:800 14px var(--body);letter-spacing:.1em;text-align:center;padding:14px}
 .vshidden[hidden]{display:none}
 .capbig{display:block;width:100%;min-height:56px;margin:10px 0;padding:12px 14px;background:#000;color:#f0cf78;border:2px solid #f0cf78;border-radius:12px;font:800 16px var(--body);letter-spacing:.04em;cursor:pointer;animation:bopulse 2s ease-in-out infinite}
@@ -2388,8 +2390,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * The shared switch is S.vstream {on, kind, at, by, meeting}: screen
    * outranks camera stream, camera stream outranks the vmix deck videos,
    * and the deck mix keeps rendering underneath, so stopping the stream
-   * drops the stage straight back to the mix. VIDEO ONLY — the radio
-   * itself carries the sound, exactly like the deck videos do.
+   * drops the stage straight back to the mix. SOUND follows the
+   * MASTER-SCREEN RULE (owner, 2026-10-29): whatever is on the master
+   * screen takes over the radio — a screen share pauses the tables and
+   * carries the capture's OWN audio when the pick provides it (tab
+   * audio; window/full-screen picks usually cannot), and that audio is
+   * the only sound on the watch surfaces while the master is up.
    * LIGHTNESS (he is crash- and skip-sensitive): the RealtimeKit SDK
    * (~650KB) loads ONLY on a Live Video / Capture tap — never at page
    * load, never at cam-on — publishing is capped at 720p, and everything
@@ -2410,7 +2416,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   try { const c0 = JSON.parse(localStorage.getItem("mw-studio-crop") || "null"); if (c0) vsCrop = { l: Math.max(0, Math.min(45, +c0.l || 0)), r: Math.max(0, Math.min(45, +c0.r || 0)), t: Math.max(0, Math.min(45, +c0.t || 0)), b: Math.max(0, Math.min(45, +c0.b || 0)), fill: !!c0.fill }; } catch (_) {}
   let vsCropCtx = null;       // the running crop canvas: {vid, cv, cx, raf, rvfc, dead}
   let vsStudioSig = "";
-  let vsShown = { track: null, stream: null, hls: null };
+  let vsShown = { track: null, stream: null, hls: null, atrack: null };
   let vsWatchErr = "";        // the watcher's last failure, in plain words - the TV status line reads it out instead of the watch dying silent
   let vsStatusTxt = null;     // last text painted into the .vstatus lines
   let vsPaintSig = null;
@@ -2454,12 +2460,85 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function vsVid(stage) { let v = stage.querySelector("video.vslive"); if (!v) { v = document.createElement("video"); v.className = "vslive"; v.autoplay = true; v.muted = true; v.playsInline = true; stage.appendChild(v); } return v; }
   function vsKillHls(v) { if (!v) return; if (v._vsHls) { try { v._vsHls.destroy(); } catch (_) {} v._vsHls = null; } if (v._vsHlsUrl) { v._vsHlsUrl = ""; try { v.pause(); v.removeAttribute("src"); v.load(); } catch (_) {} } }
-  function vsAttach(stream) { vsStageEls().forEach((st) => { const v = vsVid(st); try { vsKillHls(v); if (v.srcObject !== stream) { v.srcObject = stream; const p = v.play(); if (p && p.catch) p.catch(() => {}); } } catch (_) {} st.classList.add("vs-on"); }); }
-  function vsDetach() { vsShown = { track: null, stream: null, hls: null }; vsStageEls().forEach((st) => { st.classList.remove("vs-on"); const v = st.querySelector("video.vslive"); if (v) { try { vsKillHls(v); v.pause(); v.srcObject = null; } catch (_) {} } }); }
-  function vsShowTrack(track) {
+  function vsAttach(stream) { vsStageEls().forEach((st) => { const v = vsVid(st); try { vsKillHls(v); v.muted = true; if (v.srcObject !== stream) { v.srcObject = stream; const p = v.play(); if (p && p.catch) p.catch(() => {}); } } catch (_) {} st.classList.add("vs-on"); }); } // picture elements never sound on the WebRTC path — the one audio element (vsAudioPlay) carries the capture's sound, so surfaces cannot echo
+  function vsDetach() { vsShown = { track: null, stream: null, hls: null, atrack: null }; try { vsAudioStop(); } catch (_) {} vsHlsSndEl = null; vsStageEls().forEach((st) => { st.classList.remove("vs-on"); const v = st.querySelector("video.vslive"); if (v) { try { vsKillHls(v); v.pause(); v.srcObject = null; } catch (_) {} } }); }
+  function vsShowTrack(track, atrack) {
     if (!track || track.readyState === "ended") { if (vsShown.track) vsDetach(); return; }
-    if (vsShown.track !== track) vsShown = { track, stream: new MediaStream([track]), hls: null };
+    if (vsShown.track !== track || vsShown.atrack !== (atrack || null)) vsShown = { track, stream: new MediaStream([track]), hls: null, atrack: atrack || null };
     vsAttach(vsShown.stream);
+    vsAudioPlay(atrack || null);
+  }
+  /* ---------- the capture's sound, viewer side ----------
+   * While the master screen is up, its audio IS the station sound (the
+   * radio is paused by the takeover). On the WebRTC path the sound
+   * rides ONE body-level audio element fed by the producer's audio
+   * track alone — the stage videos stay muted, because three surfaces
+   * showing one picture must never echo it. A browser may refuse
+   * unmuted playback before the viewer has tapped anything on the
+   * page: the play attempt is honest, a refused one is flagged, and
+   * the viewer's first tap anywhere retries it (the gesture every
+   * platform accepts). On the HLS path the sound rides the stage
+   * element itself — see vsHlsPickSound. */
+  let vsSndBlocked = false;
+  function vsAudioEl() { let a = document.getElementById("vs-audio"); if (!a) { a = document.createElement("audio"); a.id = "vs-audio"; a.autoplay = true; a.style.display = "none"; document.body.appendChild(a); } return a; }
+  function vsAudioPlay(atrack) {
+    try {
+      if (!atrack || atrack.readyState !== "live") { const a0 = document.getElementById("vs-audio"); if (a0 && a0.srcObject) { try { a0.pause(); } catch (_) {} a0.srcObject = null; } return; }
+      const a = vsAudioEl();
+      const cur = a.srcObject && a.srcObject.getAudioTracks()[0];
+      if (cur !== atrack) a.srcObject = new MediaStream([atrack]);
+      vsSndBlocked = false;
+      const p = a.play(); if (p && p.catch) p.catch(() => { vsSndBlocked = true; });
+    } catch (_) {}
+  }
+  function vsAudioStop() { try { const a = document.getElementById("vs-audio"); if (a) { try { a.pause(); } catch (_) {} a.srcObject = null; } } catch (_) {} }
+  /* ---------- VIEWER PAUSE = LOCAL MUTE (owner, 2026-10-29) ----------
+   * "If they want to pause it for them they can click pause only to
+   * mute it." A watcher's pause is THEIRS alone: it pauses the picture
+   * on their screen (the surfaces fall back to the video mix, exactly
+   * like the hidden share does) and mutes their sound — the capture
+   * audio element, and the radio engine too if they were listening.
+   * It writes NO shared state, never touches the broadcast, the
+   * publisher, or any other viewer. Unpausing rejoins the LIVE edge —
+   * the sweep re-reads the room and re-attaches what is live NOW;
+   * nothing is time-shifted, because nothing was ever buffered. */
+  let vsLocalPause = false, vsPauseWasListening = false, vsPauseSig = "";
+  function vsLocalDetach() {
+    vsStageEls().forEach((st) => { st.classList.remove("vs-on"); const v = st.querySelector("video.vslive"); if (v) { try { vsKillHls(v); } catch (_) {} try { v.pause(); } catch (_) {} } });
+    try { const a = document.getElementById("vs-audio"); if (a) a.pause(); } catch (_) {}
+    if (vsHlsSndEl) { try { vsHlsSndEl.muted = true; } catch (_) {} vsHlsSndEl = null; }
+  }
+  function vsToggleLocalPause() {
+    if (SANDBOX || OWNER() || vsPub) return;
+    const ti = document.getElementById("tune-in");
+    if (!vsLocalPause) {
+      vsLocalPause = true;
+      vsPauseWasListening = listening;
+      vsLocalDetach();
+      if (listening) { stopListening(); if (ti) ti.textContent = "▶ Tune in"; tvSig = ""; try { tvPaint(); } catch (_) {} }
+    } else {
+      vsLocalPause = false;
+      if (vsPauseWasListening && !listening) { startListening(); if (ti) ti.textContent = "❚❚ Stop the radio"; tvSig = ""; try { tvPaint(); } catch (_) {} }
+      vsPauseWasListening = false;
+      // rejoin the live edge: re-attach what is live right now
+      try { if (vsShown.hls) vsShowHls(vsShown.hls); else vsWatchGrab(); } catch (_) {}
+      vsStageEls().forEach((st) => { const v = st.querySelector("video.vslive"); if (v && st.classList.contains("vs-on")) { try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} } });
+      try { if (vsShown.atrack) vsAudioPlay(vsShown.atrack); } catch (_) {}
+    }
+    vsPauseSig = ""; vsPaintPause();
+  }
+  function vsPaintPause() {
+    try {
+      const viewer = !OWNER() && !vsPub && !SANDBOX;
+      const on = viewer && vsBroadcast() && !(S.vstream || {}).hidden;
+      const hosts = [];
+      const s1 = document.querySelector("#st-ytbox .vstage"); if (s1) hosts.push(s1);
+      const s2 = document.querySelector("#dj-mini .vstage"); if (s2) hosts.push(s2);
+      const s3 = document.querySelector("#tw-stage"); if (s3) hosts.push(s3);
+      const sig = (on ? "1" : "0") + "|" + (vsLocalPause ? "p" : "") + "|" + hosts.map((h) => h.classList.contains("vs-on") ? "1" : "0").join("");
+      if (sig === vsPauseSig) return; vsPauseSig = sig;
+      hosts.forEach((h) => { let b = h.querySelector(".vspause"); if (!b) { b = document.createElement("button"); b.type = "button"; b.className = "vspause"; b.title = "Pause the live picture and sound just for you — the broadcast keeps going for everyone else"; h.appendChild(b); } const show = on && (vsLocalPause || h.classList.contains("vs-on")); b.hidden = !show; const lab = vsLocalPause ? "▶ Back to live" : "⏸ Pause for me"; if (b.textContent !== lab) b.textContent = lab; });
+    } catch (_) {}
   }
   /* the room's own live playback (HLS) - the fallback picture for a
    * LIVESTREAM room, where an off-stage watcher is never given a WebRTC
@@ -2482,6 +2561,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       }
       const p = v.play(); if (p && p.catch) p.catch(() => {});
     } catch (_) {} st.classList.add("vs-on"); });
+    vsHlsPickSound(false);
+  }
+  /* HLS carries picture and sound in the one element, and up to three
+   * stages can hold the same stream — exactly ONE stage video sounds:
+   * the one on the surface the viewer is actually looking at (MW TV
+   * first, then the station stage, then the mini). The rest stay
+   * muted, so the capture's sound is heard once, never as an echo.
+   * A refused unmuted play flags vsSndBlocked and the viewer's first
+   * tap retries — the same honest gesture rule as the audio element. */
+  let vsHlsSndEl = null;
+  function vsHlsPickSound(force) {
+    try {
+      if (!vsShown.hls) { if (vsHlsSndEl) { try { vsHlsSndEl.muted = true; } catch (_) {} vsHlsSndEl = null; } return; }
+      const order = ["#tw-stage", "#st-ytbox .vstage", "#dj-mini .vstage", "#dj-vstage"];
+      let pick = null;
+      for (const sel of order) { const st = document.querySelector(sel); if (!st || !st.classList.contains("vs-on")) continue; const v = st.querySelector("video.vslive"); if (v && st.getClientRects().length) { pick = v; break; } }
+      if (!pick) { const st0 = document.querySelector("#dj-mini .vstage"); if (st0) pick = st0.querySelector("video.vslive"); }
+      if (pick === vsHlsSndEl && !force) return;
+      vsStageEls().forEach((st) => { const v = st.querySelector("video.vslive"); if (v && v !== pick) { try { v.muted = true; } catch (_) {} } });
+      vsHlsSndEl = pick;
+      if (pick) { try { pick.muted = false; const p = pick.play(); if (p && p.catch) p.catch(() => { try { pick.muted = true; } catch (_) {} if (vsHlsSndEl === pick) vsHlsSndEl = null; vsSndBlocked = true; }); } catch (_) {} }
+    } catch (_) {}
   }
   /* ---------- the TV status line (owner + testers READ the watch) ----------
    * A plain-text line in the corner of the station stage and the MW TV
@@ -2547,12 +2648,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* ---------- publisher (the booth tab that tapped) ---------- */
   async function vsPubTeardown() {
     const p = vsPub; vsPub = null;
+    try { sessionStorage.removeItem("mw_vspub"); } catch (_) {}
     if (!p) return;
     if (p.beat) { try { clearInterval(p.beat); } catch (_) {} }
     vsCropStop();
     if (p.meeting) {
       try { if (p.meeting.self && p.meeting.self.disableScreenShare) await p.meeting.self.disableScreenShare(); } catch (_) {}
       try { if (p.meeting.self && p.meeting.self.disableVideo) await p.meeting.self.disableVideo(); } catch (_) {}
+      try { if (p.meeting.self && p.meeting.self.disableAudio) await p.meeting.self.disableAudio(); } catch (_) {}
       try { await p.meeting.leave(); } catch (_) {}
     }
     if (p.rawStream) { try { p.rawStream.getTracks().forEach((t) => t.stop()); } catch (_) {} }
@@ -2572,11 +2675,55 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const was = vsPub;
     await vsPubTeardown();
     if (was || ((S.vstream || {}).on && (S.vstream || {}).by === vsUid())) {
-      S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false };
+      S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() };
       save(true);
     }
     vsDetach(); vsPaintBtns();
     if (msg) say(msg);
+  }
+  /* ---------- wake resilience: a share survives its tab sleeping ----------
+   * Timers throttle, pages freeze, tabs get discarded — none of that may
+   * end a share (owner: "never stop my tab from being shared until I
+   * do"). On every wake signal the publisher re-stamps, lets vsSync
+   * re-assert the switch if an echo drifted it, and re-publishes its
+   * source if the PUBLISHED track died while the tab slept (the crop
+   * canvas track can end under a frozen page even though the captured
+   * screen is still live). Re-publishing needs no new picker — the raw
+   * capture stream is still held. The capture's audio track rides the
+   * raw stream independently and is not touched here. If the source
+   * itself is gone, its own ended listener is the honest ender. */
+  let vsRepubBusy = false;
+  async function vsPubRepublish() {
+    const p = vsPub; if (!p || p.starting || p.swapping || vsRepubBusy) return;
+    try {
+      if (p.pubTrack && p.pubTrack.readyState === "live") return;
+      vsRepubBusy = true;
+      if (p.kind === "screen") {
+        const rt = p.rawStream && p.rawStream.getVideoTracks()[0];
+        if (!rt || rt.readyState !== "live") return;
+        const cs = vsCropStart(rt);
+        const ct = cs.getVideoTracks()[0];
+        try { if (p.meeting.self && p.meeting.self.disableVideo) await p.meeting.self.disableVideo(); } catch (_) {}
+        await p.meeting.self.enableVideo(ct);
+        p.pubTrack = ct; p.localStream = cs;
+        if (p.hidApplied) { try { ct.enabled = false; } catch (_) {} } // a share republished while hidden stays dark
+      } else {
+        const t = (typeof camStream !== "undefined" && camStream && camStream.getVideoTracks()[0]) || (p.ownStream && p.ownStream.getVideoTracks()[0]);
+        if (!t || t.readyState !== "live") return;
+        try { if (p.meeting.self && p.meeting.self.disableVideo) await p.meeting.self.disableVideo(); } catch (_) {}
+        await p.meeting.self.enableVideo(t);
+        p.pubTrack = t; p.localStream = new MediaStream([t]);
+      }
+      if (S.vstream && S.vstream.on && S.vstream.meeting === p.mid) { S.vstream.at = Date.now(); save(true); }
+      try { vsSync(); } catch (_) {}
+    } catch (_) {}
+    finally { vsRepubBusy = false; }
+  }
+  function vsPubWake() {
+    const p = vsPub; if (!p) return;
+    try { if (S.vstream && S.vstream.on && S.vstream.meeting === p.mid) { S.vstream.at = Date.now(); save(true); } } catch (_) {}
+    try { vsSync(); } catch (_) {}
+    try { vsPubRepublish(); } catch (_) {}
   }
   async function vsPubStart(kind) {
     if (SANDBOX) { say("The DJ Playground is a sandbox — live video only runs on the real station."); return; }
@@ -2596,7 +2743,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (!mint || !mint.token || !mint.meeting) { say((mint && mint.message) || "📹 Live video could not start — the streaming service did not answer. Nothing else was touched."); return; }
       if (!(await vsLoadSdk())) { say("📹 The live video engine could not load — check your connection and tap again. Nothing else was touched."); return; }
       const meeting = await RealtimeKitClient.init({ authToken: mint.token, defaults: { audio: false, video: false } });
-      await meeting.join();
+      // a join that never settles would latch vsPubBusy for the whole
+      // session with the switch never written — the watcher got this
+      // race in fix-studio2; the publisher gets the same honesty
+      await Promise.race([meeting.join(), new Promise((_, rej) => setTimeout(() => rej(new Error("join timeout")), 20000))]);
       // STUDIO FIX (2026-10-29): the shared switch goes on BEFORE any
       // user-paced await (the screen picker, the camera prompt). The old
       // order installed vsPub first and wrote the switch only after those
@@ -2607,11 +2757,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // stamped once, pointing at a meeting nobody was in), and the beat
       // assignment threw on the nulled record so the stamp never moved
       // again. That is the whole 2026-10-29 failure in one race.
-      vsPub = { meeting, mid: mint.meeting, kind, ownStream: null, rawStream: null, localStream: null, pubTrack: null, hidApplied: false, beat: null, starting: true, strikes: 0, pausedDecks: null };
-      S.vstream = { on: true, kind, at: Date.now(), by: vsUid(), meeting: mint.meeting, hidden: false };
+      vsPub = { meeting, mid: mint.meeting, kind, ownStream: null, rawStream: null, localStream: null, pubTrack: null, pubAudio: null, hidApplied: false, beat: null, starting: true, strikes: 0, pausedDecks: null, since: Date.now() };
+      S.vstream = { on: true, kind, at: Date.now(), by: vsUid(), meeting: mint.meeting, hidden: false, stopAt: 0 };
       pubMid = mint.meeting; stateWrote = true;
       save(true);
-      vsPub.beat = setInterval(() => { if (vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(); } }, 20000);
+      // remember (this tab only) that WE are the publisher: if the tab is
+      // discarded and restored, the reloaded page finds this marker and
+      // tells him plainly instead of leaving a silent ghost (see vsSync)
+      try { sessionStorage.setItem("mw_vspub", JSON.stringify({ mid: mint.meeting, kind })); } catch (_) {}
+      vsPub.beat = setInterval(() => { if (vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(); } try { vsPubRepublish(); } catch (_) {} }, 20000);
       if (kind === "cam") {
         let track = (typeof camStream !== "undefined" && camStream && camStream.getVideoTracks()[0]) || null;
         if (!track) {
@@ -2649,7 +2803,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       await vsPubTeardown(); vsDetach();
       // a start that failed AFTER the switch was written (picker closed,
       // camera denied) clears its own switch — no ghost left behind
-      if (stateWrote && (S.vstream || {}).meeting === pubMid) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false }; save(true); }
+      if (stateWrote && (S.vstream || {}).meeting === pubMid) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() }; save(true); }
       if (kind === "screen") say("🖥 Screen share did not start — if you closed the picker, tap Capture and pick the screen you want to show.");
       else say("📹 Live video did not start — allow the camera for this site, then tap Live Video again.");
     } finally { vsPubBusy = false; vsPaintBtns(); }
@@ -2662,8 +2816,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       vsPubStop(kind === "screen" ? "🖥 Screen share stopped — the master screen is back to the video mix." : "📹 Live video stopped — the master screen is back to the video mix."); return;
     }
     const vs = S.vstream || {};
-    if (vs.on && vs.by === vsUid() && vs.kind === kind) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false }; save(true); vsSync(); say("Stopped — the master screen is back to the video mix."); return; }
-    if (vs.on && vs.by === vsUid()) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false }; save(true); }
+    if (vs.on && vs.by === vsUid() && vs.kind === kind) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() }; save(true); vsSync(); say("Stopped — the master screen is back to the video mix."); return; }
+    if (vs.on && vs.by === vsUid()) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() }; save(true); }
     vsPubStart(kind);
   }
   /* ---------- HIDE SHARE (owner, 2026-10-29) ----------
@@ -2687,9 +2841,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!t) return;
     if (h) { try { t.enabled = false; } catch (_) {} return; }
     if (t.readyState === "live") { try { t.enabled = true; } catch (_) {} return; }
-    // the published track died while hidden — there is nothing to bring
-    // back, so end the share honestly instead of unhiding onto a corpse
-    vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix.");
+    // the published track died while hidden: put the source back if it
+    // is still alive (the republish path) instead of ending the share —
+    // a track that died on OUR side is not his Stop. If the source
+    // itself is gone, its own ended listener owns that ending.
+    try { vsPubRepublish(); } catch (_) {}
   }
   function vsHiddenPh(show) {
     try {
@@ -2720,8 +2876,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (vsSwapBusy || !vsPub || vsPub.kind !== "screen") return;
     if (!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) { say("🖥 This browser cannot capture a new source."); return; }
     vsSwapBusy = true;
+    let swapNew = null;
     try {
-      const raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false });
+      let raw;
+      try { raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: true }); }
+      catch (e) { if (e && e.name === "NotAllowedError") throw e; raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false }); }
       const rt = raw.getVideoTracks()[0];
       if (!rt) { try { raw.getTracks().forEach((t) => t.stop()); } catch (_) {} say("🙈 Still hidden — that pick had no screen in it."); return; }
       const p = vsPub;
@@ -2736,20 +2895,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       rt.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen" && !vsPub.swapping) vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); });
       let newTrack = rt, newLocal = new MediaStream([rt]);
       try { const cs = vsCropStart(rt); newTrack = cs.getVideoTracks()[0]; newLocal = cs; } catch (_) { vsCropStop(); }
+      swapNew = { track: newTrack, local: newLocal, raw };
       // retire the old producer slot first (its track is being discarded
       // either way), then publish the fresh track into the same meeting
       try { if (p.meeting.self && p.meeting.self.disableVideo) await p.meeting.self.disableVideo(); } catch (_) {}
       await p.meeting.self.enableVideo(newTrack);
       p.pubTrack = newTrack; p.localStream = newLocal; p.hidApplied = false; p.swapping = false;
+      await vsPubAudio(p.meeting, raw);
       if ((S.vstream || {}).hidden) { S.vstream.hidden = false; save(true); }
       vsPaintSig = null; vsPaintBtns(); vsSync();
       say("🖥 New source on the master screen — you are visible again.");
     } catch (_) {
       // a failure BEFORE the old source was touched (the picker was
       // cancelled) leaves him hidden on the old source; a failure AFTER
-      // the swap began means the old source is already retired, so the
-      // share ends honestly instead of pretending it is still there
-      if (vsPub && vsPub.swapping) { vsPub.swapping = false; vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); }
+      // the swap began gets ONE honest retry of the publish — a
+      // transient SDK hiccup mid-swap is not his Stop — and only a
+      // second failure ends the share, rather than pretending the old
+      // source is still there when it was already retired
+      if (vsPub && vsPub.swapping) {
+        let retried = false;
+        try { if (swapNew && swapNew.track && swapNew.track.readyState === "live") { await vsPub.meeting.self.enableVideo(swapNew.track); vsPub.pubTrack = swapNew.track; vsPub.localStream = swapNew.local; vsPub.hidApplied = false; vsPub.swapping = false; await vsPubAudio(vsPub.meeting, swapNew.raw); if ((S.vstream || {}).hidden) { S.vstream.hidden = false; save(true); } vsPaintSig = null; vsPaintBtns(); vsSync(); say("🖥 New source on the master screen — you are visible again."); retried = true; } } catch (_) {}
+        if (!retried) { vsPub.swapping = false; vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); }
+      }
       else say("🙈 Still hidden — the old source is still yours when you show again.");
     } finally { vsSwapBusy = false; }
   }
@@ -2760,8 +2927,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * on the booth stage — program-monitor style, he sees exactly what he
    * sends. drawImage is GPU compositing; there is no per-pixel JS work
    * and nothing here runs per frame except the draw itself. */
+  /* the capture's own sound (owner, 2026-10-29 — the MASTER-SCREEN
+   * RULE: whatever he puts on the master screen takes over the radio,
+   * so the TV carries the capture's audio, never the DJ music). Tab
+   * shares can hand over the tab's audio track; window and full-screen
+   * picks usually cannot — then the share stays video-only, exactly as
+   * before, and nothing pretends otherwise. The audio rides the raw
+   * stream beside the canvas video (there is no canvas for sound) and
+   * replaces whatever audio the meeting slot held. */
+  async function vsPubAudio(meeting, raw) {
+    try {
+      const at = raw && raw.getAudioTracks ? raw.getAudioTracks()[0] : null;
+      try { if (meeting.self && meeting.self.disableAudio) await meeting.self.disableAudio(); } catch (_) {}
+      if (!at) { if (vsPub) vsPub.pubAudio = null; return; }
+      await meeting.self.enableAudio(at);
+      if (vsPub) vsPub.pubAudio = at;
+    } catch (_) {}
+  }
   async function vsStartScreen(meeting) {
-    const raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false });
+    let raw;
+    try { raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: true }); }
+    catch (e) { if (e && e.name === "NotAllowedError") throw e; raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false }); }
     vsPub.rawStream = raw;
     const rt = raw.getVideoTracks()[0];
     if (!rt) throw new Error("no screen track");
@@ -2781,6 +2967,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       vsPub.localStream = new MediaStream([rt]);
       say("🖥 The crop frame could not run on this browser — your full screen is sharing instead.");
     }
+    await vsPubAudio(meeting, raw);
   }
   function vsCropStart(track) {
     vsCropStop();
@@ -2852,7 +3039,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * the kind only sets the preference order, so the producer's picture
    * is picked up whichever channel it actually arrives on. */
   function vsTrackOf(p, key) {
-    try { return key === "ss" ? (p.screenShareTracks && p.screenShareTracks.video) : p.videoTrack; } catch (_) { return null; }
+    try { return key === "ss" ? (p.screenShareTracks && p.screenShareTracks.video) : key === "at" ? p.audioTrack : p.videoTrack; } catch (_) { return null; }
   }
   /* SUBSCRIPTION (the 2026-10-29 viewer failure): a remote track only
    * reaches this client for participants in the SDK's subscribed set
@@ -2943,14 +3130,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try {
       vsSubAll(w.meeting); // subscribe assist - even while hidden, so an unhide renders fast; never load-bearing
       if ((S.vstream || {}).hidden) { vsDetach(); return; } // HIDE SHARE: the join stays up, the picture does not render
+      if (vsLocalPause) return; // VIEWER PAUSE (fix-studio4): this viewer paused the capture just for themselves — the join stays up, nothing renders, nothing is written anywhere
       const kind = (S.vstream || {}).kind;
       const order = kind === "screen" ? ["ss", "vt"] : ["vt", "ss"];
       const peers = vsPeers(w.meeting);
       let best = null, anyProducer = false;
-      peers.forEach((p) => { if (!p) return; try { if (p.producers && p.producers.length) anyProducer = true; } catch (_) {} if (best) return; for (const key of order) { const t = vsTrackOf(p, key); if (t && t.readyState === "live") { best = t; break; } } });
+      let bestP = null;
+      peers.forEach((p) => { if (!p) return; try { if (p.producers && p.producers.length) anyProducer = true; } catch (_) {} if (best) return; for (const key of order) { const t = vsTrackOf(p, key); if (t && t.readyState === "live") { best = t; bestP = p; break; } } });
       try { w.stageStatus = (w.meeting.self && w.meeting.self.stageStatus) || w.stageStatus || ""; } catch (_) {}
       vsDiag(w, peers, anyProducer);
-      if (best) { w.got = Date.now(); if (vsShown.hls) vsDetach(); vsShowTrack(best); return; }
+      if (best) { w.got = Date.now(); if (vsShown.hls) vsDetach(); const at2 = bestP ? vsTrackOf(bestP, "at") : null; vsShowTrack(best, at2 && at2.readyState === "live" ? at2 : null); return; }
       if (vsShown.hls) return; // the room playback is carrying the picture
       if (w.got && vsShown.track && vsShown.track.readyState === "ended") { vsWatchStop(); vsDetach(); return; } // the producer left mid-stream
       // no WebRTC track: in a LIVESTREAM room an off-stage watcher never
@@ -3016,18 +3205,38 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* the master switch — runs on the stage cadence from stageApply */
   function vsSync() {
     try {
-      vsPaintBtns(); vsPaintStatus();
+      vsPaintBtns(); vsPaintStatus(); vsPaintPause();
       const vs = S.vstream || {};
+      // discarded-and-restored publisher tab: the capture itself cannot
+      // come back after a reload, and the switch is NEVER cleared on
+      // wake — but he is told, once, in plain words, instead of the old
+      // silent ghost (switch on, stamp frozen, nobody in the meeting)
+      if (!vsPub && !SANDBOX && OWNER()) {
+        try { const mk = JSON.parse(sessionStorage.getItem("mw_vspub") || "null"); if (mk && mk.mid) { if (vs.on && vs.meeting === mk.mid && vs.by === vsUid()) { sessionStorage.removeItem("mw_vspub"); say("🖥 This tab was reloaded while you were sharing, so the capture itself is gone — the switch was left untouched. Tap Capture My Screen to put your screen back."); } else if (Date.now() - vsArrivedAt > 8000 && (!vs.on || vs.meeting !== mk.mid)) sessionStorage.removeItem("mw_vspub"); } } catch (_) {}
+      }
       if (vsPub) {
         if (!vs.on || vs.meeting !== vsPub.mid) {
-          // stopped or replaced from another of his screens — but a
-          // publish still starting is never torn down, and one stale echo
-          // never kills a live one either: the mismatch must hold for
-          // three straight stage ticks before this tab believes it
+          // A SHARE ENDS ONLY WHEN HE ENDS IT (owner, 2026-10-29:
+          // "never stop my tab from being shared until i do"). The old
+          // code counted three mismatched ticks and tore the publish
+          // down — but a mismatch can be a stale echo: another of his
+          // tabs re-saving an older copy of the switch, an adopt
+          // landing mid-flight, a half-loaded screen. State alone now
+          // ends this publish only two ways, both deliberately his:
+          // (1) an explicit Stop from another of his screens — those
+          // writes carry a stopAt stamp the button itself wrote, newer
+          // than this publish's start; (2) a NEWER share he started on
+          // another screen taking the screen over (a claim fresher
+          // than this publish, from his own account). Anything else,
+          // the live publisher re-asserts its own switch and keeps
+          // publishing — the meeting it actually joined is the truth,
+          // not an echoed row. A non-publisher screen can never end
+          // the share by itself.
           if (vsPub.starting) return;
-          vsPub.strikes = (vsPub.strikes || 0) + 1;
-          if (vsPub.strikes >= 3) { vsPubTeardown(); vsDetach(); }
-          return;
+          if (!vs.on && vs.stopAt && vs.stopAt >= (vsPub.since || 0)) { vsPubStop("🖥 Screen share stopped from your other screen — the master screen is back to the video mix."); return; }
+          if (vs.on && vs.meeting && vs.by === vsUid() && (vs.at || 0) > (vsPub.since || 0)) { const p0 = vsPub; if (p0) p0.pausedDecks = null; vsPubTeardown(); vsDetach(); return; } // the new share owns the tables-pause now — this tab must not resume decks on its way out
+          S.vstream = { on: true, kind: vsPub.kind, at: Date.now(), by: vsUid(), meeting: vsPub.mid, hidden: !!vsPub.hidApplied, stopAt: 0 };
+          save(true);
         }
         vsPub.strikes = 0;
         // liveness rides the saves that already flow: while this tab is
@@ -3052,7 +3261,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         if (tr) vsShowTrack(tr);
         return;
       }
-      if (SANDBOX || !vs.on || !vs.meeting) { if (vsWatch) vsWatchStop(); vsDetach(); return; }
+      if (SANDBOX || !vs.on || !vs.meeting) { if (vsLocalPause) { vsLocalPause = false; vsPauseWasListening = false; vsPauseSig = ""; } if (vsWatch) vsWatchStop(); vsDetach(); return; }
       // the station stage is UP whenever a share is live and not hidden —
       // guaranteed here, on the watch cadence itself, not only by the
       // stage painter (whose render path awaits third-party players)
@@ -3070,6 +3279,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // but nothing renders while the owner has the share hidden — the
       // stage and mini fall back to the normal video mix underneath
       if (vs.hidden) { vsDetach(); return; }
+      try { if (vsShown.hls) vsHlsPickSound(false); } catch (_) {}
       vsWatchGrab();
     } catch (_) {}
   }
@@ -3078,6 +3288,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!t || !t.closest) return;
     if (t.closest("#tw-sound")) { if (window.MW_DJ) window.MW_DJ.toggle(); tvSig = ""; try { tvPaint(); } catch (_) {} return; }
     if (t.closest("#tw-fs")) { const sh = document.getElementById("tw-shell"); try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {} return; }
+    if (t.closest(".vspause")) { vsToggleLocalPause(); return; }
     if (t.closest("[data-hidebtn]")) { vsToggleHide(); return; }
     if (t.closest("[data-capbtn]")) { vsToggle("screen"); return; }
     if (t.closest("[data-vlive]")) { vsToggle("cam"); return; }
@@ -3094,12 +3305,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     vsCrop[k] = Math.max(0, Math.min(45, +t.value || 0));
     vsCropSave(); vsStudioLabels();
   });
-  /* coming back to the booth tab re-stamps the stream switch at once —
-   * liveness never waits on a timer if the page can speak sooner */
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden || !vsPub) return;
-    try { if (S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(true); } } catch (_) {}
-  });
+  /* waking up re-asserts the share at once — re-stamp, switch check and
+   * a republish if the published track died in its sleep (vsPubWake).
+   * NOTHING on any wake path clears the switch or stops the share. */
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) vsPubWake(); });
+  window.addEventListener("pageshow", () => vsPubWake());
+  window.addEventListener("focus", () => vsPubWake());
+  document.addEventListener("resume", () => vsPubWake());
+  /* a refused unmuted play (the capture's sound attempted before the
+   * viewer had tapped anything) retries on their first tap anywhere —
+   * the one gesture every platform accepts; it starts nothing else */
+  document.addEventListener("pointerdown", () => { if (!vsSndBlocked) return; vsSndBlocked = false; try { if (vsShown.atrack) vsAudioPlay(vsShown.atrack); if (vsShown.hls) vsHlsPickSound(true); } catch (_) {} }, true);
   /* the live-share watch runs on its OWN cadence, not only at the tail
    * of stageApply: that paint path awaits third-party player APIs (up to
    * 7s each on a cold load, three providers in a row), and a viewer
@@ -4117,7 +4333,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793273400;
+  const MW_DJ_BUILD = 1793273500;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -4402,8 +4618,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // switch — {on, kind:"cam"|"screen", at, by, meeting}. Screen outranks
     // camera stream, camera stream outranks the vmix deck videos; the
     // meeting id is how viewers find the room the booth is publishing to.
-    m.vstream = Object.assign({ on: false, kind: "", at: 0, by: "", meeting: "", hidden: false }, m.vstream || {});
+    m.vstream = Object.assign({ on: false, kind: "", at: 0, by: "", meeting: "", hidden: false, stopAt: 0 }, m.vstream || {});
     m.vstream.on = !!m.vstream.on; m.vstream.at = +m.vstream.at || 0;
+    m.vstream.stopAt = +m.vstream.stopAt || 0; // explicit-stop stamp (fix-studio4): written ONLY by an owner Stop tap, so the publisher can tell a deliberate stop from a stale echo of the switch — see vsSync
     m.vstream.kind = (m.vstream.kind === "cam" || m.vstream.kind === "screen") ? m.vstream.kind : "";
     m.vstream.by = String(m.vstream.by || "");
     m.vstream.meeting = /^[A-Za-z0-9-]{8,80}$/.test(String(m.vstream.meeting || "")) ? String(m.vstream.meeting) : "";
