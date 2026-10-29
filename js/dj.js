@@ -644,6 +644,25 @@ html.popdj .popdj-hint{display:block}
 #dj-camwrap.novid #dj-camph{display:grid}
 #dj-camtag{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo,#8a6d2f);color:#f0cf78;border-radius:999px;padding:2px 8px;font:800 10.5px var(--body);letter-spacing:.08em;z-index:5}
 #dj-camwrap.novid #dj-camtag{display:none}
+/* CAMERA SUITE (owner, 2026-10-29): filters + background removal on his
+   camera box — the control strip is pinned to the BOTTOM of the camera
+   square itself — and the small live square of him on the viewers'
+   pop-out master screen (.mw-camov, bottom-right, draggable). */
+#dj-camfx{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);border:2px solid var(--gold,#f0cf78);box-sizing:border-box;display:none;background:#000;z-index:2}
+#dj-camwrap.fxbg #dj-camfx{display:block}
+#dj-camwrap.fxbg #dj-camvid{opacity:0}
+#dj-camwrap.novid #dj-camfx{display:none}
+#dj-camstrip{position:absolute;left:0;right:0;bottom:0;z-index:6;display:flex;align-items:center;gap:4px;padding:5px 6px;background:rgba(5,5,8,.8);border-top:1px solid var(--gold-lo,#8a6d2f);overflow-x:auto;scrollbar-width:none}
+#dj-camstrip::-webkit-scrollbar{display:none}
+#dj-camstrip .cs-lab{font:800 9.5px var(--body);letter-spacing:.1em;color:var(--gold-hi,#f0cf78);flex:none}
+#dj-camstrip .cs-sep{width:1px;align-self:stretch;background:var(--gold-lo,#8a6d2f);opacity:.6;flex:none;margin:0 2px}
+#dj-camstrip .cs-chip{flex:none;background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);color:#e8e2d2;border-radius:999px;padding:3px 8px;font:700 10.5px var(--body);cursor:pointer;white-space:nowrap}
+#dj-camstrip .cs-chip.on{background:var(--gold,#f0cf78);color:#0b0a08;border-color:var(--gold,#f0cf78)}
+.mw-camov{position:absolute;width:30%;aspect-ratio:1/1;z-index:8;border:2px solid var(--gold,#f0cf78);border-radius:8px;overflow:hidden;background:#000;box-shadow:0 6px 18px rgba(0,0,0,.5);touch-action:none;cursor:grab}
+.mw-camov:active{cursor:grabbing}
+.mw-camov img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+.mw-camov-tag{position:absolute;left:4px;bottom:3px;font:800 8.5px var(--body);letter-spacing:.08em;color:#f0cf78;text-shadow:0 1px 3px #000;pointer-events:none}
+#mw-camov-x{position:absolute;right:2px;top:2px;width:16px;height:16px;line-height:1;background:rgba(0,0,0,.65);border:1px solid rgba(240,207,120,.5);color:#f0cf78;border-radius:50%;font-size:10px;cursor:pointer;padding:0;z-index:2}
 /* VIDEO TRANSITIONS + VIDEO FX (owner, 2026-10-28): discrete master-screen
    switches animate the incoming slot (wrapper only - the player inside is
    never reloaded, so the picture cannot lose its place against the sound);
@@ -1148,7 +1167,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // music video follows viewers around the whole site (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
   if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
-  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; });
+  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; });
     // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
     // "make the music video screen moveable") — drag it anywhere; the spot is
     // remembered per device and restored on every page
@@ -1522,7 +1541,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      scoot transition restarted endlessly. Now: a 6px deadband, measured
      only on the off-to-on transition and on debounced resizes. */
   function camSize() { const st = camEls().st; if (st) { const h = st.clientHeight || 0; if (h > 0 && Math.abs(h - camLastW) >= 6) { camLastW = h; st.style.setProperty("--camw", h + "px"); } } }
-  function camStopLocal() { if (camStream) { try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {} camStream = null; } const vid = camEls().vid; if (vid) { try { vid.srcObject = null; } catch (_) {} } }
+  function camStopLocal() { camFxOnStop(); if (camStream) { try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {} camStream = null; } const vid = camEls().vid; if (vid) { try { vid.srcObject = null; } catch (_) {} } }
   async function camStartLocal() {
     if (camStream) return true;
     if (camBusy) return false;
@@ -1533,6 +1552,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const e = camEls();
       if (e.vid) { e.vid.srcObject = s; try { await e.vid.play(); } catch (_) {} }
       if (e.wrap) e.wrap.classList.remove("novid");
+      camFxOnStream();
       return true;
     } catch (_) { return false; }
     finally { camBusy = false; }
@@ -1540,6 +1560,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function camSync() {
     try {
       const e = camEls(); if (!e.st) return;
+      camStripBuild();
       if (e.btn) e.btn.style.display = SANDBOX ? "none" : "";
       const on = !SANDBOX && OWNER() && !!(S.vcam && S.vcam.on);
       if (e.btn && camBtnOn !== on) { camBtnOn = on; e.btn.classList.toggle("on", on); e.btn.textContent = on ? "📷 Cam · ON" : "📷 Cam"; }
@@ -1550,6 +1571,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (boothLead && !camStream && !camBusy && Date.now() - camFailAt > 20000) {
         camStartLocal().then((ok) => { if (!ok) { camFailAt = Date.now(); const w = camEls().wrap; if (w) w.classList.add("novid"); } });
       }
+      camFrameTick();
     } catch (_) {}
   }
   async function camToggle() {
@@ -1565,6 +1587,315 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   let camRszT = null;
   addEventListener("resize", () => { if (camRszT) clearTimeout(camRszT); camRszT = setTimeout(() => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} }, 200); });
+  /* ================= CAMERA SUITE (owner, 2026-10-29) =================
+   * Two builds on top of the camera square:
+   * 1) FILTERS + BACKGROUND REMOVAL, edited from a control strip pinned
+   *    to the BOTTOM of his camera box ("put my camera filters at the
+   *    bottom of the master screen on my camera box so I can edit my
+   *    camera"). Filters are plain CSS on the cam surface. The background
+   *    engine is Robust Video Matting (free, open-source, off GitHub)
+   *    running in onnxruntime-web; the model file comes from a public
+   *    Hugging Face mirror that is byte-identical to the official
+   *    PeterL1n GitHub release (sha256 checked at build time) because
+   *    GitHub release downloads send no CORS header a browser can use.
+   *    If RVM cannot load, the fallback is MediaPipe Selfie Segmentation
+   *    (also free) — it is a per-frame mask, visibly less steady than
+   *    RVM's recurrent matte. Everything loads LAZILY, only when he
+   *    first taps a background chip other than Off.
+   * 2) VIEWERS SEE HIM on the pop-out master screen: while his cam is on
+   *    and the station is live, the lead booth publishes a fresh camera
+   *    FRAME every ~4 seconds into S.vcam.frame and every viewer's
+   *    pop-out grows a small draggable square of him, bottom-right.
+   *    HONESTY NOTE: this is a live photo relay — a fresh still every
+   *    few seconds, NOT full-motion video. The same square becomes the
+   *    real video surface when the Realtime streaming path lands.
+   * Booth-local only: filter/BG choices live in localStorage, never in
+   * the shared state; the only shared writes are the frame relay. */
+  const CAM_FX_W = 320; // matte pipeline working square (px)
+  const CAM_FILTERS = { off: "", gold: "saturate(1.35) contrast(1.08) sepia(0.30) brightness(1.04)", bw: "grayscale(1) contrast(1.06)", vivid: "saturate(1.75) contrast(1.12)", soft: "brightness(1.13) contrast(0.92) saturate(1.08) blur(0.7px)", noir: "grayscale(1) contrast(1.32) brightness(0.86)" };
+  let camFx = { filter: "off", bg: "off" };
+  try { const sfx = JSON.parse(localStorage.getItem("mw-camfx") || "{}"); if (sfx && typeof sfx === "object") { if (CAM_FILTERS[String(sfx.filter)] != null) camFx.filter = String(sfx.filter); if (["off", "blur", "brand", "pic"].indexOf(String(sfx.bg)) >= 0) camFx.bg = String(sfx.bg); } } catch (_) {}
+  function camFxSave() { try { localStorage.setItem("mw-camfx", JSON.stringify(camFx)); } catch (_) {} }
+  let camBgImg = null, camBgImgURL = "", camBgQuotaSaid = false;
+  try { camBgImgURL = localStorage.getItem("mw-cambg") || ""; } catch (_) {}
+  if (camBgImgURL) { const bim = new Image(); bim.onload = () => { camBgImg = bim; }; bim.onerror = () => { camBgImgURL = ""; }; bim.src = camBgImgURL; }
+  function drawCover(ctx, src, W, H) { const sw = src.videoWidth || src.naturalWidth || src.width || 0, sh = src.videoHeight || src.naturalHeight || src.height || 0; if (!sw || !sh) return; const sc = Math.max(W / sw, H / sh), dw = sw * sc, dh = sh * sc; ctx.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh); }
+  function camStripBuild() {
+    try {
+      const w = camEls().wrap; if (!w || document.getElementById("dj-camstrip")) return;
+      const fx = document.createElement("canvas"); fx.id = "dj-camfx"; fx.width = CAM_FX_W; fx.height = CAM_FX_W; w.appendChild(fx);
+      const bar = document.createElement("div"); bar.id = "dj-camstrip";
+      const chip = (attr, val, label) => "<button type='button' class='cs-chip' data-cs" + attr + "='" + val + "'>" + label + "</button>";
+      bar.innerHTML = "<span class='cs-lab'>FX</span>" +
+        chip("f", "off", "Off") + chip("f", "gold", "Gold") + chip("f", "bw", "B&W") + chip("f", "vivid", "Vivid") + chip("f", "soft", "Soft") + chip("f", "noir", "Noir") +
+        "<span class='cs-sep'></span><span class='cs-lab'>BG</span>" +
+        chip("b", "off", "Off") + chip("b", "blur", "Blur") + chip("b", "brand", "Brand") + chip("b", "pic", "🖼 Pic") +
+        "<input type='file' id='dj-cambg-file' accept='image/*' hidden>";
+      w.appendChild(bar);
+      bar.addEventListener("click", (ev) => { const b = ev.target.closest("[data-csf],[data-csb]"); if (!b) return; if (b.hasAttribute("data-csf")) camFxSetFilter(b.getAttribute("data-csf")); else camFxSetBg(b.getAttribute("data-csb")); });
+      const fi = bar.querySelector("#dj-cambg-file");
+      fi.addEventListener("change", () => { const f = fi.files && fi.files[0]; try { fi.value = ""; } catch (_) {} if (f) camBgLoadFile(f); });
+      camFxPaint();
+    } catch (_) {}
+  }
+  function camFxPaint() {
+    try {
+      document.querySelectorAll("#dj-camstrip .cs-chip").forEach((c) => { if (c.hasAttribute("data-csf")) c.classList.toggle("on", camFx.filter === c.getAttribute("data-csf")); else c.classList.toggle("on", camFx.bg === c.getAttribute("data-csb")); });
+      const css = CAM_FILTERS[camFx.filter] || "";
+      const v = camEls().vid; if (v) v.style.filter = css;
+      const fx = document.getElementById("dj-camfx"); if (fx) fx.style.filter = css;
+    } catch (_) {}
+  }
+  function camFxSetFilter(v) { if (CAM_FILTERS[v] == null) return; camFx.filter = v; camFxSave(); camFxPaint(); }
+  function camFxSetBg(v) {
+    if (["off", "blur", "brand", "pic"].indexOf(v) < 0) return;
+    if (v === "pic" && !camBgImg) { camBgPick(); say("🖼 Pick a picture for your background."); return; }
+    if (v === "pic" && camFx.bg === "pic") { camBgPick(); return; } // tap Pic again to change the picture
+    camFx.bg = v; camFxSave(); camFxPaint(); camFxMaybeStart();
+  }
+  function camBgPick() { const fi = document.getElementById("dj-cambg-file"); if (fi) fi.click(); }
+  function camBgLoadFile(f) {
+    const url = URL.createObjectURL(f), im = new Image();
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      const sc = Math.min(1, 1024 / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+      const cv = document.createElement("canvas"); cv.width = Math.max(1, Math.round((im.naturalWidth || 1) * sc)); cv.height = Math.max(1, Math.round((im.naturalHeight || 1) * sc));
+      try { cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height); } catch (_) {}
+      let data = ""; try { data = cv.toDataURL("image/jpeg", 0.85); } catch (_) {}
+      camBgImg = im; camBgImgURL = data;
+      if (data) { try { localStorage.setItem("mw-cambg", data); } catch (_) { if (!camBgQuotaSaid) { camBgQuotaSaid = true; say("🖼 That picture is too big to save for next time — it still works for this session."); } } }
+      camFx.bg = "pic"; camFxSave(); camFxPaint(); camFxMaybeStart();
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); say("🖼 That picture would not load."); };
+    im.src = url;
+  }
+  let fxBrand = null;
+  function fxBrandCanvas() {
+    if (fxBrand) return fxBrand;
+    const W = 640, cv = document.createElement("canvas"); cv.width = W; cv.height = W; const c = cv.getContext("2d");
+    const g = c.createLinearGradient(0, 0, 0, W); g.addColorStop(0, "#171106"); g.addColorStop(0.55, "#0a0a0c"); g.addColorStop(1, "#050505"); c.fillStyle = g; c.fillRect(0, 0, W, W);
+    const rg = c.createRadialGradient(W / 2, W * 0.36, 40, W / 2, W * 0.36, W * 0.75); rg.addColorStop(0, "rgba(240,207,120,0.30)"); rg.addColorStop(1, "rgba(240,207,120,0)"); c.fillStyle = rg; c.fillRect(0, 0, W, W);
+    c.fillStyle = "rgba(240,207,120,0.13)"; c.font = "800 300px Georgia, 'Times New Roman', serif"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("MW", W / 2, W * 0.44);
+    c.fillStyle = "rgba(240,207,120,0.55)"; c.font = "700 29px system-ui, sans-serif"; c.fillText("M E E C H I E ' S   W O R L D", W / 2, W * 0.88);
+    fxBrand = cv; return cv;
+  }
+  /* ---- the background engine: lazy script/model loading ---- */
+  const ORT_CDN = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/";
+  const RVM_MODEL = "https://huggingface.co/LPDoctor/video_matting/resolve/main/rvm_mobilenetv3_fp32.onnx";
+  const MP_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/";
+  let fxEngine = null, fxEngineKind = "", fxLoadP = null, fxStarting = false;
+  let fxRun = false, fxRaf = 0, fxBusy = false, fxFails = 0, fxLastAt = 0, fxLastStart = 0, fxBailed = false, fxRec = null;
+  const fxProc = document.createElement("canvas"); fxProc.width = CAM_FX_W; fxProc.height = CAM_FX_W;
+  const fxAlpha = document.createElement("canvas"); fxAlpha.width = CAM_FX_W; fxAlpha.height = CAM_FX_W;
+  const fxPerson = document.createElement("canvas"); fxPerson.width = CAM_FX_W; fxPerson.height = CAM_FX_W;
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
+      const old = document.querySelector("script[src='" + src + "']");
+      if (old) { if (old.dataset.ok) { resolve(); return; } old.addEventListener("load", () => resolve()); old.addEventListener("error", () => reject(new Error("script " + src))); return; }
+      const s = document.createElement("script"); s.src = src; s.async = true;
+      s.onload = () => { s.dataset.ok = "1"; resolve(); };
+      s.onerror = () => reject(new Error("script " + src));
+      document.head.appendChild(s);
+    });
+  }
+  async function fxLoadRvm() {
+    await loadScriptOnce(ORT_CDN + "ort.min.js");
+    if (!window.ort) throw new Error("ort missing");
+    ort.env.wasm.wasmPaths = ORT_CDN;
+    ort.env.wasm.numThreads = 1; // no cross-origin isolation on the page — single-thread wasm is the safe path
+    const resp = await fetch(RVM_MODEL); if (!resp.ok) throw new Error("model http " + resp.status);
+    const buf = await resp.arrayBuffer();
+    const sess = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"] });
+    // verified against the real model (python onnxruntime, 2026-10-29):
+    // input 320x320, downsample_ratio 0.5 → recurrent states are
+    // r1 [1,16,80,80], r2 [1,20,40,40], r3 [1,40,20,20], r4 [1,64,10,10],
+    // and each run's r1o..r4o feed straight back as the next frame's r1i..r4i.
+    const z = (c, h, w) => new ort.Tensor("float32", new Float32Array(c * h * w), [1, c, h, w]);
+    fxRec = [z(16, 80, 80), z(20, 40, 40), z(40, 20, 20), z(64, 10, 10)];
+    return { kind: "rvm", sess };
+  }
+  async function fxLoadMp() {
+    await loadScriptOnce(MP_CDN + "selfie_segmentation.js");
+    if (!window.SelfieSegmentation) throw new Error("mediapipe missing");
+    const seg = new SelfieSegmentation({ locateFile: (f) => MP_CDN + f });
+    seg.setOptions({ modelSelection: 1 });
+    const eng = { kind: "mp", seg, waiters: [], maskMode: "" };
+    seg.onResults((r) => { const ws = eng.waiters.splice(0); ws.forEach((fn) => { try { fn(r); } catch (_) {} }); });
+    return eng;
+  }
+  function fxLoadEngine() {
+    if (fxEngine) return Promise.resolve(fxEngine);
+    if (fxLoadP) return fxLoadP;
+    fxLoadP = (async () => {
+      try { fxEngine = await fxLoadRvm(); fxEngineKind = "rvm"; }
+      catch (e1) { fxEngine = await fxLoadMp(); fxEngineKind = "mp"; }
+      return fxEngine;
+    })();
+    fxLoadP.catch(() => { fxLoadP = null; });
+    return fxLoadP;
+  }
+  async function fxMatteRvm() {
+    const W = CAM_FX_W, sess = fxEngine.sess;
+    const img = fxProc.getContext("2d").getImageData(0, 0, W, W).data;
+    const inp = new Float32Array(3 * W * W), n = W * W;
+    for (let i = 0; i < n; i++) { inp[i] = img[i * 4] / 255; inp[n + i] = img[i * 4 + 1] / 255; inp[2 * n + i] = img[i * 4 + 2] / 255; }
+    const srcT = new ort.Tensor("float32", inp, [1, 3, W, W]);
+    const feeds = { src: srcT, r1i: fxRec[0], r2i: fxRec[1], r3i: fxRec[2], r4i: fxRec[3], downsample_ratio: new ort.Tensor("float32", new Float32Array([0.5]), [1]) };
+    const out = await sess.run(feeds);
+    const prev = fxRec; fxRec = [out.r1o, out.r2o, out.r3o, out.r4o];
+    const pha = out.pha.data, actx = fxAlpha.getContext("2d"), aim = actx.createImageData(W, W);
+    for (let i = 0; i < n; i++) { const a = pha[i]; aim.data[i * 4 + 3] = a <= 0 ? 0 : a >= 1 ? 255 : Math.round(a * 255); }
+    actx.putImageData(aim, 0, 0);
+    try { srcT.dispose(); feeds.downsample_ratio.dispose(); out.fgr.dispose(); out.pha.dispose(); prev.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {}
+  }
+  function fxMatteMp() {
+    return new Promise((resolve) => {
+      const eng = fxEngine; let done = false;
+      const finish = (r) => {
+        if (done) return; done = true;
+        try {
+          if (!r || !r.segmentationMask) { resolve(false); return; }
+          const W = CAM_FX_W, actx = fxAlpha.getContext("2d");
+          actx.save(); actx.globalCompositeOperation = "copy"; actx.drawImage(r.segmentationMask, 0, 0, W, W); actx.restore();
+          // the mask packet carries the matte in its alpha channel on some
+          // builds and in the red channel on others — detect once, then
+          // normalize to the same alpha-only form the RVM path produces.
+          const md = actx.getImageData(0, 0, W, W), px = md.data;
+          if (!eng.maskMode) { let aVar = false; const a0 = px[3]; for (let i = 0; i < px.length; i += 1604) { if (px[i + 3] !== a0) { aVar = true; break; } } eng.maskMode = aVar ? "a" : "r"; }
+          const useA = eng.maskMode === "a";
+          for (let i = 0; i < px.length; i += 4) { const a = useA ? px[i + 3] : px[i]; px[i] = 0; px[i + 1] = 0; px[i + 2] = 0; px[i + 3] = a; }
+          actx.putImageData(md, 0, 0);
+          resolve(true);
+        } catch (_) { resolve(false); }
+      };
+      eng.waiters.push(finish);
+      try { const p = eng.seg.send({ image: fxProc }); if (p && p.catch) p.catch(() => finish(null)); } catch (_) { finish(null); }
+      setTimeout(() => finish(null), 2500);
+    });
+  }
+  function fxComposite() {
+    const W = CAM_FX_W, out = document.getElementById("dj-camfx"); if (!out) return;
+    const octx = out.getContext("2d");
+    if (camFx.bg === "blur") { octx.save(); try { octx.filter = "blur(16px) brightness(0.85)"; } catch (_) {} const m = 30; octx.drawImage(fxProc, -m, -m, W + 2 * m, W + 2 * m); octx.restore(); }
+    else if (camFx.bg === "brand") { octx.drawImage(fxBrandCanvas(), 0, 0, W, W); }
+    else if (camFx.bg === "pic" && camBgImg) { octx.save(); octx.clearRect(0, 0, W, W); drawCover(octx, camBgImg, W, W); octx.restore(); }
+    else { octx.clearRect(0, 0, W, W); }
+    const pctx = fxPerson.getContext("2d");
+    pctx.save(); pctx.globalCompositeOperation = "copy"; pctx.drawImage(fxProc, 0, 0);
+    pctx.globalCompositeOperation = "destination-in"; try { pctx.filter = "blur(1.6px)"; } catch (_) {} pctx.drawImage(fxAlpha, 0, 0); pctx.restore();
+    octx.drawImage(fxPerson, 0, 0);
+  }
+  async function fxLoop() {
+    if (!fxRun) return;
+    const v = camEls().vid;
+    if (!fxBusy && camStream && v && v.readyState >= 2 && Date.now() - fxLastStart >= 60) {
+      fxBusy = true; fxLastStart = Date.now();
+      try {
+        drawCover(fxProc.getContext("2d"), v, CAM_FX_W, CAM_FX_W);
+        if (fxEngineKind === "rvm") await fxMatteRvm();
+        else { const ok = await fxMatteMp(); if (!ok) throw new Error("matte"); }
+        fxComposite(); fxFails = 0; fxLastAt = Date.now();
+      } catch (e) {
+        if (Date.now() - fxLastAt > 8000) { fxFails++; if (fxFails >= 5) camFxBail(); }
+      }
+      fxBusy = false;
+    }
+    if (fxRun) fxRaf = requestAnimationFrame(fxLoop);
+  }
+  function camFxMaybeStart() {
+    camStripBuild(); camFxPaint();
+    if (camFx.bg === "off" || fxBailed) { camFxStopPipe(); return; }
+    if (!camStream) return; // the stream-start hook calls back in when the camera is live
+    if (fxEngine) { const w = camEls().wrap; if (w) w.classList.add("fxbg"); } // engine warm: swap surfaces now; a cold engine swaps in on load so he never stares at a black square while the model downloads
+    if (fxRun) return;
+    fxRun = true;
+    if (fxStarting) return;
+    fxStarting = true;
+    fxLoadEngine().then(() => { fxStarting = false; if (!fxRun) return; const w = camEls().wrap; if (w) w.classList.add("fxbg"); fxFails = 0; cancelAnimationFrame(fxRaf); fxRaf = requestAnimationFrame(fxLoop); })
+      .catch(() => { fxStarting = false; camFxBail(); });
+  }
+  function camFxStopPipe() { fxRun = false; cancelAnimationFrame(fxRaf); const w = camEls().wrap; if (w) w.classList.remove("fxbg"); }
+  function camFxBail() { camFxStopPipe(); fxBailed = true; say("📷 Background FX could not run on this device — showing the plain camera."); }
+  function camFxOnStream() { camFxPaint(); camFxMaybeStart(); }
+  function camFxOnStop() { camFxStopPipe(); }
+  /* ---- frame relay: the lead booth publishes a fresh still of him
+   * every ~4s while he is on cam and the station is live; camToggle's
+   * off write already clears frame/frameAt everywhere by replacing
+   * S.vcam wholesale. ---- */
+  let camFrameLast = 0;
+  function camFrameTick() {
+    try {
+      if (!boothLead || !camStream || !S.live || !S.vcam || !S.vcam.on) return;
+      const now = Date.now(); if (now - camFrameLast < 4000) return;
+      const w = camEls().wrap, v = camEls().vid; if (!v) return;
+      const src = (w && w.classList.contains("fxbg")) ? document.getElementById("dj-camfx") : v;
+      if (!src || (src === v && v.readyState < 2)) return;
+      camFrameLast = now;
+      const cv = document.createElement("canvas"); cv.width = 320; cv.height = 320;
+      drawCover(cv.getContext("2d"), src, 320, 320);
+      let q = 0.62, url = cv.toDataURL("image/jpeg", q);
+      while (url.length > 46000 && q > 0.3) { q = Math.round((q - 0.08) * 100) / 100; url = cv.toDataURL("image/jpeg", q); }
+      if (url.length > 60000) return; // still too big — skip this frame rather than bloat the shared state
+      S.vcam = { on: true, at: S.vcam.at || now, frame: url, frameAt: now };
+      save();
+    } catch (_) {}
+  }
+  /* ---- the viewer square on the pop-out master screen: small, bottom-
+   * right by default, draggable anywhere over the screen, position kept
+   * per viewer as fractions of the screen; the ✕ hides it for the rest
+   * of that cam session (keyed to S.vcam.at) and the next cam-on — a
+   * new S.vcam.at — brings it back. ---- */
+  let camOvPos = { fx: 1, fy: 1 };
+  try { const p = JSON.parse(localStorage.getItem("mw-camov-pos") || "null"); if (p && isFinite(+p.fx) && isFinite(+p.fy)) camOvPos = { fx: Math.min(1, Math.max(0, +p.fx)), fy: Math.min(1, Math.max(0, +p.fy)) }; } catch (_) {}
+  let camOvDrag = null, camOvFrameAt = 0;
+  function camOvPlace() {
+    const ov = document.getElementById("mw-camov"); if (!ov || !ov.parentElement) return;
+    const st = ov.parentElement, or2 = ov.getBoundingClientRect(), pw = st.clientWidth, ph = st.clientHeight;
+    if (!pw || !or2.width) return;
+    ov.style.left = Math.round(camOvPos.fx * Math.max(0, pw - or2.width)) + "px";
+    ov.style.top = Math.round(camOvPos.fy * Math.max(0, ph - or2.height)) + "px";
+  }
+  function camOvWire() {
+    const ov = document.getElementById("mw-camov"); if (!ov || ov._wired) return; ov._wired = true;
+    const x = document.getElementById("mw-camov-x");
+    if (x) {
+      x.addEventListener("pointerdown", (ev) => { ev.stopPropagation(); });
+      x.addEventListener("click", (ev) => { ev.stopPropagation(); try { sessionStorage.setItem("mw-camov-hide", String((S.vcam && S.vcam.at) || 0)); } catch (_) {} ov.hidden = true; });
+    }
+    ov.addEventListener("pointerdown", (ev) => {
+      const st = ov.parentElement; if (!st) return;
+      const or2 = ov.getBoundingClientRect();
+      camOvDrag = { id: ev.pointerId, dx: ev.clientX - or2.left, dy: ev.clientY - or2.top };
+      try { ov.setPointerCapture(ev.pointerId); } catch (_) {}
+      ev.preventDefault();
+    });
+    ov.addEventListener("pointermove", (ev) => {
+      if (!camOvDrag || ev.pointerId !== camOvDrag.id) return;
+      const st = ov.parentElement; if (!st) return;
+      const sr = st.getBoundingClientRect(), or2 = ov.getBoundingClientRect(), pw = st.clientWidth, ph = st.clientHeight;
+      let nx = ev.clientX - (sr.left + st.clientLeft) - camOvDrag.dx, ny = ev.clientY - (sr.top + st.clientTop) - camOvDrag.dy;
+      nx = Math.max(0, Math.min(nx, Math.max(0, pw - or2.width)));
+      ny = Math.max(0, Math.min(ny, Math.max(0, ph - or2.height)));
+      ov.style.left = Math.round(nx) + "px"; ov.style.top = Math.round(ny) + "px";
+      camOvPos = { fx: pw - or2.width > 0 ? nx / (pw - or2.width) : 1, fy: ph - or2.height > 0 ? ny / (ph - or2.height) : 1 };
+    });
+    const end = (ev) => { if (camOvDrag && (!ev || ev.pointerId === camOvDrag.id)) { camOvDrag = null; try { localStorage.setItem("mw-camov-pos", JSON.stringify(camOvPos)); } catch (_) {} } };
+    ov.addEventListener("pointerup", end);
+    ov.addEventListener("pointercancel", () => end(null));
+  }
+  function camOvSync() {
+    try {
+      const ov = document.getElementById("mw-camov"); if (!ov) return;
+      camOvWire();
+      const vc = S.vcam || {};
+      let hideFor = ""; try { hideFor = sessionStorage.getItem("mw-camov-hide") || ""; } catch (_) {}
+      const fresh = !!vc.on && typeof vc.frame === "string" && vc.frame.indexOf("data:image/") === 0 && +vc.frameAt > 0 && (Date.now() - +vc.frameAt) <= 15000 && String(vc.at || 0) !== hideFor;
+      if (!fresh) { ov.hidden = true; return; }
+      if (camOvFrameAt !== +vc.frameAt) { const img = document.getElementById("mw-camov-img"); if (img) img.src = vc.frame; camOvFrameAt = +vc.frameAt; }
+      ov.hidden = false;
+      if (!camOvDrag) camOvPlace();
+    } catch (_) {}
+  }
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04 || Date.now() < dropDuckUntil) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
@@ -1775,6 +2106,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     let sessOff = false; try { sessOff = !!sessionStorage.getItem("mw_mini_off"); } catch (_) {}
     const show = !!tg.length && !sessOff && vid !== miniOffVid && !stInView && !document.body.classList.contains("dj-on");
     box.hidden = !show;
+    camOvSync();
     if (!tg.length) scrMini.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
     if (!show) return;
     // keep the mini clear of the bottom player bar: if a saved spot leaves it
@@ -2446,7 +2778,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272000;
+  const MW_DJ_BUILD = 1793272100;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2712,7 +3044,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
     m.vmix.trMs = Math.max(250, Math.min(1600, +m.vmix.trMs || 650)); m.vmix.at = +m.vmix.at || 0;
     m.vfx = Object.assign({ kind: "", at: 0 }, m.vfx || {});
-    m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0;
+    m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0; m.vcam.frameAt = +m.vcam.frameAt || 0; if (typeof m.vcam.frame !== "string" || m.vcam.frame.indexOf("data:image/") !== 0) m.vcam.frame = "";
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     const qn = (r) => (r && (r.src || r.yt)) ? { src: String(r.src || ""), yt: String(r.yt || ""), at: +r.at || 0 } : null;
     m.qStock = { A: qn((m.qStock || {}).A), B: qn((m.qStock || {}).B), C: qn((m.qStock || {}).C), D: qn((m.qStock || {}).D) };
