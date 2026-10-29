@@ -1116,7 +1116,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // music video follows viewers around the whole site (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
   if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
-  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='vchip' id='mn-vchip' hidden></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; });
+  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; });
     // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
     // "make the music video screen moveable") — drag it anywhere; the spot is
     // remembered per device and restored on every page
@@ -1334,7 +1334,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const mkScreen = (ids, standby, chip) => ({ ids, standby, chip, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
   const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
   const scrView = mkScreen(["#st-vs1", "#st-vs2"], "#st-vstandby", "#st-vchip");
-  const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, "#mn-vchip");
+  const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, null); // no title chip on the pop-out screen (owner, 2026-10-28: "take the title off the screen in my master video pop out")
   function vmixTargets() {
     const vm = S.vmix || { mode: "auto", a: "", b: "", t: 0 };
     if (vm.mode === "man" && vm.a && S[vm.a] && S[vm.a].yt) {
@@ -2131,7 +2131,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793200500;
+  const MW_DJ_BUILD = 1793200600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
