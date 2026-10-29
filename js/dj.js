@@ -1500,9 +1500,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * cam on without a stream tries once to start its own — permission may
    * already be granted — and otherwise shows a placeholder in the square.
    * Booth screen ONLY: the station and mini stages are never touched. */
-  let camStream = null, camBusy = false, camFailAt = 0;
+  let camStream = null, camBusy = false, camFailAt = 0, camLastW = 0, camWasOn = false, camBtnOn = null;
   function camEls() { return { st: document.getElementById("dj-vstage"), wrap: document.getElementById("dj-camwrap"), vid: document.getElementById("dj-camvid"), btn: document.getElementById("dj-cambtn") }; }
-  function camSize() { const st = camEls().st; if (st) { const h = st.clientHeight || 0; if (h > 0) st.style.setProperty("--camw", h + "px"); } }
+  /* Glitch guard (owner, 2026-10-29: "my cam on button looks like its
+     glitching"): camSize used to run on EVERY camSync (several times a
+     second) and re-set --camw from clientHeight each pass — on a phone the
+     browser chrome sliding wobbles that height by a few px, so the .45s
+     scoot transition restarted endlessly. Now: a 6px deadband, measured
+     only on the off-to-on transition and on debounced resizes. */
+  function camSize() { const st = camEls().st; if (st) { const h = st.clientHeight || 0; if (h > 0 && Math.abs(h - camLastW) >= 6) { camLastW = h; st.style.setProperty("--camw", h + "px"); } } }
   function camStopLocal() { if (camStream) { try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {} camStream = null; } const vid = camEls().vid; if (vid) { try { vid.srcObject = null; } catch (_) {} } }
   async function camStartLocal() {
     if (camStream) return true;
@@ -1523,10 +1529,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const e = camEls(); if (!e.st) return;
       if (e.btn) e.btn.style.display = SANDBOX ? "none" : "";
       const on = !SANDBOX && OWNER() && !!(S.vcam && S.vcam.on);
-      if (e.btn) { e.btn.classList.toggle("on", on); const lbl = on ? "📷 Cam · ON" : "📷 Cam"; if (e.btn.textContent !== lbl) e.btn.textContent = lbl; }
+      if (e.btn && camBtnOn !== on) { camBtnOn = on; e.btn.classList.toggle("on", on); e.btn.textContent = on ? "📷 Cam · ON" : "📷 Cam"; }
       e.st.classList.toggle("cam-on", on);
-      if (!on) { camStopLocal(); return; }
-      camSize();
+      if (!on) { camWasOn = false; camStopLocal(); return; }
+      if (!camWasOn) { camWasOn = true; camSize(); }
       if (e.wrap) e.wrap.classList.toggle("novid", !camStream);
       if (boothLead && !camStream && !camBusy && Date.now() - camFailAt > 20000) {
         camStartLocal().then((ok) => { if (!ok) { camFailAt = Date.now(); const w = camEls().wrap; if (w) w.classList.add("novid"); } });
@@ -1544,7 +1550,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     camSync(); save(true);
     say("📷 Camera is ON — it sits beside the master video on your booth screen.");
   }
-  addEventListener("resize", () => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} });
+  let camRszT = null;
+  addEventListener("resize", () => { if (camRszT) clearTimeout(camRszT); camRszT = setTimeout(() => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} }, 200); });
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
