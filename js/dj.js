@@ -1126,7 +1126,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <div class="dj-panel"><h4>🤖 AUTO-DJ</h4>
       <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ad-on" style="width:auto" checked> Auto-DJ runs the station: when a song ends, crossfade to the next one — your queue first, then the full library on rotation</label>
       <div class="dj-list" id="ad-queue" style="max-height:150px"></div>
-      <small class="muted">Add songs with the ＋Q button in Your Library. Works while you're live — the station never goes quiet.</small></div>
+      <small class="muted">Add songs with the ＋Q button in Your Library. Works while you're live — the station never goes quiet.</small>
+      <label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px"><input type="checkbox" id="ad-drops" style="width:auto" checked> 🎙 Station drops: every 3rd song change, the station speaks ONE line from the rotation below — in the server male voice, over the join, instead of the pad ID</label>
+      <div class="dj-list" id="ad-drops-list" style="max-height:120px"></div></div>
     <div class="dj-panel"><h4>🎛️ LIVE DJ REQUESTS</h4><div id="djguest-now"><small class="muted">No guest DJ on the tables right now.</small></div><div class="dj-list" id="djreq-list" style="max-height:180px"></div></div>
     <div class="dj-panel"><h4>📥 REQUESTS &amp; DROPS</h4><div class="dj-list" id="rq-list" style="max-height:220px"><small class="muted">Nothing yet. Listener requests land here.</small></div></div>
     <div class="dj-panel"><h4>🎹 MIDI CONTROLLER</h4>
@@ -1274,17 +1276,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const ROT = { A: "B", B: "C", C: "D", D: "A" }; // the four-deck rotation A→B→C→D→A
   /* qStock: which decks currently hold a CUED queue item, stocked by
    * "Play the queue" and by the post-transition refill (live booth
-   * only). A record is only a claim — qStockValid() re-checks it
-   * against what the deck actually holds (S[k].src / S[k].yt) before
-   * anything trusts it. Declared up here, ahead of load(), because
-   * load() clears the record for the deck it loads onto. */
+   * only). The records live in the SHARED state (S.qStock, normalized
+   * in mergeState); this local copy is just the working mirror. That
+   * sharing is the rotation fix (owner, 2026-10-29: "its still only
+   * using deck A and B"): he taps Play the queue on whichever screen
+   * is in front of him — often the mirror — and the driving window is
+   * the only one whose autoNext ever runs. When the records lived
+   * only in the tapping window's memory, the driver had none, C and D
+   * never held a record it could start, and the pair path played A/B
+   * forever. A record is still only a claim — qStockValid() re-checks
+   * it against what the deck actually holds before anything trusts
+   * it. Declared up here, ahead of load(), because load() clears the
+   * record for the deck it loads onto. */
   let qStock = { A: null, B: null, C: null, D: null };
+  function qSyncFromS() { const q = (typeof S !== "undefined" && S && S.qStock) || {}; qStock = { A: q.A || null, B: q.B || null, C: q.C || null, D: q.D || null }; }
+  function qSet(k, item) { const rec = { src: (item && item.src) || "", yt: (item && item.yt) || "", at: Date.now() }; qStock[k] = rec; if (typeof S !== "undefined" && S) { if (!S.qStock) S.qStock = { A: null, B: null, C: null, D: null }; S.qStock[k] = rec; } }
+  function qClear(k) { qStock[k] = null; if (typeof S !== "undefined" && S && S.qStock) S.qStock[k] = null; }
   const deck = (k) => { if (!decks[k]) { decks[k] = Deck(); decks[k].letter = k; } return decks[k]; };
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   const agoT = (at) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
 
   /* ---------- levels, following the shared state, listener side ---------- */
-  let listening = false, voiceEl = null, heardVoice = "", micHot = 0, mixVol = 1;
+  let listening = false, voiceEl = null, heardVoice = "", micHot = 0, mixVol = 1, dropDuckUntil = 0;
   /* keep the screen awake while a listener is tuned in (owner, 2026-10-27):
      a sleeping screen is what freezes video decks — the phone itself pauses
      the page, and no website can override a real lock or a closed app. But
@@ -1553,7 +1566,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   let camRszT = null;
   addEventListener("resize", () => { if (camRszT) clearTimeout(camRszT); camRszT = setTimeout(() => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} }, 200); });
   function levels() {
-    const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
+    const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04 || Date.now() < dropDuckUntil) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
     DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * duck * mix); } });
     stageApply(mix, duck);
@@ -1971,10 +1984,46 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv; let drag = null; el.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = { y: e.clientY, v: S[k] ? S[k].vol : 0 }; try { el.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); }); el.addEventListener("pointermove", (e) => { if (!drag) return; const v = Math.max(0, Math.min(2, drag.v + (drag.y - e.clientY) / 140)); midiSetSlider("[data-vol=\"" + k + "\"]", v / 2); paintXfPads(); }); const end = () => { drag = null; }; el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("dblclick", () => { if (!OWNER()) return; midiSetSlider("[data-vol=\"" + k + "\"]", 0.45); paintXfPads(); }); });
 
   function playVoice() {
-    const v = S.voice; if (!v || !okUrl(v.url) || DEAD(v.url) || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
+    const v = S.voice; if (!v || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
+    if (!v.url && v.text) { heardVoice = v.id; if (!listening) return; dropSpeak(String(v.text)); return; }
+    if (!okUrl(v.url) || DEAD(v.url)) return;
     heardVoice = v.id; if (!listening) return;
     voiceEl = new Audio(v.url); voiceEl.playsInline = true; levels();
     voiceEl.addEventListener("ended", levels); voiceEl.addEventListener("error", levels); voiceEl.play().catch(levels);
+  }
+  /* Station drops arrive as TEXT, not a file (see autoNext): speak the
+   * line in the same server male voice Meechie AI uses — Deepgram Aura
+   * via POST /api/ai with the page session as the key, the speakServer
+   * route from ai-widget.js. The returned audio plays through voiceEl,
+   * so the music ducks exactly like a sound-board pad and the at-stamp
+   * + heardVoice discipline keeps echoes from double-firing. A client
+   * with no session (a guest listener) or a failed fetch falls back to
+   * the device voice, with the duck held by the clock (dropDuckUntil)
+   * instead of the element. */
+  async function dropSpeak(text) {
+    try {
+      const ses = (window.MW && MW.session && MW.session()) || null, tok = ses && ses.access_token;
+      if (tok) {
+        const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ model: "@cf/deepgram/aura-1", text }) });
+        if (r.ok && /^audio\//.test(r.headers.get("content-type") || "")) {
+          const url = URL.createObjectURL(await r.blob());
+          voiceEl = new Audio(url); voiceEl.playsInline = true; levels();
+          const done = () => { try { URL.revokeObjectURL(url); } catch (_) {} levels(); };
+          voiceEl.addEventListener("ended", done); voiceEl.addEventListener("error", done);
+          await voiceEl.play(); return;
+        }
+      }
+      throw new Error("notts");
+    } catch (_) {
+      try {
+        if (!("speechSynthesis" in window)) return;
+        const words = text.split(/\s+/).length;
+        dropDuckUntil = Date.now() + Math.round(words / 2.4 * 1000) + 800; levels();
+        const u = new SpeechSynthesisUtterance(text); u.pitch = 1; u.rate = 1;
+        u.onend = () => { dropDuckUntil = 0; levels(); }; u.onerror = u.onend;
+        speechSynthesis.speak(u);
+      } catch (_) {}
+    }
   }
   /* ---------- one set, every device (owner, 2026-10-27) ----------
    * Pad taps are events, not state: a tap on any of his devices stamps
@@ -2243,6 +2292,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", Math.abs((+x.dataset.ediv) - ((S.fx && S.fx.ediv) || 0.75)) < 0.01));
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
+    const adp = $("#ad-drops"); if (adp) adp.checked = S.dropsOn !== false;
+    const adl = $("#ad-drops-list"); if (adl && !adl.dataset.done) { adl.dataset.done = "1"; adl.innerHTML = DROP_TEXTS.map((t, i) => `<div class="dj-item"><span title="${E(t)}">${i + 1}. ${E(t)}</span></div>`).join(""); }
     const adT = $("#dj-ad-top"); if (adT) adT.checked = !!S.autodj;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : S.live ? "PRACTICE" : "STANDBY") : (S.live ? "ON AIR" : "OFF AIR");
     renderLog($("#dj-log")); paintPads();
@@ -2395,7 +2446,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793271900;
+  const MW_DJ_BUILD = 1793272000;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2663,6 +2714,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     m.vfx = Object.assign({ kind: "", at: 0 }, m.vfx || {});
     m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0;
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
+    const qn = (r) => (r && (r.src || r.yt)) ? { src: String(r.src || ""), yt: String(r.yt || ""), at: +r.at || 0 } : null;
+    m.qStock = { A: qn((m.qStock || {}).A), B: qn((m.qStock || {}).B), C: qn((m.qStock || {}).C), D: qn((m.qStock || {}).D) };
+    m.dropsOn = m.dropsOn !== false; m.dropN = +m.dropN || 0; m.dropIx = +m.dropIx || 0;
     return m;
   }
   // the site-wide LIVE pill (owner ask 2026-10-26): when Meechie (or an approved
@@ -2680,7 +2734,18 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // from it, and if THIS window holds the sound, play what it says. The 24/7 keeper's
       // advances land here too, so an open booth never shows a stale station.
       if (d && d.by !== tabId && (d.updatedAt || 0) > (S.updatedAt || 0)) {
+        // A stocked deck may not be un-stocked by an echo: the keeper
+        // (and any slower screen) writes from a snapshot that can
+        // predate the stocking save, so its C/D come back empty — the
+        // deck fields revert, the record stops matching, and the
+        // rotation silently dies while the pair path keeps A/B alive.
+        // When the incoming doc still carries the stock record and the
+        // deck itself arrived empty, keep this window's deck fields.
+        const stockedSnap = {};
+        DECKS.forEach((k) => { if (qStockValid(k)) stockedSnap[k] = S[k]; });
         S = mergeState(d);
+        DECKS.forEach((k) => { const snap = stockedSnap[k]; if (!snap) return; const rec = qStock[k], inc = (S.qStock || {})[k]; if (rec && inc && inc.src === rec.src && inc.yt === rec.yt && !S[k].src && !S[k].yt) S[k] = snap; });
+        qSyncFromS();
         lastBaseAt = d.updatedAt || 0;
         adoptQueue(d);
         watchHorn(); watchVfx();
@@ -2692,6 +2757,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (OWNER()) ownerLoaded = true;
     const was = isLive();
     S = mergeState(d);
+    qSyncFromS();
     if (d && d.by !== tabId) lastBaseAt = d.updatedAt || 0;
     adoptQueue(d);
     watchHorn(); watchVfx();
@@ -2722,7 +2788,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function paintPrep() { const box = $("#dj-prep"); if (!box) return; const set = prepSet(), list = TRACKS(); const rows = list.map((t, i) => [t, i]).filter(([t]) => set.has(URLOF(t))); box.innerHTML = rows.length ? rows.map(([t, i]) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button><button class="btn ghost sm" type="button" data-prep="${i}">⭐</button></div>`).join("") : '<small class="muted">Nothing prepared yet — tap ☆ on any song in Your Library.</small>'; const hb = $("#dj-hist"); if (hb) { const h = histList(); hb.innerHTML = h.length ? h.map((x, i) => `<div class="dj-item"><span title="${E(x.title || "")}">${E(x.title || "")}</span>${["A", "B", "C", "D"].map((L) => `<button class="btn ghost sm" type="button" data-hload="${L}" data-hist="${i}">${L}</button>`).join("")}</div>`).join("") : '<small class="muted">Nothing loaded yet — the booth history builds as you play.</small>'; } }
   let net = [];
   async function load(k, item, opts) {
-    if (qStock[k]) qStock[k] = null; // any fresh load replaces what the deck held — its stocked record is void (stockDeck re-records after its own load)
+    qClear(k); // any fresh load replaces what the deck held — its stocked record is void (stockDeck re-records after its own load)
     if (serverMirror()) leadTakeAt = Date.now();
     const d = deck(k); actx();
     // a pick from his own hand loads STOPPED (owner, 2026-10-27): the deck
@@ -2918,7 +2984,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
-  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
   // circular pan pads: drag the gold dot anywhere in the circle — the further it
   // moves toward a deck, the more that deck plays. Same mix as the sliders and the
   // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
@@ -3156,19 +3222,26 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 1200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
     });
   }
+  /* qKeyOf: the content key for "what is on this deck", applied to
+   * BOTH the deck state and the stock record so the two sides always
+   * meet in the same form: file items key on their src; video items
+   * key on the bare video ID for YouTube (a queue token, a pasted
+   * watch URL and the stored state all land on the same key) or on
+   * their prefixed token (dm: / vm:) for the other providers. */
+  const qKeyOf = (src, yt) => { if (src) return "s:" + src; const vp = vparseTok(yt || ""); if (!vp.id) return ""; return vp.p === "yt" ? "y:" + (ytParse(vp.id) || vp.id) : vp.p + ":" + vp.id; };
   /* qStockValid: a stocked record counts only while the deck still
-   * holds exactly that item (same src, same yt) and is not playing —
+   * holds exactly that item (same content key) and is not playing —
    * anything else means the deck changed hands and the record is void. */
-  function qStockValid(k) { const r = qStock[k]; return !!r && !S[k].playing && (S[k].src || "") === (r.src || "") && (S[k].yt || "") === (r.yt || ""); }
+  function qStockValid(k) { const r = qStock[k]; if (!r || S[k].playing) return false; const a = qKeyOf(S[k].src || "", S[k].yt || ""), b = qKeyOf(r.src || "", r.yt || ""); return !!a && a === b; }
   /* stockDeck: the cued load — the exact pattern the booth tick's
    * preload uses (load, then for a video mount the player and pause it
    * while the deck is not flagged playing), then record the deck as
    * stocked with this item. */
   async function stockDeck(k, item) {
-    if (item && item.yt && ageIsLocked(item.yt)) { qStock[k] = null; ageNote(item); return; } // a locked video is never stocked
+    if (item && item.yt && ageIsLocked(item.yt)) { qClear(k); ageNote(item); return; } // a locked video is never stocked
     try { await load(k, item); if (item.yt) { const dp = decks[k]; if (dp) { await dp.setYt(item.yt); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {}
-    if (item && item.yt && decks[k] && decks[k].shim && decks[k].shim._locked) { qStock[k] = null; return; } // it locked while loading cued — do not stock a dead deck
-    qStock[k] = { src: item.src || "", yt: item.yt || "" };
+    if (item && item.yt && decks[k] && decks[k].shim && decks[k].shim._locked) { qClear(k); return; } // it locked while loading cued — do not stock a dead deck
+    qSet(k, item);
   }
   /* Play the queue (owner, 2026-10-29: "Load the next 4 queue songs
    * onto A, B, C, D right away"): draw up to four queue items and stock
@@ -3180,6 +3253,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * in autoNext rolls them in as decks finish. Live booth only — the
    * Playground keeps the old single-deck play. */
   async function playQueueStock() {
+    qSyncFromS();
     const stocked = []; let startedK = null;
     const anyPlaying = DECKS.some((k) => S[k].playing);
     for (const k of DECKS) {
@@ -3191,14 +3265,24 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         if (S.A.playing && decks.A && decks.A.shim && decks.A.shim._locked) { try { decks.A.el.pause(); } catch (_) {} S.A.playing = false; } // age / embed locked: flagged playing but the player can never roll
         if (S.A.playing) startedK = "A";
         else if (decks.A && decks.A.shim && decks.A.shim._locked) { /* locked on its first load — already out of the queue; never stocked */ }
-        else { qStock.A = { src: it.src || "", yt: it.yt || "" }; stocked.push("A"); } // loaded but would not start — leave it stocked cued like the others
+        else { qSet("A", it); stocked.push("A"); } // loaded but would not start — leave it stocked cued like the others
       } else { await stockDeck(k, it); if (qStock[k]) stocked.push(k); }
     }
     saveQueue(); paintQueue();
-    if (startedK) say("🎶 Queue on the decks — A playing" + (stocked.length ? ", " + stocked.join(" ") + " loaded and ready" : "") + ".");
+    if (!boothLead && (startedK || stocked.length)) say("🎶 Queue is on the decks (" + [startedK].concat(stocked).filter(Boolean).join(" ") + ") — this screen is the mirror, so the records went to the shared station and the screen driving the sound rolls them through all four decks.");
+    else if (startedK) say("🎶 Queue on the decks — A playing" + (stocked.length ? ", " + stocked.join(" ") + " loaded and ready" : "") + ".");
     else if (stocked.length) say("🎶 Queue loaded onto the decks — " + stocked.join(" ") + " ready, and they roll in as each deck finishes.");
     else say("🎶 Every deck is playing — each one refills from the queue as it finishes.");
   }
+  /* The station drop rotation (owner, 2026-10-29 — the welcome line is
+   * his own dictation): one line at a time, in this order, cycling. */
+  const DROP_TEXTS = [
+    "Welcome to Meechie's World. You are now tuned in to the live DJ. Please stay tuned in — make sure you put in your song that you want to hear, and we'll play it as soon as possible.",
+    "Go check out the shop at Meechies World Inc dot com — new drops and fresh gear. More than clothing, it is a movement.",
+    "Pull up Meechie's Book and say what's up — the community is live right now.",
+    "Take the radio with you — get the Meechie's World apps and listen anywhere.",
+    "Feeling lucky? The Coin Jackpot is open — play fair, win real coins."
+  ];
   async function autoNext(endedK, force, fadeMs) {
     if ((!S.autodj && !force) || !boothLead) return;
     // A handover that died mid-flight (an unsettled load or play promise)
@@ -3207,7 +3291,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // and nothing ever rolled again).
     if (handoverBusy && Date.now() - handoverAt < 20000) return; handoverBusy = true; handoverAt = Date.now();
     let target = PAIR[endedK] || "A";
-    const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; }
+    /* Station voice drops (owner, 2026-10-29): every 3rd AUTOMATED
+     * transition speaks ONE line from the drop rotation over the join.
+     * The counters live in S (dropN / dropIx, normalized in mergeState)
+     * so every screen agrees on the cadence and a refresh does not
+     * reset it. A drop REPLACES the pads[0] station ID on its
+     * transition — one voice at a time, his words. Manual moves never
+     * reach autoNext, so they never count and never fire. */
+    let dropFired = false;
+    if (!SANDBOX && S.dropsOn !== false) {
+      S.dropN = (S.dropN || 0) + 1;
+      if (S.dropN % 3 === 0) { const ix = (S.dropIx || 0) % DROP_TEXTS.length; S.dropIx = ix + 1; S.voice = { id: "drop" + ix + "-" + Date.now(), text: DROP_TEXTS[ix], at: Date.now() }; dropFired = true; }
+    }
+    if (!dropFired) { const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; } }
     // Stocked rotation (live booth only, owner 2026-10-29): when decks
     // hold cued queue items (Play the queue, or the refill below), the
     // next deck in rotation A→B→C→D→A after the ended one that holds a
@@ -3221,14 +3317,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       let cand = ROT[endedK];
       for (let step = 0; step < 3 && !started && attempts < 4; step++) {
         if (qStockValid(cand)) {
-          if (ageIsLocked((qStock[cand] || {}).yt || "")) { qStock[cand] = null; } // locked while it sat cued — void the record without spending an attempt; the refill draw replaces it
+          if (ageIsLocked((qStock[cand] || {}).yt || "")) { qClear(cand); } // locked while it sat cued — void the record without spending an attempt; the refill draw replaces it
           else {
             attempts++;
             try { await togglePlay(cand); } catch (_) {}
             started = !!S[cand].playing;
             if (started && decks[cand] && decks[cand].shim && decks[cand].shim._locked) { try { decks[cand].el.pause(); } catch (_) {} S[cand].playing = false; started = false; } // age / embed locked: flagged playing, but the player can never roll — a failed start
             if (started) target = cand; else say("⏭ That one would not play — rolling the next.");
-            qStock[cand] = null; // started (record served its purpose) or would not play (record is void)
+            qClear(cand); // started (record served its purpose) or would not play (record is void)
           }
         }
         cand = ROT[cand];
@@ -3285,11 +3381,18 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // calls in while the ended deck is still flagged playing (its last
     // seconds are blending out), so when it is, the refill re-checks a
     // few seconds later once the deck has actually stopped. Every guard
-    // is re-tested at fire time: not playing, not already stocked.
+    // is re-tested at fire time: not playing, not already stocked. The
+    // re-check is a bounded retry, not a single shot (2026-10-29 audit:
+    // one timer meant one transient miss — a video deck whose player
+    // had not quite reported its end at that instant — lost the refill
+    // forever, and the rotation decayed deck by deck back to the pair
+    // path). The refill also never stomps a hand load: if the deck's
+    // content changed since the transition, it is his, not the queue's.
     if (!SANDBOX && started && queue.length) {
-      const refill = async () => { if (S[endedK].playing || qStockValid(endedK) || !queue.length) return; const itR = drawQueueItem(); if (itR) { await stockDeck(endedK, itR); saveQueue(); paintQueue(); } };
+      const endedKey = qKeyOf(S[endedK].src || "", S[endedK].yt || "");
+      const refill = async () => { if (S[endedK].playing || qStockValid(endedK) || !queue.length) return; const ck = qKeyOf(S[endedK].src || "", S[endedK].yt || ""); if (ck && ck !== endedKey) return; const itR = drawQueueItem(); if (itR) { await stockDeck(endedK, itR); saveQueue(); paintQueue(); } };
       if (!S[endedK].playing) await refill();
-      else setTimeout(() => { refill().catch(() => {}); }, 6500);
+      else [6500, 14000, 24000].forEach((ms) => setTimeout(() => { refill().catch(() => {}); }, ms));
     }
     handoverBusy = false; save(true);
   }
