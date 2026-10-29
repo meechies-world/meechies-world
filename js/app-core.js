@@ -25,7 +25,7 @@ const LAZY_SRC={
   tv:["js/movies.js?v=1793185302"],
   clips:["js/clips.js?v=1793185302"],
   studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],
-  books:["js/books.js?v=1793185302"],
+  books:["js/books.js?v=1793274500"],
   dating:["js/dating.js?v=1793185302"],
   preach:["js/preach.js?v=1793185302"],
   markets:["js/markets.js?v=1793185302"],
