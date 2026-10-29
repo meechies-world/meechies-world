@@ -38,16 +38,40 @@
 //     read false for Baby Shark / Adele / Rick Astley and true for
 //     explicit classics within the same hour — the value flips with
 //     whichever companion backend answers. It never convicts here.
-//   - Piped GET /streams/<id> full payload (has title) is a GOOD signal
-//     only: its failures are dominated by per-instance bot walls
-//     (SignInConfirmNotBotException hit Adele and Baby Shark minutes after
-//     the same hosts served Rick Astley fine), so a Piped error never
-//     convicts either.
+//   - Piped GET /streams/<id> full payload (has title) was a GOOD signal
+//     only in the first cut: its failures are dominated by per-instance
+//     bot walls (SignInConfirmNotBotException hit Adele and Baby Shark
+//     minutes after the same hosts served Rick Astley fine), so a Piped
+//     error never convicted. It no longer votes at all — see the
+//     correction below.
 //   A cached BAD verdict is the one exception to fail-open: a video once
 //   confirmed gated stays dropped without a re-check. Anything the filter
 //   misses is still caught in the decks — the first real player error
 //   (101/150) blocklists the id on the device (js/dj.js mw-dj-ageskip),
 //   and the booth search skips those ids too.
+//
+// Conviction rule corrected (fix-search-filter-2, 2026-10-29): the first
+// cut let a full detail payload from ANY host acquit a video, on the
+// theory that fetchable metadata means playable. Live testing disproved
+// that within the hour: for PTFwQP86BRs the very seed host
+// (yt.chocolatemoo53.com) first answered with the gate error and later
+// served the full payload — companions rotate behind a host, so
+// metadata availability is NOT embeddability, and that one payload
+// permanently acquitted a gated video (the deployed relay returned it
+// at position 1 for "nine inch nails closer"). The rule is now: an
+// age-gate error from ANY checked Invidious host convicts, full stop;
+// payloads are irrelevant to the verdict, and with no gate error
+// anywhere the video is kept (fail open). Consequences baked in below:
+//   - The verify phase checks the first FIVE pool Invidious hosts (was
+//     three): conviction is probabilistic per check because of the
+//     rotation, so more checks per video = higher conviction odds.
+//   - Piped is out of the verify phase entirely: its payloads can no
+//     longer acquit, so those calls were pure latency. Piped still
+//     serves the search phase exactly as before.
+//   - AGE_ERR no longer has a bare "sign in to confirm" branch: Piped's
+//     bot-wall error literally reads "Sign in to confirm that you're
+//     not a bot" — bot-wall language, not a gate. "Sign in to confirm
+//     your age" still convicts via the "confirm your age" branch.
 //
 // Second family + hard budget (fix-ytsearch3, 2026-10-29): after ytsearch2
 // the relay answered most queries, but failures stayed intermittent and
@@ -150,9 +174,12 @@ function candidates(invHosts) {
   return out;
 }
 // --- Age / embed verification (see the fix-search-filter note above) ---
-// Verdict cache: id -> "good" | "bad", insertion-ordered Map, FIFO-capped
-// so a long-lived isolate cannot grow it without bound. Repeat searches
-// for the same songs (the common case in a DJ booth) verify instantly.
+// Verdict cache: id -> "bad" for gate-convicted ids only, insertion-
+// ordered Map, FIFO-capped so a long-lived isolate cannot grow it
+// without bound. Repeat searches for the same songs (the common case
+// in a DJ booth) skip re-checking known-gated ids instantly. Kept
+// videos are deliberately NOT cached: a payload-based "good" would
+// acquit forever, and companions rotate (see the correction above).
 const verdictCache = new Map();
 const VERDICT_CAP = 500;
 function cacheVerdict(id, v) {
@@ -161,40 +188,42 @@ function cacheVerdict(id, v) {
   while (verdictCache.size > VERDICT_CAP) verdictCache.delete(verdictCache.keys().next().value);
 }
 // YouTube's age / safety gate as surfaced in an Invidious error object.
-const AGE_ERR = /protect our community|confirm your age|age[\s-]?restrict|sign in to confirm/i;
+// Deliberately NO bare "sign in to confirm" branch: Piped's bot-wall
+// error literally reads "Sign in to confirm that you're not a bot", and
+// gate text must never be confusable with bot-wall language (conviction
+// reads Invidious responses today, but the phrase stays out on
+// principle). "Sign in to confirm your age" still matches, via the
+// "confirm your age" branch. The second reason this rule is strict:
+// companions rotate behind a host — yt.chocolatemoo53.com gate-errored
+// PTFwQP86BRs and later served its full payload — so a payload must
+// never acquit what a gate error convicted; metadata is not playable.
+const AGE_ERR = /protect our community|confirm your age|age[\s-]?restrict/i;
 async function checkInvDetail(base, id, ms) {
   try {
     const r = await fetch(base + "/api/v1/videos/" + encodeURIComponent(id), sig(ms));
     if (!r.ok) return "";
     const j = await r.json();
-    if (j && j.videoId && j.title) return "good";
+    // Only the gate error is reported. A full payload is NOT a "good"
+    // verdict: it never acquits (see the correction note above).
     if (j && typeof j.error === "string" && AGE_ERR.test(j.error)) return "bad";
   } catch (_) {}
   return "";
 }
-async function checkPipedDetail(base, id, ms) {
-  try {
-    const r = await fetch(base + "/streams/" + encodeURIComponent(id), sig(ms));
-    if (!r.ok) return "";
-    const j = await r.json();
-    if (j && j.title) return "good"; // success only — Piped errors never convict (bot walls)
-  } catch (_) {}
-  return "";
-}
-// Resolve one candidate: true = keep, false = drop. A full payload from
-// ANY detail host wins (the video is fetchable, and flaky backends have
-// been seen answering a gate error for a video another backend serves);
-// with no payload anywhere, one age-gate error convicts; anything else
-// (timeouts, generic errors, dead hosts) fails open and keeps the video.
+// Resolve one candidate: true = keep, false = drop. An age-gate error
+// from ANY checked Invidious host convicts, period — payloads served
+// by other hosts do NOT acquit, because companions rotate behind a
+// host and metadata availability is not embeddability
+// (yt.chocolatemoo53.com gate-errored PTFwQP86BRs, then served its
+// full payload minutes later, and the old acquittal rule shipped the
+// gated video at position 1). Piped is not consulted here at all:
+// under gate-wins its payloads cannot acquit, so the calls were pure
+// latency. With no gate error anywhere the video is kept (fail open):
+// timeouts, generic errors and dead hosts say nothing about the video.
 async function verifyOne(id, invHosts, ms) {
-  const cached = verdictCache.get(id);
-  if (cached === "bad") return false;
-  if (cached === "good") return true;
+  if (verdictCache.get(id) === "bad") return false;
   const checks = [];
-  invHosts.slice(0, 3).forEach((b) => checks.push(checkInvDetail(b, id, ms)));
-  PIPED_HOSTS.slice(0, 2).forEach((b) => checks.push(checkPipedDetail(b, id, ms)));
+  invHosts.slice(0, 5).forEach((b) => checks.push(checkInvDetail(b, id, ms)));
   const vs = await Promise.all(checks);
-  if (vs.includes("good")) { cacheVerdict(id, "good"); return true; }
   if (vs.includes("bad")) { cacheVerdict(id, "bad"); return false; }
   return true; // fail open
 }
