@@ -629,6 +629,9 @@ html.popdj .popdj-hint{display:block}
 #dj-edit label span{color:#e9d9a6;font-weight:700}
 .vslot iframe{width:100%;height:100%;border:0}
 .vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
+.vposter{position:absolute;inset:0;z-index:2;pointer-events:none;background:#000}
+.vposter img{width:100%;height:100%;object-fit:contain;display:block}
+.vstage.vs-on .vposter{display:none!important}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
 /* GO LIVE STUDIO (owner, 2026-10-29): the WebRTC stream (his camera in full
    motion, or his captured screen) rides ABOVE the video mix on every master
@@ -1076,7 +1079,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <button class="bubbig" type="button" data-bubbtn>🫧 BUBBLE MODE — the site shrinks into a bubble, music keeps playing</button>
   <button class="capbig" type="button" data-capbtn>🖥 CAPTURE MY SCREEN — Meechie shows you his screen, live on the master screen</button>
   <button class="capbig" type="button" data-hidebtn data-lab-off="🙈 HIDE SHARE — viewers see the video mix while Meechie sets up the next shot" data-lab-on="👁 SHOW SHARE — put the screen back on the master screen" hidden>🙈 HIDE SHARE — viewers see the video mix while Meechie sets up the next shot</button>
-  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vchip" id="st-vchip" hidden></div></div></div>
+  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="st-vposter"><img src="/img/radio-promo.jpg" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="st-vchip" hidden></div></div></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
@@ -3350,9 +3353,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * numbers. The booth can also mix the picture by hand: S.vmix holds
    * {mode:"man", a, b, t} and every screen follows it. */
   const stageGain = (k) => { const s = S[k], cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); return (s.vol ?? 0.9) * xfGain(x, side) * pairG; };
-  const mkScreen = (ids, standby, chip) => ({ ids, standby, chip, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
+  const mkScreen = (ids, standby, chip, poster) => ({ ids, standby, chip, poster: poster || null, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
   const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
-  const scrView = mkScreen(["#st-vs1", "#st-vs2"], "#st-vstandby", "#st-vchip");
+  const scrView = mkScreen(["#st-vs1", "#st-vs2"], "#st-vstandby", "#st-vchip", "#st-vposter"); // station stage carries the radio poster in its standby slot (owner, 2026-10-29)
   const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, null); // no title chip on the pop-out screen (owner, 2026-10-28: "take the title off the screen in my master video pop out")
   const scrTV = mkScreen(["#tw-vs1", "#tw-vs2"], "#tw-vstandby", "#tw-vchip"); // MW TV: the channel page's screen — same mix renderer, its own branded standby slate
   function vmixTargets() {
@@ -3460,6 +3463,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (srt.length === 2) { disp[srt[0].k] = 1; disp[srt[1].k] = srt[1].op; } else if (srt.length === 1) disp[srt[0].k] = 1;
     scr.slots.forEach((sl, i) => { if (sl.deck && !tg.some((x) => x.k === sl.deck)) { sl.deck = ""; const el = $(scr.ids[i]); if (el) el.style.opacity = 0; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } } });
     const stb = scr.standby ? $(scr.standby) : null; if (stb) stb.style.display = tg.length ? "none" : "grid";
+    const pst = scr.poster ? $(scr.poster) : null; if (pst) pst.style.display = tg.length ? "none" : "block";
     const chip = $(scr.chip);
     if (!tg.length) { scr._vTop = ""; if (chip) chip.hidden = true; return; }
     const provs = new Set(tg.map((t) => vparseTok(S[t.k].yt).p));
@@ -4351,7 +4355,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793273600;
+  const MW_DJ_BUILD = 1793273700;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
