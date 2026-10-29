@@ -385,7 +385,7 @@
   let lastBaseAt = 0, leadTakeAt = 0, padSentAt = 0;
   const leadFresh = () => !!(S && S.leadTab && Date.now() - (S.leadAt || 0) < 20000);
   const serverMirror = () => leadFresh() && S.leadTab !== tabId;
-  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; /* GO LIVE STUDIO liveness (2026-10-29): while THIS tab is the stream publisher, every save that already flows re-stamps the switch — liveness must not depend on one interval in one tab */ try { if (typeof vsPub !== "undefined" && vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) S.vstream.at = Date.now(); } catch (_) {} const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking) { if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; /* GO LIVE STUDIO liveness is proof-based now (fix-studio5): saves never re-stamp vstream.at — only the publisher supervisor does, after verifying the capture chain end to end (see vsPubProof) */ const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking) { if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
@@ -642,6 +642,9 @@ html.popdj .popdj-hint{display:block}
 .vspause[hidden]{display:none!important}
 .vshidden{position:absolute;inset:0;z-index:7;display:grid;place-items:center;background:#050505;color:#f0cf78;font:800 14px var(--body);letter-spacing:.1em;text-align:center;padding:14px}
 .vshidden[hidden]{display:none}
+.vsrestore{position:absolute;left:8px;right:8px;bottom:8px;z-index:9;display:flex;gap:8px;align-items:center;justify-content:space-between;background:rgba(24,6,6,.94);border:1px solid #e5484d;color:#ffd7d7;border-radius:10px;padding:8px 10px;font:700 12.5px var(--body)}
+.vsrestore[hidden]{display:none}
+.vsrestore .btn{flex:none}
 .capbig{display:block;width:100%;min-height:56px;margin:10px 0;padding:12px 14px;background:#000;color:#f0cf78;border:2px solid #f0cf78;border-radius:12px;font:800 16px var(--body);letter-spacing:.04em;cursor:pointer;animation:bopulse 2s ease-in-out infinite}
 .capbig.on{background:#e5484d;color:#fff;border-color:#e5484d}
 .vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
@@ -2606,12 +2609,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const tw = document.querySelector("#tw-stage"); if (tw) hosts.push(tw);
     hosts.forEach((h) => { let el = h.querySelector(".vstatus"); if (!el) { el = document.createElement("div"); el.className = "vstatus"; h.appendChild(el); } el.hidden = !txt; if (txt && el.textContent !== txt) el.textContent = txt; });
   }
+  /* the publisher's own verdict on its chain (fix-studio5): while the
+   * diag stage is repairing or source-gone, no surface may call the
+   * share live — viewers hold the mix underneath and the status line
+   * says reconnecting. A stage of publishing (or none, from an older
+   * build) leaves the existing behavior alone. */
+  const vsShareDown = () => { const vs = S.vstream || {}; const st = vs.diag && vs.diag.stage; return !!vs.on && (st === "repairing" || st === "source-gone"); };
   function vsStatusFor() {
     const vs = S.vstream || {};
     if (!vs.on || !vs.meeting) return "";
+    if (vsShareDown()) return "TV: reconnecting…";
     if (vsPub) return "TV: live";
     if (vs.hidden) return "TV: hidden by Meechie";
-    if ((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) return "TV: live";
+    if ((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) {
+      // "TV: live" is earned now (fix-studio5): the publisher diag says
+      // publishing AND its proof stamp is fresh. The window is generous
+      // (75s) because a backgrounded booth tab's timers throttle to
+      // about one beat a minute — the picture keeps flowing over the
+      // network while its proofs slow down, and the line must not cry
+      // wolf at a healthy share
+      if ((vs.diag || {}).stage === "publishing" && Date.now() - (vs.at || 0) > 75000) return "TV: reconnecting…";
+      return "TV: live";
+    }
     if (vsWatch) return "TV: joined — waiting for picture";
     if (vsWatchRetryMid === vs.meeting && vsWatchErr) return "TV: retrying (" + vsWatchErr + ")";
     return "TV: connecting…";
@@ -2660,6 +2679,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try { sessionStorage.removeItem("mw_vspub"); } catch (_) {}
     if (!p) return;
     if (p.beat) { try { clearInterval(p.beat); } catch (_) {} }
+    if (vsSupIv) { try { clearInterval(vsSupIv); } catch (_) {} vsSupIv = null; }
+    vsBarSrc = false; try { vsBarPaint(); } catch (_) {}
     vsCropStop();
     if (p.meeting) {
       try { if (p.meeting.self && p.meeting.self.disableScreenShare) await p.meeting.self.disableScreenShare(); } catch (_) {}
@@ -2684,7 +2705,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const was = vsPub;
     await vsPubTeardown();
     if (was || ((S.vstream || {}).on && (S.vstream || {}).by === vsUid())) {
-      S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() };
+      S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now(), diag: { stage: "stopped", at: Date.now(), repairs: was ? (was.repairs || 0) : 0 } };
       save(true);
     }
     vsDetach(); vsPaintBtns();
@@ -2723,16 +2744,278 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         await p.meeting.self.enableVideo(t);
         p.pubTrack = t; p.localStream = new MediaStream([t]);
       }
-      if (S.vstream && S.vstream.on && S.vstream.meeting === p.mid) { S.vstream.at = Date.now(); save(true); }
+      // no stamp here (fix-studio5): a republish is a repair attempt,
+      // not a proof — the supervisor stamps the switch when the chain
+      // verifies whole again
       try { vsSync(); } catch (_) {}
     } catch (_) {}
     finally { vsRepubBusy = false; }
   }
   function vsPubWake() {
     const p = vsPub; if (!p) return;
-    try { if (S.vstream && S.vstream.on && S.vstream.meeting === p.mid) { S.vstream.at = Date.now(); save(true); } } catch (_) {}
+    // no unproven stamp on wake (fix-studio5): waking asks the
+    // supervisor to PROVE the chain — it stamps only when the proof
+    // passes, and repairs instead when it does not
     try { vsSync(); } catch (_) {}
     try { vsPubRepublish(); } catch (_) {}
+    try { vsSupTick(); } catch (_) {}
+  }
+  /* ---------- PUBLISHER SUPERVISOR (fix-studio5, 2026-10-29) ----------
+   * "Why does it keep stopping my capture share — I never want that to
+   * happen." The named break: the vsSync takeover branch fired on ANY
+   * adopted switch whose at stamp postdated the publish start — it
+   * never required the claim to name a DIFFERENT meeting. His second
+   * screen adopts the switch (at and all, stamped forward by the
+   * publisher itself), its next ordinary save echoes that doc back,
+   * this tab adopts it, and the branch tore the healthy publish down:
+   * teardown stopped the raw capture and left the room, the switch was
+   * deliberately left on for the "new owner" who never existed, the
+   * beat died with the record, and teardown removed the mw_vspub
+   * marker so the one honest message could never fire. Switch on,
+   * nobody publishing, boothAt fresh from the other screen, at
+   * climbing forever — the exact ghost he kept hitting. That branch
+   * now requires a different meeting (see vsSync), and this supervisor
+   * stands guard over the rest of the chain: every ~2s it verifies the
+   * raw source, the published track, the room's own slot, and the
+   * capture audio, rebuilds whichever leg died FROM THE HELD SOURCE in
+   * the SAME meeting, and stamps the switch only on proof. The stamp
+   * is evidence now, not a habit: save(), the old 20s beat, wake
+   * paths and the vsSync cadence no longer advance vstream.at at all. */
+  let vsSupIv = null, vsSupBusy = false, vsRestoreBusy = false;
+  let vsBarSrc = false, vsBarGhost = false;   // the two masters of the restore bar: a live record whose source died, and a switch whose tab was reloaded
+  function vsBarPaint() {
+    try {
+      const st = document.querySelector("#dj-vstage"); if (!st) return;
+      const show = !!(vsBarSrc || vsBarGhost);
+      let bar = st.querySelector(".vsrestore");
+      if (show && !bar) { bar = document.createElement("div"); bar.className = "vsrestore"; bar.innerHTML = "<span>⚠️ Your share dropped — tap to bring it back</span><button type='button' class='btn sm' data-vsrestore>🔁 Bring it back</button>"; st.appendChild(bar); }
+      if (bar) bar.hidden = !show;
+    } catch (_) {}
+  }
+  function vsPubDiagSet(stage, p) {
+    if (!p || vsPub !== p) return;
+    const vs = S.vstream || {};
+    if (!vs.on || vs.meeting !== p.mid) return;
+    p.dStage = stage;
+    // the diag moves, the stamp does NOT: vstream.at advances only on a
+    // passed proof, so a stale stamp under a reconnecting diag is the
+    // honest picture of a chain that is down
+    S.vstream.diag = { stage, at: p.dAt || 0, repairs: p.repairs || 0 };
+    save(true);
+  }
+  function vsPubProof(p) {
+    if (!p || vsPub !== p) return;
+    const vs = S.vstream || {};
+    if (!vs.on || vs.meeting !== p.mid) return;
+    p.dAt = Date.now(); p.dStage = "publishing";
+    S.vstream.at = p.dAt;
+    S.vstream.diag = { stage: "publishing", at: p.dAt, repairs: p.repairs || 0 };
+    save();
+  }
+  function vsSupRawTrack(p) {
+    try {
+      if (p.kind === "screen") return (p.rawStream && p.rawStream.getVideoTracks()[0]) || null;
+      const ct = (typeof camStream !== "undefined" && camStream && camStream.getVideoTracks()[0]) || null;
+      return ct || (p.ownStream && p.ownStream.getVideoTracks()[0]) || null;
+    } catch (_) { return null; }
+  }
+  function vsSupSlotOk(p) {
+    // does the room itself still hold a live video slot for this tab?
+    // The SDK exposes the self tracks (videoTrack for the camera path,
+    // screenShareTracks for a share slot). If it exposes neither, the
+    // slot cannot be judged — defer to the published-track check
+    // instead of repairing on an absence of evidence
+    try {
+      const self = p.meeting && p.meeting.self;
+      if (!self) return false;
+      const cand = [];
+      try { if (self.videoTrack) cand.push(self.videoTrack); } catch (_) {}
+      try { if (self.screenShareTracks && self.screenShareTracks.video) cand.push(self.screenShareTracks.video); } catch (_) {}
+      if (!cand.length) return !!(p.pubTrack && p.pubTrack.readyState === "live");
+      return cand.some((t) => t && t.readyState === "live");
+    } catch (_) { return false; }
+  }
+  function vsSupStart() { if (vsSupIv) return; vsSupIv = setInterval(() => { try { vsSupTick(); } catch (_) {} }, 2000); }
+  async function vsSupPublishInto(p, meeting) {
+    // publish the held source into a meeting: a fresh crop canvas for a
+    // screen share (the old canvas loop may be the corpse), the held
+    // track itself for the camera. Used for same-meeting repairs, for
+    // rejoins, and for the remint fallback — one code path, no picker
+    const rt = vsSupRawTrack(p);
+    if (!rt || rt.readyState !== "live") return false;
+    if (p.kind === "screen") {
+      const cs = vsCropStart(rt);
+      const ct = cs.getVideoTracks()[0];
+      try { if (meeting.self && meeting.self.disableVideo) await meeting.self.disableVideo(); } catch (_) {}
+      await meeting.self.enableVideo(ct);
+      p.pubTrack = ct; p.localStream = cs;
+    } else {
+      try { if (meeting.self && meeting.self.disableVideo) await meeting.self.disableVideo(); } catch (_) {}
+      await meeting.self.enableVideo(rt);
+      p.pubTrack = rt; p.localStream = new MediaStream([rt]);
+    }
+    if (p.hidApplied && p.pubTrack) { try { p.pubTrack.enabled = false; } catch (_) {} } // a repair while hidden stays dark
+    await vsPubAudio(meeting, p.rawStream);
+    return true;
+  }
+  async function vsSupRejoin(p) {
+    // the room dropped this tab (or never fully held it): ask the same
+    // meeting object to join again, then publish into it once more. An
+    // "already joined" refusal means the room had us all along — that
+    // is a successful rejoin, not a failure
+    try {
+      if (!p.meeting || typeof p.meeting.join !== "function") return false;
+      let ok = false;
+      await Promise.race([p.meeting.join().then(() => { ok = true; }, (e) => { if (e && /already/i.test(String(e.message || e))) ok = true; }), new Promise((res) => setTimeout(res, 15000))]);
+      if (!ok || vsPub !== p) return false;
+      return await vsSupPublishInto(p, p.meeting);
+    } catch (_) { return false; }
+  }
+  async function vsSupRemint(p) {
+    // last resort, and the one place a fresh meeting is honest: the
+    // gateway cannot re-add the HOST to an existing meeting — its host
+    // mint always opens a new room, and its meeting-taking mint issues
+    // viewer credentials that cannot publish — so a dead room is
+    // REPLACED, not rejoined. Mint, join, publish from the held
+    // source, and only then move record and switch together in one
+    // save: no off flicker, no picker, and viewers follow the meeting
+    // id in the switch on their own vsSync, as they already do
+    const mint = await vsApi({ action: "live_mint", role: "host" });
+    if (!mint || !mint.token || !mint.meeting) return false;
+    if (!(await vsLoadSdk())) return false;
+    let meeting = null;
+    try {
+      meeting = await RealtimeKitClient.init({ authToken: mint.token, defaults: { audio: false, video: false } });
+      let ok = false;
+      await Promise.race([meeting.join().then(() => { ok = true; }), new Promise((res) => setTimeout(res, 20000))]);
+      if (!ok) { try { await meeting.leave(); } catch (_) {} return false; }
+      if (!(await vsSupPublishInto(p, meeting))) { try { await meeting.leave(); } catch (_) {} return false; }
+    } catch (_) { if (meeting) { try { await meeting.leave(); } catch (_) {} } return false; }
+    if (vsPub !== p) { try { await meeting.leave(); } catch (_) {} return false; } // he stopped (or was replaced) while the new room was being built — it must not resurrect the switch
+    const old = p.meeting;
+    p.meeting = meeting; p.mid = mint.meeting; p.since = Date.now();
+    S.vstream = { on: true, kind: p.kind, at: (S.vstream || {}).at || 0, by: vsUid(), meeting: mint.meeting, hidden: !!p.hidApplied, stopAt: 0, diag: { stage: "repairing", at: p.dAt || 0, repairs: p.repairs || 0 } };
+    p.dStage = "repairing";
+    save(true);
+    try { sessionStorage.setItem("mw_vspub", JSON.stringify({ mid: mint.meeting, kind: p.kind })); } catch (_) {}
+    if (old && old !== meeting) { try { await old.leave(); } catch (_) {} }
+    return true;
+  }
+  function vsSupTick() {
+    if (vsSupBusy) return;
+    const p = vsPub;
+    if (!p || p.starting || p.swapping) return;
+    const vs = S.vstream || {};
+    if (!vs.on || vs.meeting !== p.mid) return; // vsSync arbitrates stops, claims and echoes — the supervisor only guards a publish the switch still says is this tab's
+    vsSupBusy = true;
+    (async () => {
+      try {
+        // LEG 1 — the raw source itself
+        const rt = vsSupRawTrack(p);
+        if (!rt || rt.readyState !== "live") {
+          // the source is truly gone — no code can resurrect a capture
+          // without his pick. The switch STAYS ON (his Stop is the only
+          // manual ending), the diag tells viewers the reconnecting
+          // truth, and the booth gets the restore bar: one tap re-runs
+          // the picker into this same meeting
+          p.srcGone = true;
+          if (p.dStage !== "source-gone") vsPubDiagSet("source-gone", p);
+          if (!vsBarSrc) { vsBarSrc = true; vsBarPaint(); }
+          return;
+        }
+        p.srcGone = false;
+        // LEG 2 — the published track; LEG 3 — the room still holds a
+        // live slot for us; LEG 4 — the capture's audio, while the
+        // pick actually provides one
+        const pubLive = !!(p.pubTrack && p.pubTrack.readyState === "live");
+        const slotOk = vsSupSlotOk(p);
+        let audOk = true;
+        if (p.hadAudio) {
+          const at = p.rawStream && p.rawStream.getAudioTracks ? p.rawStream.getAudioTracks()[0] : null;
+          if (!at || at.readyState !== "live") p.hadAudio = false; // the pick's audio ended for good: the share is honestly video-only from here, not a repair loop
+          else audOk = !!(p.pubAudio && p.pubAudio.readyState === "live");
+        }
+        if (pubLive && slotOk && audOk) {
+          p.badN = 0; p.esc = 0;
+          if (vsBarSrc) { vsBarSrc = false; vsBarPaint(); }
+          if (p.dStage !== "publishing" || Date.now() - (p.dAt || 0) >= 8000) vsPubProof(p);
+          return;
+        }
+        // a leg is down: say so at once, but act only after two bad
+        // ticks in a row, so a transient never triggers a rebuild
+        if (p.dStage !== "repairing") vsPubDiagSet("repairing", p);
+        p.badN = (p.badN || 0) + 1;
+        if (p.badN < 2 || vsPub !== p) return;
+        p.badN = 0;
+        if (!audOk && pubLive && slotOk) { try { await vsPubAudio(p.meeting, p.rawStream); } catch (_) {} p.repairs = (p.repairs || 0) + 1; return; }
+        if (p.esc === 0) { p.esc = 1; try { await vsSupPublishInto(p, p.meeting); } catch (_) {} if (vsPub === p) p.repairs = (p.repairs || 0) + 1; }
+        else if (p.esc === 1) { p.esc = 2; try { await vsSupRejoin(p); } catch (_) {} if (vsPub === p) p.repairs = (p.repairs || 0) + 1; }
+        else if (Date.now() - (p.lastRemint || 0) > 15000) { p.lastRemint = Date.now(); let ok = false; try { ok = await vsSupRemint(p); } catch (_) {} if (ok && vsPub === p) { p.esc = 1; p.repairs = (p.repairs || 0) + 1; } }
+      } catch (_) {}
+      finally { vsSupBusy = false; }
+    })();
+  }
+  async function vsPubRestore() {
+    // the restore bar's button — his one tap brings the share back.
+    // With a live publish record whose source died, the picker (or the
+    // camera) re-runs INTO THE SAME MEETING; if the room died with the
+    // source, the remint fallback replaces the room around the new
+    // source. With no record at all (this tab was reloaded mid-share),
+    // the start flow itself is the restore — it re-picks and re-mints,
+    // and the switch follows it
+    if (vsRestoreBusy || vsSupBusy) return;
+    const p = vsPub;
+    if (!p) {
+      let kind = "screen";
+      try { const mk = JSON.parse(sessionStorage.getItem("mw_vspub") || "null"); if (mk && (mk.kind === "cam" || mk.kind === "screen")) kind = mk.kind; } catch (_) {}
+      vsBarGhost = false; vsBarPaint();
+      vsPubStart(kind);
+      return;
+    }
+    vsRestoreBusy = true;
+    try {
+      if (p.kind === "screen") {
+        let raw;
+        try { raw = await vsGetDisplay(); }
+        catch (_) { say("🖥 The picker closed — your share is still waiting. Tap Bring it back when you are ready to pick the screen again."); return; }
+        const rt = raw && raw.getVideoTracks()[0];
+        if (!rt) { try { raw.getTracks().forEach((t) => t.stop()); } catch (_) {} say("🖥 That pick had no screen in it — tap Bring it back and choose the screen you want to show."); return; }
+        if (vsPub !== p) { try { raw.getTracks().forEach((t) => t.stop()); } catch (_) {} return; }
+        if (p.rawStream && p.rawStream !== raw) { try { p.rawStream.getTracks().forEach((t) => t.stop()); } catch (_) {} }
+        p.rawStream = raw;
+        rt.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen" && !vsPub.swapping) { vsPub.srcGone = true; try { vsSupTick(); } catch (_) {} } });
+        let into = false;
+        try { into = await vsSupPublishInto(p, p.meeting); } catch (_) {}
+        if (!into && vsPub === p) { p.lastRemint = 0; let ok = false; try { ok = await vsSupRemint(p); } catch (_) {} if (ok) { p.repairs = (p.repairs || 0) + 1; into = true; } }
+        if (vsPub !== p) return;
+        if (into) {
+          p.srcGone = false; p.esc = 0; p.badN = 0;
+          if (p.dStage !== "repairing") vsPubDiagSet("repairing", p);
+          vsBarSrc = false; vsBarPaint();
+          say("🖥 Your screen is back on the master screen.");
+          try { vsSupTick(); } catch (_) {}
+        } else say("🖥 The share could not be rebuilt just now — check your connection and tap Bring it back once more.");
+      } else {
+        let s = null;
+        try { s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { max: 30 } }, audio: false }); } catch (_) {}
+        if (!s) { say("📹 The camera did not come back — check it is plugged in and allowed for this site, then tap Bring it back again."); return; }
+        if (vsPub !== p) { try { s.getTracks().forEach((t) => t.stop()); } catch (_) {} return; }
+        if (p.ownStream && p.ownStream !== s) { try { p.ownStream.getTracks().forEach((t) => t.stop()); } catch (_) {} }
+        p.ownStream = s;
+        let into = false;
+        try { into = await vsSupPublishInto(p, p.meeting); } catch (_) {}
+        if (!into && vsPub === p) { p.lastRemint = 0; let ok = false; try { ok = await vsSupRemint(p); } catch (_) {} if (ok) { p.repairs = (p.repairs || 0) + 1; into = true; } }
+        if (vsPub !== p) return;
+        if (into) {
+          p.srcGone = false; p.esc = 0; p.badN = 0;
+          if (p.dStage !== "repairing") vsPubDiagSet("repairing", p);
+          vsBarSrc = false; vsBarPaint();
+          say("📹 Your camera is back on the master screen.");
+          try { vsSupTick(); } catch (_) {}
+        } else say("📹 Live video could not be rebuilt just now — check your connection and tap Bring it back once more.");
+      }
+    } catch (_) {}
+    finally { vsRestoreBusy = false; }
   }
   async function vsPubStart(kind) {
     if (SANDBOX) { say("The DJ Playground is a sandbox — live video only runs on the real station."); return; }
@@ -2766,15 +3049,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // stamped once, pointing at a meeting nobody was in), and the beat
       // assignment threw on the nulled record so the stamp never moved
       // again. That is the whole 2026-10-29 failure in one race.
-      vsPub = { meeting, mid: mint.meeting, kind, ownStream: null, rawStream: null, localStream: null, pubTrack: null, pubAudio: null, hidApplied: false, beat: null, starting: true, strikes: 0, pausedDecks: null, since: Date.now() };
-      S.vstream = { on: true, kind, at: Date.now(), by: vsUid(), meeting: mint.meeting, hidden: false, stopAt: 0 };
+      vsPub = { meeting, mid: mint.meeting, kind, ownStream: null, rawStream: null, localStream: null, pubTrack: null, pubAudio: null, hadAudio: false, hidApplied: false, beat: null, starting: true, strikes: 0, pausedDecks: null, since: Date.now(), dStage: "repairing", dAt: 0, repairs: 0, esc: 0, badN: 0, srcGone: false, lastRemint: 0 };
+      S.vstream = { on: true, kind, at: Date.now(), by: vsUid(), meeting: mint.meeting, hidden: false, stopAt: 0, diag: { stage: "repairing", at: 0, repairs: 0 } };
       pubMid = mint.meeting; stateWrote = true;
       save(true);
       // remember (this tab only) that WE are the publisher: if the tab is
       // discarded and restored, the reloaded page finds this marker and
       // tells him plainly instead of leaving a silent ghost (see vsSync)
       try { sessionStorage.setItem("mw_vspub", JSON.stringify({ mid: mint.meeting, kind })); } catch (_) {}
-      vsPub.beat = setInterval(() => { if (vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(); } try { vsPubRepublish(); } catch (_) {} }, 20000);
+      // the 20s beat is retired (fix-studio5): it stamped the switch
+      // unproven and its republish only noticed an ended published
+      // track. The supervisor owns liveness now — 2s verification of
+      // the whole chain, repairs in the same meeting, proof-only stamps
+      vsSupStart();
       if (kind === "cam") {
         let track = (typeof camStream !== "undefined" && camStream && camStream.getVideoTracks()[0]) || null;
         if (!track) {
@@ -2788,6 +3075,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         await vsStartScreen(meeting);
       }
       vsPub.starting = false;
+      try { vsSupTick(); } catch (_) {} // first proof right away — the diag flips from repairing to publishing the moment the chain verifies
       vsSync();
       say(kind === "screen" ? "🖥 Your screen is on the master screen — everyone sees it now. Tap Capture again to stop." : "📹 You are on the master screen in full motion. Tap Live Video again to stop.");
       if (kind === "screen") {
@@ -2812,7 +3100,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       await vsPubTeardown(); vsDetach();
       // a start that failed AFTER the switch was written (picker closed,
       // camera denied) clears its own switch — no ghost left behind
-      if (stateWrote && (S.vstream || {}).meeting === pubMid) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() }; save(true); }
+      if (stateWrote && (S.vstream || {}).meeting === pubMid) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now(), diag: { stage: "stopped", at: Date.now(), repairs: 0 } }; save(true); }
       if (kind === "screen") say("🖥 Screen share did not start — if you closed the picker, tap Capture and pick the screen you want to show.");
       else say("📹 Live video did not start — allow the camera for this site, then tap Live Video again.");
     } finally { vsPubBusy = false; vsPaintBtns(); }
@@ -2825,8 +3113,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       vsPubStop(kind === "screen" ? "🖥 Screen share stopped — the master screen is back to the video mix." : "📹 Live video stopped — the master screen is back to the video mix."); return;
     }
     const vs = S.vstream || {};
-    if (vs.on && vs.by === vsUid() && vs.kind === kind) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() }; save(true); vsSync(); say("Stopped — the master screen is back to the video mix."); return; }
-    if (vs.on && vs.by === vsUid()) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now() }; save(true); }
+    if (vs.on && vs.by === vsUid() && vs.kind === kind) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now(), diag: { stage: "stopped", at: Date.now(), repairs: (vs.diag || {}).repairs || 0 } }; save(true); vsSync(); say("Stopped — the master screen is back to the video mix."); return; }
+    if (vs.on && vs.by === vsUid()) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "", hidden: false, stopAt: Date.now(), diag: { stage: "stopped", at: Date.now(), repairs: (vs.diag || {}).repairs || 0 } }; save(true); }
     vsPubStart(kind);
   }
   /* ---------- HIDE SHARE (owner, 2026-10-29) ----------
@@ -2888,8 +3176,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     let swapNew = null;
     try {
       let raw;
-      try { raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: true }); }
-      catch (e) { if (e && e.name === "NotAllowedError") throw e; raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false }); }
+      raw = await vsGetDisplay();
       const rt = raw.getVideoTracks()[0];
       if (!rt) { try { raw.getTracks().forEach((t) => t.stop()); } catch (_) {} say("🙈 Still hidden — that pick had no screen in it."); return; }
       const p = vsPub;
@@ -2901,7 +3188,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       vsCropStop();
       if (p.rawStream && p.rawStream !== raw) { try { p.rawStream.getTracks().forEach((t) => t.stop()); } catch (_) {} }
       p.rawStream = raw;
-      rt.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen" && !vsPub.swapping) vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); });
+      rt.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen" && !vsPub.swapping) { vsPub.srcGone = true; try { vsSupTick(); } catch (_) {} } });
       let newTrack = rt, newLocal = new MediaStream([rt]);
       try { const cs = vsCropStart(rt); newTrack = cs.getVideoTracks()[0]; newLocal = cs; } catch (_) { vsCropStop(); }
       swapNew = { track: newTrack, local: newLocal, raw };
@@ -2944,23 +3231,142 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * before, and nothing pretends otherwise. The audio rides the raw
    * stream beside the canvas video (there is no canvas for sound) and
    * replaces whatever audio the meeting slot held. */
+  /* ---------- share audio quality (owner, 2026-10-29) ----------
+   * "The sound from my share sounds low quality — people will play it
+   * in their cars." Two killers, in order: (1) the browser's default
+   * VOICE processing on capture (echo cancellation, noise suppression,
+   * auto gain — built for calls, ruinous for music), and (2) the
+   * stack's default Opus bitrate, tuned for speech. The capture ask
+   * below requests music-clean stereo at the source. What the publish
+   * side can be pushed to depends on what the SDK leaves reachable —
+   * vsAudioQuality walks whatever the meeting object actually exposes
+   * and takes the deepest honest hook it finds. Everything is
+   * best-effort and guarded: a quality tweak that throws must never
+   * cost the publish itself. */
+  const VS_AUDIO_Q = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 2 };
+  async function vsGetDisplay() {
+    // the one capture door for every screen pick (start, swap,
+    // restore, and the supervisor's rebuilds ride the stream this
+    // returns): music-clean stereo audio first, plain audio if the
+    // platform refuses the ask outright, video-only last. A cancelled
+    // picker is his answer and propagates at once — the later steps
+    // run only on an outright refusal, never on a cancel
+    try { return await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: VS_AUDIO_Q }); }
+    catch (e) {
+      if (e && e.name === "NotAllowedError") throw e;
+      try { return await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: true }); }
+      catch (e2) { if (e2 && e2.name === "NotAllowedError") throw e2; return navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false }); }
+    }
+  }
+  async function vsAudioQuality(meeting, atrack) {
+    const p = vsPub;
+    const rec = { settings: null, sender: false, producer: false, bitrate: 0, stereo: false, via: "" };
+    try { const s = atrack && atrack.getSettings ? atrack.getSettings() : null; if (s) rec.settings = { ec: s.echoCancellation, ns: s.noiseSuppression, agc: s.autoGainControl, ch: s.channelCount }; } catch (_) {}
+    if (p) p.audioQ = rec;
+    const findHit = () => {
+      // a bounded, read-only walk of the objects the SDK leaves
+      // reachable from the meeting: the media handler subtree, self,
+      // the stage controller, the meeting itself. Looking for any of:
+      // a peer connection (getSenders), a producer for this track
+      // (setRtpEncodingParameters), a transceiver map, a transport's
+      // handler. Private (#) slots are invisible to the walk by
+      // construction — what it finds is what the runtime truly offers
+      const seen = new Set(); let nodes = 0;
+      const isObj = (o) => !!o && (typeof o === "object" || typeof o === "function");
+      const scan = (root, depth) => {
+        if (!isObj(root) || seen.has(root) || depth > 3 || nodes > 400) return null;
+        seen.add(root); nodes++;
+        try {
+          if (typeof root.getSenders === "function" && typeof root.getReceivers === "function") { const ss = root.getSenders() || []; for (const s of ss) { if (s && s.track === atrack) { let tr = null; try { tr = (root.getTransceivers() || []).find((t) => t.sender === s) || null; } catch (_) {} return { sender: s, pc: root, transceiver: tr }; } } }
+          const snd = root.sender || root.rtpSender || root._rtpSender;
+          if (snd && snd.track === atrack && typeof snd.getParameters === "function") return { sender: snd, transceiver: root.sender ? root : null };
+          if (typeof root.setRtpEncodingParameters === "function" && root.track === atrack) return { producer: root };
+          if (root instanceof Map) { for (const v of root.values()) { const r = scan(v, depth + 1); if (r) return r; } return null; }
+          const h = root._handler || root.handler;
+          if (isObj(h) && h !== root) { const r = scan(h, depth + 1); if (r) return r; }
+          const keys = Object.keys(root);
+          for (const k of keys) { if (k === "track" || k === "sender" || k === "rtpSender" || k === "_rtpSender" || k === "_handler" || k === "handler") continue; let v; try { v = root[k]; } catch (_) { continue; } if (isObj(v)) { const r = scan(v, depth + 1); if (r) return r; } }
+        } catch (_) {}
+        return null;
+      };
+      const roots = [];
+      try { if (meeting.self && meeting.self.localMediaHandler) roots.push(meeting.self.localMediaHandler); } catch (_) {}
+      try { if (meeting.self) roots.push(meeting.self); } catch (_) {}
+      try { if (meeting.stage) roots.push(meeting.stage); } catch (_) {}
+      roots.push(meeting);
+      for (const r of roots) { const hit = scan(r, 0); if (hit) return hit; }
+      return null;
+    };
+    for (let attempt = 0; attempt < 4; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, attempt === 1 ? 500 : 1200));
+      if (!atrack || atrack.readyState !== "live") return;
+      let hit = null;
+      try { hit = findHit(); } catch (_) {}
+      if (!hit) continue; // the producer may not exist yet — enableAudio's own share step lands a beat after the call returns
+      if (hit.producer && typeof hit.producer.setRtpEncodingParameters === "function") { try { await hit.producer.setRtpEncodingParameters({ maxBitrate: 256000 }); rec.producer = true; rec.bitrate = 256000; rec.via = "producer"; } catch (_) {} }
+      if (hit.sender) {
+        rec.sender = true; if (!rec.via) rec.via = "sender";
+        try {
+          const params = hit.sender.getParameters ? hit.sender.getParameters() : null;
+          if (params && params.encodings && params.encodings.length) {
+            for (const br of [256000, 128000]) {
+              try { const np = hit.sender.getParameters(); np.encodings.forEach((en) => { en.maxBitrate = br; }); await hit.sender.setParameters(np); const back = hit.sender.getParameters(); const got = back && back.encodings && back.encodings[0] && back.encodings[0].maxBitrate; if (got) { rec.bitrate = got; break; } } catch (_) {}
+              if (rec.bitrate) break;
+            }
+          }
+        } catch (_) {}
+        // Opus stereo / fullband: codec preferences live on the
+        // transceiver. Pass the FULL capability list back with only
+        // the opus fmtp widened (stereo=1, sprop-stereo=1,
+        // maxaveragebitrate) — this shapes the next negotiation the
+        // stack performs; it is attempted, never assumed
+        try {
+          const tr = hit.transceiver;
+          const caps = (typeof RTCRtpSender !== "undefined" && RTCRtpSender.getCapabilities) ? RTCRtpSender.getCapabilities("audio") : null;
+          if (tr && typeof tr.setCodecPreferences === "function" && caps && caps.codecs) {
+            const codecs = caps.codecs.map((c) => {
+              if (!/opus/i.test(c.mimeType || "")) return c;
+              const parts = {};
+              String(c.sdpFmtpLine || "").split(";").forEach((kv) => { const i = kv.indexOf("="); if (i > 0) parts[kv.slice(0, i).trim()] = kv.slice(i + 1).trim(); });
+              parts.stereo = "1"; parts["sprop-stereo"] = "1"; parts.maxaveragebitrate = "256000";
+              const nc = {}; for (const k of Object.keys(c)) nc[k] = c[k];
+              nc.sdpFmtpLine = Object.keys(parts).map((k) => k + "=" + parts[k]).join(";");
+              return nc;
+            });
+            tr.setCodecPreferences(codecs); rec.stereo = true;
+          }
+        } catch (_) {}
+      }
+      if (rec.bitrate || rec.sender || rec.producer) break;
+    }
+    try { console.debug("[vs] share audio quality: " + JSON.stringify(rec)); } catch (_) {}
+  }
   async function vsPubAudio(meeting, raw) {
     try {
       const at = raw && raw.getAudioTracks ? raw.getAudioTracks()[0] : null;
+      if (vsPub) vsPub.hadAudio = !!(at && at.readyState === "live"); // the supervisor (fix-studio5) verifies the audio leg only while the pick actually provides one
       try { if (meeting.self && meeting.self.disableAudio) await meeting.self.disableAudio(); } catch (_) {}
       if (!at) { if (vsPub) vsPub.pubAudio = null; return; }
       await meeting.self.enableAudio(at);
       if (vsPub) vsPub.pubAudio = at;
+      // every publish leg funnels through here (start, swap,
+      // supervisor rebuilds, remint, restore), so the music-quality
+      // push is re-applied after EVERY rebuild, as specified
+      try { vsAudioQuality(meeting, at); } catch (_) {}
     } catch (_) {}
   }
   async function vsStartScreen(meeting) {
-    let raw;
-    try { raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: true }); }
-    catch (e) { if (e && e.name === "NotAllowedError") throw e; raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false }); }
+    const raw = await vsGetDisplay();
     vsPub.rawStream = raw;
     const rt = raw.getVideoTracks()[0];
     if (!rt) throw new Error("no screen track");
-    rt.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen" && !vsPub.swapping) vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); });
+    // fix-studio5: the raw track ending is no longer an ending of the
+    // SHARE. The switch stays on, the supervisor's diag goes
+    // source-gone (viewers read reconnecting, stages hold the mix) and
+    // the booth restore bar offers the one-tap way back into the same
+    // meeting. His booth Stop is the only manual end now — a capture
+    // that dies on its own is a drop to repair, never a stop
+    rt.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen" && !vsPub.swapping) { vsPub.srcGone = true; try { vsSupTick(); } catch (_) {} } });
     try {
       const cs = vsCropStart(rt);
       const ct = cs.getVideoTracks()[0];
@@ -3139,6 +3545,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try {
       vsSubAll(w.meeting); // subscribe assist - even while hidden, so an unhide renders fast; never load-bearing
       if ((S.vstream || {}).hidden) { vsDetach(); return; } // HIDE SHARE: the join stays up, the picture does not render
+      if (vsShareDown()) { vsDetach(); return; } // fix-studio5: the publisher diag says its chain is down — hold the mix underneath, never a corpse frame presented as live
       if (vsLocalPause) return; // VIEWER PAUSE (fix-studio4): this viewer paused the capture just for themselves — the join stays up, nothing renders, nothing is written anywhere
       const kind = (S.vstream || {}).kind;
       const order = kind === "screen" ? ["ss", "vt"] : ["vt", "ss"];
@@ -3221,7 +3628,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // wake — but he is told, once, in plain words, instead of the old
       // silent ghost (switch on, stamp frozen, nobody in the meeting)
       if (!vsPub && !SANDBOX && OWNER()) {
-        try { const mk = JSON.parse(sessionStorage.getItem("mw_vspub") || "null"); if (mk && mk.mid) { if (vs.on && vs.meeting === mk.mid && vs.by === vsUid()) { sessionStorage.removeItem("mw_vspub"); say("🖥 This tab was reloaded while you were sharing, so the capture itself is gone — the switch was left untouched. Tap Capture My Screen to put your screen back."); } else if (Date.now() - vsArrivedAt > 8000 && (!vs.on || vs.meeting !== mk.mid)) sessionStorage.removeItem("mw_vspub"); } } catch (_) {}
+        try {
+          const mk = JSON.parse(sessionStorage.getItem("mw_vspub") || "null");
+          const ghost = !!(mk && mk.mid && vs.on && vs.meeting === mk.mid && vs.by === vsUid());
+          if (ghost) {
+            // the marker stays while the ghost holds — the restore bar
+            // needs the kind off it, and the bar (not a one-shot
+            // message) is the way back now (fix-studio5)
+            if (!vsBarGhost) { vsBarGhost = true; vsBarPaint(); say("🖥 This tab was reloaded while you were sharing, so the capture itself is gone — the switch was left untouched. The red restore bar on the booth stage brings it back in one tap."); }
+          } else {
+            if (vsBarGhost) { vsBarGhost = false; vsBarPaint(); }
+            if (mk && mk.mid && Date.now() - vsArrivedAt > 8000 && (!vs.on || vs.meeting !== mk.mid)) sessionStorage.removeItem("mw_vspub");
+          }
+        } catch (_) {}
       }
       if (vsPub) {
         if (!vs.on || vs.meeting !== vsPub.mid) {
@@ -3243,14 +3662,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
           // the share by itself.
           if (vsPub.starting) return;
           if (!vs.on && vs.stopAt && vs.stopAt >= (vsPub.since || 0)) { vsPubStop("🖥 Screen share stopped from your other screen — the master screen is back to the video mix."); return; }
-          if (vs.on && vs.meeting && vs.by === vsUid() && (vs.at || 0) > (vsPub.since || 0)) { const p0 = vsPub; if (p0) p0.pausedDecks = null; vsPubTeardown(); vsDetach(); return; } // the new share owns the tables-pause now — this tab must not resume decks on its way out
-          S.vstream = { on: true, kind: vsPub.kind, at: Date.now(), by: vsUid(), meeting: vsPub.mid, hidden: !!vsPub.hidApplied, stopAt: 0 };
+          if (vs.on && vs.meeting && vs.meeting !== vsPub.mid && vs.by === vsUid() && (vs.at || 0) > (vsPub.since || 0)) { const p0 = vsPub; if (p0) p0.pausedDecks = null; vsPubTeardown(); vsDetach(); return; } // the new share owns the tables-pause now — this tab must not resume decks on its way out. fix-studio5: the claim must name a DIFFERENT meeting — as first written, an echo of THIS share (his other screen re-saving the switch it adopted, at stamp and all, the stamp this very tab kept advancing) fired the branch against the publisher's own meeting and tore a healthy publish down: teardown stopped the capture, the switch stayed on for a successor who never existed, and the restore marker died with the record
+          S.vstream = { on: true, kind: vsPub.kind, at: vs.at || 0, by: vsUid(), meeting: vsPub.mid, hidden: !!vsPub.hidApplied, stopAt: 0, diag: vs.diag || { stage: vsPub.dStage || "repairing", at: vsPub.dAt || 0, repairs: vsPub.repairs || 0 } };
           save(true);
         }
         vsPub.strikes = 0;
-        // liveness rides the saves that already flow: while this tab is
-        // the publisher, keep the stamp fresh on the stage cadence too
-        try { if (Date.now() - (vs.at || 0) > 10000) { S.vstream.at = Date.now(); save(); } } catch (_) {}
+        // no cadence stamp here anymore (fix-studio5): re-asserting the
+        // switch restores its shape but never its stamp — vstream.at is
+        // advanced only by the supervisor, on proof
         // HIDE SHARE on the publishing tab: apply the state the moment it
         // flips (from this tab's button or any of his screens) — the
         // picture stops, the placeholder stands in for the preview, and
@@ -3288,6 +3707,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // but nothing renders while the owner has the share hidden — the
       // stage and mini fall back to the normal video mix underneath
       if (vs.hidden) { vsDetach(); return; }
+      // fix-studio5: while the publisher reports itself repairing or
+      // source-gone, viewers hold the mix underneath — the stage must
+      // not present a dead share as the live TV picture (the status
+      // line reads "TV: reconnecting…"). The join itself stays up, so
+      // the moment the chain proves again the picture returns, and a
+      // remint is followed through the meeting change above
+      if (vsShareDown()) { vsDetach(); return; }
       try { if (vsShown.hls) vsHlsPickSound(false); } catch (_) {}
       vsWatchGrab();
     } catch (_) {}
@@ -3305,6 +3731,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.closest(".wpl-trial")) { wsStartTrial(t.closest(".wpl-trial")); return; }
     if (t.closest(".ws-ctl")) { if (!OWNER() && !SANDBOX) wsUpsell(); return; }
     if (t.closest("#tw-fs")) { const sh = document.getElementById("tw-shell"); try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {} return; }
+    if (t.closest("[data-vsrestore]")) { vsPubRestore(); return; }
     if (t.closest(".vspause")) { vsToggleLocalPause(); return; }
     if (t.closest("[data-hidebtn]")) { vsToggleHide(); return; }
     if (t.closest("[data-capbtn]")) { vsToggle("screen"); return; }
@@ -4351,7 +4778,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793273600;
+  const MW_DJ_BUILD = 1793273800;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -4643,6 +5070,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     m.vstream.by = String(m.vstream.by || "");
     m.vstream.meeting = /^[A-Za-z0-9-]{8,80}$/.test(String(m.vstream.meeting || "")) ? String(m.vstream.meeting) : "";
     m.vstream.hidden = !!m.vstream.hidden;
+    // PUBLISHER DIAG (fix-studio5): the publishing tab's own verdict on
+    // its chain — {stage, at, repairs}. Written only by the publisher
+    // supervisor (proof-stamped), normalized here like the rest of the
+    // switch so echoes carry it faithfully. A doc from an older build
+    // has none: an on switch then reads as publishing, as it did before.
+    const vdg = (m.vstream.diag && typeof m.vstream.diag === "object" && !Array.isArray(m.vstream.diag)) ? m.vstream.diag : null;
+    m.vstream.diag = { stage: (vdg && ["publishing", "repairing", "source-gone", "stopped"].indexOf(vdg.stage) >= 0) ? vdg.stage : (m.vstream.on ? "publishing" : "stopped"), at: vdg ? (+vdg.at || 0) : 0, repairs: vdg ? Math.max(0, Math.min(9999, +vdg.repairs || 0)) : 0 };
     if (!m.vstream.on) m.vstream.kind = "";
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     const qn = (r) => (r && (r.src || r.yt)) ? { src: String(r.src || ""), yt: String(r.yt || ""), at: +r.at || 0 } : null;
