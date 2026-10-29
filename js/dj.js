@@ -789,6 +789,14 @@ html.popdj .popdj-hint{display:block}
 #dj-livealert .btn{white-space:nowrap}
 body.dj-on #dj-livealert,html.popdj #dj-livealert,html.gated #dj-livealert{display:none!important}
 @media (max-width:760px){#dj-livealert{top:118px}#dj-livealert .la-txt{font-size:11.5px}}
+.ws-modal{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.74);display:grid;place-items:center;padding:16px}
+.ws-modal[hidden]{display:none}
+.ws-card{position:relative;background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #f0cf78;border-radius:16px;max-width:540px;width:100%;padding:20px;color:#f3ead2;max-height:88vh;overflow:auto;box-shadow:0 18px 50px rgba(0,0,0,.65)}
+.ws-card .ws-x{position:absolute;top:10px;right:10px}
+.wpl-row{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #2b2b30;border-radius:10px;padding:10px 12px;margin:8px 0;background:#141518}
+.wpl-nm{display:flex;flex-direction:column;gap:2px}
+.wpl-nm span{color:#9a917c;font-size:12.5px}
+.wpl-pr{color:#f0cf78;white-space:nowrap}
 body[data-view="dj"] #dj-livealert{display:none}
 #dj-mini{position:fixed;top:64px;right:10px;width:208px;z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
@@ -1061,6 +1069,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
   <div id="st-host" style="font-size:13.5px;font-weight:700;color:#ff8b8f" hidden></div>
+  <button class="btn ghost sm" type="button" id="st-watch" style="margin:6px 0" hidden>👀 Watch Meechie's setup — live, look only</button>
   <div id="st-battle" hidden></div>
   <div id="st-show"></div>
   <button class="bobig" type="button" data-bobtn>🌑 BLACKOUT MODE — screen goes black, music keeps playing</button>
@@ -1243,7 +1252,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the mini master screen: one floating rectangle on every page, so the live
   // music video follows viewers around the whole site (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
-  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
+  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go(vsBroadcast() && !(S.vstream || {}).hidden ? "mwtv" : "radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
   if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; try { if (window.MW_vsDismiss) window.MW_vsDismiss(); } catch (_) {} });
     // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
     // "make the music video screen moveable") — drag it anywhere; the spot is
@@ -3287,6 +3296,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const t = e.target;
     if (!t || !t.closest) return;
     if (t.closest("#tw-sound")) { if (window.MW_DJ) window.MW_DJ.toggle(); tvSig = ""; try { tvPaint(); } catch (_) {} return; }
+    if (t.closest("#tw-watch") || t.closest("#st-watch")) { if (typeof go === "function") go("watch"); return; }
+    if (t.closest(".wsu-x")) { wsModal("ws-upsell", false); return; }
+    if (t.closest(".wsu-plans")) { wsModal("ws-upsell", false); wsModal("ws-plans", true); wsPaintPlans(); return; }
+    if (t.closest(".wsu-free")) { wsModal("ws-upsell", false); wsGoBasic(); return; }
+    if (t.closest(".wpl-x")) { wsModal("ws-plans", false); return; }
+    if (t.closest(".wpl-free")) { wsModal("ws-plans", false); wsGoBasic(); return; }
+    if (t.closest(".wpl-trial")) { wsStartTrial(t.closest(".wpl-trial")); return; }
+    if (t.closest(".ws-ctl")) { if (!OWNER() && !SANDBOX) wsUpsell(); return; }
     if (t.closest("#tw-fs")) { const sh = document.getElementById("tw-shell"); try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {} return; }
     if (t.closest(".vspause")) { vsToggleLocalPause(); return; }
     if (t.closest("[data-hidebtn]")) { vsToggleHide(); return; }
@@ -4128,6 +4145,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     const gN = S.djGuest && S.djGuest.until > Date.now() ? gName(S.djGuest) : null;
     $("#st-now").textContent = tvLive && !now.length && !gN ? "📺 Meechie is live on the master screen — watch it on MW TV. The tables pick back up when the share ends." : live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
+    const stWatch = $("#st-watch"); if (stWatch) stWatch.hidden = !live || OWNER() || SANDBOX;
     const stHost = $("#st-host"); // HOST MODE: the room can see the host is in — same booth-fresh window the keeper trusts (90s), and never while a guest DJ holds the tables
     if (stHost) { const hosting = !SANDBOX && live && !gN && (Date.now() - (S.boothAt || 0) < 90000); if (stHost._h !== hosting) { stHost._h = hosting; stHost.hidden = !hosting; if (hosting) stHost.textContent = "🔴 Meechie is in the booth — hosting live"; } }
     const stShow = $("#st-show");
@@ -4333,7 +4351,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793273500;
+  const MW_DJ_BUILD = 1793273600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -4646,6 +4664,67 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const gName = (g) => { const n = ((g && g.name) || "").trim(); return n ? (n.includes("@") ? n.split("@")[0] : n) : "Guest DJ"; }; // a DJ is never shown as a raw email address
   function guestLiveOn() { try { return sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) { return false; } } // hoisted: the lamp paints before this line runs
   function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const hostDeck = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const tv = !guest && vsBroadcast() && !(S.vstream || {}).hidden; const host = hostDeck || tv; const setId = guest ? ("g" + (S.djGuest.uid || "")) : tv && !hostDeck ? ("tv" + ((S.vstream || {}).meeting || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : tv && !hostDeck ? "🔴 LIVE NOW — Meechie is live on MW TV" : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
+  /* ---------- WATCH THE SETUP (owner ask 2026-10-29) ----------
+   * A live mirror of the booth for everyone: guests and members watch
+   * every deck, the queue, both crossfaders and the FX exactly as the
+   * shared radio/dj state carries them. READ-ONLY BY CONSTRUCTION: this
+   * block only ever reads S and writes the text of #ws-* nodes. Nothing
+   * here calls save() or any deck control, and the one DB write in the
+   * block is the member own trial stamp on members/<uid>, the same
+   * pattern the profile saves use. The mirror controls are plain spans
+   * (class ws-ctl) whose only click path runs the upsell card. Watching
+   * and listening to Meechie stay free — plans are only for running a
+   * setup of your own. */
+  let wsUpsellAt = 0, wsSig = "", wsTrialAt = 0, wsTrialChecked = false;
+  function wsLiveNow() { return isLive() || (vsBroadcast() && !(S.vstream || {}).hidden); }
+  function wsEnsureModals() {
+    if (!document.getElementById("ws-upsell")) {
+      const u = document.createElement("div"); u.id = "ws-upsell"; u.className = "ws-modal"; u.hidden = true;
+      u.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wsu-x" aria-label="Close">✕</button><h3 style="margin:0 0 8px">👀 You are watching Meechie's setup</h3><p style="margin:0 0 10px">This is Meechie's live DJ setup. You can watch everything he does on it — the controls answer to Meechie only.</p><p style="margin:0 0 14px">Want tables of your own? The <b>basic setup is FREE</b>, and the <b>full setup is free for 30 days</b>. After the trial, Basic is <b>$5/month</b>. Paid plans run <b>$20, $50, $100, $350 and $500</b> a month.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn wsu-free">Use the free basic setup</button><button type="button" class="btn ghost wsu-plans">See plans</button></div></div>`;
+      document.body.appendChild(u);
+    }
+    if (!document.getElementById("ws-plans")) {
+      const p = document.createElement("div"); p.id = "ws-plans"; p.className = "ws-modal"; p.hidden = true;
+      p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Basic</b><span>The free basic setup — your own tables, any time</span></div><b class="wpl-pr">FREE</b></div><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 30-day free trial</b><span>Free for 30 days. After the trial, Basic continues at $5/month</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 30-day free trial</button><button type="button" class="btn ghost wpl-free">Use the free basic setup</button></div><div class="wpl-row"><div class="wpl-nm"><b>Basic</b><span>After the free trial</span></div><b class="wpl-pr">$5/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$20/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$50/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$100/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$350/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$500/month</b></div></div>`;
+      document.body.appendChild(p);
+    }
+  }
+  function wsModal(id, show) { wsEnsureModals(); const m = document.getElementById(id); if (m) m.hidden = !show; if (show && id === "ws-plans") wsTrialPaint(); }
+  function wsUpsell() { const now = Date.now(); if (now - wsUpsellAt < 60000) return; wsUpsellAt = now; wsModal("ws-upsell", true); }
+  function wsGoBasic() { if (typeof go === "function") go("dj"); const pg = document.getElementById("pg-open"); if (pg) { try { pg.click(); } catch (_) {} } }
+  function wsTrialPaint() { if (!wsTrialAt) return; const note = document.getElementById("wpl-trial-note"); const btn = document.getElementById("wpl-trial"); if (btn) { btn.disabled = true; btn.textContent = "✅ Trial on"; } if (note) note.innerHTML = `<p style="margin:6px 0">✅ Your 30-day free trial is on — Basic continues at $5/month after. We will remind you before it ends.</p>`; }
+  function wsPaintPlans() { if (wsTrialChecked) return; const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) return; wsTrialChecked = true; const d = DB(); if (!d) return; d.doc("members/" + uid).get().then((snap) => { const data = snap && snap.exists && snap.data ? snap.data() : null; if (data && data.trial_started_at) { wsTrialAt = +data.trial_started_at || 0; wsTrialPaint(); } }).catch(() => {}); }
+  async function wsStartTrial(btn) {
+    const ses = mySess(); const uid = ses && ses.user && ses.user.id;
+    if (!uid) { wsModal("ws-plans", false); if (typeof openAuth === "function") openAuth("signup"); say("Join free first — the trial rides on your free account."); return; }
+    if (wsTrialAt) { wsTrialPaint(); return; }
+    const d = DB(); if (!d) { say("One moment — still connecting."); return; }
+    if (btn) btn.disabled = true;
+    try { await d.doc("members/" + uid).update({ trial_started_at: Date.now() }); wsTrialAt = Date.now(); wsTrialChecked = true; wsTrialPaint(); }
+    catch (e) { if (btn) btn.disabled = false; say("That did not save — tap it once more."); }
+  }
+  function paintWatch() {
+    const body = document.getElementById("ws-body"); if (!body) return;
+    if (!document.body || document.body.dataset.view !== "watch") return;
+    if (SANDBOX) { if (wsSig !== "sb") { wsSig = "sb"; body.innerHTML = `<p class="muted">The Playground is a sandbox — the live setup mirror runs on the real site.</p>`; } return; }
+    const live = wsLiveNow();
+    const vs = S.vstream || {};
+    const master = vs.on ? (vs.hidden ? "📺 Master screen: hidden while Meechie sets up the next shot" : "📺 Master screen: Meechie is LIVE — " + (vs.kind === "cam" ? "his camera is up" : "his screen is up")) : "📺 Master screen: the music video mix";
+    const radio = live ? (S.autodj ? "🎧 The radio is live — Auto-DJ is driving the set" : "🎧 The radio is live — Meechie is on the decks") : "The radio is on the playlist right now — this mirror wakes up the moment Meechie goes live.";
+    const fx = S.fx || {};
+    const fxTxt = "Echo " + Math.round((+fx.echo || 0) * 100) + "% · Reverb " + Math.round((+fx.verb || 0) * 100) + "% · Flange " + Math.round((+fx.fla || 0) * 100) + "% · Phaser " + Math.round((+fx.pha || 0) * 100) + "% · Crush " + (+fx.crush || 0) + " · Gate " + Math.round((+fx.gate || 0) * 100) + "% · Filter " + Math.round(+fx.mf || 0) + " · Boost " + ((+fx.boost || 1).toFixed(2)) + "x";
+    const q = Array.isArray(S.queue) ? S.queue : [];
+    const sig = [live ? 1 : 0, master, radio, fxTxt, S.xf, S.xf2, q.map((x) => ((x || {}).title || "")).join("~")].concat(DECKS.map((k) => { const r = S[k] || {}; return [r.title || "", r.playing ? 1 : 0, +r.dur || 0, +r.vol || 0, +r.rate || 0, r.yt ? 1 : 0].join(":"); })).join("|");
+    if (sig !== wsSig) {
+      wsSig = sig;
+      const xfBar = (lab, a, b, v) => `<div class="ws-xf ws-ctl"><div class="ws-xfl"><span>${a}</span><span class="ws-xfm">${lab}</span><span>${b}</span></div><div class="ws-track"><i class="ws-knob" style="left:${Math.round(Math.max(0, Math.min(1, +v || 0)) * 100)}%"></i></div></div>`;
+      const decks = DECKS.map((k) => { const r = S[k] || {}; const has = !!(r.src || r.yt); const dt = has ? E(r.title || "Untitled") + (r.yt ? " 🎬" : "") : "<span class='muted'>Nothing loaded</span>"; return `<div class="ws-deck ws-ctl"><div class="ws-dh"><span class="ws-dl">DECK ${k}</span><span class="ws-ds${r.playing ? " on" : ""}">${r.playing ? "▶ PLAYING" : has ? "❚❚ LOADED" : "— EMPTY"}</span></div><div class="ws-dt">${dt}</div><div class="ws-prog"><i id="ws-p${k}"></i></div><div class="ws-dm"><span id="ws-t${k}"></span><span>VOL ${Math.round((+r.vol || 0) * 100)}% · ${(+r.rate || 1).toFixed(2)}x</span></div><div class="ws-dbtns"><span class="ws-fbtn">⏮</span><span class="ws-fbtn">${r.playing ? "❚❚" : "▶"}</span><span class="ws-fbtn">⏭</span></div></div>`; }).join("");
+      const queue = q.length ? q.map((x, i) => `<div class="ws-qrow">${i + 1}. ${(x || {}).yt ? "🎬 " : ""}${E((x || {}).title || "Untitled")}</div>`).join("") : `<p class="muted" style="margin:0">The queue is empty — Auto-DJ pulls from the full rotation.</p>`;
+      body.innerHTML = `<div class="ws-top"><span class="ws-lamp${live ? " on" : ""}">${live ? "🔴 LIVE" : "○ STANDBY"}</span><span class="ws-master">${master}</span></div><p class="muted" style="margin:6px 0 12px">${radio} Watching is free for everyone — the controls answer to Meechie only.</p><div class="ws-grid">${decks}</div><div class="ws-grid" style="margin-top:10px">${xfBar("CROSSFADER — A ⇄ B", "A", "B", S.xf)}${xfBar("CROSSFADER — C ⇄ D", "C", "D", S.xf2)}</div><div class="ws-fx ws-ctl"><b>🎛️ FX</b><span>${fxTxt}</span></div><div class="ws-queue"><b>📋 UP NEXT — THE QUEUE</b>${queue}</div>`;
+    }
+    DECKS.forEach((k) => { const bar = document.getElementById("ws-p" + k); const tt = document.getElementById("ws-t" + k); if (!bar || !tt) return; const r = S[k] || {}; const dur = +r.dur || 0; const pos = posOf(k); bar.style.width = dur > 0 ? Math.max(0, Math.min(100, (pos / dur) * 100)) + "%" : "0%"; tt.textContent = fmt(pos) + (dur ? " / " + fmt(dur) : ""); });
+  }
+  setInterval(() => { try { paintWatch(); } catch (_) {} }, 1000);
   function onState(d) {
     try { paintVEdit(); } catch (_) {} try { paintLiveAlert(); } catch (_) {}
     const firstOwnerLoad = OWNER() && !ownerLoaded;
@@ -4693,7 +4772,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
     if (firstOwnerLoad) { showOwnerUI(); DECKS.forEach((k) => { if (S[k].playing && boothLead) adoptDeck(k); }); }
-    playVoice(); firePadHit(); paintStation();
+    playVoice(); firePadHit(); paintStation(); try { paintWatch(); } catch (_) {}
     if (OWNER()) paintOwner();
   }
 
