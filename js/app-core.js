@@ -21,6 +21,7 @@ const LAZY_SRC={
   jobs:["js/jobs.js?v=1793185302"],
   connect:["js/connect.js?v=1793185302"],
   fans:["js/fans.js?v=1793185302"],
+  home:["js/home.js?v=1793272400"],
   tv:["js/movies.js?v=1793185302"],
   clips:["js/clips.js?v=1793185302"],
   studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],

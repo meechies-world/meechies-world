@@ -417,6 +417,37 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <main>
 <!-- HOME -->
 <section class="view" id="v-home">
+  <style id="home2-styles">
+#v-home .lux-hero{margin-bottom:14px;padding-top:clamp(14px,2.4vw,28px)}
+#v-home .home-live{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:11px 14px;border:1px solid rgba(216,180,90,.55);border-radius:14px;background:linear-gradient(180deg,#1a1509,#0c0a06);color:#f4d98a;font-weight:700;font-size:15px;line-height:1.4}
+#v-home .home-live[hidden]{display:none}
+#v-home .home-live .btn{flex:0 0 auto}
+#v-home .home-jump-head{margin-top:24px}
+#v-home .home-jump-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 20px}
+@media(min-width:820px){#v-home .home-jump-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#v-home .home-card{display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;min-height:118px;padding:16px 15px;border:1px solid rgba(216,180,90,.38);border-radius:18px;background:linear-gradient(160deg,rgba(216,180,90,.09),rgba(255,255,255,.015));color:inherit;text-decoration:none;font:inherit;cursor:pointer;transition:border-color .2s,transform .2s}
+#v-home .home-card:hover,#v-home .home-card:focus-visible{border-color:rgba(244,217,138,.85);transform:translateY(-2px)}
+#v-home .home-card .hc-ico{font-size:30px;line-height:1}
+#v-home .home-card b{font-size:17px;line-height:1.25}
+#v-home .home-card .hc-line{font-size:13px;line-height:1.45;color:#b9ac8d}
+#v-home .home-card .hc-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+#v-home .home-card .hc-links a{border:1px solid rgba(216,180,90,.5);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;color:#f4d98a;text-decoration:none}
+#v-home .home-now{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;margin:0 0 10px;scrollbar-width:thin}
+#v-home .home-now[hidden]{display:none}
+#v-home .home-now-block{flex:0 0 auto;min-width:230px;max-width:86vw;border:1px solid rgba(216,180,90,.3);border-radius:16px;background:#0d0b08;padding:12px 14px}
+#v-home .home-now-block[hidden]{display:none}
+#v-home .home-now-block h4{margin:0 0 8px;font-size:12px;letter-spacing:.14em;color:#f4d98a}
+#v-home .home-now-block p{margin:0;font-size:14px;line-height:1.5}
+#v-home .home-now-prods{display:flex;gap:10px}
+#v-home .home-prod{display:flex;flex-direction:column;gap:3px;width:96px;text-decoration:none;color:inherit}
+#v-home .home-prod img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid rgba(216,180,90,.25);background:#000}
+#v-home .home-prod b{font-size:11.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#v-home .home-prod span{font-size:12px;color:#f4d98a;font-weight:700}
+#v-home .mw-path{border-color:rgba(216,180,90,.45);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#v-home .mw-path:hover{border-color:rgba(244,217,138,.8)}
+#v-home .mw-path-art span{color:#f4d98a;text-shadow:0 0 22px rgba(255,190,70,.45)}
+@media(prefers-reduced-motion:reduce){#v-home .home-card{transition:none}}
+  </style>
   <div class="wrap">
     <div class="lux-hero">
       <div class="crestimg" role="img" aria-label="Meechie with a gold crown, globe and city skyline: Meechies World Inc, More than clothing, it's a movement"></div>
@@ -428,6 +459,27 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <div class="pillars"><span>Business</span><span>Mindset</span><span>Wealth</span><span>Family</span><span>Community</span></div>
         <div class="ctas"><a class="btn" href="#community" data-go="community">Join Meechie's Book free</a><a class="btn ghost" href="#shop" data-go="shop">Shop the movement</a><a class="btn ghost" href="#services" data-go="services">Our services</a></div>
       </div>
+    </div>
+    <div class="home-live" id="home-live" hidden></div>
+    <div class="section-head home-jump-head">
+      <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
+      <p class="muted">Free to browse, free to join. Tap a card and step inside.</p>
+    </div>
+    <div class="home-jump-grid">
+      <a class="home-card" href="#radio" data-go="radio"><span class="hc-ico" aria-hidden="true">🎧</span><b>Live Radio &amp; DJ Battles</b><span class="hc-line">The 24/7 station, guest DJs, requests and head-to-head battles.</span></a>
+      <a class="home-card" href="#live" data-go="live"><span class="hc-ico" aria-hidden="true">📡</span><b>Go Live — Stream &amp; Watch</b><span class="hc-line">Go live from your own camera, or pull up a chair and watch.</span></a>
+      <a class="home-card" href="#games" data-go="games"><span class="hc-ico" aria-hidden="true">🎰</span><b>Coin Jackpot</b><span class="hc-line">Play the games, stack your coins, cash out real winnings.</span></a>
+      <a class="home-card" href="#shop" data-go="shop"><span class="hc-ico" aria-hidden="true">🛍️</span><b>Shop the Drop</b><span class="hc-line">Apparel and gear from the movement, new pieces first.</span></a>
+      <a class="home-card" href="#community" data-go="community"><span class="hc-ico" aria-hidden="true">📖</span><b>Meechie's Book</b><span class="hc-line">Post, talk, gift and build with the whole community.</span></a>
+      <a class="home-card" href="#tv" data-go="tv"><span class="hc-ico" aria-hidden="true">🎬</span><b>Cinema &amp; TV</b><span class="hc-line">16,000+ free movies: classics, horror, sci-fi and cartoons.</span></a>
+      <a class="home-card" href="#services" data-go="services"><span class="hc-ico" aria-hidden="true">🏠</span><b>We Remodel Houses</b><span class="hc-line">Kitchens, floors, paint and full home makeovers.</span></a>
+      <button type="button" class="home-card" data-ai-open><span class="hc-ico" aria-hidden="true">🤖</span><b>Ask Meechie AI</b><span class="hc-line">Questions about anything here, answered day or night.</span></button>
+      <div class="home-card"><span class="hc-ico" aria-hidden="true">📱</span><b>Get the Apps</b><span class="hc-line">Take Meechie's World with you.</span><span class="hc-links"><a href="/radio-app/">🎧 MW Radio app</a><a href="/ai-app/">🤖 Meechie AI app</a></span></div>
+    </div>
+    <div class="home-now" id="home-now" hidden>
+      <div class="home-now-block" id="home-now-air" hidden></div>
+      <div class="home-now-block" id="home-now-online" hidden></div>
+      <div class="home-now-block home-now-shop" id="home-now-shop" hidden></div>
     </div>
     <div class="feat-vid" id="feat-vid">
       <!-- Streams through the site's own media relay (/m/), which sends the video in pieces (iPhones won't play it otherwise). The plain file copy is the backup. -->
@@ -490,11 +542,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div class="tt-head"><div><p class="eyebrow" style="margin:0">Watch Meechie</p><h3 style="margin:2px 0 0">Latest on TikTok · @meechiesworldinc</h3></div><a class="btn" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener">Follow on TikTok</a></div>
       <div class="htt-wrap"><div class="htt-grid" id="home-tt-grid"><small class="muted">Loading Meechie's TikToks...</small></div></div>
     </div>
-    <div class="section-head" style="margin-top:64px">
-      <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
-      <p class="muted">Free to join. Tap any tile to step inside.</p>
-    </div>
-    <div class="bento">
+    <div class="bento" style="margin-top:56px">
       <a class="tile t-radio" href="#radio" data-go="radio">
         <div class="t-art"><div class="vinyl"></div><div class="arm"></div></div>
         <div class="t-copy"><span class="pill live">● Live now</span><h3>Meechie's World Radio</h3><p>A 24/7 station where everybody hears the same song at the same moment. Requests, shoutouts, and a full music library.</p><span class="go">Tune in →</span></div>
@@ -1532,7 +1580,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/float-layout.js?v=1793271573"></script>
 <script src="js/cf-client.js?v=1793271573"></script>
 <script src="js/platform.js?v=1793271573"></script>
-<script src="js/app-core.js?v=1793271573"></script>
+<script src="js/app-core.js?v=1793272400"></script>
 <script src="js/appnav.js?v=1793271573"></script>
 <script src="js/fb-feed.js?v=1793271573"></script>
 <script src="js/fb-feed-plus.js?v=1793271573"></script>
