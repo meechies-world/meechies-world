@@ -4652,6 +4652,46 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     renderLog($("#st-log"));
     try { paintBattleCard(); } catch (_) {}
   }
+  /* ---------- AGGRESSIVE STALL WATCHDOG (mwStallWatchdog) ----------
+   * Owner spec 2026-10-28 ("if music stops for any reason it automatically
+   * cuts back on"), tightened by the owner 2026-10-29: "yes an agresive
+   * watch dog". The element-state stall check inside the tick below trusts
+   * the player, and a video shim can lie: its readyState sits at 4 and its
+   * state can read as playing while its clock is frozen solid - twice on
+   * 2026-10-29 a deck flagged playing sat at one position for minutes
+   * (deck B at 1022.3s, deck C at 229.7s) while the booth kept stamping
+   * fresh, and the keeper cannot rescue that because the keeper only
+   * drives when the booth is stale. This watchdog trusts only the
+   * player's own clock. On the driving booth (the same OWNER() +
+   * boothLead + S.live gate as the neighbouring checks; in the sandbox
+   * that gate is the local tables only, where save() never touches the
+   * radio) a deck flagged playing whose position has not moved 0.25s
+   * inside 5 seconds is stalled, and it recovers in rungs 5 seconds
+   * apart: 1) press play on the player again, 2) reload the same track
+   * at the stalled position, 3) hand the deck to deckEnded, the
+   * natural-end path, so Auto-DJ or the queue rolls on. A track that
+   * stalls again after one reload in the same play skips the reload
+   * rung - it hands over and is not reloaded again this cycle. A
+   * deliberate pause is never a stall: a DJ pause clears the deck's
+   * playing flag and a full stop stamps S.pausedAt, and either one
+   * resets this watchdog outright. Loop and roll decks, the runout zone
+   * (the last 0.75s), and a deck under a hand (grain scratch, a seek
+   * still landing, a fresh noSync) are left alone. It never pauses or
+   * stops anything itself: recovery or handover only. Memory-only
+   * state, per deck. */
+  const wdPos = {};
+  const wdKeyOf = (k) => { const s = S[k]; return (s.yt ? "yt:" + s.yt : "f:" + (s.src || "")) + "|" + (s.title || ""); };
+  const wdKick = (k) => { const d = decks[k]; if (!d || !d.el) return; try { const pp = d.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} };
+  const wdReload = (k, at) => {
+    const s = S[k], d = decks[k]; if (!s || !d) return;
+    if (s.yt) { const tok = s.yt; try { d.clearYt(); } catch (_) {} d.setYt(tok).then((okY) => { if (!okY || !S[k].playing || S[k].yt !== tok) return; try { d.el.currentTime = at; } catch (_) {} wdKick(k); S[k].start = Date.now() - at * 1000; }).catch(() => {}); return; }
+    if (!okUrl(s.src)) return;
+    const el = d.el; if (!el) return;
+    try { el.pause(); } catch (_) {}
+    try { el.src = s.src; el.load(); } catch (_) {}
+    const go = () => { try { el.currentTime = at; } catch (_) {} try { const pp = el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} if (S[k].playing && !S[k].yt) S[k].start = Date.now() - at * 1000; };
+    if (el.readyState >= 1) go(); else el.addEventListener("loadedmetadata", go, { once: true });
+  };
   setInterval(() => {
     const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) showOwnerUI();
     if (ctx && ctx.state !== "running" && ctx.state !== "closed" && DECKS.some((k) => S[k] && S[k].playing) && (boothLead || listening)) { wakeAudio(); if (Date.now() - muteHintAt > 20000) { muteHintAt = Date.now(); setTimeout(() => { if (ctx && ctx.state !== "running") say("🔇 Your phone paused the sound. Tap anywhere on the page to bring it back."); }, 600); } }
@@ -4697,6 +4737,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         else if (Date.now() - dd._stallAt > 5000) {
           if (!dd._stallTried) { dd._stallTried = true; dd._stallAt = Date.now(); dd._stallCt = ct; try { const pp = dd.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} }
           else { dd._stallAt = 0; dd._stallTried = false; deckEnded(k); }
+        }
+      }
+      // AGGRESSIVE STALL WATCHDOG (mwStallWatchdog, see the note above the
+      // tick): position-based, so a video deck whose player reports itself
+      // playing while its clock is frozen is still caught.
+      {
+        const wd = wdPos[k] || (wdPos[k] = { key: "", pos: 0, adv: 0, act: 0, step: 0, reloads: 0 });
+        if (!S[k].playing || S.pausedAt) { wd.key = ""; wd.step = 0; wd.reloads = 0; wd.adv = 0; wd.act = 0; }
+        else if (OWNER() && boothLead && S.live && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S[k].loop) {
+          const key = wdKeyOf(k), ddw = decks[k];
+          if (wd.key !== key) { wd.key = key; wd.pos = ddw.el.currentTime || 0; wd.adv = Date.now(); wd.act = 0; wd.step = 0; wd.reloads = 0; }
+          else {
+            const pos = ddw.el.currentTime || 0, nowW = Date.now(), durW = +S[k].dur || ddw.el.duration || 0;
+            if (Math.abs(pos - wd.pos) >= 0.25) { wd.pos = pos; wd.adv = nowW; wd.step = 0; }
+            else if (!(grainSess && grainSess.k === k) && !ddw.el.seeking && !(ddw.noSync && nowW < ddw.noSync) && !(durW > 0 && pos >= durW - 0.75) && !ddw.el.ended && nowW - wd.adv >= 5000 && nowW - wd.act >= 5000) {
+              wd.act = nowW; wd.adv = nowW;
+              if (wd.step === 0 && wd.reloads >= 1) { console.log("[watchdog] deck " + k + " stalled again at " + pos.toFixed(1) + "s after a reload this play - handing over, no second reload"); wd.key = ""; wd.step = 0; wd.reloads = 0; deckEnded(k); }
+              else if (wd.step === 0) { wd.step = 1; console.log("[watchdog] deck " + k + " stalled at " + pos.toFixed(1) + "s - rung 1: play again"); wdKick(k); }
+              else if (wd.step === 1 && wd.reloads < 1) { wd.step = 2; wd.reloads++; console.log("[watchdog] deck " + k + " still stalled at " + pos.toFixed(1) + "s - rung 2: reload track at position"); wdReload(k, pos); }
+              else { console.log("[watchdog] deck " + k + " still stalled at " + pos.toFixed(1) + "s - rung 3: hand over"); wd.key = ""; wd.step = 0; wd.reloads = 0; deckEnded(k); }
+            }
+          }
         }
       }
       // Preload (owner, 2026-10-28: transitions took too long because the
@@ -4952,7 +5014,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274700;
+  const MW_DJ_BUILD = 1793274800;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
