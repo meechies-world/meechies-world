@@ -668,6 +668,8 @@ html.popdj .popdj-hint{display:block}
 .cp-lab{display:block;font:800 11px var(--body);letter-spacing:.1em;color:var(--gold-hi,#f0cf78);margin-bottom:7px}
 .cp-chips{display:flex;flex-wrap:wrap;gap:6px}
 .cp-chip{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);color:#e8e2d2;border-radius:999px;padding:9px 14px;min-height:38px;font:700 12.5px var(--body);cursor:pointer;white-space:nowrap}
+#cp-bgs.warming .cp-chip{opacity:.55}
+#cp-bgs.dead .cp-chip{opacity:.55}
 .cp-chip.on{background:var(--gold,#f0cf78);color:#0b0a08;border-color:var(--gold,#f0cf78)}
 .cp-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:9px}
 .cp-row span{color:#e9d9a6;font-weight:700}
@@ -1575,6 +1577,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * already be granted — and otherwise shows a placeholder in the square.
    * Booth screen ONLY: the station and mini stages are never touched. */
   let camStream = null, camBusy = false, camFailAt = 0, camLastW = 0, camWasOn = false, camBtnOn = null;
+  /* CRASH GUARD (2026-10-29): camStartLocal stamps sessionStorage the
+     moment any camera start begins and clears the stamp only after the
+     camera has run cleanly for ~20s. If THIS page load finds the stamp
+     still set, the previous session died with the camera starting or
+     running — and when his saved camera setup (localStorage mw-camfx)
+     says the camera would auto-restore, the booth does NOT auto-start
+     it again on this load; he starts it with the Cam button himself. */
+  let camGuardTripped = false;
+  try { camGuardTripped = !!sessionStorage.getItem("mw-cam-guard") && !!localStorage.getItem("mw-camfx"); } catch (_) {}
   function camEls() { return { st: document.getElementById("dj-vstage"), wrap: document.getElementById("dj-camwrap"), vid: document.getElementById("dj-camvid"), btn: document.getElementById("dj-cambtn") }; }
   /* Glitch guard (owner, 2026-10-29: "my cam on button looks like its
      glitching"): camSize used to run on EVERY camSync (several times a
@@ -1588,6 +1599,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (camStream) return true;
     if (camBusy) return false;
     camBusy = true;
+    try { sessionStorage.setItem("mw-cam-guard", String(Date.now())); } catch (_) {} // crash-guard stamp: cleared only after ~20s of clean camera running
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 640 }, facingMode: "user" }, audio: false });
       camStream = s;
@@ -1595,6 +1607,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (e.vid) { e.vid.srcObject = s; try { await e.vid.play(); } catch (_) {} }
       if (e.wrap) e.wrap.classList.remove("novid");
       camFxOnStream();
+      setTimeout(() => { if (camStream) { try { sessionStorage.removeItem("mw-cam-guard"); } catch (_) {} } }, 20000); // the camera ran clean for ~20s: the next load may auto-restore it again
       return true;
     } catch (_) { return false; }
     finally { camBusy = false; }
@@ -1602,16 +1615,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function camSync() {
     try {
       const e = camEls(); if (!e.st) return;
-      camProBuild();
-      if (e.btn) e.btn.style.display = SANDBOX ? "none" : "";
       const on = !SANDBOX && OWNER() && !!(S.vcam && S.vcam.on);
+      if (on || !camProBuilt) camProBuild(); // while the cam is off the Camera Pro panel is hidden — the 700ms stage tick and every state echo used to rebuild + repaint it anyway
+      if (e.btn) e.btn.style.display = SANDBOX ? "none" : "";
       if (e.btn && camBtnOn !== on) { camBtnOn = on; e.btn.classList.toggle("on", on); e.btn.textContent = on ? "📷 Cam · ON" : "📷 Cam"; }
       const cp = document.getElementById("dj-campro"); if (cp && cp.hidden === on) cp.hidden = !on; // the Camera Pro panel only exists while the cam is on
       e.st.classList.toggle("cam-on", on);
       if (!on) { camWasOn = false; camStopLocal(); return; }
       if (!camWasOn) { camWasOn = true; camSize(); }
       if (e.wrap) e.wrap.classList.toggle("novid", !camStream);
-      if (boothLead && !camStream && !camBusy && Date.now() - camFailAt > 20000) {
+      if (boothLead && !camStream && !camBusy && !camGuardTripped && Date.now() - camFailAt > 20000) {
         camStartLocal().then((ok) => { if (!ok) { camFailAt = Date.now(); const w = camEls().wrap; if (w) w.classList.add("novid"); } });
       }
       camFrameTick();
@@ -1656,7 +1669,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * encodes through async convertToBlob instead of blocking toDataURL.
    * 2) VIEWERS SEE HIM on the pop-out master screen: while his cam is on
    *    and the station is live, the lead booth publishes a fresh camera
-   *    FRAME every ~4 seconds into S.vcam.frame and every viewer's
+   *    FRAME every ~4 seconds into its own radio/camframe doc and every viewer's
    *    pop-out grows a small draggable square of him, bottom-right.
    *    HONESTY NOTE: this is a live photo relay — a fresh still every
    *    few seconds, NOT full-motion video. The same square becomes the
@@ -1776,9 +1789,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* the square itself now carries ONLY the slim bar: the active look name
      + a [🎛 Edit] button that unfolds the CAMERA PRO panel and scrolls to
      it. Every control moved into the panel — nothing is out of reach. */
+  let camProBuilt = false;
   function camProBuild() {
     try {
       const w = camEls().wrap; if (!w) return;
+      camProBuilt = true;
       if (!document.getElementById("dj-camfx")) { const fx = document.createElement("canvas"); fx.id = "dj-camfx"; fx.width = CAM_FX_W; fx.height = CAM_FX_W; w.appendChild(fx); }
       if (!document.getElementById("dj-cambar")) {
         const bar = document.createElement("div"); bar.id = "dj-cambar";
@@ -1842,6 +1857,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try {
       document.querySelectorAll("#cp-looks .cp-chip").forEach((c) => c.classList.toggle("on", c.getAttribute("data-look") === camFx.look));
       document.querySelectorAll("#cp-bgs .cp-chip").forEach((c) => c.classList.toggle("on", c.getAttribute("data-bg") === camFx.bg));
+      const bgsBox = document.getElementById("cp-bgs"); if (bgsBox) { bgsBox.classList.toggle("warming", fxWarming && camFx.bg !== "off"); bgsBox.classList.toggle("dead", fxBailed); }
       const setR = (id, val, valId, txt) => { const el = document.getElementById(id); if (el && document.activeElement !== el) el.value = val; const lab = document.getElementById(valId); if (lab && document.activeElement !== el) lab.textContent = txt; };
       setR("cp-b", camFx.b, "cp-b-v", Math.round(camFx.b * 100) + "%");
       setR("cp-c", camFx.c, "cp-c-v", Math.round(camFx.c * 100) + "%");
@@ -1854,7 +1870,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const mb = document.getElementById("cp-mirror"); if (mb) mb.textContent = camFx.mirror ? "🪞 Mirror: ON" : "🪞 Mirror: OFF";
       const bo = document.getElementById("cp-banner-on"); if (bo && document.activeElement !== bo) bo.checked = !!camFx.bannerOn;
       const bt = document.getElementById("cp-banner-text"); if (bt && document.activeElement !== bt) bt.value = camFx.bannerText;
-      const lk = document.getElementById("dj-camlook"); if (lk) lk.textContent = (CAM_LOOKS[camFx.look] || CAM_LOOKS.off).label + (camFx.bg !== "off" ? " · BG " + camFx.bg : "");
+      const lk = document.getElementById("dj-camlook"); if (lk) lk.textContent = (CAM_LOOKS[camFx.look] || CAM_LOOKS.off).label + (camFx.bg !== "off" ? " · BG " + camFx.bg : "") + (fxBailed ? " · BG unavailable on this device" : fxWarming && camFx.bg !== "off" ? " · warming up" : "");
       const bn = document.getElementById("dj-cambanner");
       if (bn) { const show = camFx.bannerOn && !!camFx.bannerText; bn.hidden = !show; if (show) { bn.textContent = camFx.bannerText; const wh = (camEls().wrap && camEls().wrap.clientHeight) || 0; if (wh) bn.style.fontSize = Math.max(9, Math.round(wh * 0.058)) + "px"; } }
       camProApplySurface();
@@ -1885,7 +1901,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (["off", "blur", "brand", "pic"].indexOf(v) < 0) return;
     if (v === "pic" && !camBgImg) { camBgPick(); say("🖼 Pick a picture for your background."); return; }
     if (v === "pic" && camFx.bg === "pic") { camBgPick(); return; } // tap Pic again to change the picture
-    camFx.bg = v; camFxSave(); camProPaint(); camFxMaybeStart();
+    camFx.bg = v; camFxSave(); camProPaint(); camFxMaybeStart(); fxLazyStart(); // an explicit background pick is the ONE lazy trigger for the engine
   }
   function camBgPick() { const fi = document.getElementById("dj-cambg-file"); if (fi) fi.click(); }
   function camBgLoadFile(f) {
@@ -1898,7 +1914,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       let data = ""; try { data = cv.toDataURL("image/jpeg", 0.85); } catch (_) {}
       camBgImg = im; camBgImgURL = data;
       if (data) { try { localStorage.setItem("mw-cambg", data); } catch (_) { if (!camBgQuotaSaid) { camBgQuotaSaid = true; say("🖼 That picture is too big to save for next time — it still works for this session."); } } }
-      camFx.bg = "pic"; camFxSave(); camProPaint(); camFxMaybeStart();
+      camFx.bg = "pic"; camFxSave(); camProPaint(); camFxMaybeStart(); fxLazyStart(); // a picture pick is also an explicit background pick: the lazy engine trigger
     };
     im.onerror = () => { URL.revokeObjectURL(url); say("🖼 That picture would not load."); };
     im.src = url;
@@ -1930,9 +1946,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const ORT_BUNDLE = "ort.all.min.js";
   const RVM_MODEL = "https://huggingface.co/LPDoctor/video_matting/resolve/main/rvm_mobilenetv3_fp32.onnx";
   const MP_CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/";
-  let fxEngine = null, fxEngineKind = "", fxEp = "", fxModelBuf = null, fxLoadP = null, fxStarting = false;
+  let fxEngine = null, fxEngineKind = "", fxEp = "", fxModelBuf = null, fxLoadP = null, fxStarting = false, fxWarming = false;
   let fxRun = false, fxLoopLive = false, fxRaf = 0, fxRenderNew = false, fxFails = 0, fxLastAt = 0, fxBailed = false, fxRec = null, fxOkOnce = false, fxDowngrading = false;
-  let fxSize = CAM_FX_W, fxEma = 0, fxSlow = 0, fxLastStep = 0, fxWarmed = false;
+  let fxGpuFails = 0; // WebGPU init failures this page session (session create + first inference): at two, the engine latches off
+  let fxSize = CAM_FX_W, fxEma = 0, fxSlow = 0, fxLastStep = 0;
   const FX_SIZES = [320, 256, 224];
   const fxSizeOk = { 320: true }; // a smaller size is only trusted once a real inference has run at it (fxWarmSizes)
   const fxProc = document.createElement("canvas"); fxProc.width = CAM_FX_W; fxProc.height = CAM_FX_W;
@@ -1964,7 +1981,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const buf = await resp.arrayBuffer();
     fxModelBuf = buf;
     let sess = null, ep = "wasm";
-    if (navigator.gpu) { try { sess = await ort.InferenceSession.create(buf, { executionProviders: ["webgpu"], graphOptimizationLevel: "all" }); ep = "webgpu"; } catch (_) { sess = null; } }
+    if (navigator.gpu) { try { sess = await ort.InferenceSession.create(buf, { executionProviders: ["webgpu"], graphOptimizationLevel: "all" }); ep = "webgpu"; } catch (_) { sess = null; fxGpuFails++; } } // a WebGPU init failure is counted: two of them latch the engine off for the page session (see fxInferLoop)
     if (!sess) sess = await ort.InferenceSession.create(buf.slice(0), { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
     fxEp = ep;
     fxRec = fxRecFor(fxSize);
@@ -1990,14 +2007,20 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     fxLoadP.catch(() => { fxLoadP = null; });
     return fxLoadP;
   }
-  /* warm-up (kicked from camFxOnStream, so it runs while he is settling
-     in — never inside a chip tap): one blank-frame inference per size.
+  /* warm-up priming (runs inside fxLazyStart, once the lazily loaded
+     engine exists — never at cam-on): one blank-frame inference per
+     size, ONE SIZE PER IDLE SLICE, so priming never lands as one long
+     main-thread block on the phone that is also playing his music.
      The 320 run primes the session; the 256/224 runs PROVE the model's
      dynamic axes accept those inputs before the adaptive ladder is
      allowed to step down to them. */
+  function fxIdleSlice() { return new Promise((res) => { if ("requestIdleCallback" in window) { try { requestIdleCallback(() => res(), { timeout: 1200 }); return; } catch (_) {} } setTimeout(res, 60); }); }
   async function fxWarmSizes() {
     const sess = fxEngine && fxEngine.sess; if (!sess || !window.ort) return;
+    let firstSize = true;
     for (const S of FX_SIZES) {
+      if (!firstSize) await fxIdleSlice();
+      firstSize = false;
       try {
         const rec = fxRecFor(S);
         const srcT = new ort.Tensor("float32", new Float32Array(3 * S * S), [1, 3, S, S]);
@@ -2010,10 +2033,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try { if (fxRec) fxRec.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {}
     fxRec = fxRecFor(fxSize); // the real feed starts from clean recurrent states
   }
-  function camProWarmup() {
-    if (fxWarmed || fxBailed) return; fxWarmed = true;
-    fxLoadEngine().then(async (eng) => { if (eng && eng.kind === "rvm") { try { await fxWarmSizes(); } catch (_) {} } })
-      .catch(() => { fxWarmed = false; }); // a failed warm-up stays silent; a later BG tap retries through the normal path and bails there if it must
+  /* LAZY ENGINE START (owner crash report, 2026-10-29: "my camera keeps
+     making my site crash"): the segmentation engine — the ORT script,
+     the 15MB model, session creation — loads ONLY here, and this runs
+     ONLY from an explicit background pick (camFxSetBg / camBgLoadFile).
+     Cam-on never touches it; the plain camera and every CSS/SVG look
+     run with zero engine involvement. The load runs in the background
+     while the plain camera keeps showing; when it lands, the chosen
+     mode swaps in. Any failure LATCHES (camFxBail): the engine disables
+     itself for the rest of the page session and never retries. */
+  function fxLazyStart() {
+    if (fxEngine || fxBailed || fxStarting) return;
+    if (camFx.bg === "off" || !camStream) return;
+    fxStarting = true; fxWarming = true; camProPaint();
+    fxLoadEngine().then(async (eng) => {
+      fxStarting = false;
+      if (!eng) { camFxBail(); return; }
+      if (eng.kind === "rvm") { try { await fxWarmSizes(); } catch (_) {} if (fxSizeOk[320] === false) { camFxBail(); return; } } // the warm-up prime at 320 threw: this session cannot be trusted — latch off
+      fxWarming = false;
+      if (camStream && !fxBailed && camFx.bg !== "off") { fxRun = true; fxSwapIn(); }
+      camProPaint();
+    }).catch(() => { fxStarting = false; camFxBail(); }); // session creation threw on both engines: latch off for the page session, the plain camera keeps running
   }
   async function fxMatteRvm() {
     const W = fxSize, sess = fxEngine.sess;
@@ -2117,7 +2157,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const t0 = performance.now();
         try { ok = await fxInferOnce(); }
         catch (e) {
-          if (fxEngineKind === "rvm" && fxEp === "webgpu" && !fxOkOnce) { if (await fxDowngradeWasm()) { ok = false; } else failed = true; }
+          if (fxEngineKind === "rvm" && fxEp === "webgpu" && !fxOkOnce) { fxGpuFails++; if (fxGpuFails >= 2) { camFxBail(); break; } if (await fxDowngradeWasm()) { ok = false; } else failed = true; }
           else failed = true;
         }
         if (!fxRun) break;
@@ -2145,6 +2185,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     cancelAnimationFrame(fxRaf); fxRaf = requestAnimationFrame(fxRenderLoop);
   }
   function fxSwapIn() {
+    fxWarming = false;
     const w = camEls().wrap; if (w) w.classList.add("fxbg");
     camProApplySurface();
     if (fxEngineKind === "rvm" && window.ort) { try { if (fxRec) fxRec.forEach((t) => { if (t && t.dispose) t.dispose(); }); } catch (_) {} fxRec = fxRecFor(fxSize); }
@@ -2155,21 +2196,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     camProBuild(); camProPaint();
     if (camFx.bg === "off" || fxBailed) { camFxStopPipe(); return; }
     if (!camStream) return; // the stream-start hook calls back in when the camera is live
-    fxRun = true;
-    if (fxEngine) { fxSwapIn(); return; } // engine warm (cam-on warm-up): a BG tap now only flips the mode — no load, no spike, no skip
-    if (fxStarting) return;
-    fxStarting = true;
-    fxLoadEngine().then(() => { fxStarting = false; if (!fxRun) return; fxSwapIn(); })
-      .catch(() => { fxStarting = false; camFxBail(); });
+    if (fxEngine) { fxRun = true; fxSwapIn(); return; } // engine already loaded this session: a BG pick only flips the mode — no load, no spike, no skip
+    /* engine not loaded: this function NEVER starts the load (the crash
+       rule — cam-on and stream start stay engine-free). fxLazyStart,
+       called from the BG pick handlers, owns the load; until it lands
+       the chips just reflect whether a load is already in flight. */
+    fxWarming = !!fxStarting; camProPaint();
   }
-  function camFxStopPipe() { fxRun = false; fxLoopLive = false; cancelAnimationFrame(fxRaf); const w = camEls().wrap; if (w) w.classList.remove("fxbg"); camProApplySurface(); }
+  function camFxStopPipe() { fxRun = false; fxWarming = false; fxLoopLive = false; cancelAnimationFrame(fxRaf); const w = camEls().wrap; if (w) w.classList.remove("fxbg"); camProApplySurface(); }
   function camFxBail() { camFxStopPipe(); fxBailed = true; say("📷 Background FX could not run on this device — showing the plain camera."); }
-  function camFxOnStream() { camProPaint(); camProWarmup(); camFxMaybeStart(); }
+  function camFxOnStream() { camProPaint(); camFxMaybeStart(); } // stream start paints and notes any persisted BG pick — it NEVER loads the engine (fxLazyStart is pick-only)
   function camFxOnStop() { camFxStopPipe(); }
   /* ---- frame relay: the lead booth publishes a fresh still of him
-   * every ~4s while he is on cam and the station is live; camToggle's
-   * off write already clears frame/frameAt everywhere by replacing
-   * S.vcam wholesale. The capture composes what he SEES: the framed,
+   * every ~4s while he is on cam and the station is live, into its OWN
+   * radio/camframe doc ({frame, frameAt, at}) — S.vcam in radio/dj is
+   * back to just {on, at}, so the ~46KB frame no longer re-ships on
+   * every booth save and every listener poll. The capture composes
+   * what he SEES: the framed,
    * mirrored picture (the pipeline bitmap when a background is up, a
    * drawFramed sample of the raw feed when it is not), the look when it
    * is plain CSS functions (canvas filters cannot resolve SVG-reference
@@ -2205,7 +2248,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       try { ctx.filter = "none"; } catch (_) {}
       camDrawBanner(ctx, 320);
       camFrameBusy = true;
-      const publish = (url) => { camFrameBusy = false; if (!url || url.length > 60000) return; if (!S.vcam || !S.vcam.on) return; S.vcam = { on: true, at: S.vcam.at || now, frame: url, frameAt: now }; save(); };
+      const publish = (url) => { camFrameBusy = false; if (!url || url.length > 60000) return; if (!S.vcam || !S.vcam.on) return; try { const d = DBF(); if (d) { const p = d.doc("radio/camframe").set({ frame: url, frameAt: now, at: S.vcam.at || now }); if (p && p.catch) p.catch(() => {}); } } catch (_) {} };
       if (camCap.convertToBlob) {
         let q = 0.62;
         const step = () => {
@@ -2231,10 +2274,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   let camOvPos = { fx: 1, fy: 1 };
   try { const p = JSON.parse(localStorage.getItem("mw-camov-pos") || "null"); if (p && isFinite(+p.fx) && isFinite(+p.fy)) camOvPos = { fx: Math.min(1, Math.max(0, +p.fx)), fy: Math.min(1, Math.max(0, +p.fy)) }; } catch (_) {}
   let camOvDrag = null, camOvFrameAt = 0;
+  let camFrameDoc = null; // the latest radio/camframe doc ({frame, frameAt, at}), filled by the init() subscription — the viewer square reads frames from here, never from radio/dj
+  let camOvPlaceKey = "";
   function camOvPlace() {
     const ov = document.getElementById("mw-camov"); if (!ov || !ov.parentElement) return;
-    const st = ov.parentElement, or2 = ov.getBoundingClientRect(), pw = st.clientWidth, ph = st.clientHeight;
-    if (!pw || !or2.width) return;
+    const st = ov.parentElement, pw = st.clientWidth, ph = st.clientHeight;
+    if (!pw) return;
+    /* the placement only depends on the parent size, the saved position
+       and which frame is up — when none of those changed, skip the
+       getBoundingClientRect (a forced layout read that used to run on
+       every state echo and every 700ms mini pass) */
+    const key = pw + "x" + ph + "|" + camOvPos.fx + "|" + camOvPos.fy + "|" + camOvFrameAt;
+    if (key === camOvPlaceKey) return;
+    const or2 = ov.getBoundingClientRect();
+    if (!or2.width) return;
+    camOvPlaceKey = key;
     ov.style.left = Math.round(camOvPos.fx * Math.max(0, pw - or2.width)) + "px";
     ov.style.top = Math.round(camOvPos.fy * Math.max(0, ph - or2.height)) + "px";
   }
@@ -2272,9 +2326,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       camOvWire();
       const vc = S.vcam || {};
       let hideFor = ""; try { hideFor = sessionStorage.getItem("mw-camov-hide") || ""; } catch (_) {}
-      const fresh = !!vc.on && typeof vc.frame === "string" && vc.frame.indexOf("data:image/") === 0 && +vc.frameAt > 0 && (Date.now() - +vc.frameAt) <= 15000 && String(vc.at || 0) !== hideFor;
+      const fd = camFrameDoc || {}; // frame + frameAt + the cam-session stamp ride the frame doc now; a frame only counts while its session stamp matches the live S.vcam.at
+      const fresh = !!vc.on && String(fd.at || 0) === String(vc.at || 0) && typeof fd.frame === "string" && fd.frame.indexOf("data:image/") === 0 && +fd.frameAt > 0 && (Date.now() - +fd.frameAt) <= 15000 && String(vc.at || 0) !== hideFor;
       if (!fresh) { ov.hidden = true; return; }
-      if (camOvFrameAt !== +vc.frameAt) { const img = document.getElementById("mw-camov-img"); if (img) img.src = vc.frame; camOvFrameAt = +vc.frameAt; }
+      if (camOvFrameAt !== +fd.frameAt) { const img = document.getElementById("mw-camov-img"); if (img) img.src = fd.frame; camOvFrameAt = +fd.frameAt; }
       ov.hidden = false;
       if (!camOvDrag) camOvPlace();
     } catch (_) {}
@@ -3015,7 +3070,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function renderLog(box) {
     if (!box) return;
-    box.innerHTML = (S.log || []).length ? S.log.map((x) => `<div><span>${E(x.t)}${x.live ? ' <small style="color:#ff8b8f">● LIVE</small>' : ""}</span><time>${agoT(x.at)}</time></div>`).join("") : '<small class="muted">Nothing played yet this session.</small>';
+    const lg = S.log || [];
+    const sig = lg.length + ":" + (lg.length ? lg[0].at : 0) + ":" + Math.floor(Date.now() / 60000); // skip identical re-renders on state echoes; the minute bucket keeps the relative-time labels honest
+    if (box._logSig === sig) return;
+    box._logSig = sig;
+    box.innerHTML = lg.length ? lg.map((x) => `<div><span>${E(x.t)}${x.live ? ' <small style="color:#ff8b8f">● LIVE</small>' : ""}</span><time>${agoT(x.at)}</time></div>`).join("") : '<small class="muted">Nothing played yet this session.</small>';
   }
   function paintStation() {
     const live = isLive();
@@ -3025,7 +3084,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     const gN = S.djGuest && S.djGuest.until > Date.now() ? gName(S.djGuest) : null;
     $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
-    $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? "<b style=\"font-size:13px;letter-spacing:.1em\">" + (S.show.video ? "🎬 LATEST SESSION VIDEO" : "🎙️ LATEST RECORDED SHOW") + "</b>" + (S.show.video ? "<video controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px;border-radius:10px;background:#000\"></video>" : "<audio controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px\"></audio>") + "<small class=\"muted\">Recorded " + new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + "</small>" : "";
+    const stShow = $("#st-show");
+    const showSig = S.show ? String(S.show.url || "") + "|" + (+S.show.at || 0) + "|" + (S.show.video ? "v" : "a") : ""; // only rebuild the recorded-show block when the show record itself changes — the old code destroyed and recreated its media element on every state echo
+    if (stShow && stShow._showSig !== showSig) { stShow._showSig = showSig; stShow.innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? "<b style=\"font-size:13px;letter-spacing:.1em\">" + (S.show.video ? "🎬 LATEST SESSION VIDEO" : "🎙️ LATEST RECORDED SHOW") + "</b>" + (S.show.video ? "<video controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px;border-radius:10px;background:#000\"></video>" : "<audio controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px\"></audio>") + "<small class=\"muted\">Recorded " + new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + "</small>" : ""; }
     renderLog($("#st-log"));
     try { paintBattleCard(); } catch (_) {}
   }
@@ -3162,7 +3223,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272500;
+  const MW_DJ_BUILD = 1793272600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -3442,7 +3503,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
     m.vmix.trMs = Math.max(250, Math.min(1600, +m.vmix.trMs || 650)); m.vmix.at = +m.vmix.at || 0;
     m.vfx = Object.assign({ kind: "", at: 0 }, m.vfx || {});
-    m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0; m.vcam.frameAt = +m.vcam.frameAt || 0; if (typeof m.vcam.frame !== "string" || m.vcam.frame.indexOf("data:image/") !== 0) m.vcam.frame = "";
+    m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0; /* BOOTH OPTIMIZATION (2026-10-29): the broadcast frame no longer rides inside radio/dj — it lives in its own radio/camframe doc (camFrameTick writes it, camOvSync reads it), so every booth save and every listener poll of this doc stays small. A stale frame/frameAt still sitting in the stored doc is ignored, never normalized in. */ delete m.vcam.frame; delete m.vcam.frameAt;
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     const qn = (r) => (r && (r.src || r.yt)) ? { src: String(r.src || ""), yt: String(r.yt || ""), at: +r.at || 0 } : null;
     m.qStock = { A: qn((m.qStock || {}).A), B: qn((m.qStock || {}).B), C: qn((m.qStock || {}).C), D: qn((m.qStock || {}).D) };
@@ -4185,6 +4246,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function paintPads() {
     const box = $("#dj-pads"); if (!box || !OWNER()) return;
+    const sig = JSON.stringify((S.pads || []).map((p) => p ? (p.id || p.url || 1) : 0)); // the pads only change when S.pads does — skip the full innerHTML rebuild on every state echo (same changed-key guard pattern as djLiveSig / battleCardSig)
+    if (box._padsSig === sig) return;
+    box._padsSig = sig;
     const custom = [0, 1, 2, 3].map((i) => (S.pads || [])[i] || null);
     box.innerHTML = SYNTH.map((p, i) => `<button class="pad" type="button" data-synth="${i}">${p.name}<small>booth + recording</small></button>`).join("") +
       custom.map((p, i) => p ? `<button class="pad custom" type="button" data-pad="${i}">🎙️ Drop ${i + 1}<small>▶ booth · long-press = 📡 on air</small></button>` : `<button class="pad custom" type="button" data-padrec="${i}">➕ Drop ${i + 1}<small>tap to record 8s</small></button>`).join("");
@@ -4829,6 +4893,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function init() {
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) return;
+    if (!SANDBOX) d.doc("radio/camframe").onSnapshot((snap) => { camFrameDoc = snap.exists ? snap.data() : null; camOvSync(); }, () => {}); // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
