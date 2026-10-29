@@ -3162,7 +3162,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272300;
+  const MW_DJ_BUILD = 1793272500;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -3388,7 +3388,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         body.innerHTML = wn ? `<p>⚔️ <b>Battle over — ${E(wn)} takes it!</b> Thanks for battling on Meechie's World Radio. The final score is on the station card.</p>` : '<p>⚔️ <b>Battle over — it ended in a draw!</b> Thanks for battling on Meechie\'s World Radio. The final score is on the station card.</p>';
         return;
       }
-      body.innerHTML = `<p>⚔️ <b>You're in a DJ BATTLE</b> against <b>${E(gName(other))}</b> — Round ${bt.round} of ${bt.rounds}. ${bt.turn === uid ? "🎧 <b>Your turn — you're on the decks!</b>" : "⏳ <b>" + E(turnName) + "</b> is on the decks — you're up next."}</p><p class="muted" style="margin:6px 0">Open your battle table and play when it's your turn — the whole station hears it, and the crowd votes on the station card every round.</p><button class="btn" type="button" id="djlive-battle-toggle">${btOn ? "⏹ Leave the battle table" : "⚔️ Open your battle table"}</button>`;
+      body.innerHTML = `<p>⚔️ <b>You're in a DJ BATTLE</b> against <b>${E(gName(other))}</b> — Round ${bt.round} of ${bt.rounds}. ${bt.turn === uid ? "🎧 <b>Your turn — you're on the decks!</b>" : "⏳ <b>" + E(turnName) + "</b> is on the decks — you're up next."}</p><p class="muted" style="margin:6px 0">Open your battle table and play when it's your turn — the whole station hears it, and the crowd gifts and likes on the station card — most gift coins wins.</p><button class="btn" type="button" id="djlive-battle-toggle">${btOn ? "⏹ Leave the battle table" : "⚔️ Open your battle table"}</button>`;
       const t = document.getElementById("djlive-battle-toggle");
       if (t) t.addEventListener("click", () => { try { if (sessionStorage.getItem("mw-battlelive") === "1") sessionStorage.removeItem("mw-battlelive"); else { sessionStorage.removeItem("mw-guestlive"); sessionStorage.setItem("mw-battlelive", "1"); if (pgB) pgB.click(); say("⚔️ Battle table open — when it's your turn, your mix is on the radio"); } } catch (_) {} djLiveSig = ""; renderDjLive(); });
       return;
@@ -4487,10 +4487,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   /* ---------- DJ BATTLES (owner ask 2026-10-29) ----------
    * Two members Malik picks go head-to-head on the decks in timed turns;
-   * the crowd votes on the station card; the winner is announced on air.
+   * the winner is announced on air. BATTLES 2.0 (the TikTok model, owner,
+   * later the same day): the crowd GIFTS coins on the station card and
+   * most gift coins wins; likes are the free hype layer and break gift
+   * ties; a Share button deep-links new people to the Radio view (#radio).
    * State lives in S.battle (booth-written at START, server-written after
    * that by functions/api/battle.js). Scores are tallied server-side from
-   * the vote docs — never stored in S. Turn switches are driven by the
+   * the battlegifts / battlelikes docs — never stored in S. Turn switches are driven by the
    * /api/battle advance action: this booth ticks it while a battle is
    * live, and the battler whose turn just ended backstops it from their
    * Playground — the server only transitions when the stored turnEndsAt
@@ -4500,26 +4503,71 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const bName = (w) => gName(w || {});
   const battleHdrs = () => { const ses = mySess(); const h = { "content-type": "application/json" }; if (ses && ses.access_token) h.authorization = "Bearer " + ses.access_token; return h; };
   async function battleApi(body) { try { const r = await fetch("/api/battle", { method: "POST", headers: battleHdrs(), body: JSON.stringify(body) }); return await r.json().catch(() => null); } catch (_) { return null; } }
+  // battleTally (2.0 shape): { g: {p1,p2} gift coins, l: {p1,p2} likes }
+  const battleSetTally = (j) => {
+    if (!j || (!j.gifts && !j.likes)) return false;
+    battleTally = { g: { p1: +((j.gifts || {}).p1) || 0, p2: +((j.gifts || {}).p2) || 0 }, l: { p1: +((j.likes || {}).p1) || 0, p2: +((j.likes || {}).p2) || 0 } };
+    if (S.battle && S.battle.id) battleTallyId = S.battle.id;
+    return true;
+  };
   async function battleTallyFetch(id) {
-    try { const r = await fetch("/api/battle?battleId=" + encodeURIComponent(id)); const j = await r.json().catch(() => null); if (j && j.ok) { battleTally = { p1: +j.p1 || 0, p2: +j.p2 || 0 }; battleTallyId = id; paintBattleCard(); if (OWNER() && !SANDBOX) paintBattlePanel(); } } catch (_) {}
+    try { const r = await fetch("/api/battle?battleId=" + encodeURIComponent(id)); const j = await r.json().catch(() => null); if (j && j.ok) { battleSetTally(j); battleTallyId = id; paintBattleCard(); if (OWNER() && !SANDBOX) paintBattlePanel(); } } catch (_) {}
   }
   async function battleAdvanceCall() {
     const t = Date.now(); if (t - battleAdvAt < 3000) return; battleAdvAt = t;
     const j = await battleApi({ action: "advance" });
-    if (j && j.ok && typeof j.p1 === "number") { battleTally = { p1: j.p1, p2: j.p2 }; if (S.battle && S.battle.id) battleTallyId = S.battle.id; }
+    if (j && j.ok) battleSetTally(j);
   }
-  const battleVoted = (b) => { try { return localStorage.getItem("mw-bvote-" + b.id + "-" + b.round) || ""; } catch (_) { return ""; } };
-  async function battleVote(side) {
+  async function battleLike(side) {
     const b = S.battle; if (!b || !b.on || b.phase !== "live" || !b.id) return;
     const ses = mySess();
-    if (!ses || !ses.access_token) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to vote in the battle 🔥"); return; }
-    const j = await battleApi({ action: "vote", battleId: b.id, side });
+    if (!ses || !ses.access_token) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to like in the battle ❤️"); return; }
+    if (battleTallyId === b.id && battleTally) { // optimistic: the heart lands instantly, the poll reconciles
+      battleTally = { g: battleTally.g, l: { p1: battleTally.l.p1 + (side === "p1" ? 1 : 0), p2: battleTally.l.p2 + (side === "p2" ? 1 : 0) } };
+      battleCardSig = ""; paintBattleCard();
+    }
+    const j = await battleApi({ action: "like", battleId: b.id, side });
+    if (j && j.ok && j.likes && battleTallyId === b.id && battleTally) {
+      battleTally = { g: battleTally.g, l: { p1: +j.likes.p1 || 0, p2: +j.likes.p2 || 0 } };
+      battleCardSig = ""; paintBattleCard();
+    }
+  }
+  async function battleGift(side, amount) {
+    const b = S.battle; if (!b || !b.on || b.phase !== "live" || !b.id) return;
+    const ses = mySess();
+    if (!ses || !ses.access_token) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to gift in the battle 🪙"); return; }
+    const j = await battleApi({ action: "gift", battleId: b.id, side, amount });
     if (j && j.ok) {
-      try { localStorage.setItem("mw-bvote-" + b.id + "-" + b.round, side); } catch (_) {}
-      battleTally = { p1: +j.p1 || 0, p2: +j.p2 || 0 }; battleTallyId = b.id; battleCardSig = "";
-      paintBattleCard();
-      say(j.dup ? "You already voted this round 🔥" : "🔥 Vote counted!");
-    } else say("That vote did not land — try again in a moment.");
+      battleSetTally(j); battleCardSig = ""; paintBattleCard();
+      const zone = document.querySelector('[data-bgiftzone="' + side + '"]');
+      if (zone) {
+        const s = document.createElement("span");
+        s.textContent = "+" + amount + " 🪙";
+        s.style.cssText = "position:absolute;right:6px;top:-4px;font-weight:800;color:var(--gold);pointer-events:none;font-size:15px;z-index:2";
+        zone.appendChild(s);
+        try { s.animate([{ transform: "translateY(0)", opacity: 1 }, { transform: "translateY(-26px)", opacity: 0 }], { duration: 1100, easing: "ease-out" }); } catch (_) {}
+        setTimeout(() => { try { s.remove(); } catch (_) {} }, 1150);
+      }
+      say("🪙 Gift sent — " + amount + " coins for " + bName(side === "p1" ? b.p1 : b.p2) + "!");
+    } else if (j && j.error === "coins") say("Not enough coins for that gift — earn or grab more in the Coin Jackpot 🎰");
+    else say("That gift did not land — try again in a moment.");
+  }
+  async function battleShare() {
+    const b = S.battle; if (!b || !b.id) return;
+    // the router's deep link is the location hash: go() reads it on a cold
+    // load and "radio" is a real view, so #radio lands a fresh visitor on
+    // the Radio view with the battle card on it (verified in app-core.js)
+    const url = location.origin + location.pathname + "#radio";
+    const wn = b.phase === "done" ? (b.winner === b.p1.uid ? bName(b.p1) : b.winner === b.p2.uid ? bName(b.p2) : "") : "";
+    const text = b.phase === "done"
+      ? (wn ? wn + " just won a DJ battle on Meechie's World ⚔️ Catch the next one live!" : "The DJ battle on Meechie's World ended in a draw ⚔️ Catch the next one live!")
+      : "⚔️ DJ Battle LIVE on Meechie's World: " + bName(b.p1) + " vs " + bName(b.p2) + " — most gift coins wins. Come watch and gift your DJ!";
+    if (navigator.share) {
+      try { await navigator.share({ title: "DJ Battle — Meechie's World", text, url }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    try { await navigator.clipboard.writeText(url); say("Link copied — send it to your people 🔗"); }
+    catch (_) { say("Share the battle: " + url); }
   }
   function paintBattleCard() {
     const box = document.getElementById("st-battle"); if (!box || SANDBOX) return;
@@ -4527,26 +4575,35 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const doneFresh = b && b.phase === "done" && Date.now() - (b.at || 0) < 5 * 60e3;
     if (!b || !b.on || !b.id || (b.phase !== "live" && !doneFresh)) { box.hidden = true; if (box.innerHTML) box.innerHTML = ""; battleCardSig = ""; return; }
     const t = (battleTallyId === b.id && battleTally) ? battleTally : null;
-    const voted = b.phase === "live" ? battleVoted(b) : "";
-    const sig = [b.id, b.phase, b.round, b.turn, b.winner, voted, t ? t.p1 + "-" + t.p2 : "x"].join("|");
+    const sig = [b.id, b.phase, b.round, b.turn, b.winner, t ? t.g.p1 + "-" + t.g.p2 + "/" + t.l.p1 + "-" + t.l.p2 : "x"].join("|");
     if (sig === battleCardSig) return; battleCardSig = sig;
     box.hidden = false;
+    const shareBtn = `<button class="btn sm ghost" type="button" data-bshare="1">🔗 Share</button>`;
     if (b.phase === "done") {
       const wn = b.winner === b.p1.uid ? bName(b.p1) : b.winner === b.p2.uid ? bName(b.p2) : "";
-      box.innerHTML = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0"><b>⚔️ DJ BATTLE — RESULT</b><div style="margin-top:4px">${wn ? ("🏆 <b>" + E(wn) + "</b> takes the battle!") : "🤝 It ended in a <b>draw</b>!"}</div><div class="muted" style="font-size:13px;margin-top:2px">Final score — ${E(bName(b.p1))} <b>${t ? t.p1 : "…"}</b> · <b>${t ? t.p2 : "…"}</b> ${E(bName(b.p2))}</div></div>`;
+      box.innerHTML = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0"><b>⚔️ DJ BATTLE — RESULT</b><div style="margin-top:4px">${wn ? ("🏆 <b>" + E(wn) + "</b> takes the battle!") : "🤝 It ended in a <b>draw</b>!"}</div><div class="muted" style="font-size:13px;margin-top:2px">Final gifts — ${E(bName(b.p1))} 🪙 <b>${t ? t.g.p1 : "…"}</b> · ❤️ <b>${t ? t.l.p1 : "…"}</b> — ${E(bName(b.p2))} 🪙 <b>${t ? t.g.p2 : "…"}</b> · ❤️ <b>${t ? t.l.p2 : "…"}</b></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${shareBtn}</div></div>`;
       return;
     }
     const turnName = b.turn === b.p1.uid ? bName(b.p1) : bName(b.p2);
     const secs = Math.max(0, Math.ceil(((b.turnEndsAt || 0) - Date.now()) / 1000));
-    const vbtn = (side, w) => voted
-      ? `<button class="btn sm" type="button" disabled>${voted === side ? "You voted 🔥" : "🔥 " + E(bName(w))}</button>`
-      : `<button class="btn sm" type="button" data-bvote="${side}">🔥 ${E(bName(w))}</button>`;
+    const tot = t ? t.g.p1 + t.g.p2 : 0;
+    const pct = tot > 0 ? Math.round((t.g.p1 / tot) * 100) : 50; // the tug-of-war split, by gift share
+    const sideHtml = (sd, w) => `<div data-bgiftzone="${sd}" style="position:relative;flex:1;min-width:140px;border:1px solid var(--line);border-radius:10px;padding:8px">
+      <div style="font-weight:700">${E(bName(w))}</div>
+      <div style="font-size:15px;margin-top:2px">🪙 <b>${t ? (sd === "p1" ? t.g.p1 : t.g.p2) : "…"}</b></div>
+      <button class="btn sm" type="button" data-blike="${sd}" style="margin-top:6px">❤️ Like · ${t ? (sd === "p1" ? t.l.p1 : t.l.p2) : "…"}</button>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${[10, 50, 100, 500].map((a) => `<button class="btn sm ghost" type="button" data-bgift="${sd}:${a}">${a} 🪙</button>`).join("")}</div>
+    </div>`;
     box.innerHTML = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0"><b>⚔️ DJ BATTLE — LIVE</b>
       <div style="margin-top:4px"><b>${E(bName(b.p1))}</b> vs <b>${E(bName(b.p2))}</b> · Round ${b.round} of ${b.rounds}</div>
       <div class="muted" style="font-size:13px;margin-top:2px">🎧 <b>${E(turnName)}</b> is on the decks · <span id="st-battle-cd">${secs}</span>s left this turn</div>
-      <div style="font-size:13px;margin-top:2px">🔥 Score — ${E(bName(b.p1))} <b>${t ? t.p1 : "…"}</b> · <b>${t ? t.p2 : "…"}</b> ${E(bName(b.p2))}</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${vbtn("p1", b.p1)}${vbtn("p2", b.p2)}</div>
-      <small class="muted">One vote per member per round — vote for the DJ you are feeling.</small></div>`;
+      <div style="display:flex;height:14px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin-top:8px">
+        <div style="width:${pct}%;background:linear-gradient(90deg,var(--gold-lo),var(--gold));transition:width .6s ease"></div>
+        <div style="width:${100 - pct}%;background:#f4efe3;transition:width .6s ease"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${sideHtml("p1", b.p1)}${sideHtml("p2", b.p2)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${shareBtn}</div>
+      <small class="muted">Most gift coins wins — likes break ties.</small></div>`;
   }
   function battleCandidates() {
     const out = [], seen = new Set();
@@ -4564,12 +4621,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         battlePanelSig = sig;
         box.innerHTML = `<div class="req"><span>⚔️ <b>${E(bName(b.p1))}</b> vs <b>${E(bName(b.p2))}</b> — Round ${b.round} of ${b.rounds}</span></div>
           <div style="font-size:14px;margin:4px 0">🎧 On the decks: <b>${E(b.turn === b.p1.uid ? bName(b.p1) : bName(b.p2))}</b> · <span id="battle-cd">${Math.max(0, Math.ceil(((b.turnEndsAt || 0) - Date.now()) / 1000))}</span>s left</div>
-          <div style="font-size:14px;margin:4px 0">🔥 Score — ${E(bName(b.p1))} <b id="battle-sc1">…</b> · <b id="battle-sc2">…</b> ${E(bName(b.p2))}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-bswitch="1">⏭ SWITCH TURN NOW</button><button class="btn ghost sm" type="button" data-bend="1">⏹ END BATTLE</button></div>`;
+          <div style="font-size:14px;margin:4px 0">🪙 Gifts — ${E(bName(b.p1))} <b id="battle-sc1">…</b> · <b id="battle-sc2">…</b> ${E(bName(b.p2))}</div>
+          <div style="font-size:14px;margin:4px 0">❤️ Likes — ${E(bName(b.p1))} <b id="battle-lc1">…</b> · <b id="battle-lc2">…</b> ${E(bName(b.p2))}</div>
+          <small class="muted">Most gift coins wins — likes break ties.</small>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button class="btn sm" type="button" data-bswitch="1">⏭ SWITCH TURN NOW</button><button class="btn ghost sm" type="button" data-bend="1">⏹ END BATTLE</button></div>`;
       }
       const t = (battleTallyId === b.id && battleTally) ? battleTally : null;
       const s1 = document.getElementById("battle-sc1"), s2 = document.getElementById("battle-sc2");
-      if (s1 && t) s1.textContent = t.p1; if (s2 && t) s2.textContent = t.p2;
+      if (s1 && t) s1.textContent = t.g.p1; if (s2 && t) s2.textContent = t.g.p2;
+      const l1 = document.getElementById("battle-lc1"), l2 = document.getElementById("battle-lc2");
+      if (l1 && t) l1.textContent = t.l.p1; if (l2 && t) l2.textContent = t.l.p2;
       return;
     }
     if (b && b.on && b.phase === "done" && b.id && Date.now() - (b.at || 0) < 60000) {
@@ -4611,17 +4672,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const now = Date.now(), id = "b" + rid();
     S.battle = { on: true, id, p1: { uid: u1, name: n1 }, p2: { uid: u2, name: n2 }, round: 1, rounds, turnSec, turn: u1, turnEndsAt: now + turnSec * 1000, phase: "live", winner: "", at: now, lastWrite: 0 };
     if (S.djGuest) S.djGuest = null; // the battle takes the station: the guest relay door closes so turns rule alone
-    S.ticker = "⚔️ DJ BATTLE: " + n1 + " vs " + n2 + " — vote for your favorite on the station card!";
+    S.ticker = "⚔️ DJ BATTLE: " + n1 + " vs " + n2 + " — gift your DJ on the station card, most coins wins!";
     S.voice = { id: "battle-" + id + "-start", text: "Battle time! " + n1 + " versus " + n2 + " — round one, " + n1 + ", you are up!", at: now };
-    battleTally = { p1: 0, p2: 0 }; battleTallyId = id; battlePanelSig = ""; battleCardSig = "";
+    battleTally = { g: { p1: 0, p2: 0 }, l: { p1: 0, p2: 0 } }; battleTallyId = id; battlePanelSig = ""; battleCardSig = "";
     save(true); paintBattlePanel(); paintBattleCard();
     say("⚔️ Battle started: " + n1 + " vs " + n2);
   }
   onMain("click", async (e) => {
-    const vb = e.target.closest("[data-bvote]"); if (vb) { battleVote(vb.dataset.bvote); return; }
+    const lk = e.target.closest("[data-blike]"); if (lk) { battleLike(lk.dataset.blike); return; }
+    const gf = e.target.closest("[data-bgift]"); if (gf) { const parts = gf.dataset.bgift.split(":"); battleGift(parts[0], +parts[1] || 0); return; }
+    const sh = e.target.closest("[data-bshare]"); if (sh) { battleShare(); return; }
     const bs = e.target.closest("[data-bstart]"); if (bs && OWNER() && !SANDBOX) { battleStart(); return; }
-    const sw = e.target.closest("[data-bswitch]"); if (sw && OWNER() && !SANDBOX) { const j = await battleApi({ action: "switch" }); if (j && j.ok) { if (typeof j.p1 === "number") { battleTally = { p1: j.p1, p2: j.p2 }; battleTallyId = S.battle.id; } say(j.done ? "⚔️ Battle over!" : "⏭ Turn switched"); } else say("That did not go through — try again."); return; }
-    const en = e.target.closest("[data-bend]"); if (en && OWNER() && !SANDBOX) { const j = await battleApi({ action: "end" }); if (j && j.ok) { if (typeof j.p1 === "number") { battleTally = { p1: j.p1, p2: j.p2 }; battleTallyId = S.battle.id; } say("⚔️ Battle ended — the winner is on the station card!"); } else say("That did not go through — try again."); return; }
+    const sw = e.target.closest("[data-bswitch]"); if (sw && OWNER() && !SANDBOX) { const j = await battleApi({ action: "switch" }); if (j && j.ok) { battleSetTally(j); say(j.done ? "⚔️ Battle over!" : "⏭ Turn switched"); } else say("That did not go through — try again."); return; }
+    const en = e.target.closest("[data-bend]"); if (en && OWNER() && !SANDBOX) { const j = await battleApi({ action: "end" }); if (j && j.ok) { battleSetTally(j); say("⚔️ Battle ended — the winner is on the station card!"); } else say("That did not go through — try again."); return; }
   });
   function battleSecondTick() {
     if (SANDBOX) return;
