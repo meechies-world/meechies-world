@@ -2131,7 +2131,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793200300;
+  const MW_DJ_BUILD = 1793200400;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2378,7 +2378,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * Now: every view, one slow glide — a standard notch travels about 10px and
    * eases there, and notches stack onto the glide target instead of fighting
    * it. Trackpads (small pixel deltas), pinch zoom, and the inner song lists
-   * keep their native feel. */
+   * keep their native feel.
+   * 2026-10-28 night: owner reversed — "way to slow": a notch now travels its
+   * full distance (capped at 300px) and the glide eases at 0.30 per frame, so
+   * the wheel feels normal-fast again with only a whisper of smoothing. */
   let wheelTgt = null, wheelRaf = 0;
   const wheelStop = () => { if (wheelRaf) cancelAnimationFrame(wheelRaf); wheelRaf = 0; wheelTgt = null; };
   addEventListener("pointerdown", wheelStop, true);
@@ -2391,8 +2394,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     e.preventDefault();
     const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
     const base = wheelTgt != null ? wheelTgt : scrollY;
-    wheelTgt = Math.max(0, Math.min(max, base + Math.max(-12, Math.min(12, d * 0.10))));
-    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.09); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
+    wheelTgt = Math.max(0, Math.min(max, base + Math.max(-300, Math.min(300, d))));
+    if (!wheelRaf) { const step = () => { const cur = scrollY, diff = wheelTgt - cur; if (Math.abs(diff) < 0.6) { scrollTo(0, wheelTgt); wheelRaf = 0; wheelTgt = null; return; } scrollTo(0, cur + diff * 0.30); wheelRaf = requestAnimationFrame(step); }; wheelRaf = requestAnimationFrame(step); }
   }, { passive: false });
   document.addEventListener("click", (e) => { if (e.target.closest && e.target.closest("#dj-pop2")) { e.preventDefault(); popOut(); } });
   if (typeof media !== "undefined") media.addEventListener("play", () => {
