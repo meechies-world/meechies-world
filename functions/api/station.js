@@ -131,6 +131,23 @@ export async function onRequestGet({ request, env }) {
   S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
   S.D = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.D || {});
 
+  // GHOST-SHARE SWITCH (mwGhostShare, 2026-10-29): the one deliberate
+  // exception to this keeper never touching vstream. A share flag left on
+  // by a dead publisher (a ghost from before the booth publisher
+  // supervisor) makes every viewer treat a dead meeting as the live TV,
+  // and nothing else ever clears it. A live share heartbeats vstream.at
+  // continuously through the supervisor, and viewers already read proof
+  // older than 75s as not-live — so a flag whose heartbeat is more than
+  // 15 minutes old can only be a ghost, and this can never trip a real
+  // share. Clear just the on flag and stamp the stop; kind, meeting and
+  // diag stay as history. The write rides writeDoc like every other
+  // keeper mutation (changes row included), stamped by the keeper so the
+  // booth adopts it, and once on is false the rule can never fire again.
+  if (S.vstream && S.vstream.on === true && now - (Number(S.vstream.at) || 0) > 900000) {
+    S.vstream.on = false; S.vstream.stopAt = now; S.updatedAt = now; S.by = "keeper";
+    await writeDoc(env, "radio/dj", "radio", S);
+  }
+
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
   // 2026-10-28): unless a deck is impossibly past its end — flagged playing
   // with a known duration, its timeline more than 60s beyond the end of the
