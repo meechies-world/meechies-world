@@ -1002,36 +1002,37 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 
 <section class="view" data-theme="radio" id="v-watch" hidden>
   <style id="watch-styles">
-#ws-body .ws-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-#ws-body .ws-lamp{font:800 12px var(--body);letter-spacing:.08em;border:1px solid #2b2b30;border-radius:999px;padding:4px 10px;color:#b9ac8d}
-#ws-body .ws-lamp.on{color:#ff8b8f;border-color:#e5484d}
-#ws-body .ws-master{font-weight:700}
-#ws-body .ws-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
-#ws-body .ws-deck,#ws-body .ws-xf,#ws-body .ws-fx,#ws-body .ws-queue{background:linear-gradient(180deg,#17181a,#0b0b0d);border:1px solid #2b2b30;border-radius:12px;padding:10px 12px}
-#ws-body .ws-deck,#ws-body .ws-xf,#ws-body .ws-fx{cursor:pointer}
-#ws-body .ws-dh{display:flex;justify-content:space-between;align-items:center}
-#ws-body .ws-dl{font:800 13px var(--body);letter-spacing:.12em;color:#f0cf78}
-#ws-body .ws-ds{font:700 11px var(--body);letter-spacing:.06em;color:#9a917c}
-#ws-body .ws-ds.on{color:#7ee2a0}
-#ws-body .ws-dt{font-weight:700;margin:6px 0;min-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#ws-body .ws-prog{height:8px;background:#26262b;border-radius:99px;overflow:hidden}
-#ws-body .ws-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a6a2a,#f0cf78);transition:width .6s linear}
-#ws-body .ws-dm{display:flex;justify-content:space-between;color:#9a917c;font-size:12px;margin-top:5px}
-#ws-body .ws-dbtns{display:flex;gap:8px;margin-top:8px}
-#ws-body .ws-fbtn{display:grid;place-items:center;width:38px;height:30px;border:1px solid #3a3a41;border-radius:8px;background:#141518;font-size:13px}
-#ws-body .ws-xfl{display:flex;justify-content:space-between;font:700 11.5px var(--body);letter-spacing:.06em;color:#9a917c}
-#ws-body .ws-xfm{color:#f0cf78}
-#ws-body .ws-track{position:relative;height:10px;background:#26262b;border-radius:99px;margin:12px 2px 5px}
-#ws-body .ws-knob{position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:#f0cf78;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,.5)}
-#ws-body .ws-fx{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
-#ws-body .ws-queue{margin-top:10px}
-#ws-body .ws-qrow{padding:5px 0;border-bottom:1px solid #222228}
-#ws-body .ws-qrow:last-child{border-bottom:0}
+/* watch-setup2: the spectator booth wears the booth own classes (deck,
+   platter, wave, xfpad, fxgrid, dj-panel) — these rules only supply the
+   geometry the booth gets from its #dj-owner scopes, under #wb-root */
+#wb-root{display:grid;gap:14px}
+#wb-root .wb-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#wb-root .wb-now{font-weight:600}
+#wb-root .dj-screen{display:grid;gap:6px}
+#wb-root .dj-screen .vstage{border:1px solid #3a3a41;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 0 1px rgba(240,207,120,.12)}
+#wb-root .dj-decks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:stretch}
+#wb-root .deck .platter{width:min(196px,100%);margin-inline:auto}
+#wb-root .deck .wave{width:100%;height:58px}
+#wb-root .wb-yt{width:100%;border:1px dashed #3a3a41;border-radius:10px;color:var(--muted);font-size:11.5px;letter-spacing:.06em;padding:7px 4px}
+#wb-root .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
+#wb-root .xfpad.big{width:148px;height:148px}
+#wb-root .xfcurve{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:7px}
+#wb-root .xfcurve span{font:800 10px var(--body);letter-spacing:.12em;color:var(--muted)}
+#wb-root .xfcurve button{background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;border-radius:8px;padding:5px 10px;font:700 11px var(--body);cursor:pointer;box-shadow:0 2px 0 #000}
+#wb-root .xfcurve button.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.35)}
+#wb-root .ws-ctl{cursor:pointer}
+#wb-root input[type="range"]:disabled{opacity:.85}
+@media(max-width:900px){#wb-root .dj-decks{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){#wb-root .deck .platter{width:min(150px,100%)}}
   </style>
   <div class="wrap">
     <div class="section-head">
       <div><p class="eyebrow">Meechie's World Radio</p><h2>👀 Watch the Setup</h2></div>
-      <p class="muted">Meechie's live DJ setup, mirrored as he works it — every deck, the queue, the crossfaders and the FX. Watching is free for everyone. The controls answer to Meechie only.</p>
+      <p class="muted">Meechie's own DJ booth, live — the same tables he sees, working the way he works them: the master screen, all four decks, the X fader, the FX and the queue. Watching and listening are free for everyone. The controls answer to Meechie only.</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button type="button" class="btn sm" id="wb-sound">🔇 Sound off — tap for sound</button>
+      <span class="muted" style="font-size:13px">The station sound rides along with the picture. Tap any deck, the fader or the FX and you will see whose tables these are.</span>
     </div>
     <div id="ws-body"><p class="muted">Loading the setup...</p></div>
     <p style="margin-top:14px"><a class="btn ghost sm" href="#radio" data-go="radio">🎧 Back to the radio</a> <a class="btn ghost sm" href="#mwtv" data-go="mwtv">📺 MW TV</a></p>
@@ -1686,7 +1687,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 <script src="js/site-coder-ui.js?v=1793271573"></script>
 <script src="js/messages.js?v=1793271573"></script>
 <script src="js/videos.js?v=1793271573"></script>
-<script src="js/dj.js?v=1793274000"></script>
+<script src="js/dj.js?v=1793274100"></script>
 <script src="js/live.js?v=1793271573"></script>
 <script src="js/friends.js?v=1793271573"></script>
 <script src="js/social.js?v=1793271573"></script>
