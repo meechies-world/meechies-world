@@ -5014,7 +5014,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274800;
+  const MW_DJ_BUILD = 1793274900;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -5970,6 +5970,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function ageSkipSet() { try { return new Set(JSON.parse(localStorage.getItem("mw-dj-ageskip") || "[]")); } catch (_) { return new Set(); } }
   function ageMarkLocked(tok) { const vp = vparseTok(tok || ""); if (vp.p !== "yt" || !vp.id) return; const s = ageSkipSet(); if (s.has(vp.id)) return; s.add(vp.id); try { localStorage.setItem("mw-dj-ageskip", JSON.stringify([...s].slice(-300))); } catch (_) {} }
   function ageIsLocked(tok) { const vp = vparseTok(tok || ""); return vp.p === "yt" && !!vp.id && ageSkipSet().has(vp.id); }
+  /* Search side of the same lock (fix-search-filter, 2026-10-29): the
+   * relay now drops age / embed-gated videos server-side before they are
+   * offered, and this drops the ones this device has already caught — a
+   * video a deck player ever refused (errors 100/101/150, marked into
+   * mw-dj-ageskip by the shim's onError) never comes back in this
+   * booth's search results. Applied inside ytPage, so the relay path,
+   * the direct fallback path, MORE RESULTS and the After Hours shelves
+   * are all covered by the same two return points. */
+  function ytUnblocked(list) { try { const s = ageSkipSet(); if (!s.size || !Array.isArray(list)) return list; return list.filter((it) => !it || !it.id || !s.has(it.id)); } catch (_) { return list; } }
   const ageSaid = new Set();
   function ageNote(it) { const id = (it && it.yt) || ""; if (!id || ageSaid.has(id)) return; ageSaid.add(id); say("That video is age-locked by YouTube — it cannot play inside the site, so it is out of the picks for next time."); }
   /* drawQueueItem: ONLY the queue draw out of pickNextItem — the
@@ -6461,7 +6470,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const r = await fetch("/api/ytsearch?q=" + encodeURIComponent(q) + "&page=" + page, ctl);
       if (r.ok) {
         const j = await r.json();
-        if (j && j.ok && Array.isArray(j.results) && j.results.length) return j.results;
+        if (j && j.ok && Array.isArray(j.results) && j.results.length) return ytUnblocked(j.results);
       }
     } catch (_) {}
     const hosts = await ytHosts();
@@ -6471,7 +6480,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const r = await fetch(base + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video&page=" + page, ctl);
         if (!r.ok) continue;
         const j = await r.json();
-        if (Array.isArray(j)) return j.filter((it) => it && it.videoId).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 }));
+        if (Array.isArray(j)) return ytUnblocked(j.filter((it) => it && it.videoId).map((it) => ({ id: it.videoId, title: it.title || "YouTube video", dur: it.lengthSeconds || 0 })));
       } catch (_) {}
     }
     return null;

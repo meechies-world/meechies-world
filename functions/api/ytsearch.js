@@ -21,6 +21,34 @@
 // list of well-known Invidious hosts beyond the registry, so a thin or
 // failed registry fetch still leaves real candidates.
 //
+// Age / embed filter (fix-search-filter, 2026-10-29): the owner asked that
+// booth search stop offering videos YouTube age-gates or embed-restricts —
+// they cannot play in a deck and only bounce him to "Watch on YouTube".
+// After a search answers, the top candidates are verified against video
+// DETAIL endpoints and the gated ones are dropped before responding.
+// What live probing (2026-10-29) actually established about the signals:
+//   - Invidious GET /api/v1/videos/<id> on a healthy host returns either a
+//     full video payload (has videoId + title) or an error object. For a
+//     hard age-gated video the error is YouTube's own gate text ("This
+//     helps protect our community. Learn more" — seen live for
+//     PTFwQP86BRs, NIN "Closer (Director's Cut)"). That error text is the
+//     BAD signal. Generic errors ("Companion is starting...", timeouts,
+//     5xx) say nothing about the video and fail open.
+//   - Invidious isFamilyFriendly is NOT usable: on the reachable pool it
+//     read false for Baby Shark / Adele / Rick Astley and true for
+//     explicit classics within the same hour — the value flips with
+//     whichever companion backend answers. It never convicts here.
+//   - Piped GET /streams/<id> full payload (has title) is a GOOD signal
+//     only: its failures are dominated by per-instance bot walls
+//     (SignInConfirmNotBotException hit Adele and Baby Shark minutes after
+//     the same hosts served Rick Astley fine), so a Piped error never
+//     convicts either.
+//   A cached BAD verdict is the one exception to fail-open: a video once
+//   confirmed gated stays dropped without a re-check. Anything the filter
+//   misses is still caught in the decks — the first real player error
+//   (101/150) blocklists the id on the device (js/dj.js mw-dj-ageskip),
+//   and the booth search skips those ids too.
+//
 // Second family + hard budget (fix-ytsearch3, 2026-10-29): after ytsearch2
 // the relay answered most queries, but failures stayed intermittent and
 // QUERY-STICKY for minutes (drake failed 3 retries in a row while usher
@@ -121,6 +149,71 @@ function candidates(invHosts) {
   }
   return out;
 }
+// --- Age / embed verification (see the fix-search-filter note above) ---
+// Verdict cache: id -> "good" | "bad", insertion-ordered Map, FIFO-capped
+// so a long-lived isolate cannot grow it without bound. Repeat searches
+// for the same songs (the common case in a DJ booth) verify instantly.
+const verdictCache = new Map();
+const VERDICT_CAP = 500;
+function cacheVerdict(id, v) {
+  if (verdictCache.has(id)) verdictCache.delete(id);
+  verdictCache.set(id, v);
+  while (verdictCache.size > VERDICT_CAP) verdictCache.delete(verdictCache.keys().next().value);
+}
+// YouTube's age / safety gate as surfaced in an Invidious error object.
+const AGE_ERR = /protect our community|confirm your age|age[\s-]?restrict|sign in to confirm/i;
+async function checkInvDetail(base, id, ms) {
+  try {
+    const r = await fetch(base + "/api/v1/videos/" + encodeURIComponent(id), sig(ms));
+    if (!r.ok) return "";
+    const j = await r.json();
+    if (j && j.videoId && j.title) return "good";
+    if (j && typeof j.error === "string" && AGE_ERR.test(j.error)) return "bad";
+  } catch (_) {}
+  return "";
+}
+async function checkPipedDetail(base, id, ms) {
+  try {
+    const r = await fetch(base + "/streams/" + encodeURIComponent(id), sig(ms));
+    if (!r.ok) return "";
+    const j = await r.json();
+    if (j && j.title) return "good"; // success only — Piped errors never convict (bot walls)
+  } catch (_) {}
+  return "";
+}
+// Resolve one candidate: true = keep, false = drop. A full payload from
+// ANY detail host wins (the video is fetchable, and flaky backends have
+// been seen answering a gate error for a video another backend serves);
+// with no payload anywhere, one age-gate error convicts; anything else
+// (timeouts, generic errors, dead hosts) fails open and keeps the video.
+async function verifyOne(id, invHosts, ms) {
+  const cached = verdictCache.get(id);
+  if (cached === "bad") return false;
+  if (cached === "good") return true;
+  const checks = [];
+  invHosts.slice(0, 3).forEach((b) => checks.push(checkInvDetail(b, id, ms)));
+  PIPED_HOSTS.slice(0, 2).forEach((b) => checks.push(checkPipedDetail(b, id, ms)));
+  const vs = await Promise.all(checks);
+  if (vs.includes("good")) { cacheVerdict(id, "good"); return true; }
+  if (vs.includes("bad")) { cacheVerdict(id, "bad"); return false; }
+  return true; // fail open
+}
+// Verify the top ~15 candidates in parallel inside whatever is left of
+// the hard deadline: per-call timeouts are sized so the whole phase ends
+// before the deadline, and with too little time left the list goes back
+// unverified rather than late (the booth client falls back at ~8s).
+async function filterPlayable(results, invHosts, t0) {
+  if (!results.length) return results;
+  const leftMs = DEADLINE_MS - (Date.now() - t0);
+  if (leftMs < 800) return results;
+  const ms = Math.max(400, Math.min(2500, leftMs - 300));
+  const top = results.slice(0, 15), rest = results.slice(15);
+  const keep = await Promise.all(top.map((it) => verifyOne(it.id, invHosts, ms)));
+  const out = top.filter((_, i) => keep[i]).concat(rest);
+  // If filtering would empty the list entirely, return the unfiltered
+  // list instead: a bad result beats a dead search.
+  return out.length ? out : results;
+}
 export async function onRequestGet({ request }) {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim().slice(0, 100);
@@ -128,7 +221,8 @@ export async function onRequestGet({ request }) {
   const page = Math.min(10, Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1));
   const t0 = Date.now();
   const left = () => DEADLINE_MS - (Date.now() - t0);
-  const cands = candidates(await pool());
+  const invHosts = await pool();
+  const cands = candidates(invHosts);
   for (let round = 0; round < ROUNDS; round++) {
     if (round > 0) { if (left() <= 0) break; await sleep(Math.min(ROUND_PAUSE_MS, Math.max(0, left()))); }
     for (const c of cands) {
@@ -136,7 +230,7 @@ export async function onRequestGet({ request }) {
       if (budget <= 250) return json({ ok: false, results: [] }, 0); // out of time: stop starting tries
       try {
         const results = c.fam === "piped" ? await tryPiped(c.base, q, page, Math.min(TRY_MS, budget)) : await tryInv(c.base, q, page, Math.min(TRY_MS, budget));
-        if (results) return json({ ok: true, results }, 120);
+        if (results) return json({ ok: true, results: await filterPlayable(results, invHosts, t0) }, 120);
       } catch (_) {}
     }
   }
