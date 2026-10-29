@@ -39,6 +39,45 @@ async function corpseGuard(env, path, data) {
   return out;
 }
 
+/* DJ BATTLES gate helpers (2026-10-29): while S.battle.phase is "live", the
+ * battler whose uid === S.battle.turn may write performance fields to
+ * radio/dj through the rpc door below. The sanitization below is the
+ * guest-DJ relay's (functions/api/station.js kind:"guestdj") copied
+ * field-for-field — same deck shape, same URL rules, same FX caps, same
+ * "FX only while a deck is active" rule — never looser. The next doc is
+ * built from the STORED doc, so a battler's write can never touch battle
+ * state, the queue, the ticker, or anything outside the performance set. */
+function bNum(v, lo, hi, dflt) { v = +v; return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : dflt; }
+function bDeck(d) {
+  d = d || {}; const src = String(d.src || ""), yt = String(d.yt || "");
+  return {
+    src: src.startsWith("https://") || src.startsWith("/m/") ? src.slice(0, 500) : "",
+    yt: /^[A-Za-z0-9_-]{6,20}$/.test(yt) ? yt : "",
+    title: String(d.title || "").slice(0, 120), cover: String(d.cover || "").slice(0, 300),
+    start: bNum(d.start, 0, 1e15, 0), pos: bNum(d.pos, 0, 1e9, 0), playing: !!d.playing,
+    vol: bNum(d.vol, 0, 2, 0.9), rate: bNum(d.rate, 0.25, 4, 1), dur: bNum(d.dur, 0, 1e9, 0),
+  };
+}
+function battleMergePerf(S, src) {
+  const b = (S && S.battle) || {};
+  const next = { ...S };
+  ["A", "B", "C", "D"].forEach((k) => { if (src[k]) next[k] = bDeck(src[k]); });
+  if (typeof src.xf === "number") next.xf = bNum(src.xf, 0, 1, S.xf);
+  if (typeof src.xf2 === "number") next.xf2 = bNum(src.xf2, 0, 1, S.xf2);
+  if (typeof src.panY === "number") next.panY = bNum(src.panY, -1, 1, S.panY || 0);
+  const anyActive = ["A", "B", "C", "D"].some((k) => next[k] && (next[k].src || next[k].yt));
+  if (src.fx && anyActive) {
+    const f = src.fx, o = S.fx || {};
+    next.fx = { ...o, mf: bNum(f.mf, 0, 100, o.mf ?? 100), echo: bNum(f.echo, 0, 0.6, o.echo || 0), fb: bNum(f.fb, 0, 0.6, o.fb || 0), verb: bNum(f.verb, 0, 0.3, o.verb || 0), fla: bNum(f.fla, 0, 0.25, o.fla || 0), pha: bNum(f.pha, 0, 0.3, o.pha || 0), noise: bNum(f.noise, 0, 0.5, o.noise || 0), gate: 0, crush: bNum(f.crush, 0, 12, o.crush || 0), boost: bNum(f.boost, 1, 1.3, o.boost || 1) };
+  }
+  if (src.voice && src.voice.url && (String(src.voice.url).startsWith("https://") || String(src.voice.url).startsWith("/m/"))) {
+    next.voice = { id: String(src.voice.id || ""), url: String(src.voice.url), at: +src.voice.at || Date.now() };
+  }
+  next.battle = { ...b, lastWrite: Date.now() };
+  next.updatedAt = Date.now(); next.boothAt = Date.now(); next.by = "battle:" + b.turn;
+  return next;
+}
+
 /* mwLeadLock (2026-10-28): server-side booth leadership for the radio/dj doc.
  * Two booth screens open at once must never fight over the decks again (a
  * zombie booth tab once re-saved dead decks over the live station for 40
@@ -388,6 +427,23 @@ async function rpc(request, env) {
       freshData = await corpseGuard(env, path, freshData); /* mwCorpseGuard */
       await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)]);
       return json({ data: null, error: null });
+    }
+    /* DJ BATTLES gate (2026-10-29): while a battle is live, the battler on
+     * turn writes performance fields through this door. Admins (Malik)
+     * skip this branch entirely — owner writes always win, battle or not —
+     * and when no battle is live nothing below runs, so the gate is
+     * exactly today's behavior. The turn check reads the STORED doc. */
+    if (path === "radio/dj" && !admin) {
+      let storedB = null; try { storedB = JSON.parse(row.data || "{}"); } catch (_) {}
+      const bt = storedB && storedB.battle;
+      if (bt && bt.on && bt.phase === "live" && bt.id && bt.turn === uid && ((bt.p1 && bt.p1.uid === uid) || (bt.p2 && bt.p2.uid === uid))) {
+        if (Date.now() - (+bt.lastWrite || 0) < 1500) return json({ data: null, error: null }); // same 1.5s relay throttle: a flooded write is a quiet no-op
+        const src = name === "set_doc" ? (args.p_data || {}) : (args.p_patch || {});
+        let bNext = battleMergePerf(storedB, src && typeof src === "object" ? src : {});
+        bNext = await corpseGuard(env, path, bNext); /* mwCorpseGuard */
+        await env.DB.batch([env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(bNext), now, path), change(env, "docs", path, row.coll)]);
+        return json({ data: null, error: null });
+      }
     }
     let next;
     if (name === "set_doc") next = args.p_data;
