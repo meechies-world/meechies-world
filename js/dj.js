@@ -2441,6 +2441,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const b = document.querySelector("#dj-vstage"); if (b) out.push(b);
     const s = document.querySelector("#st-ytbox .vstage"); if (s) out.push(s);
     const m = document.querySelector("#dj-mini .vstage"); if (m) out.push(m);
+    const t = document.querySelector("#tw-stage"); if (t) out.push(t);
     return out;
   }
   function vsVid(stage) { let v = stage.querySelector("video.vslive"); if (!v) { v = document.createElement("video"); v.className = "vslive"; v.autoplay = true; v.muted = true; v.playsInline = true; stage.appendChild(v); } return v; }
@@ -2949,6 +2950,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   document.addEventListener("click", (e) => {
     const t = e.target;
     if (!t || !t.closest) return;
+    if (t.closest("#tw-sound")) { if (window.MW_DJ) window.MW_DJ.toggle(); tvSig = ""; try { tvPaint(); } catch (_) {} return; }
+    if (t.closest("#tw-fs")) { const sh = document.getElementById("tw-shell"); try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {} return; }
     if (t.closest("[data-hidebtn]")) { vsToggleHide(); return; }
     if (t.closest("[data-capbtn]")) { vsToggle("screen"); return; }
     if (t.closest("[data-vlive]")) { vsToggle("cam"); return; }
@@ -2992,6 +2995,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
   const scrView = mkScreen(["#st-vs1", "#st-vs2"], "#st-vstandby", "#st-vchip");
   const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, null); // no title chip on the pop-out screen (owner, 2026-10-28: "take the title off the screen in my master video pop out")
+  const scrTV = mkScreen(["#tw-vs1", "#tw-vs2"], "#tw-vstandby", "#tw-vchip"); // MW TV: the channel page's screen — same mix renderer, its own branded standby slate
   function vmixTargets() {
     const vm = S.vmix || { mode: "auto", a: "", b: "", t: 0 };
     if (vm.mode === "man" && vm.a && S[vm.a] && S[vm.a].yt) {
@@ -3171,9 +3175,43 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
       await miniApply(mix, duck);
+      try { await tvApply(mix, duck); } catch (_) {}
       try { vsSync(); } catch (_) {}
     } catch (_) {}
     stageBusy = false;
+  }
+  /* MW TV (owner, 2026-10-29: "make a tv station channel where that screen
+   * on fullscreen mode is the only thing on it call it mw tv"): the channel
+   * page (#v-mwtv) is one more screen in the same system — the live stream
+   * overlays it through vsStageEls, and this paints the SAME video mix the
+   * station stage shows (same renderer, same transitions) underneath, over
+   * the channel's own standby slate. It only renders while the channel is
+   * open; leaving the channel parks its players so nothing plays unseen. */
+  let tvSig = "";
+  function tvPaint() {
+    const vs = S.vstream || {};
+    let mode = "", label = "";
+    if (vs.on && vs.meeting && !vs.hidden) { mode = "live"; label = vs.kind === "cam" ? "Meechie — live camera" : "Meechie — live screen"; }
+    else { const tg = vmixTargets(); if (tg.length) { mode = "mix"; label = "The video mix" + (S[tg[0].k] && S[tg[0].k].title ? " — " + S[tg[0].k].title : ""); } }
+    const sig = mode + "|" + label + "|" + (listening ? 1 : 0);
+    if (sig === tvSig) return; tvSig = sig;
+    const bd = $("#tw-live"), wt = $("#tw-what"), sb = $("#tw-sound");
+    if (bd) { bd.hidden = !mode; bd.classList.toggle("mix", mode === "mix"); bd.textContent = mode === "live" ? "🔴 LIVE" : "ON AIR"; }
+    if (wt) wt.textContent = label;
+    if (sb) sb.textContent = listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound";
+  }
+  async function tvApply(mix, duck) {
+    const vw = document.getElementById("v-mwtv");
+    if (!vw || vw.hidden) {
+      if (scrTV.slots.some((sl) => sl.deck)) scrTV.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
+      return;
+    }
+    await renderScreen(scrTV, OWNER() ? true : !listening, listening ? mix : 1, duck);
+    // leaving any view pauses its <video> elements (go() in app-core) — if
+    // that caught the live stream on the way out, set it playing again here
+    const lv = document.querySelector("#tw-stage video.vslive");
+    if (lv && lv.paused && lv.srcObject) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
+    tvPaint();
   }
   /* the mini screen is a silent mirror (the sound already travels with the decks
    * and the station screen): it shows the same mix in a small rectangle at the
@@ -3185,6 +3223,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const tg = vmixTargets(), top = tg.slice().sort((a, b) => b.op - a.op)[0], vid = top ? (S[top.k] && S[top.k].yt) || "" : "";
     let sessOff = false; try { sessOff = !!sessionStorage.getItem("mw_mini_off"); } catch (_) {}
     const vsM = S.vstream || {};
+    const onTV = !!(document.body && document.body.dataset && document.body.dataset.view === "mwtv"); // the MW TV page IS the screen: the mini and its pop-out never double up there
     /* the LIVE-SHARE POP-OUT (owner, 2026-10-29: "I want this screen to
      * pop up after they enter and get greeted — if it's being shared"):
      * a viewer anywhere on the site gets the mini carrying the share
@@ -3195,8 +3234,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * would keep the mini down forever); the session close, the stage-in-
      * view step-aside and the booth-on-screen rule all still apply, and a
      * hidden share never pops. */
-    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !sessOff && !stInView && !document.body.classList.contains("dj-on") && !!(vsShown.track && vsShown.track.readyState === "live") && vsPopReady();
-    const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && !sessOff && vid !== miniOffVid && !stInView && !document.body.classList.contains("dj-on")) || vsShareShow;
+    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !sessOff && !stInView && !onTV && !document.body.classList.contains("dj-on") && !!(vsShown.track && vsShown.track.readyState === "live") && vsPopReady();
+    const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && !sessOff && vid !== miniOffVid && !stInView && !onTV && !document.body.classList.contains("dj-on")) || vsShareShow;
     box.hidden = !show;
     // a master video that errored or has not really started must not leave
     // a black box floating over the page: until this video's player has
@@ -3951,7 +3990,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793273200;
+  const MW_DJ_BUILD = 1793273300;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
