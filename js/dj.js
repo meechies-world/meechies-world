@@ -986,7 +986,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 .fxgrid .fxcell input[type="range"]{width:100%}
 .fxgrid .fxcell.wide{grid-column:span 2}
 @media(max-width:760px){.fxgrid{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}.fxgrid .fxcell.wide{grid-column:span 2}}
-#dj-livealert .la-txt{flex:1 1 auto;min-width:0;white-space:normal;line-height:1.3}
+#dj-livealert .la-txt{flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
 #dj-booth-root #dj-owner .xfpad{background:linear-gradient(135deg,#1b1c1f,#0c0c0e);border:1.5px solid #3f3f46;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 22px #000}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
 #dj-booth-root #dj-owner .platter{border-color:#45454c}
@@ -1003,8 +1003,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    pill into a compact card instead of ballooning (owner screenshot,
    2026-10-29: the pill stretched huge and clipped Tune in down to UN). */
 #dj-livealert .la-btns{display:flex;gap:8px;align-items:center}
-@media (max-width:760px){#dj-livealert{flex-direction:column;align-items:stretch;gap:7px;border-radius:18px;padding:9px 10px;width:min(94vw,430px)}
-#dj-livealert .la-txt{white-space:nowrap;text-align:center}
+@media (max-width:1100px){#dj-livealert{flex-direction:column;align-items:stretch;gap:7px;border-radius:18px;padding:9px 10px;width:min(94vw,430px)}
+#dj-livealert .la-txt{white-space:normal;text-align:center;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden}
 #dj-livealert .la-btns{gap:6px;width:100%}
 #dj-livealert .la-btns .btn{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-left:4px;padding-right:4px;font-size:12px}
 #dj-livealert .la-btns #la-x{flex:0 0 auto}}
@@ -4952,7 +4952,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274600;
+  const MW_DJ_BUILD = 1793274700;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
