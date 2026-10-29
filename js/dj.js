@@ -637,6 +637,7 @@ html.popdj .popdj-hint{display:block}
 .vslive{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5;display:none}
 .vstage.vs-on .vslive{display:block}
 .vstage.vs-on .vstandby{display:none!important}
+.vstatus{position:absolute;top:8px;left:8px;z-index:7;background:rgba(0,0,0,.72);border:1px solid var(--gold-lo);color:#ffd766;border-radius:8px;padding:3px 9px;font:700 11.5px var(--body);letter-spacing:.02em;pointer-events:none}
 .vshidden{position:absolute;inset:0;z-index:7;display:grid;place-items:center;background:#050505;color:#f0cf78;font:800 14px var(--body);letter-spacing:.1em;text-align:center;padding:14px}
 .vshidden[hidden]{display:none}
 .capbig{display:block;width:100%;min-height:56px;margin:10px 0;padding:12px 14px;background:#000;color:#f0cf78;border:2px solid #f0cf78;border-radius:12px;font:800 16px var(--body);letter-spacing:.04em;cursor:pointer;animation:bopulse 2s ease-in-out infinite}
@@ -2409,9 +2410,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   try { const c0 = JSON.parse(localStorage.getItem("mw-studio-crop") || "null"); if (c0) vsCrop = { l: Math.max(0, Math.min(45, +c0.l || 0)), r: Math.max(0, Math.min(45, +c0.r || 0)), t: Math.max(0, Math.min(45, +c0.t || 0)), b: Math.max(0, Math.min(45, +c0.b || 0)), fill: !!c0.fill }; } catch (_) {}
   let vsCropCtx = null;       // the running crop canvas: {vid, cv, cx, raf, rvfc, dead}
   let vsStudioSig = "";
-  let vsShown = { track: null, stream: null };
+  let vsShown = { track: null, stream: null, hls: null };
+  let vsWatchErr = "";        // the watcher's last failure, in plain words - the TV status line reads it out instead of the watch dying silent
+  let vsStatusTxt = null;     // last text painted into the .vstatus lines
   let vsPaintSig = null;
   const vsUid = () => { const s = mySess(); return (s && s.user && s.user.id) || ""; };
+  const vsBroadcast = () => { const v = S.vstream || {}; return !SANDBOX && !!v.on && !!v.meeting; }; // SHARING = LIVE (owner, 2026-10-29: "if im sharing im still live"): a live stream switch lights every LIVE surface, radio switch or not
   const vsArrivedAt = Date.now();   // this page's arrival — the live-share pop-out sequences itself a few seconds after it, and never over the welcome video
   /* the mini's close button lives in the build region (it runs before this
    * block), so the dismissal hook travels on window: closing the mini WHILE
@@ -2428,13 +2432,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function vsLoadSdk() {
     if (window.RealtimeKitClient) return Promise.resolve(true);
-    if (!vsSdkP) vsSdkP = new Promise((res) => { const s = document.createElement("script"); s.src = VS_SDK_URL; s.onload = () => res(!!window.RealtimeKitClient); s.onerror = () => { vsSdkP = null; res(false); }; document.head.appendChild(s); });
+    // a script tag that neither loads nor errors (a blocked or hung CDN)
+    // otherwise leaves this promise pending forever and every later watch
+    // waits on it in silence - the 12s watchdog resolves it as a failure
+    // and clears the latch so the next retry starts clean
+    if (!vsSdkP) vsSdkP = new Promise((res) => { const s = document.createElement("script"); let done = false; const fin = (ok) => { if (done) return; done = true; if (!ok) vsSdkP = null; res(ok); }; s.src = VS_SDK_URL; s.onload = () => fin(!!window.RealtimeKitClient); s.onerror = () => fin(false); document.head.appendChild(s); setTimeout(() => fin(!!window.RealtimeKitClient), 12000); });
     return vsSdkP;
   }
   async function vsApi(body) {
     const ses = mySess(); const h = { "content-type": "application/json" };
     if (ses && ses.access_token) h.authorization = "Bearer " + ses.access_token;
-    try { const r = await fetch("/api/streams", { method: "POST", headers: h, body: JSON.stringify(body) }); return await r.json().catch(() => null); } catch (_) { return null; }
+    try { const ctl = (typeof AbortController !== "undefined") ? new AbortController() : null; const to = ctl ? setTimeout(() => { try { ctl.abort(); } catch (_) {} }, 12000) : 0; const r = await fetch("/api/streams", { method: "POST", headers: h, body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined }); if (to) clearTimeout(to); return await r.json().catch(() => null); } catch (_) { return null; }
   }
   function vsStageEls() {
     const out = [];
@@ -2445,13 +2453,60 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     return out;
   }
   function vsVid(stage) { let v = stage.querySelector("video.vslive"); if (!v) { v = document.createElement("video"); v.className = "vslive"; v.autoplay = true; v.muted = true; v.playsInline = true; stage.appendChild(v); } return v; }
-  function vsAttach(stream) { vsStageEls().forEach((st) => { const v = vsVid(st); try { if (v.srcObject !== stream) { v.srcObject = stream; const p = v.play(); if (p && p.catch) p.catch(() => {}); } } catch (_) {} st.classList.add("vs-on"); }); }
-  function vsDetach() { vsShown = { track: null, stream: null }; vsStageEls().forEach((st) => { st.classList.remove("vs-on"); const v = st.querySelector("video.vslive"); if (v) { try { v.pause(); v.srcObject = null; } catch (_) {} } }); }
+  function vsKillHls(v) { if (!v) return; if (v._vsHls) { try { v._vsHls.destroy(); } catch (_) {} v._vsHls = null; } if (v._vsHlsUrl) { v._vsHlsUrl = ""; try { v.pause(); v.removeAttribute("src"); v.load(); } catch (_) {} } }
+  function vsAttach(stream) { vsStageEls().forEach((st) => { const v = vsVid(st); try { vsKillHls(v); if (v.srcObject !== stream) { v.srcObject = stream; const p = v.play(); if (p && p.catch) p.catch(() => {}); } } catch (_) {} st.classList.add("vs-on"); }); }
+  function vsDetach() { vsShown = { track: null, stream: null, hls: null }; vsStageEls().forEach((st) => { st.classList.remove("vs-on"); const v = st.querySelector("video.vslive"); if (v) { try { vsKillHls(v); v.pause(); v.srcObject = null; } catch (_) {} } }); }
   function vsShowTrack(track) {
     if (!track || track.readyState === "ended") { if (vsShown.track) vsDetach(); return; }
-    if (vsShown.track !== track) vsShown = { track, stream: new MediaStream([track]) };
+    if (vsShown.track !== track) vsShown = { track, stream: new MediaStream([track]), hls: null };
     vsAttach(vsShown.stream);
   }
+  /* the room's own live playback (HLS) - the fallback picture for a
+   * LIVESTREAM room, where an off-stage watcher is never given a WebRTC
+   * consumer at all (see the studio3 note at vsWatchGrab). Native HLS
+   * where the browser has it (Safari/iOS), hls.js lazy-loaded elsewhere. */
+  let vsHlsP = null;
+  function vsLoadHls() {
+    if (window.Hls) return Promise.resolve(true);
+    if (!vsHlsP) vsHlsP = new Promise((res) => { const s = document.createElement("script"); let done = false; const fin = (ok) => { if (done) return; done = true; if (!ok) vsHlsP = null; res(ok); }; s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"; s.onload = () => fin(!!window.Hls); s.onerror = () => fin(false); document.head.appendChild(s); setTimeout(() => fin(!!window.Hls), 12000); });
+    return vsHlsP;
+  }
+  function vsShowHls(url) {
+    if (!url) return;
+    if (vsShown.hls !== url) vsShown = { track: null, stream: null, hls: url };
+    vsStageEls().forEach((st) => { const v = vsVid(st); try {
+      if (v._vsHlsUrl !== url) { vsKillHls(v); try { v.srcObject = null; } catch (_) {} v._vsHlsUrl = url;
+        if (v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl")) v.src = url;
+        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 10 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
+        else { vsLoadHls().then((ok) => { if (ok && vsShown.hls === url) vsShowHls(url); }); }
+      }
+      const p = v.play(); if (p && p.catch) p.catch(() => {});
+    } catch (_) {} st.classList.add("vs-on"); });
+  }
+  /* ---------- the TV status line (owner + testers READ the watch) ----------
+   * A plain-text line in the corner of the station stage and the MW TV
+   * screen, present only while a share is on. Every watcher step is
+   * reflected here, so a failed watch says WHERE it stopped instead of
+   * going silent the way the first builds did. */
+  function vsNoteErr(e) { try { const m = (e && e.message) ? String(e.message) : String(e || ""); if (m) vsWatchErr = m.slice(0, 42); } catch (_) {} }
+  function vsSetStatus(txt) {
+    if (txt === vsStatusTxt) return; vsStatusTxt = txt;
+    const hosts = [];
+    const st = document.querySelector("#st-ytbox .vstage"); if (st) hosts.push(st);
+    const tw = document.querySelector("#tw-stage"); if (tw) hosts.push(tw);
+    hosts.forEach((h) => { let el = h.querySelector(".vstatus"); if (!el) { el = document.createElement("div"); el.className = "vstatus"; h.appendChild(el); } el.hidden = !txt; if (txt && el.textContent !== txt) el.textContent = txt; });
+  }
+  function vsStatusFor() {
+    const vs = S.vstream || {};
+    if (!vs.on || !vs.meeting) return "";
+    if (vsPub) return "TV: live";
+    if (vs.hidden) return "TV: hidden by Meechie";
+    if ((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) return "TV: live";
+    if (vsWatch) return "TV: joined — waiting for picture";
+    if (vsWatchRetryMid === vs.meeting && vsWatchErr) return "TV: retrying (" + vsWatchErr + ")";
+    return "TV: connecting…";
+  }
+  function vsPaintStatus() { try { vsSetStatus(vsStatusFor()); } catch (_) {} }
   function vsPaintBtns() {
     try {
       vsPaintStudio();
@@ -2780,7 +2835,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     };
     try { eat(meeting.participants && meeting.participants.active); } catch (_) {}
     try { eat(meeting.participants && meeting.participants.joined); } catch (_) {}
-    return out;
+    try { eat(meeting.participants && meeting.participants.pinned); } catch (_) {}
+    try { eat(meeting.participants && meeting.participants.waitlisted); } catch (_) {}
+    try { eat(meeting.participants && meeting.participants.all); } catch (_) {}
+    const selfId = (meeting.self && meeting.self.id) || "";
+    const seen = new Set();
+    return out.filter((p) => { if (!p || typeof p !== "object") return false; const id = p.id || ""; if (id && selfId && id === selfId) return false; if (id) { if (seen.has(id)) return false; seen.add(id); } return true; });
   }
   /* the two track channels on a remote participant, SDK 2.0.4 shape
    * (read off the shipped UMD + the RTKParticipants docs): the camera
@@ -2813,7 +2873,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const ids = [];
       try { ps.joined.forEach((pp) => { if (pp && pp.id) ids.push(pp.id); }); } catch (_) {}
       if (!ids.length) return;
-      try { const pr = ps.subscribe(ids); if (pr && pr.catch) pr.catch(() => {}); } catch (_) {}
+      try { const pr = ps.subscribe(ids); if (pr && pr.catch) pr.catch((e) => vsNoteErr(e)); } catch (e) { vsNoteErr(e); }
     } catch (_) {}
   }
   function vsHookPeer(pp) {
@@ -2826,16 +2886,79 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * is guaranteed by the join, not by the first frame (they stay
    * display:none until vs-on, so nothing black flashes) */
   function vsEnsureEls() { vsStageEls().forEach((st) => { try { vsVid(st); } catch (_) {} }); }
+  /* ---------- THE WATCHER SWEEP (fix-studio3) ----------
+   * THE NAMED BREAK (evidence, 2026-10-29): the gateway app is a
+   * LIVESTREAM room - the same app serves the OBS RTMPS-to-HLS flow in
+   * functions/api/streams.js. In the shipped SDK 2.0.4 bundle, every
+   * consumer-creation path is gated on the participant's media join
+   * (the ParticipantController bails out of onParticipantMediaJoined,
+   * the selectedPeer handlers and updateActiveParticipantsWithPriorities
+   * whenever mediaJoined is false), and for a LIVESTREAM room a
+   * participant who is not ON_STAGE joins the socket ONLY -
+   * SelfController.roomJoined special-cases exactly that and joinRoom
+   * logs the socket-only local peer. A viewer-preset participant is
+   * off-stage by design, so the watcher joined fine, the publisher sat
+   * in participants.joined with his producers listed, subscribe() added
+   * him to videoSubscribed - and syncConsumers never ran for this peer,
+   * no consumer was ever created, and participant.videoTrack /
+   * screenShareTracks.video stayed undefined forever (they are only
+   * ever assigned at consumer creation). No error at any step: the mint
+   * was provably good, the state provably live, the publisher provably
+   * bound to the same meeting - and members saw only the mix. That is
+   * why the event-driven watch, the stamp/latch fixes and manual
+   * subscribe could not fix it: they all end at a track field that
+   * only a media join can fill.
+   * THE REBUILD: the watcher is a 1s POLLING sweep. It joins the same
+   * way, walks EVERY participant collection, reads both track channels
+   * off every peer, and attaches the first live track it finds - the
+   * subscribe assist stays, but nothing waits on it or on any event.
+   * When the room is a LIVESTREAM room it also tries the two honest
+   * ways in: join the stage (which is what media-joins a peer), and
+   * the room's own live playback URL (HLS) when the room offers one.
+   * Every failure lands in vsWatchErr and on the TV status line, and
+   * the sweep retries on its own cadence - no silent death, no latch. */
+  function vsDiag(w, peers, anyProducer) {
+    try {
+      window.MW_vsDiag = { at: Date.now(), meeting: w.mid, viewType: w.viewType || "", stageStatus: w.stageStatus || "", err: vsWatchErr || "", producerSeen: !!anyProducer, peers: (peers || []).map((p) => { let vt = null, ss = null; try { vt = p.videoTrack || null; } catch (_) {} try { ss = (p.screenShareTracks && p.screenShareTracks.video) || null; } catch (_) {} let prods = []; try { prods = (p.producers || []).map((x) => String((x && x.kind) || "")); } catch (_) {} return { id: String(p.id || ""), name: String(p.name || p.displayName || ""), videoTrack: !!vt, ssTrack: !!ss, videoOn: !!p.videoEnabled, ssOn: !!p.screenShareEnabled, producers: prods }; }) };
+    } catch (_) {}
+  }
+  function vsLiveUrl(meeting) {
+    try { const ls = meeting && meeting.livestream; if (!ls) return "";
+      if (ls.playbackUrl) return String(ls.playbackUrl);
+      if (typeof ls.fetchInitialLivestreamingState === "function" && !ls._vsFetched) { ls._vsFetched = 1; const pr = ls.fetchInitialLivestreamingState(); if (pr && pr.catch) pr.catch(() => {}); }
+    } catch (_) {}
+    return "";
+  }
+  function vsTryStage(w) {
+    try {
+      const self = w.meeting.self;
+      if (self && self.stageStatus === "ON_STAGE") return;
+      const st = w.meeting.stage;
+      if (st && typeof st.join === "function") { const pr = st.join(); if (pr && pr.catch) pr.catch((e) => vsNoteErr(e)); return; }
+      if (self && typeof self.joinStage === "function") { const pr2 = self.joinStage(); if (pr2 && pr2.catch) pr2.catch((e) => vsNoteErr(e)); }
+    } catch (e) { vsNoteErr(e); }
+  }
   function vsWatchGrab() {
     const w = vsWatch; if (!w || !w.meeting) return;
-    vsSubAll(w.meeting); // subscribe even while hidden, so an unhide renders on the next tick instead of after a consumer round-trip
-    if ((S.vstream || {}).hidden) { vsDetach(); return; } // HIDE SHARE: the join stays up, the picture does not render
-    const kind = (S.vstream || {}).kind;
-    const order = kind === "screen" ? ["ss", "vt"] : ["vt", "ss"];
-    let best = null;
-    vsPeers(w.meeting).forEach((p) => { if (best || !p) return; for (const key of order) { const t = vsTrackOf(p, key); if (t && t.readyState === "live") { best = t; break; } } });
-    if (best) { w.got = Date.now(); vsShowTrack(best); return; }
-    if (w.got && vsShown.track && vsShown.track.readyState === "ended") { vsWatchStop(); vsDetach(); } // the producer left mid-stream
+    try {
+      vsSubAll(w.meeting); // subscribe assist - even while hidden, so an unhide renders fast; never load-bearing
+      if ((S.vstream || {}).hidden) { vsDetach(); return; } // HIDE SHARE: the join stays up, the picture does not render
+      const kind = (S.vstream || {}).kind;
+      const order = kind === "screen" ? ["ss", "vt"] : ["vt", "ss"];
+      const peers = vsPeers(w.meeting);
+      let best = null, anyProducer = false;
+      peers.forEach((p) => { if (!p) return; try { if (p.producers && p.producers.length) anyProducer = true; } catch (_) {} if (best) return; for (const key of order) { const t = vsTrackOf(p, key); if (t && t.readyState === "live") { best = t; break; } } });
+      try { w.stageStatus = (w.meeting.self && w.meeting.self.stageStatus) || w.stageStatus || ""; } catch (_) {}
+      vsDiag(w, peers, anyProducer);
+      if (best) { w.got = Date.now(); if (vsShown.hls) vsDetach(); vsShowTrack(best); return; }
+      if (vsShown.hls) return; // the room playback is carrying the picture
+      if (w.got && vsShown.track && vsShown.track.readyState === "ended") { vsWatchStop(); vsDetach(); return; } // the producer left mid-stream
+      // no WebRTC track: in a LIVESTREAM room an off-stage watcher never
+      // gets one (see the note above) - ask for the stage once, then
+      // take the room playback when the room offers one
+      if (w.viewType === "LIVESTREAM" && !w.stageTried) { w.stageTried = Date.now(); vsTryStage(w); }
+      if (w.viewType === "LIVESTREAM" || Date.now() - w.triedAt > 12000) { const lu = vsLiveUrl(w.meeting); if (lu) { w.got = Date.now(); vsShowHls(lu); } }
+    } catch (e) { vsNoteErr(e); }
   }
   async function vsWatchStop() {
     const w = vsWatch; vsWatch = null;
@@ -2846,19 +2969,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function vsWatchRetry(mid) { vsWatchRetryMid = mid; vsWatchRetryAt = Date.now() + 20000; }
   async function vsWatchStart(mid) {
     if (vsWatchBusy || (vsWatch && vsWatch.mid === mid)) return;
-    vsWatchBusy = true;
+    vsWatchBusy = true; vsWatchErr = "";
     let meeting = null;
     try {
       const mint = await vsApi({ action: "live_mint", role: "watch", meeting: mid });
-      if (!mint || !mint.token) { vsWatchRetry(mid); return; }
-      if (!(await vsLoadSdk())) { vsWatchRetry(mid); return; }
+      if (!mint || !mint.token) { vsNoteErr((mint && mint.message) || "the streaming service did not answer"); vsWatchRetry(mid); return; }
+      if (!(await vsLoadSdk())) { vsNoteErr("the video engine did not load"); vsWatchRetry(mid); return; }
       meeting = await RealtimeKitClient.init({ authToken: mint.token, defaults: { audio: false, video: false } });
       // MANUAL subscription mode from the start (see vsSubAll): the
       // viewer subscribes to the room explicitly instead of hoping the
       // active-speaker heuristics pick a silent video producer
       try { meeting.participants.setViewMode("MANUAL"); } catch (_) {}
-      try { meeting.participants.joined.on("participantJoined", (pp) => { vsHookPeer(pp); vsSubAll(meeting); vsWatchGrab(); }); meeting.participants.joined.on("participantLeft", () => vsWatchGrab()); } catch (_) {}
-      try { meeting.participants.active.on("participantJoined", () => vsWatchGrab()); } catch (_) {}
+      try { const jn = meeting.participants.joined, cb = (pp) => { vsHookPeer(pp); vsWatchGrab(); }; if (typeof jn.on === "function") { jn.on("participantJoined", cb); jn.on("participantLeft", () => vsWatchGrab()); } else if (typeof jn.addListener === "function") { jn.addListener("participantJoined", cb); jn.addListener("participantLeft", () => vsWatchGrab()); } } catch (_) {}
+      try { const ac = meeting.participants.active; if (ac && typeof ac.on === "function") ac.on("participantJoined", () => vsWatchGrab()); } catch (_) {}
       // a join that never settles must not latch the watcher: the old
       // code stored vsWatch BEFORE the await and waited forever, so one
       // hung join meant no retry, no element, no picture for the whole
@@ -2866,7 +2989,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       let joinedOk = false;
       await Promise.race([meeting.join().then(() => { joinedOk = true; }), new Promise((res) => setTimeout(res, 15000))]);
       if (!joinedOk) throw new Error("join timeout");
-      const w = { meeting, mid, got: 0, triedAt: Date.now(), iv: null };
+      const w = { meeting, mid, got: 0, triedAt: Date.now(), iv: null, viewType: "", stageStatus: "", stageTried: 0 };
+      try { w.viewType = (meeting.meta && meeting.meta.viewType) || (meeting.self && meeting.self.config && meeting.self.config.viewType) || ""; } catch (_) {}
+      try { w.stageStatus = (meeting.self && meeting.self.stageStatus) || ""; } catch (_) {}
       vsWatch = w;
       vsWatchRetryMid = ""; vsWatchRetryAt = 0;
       vsSubAll(meeting);
@@ -2876,8 +3001,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // this viewer arrived must render now, not on some future event;
       // the 2.5s grab below keeps re-walking the room the whole session
       vsWatchGrab();
-      w.iv = setInterval(() => { try { vsWatchGrab(); } catch (_) {} }, 2500);
-    } catch (_) {
+      w.iv = setInterval(() => { try { vsWatchGrab(); } catch (_) {} }, 1000);
+    } catch (e) {
+      vsNoteErr(e);
       // a failed or half-joined watch is torn down and RETRIED in about
       // 20s for as long as the switch stays on — fresh mint, fresh SDK
       // meeting object, fresh join; never latched off for the session
@@ -2890,7 +3016,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* the master switch — runs on the stage cadence from stageApply */
   function vsSync() {
     try {
-      vsPaintBtns();
+      vsPaintBtns(); vsPaintStatus();
       const vs = S.vstream || {};
       if (vsPub) {
         if (!vs.on || vs.meeting !== vsPub.mid) {
@@ -3210,7 +3336,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // leaving any view pauses its <video> elements (go() in app-core) — if
     // that caught the live stream on the way out, set it playing again here
     const lv = document.querySelector("#tw-stage video.vslive");
-    if (lv && lv.paused && lv.srcObject) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
+    if (lv && lv.paused && (lv.srcObject || lv.currentSrc)) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
     tvPaint();
   }
   /* the mini screen is a silent mirror (the sound already travels with the decks
@@ -3234,7 +3360,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * would keep the mini down forever); the session close, the stage-in-
      * view step-aside and the booth-on-screen rule all still apply, and a
      * hidden share never pops. */
-    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !sessOff && !stInView && !onTV && !document.body.classList.contains("dj-on") && !!(vsShown.track && vsShown.track.readyState === "live") && vsPopReady();
+    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !sessOff && !stInView && !onTV && !document.body.classList.contains("dj-on") && !!((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) && vsPopReady();
     const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && !sessOff && vid !== miniOffVid && !stInView && !onTV && !document.body.classList.contains("dj-on")) || vsShareShow;
     box.hidden = !show;
     // a master video that errored or has not really started must not leave
@@ -3766,7 +3892,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const adp = $("#ad-drops"); if (adp) adp.checked = S.dropsOn !== false;
     const adl = $("#ad-drops-list"); if (adl && !adl.dataset.done) { adl.dataset.done = "1"; adl.innerHTML = DROP_TEXTS.map((t, i) => `<div class="dj-item"><span title="${E(t)}">${i + 1}. ${E(t)}</span></div>`).join(""); }
     const adT = $("#dj-ad-top"); if (adT) adT.checked = !!S.autodj;
-    const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : S.live ? "PRACTICE" : "STANDBY") : (S.live ? "ON AIR" : "OFF AIR");
+    const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live || vsBroadcast()); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : S.live ? "PRACTICE" : "STANDBY") : (S.live || vsBroadcast() ? "ON AIR" : "OFF AIR");
     renderLog($("#dj-log")); paintPads();
   }
   function renderLog(box) {
@@ -3778,13 +3904,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     box.innerHTML = lg.length ? lg.map((x) => `<div><span>${E(x.t)}${x.live ? ' <small style="color:#ff8b8f">● LIVE</small>' : ""}</span><time>${agoT(x.at)}</time></div>`).join("") : '<small class="muted">Nothing played yet this session.</small>';
   }
   function paintStation() {
-    const live = isLive();
+    const tvLive = vsBroadcast() && !(S.vstream || {}).hidden; // SHARING = LIVE: a TV broadcast lights the station even with the radio switch off and the tables paused for the share
+    const live = isLive() || tvLive;
     const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : live ? "PRACTICE" : "STANDBY") : (live ? "ON AIR" : "OFF AIR");
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
     const now = live ? DECKS.filter((k) => S[k].playing && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000)).map((k) => S[k].title).filter(Boolean) : [];
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     const gN = S.djGuest && S.djGuest.until > Date.now() ? gName(S.djGuest) : null;
-    $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
+    $("#st-now").textContent = tvLive && !now.length && !gN ? "📺 Meechie is live on the master screen — watch it on MW TV. The tables pick back up when the share ends." : live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     const stHost = $("#st-host"); // HOST MODE: the room can see the host is in — same booth-fresh window the keeper trusts (90s), and never while a guest DJ holds the tables
     if (stHost) { const hosting = !SANDBOX && live && !gN && (Date.now() - (S.boothAt || 0) < 90000); if (stHost._h !== hosting) { stHost._h = hosting; stHost.hidden = !hosting; if (hosting) stHost.textContent = "🔴 Meechie is in the booth — hosting live"; } }
     const stShow = $("#st-show");
@@ -3990,7 +4117,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793273300;
+  const MW_DJ_BUILD = 1793273400;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -4301,7 +4428,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // tune-in that mutes everything else and lands them on the radio
   const gName = (g) => { const n = ((g && g.name) || "").trim(); return n ? (n.includes("@") ? n.split("@")[0] : n) : "Guest DJ"; }; // a DJ is never shown as a raw email address
   function guestLiveOn() { try { return sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) { return false; } } // hoisted: the lamp paints before this line runs
-  function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const host = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const setId = guest ? ("g" + (S.djGuest.uid || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
+  function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const hostDeck = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const tv = !guest && vsBroadcast() && !(S.vstream || {}).hidden; const host = hostDeck || tv; const setId = guest ? ("g" + (S.djGuest.uid || "")) : tv && !hostDeck ? ("tv" + ((S.vstream || {}).meeting || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : tv && !hostDeck ? "🔴 LIVE NOW — Meechie is live on MW TV" : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
   function onState(d) {
     try { paintVEdit(); } catch (_) {} try { paintLiveAlert(); } catch (_) {}
     const firstOwnerLoad = OWNER() && !ownerLoaded;
@@ -4340,7 +4467,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     watchHorn(); watchVfx();
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; DECKS.forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
-    const live = isLive();
+    const live = isLive() || (vsBroadcast() && !(S.vstream || {}).hidden); // SHARING = LIVE, same rule as paintStation: the station section and banner stay up while the TV broadcasts
     $("#dj-banner").hidden = !live || OWNER();
     $("#dj-station").hidden = OWNER() ? false : (live || (S.log || []).length > 0 || !!S.show);
     if (!live && listening) endSet();
