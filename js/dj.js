@@ -1271,6 +1271,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const $ = (s) => document.querySelector(s);
   const decks = { A: null, B: null, C: null, D: null };
   const DECKS = ["A", "B", "C", "D"]; const PAIR = { A: "B", B: "A", C: "D", D: "C" };
+  const ROT = { A: "B", B: "C", C: "D", D: "A" }; // the four-deck rotation A→B→C→D→A
+  /* qStock: which decks currently hold a CUED queue item, stocked by
+   * "Play the queue" and by the post-transition refill (live booth
+   * only). A record is only a claim — qStockValid() re-checks it
+   * against what the deck actually holds (S[k].src / S[k].yt) before
+   * anything trusts it. Declared up here, ahead of load(), because
+   * load() clears the record for the deck it loads onto. */
+  let qStock = { A: null, B: null, C: null, D: null };
   const deck = (k) => { if (!decks[k]) { decks[k] = Deck(); decks[k].letter = k; } return decks[k]; };
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   const agoT = (at) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
@@ -1492,9 +1500,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * cam on without a stream tries once to start its own — permission may
    * already be granted — and otherwise shows a placeholder in the square.
    * Booth screen ONLY: the station and mini stages are never touched. */
-  let camStream = null, camBusy = false, camFailAt = 0;
+  let camStream = null, camBusy = false, camFailAt = 0, camLastW = 0, camWasOn = false, camBtnOn = null;
   function camEls() { return { st: document.getElementById("dj-vstage"), wrap: document.getElementById("dj-camwrap"), vid: document.getElementById("dj-camvid"), btn: document.getElementById("dj-cambtn") }; }
-  function camSize() { const st = camEls().st; if (st) { const h = st.clientHeight || 0; if (h > 0) st.style.setProperty("--camw", h + "px"); } }
+  /* Glitch guard (owner, 2026-10-29: "my cam on button looks like its
+     glitching"): camSize used to run on EVERY camSync (several times a
+     second) and re-set --camw from clientHeight each pass — on a phone the
+     browser chrome sliding wobbles that height by a few px, so the .45s
+     scoot transition restarted endlessly. Now: a 6px deadband, measured
+     only on the off-to-on transition and on debounced resizes. */
+  function camSize() { const st = camEls().st; if (st) { const h = st.clientHeight || 0; if (h > 0 && Math.abs(h - camLastW) >= 6) { camLastW = h; st.style.setProperty("--camw", h + "px"); } } }
   function camStopLocal() { if (camStream) { try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {} camStream = null; } const vid = camEls().vid; if (vid) { try { vid.srcObject = null; } catch (_) {} } }
   async function camStartLocal() {
     if (camStream) return true;
@@ -1515,10 +1529,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const e = camEls(); if (!e.st) return;
       if (e.btn) e.btn.style.display = SANDBOX ? "none" : "";
       const on = !SANDBOX && OWNER() && !!(S.vcam && S.vcam.on);
-      if (e.btn) { e.btn.classList.toggle("on", on); const lbl = on ? "📷 Cam · ON" : "📷 Cam"; if (e.btn.textContent !== lbl) e.btn.textContent = lbl; }
+      if (e.btn && camBtnOn !== on) { camBtnOn = on; e.btn.classList.toggle("on", on); e.btn.textContent = on ? "📷 Cam · ON" : "📷 Cam"; }
       e.st.classList.toggle("cam-on", on);
-      if (!on) { camStopLocal(); return; }
-      camSize();
+      if (!on) { camWasOn = false; camStopLocal(); return; }
+      if (!camWasOn) { camWasOn = true; camSize(); }
       if (e.wrap) e.wrap.classList.toggle("novid", !camStream);
       if (boothLead && !camStream && !camBusy && Date.now() - camFailAt > 20000) {
         camStartLocal().then((ok) => { if (!ok) { camFailAt = Date.now(); const w = camEls().wrap; if (w) w.classList.add("novid"); } });
@@ -1536,7 +1550,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     camSync(); save(true);
     say("📷 Camera is ON — it sits beside the master video on your booth screen.");
   }
-  addEventListener("resize", () => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} });
+  let camRszT = null;
+  addEventListener("resize", () => { if (camRszT) clearTimeout(camRszT); camRszT = setTimeout(() => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} }, 200); });
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
@@ -2274,7 +2289,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // their player (setYt only presses play when the deck is flagged
       // playing, so a preload mount sits cued and silent) — and the
       // handover at 5 seconds becomes just play + fade.
-      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !S[PAIR[k]].playing && !(handoverBusy && Date.now() - handoverAt < 20000) && !(preLoad && preLoad.forStart === S[k].start)) { const elP = decks[k].el, remP = elP && elP.duration && isFinite(elP.duration) ? elP.duration - elP.currentTime : 99; if (remP > 5 && remP <= 15) { const tgtP = PAIR[k]; preLoad = { target: tgtP, forStart: S[k].start, item: null }; pickNextItem().then(async (it) => { if (!it || !preLoad || preLoad.forStart !== S[k].start || preLoad.target !== tgtP) return; preLoad.item = it; saveQueue(); paintQueue(); try { await load(tgtP, it); if (it.yt) { const dp = decks[tgtP]; if (dp) { await dp.setYt(it.yt); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {} }).catch(() => {}); } }
+      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !S[PAIR[k]].playing && !(handoverBusy && Date.now() - handoverAt < 20000) && !(preLoad && preLoad.forStart === S[k].start) && (SANDBOX || !qStockValid(ROT[k]))) { const elP = decks[k].el, remP = elP && elP.duration && isFinite(elP.duration) ? elP.duration - elP.currentTime : 99; if (remP > 5 && remP <= 15) { const tgtP = PAIR[k]; preLoad = { target: tgtP, forStart: S[k].start, item: null }; pickNextItem().then(async (it) => { if (!it || !preLoad || preLoad.forStart !== S[k].start || preLoad.target !== tgtP) return; preLoad.item = it; saveQueue(); paintQueue(); try { await load(tgtP, it); if (it.yt) { const dp = decks[tgtP]; if (dp) { await dp.setYt(it.yt); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {} }).catch(() => {}); } }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
       if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 5) autoNext(k, true, Math.max(1200, rem * 1000)); /* blend lead 5s (owner, 2026-10-28): the next song is audibly IN before this one ends — never a pause between songs */ }
@@ -2353,7 +2368,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793271700;
+  const MW_DJ_BUILD = 1793271800;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2680,6 +2695,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function paintPrep() { const box = $("#dj-prep"); if (!box) return; const set = prepSet(), list = TRACKS(); const rows = list.map((t, i) => [t, i]).filter(([t]) => set.has(URLOF(t))); box.innerHTML = rows.length ? rows.map(([t, i]) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button><button class="btn ghost sm" type="button" data-prep="${i}">⭐</button></div>`).join("") : '<small class="muted">Nothing prepared yet — tap ☆ on any song in Your Library.</small>'; const hb = $("#dj-hist"); if (hb) { const h = histList(); hb.innerHTML = h.length ? h.map((x, i) => `<div class="dj-item"><span title="${E(x.title || "")}">${E(x.title || "")}</span>${["A", "B", "C", "D"].map((L) => `<button class="btn ghost sm" type="button" data-hload="${L}" data-hist="${i}">${L}</button>`).join("")}</div>`).join("") : '<small class="muted">Nothing loaded yet — the booth history builds as you play.</small>'; } }
   let net = [];
   async function load(k, item, opts) {
+    if (qStock[k]) qStock[k] = null; // any fresh load replaces what the deck held — its stocked record is void (stockDeck re-records after its own load)
     if (serverMirror()) leadTakeAt = Date.now();
     const d = deck(k); actx();
     // a pick from his own hand loads STOPPED (owner, 2026-10-27): the deck
@@ -2803,7 +2819,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (a === "clear") { queue = []; saveQueue(); paintQueue(); say("Queue cleared."); }
       else if (a === "open") { plOpen = !plOpen; paintPlaylists(); }
       else if (a === "save") { if (!queue.length) { say("The queue is empty — add songs first, then save the list."); return; } const name = prompt("Name this playlist:"); if (!name || !name.trim()) return; const rec = { name: name.trim().slice(0, 60), items: queue.slice() }; const ex = playlists.findIndex((p) => (p.name || "").toLowerCase() === rec.name.toLowerCase()); if (ex >= 0) playlists[ex] = rec; else playlists.unshift(rec); savePlaylists(); plOpen = true; paintPlaylists(); paintSched(); say("💾 Playlist saved: " + rec.name); }
-      else if (a === "play") { if (!queue.length) { say("The queue is empty — add songs with ＋Q first."); return; } if (DECKS.some((k) => S[k].playing)) { say("▶ The queue is rolling — the next one in line loads when this deck finishes."); return; } const it = queue.shift(); saveQueue(); paintQueue(); load("A", it).then(() => togglePlay("A")); say("▶ Playing the queue: " + (it.title || "")); }
+      else if (a === "play") { if (!queue.length) { say("The queue is empty — add songs with ＋Q first."); return; } if (!SANDBOX) { playQueueStock(); return; } if (DECKS.some((k) => S[k].playing)) { say("▶ The queue is rolling — the next one in line loads when this deck finishes."); return; } const it = queue.shift(); saveQueue(); paintQueue(); load("A", it).then(() => togglePlay("A")); say("▶ Playing the queue: " + (it.title || "")); }
       return; }
     if (b.dataset.plload != null || b.dataset.pladd != null || b.dataset.pldel != null) { const i = +(b.dataset.plload ?? b.dataset.pladd ?? b.dataset.pldel); const p = playlists[i]; if (!p) return; if (b.dataset.pldel != null) { playlists.splice(i, 1); savePlaylists(); paintPlaylists(); paintSched(); say("Playlist deleted: " + (p.name || "")); } else if (b.dataset.plload != null) { queue = (p.items || []).slice(); saveQueue(); paintQueue(); say("📂 In the queue: " + (p.name || "") + " — press ▶ Play the queue, or it rolls in as decks finish."); } else { queue = queue.concat(p.items || []); saveQueue(); paintQueue(); say("📂 Added to the queue: " + (p.name || "")); } return; }
     if (b.dataset.sched) { const t = $("#sched-time"), sel = $("#sched-sel"); const p = sel ? playlists[+sel.value] : null; if (!t || !t.value) { say("Pick a time first."); return; } if (!p) { say("Save a playlist first — the schedule runs playlists."); return; } sched.push({ id: "s" + Date.now().toString(36), time: t.value, name: p.name || "", items: (p.items || []).slice() }); sched.sort((x, y) => (x.time < y.time ? -1 : 1)); saveSched(); paintSched(); say("📅 Scheduled: " + (p.name || "") + " every day at " + t.value + "."); return; }
@@ -3029,6 +3045,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   let xfAnim = null, adTimer = null, handoverBusy = false, handoverAt = 0, lastEndedK = "A", deadAirAt = 0, preLoad = null, xfTouchedAt = 0;
   const usedPicks = new Set((() => { try { return JSON.parse(localStorage.getItem("mw-dj-usedpicks") || "[]"); } catch (_) { return []; } })());
+  /* drawQueueItem: ONLY the queue draw out of pickNextItem — the
+   * owner's shuffle rule (2026-10-28): pick at random and remove it, so
+   * nothing repeats until the queue empties. No listener picks, no
+   * pool, no library. The draw mutates the queue array; the caller owns
+   * saveQueue() + paintQueue() afterwards. */
+  function drawQueueItem() { if (!queue.length) return null; const qi = Math.floor(Math.random() * queue.length); return queue.splice(qi, 1)[0]; }
   /* pickNextItem: what plays next, in the booth's order — a listener pick
    * first (played once, then deleted), then the queue (shuffled: drawn at
    * random and removed, no repeats until it empties), then, with Auto-DJ
@@ -3046,7 +3068,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     // The queue SHUFFLES through the decks (owner, 2026-10-28): draw at
     // random and remove the pick, so nothing repeats until the queue is empty.
-    if (!item && queue.length) { const qi = Math.floor(Math.random() * queue.length); item = queue.splice(qi, 1)[0]; }
+    if (!item) item = drawQueueItem();
     if (!item && !S.autodj) return null;
     if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
     return item;
@@ -3065,6 +3087,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const t0 = performance.now();
     clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 2200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
   }
+  /* xfSettle for a cross-pair blend: BOTH faders ease home to center
+   * together — same 2.2s glide, same hands-off rule (a touch after the
+   * blend began cancels the settle) as the single-fader xfSettle. */
+  function xfSettleKeys(keys, touch0) {
+    if (xfTouchedAt > (touch0 || 0)) return;
+    const froms = keys.map((key) => S[key] ?? 0.5);
+    if (froms.every((f) => Math.abs(f - 0.5) < 0.01)) return;
+    const t0 = performance.now();
+    clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 2200); keys.forEach((key, i) => { S[key] = froms[i] + (0.5 - froms[i]) * p; }); levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+  }
   function xfFollowGuard() {
     if (!OWNER() || !boothLead || !S.autodj || xfAnim || Date.now() - xfTouchedAt < 8000) return;
     [["xf", "A", "B"], ["xf2", "C", "D"]].forEach(([key, a, b]) => {
@@ -3077,6 +3109,45 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 1200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
     });
   }
+  /* qStockValid: a stocked record counts only while the deck still
+   * holds exactly that item (same src, same yt) and is not playing —
+   * anything else means the deck changed hands and the record is void. */
+  function qStockValid(k) { const r = qStock[k]; return !!r && !S[k].playing && (S[k].src || "") === (r.src || "") && (S[k].yt || "") === (r.yt || ""); }
+  /* stockDeck: the cued load — the exact pattern the booth tick's
+   * preload uses (load, then for a video mount the player and pause it
+   * while the deck is not flagged playing), then record the deck as
+   * stocked with this item. */
+  async function stockDeck(k, item) {
+    try { await load(k, item); if (item.yt) { const dp = decks[k]; if (dp) { await dp.setYt(item.yt); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {}
+    qStock[k] = { src: item.src || "", yt: item.yt || "" };
+  }
+  /* Play the queue (owner, 2026-10-29: "Load the next 4 queue songs
+   * onto A, B, C, D right away"): draw up to four queue items and stock
+   * them onto the decks in order. A deck that is playing is never
+   * stomped — it refills when it ends (see autoNext). From a cold booth
+   * deck A takes the first draw as a station flow and STARTS it — that
+   * is playing the queue; B, C, D load cued. If something is already on
+   * air, every free deck (A included) just loads cued and the rotation
+   * in autoNext rolls them in as decks finish. Live booth only — the
+   * Playground keeps the old single-deck play. */
+  async function playQueueStock() {
+    const stocked = []; let startedK = null;
+    const anyPlaying = DECKS.some((k) => S[k].playing);
+    for (const k of DECKS) {
+      if (!queue.length) break;
+      if (S[k].playing) continue;
+      const it = drawQueueItem(); if (!it) break;
+      if (k === "A" && !anyPlaying) {
+        try { await load("A", it); await togglePlay("A"); } catch (_) {}
+        if (S.A.playing) startedK = "A";
+        else { qStock.A = { src: it.src || "", yt: it.yt || "" }; stocked.push("A"); } // loaded but would not start — leave it stocked cued like the others
+      } else { await stockDeck(k, it); stocked.push(k); }
+    }
+    saveQueue(); paintQueue();
+    if (startedK) say("🎶 Queue on the decks — A playing" + (stocked.length ? ", " + stocked.join(" ") + " loaded and ready" : "") + ".");
+    else if (stocked.length) say("🎶 Queue loaded onto the decks — " + stocked.join(" ") + " ready, and they roll in as each deck finishes.");
+    else say("🎶 Every deck is playing — each one refills from the queue as it finishes.");
+  }
   async function autoNext(endedK, force, fadeMs) {
     if ((!S.autodj && !force) || !boothLead) return;
     // A handover that died mid-flight (an unsettled load or play promise)
@@ -3084,8 +3155,30 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // this call takes over (2026-10-28: a stuck latch meant the song ended
     // and nothing ever rolled again).
     if (handoverBusy && Date.now() - handoverAt < 20000) return; handoverBusy = true; handoverAt = Date.now();
-    const target = PAIR[endedK] || "A";
+    let target = PAIR[endedK] || "A";
     const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; }
+    // Stocked rotation (live booth only, owner 2026-10-29): when decks
+    // hold cued queue items (Play the queue, or the refill below), the
+    // next deck in rotation A→B→C→D→A after the ended one that holds a
+    // stocked item goes FIRST — already loaded, so this is play + fade
+    // only, no pick and no load. Each stocked try spends from the same
+    // 4-attempt budget as the pick path below; if no stocked deck
+    // starts, target stays the pair deck and the pick path runs exactly
+    // as before (preload fast-path included).
+    let started = false, attempts = 0;
+    if (!SANDBOX) {
+      let cand = ROT[endedK];
+      for (let step = 0; step < 3 && !started && attempts < 4; step++) {
+        if (qStockValid(cand)) {
+          attempts++;
+          try { await togglePlay(cand); } catch (_) {}
+          started = !!S[cand].playing;
+          if (started) target = cand; else say("⏭ That one would not play — rolling the next.");
+          qStock[cand] = null; // started (record served its purpose) or would not play (record is void)
+        }
+        cand = ROT[cand];
+      }
+    }
     // A preloaded pair deck (loaded during the last 15 seconds, see the
     // booth tick) skips the pick and the load entirely — play and fade only.
     let preItem = null;
@@ -3097,8 +3190,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // burned one item every 20 seconds without making a sound (the
     // 2026-10-28 13:58 dead air: three silent minutes, full queue). A
     // failed start now rolls straight to the next candidate, up to 4.
-    let started = false;
-    for (let attempt = 0; attempt < 4 && !started; attempt++) {
+    for (let attempt = attempts; attempt < 4 && !started; attempt++) {
       const item = attempt === 0 && preItem ? preItem : await pickNextItem();
       if (!item) break;
       if (!(attempt === 0 && preItem)) { saveQueue(); paintQueue(); try { await load(target, item); } catch (_) {} }
@@ -3112,11 +3204,36 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // driver. The stamp lands only on a REAL start — no more horns
       // over silence.
       S.fxHornAt = hornHeard = Date.now(); hornInit = true; hornStab(); // mark heard so an echo of this stamp does not horn again
-      // the crossfade rides the pair's own axis: A/B on S.xf, C/D on S.xf2
-      const cd = target === "C" || target === "D", key = cd ? "xf2" : "xf";
-      const from = S[key] ?? 0.5, to = target === "B" || target === "D" ? 1 : 0, t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
+      // The crossfade: every deck rides its pair fader — A/B on S.xf,
+      // C/D on S.xf2 — toward the value where that deck is full and its
+      // pair mate is silent (xfGain: A and C are full at 0, B and D at
+      // 1). A same-pair handover animates the one shared fader, exactly
+      // as before. A rotation handover across pairs (A ends, C starts)
+      // animates BOTH faders in the same interval: the target's fader
+      // rides to the target's full value while the ended deck's fader
+      // rides to the ended deck's silent value. The other two decks are
+      // not playing during a handover, so their gains moving changes
+      // nothing heard. Afterwards every fader that moved settles back
+      // to center (xfSettle / xfSettleKeys).
+      const fullAt = (k) => (k === "B" || k === "D") ? 1 : 0;
+      const eKey = (endedK === "C" || endedK === "D") ? "xf2" : "xf", tKey = (target === "C" || target === "D") ? "xf2" : "xf";
+      const moves = [{ key: tKey, from: S[tKey] ?? 0.5, to: fullAt(target) }];
+      if (eKey !== tKey) moves.push({ key: eKey, from: S[eKey] ?? 0.5, to: 1 - fullAt(endedK) });
+      const t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
       const touch0 = xfTouchedAt;
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); S[key] = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); xfSettle(key, touch0); } }, 100);
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); moves.forEach((m) => { S[m.key] = m.from + (m.to - m.from) * p; }); levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); if (moves.length === 1) xfSettle(moves[0].key, touch0); else xfSettleKeys(moves.map((m) => m.key), touch0); } }, 100);
+    }
+    // Refill (live booth only): after a successful transition the deck
+    // that just ended takes the next queue draw, cued and stocked, so
+    // the rotation always has somewhere to go. The early-crossfade path
+    // calls in while the ended deck is still flagged playing (its last
+    // seconds are blending out), so when it is, the refill re-checks a
+    // few seconds later once the deck has actually stopped. Every guard
+    // is re-tested at fire time: not playing, not already stocked.
+    if (!SANDBOX && started && queue.length) {
+      const refill = async () => { if (S[endedK].playing || qStockValid(endedK) || !queue.length) return; const itR = drawQueueItem(); if (itR) { await stockDeck(endedK, itR); saveQueue(); paintQueue(); } };
+      if (!S[endedK].playing) await refill();
+      else setTimeout(() => { refill().catch(() => {}); }, 6500);
     }
     handoverBusy = false; save(true);
   }
