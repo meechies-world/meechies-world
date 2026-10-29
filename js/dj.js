@@ -258,7 +258,7 @@
         sh._p = new YT.Player(mountEl, { videoId: vid, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 1 }, events: {
           onReady: (e) => { sh.readyState = 4; try { sh._dur = e.target.getDuration() || 0; const vd = e.target.getVideoData && e.target.getVideoData(); if (vd && onTitle) onTitle(vd.title || "", sh._dur); } catch (_) {} fin(true); },
           onStateChange: (e) => { sh.seeking = false; if (e.data === 0) sh._fire("ended"); if (e.data === 1) { try { sh._dur = sh._p.getDuration() || sh._dur; } catch (_) {} if (sh._rescued) { sh._rescued = false; try { sh._p.unMute(); sh._p.setVolume(Math.round((d.level || 1) * 100)); } catch (_) {} } } },
-          onError: () => fin(false),
+          onError: (e) => { const code = e && e.data; sh._errCode = code; if (code === 100 || code === 101 || code === 150) { sh._locked = true; ageMarkLocked(vid); } fin(false); },
         } });
       } catch (_) { fin(false); }
       setTimeout(() => fin(!!sh._p), 6000);
@@ -1583,6 +1583,33 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const sum = gs.reduce((a, x) => a + x.g, 0) || 1;
     return gs.map((x) => ({ k: x.k, op: Math.max(0.02, x.g / sum) }));
   }
+  /* the booth PUBLISHES the mix (owner, 2026-10-29: "I want to be able
+   * to play the music videos live as well"): in AUTO mode the screens
+   * derive the mix from the deck state, but the shared S.vmix record
+   * itself was only ever written by the manual Cut / Fade / solo
+   * buttons — left on auto it sat at the defaults (a and b empty, at 0)
+   * while a video was on air, so the record every screen stamps its
+   * transitions from claimed no video was playing. The lead booth now
+   * mirrors its own auto computation into the record on the stage
+   * cadence: a = the dominant audible deck, b = the second deck of a
+   * blend with t = its share (the same shape manual mode uses), at
+   * stamped whenever the dominant deck changes, and the record is
+   * cleared when no video deck is on air so every screen falls back
+   * to the standby slate. Manual mode is never touched here. */
+  function vmixPublish() {
+    if (SANDBOX || !OWNER() || !boothLead) return;
+    const vm = S.vmix || {};
+    if (vm.mode === "man") return;
+    const tg = vmixTargets();
+    const a = tg.length ? tg[0].k : "", b = tg.length > 1 ? tg[1].k : "", t = tg.length > 1 ? tg[1].op : 0;
+    if (a !== (vm.a || "") || b !== (vm.b || "")) {
+      S.vmix = { mode: "auto", a, b, t, tr: vm.tr || "fade", trMs: vm.trMs || 650, at: Date.now() };
+      save();
+    } else if (a && Math.abs(t - (+vm.t || 0)) >= 0.05) {
+      S.vmix = { mode: "auto", a, b, t, tr: vm.tr || "fade", trMs: vm.trMs || 650, at: vm.at || 0 };
+      save();
+    }
+  }
   /* one screen player for any video platform: the wrapper speaks the YT-ish
    * surface renderScreen already uses, whatever player is underneath */
   function mkVidPlayer(mountEl, tok, muted, deckK) {
@@ -1713,7 +1740,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function stageApply(mix, duck) {
     if (stageBusy) return; stageBusy = true;
     try {
-      if (OWNER()) { await renderScreen(scrBooth, true, 1, 1); camSync(); const box = $("#st-ytbox"); if (box) box.hidden = true; }
+      if (OWNER()) { vmixPublish(); await renderScreen(scrBooth, true, 1, 1); camSync(); const box = $("#st-ytbox"); if (box) box.hidden = true; }
       else {
         const has = vmixTargets().length > 0, box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
         if (has) await renderScreen(scrView, !listening, listening ? mix : 1, duck);
@@ -2368,7 +2395,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793271800;
+  const MW_DJ_BUILD = 1793271900;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2645,7 +2672,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function guestLiveOn() { try { return sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) { return false; } } // hoisted: the lamp paints before this line runs
   function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const host = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const setId = guest ? ("g" + (S.djGuest.uid || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
   function onState(d) {
-    paintVEdit(); try { paintLiveAlert(); } catch (_) {}
+    try { paintVEdit(); } catch (_) {} try { paintLiveAlert(); } catch (_) {}
     const firstOwnerLoad = OWNER() && !ownerLoaded;
     if (OWNER() && ownerLoaded) {
       // Booth-to-booth sync: my own saves echo back and are ignored, but a save stamped
@@ -2714,7 +2741,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
     d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k);
     paintOwner(); $("#ttl-" + k).textContent = "Loading " + item.title + "...";
-    if (item.yt) { const okY = await d.setYt(item.yt); if (!okY) { say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
+    if (item.yt) { const okY = await d.setYt(item.yt); if (!okY) { if (ageIsLocked(item.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
     const ok = await d.set(item.src);
     if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
     d.el.currentTime = 0; d.el.playbackRate = S[k].rate || 1; if (cueDeck) { try { d.el.pause(); } catch (_) {} } paintOwner(); levels(); save(); anaLater(k);
@@ -2737,7 +2764,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     if (s.playing) { s.pos = d.el.currentTime; s.playing = false; d.el.pause(); }
     else {
-      if (s.yt) { const okY = await d.setYt(s.yt); if (!okY) { say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
+      if (s.yt) { const okY = await d.setYt(s.yt); if (!okY) { if (ageIsLocked(s.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title);
@@ -3045,12 +3072,31 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   let xfAnim = null, adTimer = null, handoverBusy = false, handoverAt = 0, lastEndedK = "A", deadAirAt = 0, preLoad = null, xfTouchedAt = 0;
   const usedPicks = new Set((() => { try { return JSON.parse(localStorage.getItem("mw-dj-usedpicks") || "[]"); } catch (_) { return []; } })());
+  /* YouTube age / embed lock (owner, 2026-10-29: the age walls keep
+   * stopping his videos — he is 36; the wall is YouTube's own and no
+   * site player can prove an age, so the booth stops sitting on it):
+   * when a deck player reports error 100, 101 or 150 (gone, or the
+   * embed / age restriction YouTube documents under 101 and 150), the
+   * video is remembered in a persistent skip-set, automation treats
+   * the deck as a failed start and rolls on, and no draw ever hands
+   * the booth that video again. Only a real player error marks a
+   * video — a slow load never does. */
+  function ageSkipSet() { try { return new Set(JSON.parse(localStorage.getItem("mw-dj-ageskip") || "[]")); } catch (_) { return new Set(); } }
+  function ageMarkLocked(tok) { const vp = vparseTok(tok || ""); if (vp.p !== "yt" || !vp.id) return; const s = ageSkipSet(); if (s.has(vp.id)) return; s.add(vp.id); try { localStorage.setItem("mw-dj-ageskip", JSON.stringify([...s].slice(-300))); } catch (_) {} }
+  function ageIsLocked(tok) { const vp = vparseTok(tok || ""); return vp.p === "yt" && !!vp.id && ageSkipSet().has(vp.id); }
+  const ageSaid = new Set();
+  function ageNote(it) { const id = (it && it.yt) || ""; if (!id || ageSaid.has(id)) return; ageSaid.add(id); say("That video is age-locked by YouTube — it cannot play inside the site, so it is out of the picks for next time."); }
   /* drawQueueItem: ONLY the queue draw out of pickNextItem — the
    * owner's shuffle rule (2026-10-28): pick at random and remove it, so
    * nothing repeats until the queue empties. No listener picks, no
    * pool, no library. The draw mutates the queue array; the caller owns
-   * saveQueue() + paintQueue() afterwards. */
-  function drawQueueItem() { if (!queue.length) return null; const qi = Math.floor(Math.random() * queue.length); return queue.splice(qi, 1)[0]; }
+   * saveQueue() + paintQueue() afterwards. Age-locked videos are drawn
+   * out and dropped instead of returned — the caller's saveQueue() +
+   * paintQueue() upkeep persists the shorter queue. */
+  function drawQueueItem() {
+    while (queue.length) { const qi = Math.floor(Math.random() * queue.length); const it = queue.splice(qi, 1)[0]; if (it && it.yt && ageIsLocked(it.yt)) { ageNote(it); continue; } return it; }
+    return null;
+  }
   /* pickNextItem: what plays next, in the booth's order — a listener pick
    * first (played once, then deleted), then the queue (shuffled: drawn at
    * random and removed, no repeats until it empties), then, with Auto-DJ
@@ -3069,6 +3115,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // The queue SHUFFLES through the decks (owner, 2026-10-28): draw at
     // random and remove the pick, so nothing repeats until the queue is empty.
     if (!item) item = drawQueueItem();
+    if (item && item.yt && ageIsLocked(item.yt)) { ageNote(item); item = null; } // defense in depth: a locked video never leaves this picker, whatever path produced it
     if (!item && !S.autodj) return null;
     if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
     return item;
@@ -3118,7 +3165,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * while the deck is not flagged playing), then record the deck as
    * stocked with this item. */
   async function stockDeck(k, item) {
+    if (item && item.yt && ageIsLocked(item.yt)) { qStock[k] = null; ageNote(item); return; } // a locked video is never stocked
     try { await load(k, item); if (item.yt) { const dp = decks[k]; if (dp) { await dp.setYt(item.yt); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {}
+    if (item && item.yt && decks[k] && decks[k].shim && decks[k].shim._locked) { qStock[k] = null; return; } // it locked while loading cued — do not stock a dead deck
     qStock[k] = { src: item.src || "", yt: item.yt || "" };
   }
   /* Play the queue (owner, 2026-10-29: "Load the next 4 queue songs
@@ -3139,9 +3188,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const it = drawQueueItem(); if (!it) break;
       if (k === "A" && !anyPlaying) {
         try { await load("A", it); await togglePlay("A"); } catch (_) {}
+        if (S.A.playing && decks.A && decks.A.shim && decks.A.shim._locked) { try { decks.A.el.pause(); } catch (_) {} S.A.playing = false; } // age / embed locked: flagged playing but the player can never roll
         if (S.A.playing) startedK = "A";
+        else if (decks.A && decks.A.shim && decks.A.shim._locked) { /* locked on its first load — already out of the queue; never stocked */ }
         else { qStock.A = { src: it.src || "", yt: it.yt || "" }; stocked.push("A"); } // loaded but would not start — leave it stocked cued like the others
-      } else { await stockDeck(k, it); stocked.push(k); }
+      } else { await stockDeck(k, it); if (qStock[k]) stocked.push(k); }
     }
     saveQueue(); paintQueue();
     if (startedK) say("🎶 Queue on the decks — A playing" + (stocked.length ? ", " + stocked.join(" ") + " loaded and ready" : "") + ".");
@@ -3170,11 +3221,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       let cand = ROT[endedK];
       for (let step = 0; step < 3 && !started && attempts < 4; step++) {
         if (qStockValid(cand)) {
-          attempts++;
-          try { await togglePlay(cand); } catch (_) {}
-          started = !!S[cand].playing;
-          if (started) target = cand; else say("⏭ That one would not play — rolling the next.");
-          qStock[cand] = null; // started (record served its purpose) or would not play (record is void)
+          if (ageIsLocked((qStock[cand] || {}).yt || "")) { qStock[cand] = null; } // locked while it sat cued — void the record without spending an attempt; the refill draw replaces it
+          else {
+            attempts++;
+            try { await togglePlay(cand); } catch (_) {}
+            started = !!S[cand].playing;
+            if (started && decks[cand] && decks[cand].shim && decks[cand].shim._locked) { try { decks[cand].el.pause(); } catch (_) {} S[cand].playing = false; started = false; } // age / embed locked: flagged playing, but the player can never roll — a failed start
+            if (started) target = cand; else say("⏭ That one would not play — rolling the next.");
+            qStock[cand] = null; // started (record served its purpose) or would not play (record is void)
+          }
         }
         cand = ROT[cand];
       }
@@ -3182,7 +3237,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // A preloaded pair deck (loaded during the last 15 seconds, see the
     // booth tick) skips the pick and the load entirely — play and fade only.
     let preItem = null;
-    if (preLoad && preLoad.item && preLoad.target === target && (S[target].yt || "") === (preLoad.item.yt || "") && (S[target].src || "") === (preLoad.item.src || "")) { preItem = preLoad.item; preLoad = null; }
+    if (preLoad && preLoad.item && preLoad.target === target && (S[target].yt || "") === (preLoad.item.yt || "") && (S[target].src || "") === (preLoad.item.src || "") && !(preLoad.item.yt && ageIsLocked(preLoad.item.yt))) { preItem = preLoad.item; preLoad = null; }
     // Pick, load, play — then CHECK the deck actually started. One
     // unplayable pick (an embed-blocked video, a player that will not
     // mount in this tab) used to eat the whole transition silently: the
@@ -3196,6 +3251,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (!(attempt === 0 && preItem)) { saveQueue(); paintQueue(); try { await load(target, item); } catch (_) {} }
       try { await togglePlay(target); } catch (_) {}
       started = !!S[target].playing;
+      if (started && decks[target] && decks[target].shim && decks[target].shim._locked) { try { decks[target].el.pause(); } catch (_) {} S[target].playing = false; started = false; } // age / embed locked: flagged playing, but the player can never roll — a failed start, roll on
       if (!started) say("⏭ That one would not play — rolling the next.");
     }
     if (started) {
