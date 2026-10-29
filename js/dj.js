@@ -3283,6 +3283,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     set("#djx-vb", v.b == null ? 1 : v.b); set("#djx-vc", v.c == null ? 1 : v.c); set("#djx-vs", v.s == null ? 1 : v.s); set("#djx-vz", v.z == null ? 1 : v.z);
     txt("#djx-vb-v", Math.round((v.b == null ? 1 : v.b) * 100) + "%"); txt("#djx-vc-v", Math.round((v.c == null ? 1 : v.c) * 100) + "%"); txt("#djx-vs-v", Math.round((v.s == null ? 1 : v.s) * 100) + "%"); txt("#djx-vz-v", Math.round((v.z == null ? 1 : v.z) * 100) + "%"); };
   function paintOwner() {
+    try { ahEnsure(); } catch (_) {}
     document.querySelectorAll("[data-vmix]").forEach((x) => x.classList.toggle("on", x.dataset.vmix === "auto" && (!S.vmix || S.vmix.mode === "auto")));
     document.querySelectorAll("[data-vsrc]").forEach((x) => x.classList.toggle("on", !!S.vmix && S.vmix.mode === "man" && S.vmix.a === x.dataset.vsrc && !S.vmix.b));
     document.querySelectorAll("[data-vtr]").forEach((x) => x.classList.toggle("on", ((S.vmix && S.vmix.tr) || "fade") === x.dataset.vtr));
@@ -3535,7 +3536,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272900;
+  const MW_DJ_BUILD = 1793273000;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -4029,6 +4030,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (b.dataset.ytqueue != null) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a video link first — then tap ＋Q."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } queue.push({ src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }); } else queue.push({ yt: item.yt, src: "", title: item.title || "Video", cover: item.cover || "", dur: 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + (item.title || "video")); return; }
     if (b.dataset.vqueue != null) { const it = vRes[+b.dataset.vqueue]; if (!it) return; if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } queue.push({ src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }); } else { const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; queue.push({ yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); } saveQueue(); paintQueue(); say("🎶 Queued: " + it.title); return; }
     if (b.dataset.freequeue != null) { const [kind, ix] = b.dataset.freequeue.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (it) { queue.push({ src: it.src, yt: "", title: it.t, cover: it.cover, dur: it.dur || 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + it.t); } return; }
+    if (b.dataset.ahload != null) { ahLoadShelf(+b.dataset.ahload); return; }
+    if (b.dataset.ahput) { const [dk, si, ix] = b.dataset.ahput.split(":"), it = (ahCache[+si] || [])[+ix]; if (!it) return; load(dk, { yt: it.id, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; }
+    if (b.dataset.ahqueue != null) { const [si, ix] = b.dataset.ahqueue.split(":"), it = (ahCache[+si] || [])[+ix]; if (!it) return; queue.push({ yt: it.id, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + it.title); return; }
     if (b.dataset.qact) { const a = b.dataset.qact;
       if (a === "clear") { queue = []; saveQueue(); paintQueue(); say("Queue cleared."); }
       else if (a === "open") { plOpen = !plOpen; paintPlaylists(); }
@@ -4685,6 +4689,54 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (ev) ev.innerHTML = FREE_MEDIA.videos.map((it, i) => row(it, i, "v")).join("");
   }
   paintFree();
+  /* ---------- AFTER HOURS (owner booth only, 2026-10-29) ----------
+   * The late-night shelf: curated YouTube searches for the newest
+   * explicit versions, one tap from the decks. It rides the booth
+   * video search path (ytSearch over the Invidious mirrors) and the
+   * exact load/queue plumbing of the video results, so the age-skip
+   * machinery covers it untouched: the player marks a locked video
+   * (errors 100/101/150) into mw-dj-ageskip, load() speaks the
+   * one-time notice and skips it, and the queue picker never draws
+   * a locked video. The panel is created lazily by ahEnsure() from
+   * the booth paint, and only for the real owner: SANDBOX is a
+   * parse-time const, so the member Playground DOM never contains
+   * this shelf at all, and a member mirror never builds it either. */
+  const AH_SHELVES = [
+    { label: "🔥 NEW RAP — EXPLICIT", q: "new rap songs explicit version" },
+    { label: "🎤 NEW HIP-HOP SINGLES — EXPLICIT", q: "new hip hop single explicit version" },
+    { label: "💜 NEW R&B — EXPLICIT", q: "new r&b songs explicit version" },
+    { label: "🎬 EXPLICIT MUSIC VIDEOS", q: "explicit version official music video" }
+  ];
+  const ahCache = {}, ahBusy = {};
+  function paintAhShelf(s) {
+    const box = document.getElementById("ah-list-" + s); if (!box) return;
+    if (ahBusy[s]) { box.innerHTML = '<small class="muted">Searching YouTube...</small>'; return; }
+    const res = ahCache[s];
+    if (res === null) { box.innerHTML = '<small class="muted">Search is being stubborn right now — tap Load to try again.</small>'; return; }
+    if (!res) { box.innerHTML = '<small class="muted">Tap Load to pull the latest.</small>'; return; }
+    box.innerHTML = res.length ? res.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:15px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">YouTube${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-ahput="${dk}:${s}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-ahqueue="${s}:${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") : '<small class="muted">Nothing came back for this shelf right now — tap Load to try again.</small>';
+  }
+  async function ahLoadShelf(s) {
+    if (ahBusy[s]) return; const def = AH_SHELVES[s]; if (!def) return;
+    ahBusy[s] = true; paintAhShelf(s);
+    const r = await ytSearch(def.q);
+    ahBusy[s] = false;
+    ahCache[s] = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })) : null;
+    paintAhShelf(s);
+  }
+  function ahEnsure() {
+    if (SANDBOX || !OWNER()) return; // real owner only — the Playground and member mirrors never build this shelf
+    if (document.getElementById("dj-afterhours")) return;
+    const g2 = boothEl && boothEl.querySelector(".dj-grid2"); if (!g2) return;
+    const p = document.createElement("div"); p.className = "dj-panel"; p.id = "dj-afterhours";
+    p.innerHTML = "<h4>🌙 AFTER HOURS</h4>"
+      + "<small class='muted' style='display:block;margin:2px 0 4px'>Your late-night shelf: the newest explicit versions, straight from YouTube search. A deck letter loads the video on that table, ＋Q lines it up. Booth only — nobody else ever sees this shelf. A video YouTube age-locks is skipped on its own, same as everywhere else here.</small>"
+      + AH_SHELVES.map((sh, s) => `<b style="font-size:12px;letter-spacing:.1em;display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 4px"><span>${sh.label}</span><button class="btn ghost sm" type="button" data-ahload="${s}">↻ Load</button></b><div class="dj-list" id="ah-list-${s}" style="max-height:300px"><small class="muted">Tap Load to pull the latest.</small></div>`).join("");
+    g2.appendChild(p);
+    try { foldPanels(); } catch (_) {}
+    try { const h = p.querySelector("h4"); const label = h ? h.textContent.trim().slice(0, 26) : "Studio panel"; ckReg(p, "panel-" + label.replace(/[^a-z0-9]+/gi, "-").toLowerCase(), label); ckPaint(); } catch (_) {}
+    ahLoadShelf(0);
+  }
   /* ---------- Video search everywhere: YouTube (Invidious mirrors, no key)
    * and Internet Archive videos (no key). Dailymotion was taken off
    * 2026-10-28 (owner's call): no search tab, no new loads — the "dm:<id>"
