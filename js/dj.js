@@ -445,6 +445,11 @@ html{scrollbar-gutter:stable}
 .micmeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#45bd62,#f7b928,#e5484d);transition:width .08s}
 .dj-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px;margin-top:14px}
 .dj-panel{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
+#dj-door .door-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #2a2418;font-size:14px;flex-wrap:wrap}
+#dj-door .door-row.new{animation:doornew 1.6s ease-in-out 2}
+@keyframes doornew{50%{background:rgba(240,207,120,.16)}}
+#dj-door .door-row small{color:var(--muted);white-space:nowrap}
+#dj-door .door-acts{display:flex;gap:6px;flex-wrap:wrap}
 .dj-panel h4{margin:0;font:800 12px var(--body);letter-spacing:.16em;color:var(--gold-hi)}
 .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .pad{padding:20px 8px;border-radius:12px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font:700 12px var(--body);cursor:pointer}
@@ -1041,6 +1046,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="ticker" id="st-ticker" hidden><span id="st-ticker-t"></span></div>
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
+  <div id="st-host" style="font-size:13.5px;font-weight:700;color:#ff8b8f" hidden></div>
   <div id="st-battle" hidden></div>
   <div id="st-show"></div>
   <button class="bobig" type="button" data-bobtn>🌑 BLACKOUT MODE — screen goes black, music keeps playing</button>
@@ -1212,6 +1218,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <div class="dj-panel"><h4>📜 PROGRAM LOG</h4><div class="loglist" id="dj-log"></div>
       <label style="display:grid;gap:4px;font-size:12px;color:var(--muted)">Station ticker (shows on the station card for everyone)<input type="text" id="dj-ticker-in" maxlength="140" placeholder="e.g. Taking requests all night — drop yours below!"></label>
       <button class="btn ghost sm" type="button" id="dj-ticker-set" style="justify-self:start">Set ticker</button></div>
+    <div class="dj-panel" id="dj-door"><h4>🚪 THE DOOR</h4><div class="dj-list" id="door-list" style="max-height:280px"><small class="muted">Watching the door — people who come on the site while your booth is open land here.</small></div><small class="muted" style="display:block;margin-top:6px">👋 Greet welcomes them on their own screen. 🎙 Shout calls their name out over the station for the whole room.</small></div>
   </div>
 </div>`;
   // the booth moves into its own DJ view — its own section, nothing but DJing
@@ -3323,6 +3330,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     const gN = S.djGuest && S.djGuest.until > Date.now() ? gName(S.djGuest) : null;
     $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
+    const stHost = $("#st-host"); // HOST MODE: the room can see the host is in — same booth-fresh window the keeper trusts (90s), and never while a guest DJ holds the tables
+    if (stHost) { const hosting = !SANDBOX && live && !gN && (Date.now() - (S.boothAt || 0) < 90000); if (stHost._h !== hosting) { stHost._h = hosting; stHost.hidden = !hosting; if (hosting) stHost.textContent = "🔴 Meechie is in the booth — hosting live"; } }
     const stShow = $("#st-show");
     const showSig = S.show ? String(S.show.url || "") + "|" + (+S.show.at || 0) + "|" + (S.show.video ? "v" : "a") : ""; // only rebuild the recorded-show block when the show record itself changes — the old code destroyed and recreated its media element on every state echo
     if (stShow && stShow._showSig !== showSig) { stShow._showSig = showSig; stShow.innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? "<b style=\"font-size:13px;letter-spacing:.1em\">" + (S.show.video ? "🎬 LATEST SESSION VIDEO" : "🎙️ LATEST RECORDED SHOW") + "</b>" + (S.show.video ? "<video controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px;border-radius:10px;background:#000\"></video>" : "<audio controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px\"></audio>") + "<small class=\"muted\">Recorded " + new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + "</small>" : ""; }
@@ -3428,6 +3437,67 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the header chip, the booth top bar and the station card
   let myCid = ""; try { myCid = sessionStorage.getItem("mw-cid") || ""; if (!myCid) { myCid = rid(); sessionStorage.setItem("mw-cid", myCid); } } catch (_) { myCid = rid(); }
   let onlineN = 0;
+  /* ---------- HOST MODE: the door (owner, 2026-10-29) ----------
+   * While his booth is open, Malik hosts a live room: this feed names
+   * everyone who walks in while he is hosting. The source is the presence
+   * the keeper ping already paints below — signed-in members arrive as
+   * MW_ONLINE_USERS entries (uid + the name their own ping reported), and
+   * guests arrive as MW_GUESTS count deltas (the keeper deliberately
+   * stores no guest identities, so a guest is a count going up by one).
+   * While the booth is closed the same paints quietly absorb the room, so
+   * opening the booth never dumps everyone who was already here — only
+   * arrivals from that moment on are announced. The seen-set persists in
+   * sessionStorage, so a booth refresh does not re-alert the room either;
+   * the very first paint of a tab seeds it silently for the same reason. */
+  const doorRows = []; let doorSeen = new Set(), doorGuestBase = -1, doorPrimed = false, doorSig = "", shoutCoolUntil = 0;
+  try { const d0 = JSON.parse(sessionStorage.getItem("mw-door-seen") || "null"); if (d0 && Array.isArray(d0.u)) { doorSeen = new Set(d0.u.filter((x) => typeof x === "string")); doorGuestBase = Math.max(0, +d0.g || 0); } } catch (_) {}
+  const doorPersist = () => { try { sessionStorage.setItem("mw-door-seen", JSON.stringify({ u: [...doorSeen].slice(-80), g: Math.max(0, doorGuestBase) })); } catch (_) {} };
+  const doorOpen = () => { if (!OWNER() || SANDBOX) return false; const oe = document.getElementById("dj-owner"); return !!(oe && oe.offsetParent !== null); };
+  const doorRel = (at) => { const s = Math.max(0, Math.round((Date.now() - at) / 1000)); if (s < 8) return "just now"; if (s < 60) return s + "s ago"; const m = Math.round(s / 60); if (m < 60) return m + "m ago"; return Math.round(m / 60) + "h ago"; };
+  function doorBlip() { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const o = c.createOscillator(), g = c.createGain(); o.type = "sine"; o.frequency.setValueAtTime(880, c.currentTime); o.frequency.setValueAtTime(1320, c.currentTime + 0.12); g.gain.setValueAtTime(0.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(0.15, c.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.5); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.55); setTimeout(() => c.close(), 800); } catch (_) {} }
+  function doorPaint() {
+    const box = document.getElementById("door-list"); if (!box) return;
+    const cool = Date.now() < shoutCoolUntil;
+    const sig = doorRows.map((r) => r.key + (r.greeted ? "g" : "") + (r.shouted ? "s" : "") + doorRel(r.at)).join(",") + "|" + (cool ? "c" : "");
+    if (sig === doorSig) return; doorSig = sig;
+    box.innerHTML = doorRows.length ? doorRows.map((r) => `<div class="door-row${r.fresh ? " new" : ""}"><span>🔔 <b>${E(r.name)}</b> <small>came in · ${doorRel(r.at)}</small></span><span class="door-acts"><button class="btn sm" type="button" data-door-greet="${r.key}"${r.greeted ? " disabled" : ""}>${r.greeted ? "👋 Greeted" : "👋 Greet"}</button><button class="btn ghost sm" type="button" data-door-shout="${r.key}"${cool || r.shouted ? " disabled" : ""}>🎙 Shout</button></span></div>`).join("") : '<small class="muted">Watching the door — people who come on the site while your booth is open land here.</small>';
+    doorRows.forEach((r) => { r.fresh = false; });
+  }
+  function doorAdd(row) { doorRows.unshift(row); while (doorRows.length > 12) doorRows.pop(); doorPaint(); doorBlip(); }
+  function doorPing(users) {
+    const list = Array.isArray(users) ? users : [];
+    const guests = (typeof window.MW_GUESTS === "number" && isFinite(window.MW_GUESTS)) ? window.MW_GUESTS : 0;
+    const nowIds = new Set(list.map((u) => u && u.uid).filter(Boolean));
+    if (!doorPrimed) { doorPrimed = true; nowIds.forEach((id) => doorSeen.add(id)); if (doorGuestBase < 0) doorGuestBase = guests; doorPersist(); return; }
+    if (!doorOpen()) { // booth closed or stale: absorb the room quietly — nobody is announced for a room he is not hosting
+      nowIds.forEach((id) => doorSeen.add(id)); [...doorSeen].forEach((id) => { if (!nowIds.has(id)) doorSeen.delete(id); }); doorGuestBase = guests; doorPersist(); return;
+    }
+    const myUid = (window.MW && MW.session && MW.session() && MW.session().user && MW.session().user.id) || "";
+    list.forEach((u) => { if (!u || !u.uid || u.uid === myUid || doorSeen.has(u.uid)) return; doorSeen.add(u.uid); const nm = String(u.name || (typeof members !== "undefined" && members && members[u.uid] && members[u.uid].handle) || "A member").slice(0, 40); doorAdd({ key: rid(), uid: u.uid, name: nm, call: nm, at: Date.now(), greeted: false, shouted: false, fresh: true }); });
+    [...doorSeen].forEach((id) => { if (!nowIds.has(id)) doorSeen.delete(id); }); // left: if they walk in again, the door announces them again
+    if (doorGuestBase >= 0 && guests > doorGuestBase) { for (let i = 0; i < guests - doorGuestBase; i++) doorAdd({ key: rid(), uid: null, name: "A guest", call: "friend", at: Date.now(), greeted: false, shouted: false, fresh: true }); }
+    doorGuestBase = guests; doorPersist(); doorPaint();
+  }
+  async function doorGreet(row) {
+    if (!row || row.greeted) return; row.greeted = true; doorPaint();
+    const d = DB(); if (!d) { row.greeted = false; doorPaint(); say("That greeting could not send — no connection."); return; }
+    // owner-gated by the doc rules themselves: the greet carries from:"host",
+    // and the server only lets a post carry a from that is the writer — so no
+    // member can forge one, and only the admin write lands as the host.
+    try { await d.doc("greets/" + (row.uid || ("g" + row.key))).set({ to: row.uid || "guest", name: row.name, text: "Welcome in, " + row.call + " — request a song at the station 🎧", at: Date.now(), from: "host" }); say("👋 You greeted " + row.name + " — it lands on their screen."); }
+    catch (_) { row.greeted = false; doorPaint(); say("That greeting did not go through — try again."); }
+  }
+  function doorShout(row) {
+    if (!row || Date.now() < shoutCoolUntil) return;
+    shoutCoolUntil = Date.now() + 20000; row.shouted = true;
+    // the one and only voice-drop channel: S.voice as text, the same shape
+    // the automated station drops use — every listening client speaks it
+    // through playVoice/dropSpeak, booth included. No parallel TTS path.
+    S.voice = { id: "shout-" + Date.now(), text: "Welcome in, " + row.call + ", to Meechie's World!", at: Date.now() };
+    save(true); doorPaint(); say("🎙 You shouted out " + row.name + " over the station.");
+    setTimeout(() => doorPaint(), 20100);
+  }
+  { const dl = document.getElementById("door-list"); if (dl && !dl._doorW) { dl._doorW = 1; dl.addEventListener("click", (e) => { const g = e.target.closest("[data-door-greet]"), s2 = e.target.closest("[data-door-shout]"); const k = g ? g.dataset.doorGreet : s2 ? s2.dataset.doorShout : ""; if (!k) return; const row = doorRows.find((r) => r.key === k); if (!row) return; if (g) doorGreet(row); else doorShout(row); }); } }
   function paintOnline(o, l, users) {
     // ONE presence list for the whole site: when the keeper answers with the
     // signed-in members who are on right now, that list is the count everywhere
@@ -3448,6 +3518,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const o2 = document.getElementById("dj-online2"); if (o2) o2.textContent = "🟢 " + n + " online · 🎧 " + l;
     const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + n + " on the site" : n + " on the site right now";
     const li = document.getElementById("listeners"); if (li) li.textContent = l + " listening";
+    try { doorPing(users); } catch (_) {} // HOST MODE: the same paint feeds the booth door
   }
   const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
     fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) clockOff = clockOff * 0.7 + (j.now - Date.now()) * 0.3; if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users); }).catch(() => {}); };
@@ -3464,7 +3535,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272800;
+  const MW_DJ_BUILD = 1793272900;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };

@@ -121,7 +121,7 @@ async function boot(){
     $("#members").innerHTML = list.length ? list.map(d=>`<div>${avatarOf(d.id)}<span><b>${esc(d.data().handle)}</b><br><small class="muted">${esc(d.data().bio||"Member")}</small></span>${d.id!==me?`<button class="act dm-btn" type="button" data-dm="${d.id}">Message</button>`:""}</div>`).join("") : '<p class="muted" style="margin:0;font-size:14px">Members show up here when they join.</p>';
     renderFeed(); renderAds(); renderMsgs();
   }, err=>console.warn(err));
-  subFeed(); subAds(); subChannel("lounge"); joinRoom(); subLive(); subGifts(); enterWorld();
+  subFeed(); subAds(); subChannel("lounge"); joinRoom(); subLive(); subGifts(); subGreets(); enterWorld();
   subRadio(); subCreators(); subGames(); window._subEq && window._subEq();
   if(isOwner){ $("#announce-opt").hidden=false; assets=await claude.use("assets"); $("#uploader").hidden=!assets; }
 }
@@ -176,6 +176,39 @@ $("#gift-form").addEventListener("submit",async e=>{ e.preventDefault();
   catch(err){ toast(err.message||err.code); }
 });
 function subGifts(){ db.collection("gifts").orderBy("createdAt","desc").limit(300).onSnapshot(s=>{giftLog=s.docs.map(d=>d.data()); renderGifts();}, e=>console.warn(e)); }
+/* ---------- host greetings (owner, 2026-10-29): greeted at the door ----------
+ * When Meechie taps Greet in his booth, a doc lands on the greets shelf
+ * addressed to one visitor (member uid, or a guest arrival id). Every
+ * client watches that one small shelf on the change feed the site already
+ * runs — no polling of its own — and shows the line once, as a personal
+ * banner from the host. Member greets match by uid exactly and are marked
+ * seen for good. Guest greets are claimed by arrival time: a guest only
+ * sees one written within 3 minutes of their own arrival this session,
+ * and at most one per session — the keeper keeps no guest identities, so
+ * this window is what aims the greeting at the person who just walked in.
+ * Anything older than 10 minutes is ignored, greeted or not. */
+function subGreets(){
+  if(window._greetsOn) return; window._greetsOn=true;
+  const css=document.createElement("style"); css.textContent="#mw-greet{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--tabbar,0px) + 76px + env(safe-area-inset-bottom,0px));z-index:9996;max-width:min(92vw,520px);background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid var(--gold,#f0cf78);color:#ffe9b0;border-radius:14px;padding:12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.6);font:600 14.5px var(--body);display:flex;gap:10px;align-items:center}#mw-greet button{flex:0 0 auto}"; document.head.appendChild(css);
+  let myArr=0; try{ myArr=+sessionStorage.getItem("mw-greet-arr")||0; if(!myArr){ myArr=Date.now(); sessionStorage.setItem("mw-greet-arr",String(myArr)); } }catch(_){ myArr=Date.now(); }
+  const mSeen=()=>{ try{ return +localStorage.getItem("mw-greet-seen-m")||0; }catch(_){ return 0; } };
+  const gSeen=()=>{ try{ return JSON.parse(sessionStorage.getItem("mw-greet-gseen")||"{\"ids\":[],\"done\":0}"); }catch(_){ return {ids:[],done:0}; } };
+  const showGreet=(g)=>{
+    if(document.getElementById("mw-greet")) return false;
+    const el=document.createElement("div"); el.id="mw-greet"; el.setAttribute("role","status");
+    const sp=document.createElement("span"); sp.textContent="🔴 Meechie, your host: "+String(g.text||"Welcome in!"); el.appendChild(sp);
+    const b=document.createElement("button"); b.type="button"; b.className="btn sm"; b.textContent="🎧 Thanks!"; b.addEventListener("click",()=>el.remove()); el.appendChild(b);
+    document.body.appendChild(el); setTimeout(()=>{ try{ el.remove(); }catch(_){} }, 20000);
+    return true;
+  };
+  db.collection("greets").orderBy("at","desc").limit(20).onSnapshot(s=>{
+    const now=Date.now();
+    for(const d of s.docs){ const g=d.data()||{}; if(g.from!=="host"||!g.at||now-g.at>600000) continue;
+      if(me){ if(d.id!==me) continue; if(mSeen()>=g.at) continue; if(showGreet(g)){ try{ localStorage.setItem("mw-greet-seen-m",String(g.at)); }catch(_){} } }
+      else { if(g.to!=="guest") continue; const gs=gSeen(); if(gs.done||gs.ids.includes(d.id)) continue; if(g.at<myArr||g.at-myArr>180000) continue; if(showGreet(g)){ gs.ids.push(d.id); gs.done=g.at; try{ sessionStorage.setItem("mw-greet-gseen",JSON.stringify(gs)); }catch(_){} } }
+    }
+  }, ()=>{});
+}
 function renderGifts(){ if(!giftLog.length) return;
   $("#gift-feed").innerHTML=giftLog.slice(0,12).map(g=>{const G=GIFTS.find(x=>x[0]===g.kind)||GIFTS[0]; return `<div><span style="font-size:18px">${G[1]}</span> <b>${esc(handleOf(g.from))}</b> → <b>${esc(handleOf(g.to))}</b>${g.note?` <span class="muted">“${esc(g.note)}”</span>`:""}</div>`;}).join(""); }
 
