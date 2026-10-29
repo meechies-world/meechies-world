@@ -681,7 +681,7 @@ html.popdj .popdj-hint{display:block}
    back when the listener locks the phone and returns, or presses any key
    on a computer — tapping the black screen does nothing, by design. A website cannot reach the phones real brightness
    control — pure black is the closest thing the web is allowed to do. */
-#dj-blackout{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:9999;display:grid;place-items:center;cursor:none;overscroll-behavior:none}
+#dj-blackout{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:9999;display:grid;place-items:center;cursor:none;overscroll-behavior:none;touch-action:none}
 #dj-blackout:fullscreen,#dj-blackout:-webkit-full-screen{width:100%;height:100%}
 #dj-blackout[hidden]{display:none}
 #dj-blackout span{color:#9a9a9a;font:600 13px var(--body);letter-spacing:.08em;opacity:.4;transition:opacity 1.4s ease 2.4s;pointer-events:none}
@@ -1318,12 +1318,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * (a fullscreen drop while hidden still feeds that dismissal) and any
    * key on a desktop. Tapping the black screen does nothing. */
   document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && document.hidden && boOn) boLockOff = true; });
+  /* Input shield (owner, 2026-10-28 night: "when you touch the screen on
+   * black out mode it makes the song skip — I want the screen protected
+   * like its locked"): while blackout is on, every pointer, touch, click
+   * and wheel event dies right here at capture, before any other handler
+   * can see it — above all the listener tap-rescue (tapStart), which used
+   * to re-sync every deck on any tap and audibly skip the song. This is
+   * registered ONCE, here in the blackout section, which always runs
+   * before startListening ever adds tapStart, so the shield sits earlier
+   * in the capture chain and stopImmediatePropagation starves the rest.
+   * Keydown is deliberately NOT shielded: any key stays the desktop exit,
+   * and the phone exit stays lock-and-return. */
+  ["pointerdown", "pointerup", "touchstart", "touchend", "click", "dblclick", "contextmenu", "wheel"].forEach((t) => document.addEventListener(t, (e) => { if (!boOn) return; e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }, { capture: true, passive: false }));
   /* Any key exits blackout (owner, 2026-10-28 — a desktop has no tap):
    * the same exit path as tapping. The listener only acts while blackout
    * is on; with blackout off, keypresses pass through untouched. */
   document.addEventListener("keydown", () => { if (boOn) blackout(false); });
   function blackout(on) {
     boOn = !!on;
+    window.MW_BLACKOUT = boOn; // app-core reads this: its autoplay rescue stays out while the screen is locked down
     if (boOn) {
       if (!boEl) { boEl = document.createElement("div"); boEl.id = "dj-blackout"; boEl.innerHTML = "<span>Playing in the dark — your screen comes back when you lock your phone and come back in · any key on a computer</span>"; document.body.appendChild(boEl); }
       boEl.hidden = false; boEl.classList.remove("bo-dim"); void boEl.offsetWidth; boEl.classList.add("bo-dim");
@@ -2406,7 +2419,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      the radio failing silently. */
   function pokeScreens() { try { [scrView, scrMini].forEach((scr) => { if (scr) scr.slots.forEach((sl) => { if (sl.p && sl.deck) { try { if (sl.p.unMute) sl.p.unMute(); if (sl.p.playVideo) sl.p.playVideo(); } catch (_) {} } }); }); } catch (_) {} }
   function decksStuck() { return DECKS.some((k) => { const s = S[k], d = decks[k]; return s && s.playing && !s.yt && d && !d.shim && d.el && d.el.paused && d.el.readyState >= 3; }); }
-  function tapStart() { if (!listening) return; if (decksStuck()) DECKS.forEach((k) => follow(k)); pokeScreens(); }
+  function tapStart() { if (boOn) return; if (!listening) return; if (decksStuck()) DECKS.forEach((k) => follow(k)); pokeScreens(); }
   function checkStuck() { if (listening && decksStuck()) say("👆 Your phone held the sound back — tap anywhere on the page and the radio starts."); }
   function startListening() {
     try { sessionStorage.removeItem("mw_mini_off"); } catch (_) {}

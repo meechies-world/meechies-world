@@ -705,6 +705,7 @@ async function autoRadio(){
   catch(_){
     showRadioNote();
     const go=e=>{
+      if(window.MW_BLACKOUT) return; // blackout is up (dj.js sets the flag): a touch on the locked screen must not restart or skip anything
       if(e.target.closest && e.target.closest("#radio-note button,#player-bar,#tune-in,#mw-bar,#ai-panel,input,textarea,select,#dj-root,#world-radio,#v-videos,.htt-grid,#v-clips,#tracks,iframe,video,a[href],.lv-card,#scene")) return;
       document.removeEventListener("pointerdown",go,true); document.removeEventListener("keydown",go,true); hideRadioNote();
       if(radioSnoozed() || (mode && mode!=="radio") || (mode==="radio" && !media.paused)) return;
