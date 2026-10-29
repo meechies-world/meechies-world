@@ -1827,7 +1827,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (midiLearnKey) { const f = MIDI_FUNCS.find((x) => x[0] === midiLearnKey); if (!f) { midiLearnKey = null; return; } if (f[1] === "btn" && isNote) midiMap[midiLearnKey] = { t: "note", n, ch }; else if (f[1] === "knob" && isCc) midiMap[midiLearnKey] = { t: "cc", n, ch }; else if (f[1] === "jog" && isCc) midiMap[midiLearnKey] = { t: "jog", n, ch }; else return; midiLearnKey = null; midiSaveMap(); midiPaintList(); midiStat("Learned — that control now owns: " + f[2] + ". Learn another row, or just play."); midiLed(); return; }
     for (const key in midiMap) { const b = midiMap[key]; if (!b || b.ch !== ch || b.n !== n) continue; const f = MIDI_FUNCS.find((x) => x[0] === key); if (!f) continue;
       if (b.t === "note") { if (key === "talk") { const tk = document.getElementById("dj-talk"); if (tk) tk.dispatchEvent(new PointerEvent(isNote ? "pointerdown" : "pointerup", { bubbles: true })); continue; } if (!isNote) continue; if (key.indexOf("play") === 0) midiClick("[data-play=\"" + key.slice(4) + "\"]"); else if (key.indexOf("cue") === 0) midiClick("[data-cue0=\"" + key.slice(3) + "\"]"); else if (key.indexOf("brake") === 0) midiClick("[data-brake=\"" + key.slice(5) + "\"]"); setTimeout(midiLed, 60); continue; }
-      if (b.t === "cc" && isCc) { if (key === "xf") { S.xf = v / 127; paintXfPads(); levels(); save(); continue; } if (f[3]) { midiSetSlider(f[3], v / 127); midiDirty(); } continue; }
+      if (b.t === "cc" && isCc) { if (key === "xf") { xfTouchedAt = Date.now(); S.xf = v / 127; paintXfPads(); levels(); save(); continue; } if (f[3]) { midiSetSlider(f[3], v / 127); midiDirty(); } continue; }
       if (b.t === "jog" && isCc) { const k = key.slice(3), d = deck(k); if (!d || !d.el) continue; const delta = v < 64 ? v : v - 128; if (!delta) continue; try { const nt = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, (d.el.currentTime || 0) + delta * 0.03)); d.el.currentTime = nt; if (S[k].playing) S[k].start = Date.now() - nt * 1000; else S[k].pos = nt; } catch (_) {} midiDirty(); continue; }
     } }
   async function midiEnable() { if (!navigator.requestMIDIAccess) { midiStat("This browser can't do Web MIDI — controllers work in Chrome or Edge on a computer or Android. (Safari and iPhone don't support it; that's Apple's limit, not the site's.)"); return; } try { midiAcc = await navigator.requestMIDIAccess(); const hook = () => { midiAcc.inputs.forEach((i) => { i.onmidimessage = onMidiMsg; }); const names = []; midiAcc.inputs.forEach((i) => { if (i.name) names.push(i.name); }); midiStat(names.length ? "Connected: " + names.join(", ") + " — tap LEARN on a row, then move the control that should own it." : "MIDI is on but no controller was found. Plug it in by USB and it shows up here automatically."); midiLed(); }; midiAcc.onstatechange = hook; hook(); } catch (_) { midiStat("MIDI permission was blocked — allow it in the browser's site settings, then tap Enable again."); } }
@@ -2222,6 +2222,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (!deadAirAt) deadAirAt = Date.now();
       if (Date.now() - deadAirAt > 5000) { if (handoverBusy && Date.now() - handoverAt >= 6000) handoverBusy = false; if (!handoverBusy) autoNext(lastEndedK, true); }
     } else deadAirAt = 0;
+    xfFollowGuard();
     if (listening) DECKS.forEach((k) => follow(k));
     // the booth's master screen re-renders on the same heartbeat the listeners
     // get — slots start at opacity 0 and only a render pass raises them, so a
@@ -2281,7 +2282,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793271573;
+  const MW_DJ_BUILD = 1793271600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2814,14 +2815,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // ONE pan dot for all four decks: left/right rides both crossfaders together,
   // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
-    const center = () => { S.xf = 0.5; S.xf2 = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
-    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.xf = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf2 = S.xf; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
+    const center = () => { xfTouchedAt = Date.now(); S.xf = 0.5; S.xf2 = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
+    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.xf = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf2 = S.xf; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
     pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = true; try { pad.setPointerCapture(e.pointerId); } catch (_) {} apply(e); e.preventDefault(); });
     pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
     pad.addEventListener("pointerup", () => { if (drag) { drag = false; save(true); } });
     pad.addEventListener("pointercancel", () => { drag = false; });
     pad.addEventListener("dblclick", () => { if (OWNER()) center(); });
-    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { S.xf = Math.max(0, S.xf - st); S.xf2 = S.xf; } else if (e.key === "ArrowRight") { S.xf = Math.min(1, S.xf + st); S.xf2 = S.xf; } else if (e.key === "ArrowUp") { S.panY = Math.max(-1, (S.panY || 0) - st); } else if (e.key === "ArrowDown") { S.panY = Math.min(1, (S.panY || 0) + st); } else return; paintXfPads(); levels(); save(); e.preventDefault(); });
+    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { S.xf = Math.max(0, S.xf - st); S.xf2 = S.xf; } else if (e.key === "ArrowRight") { S.xf = Math.min(1, S.xf + st); S.xf2 = S.xf; } else if (e.key === "ArrowUp") { S.panY = Math.max(-1, (S.panY || 0) - st); } else if (e.key === "ArrowDown") { S.panY = Math.min(1, (S.panY || 0) + st); } else return; xfTouchedAt = Date.now(); paintXfPads(); levels(); save(); e.preventDefault(); });
     const cb = $("#dj-pan-center"); if (cb) cb.addEventListener("click", () => { if (OWNER()) center(); });
   })();
   // touch the waveform to jump the song there: tap a spot to play from it, or drag
@@ -2953,7 +2954,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     return null;
   }
-  let xfAnim = null, adTimer = null, handoverBusy = false, handoverAt = 0, lastEndedK = "A", deadAirAt = 0, preLoad = null;
+  let xfAnim = null, adTimer = null, handoverBusy = false, handoverAt = 0, lastEndedK = "A", deadAirAt = 0, preLoad = null, xfTouchedAt = 0;
   const usedPicks = new Set((() => { try { return JSON.parse(localStorage.getItem("mw-dj-usedpicks") || "[]"); } catch (_) { return []; } })());
   /* pickNextItem: what plays next, in the booth's order — a listener pick
    * first (played once, then deleted), then the queue (shuffled: drawn at
@@ -2976,6 +2977,32 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!item && !S.autodj) return null;
     if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
     return item;
+  }
+  /* Crossfader home (owner, 2026-10-29: "keep it centered... or make it
+     follow whats playing automatically"): the fader RESTS at center. After
+     an automated blend lands on a side, xfSettle eases it back to 0.5; and
+     xfFollowGuard (booth tick, Auto-DJ on only) walks it back to center
+     whenever a playing deck is left faded out (gain under 0.2 — the state
+     that reads as "music aint playing"). His hand always wins: pad, arrow
+     keys and MIDI all stamp xfTouchedAt — a blend that began after his
+     last touch never settles, and the guard stands down for 8s a touch. */
+  function xfSettle(key, touch0) {
+    if (xfTouchedAt > (touch0 || 0)) return;
+    const from = S[key] ?? 0.5; if (Math.abs(from - 0.5) < 0.01) return;
+    const t0 = performance.now();
+    clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 2200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+  }
+  function xfFollowGuard() {
+    if (!OWNER() || !boothLead || !S.autodj || xfAnim || Date.now() - xfTouchedAt < 8000) return;
+    [["xf", "A", "B"], ["xf2", "C", "D"]].forEach(([key, a, b]) => {
+      if (xfAnim) return;
+      const pa = !!S[a].playing, pb = !!S[b].playing;
+      if (pa === pb) return;
+      const k = pa ? a : b, x = S[key] ?? 0.5;
+      if (xfGain(x, k === "B" || k === "D" ? "B" : "A") >= 0.2) return;
+      const from = x, t0 = performance.now();
+      xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 1200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+    });
   }
   async function autoNext(endedK, force, fadeMs) {
     if ((!S.autodj && !force) || !boothLead) return;
@@ -3015,7 +3042,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // the crossfade rides the pair's own axis: A/B on S.xf, C/D on S.xf2
       const cd = target === "C" || target === "D", key = cd ? "xf2" : "xf";
       const from = S[key] ?? 0.5, to = target === "B" || target === "D" ? 1 : 0, t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
-      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); S[key] = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+      const touch0 = xfTouchedAt;
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); S[key] = from + (to - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); xfSettle(key, touch0); } }, 100);
     }
     handoverBusy = false; save(true);
   }
