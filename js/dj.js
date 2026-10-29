@@ -991,6 +991,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
 #dj-booth-root #dj-owner .platter{border-color:#45454c}
 #dj-booth-root #dj-owner .platter::before{background:repeating-conic-gradient(from 0deg,rgba(235,235,240,.85) 0deg 2deg,transparent 2deg 10deg)}
+/* BOOTH POLISH (owner scroll report, 2026-10-29): the booth performance
+   surfaces hand vertical drags back to the page (pan-y), so a scroll that
+   starts on a deck scrolls instead of stealing the song; horizontal drags
+   still perform (the JS handlers gate on horizontal intent). Scoped to
+   #dj-owner so the Watch mirror keeps its own behavior. */
+#dj-owner .platter{touch-action:pan-y}
+#dj-owner .xfpad{touch-action:pan-y}
+#dj-owner .deck .wave{touch-action:pan-y}
+/* LIVE ALERT: the buttons get their own flex row so a phone can stack the
+   pill into a compact card instead of ballooning (owner screenshot,
+   2026-10-29: the pill stretched huge and clipped Tune in down to UN). */
+#dj-livealert .la-btns{display:flex;gap:8px;align-items:center}
+@media (max-width:760px){#dj-livealert{flex-direction:column;align-items:stretch;gap:7px;border-radius:18px;padding:9px 10px;width:min(94vw,430px)}
+#dj-livealert .la-txt{white-space:nowrap;text-align:center}
+#dj-livealert .la-btns{gap:6px;width:100%}
+#dj-livealert .la-btns .btn{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-left:4px;padding-right:4px;font-size:12px}
+#dj-livealert .la-btns #la-x{flex:0 0 auto}}
 /* ===== SETUP UPGRADE (owner: "Upgrade my set up", 2026-10-26) — pro-size jog
    wheels on desktop/tablet, a true performance-pad grid in the cue section with
    deck-colored glow, stronger spin glow, and a metal finish for the setups row.
@@ -1258,7 +1275,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the mini master screen: one floating rectangle on every page, so the live
   // music video follows viewers around the whole site (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
-  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go(vsBroadcast() && !(S.vstream || {}).hidden ? "mwtv" : "radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
+  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go(vsBroadcast() && !(S.vstream || {}).hidden ? "mwtv" : "radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
   if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; try { if (window.MW_vsDismiss) window.MW_vsDismiss(); } catch (_) {} });
     // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
     // "make the music video screen moveable") — drag it anywhere; the spot is
@@ -4881,7 +4898,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274300;
+  const MW_DJ_BUILD = 1793274400;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -5663,10 +5680,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
     const center = () => { xfTouchedAt = Date.now(); S.xf = 0.5; S.xf2 = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
     const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.xf = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf2 = S.xf; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
-    pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = true; try { pad.setPointerCapture(e.pointerId); } catch (_) {} apply(e); e.preventDefault(); });
-    pad.addEventListener("pointermove", (e) => { if (drag) apply(e); });
-    pad.addEventListener("pointerup", () => { if (drag) { drag = false; save(true); } });
-    pad.addEventListener("pointercancel", () => { drag = false; });
+    // scroll gate (owner, 2026-10-29): a press applies nothing until the
+    // gesture proves it is a fader move — horizontal travel of 8px or more,
+    // more sideways than vertical. A vertical scroll starting on the pad is
+    // the page scroll (pan-y) and a pointercancel drops the press untouched;
+    // a clean tap applies the tapped point on release.
+    let pend = null;
+    pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; pend = { x: e.clientX, y: e.clientY, id: e.pointerId }; e.preventDefault(); });
+    pad.addEventListener("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const dx = e.clientX - pend.x, dy = e.clientY - pend.y; if (Math.abs(dx) >= 8 && Math.abs(dx) > Math.abs(dy)) { drag = true; try { pad.setPointerCapture(pend.id); } catch (_) {} apply(e); pend = null; } return; } if (drag) apply(e); });
+    pad.addEventListener("pointerup", (e) => { if (pend) { pend = null; apply(e); save(true); return; } if (drag) { drag = false; save(true); } });
+    pad.addEventListener("pointercancel", () => { pend = null; drag = false; });
     pad.addEventListener("dblclick", () => { if (OWNER()) center(); });
     pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { S.xf = Math.max(0, S.xf - st); S.xf2 = S.xf; } else if (e.key === "ArrowRight") { S.xf = Math.min(1, S.xf + st); S.xf2 = S.xf; } else if (e.key === "ArrowUp") { S.panY = Math.max(-1, (S.panY || 0) - st); } else if (e.key === "ArrowDown") { S.panY = Math.min(1, (S.panY || 0) + st); } else return; xfTouchedAt = Date.now(); paintXfPads(); levels(); save(); e.preventDefault(); });
     const cb = $("#dj-pan-center"); if (cb) cb.addEventListener("click", () => { if (OWNER()) center(); });
@@ -5682,10 +5705,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       try { d.el.currentTime = t; } catch (_) {}
       if (S[k].playing) S[k].start = Date.now() - t * 1000; else S[k].pos = t;
       paintCues(k); peaks(k); };
-    cv.addEventListener("pointerdown", (e) => { if (!OWNER()) return; scrub = true; try { cv.setPointerCapture(e.pointerId); } catch (_) {} seekTo(e); e.preventDefault(); });
-    cv.addEventListener("pointermove", (e) => { if (scrub) seekTo(e); });
-    cv.addEventListener("pointerup", () => { if (scrub) { scrub = false; save(true); } });
-    cv.addEventListener("pointercancel", () => { scrub = false; });
+    // scroll gate (owner, 2026-10-29): the wave no longer seeks on
+    // touch-down — the seek waits until the gesture proves deliberate
+    // (horizontal travel of 8px or more, more sideways than vertical), then
+    // seeks to the current pointer spot and scrubs on as before. A vertical
+    // scroll starting on the wave just scrolls the page (pan-y) and a
+    // pointercancel abandons the press; a clean tap still seeks, on release.
+    let pend = null;
+    cv.addEventListener("pointerdown", (e) => { if (!OWNER()) return; pend = { x: e.clientX, y: e.clientY, id: e.pointerId }; e.preventDefault(); });
+    cv.addEventListener("pointermove", (e) => { if (pend && !scrub) { if (!e.buttons) { pend = null; return; } const dx = e.clientX - pend.x, dy = e.clientY - pend.y; if (Math.abs(dx) >= 8 && Math.abs(dx) > Math.abs(dy)) { scrub = true; try { cv.setPointerCapture(pend.id); } catch (_) {} seekTo(e); pend = null; } return; } if (scrub) seekTo(e); });
+    cv.addEventListener("pointerup", (e) => { if (pend) { pend = null; seekTo(e); save(true); return; } if (scrub) { scrub = false; save(true); } });
+    cv.addEventListener("pointercancel", () => { pend = null; scrub = false; });
   });
   $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
     // Auto-DJ is the station's play method: if nothing is playing it starts the rotation itself,
@@ -5719,11 +5749,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const grainStart = (k) => { const d = deck(k), c = ctx; if (!c || !masterIn || grainSess || !d || d.shim) return; const buf = bufCache.get(d.src); if (!buf) return; try { const bus = c.createGain(); bus.gain.value = 0; bus.connect(d.gain || masterIn); bus.gain.setTargetAtTime(1, c.currentTime, 0.03); grainSess = { k, bus, timer: setInterval(() => { const dd = deck(k); if (!dd) return; const pos = dd.el.currentTime || 0, vel = Math.max(0.35, Math.min(2, Math.abs(dd.scrVel || 0) || 0.8)); const g = c.createBufferSource(); g.buffer = buf; g.playbackRate.value = vel; const e = c.createGain(), t = c.currentTime; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(0.85, t + 0.02); e.gain.linearRampToValueAtTime(0, t + 0.1); g.connect(e); e.connect(bus); try { g.start(t, Math.max(0, Math.min(buf.duration - 0.15, pos))); g.stop(t + 0.12); } catch (_) {} }, 25) }; } catch (_) {} };
   const grainStop = () => { if (!grainSess) return; const s = grainSess; grainSess = null; clearInterval(s.timer); try { s.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.03); setTimeout(() => { try { s.bus.disconnect(); } catch (_) {} }, 200); } catch (_) {} };
   DECKS.forEach((k) => {
-    const pl = () => $("#pl-" + k); let drag = null;
-    onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; drag = { x: e.clientX, t: performance.now(), at: performance.now(), pos: deck(k).el.currentTime || 0, was: !deck(k).el.paused }; deck(k).el.pause(); scratchBed(); deckBuffer(k).then(() => { if (drag) grainStart(k); }); if (bufCache.has(deck(k).src)) grainStart(k); e.preventDefault(); });
-    onMainRaw("pointermove", (e) => { if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * JOGF)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; d.scrVel = (d.scrVel || 0) * 0.55 + (Math.abs(dx * JOGF) / (dt / 1000)) * 0.45; scratchSound(dx / dt); });
-    onMainRaw("pointerup", () => { if (!drag) return; grainStop(); scratchStop(); const d = deck(k); if (drag.was && d.slip) { const sh = drag.pos + (performance.now() - drag.at) / 1000 * (S[k].rate || 1); try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} } if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
-    onMainRaw("pointercancel", () => { if (!drag) return; grainStop(); scratchStop(); drag = null; });
+    const pl = () => $("#pl-" + k); let drag = null, pend = null;
+    // scroll gate (owner, 2026-10-29): the platter no longer pauses on
+    // touch-down — a press only arms the scratch, and the scratch (pause,
+    // grain, noise bed) starts when the gesture proves deliberate:
+    // horizontal travel of 8px or more, more sideways than vertical. A
+    // vertical scroll starting on the platter scrolls the page (pan-y) and
+    // pointercancel drops the armed press with nothing started. A clean tap
+    // left no trace before either (down paused, up resumed at the same spot,
+    // slip shadow included — the song ends up where it would have played
+    // to), so a gated tap simply does nothing.
+    const beginScratch = (e) => { drag = { x: e.clientX, t: performance.now(), at: performance.now(), pos: deck(k).el.currentTime || 0, was: !deck(k).el.paused }; deck(k).el.pause(); scratchBed(); deckBuffer(k).then(() => { if (drag) grainStart(k); }); if (bufCache.has(deck(k).src)) grainStart(k); };
+    onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; pend = { x: e.clientX, y: e.clientY }; e.preventDefault(); });
+    onMainRaw("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const pdx = e.clientX - pend.x, pdy = e.clientY - pend.y; if (Math.abs(pdx) >= 8 && Math.abs(pdx) > Math.abs(pdy)) { beginScratch(e); pend = null; } else return; } if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * JOGF)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; d.scrVel = (d.scrVel || 0) * 0.55 + (Math.abs(dx * JOGF) / (dt / 1000)) * 0.45; scratchSound(dx / dt); });
+    onMainRaw("pointerup", () => { if (pend) { pend = null; return; } if (!drag) return; grainStop(); scratchStop(); const d = deck(k); if (drag.was && d.slip) { const sh = drag.pos + (performance.now() - drag.at) / 1000 * (S[k].rate || 1); try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} } if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
+    onMainRaw("pointercancel", () => { pend = null; if (!drag) return; grainStop(); scratchStop(); drag = null; });
   });
   // deck ended -> owner bookkeeping + Auto-DJ
   // dead-air guard: a deck that runs out (or stalls at the end) while the station is
