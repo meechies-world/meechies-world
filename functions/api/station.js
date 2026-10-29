@@ -226,6 +226,14 @@ export async function onRequestGet({ request, env }) {
   // past the end of the video forever, which sounds like skipping. Park it.
   let parked = false;
   for (const k of ["C", "D"]) { const dk = S[k]; if (dk && dk.playing) { const dur = +dk.dur || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
+  // Park an orphaned A/B deck (2026-10-29): the rotation loop below picks A
+  // first as cur, so a B->A crossfade leaves B flagged playing past its end
+  // forever — once A starts, cur is A, A's own end is far off, and B is never
+  // visited again, so clients chase B's ended video (skipping) under the live
+  // deck. An A->B handoff self-cleans because A stays cur until its end, but
+  // park either side symmetrically: a deck past its timeline cannot still be
+  // playing, and the 30s grace keeps the 5s blend itself untouched.
+  for (const k of ["A", "B"]) { const dk = S[k]; if (dk && dk.playing) { const dur = durOf(dk) || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
     if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
     return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
