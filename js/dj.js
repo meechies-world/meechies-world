@@ -627,6 +627,23 @@ html.popdj .popdj-hint{display:block}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
 .vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
 .vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
+/* CAMERA SQUARE (owner, 2026-10-29): his webcam sits in a square beside the
+   master video on the BOOTH screen only — the slots scoot over by exactly the
+   square (the stage height), and turning the cam off removes .cam-on so the
+   layout is byte-for-byte the way it was. Viewers' station/mini stages never
+   get .cam-on: there is no camera path to their screens. */
+#dj-vstage .vslot{transition:opacity .12s linear,right .45s ease}
+#dj-vstage .vstandby{transition:right .45s ease}
+#dj-vstage.cam-on .vslot{right:var(--camw,0px)}
+#dj-vstage.cam-on .vstandby{right:var(--camw,0px)}
+#dj-camwrap{position:absolute;right:0;top:0;height:100%;aspect-ratio:1/1;z-index:4;display:none;background:#000}
+#dj-vstage.cam-on #dj-camwrap{display:block}
+#dj-camvid{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);border:2px solid var(--gold,#f0cf78);box-sizing:border-box;display:block;background:#0a0a0c}
+#dj-camwrap.novid #dj-camvid{display:none}
+#dj-camph{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);font:600 12px var(--body);text-align:center;padding:10px;border:2px solid var(--gold,#f0cf78);box-sizing:border-box}
+#dj-camwrap.novid #dj-camph{display:grid}
+#dj-camtag{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo,#8a6d2f);color:#f0cf78;border-radius:999px;padding:2px 8px;font:800 10.5px var(--body);letter-spacing:.08em;z-index:5}
+#dj-camwrap.novid #dj-camtag{display:none}
 /* VIDEO TRANSITIONS + VIDEO FX (owner, 2026-10-28): discrete master-screen
    switches animate the incoming slot (wrapper only - the player inside is
    never reloaded, so the picture cannot lose its place against the sound);
@@ -995,13 +1012,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
-    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button></div>
+    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button></div>
   <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
     <small>📺 MASTER SCREEN — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
-    <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div></div>
-    <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
+    <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span></div></div>
+    <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
   </div>
   <div class="dj-panel" id="dj-edit">
     <h4>🎬 VIDEO &amp; AUDIO EDITING</h4>
@@ -1466,6 +1483,60 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     } catch (_) { if (bubVidEl) { try { bubVidEl.removeEventListener("leavepictureinpicture", bubVidLeft); } catch (__) {} bubVidEl = null; } }
     bubPage();
   };
+  /* CAMERA SQUARE (owner, 2026-10-29): the 📷 Cam button in the master-screen
+   * controls cuts his webcam on beside the booth master video — the picture
+   * scoots over by the square and comes back untouched when the cam goes off.
+   * The stream lives in the lead booth tab whose button was tapped (that tap
+   * is the user gesture getUserMedia wants); S.vcam is the shared switch, so
+   * his other booth screens follow the layout, and a lead tab that finds the
+   * cam on without a stream tries once to start its own — permission may
+   * already be granted — and otherwise shows a placeholder in the square.
+   * Booth screen ONLY: the station and mini stages are never touched. */
+  let camStream = null, camBusy = false, camFailAt = 0;
+  function camEls() { return { st: document.getElementById("dj-vstage"), wrap: document.getElementById("dj-camwrap"), vid: document.getElementById("dj-camvid"), btn: document.getElementById("dj-cambtn") }; }
+  function camSize() { const st = camEls().st; if (st) { const h = st.clientHeight || 0; if (h > 0) st.style.setProperty("--camw", h + "px"); } }
+  function camStopLocal() { if (camStream) { try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {} camStream = null; } const vid = camEls().vid; if (vid) { try { vid.srcObject = null; } catch (_) {} } }
+  async function camStartLocal() {
+    if (camStream) return true;
+    if (camBusy) return false;
+    camBusy = true;
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      camStream = s;
+      const e = camEls();
+      if (e.vid) { e.vid.srcObject = s; try { await e.vid.play(); } catch (_) {} }
+      if (e.wrap) e.wrap.classList.remove("novid");
+      return true;
+    } catch (_) { return false; }
+    finally { camBusy = false; }
+  }
+  function camSync() {
+    try {
+      const e = camEls(); if (!e.st) return;
+      if (e.btn) e.btn.style.display = SANDBOX ? "none" : "";
+      const on = !SANDBOX && OWNER() && !!(S.vcam && S.vcam.on);
+      if (e.btn) { e.btn.classList.toggle("on", on); const lbl = on ? "📷 Cam · ON" : "📷 Cam"; if (e.btn.textContent !== lbl) e.btn.textContent = lbl; }
+      e.st.classList.toggle("cam-on", on);
+      if (!on) { camStopLocal(); return; }
+      camSize();
+      if (e.wrap) e.wrap.classList.toggle("novid", !camStream);
+      if (boothLead && !camStream && !camBusy && Date.now() - camFailAt > 20000) {
+        camStartLocal().then((ok) => { if (!ok) { camFailAt = Date.now(); const w = camEls().wrap; if (w) w.classList.add("novid"); } });
+      }
+    } catch (_) {}
+  }
+  async function camToggle() {
+    if (SANDBOX || !OWNER()) return;
+    if (!boothLead) { say("📷 The camera runs on the screen that is driving the booth — make this screen the driver first, then tap Cam."); return; }
+    if (S.vcam && S.vcam.on) { S.vcam = { on: false, at: Date.now() }; camSync(); save(true); say("📷 Camera off — the master screen is back to full width."); return; }
+    const ok = await camStartLocal();
+    if (!ok) { say("📷 Camera blocked — allow camera for this site, then tap Cam again."); return; }
+    camFailAt = 0;
+    S.vcam = { on: true, at: Date.now() };
+    camSync(); save(true);
+    say("📷 Camera is ON — it sits beside the master video on your booth screen.");
+  }
+  addEventListener("resize", () => { try { if (S.vcam && S.vcam.on) camSize(); } catch (_) {} });
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
@@ -1627,7 +1698,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function stageApply(mix, duck) {
     if (stageBusy) return; stageBusy = true;
     try {
-      if (OWNER()) { await renderScreen(scrBooth, true, 1, 1); const box = $("#st-ytbox"); if (box) box.hidden = true; }
+      if (OWNER()) { await renderScreen(scrBooth, true, 1, 1); camSync(); const box = $("#st-ytbox"); if (box) box.hidden = true; }
       else {
         const has = vmixTargets().length > 0, box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
         if (has) await renderScreen(scrView, !listening, listening ? mix : 1, duck);
@@ -2282,7 +2353,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793271600;
+  const MW_DJ_BUILD = 1793271700;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2542,12 +2613,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 } }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, vcam: { on: false, at: 0 } }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
     m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, m.vmix || {});
     if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
     m.vmix.trMs = Math.max(250, Math.min(1600, +m.vmix.trMs || 650)); m.vmix.at = +m.vmix.at || 0;
     m.vfx = Object.assign({ kind: "", at: 0 }, m.vfx || {});
+    m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0;
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     return m;
   }
@@ -2671,6 +2743,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (b.dataset.vtr) { S.vmix = Object.assign({}, S.vmix || {}, { tr: b.dataset.vtr }); paintOwner(); save(true); say("\uD83D\uDCFA Video transition: " + b.dataset.vtr.toUpperCase() + " - it dresses the next master-screen switch on every screen."); return; }
       S.vmix = Object.assign({}, S.vmix || {}, { trMs: +b.dataset.vspd || 650 }); paintOwner(); save(true); say("\uD83D\uDCFA Video transition speed set."); return;
     }
+    if (b.dataset.cam != null) { camToggle(); return; }
     if (b.dataset.vmix || b.dataset.vsrc) {
       const ytDecks = () => DECKS.filter((k) => S[k].yt && S[k].playing).sort((x, y) => stageGain(y) - stageGain(x));
       // every discrete switch keeps the chosen transition + speed and stamps
