@@ -12,6 +12,7 @@
  * gap where nobody was listening. Writes are rare: only on an advance, or a light
  * updatedAt touch so clients keep reading the station as live. */
 import { userFrom } from "../../lib/cf.js";
+import { encrypt, vapid } from "./push.js";
 
 const XF = 5; // crossfade lead in seconds: the next song starts this long before the current one ends, so the two are audibly playing together with no pause (Malik, 2026-10-28: widened from 3.5; the booth lead in dj.js matches)
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
@@ -33,6 +34,46 @@ async function writeDoc(env, path, coll, data) {
   await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", path, coll, null, null, Date.now()).run();
 }
 
+const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
+const BELL_WINDOW = 120000; // at most one doorbell push per two minutes
+/* The DOORBELL (owner, 2026-10-29): when the presence block below spots a
+ * genuine new arrival, ring the owner's phones with a Web Push. The
+ * subscriptions live in docs (coll "pushsubs"), written only by
+ * /api/push/subscribe after it checks the owner session. The VAPID private
+ * half never leaves the Pages secrets: VAPID_PRIVATE_KEY if it is ever set,
+ * otherwise the VAPID_PRIVATE the message notifications already use — one
+ * keypair serves the whole site (its public half is in js/push.js), because
+ * a browser registration holds ONE push subscription and two keypairs
+ * would make the doorbell and the message notifications fight over it.
+ * The two-minute window is claimed in the site/doorbell doc BEFORE
+ * sending, so a burst of arrivals lands as one ring; arrivals inside the
+ * window are covered by the in-site cards and the 10-minute phone alert.
+ * A subscription the push service reports gone (404/410) is pruned with
+ * its changes row. Everything here is best-effort: the caller wraps the
+ * call, and no failure in this function may ever break the station ping. */
+async function doorbell(env, name, online, now) {
+  const d = env.VAPID_PRIVATE_KEY || env.VAPID_PRIVATE;
+  if (!d) return;
+  const rows = await env.DB.prepare("select path, data from docs where coll = 'pushsubs'").all();
+  const subs = [];
+  for (const r of (rows.results || [])) { try { const s = JSON.parse(r.data); if (s && /^https:\/\//.test(s.endpoint || "") && s.keys && s.keys.p256dh && s.keys.auth) subs.push({ path: r.path, endpoint: s.endpoint, keys: s.keys }); } catch (_) {} }
+  if (!subs.length) return; // nobody to ring yet: leave the window unstamped
+  const state = await readDoc(env, "site/doorbell");
+  if (state && now - (+state.last || 0) < BELL_WINDOW) return;
+  await writeDoc(env, "site/doorbell", "site", { last: now });
+  const data = { title: "🚪 Meechie's World", body: name + " just came in — " + Math.max(1, online || 1) + " on now", url: "/", tag: "doorbell" };
+  await Promise.all(subs.map(async (s) => {
+    try {
+      const body = await encrypt(JSON.stringify(data), s.keys.p256dh, s.keys.auth);
+      const r = await fetch(s.endpoint, { method: "POST", headers: { authorization: await vapid(s.endpoint, d), "content-encoding": "aes128gcm", "content-type": "application/octet-stream", ttl: "86400", urgency: "high" }, body, signal: AbortSignal.timeout(6000) });
+      if (r.status === 404 || r.status === 410) {
+        await env.DB.prepare("delete from docs where path = ?").bind(s.path).run();
+        await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", s.path, "pushsubs", null, null, Date.now()).run();
+      }
+    } catch (_) {}
+  }));
+}
+
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const now = Date.now();
@@ -50,6 +91,24 @@ export async function onRequestGet({ request, env }) {
     try { await env.DB.prepare("alter table pings add column uid text").run(); } catch (_) {}
     try { await env.DB.prepare("alter table pings add column name text").run(); } catch (_) {}
     try { await env.DB.prepare("alter table pings add column first integer").run(); } catch (_) {}
+    // DOORBELL arrival spotting, checked BEFORE the upsert below lands:
+    // a cid with no fresh ping row is someone landing right now. A member
+    // counts only when no other fresh ping already carries their uid (a
+    // second tab is not a second arrival); the owner never counts, signed
+    // in as himself or not — his own uid is the one thing the ping carries
+    // that he cannot be rung about.
+    let bellName = null;
+    if (cid) {
+      try {
+        const prev = await env.DB.prepare("select cid from pings where cid = ? and at > ?").bind(cid, now - 45000).first();
+        if (!prev) {
+          if (pu && pu !== OWNER_ID) {
+            const elsewhere = await env.DB.prepare("select cid from pings where uid = ? and at > ? limit 1").bind(pu, now - 35000).first();
+            if (!elsewhere) bellName = (pn || "A member").slice(0, 40);
+          } else if (!pu) bellName = "A guest";
+        }
+      } catch (_) {}
+    }
     if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
     await env.DB.prepare("delete from pings where at < ?").bind(now - 45000).run();
     const row = await env.DB.prepare("select count(*) as n, coalesce(sum(listening), 0) as l from pings where at > ?").bind(now - 35000).first();
@@ -59,6 +118,11 @@ export async function onRequestGet({ request, env }) {
     counts.users = [];
     try { const ur = await env.DB.prepare("select uid, name, max(at) as at, min(first) as since from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); counts.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "", since: r.since || 0 })); } catch (_) {}
     try { const gr = await env.DB.prepare("select min(first) as f from pings where at > ? and (uid is null or uid = '')").bind(now - 35000).first(); counts.guestSince = (gr && gr.f) || 0; } catch (_) {}
+    // ring the doorbell for the arrival spotted above — counts.online now
+    // includes the person who just landed, which is the number the push
+    // quotes. Fully wrapped: the ping answers the same whether or not the
+    // ring goes through.
+    if (bellName) { try { await doorbell(env, bellName, counts.online, now); } catch (_) {} }
   } catch (_) {}
   let S = await readDoc(env, "radio/dj");
   if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });

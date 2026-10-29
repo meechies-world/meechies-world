@@ -1266,7 +1266,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <div class="dj-panel"><h4>📜 PROGRAM LOG</h4><div class="loglist" id="dj-log"></div>
       <label style="display:grid;gap:4px;font-size:12px;color:var(--muted)">Station ticker (shows on the station card for everyone)<input type="text" id="dj-ticker-in" maxlength="140" placeholder="e.g. Taking requests all night — drop yours below!"></label>
       <button class="btn ghost sm" type="button" id="dj-ticker-set" style="justify-self:start">Set ticker</button></div>
-    <div class="dj-panel" id="dj-door"><h4>🚪 THE DOOR</h4><div class="dj-list" id="door-list" style="max-height:280px"><small class="muted">Watching the door — people who come on the site while your booth is open land here.</small></div><small class="muted" style="display:block;margin-top:6px">👋 Greet welcomes them on their own screen. 🎙 Shout calls their name out over the station for the whole room.</small></div>
+    <div class="dj-panel" id="dj-door"><h4>🚪 THE DOOR</h4><div class="dj-list" id="door-list" style="max-height:280px"><small class="muted">Watching the door — people who come on the site while your booth is open land here.</small></div><small class="muted" style="display:block;margin-top:6px">👋 Greet welcomes them on their own screen. 🎙 Shout calls their name out over the station for the whole room.</small><div class="door-row" style="margin-top:8px"><span>🔔 <b>Doorbell</b> <small id="door-bell-state">a push to your phone the second someone lands</small></span><span class="door-acts"><button class="btn sm" type="button" id="door-bell">🔔 Turn on</button></span></div></div>
   </div>
 </div>`;
   // the booth moves into its own DJ view — its own section, nothing but DJing
@@ -4840,6 +4840,60 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (arrGuests >= 0 && guests > arrGuests && !quiet) arrNotice(guests - arrGuests === 1 ? "👋 A guest just came in" : "👋 " + (guests - arrGuests) + " guests just came in");
     arrGuests = guests; arrPersist();
   }
+  /* ---------- The Doorbell: instant push to the owner's phone ----------
+   * One tap, by design (owner, 2026-10-29): permission, then the browser's
+   * Web Push subscription is stored server-side by /api/push/subscribe —
+   * which accepts the owner's session only — and the station keeper rings
+   * it the moment a new arrival pings in. The VAPID public key below is
+   * the same one the message notifications use (js/push.js): one keypair
+   * serves the whole site, because a browser registration holds a single
+   * push subscription and a second keypair would fight the first over it.
+   * If this browser already holds a subscription (say from message
+   * notifications), it is reused as-is and simply also stored in the
+   * doorbell book. Turning off deletes only the doorbell copy; the browser
+   * subscription itself, and message notifications riding it, stay exactly
+   * as they were. The on/off paint comes from the server's subscription
+   * count (bellSync), never from a device-local guess. */
+  const BELL_KEY = "BPnls3Sbq3c1oSaHwXsjglIB9kGQiaGu19QySLHMrqX0kpjEAbUd7OZYhi9ZYM8WwOCrOczZ3f1jn4GMUNmFQCQ";
+  const bellTok = () => { const s = (window.MW && MW.session && MW.session()) || null; return (s && s.access_token) || ""; };
+  const bellKeyBytes = () => { const s = BELL_KEY.replace(/-/g, "+").replace(/_/g, "/"), p = "=".repeat((4 - (s.length % 4)) % 4); return Uint8Array.from(atob(s + p), (c) => c.charCodeAt(0)); };
+  let bellOn = false, bellBusy = false;
+  function bellPaint() {
+    const b = document.getElementById("door-bell"), st = document.getElementById("door-bell-state");
+    if (b) { b.textContent = bellBusy ? "🔔 Working…" : bellOn ? "🔕 Turn off" : "🔔 Turn on"; b.disabled = bellBusy; }
+    if (st && !bellBusy) st.textContent = bellOn ? "ON — your phone rings the second someone lands" : "a push to your phone the second someone lands";
+  }
+  async function bellSync() {
+    if (!OWNER() || SANDBOX) return;
+    try { const r = await fetch("/api/push/subscribe", { headers: { authorization: "Bearer " + bellTok() }, cache: "no-store" }); const j = await r.json(); if (j && j.ok) { bellOn = (j.subs || 0) > 0; bellPaint(); } } catch (_) {}
+  }
+  async function bellToggle() {
+    if (bellBusy || !OWNER() || SANDBOX) return;
+    const tok = bellTok(); if (!tok) { say("Sign in as Meechie first."); return; }
+    bellBusy = true; bellPaint();
+    try {
+      if (bellOn) {
+        const reg = await navigator.serviceWorker.register("/sw.js").catch(() => null);
+        const sub = reg && (await reg.pushManager.getSubscription().catch(() => null));
+        if (sub) await fetch("/api/push/subscribe", { method: "DELETE", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ endpoint: sub.endpoint }) });
+        bellOn = false; say("🔕 Doorbell off — your phone will not ring for arrivals.");
+      } else {
+        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) { say("This browser can't do push notifications."); bellBusy = false; bellPaint(); return; }
+        if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !matchMedia("(display-mode: standalone)").matches && !navigator.standalone) { say("On iPhone: tap Share, Add to Home Screen, open Meechie's World from there, then tap Turn on."); bellBusy = false; bellPaint(); return; }
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") { say("Notifications are blocked — allow them in your browser settings."); bellBusy = false; bellPaint(); return; }
+        const reg = await navigator.serviceWorker.register("/sw.js"); await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bellKeyBytes() });
+        const r = await fetch("/api/push/subscribe", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ subscription: sub.toJSON() }) });
+        const j = await r.json().catch(() => null);
+        if (!r.ok || !j || !j.ok) throw new Error((j && j.error) || ("HTTP " + r.status));
+        bellOn = true; say("🔔 Doorbell on — your phone rings the second someone lands.");
+      }
+    } catch (e) { say("Doorbell did not switch: " + (e.message || e)); }
+    bellBusy = false; bellPaint();
+  }
+  { const bb = document.getElementById("door-bell"); if (bb && !bb._bellW) { bb._bellW = 1; bb.addEventListener("click", bellToggle); bellPaint(); bellSync(); } }
   async function doorGreet(row) {
     if (!row || row.greeted) return; row.greeted = true; doorPaint();
     const d = DB(); if (!d) { row.greeted = false; doorPaint(); say("That greeting could not send — no connection."); return; }
@@ -4898,7 +4952,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274400;
+  const MW_DJ_BUILD = 1793274600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
