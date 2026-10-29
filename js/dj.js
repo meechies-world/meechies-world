@@ -385,7 +385,7 @@
   let lastBaseAt = 0, leadTakeAt = 0, padSentAt = 0;
   const leadFresh = () => !!(S && S.leadTab && Date.now() - (S.leadAt || 0) < 20000);
   const serverMirror = () => leadFresh() && S.leadTab !== tabId;
-  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking) { if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; /* GO LIVE STUDIO liveness (2026-10-29): while THIS tab is the stream publisher, every save that already flows re-stamps the switch — liveness must not depend on one interval in one tab */ try { if (typeof vsPub !== "undefined" && vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) S.vstream.at = Date.now(); } catch (_) {} const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking) { if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
@@ -641,6 +641,15 @@ html.popdj .popdj-hint{display:block}
 .capbig.on{background:#e5484d;color:#fff;border-color:#e5484d}
 .vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
 .vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
+/* OBS STUDIO strip (2026-10-29): the crop controls for a live screen share,
+   one bar under the booth master stage, shown only while THIS tab is sharing */
+#dj-studio{margin-top:8px;border:1px solid var(--gold-lo);border-radius:10px;padding:8px 10px;background:rgba(0,0,0,.35)}
+#dj-studio .studio-hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:700 12px var(--body);letter-spacing:.05em;color:#f0cf78}
+#dj-studio .studio-hd .muted{color:var(--muted);font-weight:600;letter-spacing:0}
+#dj-studio .studio-sl{display:flex;gap:14px;flex-wrap:wrap;margin-top:7px}
+#dj-studio .studio-sl label{display:flex;gap:6px;align-items:center;font:600 12px var(--body);color:var(--text)}
+#dj-studio .studio-sl input[type=range]{width:110px;accent-color:#f0cf78}
+#dj-studio .studio-sl span{min-width:34px;color:#f0cf78;font-weight:700}
 /* CAMERA SQUARE (owner, 2026-10-29): his webcam sits in a square beside the
    master video on the BOOTH screen only — the slots scoot over by exactly the
    square (the stage height), and turning the cam off removes .cam-on so the
@@ -1071,6 +1080,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-screen" id="dj-screen">
     <small>📺 MASTER SCREEN — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
     <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span><div id="dj-cambanner" hidden></div></div><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="mw-sharp" x="-10%" y="-10%" width="120%" height="120%"><feConvolveMatrix id="mw-sharp-k" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" preserveAlpha="true"/></filter><filter id="mw-duo" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 1 0"/><feComponentTransfer><feFuncR type="table" tableValues="0.043 0.941"/><feFuncG type="table" tableValues="0.035 0.812"/><feFuncB type="table" tableValues="0.027 0.471"/></feComponentTransfer></filter></defs></svg></div>
+    <div id="dj-studio" hidden><div class="studio-hd"><b>🎬 STUDIO — CROP YOUR SCREEN</b><span class="muted">what you frame here is exactly what everyone sees</span><span style="flex:1"></span><button class="btn ghost sm" type="button" data-studiofit>🖼 Frame: Fit</button><button class="btn ghost sm" type="button" data-studioreset>Reset crop</button></div><div class="studio-sl"><label>Left <input type="range" min="0" max="45" step="1" value="0" data-crop="l"><span data-cropv="l">0%</span></label><label>Right <input type="range" min="0" max="45" step="1" value="0" data-crop="r"><span data-cropv="r">0%</span></label><label>Top <input type="range" min="0" max="45" step="1" value="0" data-crop="t"><span data-cropv="t">0%</span></label><label>Bottom <input type="range" min="0" max="45" step="1" value="0" data-crop="b"><span data-cropv="b">0%</span></label></div></div>
     <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><button class="btn ghost sm" type="button" data-vlive id="dj-vlivebtn">📹 Live Video</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
   </div>
   <div class="dj-panel" id="dj-edit">
@@ -2387,7 +2397,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   let vsPubBusy = false;
   let vsWatch = null;         // this tab is watching: {meeting, mid, got, iv, triedAt}
   let vsWatchBusy = false;
-  let vsWatchFailKey = "";    // mid:at of a watch join that failed — not retried until the session changes
+  let vsWatchRetryMid = "";   // meeting whose watch join failed — retried about every 20s while the switch stays on (the old mid:at latch never retried at all, because the stamp never changes during a session)
+  let vsWatchRetryAt = 0;
+  /* OBS STUDIO crop (owner, 2026-10-29): percent of frame trimmed per side
+   * plus how the cropped frame meets the stage — Fit shows it whole with
+   * black bars, Fill covers the stage. Per device, kept across sessions. */
+  let vsCrop = { l: 0, r: 0, t: 0, b: 0, fill: false };
+  try { const c0 = JSON.parse(localStorage.getItem("mw-studio-crop") || "null"); if (c0) vsCrop = { l: Math.max(0, Math.min(45, +c0.l || 0)), r: Math.max(0, Math.min(45, +c0.r || 0)), t: Math.max(0, Math.min(45, +c0.t || 0)), b: Math.max(0, Math.min(45, +c0.b || 0)), fill: !!c0.fill }; } catch (_) {}
+  let vsCropCtx = null;       // the running crop canvas: {vid, cv, cx, raf, rvfc, dead}
+  let vsStudioSig = "";
   let vsShown = { track: null, stream: null };
   let vsPaintSig = null;
   const vsUid = () => { const s = mySess(); return (s && s.user && s.user.id) || ""; };
@@ -2418,6 +2436,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function vsPaintBtns() {
     try {
+      vsPaintStudio();
       const vs = S.vstream || {}, on = !!vs.on, kind = on ? (vs.kind || "") : "";
       const sig = kind + "|" + (vsPubBusy ? "b" : "");
       if (sig === vsPaintSig) return; vsPaintSig = sig;
@@ -2426,17 +2445,51 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       document.querySelectorAll("[data-capbtn]").forEach((b) => b.classList.toggle("on", kind === "screen"));
     } catch (_) {}
   }
+  /* the STUDIO strip lives only while THIS tab is publishing a screen
+   * share; slider positions paint on show / mode change only, so a drag
+   * in progress is never fought (percent labels still update live) */
+  function vsStudioLabels() {
+    const el = document.getElementById("dj-studio"); if (!el) return;
+    el.querySelectorAll("[data-cropv]").forEach((s) => { s.textContent = (vsCrop[s.dataset.cropv] || 0) + "%"; });
+  }
+  function vsPaintStudio() {
+    try {
+      const el = document.getElementById("dj-studio"); if (!el) return;
+      const show = !!(vsPub && vsPub.kind === "screen");
+      const sig = (show ? "on" : "off") + "|" + (vsCrop.fill ? "F" : "f");
+      if (sig === vsStudioSig) return; vsStudioSig = sig;
+      el.hidden = !show;
+      if (show) {
+        el.querySelectorAll("[data-crop]").forEach((inp) => { inp.value = String(vsCrop[inp.dataset.crop] || 0); });
+        const fb = el.querySelector("[data-studiofit]"); if (fb) fb.textContent = vsCrop.fill ? "🖼 Frame: Fill" : "🖼 Frame: Fit";
+        vsStudioLabels();
+      }
+    } catch (_) {}
+  }
+  function vsCropSave() { try { localStorage.setItem("mw-studio-crop", JSON.stringify(vsCrop)); } catch (_) {} }
   /* ---------- publisher (the booth tab that tapped) ---------- */
   async function vsPubTeardown() {
     const p = vsPub; vsPub = null;
     if (!p) return;
     if (p.beat) { try { clearInterval(p.beat); } catch (_) {} }
+    vsCropStop();
     if (p.meeting) {
       try { if (p.meeting.self && p.meeting.self.disableScreenShare) await p.meeting.self.disableScreenShare(); } catch (_) {}
       try { if (p.meeting.self && p.meeting.self.disableVideo) await p.meeting.self.disableVideo(); } catch (_) {}
       try { await p.meeting.leave(); } catch (_) {}
     }
+    if (p.rawStream) { try { p.rawStream.getTracks().forEach((t) => t.stop()); } catch (_) {} }
     if (p.ownStream) { try { p.ownStream.getTracks().forEach((t) => t.stop()); } catch (_) {} }
+    // the tables come back: resume exactly the decks the share paused at
+    // start (see vsPubStart). A deck he re-cued empty or started himself
+    // meanwhile is left alone — only a stopped deck still holding a song
+    // resumes. This runs on EVERY teardown path (button, browser stop,
+    // track end, replaced from another screen), because they all land here.
+    if (p.pausedDecks && p.pausedDecks.length) {
+      const ks = p.pausedDecks.slice();
+      setTimeout(() => { ks.forEach((k) => { try { if (S[k] && (S[k].src || S[k].yt) && !S[k].playing) togglePlay(k); } catch (_) {} }); }, 400);
+    }
+    vsPaintStudio();
   }
   async function vsPubStop(msg) {
     const was = vsPub;
@@ -2459,6 +2512,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     }
     if (kind === "cam" && !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { say("📹 This browser cannot reach a camera."); return; }
     vsPubBusy = true; vsPaintBtns();
+    let stateWrote = false, pubMid = "";
     try {
       say(kind === "screen" ? "🖥 Setting up your screen share…" : "📹 Starting live video…");
       const mint = await vsApi({ action: "live_mint", role: "host" });
@@ -2466,7 +2520,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (!(await vsLoadSdk())) { say("📹 The live video engine could not load — check your connection and tap again. Nothing else was touched."); return; }
       const meeting = await RealtimeKitClient.init({ authToken: mint.token, defaults: { audio: false, video: false } });
       await meeting.join();
-      vsPub = { meeting, mid: mint.meeting, kind, ownStream: null, beat: null };
+      // STUDIO FIX (2026-10-29): the shared switch goes on BEFORE any
+      // user-paced await (the screen picker, the camera prompt). The old
+      // order installed vsPub first and wrote the switch only after those
+      // awaits — vsSync, ticking every 700ms on the stage cadence, saw a
+      // publisher whose switch was still off and tore it down mid-start:
+      // the meeting was left and vsPub nulled while the picker was still
+      // open, the late switch write then landed as a permanent ghost (on,
+      // stamped once, pointing at a meeting nobody was in), and the beat
+      // assignment threw on the nulled record so the stamp never moved
+      // again. That is the whole 2026-10-29 failure in one race.
+      vsPub = { meeting, mid: mint.meeting, kind, ownStream: null, rawStream: null, localStream: null, beat: null, starting: true, strikes: 0, pausedDecks: null };
+      S.vstream = { on: true, kind, at: Date.now(), by: vsUid(), meeting: mint.meeting };
+      pubMid = mint.meeting; stateWrote = true;
+      save(true);
+      vsPub.beat = setInterval(() => { if (vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(); } }, 20000);
       if (kind === "cam") {
         let track = (typeof camStream !== "undefined" && camStream && camStream.getVideoTracks()[0]) || null;
         if (!track) {
@@ -2474,21 +2542,36 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
           vsPub.ownStream = s; track = s.getVideoTracks()[0];
         }
         await meeting.self.enableVideo(track);
+        vsPub.localStream = new MediaStream([track]);
       } else {
-        await meeting.self.enableScreenShare();
-        const t = meeting.self.screenShareTrack;
-        if (t) {
-          try { await t.applyConstraints({ width: { max: 1280 }, height: { max: 720 } }); } catch (_) {}
-          t.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen") vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); });
-        }
+        await vsStartScreen(meeting);
       }
-      S.vstream = { on: true, kind, at: Date.now(), by: vsUid(), meeting: mint.meeting };
-      save(true);
-      vsPub.beat = setInterval(() => { if (vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(); } }, 45000);
+      vsPub.starting = false;
       vsSync();
       say(kind === "screen" ? "🖥 Your screen is on the master screen — everyone sees it now. Tap Capture again to stop." : "📹 You are on the master screen in full motion. Tap Live Video again to stop.");
+      if (kind === "screen") {
+        // PAUSE THE TABLES (owner, 2026-10-29: "i also want that to pause
+        // the dj tables till it cuts off"): a screen share is a
+        // presentation, not a set. Every playing deck pauses through
+        // togglePlay — the same deliberate pause a manual all-pause makes,
+        // S.pausedAt stamp and all, so the station keeper respects it.
+        // (The keeper honors a deliberate pause for up to 30 minutes; the
+        // share's own saves keep boothAt fresh meanwhile, so the keeper
+        // is standing down anyway.) The decks that were playing are
+        // remembered on the publish record and resumed by vsPubTeardown,
+        // so every way the share ends brings exactly those decks back.
+        const wasPlaying = DECKS.filter((k) => S[k] && S[k].playing);
+        if (wasPlaying.length) {
+          vsPub.pausedDecks = wasPlaying;
+          for (const k of wasPlaying) { try { await togglePlay(k); } catch (_) {} }
+          say("⏸ Tables paused while your screen is up — they pick back up the moment the share stops.");
+        }
+      }
     } catch (_) {
       await vsPubTeardown(); vsDetach();
+      // a start that failed AFTER the switch was written (picker closed,
+      // camera denied) clears its own switch — no ghost left behind
+      if (stateWrote && (S.vstream || {}).meeting === pubMid) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "" }; save(true); }
       if (kind === "screen") say("🖥 Screen share did not start — if you closed the picker, tap Capture and pick the screen you want to show.");
       else say("📹 Live video did not start — allow the camera for this site, then tap Live Video again.");
     } finally { vsPubBusy = false; vsPaintBtns(); }
@@ -2499,6 +2582,73 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (vs.on && vs.by === vsUid() && vs.kind === kind) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "" }; save(true); vsSync(); say("Stopped — the master screen is back to the video mix."); return; }
     if (vs.on && vs.by === vsUid()) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "" }; save(true); }
     vsPubStart(kind);
+  }
+  /* ---------- OBS STUDIO: the screen runs through a crop canvas ----------
+   * The raw display track feeds a hidden video element; each presented
+   * frame is drawn into a 1280x720 canvas through the crop rectangle, and
+   * the canvas stream is what gets published AND what this tab previews
+   * on the booth stage — program-monitor style, he sees exactly what he
+   * sends. drawImage is GPU compositing; there is no per-pixel JS work
+   * and nothing here runs per frame except the draw itself. */
+  async function vsStartScreen(meeting) {
+    const raw = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { max: 30 } }, audio: false });
+    vsPub.rawStream = raw;
+    const rt = raw.getVideoTracks()[0];
+    if (!rt) throw new Error("no screen track");
+    rt.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen") vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); });
+    try {
+      const cs = vsCropStart(rt);
+      await meeting.self.enableVideo(cs.getVideoTracks()[0]);
+      vsPub.localStream = cs;
+    } catch (_) {
+      // the canvas path failed on this browser: publish the raw screen
+      // track the same way — no second picker, just no crop this time
+      vsCropStop();
+      await meeting.self.enableVideo(rt);
+      vsPub.localStream = new MediaStream([rt]);
+      say("🖥 The crop frame could not run on this browser — your full screen is sharing instead.");
+    }
+  }
+  function vsCropStart(track) {
+    vsCropStop();
+    const vid = document.createElement("video");
+    vid.muted = true; vid.playsInline = true; vid.autoplay = true;
+    vid.srcObject = new MediaStream([track]);
+    const cv = document.createElement("canvas"); cv.width = 1280; cv.height = 720;
+    const cc = { vid, cv, cx: cv.getContext("2d"), raf: 0, rvfc: 0, dead: false };
+    vsCropCtx = cc;
+    const draw = () => {
+      if (cc.dead) return;
+      vsCropDraw(cc);
+      if (vid.requestVideoFrameCallback) { try { cc.rvfc = vid.requestVideoFrameCallback(draw); return; } catch (_) {} }
+      cc.raf = requestAnimationFrame(draw);
+    };
+    try { const p = vid.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {}
+    draw();
+    return cv.captureStream(30);
+  }
+  function vsCropDraw(cc) {
+    try {
+      const v = cc.vid;
+      if (!v.videoWidth || !v.videoHeight) return;
+      const sw0 = v.videoWidth, sh0 = v.videoHeight;
+      const lx = sw0 * vsCrop.l / 100, rx = sw0 * vsCrop.r / 100, ty = sh0 * vsCrop.t / 100, by2 = sh0 * vsCrop.b / 100;
+      const sx = lx, sy = ty, sw = Math.max(16, sw0 - lx - rx), sh = Math.max(16, sh0 - ty - by2);
+      const W = cc.cv.width, H = cc.cv.height, asp = sw / sh;
+      let dw, dh;
+      if (vsCrop.fill) { if (asp > W / H) { dh = H; dw = H * asp; } else { dw = W; dh = W / asp; } }
+      else { if (asp > W / H) { dw = W; dh = W / asp; } else { dh = H; dw = H * asp; } }
+      cc.cx.fillStyle = "#000"; cc.cx.fillRect(0, 0, W, H);
+      cc.cx.drawImage(v, sx, sy, sw, sh, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    } catch (_) {}
+  }
+  function vsCropStop() {
+    const cc = vsCropCtx; vsCropCtx = null;
+    if (!cc) return;
+    cc.dead = true;
+    try { if (cc.rvfc && cc.vid.cancelVideoFrameCallback) cc.vid.cancelVideoFrameCallback(cc.rvfc); } catch (_) {}
+    try { if (cc.raf) cancelAnimationFrame(cc.raf); } catch (_) {}
+    try { cc.vid.pause(); cc.vid.srcObject = null; } catch (_) {}
   }
   /* ---------- watcher (every other screen) ---------- */
   function vsPeers(meeting) {
@@ -2528,23 +2678,32 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (w.iv) { try { clearInterval(w.iv); } catch (_) {} }
     if (w.meeting) { try { await w.meeting.leave(); } catch (_) {} }
   }
-  async function vsWatchStart(mid, at) {
+  function vsWatchRetry(mid) { vsWatchRetryMid = mid; vsWatchRetryAt = Date.now() + 20000; }
+  async function vsWatchStart(mid) {
     if (vsWatchBusy || (vsWatch && vsWatch.mid === mid)) return;
-    if (vsWatchFailKey === mid + ":" + at) return;
     vsWatchBusy = true;
     try {
       const mint = await vsApi({ action: "live_mint", role: "watch", meeting: mid });
-      if (!mint || !mint.token) { vsWatchFailKey = mid + ":" + at; return; }
-      if (!(await vsLoadSdk())) { vsWatchFailKey = mid + ":" + at; return; }
+      if (!mint || !mint.token) { vsWatchRetry(mid); return; }
+      if (!(await vsLoadSdk())) { vsWatchRetry(mid); return; }
       const meeting = await RealtimeKitClient.init({ authToken: mint.token, defaults: { audio: false, video: false } });
       const w = { meeting, mid, got: 0, triedAt: Date.now(), iv: null };
       vsWatch = w;
       try { meeting.participants.joined.on("participantJoined", () => vsWatchGrab()); meeting.participants.joined.on("participantLeft", () => vsWatchGrab()); } catch (_) {}
       try { meeting.participants.active.on("participantJoined", () => vsWatchGrab()); } catch (_) {}
       await meeting.join();
+      vsWatchRetryMid = ""; vsWatchRetryAt = 0;
+      // walk who is ALREADY in the room — a producer who started before
+      // this viewer arrived must render now, not on some future event;
+      // the 2.5s grab below keeps re-walking the room the whole session
       vsWatchGrab();
       w.iv = setInterval(() => { try { vsWatchGrab(); } catch (_) {} }, 2500);
-    } catch (_) { vsWatchFailKey = mid + ":" + at; if (vsWatch && !vsWatch.meeting) vsWatch = null; }
+    } catch (_) {
+      // a half-joined watch is torn down and RETRIED in about 20s for as
+      // long as the switch stays on — never latched off for the session
+      if (vsWatch && vsWatch.mid === mid) { const w2 = vsWatch; vsWatch = null; if (w2.iv) { try { clearInterval(w2.iv); } catch (_) {} } if (w2.meeting) { try { await w2.meeting.leave(); } catch (_) {} } }
+      vsWatchRetry(mid);
+    }
     finally { vsWatchBusy = false; }
   }
   /* the master switch — runs on the stage cadence from stageApply */
@@ -2553,19 +2712,39 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       vsPaintBtns();
       const vs = S.vstream || {};
       if (vsPub) {
-        if (!vs.on || vs.meeting !== vsPub.mid) { vsPubTeardown(); vsDetach(); return; } // stopped or replaced from another of his screens
+        if (!vs.on || vs.meeting !== vsPub.mid) {
+          // stopped or replaced from another of his screens — but a
+          // publish still starting is never torn down, and one stale echo
+          // never kills a live one either: the mismatch must hold for
+          // three straight stage ticks before this tab believes it
+          if (vsPub.starting) return;
+          vsPub.strikes = (vsPub.strikes || 0) + 1;
+          if (vsPub.strikes >= 3) { vsPubTeardown(); vsDetach(); }
+          return;
+        }
+        vsPub.strikes = 0;
+        // liveness rides the saves that already flow: while this tab is
+        // the publisher, keep the stamp fresh on the stage cadence too
+        try { if (Date.now() - (vs.at || 0) > 10000) { S.vstream.at = Date.now(); save(); } } catch (_) {}
+        // PROGRAM PREVIEW (OBS station): this tab renders its OWN local
+        // stream — the crop canvas for a screen share, the camera track
+        // for Live Video — exactly what it is sending, with no meeting
+        // round-trip. His other screens and viewers use the meeting path.
         const m = vsPub.meeting; let tr = null;
-        try { tr = vsPub.kind === "screen" ? m.self.screenShareTrack : m.self.videoTrack; } catch (_) {}
+        try { tr = (vsPub.localStream && vsPub.localStream.getVideoTracks()[0]) || (vsPub.kind === "screen" ? m.self.screenShareTrack : m.self.videoTrack); } catch (_) {}
         if (tr) vsShowTrack(tr);
         return;
       }
       if (SANDBOX || !vs.on || !vs.meeting) { if (vsWatch) vsWatchStop(); vsDetach(); return; }
       if (vsWatch && vsWatch.mid !== vs.meeting) { vsWatchStop(); vsDetach(); }
-      // a stream stamped long ago with nobody producing is a ghost — the
-      // publisher re-stamps every 45s while it is really running
-      if (!vsWatch && Date.now() - (vs.at || 0) > 120000) { vsDetach(); return; }
-      if (vsWatch && !vsWatch.got && Date.now() - vsWatch.triedAt > 15000 && Date.now() - (vs.at || 0) > 120000) { vsWatchStop(); vsDetach(); return; }
-      if (!vsWatch) { vsWatchStart(vs.meeting, vs.at || 0); return; }
+      // LIVENESS (2026-10-29 fix): a stale stamp must never keep a viewer
+      // out — the meeting itself is the truth, not the clock. The old code
+      // hard-refused every join once the stamp was 120s old and latched a
+      // single failed join for the whole session, so one frozen stamp
+      // blacked out every viewer permanently. Now: join whenever the
+      // switch is on, and retry a failed join about every 20s for as
+      // long as the switch stays on.
+      if (!vsWatch) { if (vsWatchRetryMid === vs.meeting && Date.now() < vsWatchRetryAt) return; vsWatchStart(vs.meeting); return; }
       vsWatchGrab();
     } catch (_) {}
   }
@@ -2573,7 +2752,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const t = e.target;
     if (!t || !t.closest) return;
     if (t.closest("[data-capbtn]")) { vsToggle("screen"); return; }
-    if (t.closest("[data-vlive]")) { vsToggle("cam"); }
+    if (t.closest("[data-vlive]")) { vsToggle("cam"); return; }
+    if (t.closest("[data-studiofit]")) { vsCrop.fill = !vsCrop.fill; vsCropSave(); vsStudioSig = ""; vsPaintStudio(); return; }
+    if (t.closest("[data-studioreset]")) { vsCrop = { l: 0, r: 0, t: 0, b: 0, fill: vsCrop.fill }; vsCropSave(); vsStudioSig = ""; vsPaintStudio(); }
+  });
+  /* crop sliders apply live — the draw loop reads vsCrop on every frame,
+   * so a drag reframes the published picture (and his preview) at once */
+  document.addEventListener("input", (e) => {
+    const t = e.target;
+    if (!t || !t.dataset || !t.dataset.crop) return;
+    const k = t.dataset.crop;
+    if (k !== "l" && k !== "r" && k !== "t" && k !== "b") return;
+    vsCrop[k] = Math.max(0, Math.min(45, +t.value || 0));
+    vsCropSave(); vsStudioLabels();
+  });
+  /* coming back to the booth tab re-stamps the stream switch at once —
+   * liveness never waits on a timer if the page can speak sooner */
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden || !vsPub) return;
+    try { if (S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(true); } } catch (_) {}
   });
 
   /* ---------- the MASTER music-video screen ----------
@@ -3536,7 +3733,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793273000;
+  const MW_DJ_BUILD = 1793273100;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
