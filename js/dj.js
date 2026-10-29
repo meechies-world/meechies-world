@@ -625,6 +625,15 @@ html.popdj .popdj-hint{display:block}
 .vslot iframe{width:100%;height:100%;border:0}
 .vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
+/* GO LIVE STUDIO (owner, 2026-10-29): the WebRTC stream (his camera in full
+   motion, or his captured screen) rides ABOVE the video mix on every master
+   stage while S.vstream is on — the mix keeps rendering underneath, so the
+   moment the stream stops the stage falls straight back to it. */
+.vslive{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5;display:none}
+.vstage.vs-on .vslive{display:block}
+.vstage.vs-on .vstandby{display:none!important}
+.capbig{display:block;width:100%;min-height:56px;margin:10px 0;padding:12px 14px;background:#000;color:#f0cf78;border:2px solid #f0cf78;border-radius:12px;font:800 16px var(--body);letter-spacing:.04em;cursor:pointer;animation:bopulse 2s ease-in-out infinite}
+.capbig.on{background:#e5484d;color:#fff;border-color:#e5484d}
 .vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
 .vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
 /* CAMERA SQUARE (owner, 2026-10-29): his webcam sits in a square beside the
@@ -1025,7 +1034,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <label class="lab">Volume<input type="range" min="0" max="2" step="0.01" value="0.9" data-vol="${k}" aria-label="Deck ${k} volume"></label></div></div></div>`;
 
   root.innerHTML = `
-<div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button><button class="btn sm ghost" type="button" id="dj-bobtn" data-bobtn>🌑 Blackout</button><button class="btn sm ghost" type="button" data-bubbtn>🫧 Bubble</button></div>
+<div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button><button class="btn sm ghost" type="button" id="dj-bobtn" data-bobtn>🌑 Blackout</button><button class="btn sm ghost" type="button" data-bubbtn>🫧 Bubble</button><button class="btn sm ghost" type="button" data-capbtn>🖥 Capture My Screen</button></div>
 <div class="station" id="dj-station" hidden>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span style="display:flex;gap:8px;align-items:center"><span class="onair-lamp" id="st-lamp"><span class="dot"></span>OFF AIR</span><button class="btn ghost sm" type="button" data-fold="st-body" aria-label="Fold the station panel">▾</button></span></div>
   <div id="st-body">
@@ -1036,6 +1045,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div id="st-show"></div>
   <button class="bobig" type="button" data-bobtn>🌑 BLACKOUT MODE — screen goes black, music keeps playing</button>
   <button class="bubbig" type="button" data-bubbtn>🫧 BUBBLE MODE — the site shrinks into a bubble, music keeps playing</button>
+  <button class="capbig" type="button" data-capbtn>🖥 CAPTURE MY SCREEN — Meechie shows you his screen, live on the master screen</button>
   <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vchip" id="st-vchip" hidden></div></div></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
@@ -1049,13 +1059,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
-    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button></div>
+    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button><button class="btn sm" type="button" data-capbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🖥 CAPTURE</button></div>
   <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
     <small>📺 MASTER SCREEN — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
     <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span><div id="dj-cambanner" hidden></div></div><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="mw-sharp" x="-10%" y="-10%" width="120%" height="120%"><feConvolveMatrix id="mw-sharp-k" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" preserveAlpha="true"/></filter><filter id="mw-duo" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 1 0"/><feComponentTransfer><feFuncR type="table" tableValues="0.043 0.941"/><feFuncG type="table" tableValues="0.035 0.812"/><feFuncB type="table" tableValues="0.027 0.471"/></feComponentTransfer></filter></defs></svg></div>
-    <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
+    <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><button class="btn ghost sm" type="button" data-vlive id="dj-vlivebtn">📹 Live Video</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
   </div>
   <div class="dj-panel" id="dj-edit">
     <h4>🎬 VIDEO &amp; AUDIO EDITING</h4>
@@ -2340,6 +2350,225 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * duck * mix); } });
     stageApply(mix, duck);
   }
+  /* ================= GO LIVE STUDIO (owner, 2026-10-29) =================
+   * "I want to use OBS system right there — it doesn't crash, neither does
+   * TikTok. I want TikTok with OBS features." The booth now publishes REAL
+   * live video over WebRTC (Cloudflare RealtimeKit — the same gateway as
+   * the OBS keys in functions/api/streams.js, which mints the participant
+   * tokens server-side; the API token never reaches a browser).
+   * Two sources, one master screen:
+   *   📹 Live Video (the button beside 📷 Cam) — his booth camera in full
+   *      motion. This is the primary camera picture while it runs; the
+   *      radio/camframe still-frame relay keeps working untouched as the
+   *      picture whenever Live Video is off.
+   *   🖥 Capture My Screen (a button beside EVERY Blackout button) — he
+   *      picks a tab / window / screen in the browser's own picker and
+   *      that screen becomes the master-screen source.
+   * The shared switch is S.vstream {on, kind, at, by, meeting}: screen
+   * outranks camera stream, camera stream outranks the vmix deck videos,
+   * and the deck mix keeps rendering underneath, so stopping the stream
+   * drops the stage straight back to the mix. VIDEO ONLY — the radio
+   * itself carries the sound, exactly like the deck videos do.
+   * LIGHTNESS (he is crash- and skip-sensitive): the RealtimeKit SDK
+   * (~650KB) loads ONLY on a Live Video / Capture tap — never at page
+   * load, never at cam-on — publishing is capped at 720p, and everything
+   * is native WebRTC: no on-device ML, no canvas frame loops here. Any
+   * failure answers in plain words and disturbs nothing else. */
+  const VS_SDK_URL = "https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit@2.0.4/dist/browser.js";
+  let vsSdkP = null;          // SDK load promise — created on first tap only
+  let vsPub = null;           // this tab is publishing: {meeting, mid, kind, ownStream, beat}
+  let vsPubBusy = false;
+  let vsWatch = null;         // this tab is watching: {meeting, mid, got, iv, triedAt}
+  let vsWatchBusy = false;
+  let vsWatchFailKey = "";    // mid:at of a watch join that failed — not retried until the session changes
+  let vsShown = { track: null, stream: null };
+  let vsPaintSig = null;
+  const vsUid = () => { const s = mySess(); return (s && s.user && s.user.id) || ""; };
+  function vsLoadSdk() {
+    if (window.RealtimeKitClient) return Promise.resolve(true);
+    if (!vsSdkP) vsSdkP = new Promise((res) => { const s = document.createElement("script"); s.src = VS_SDK_URL; s.onload = () => res(!!window.RealtimeKitClient); s.onerror = () => { vsSdkP = null; res(false); }; document.head.appendChild(s); });
+    return vsSdkP;
+  }
+  async function vsApi(body) {
+    const ses = mySess(); const h = { "content-type": "application/json" };
+    if (ses && ses.access_token) h.authorization = "Bearer " + ses.access_token;
+    try { const r = await fetch("/api/streams", { method: "POST", headers: h, body: JSON.stringify(body) }); return await r.json().catch(() => null); } catch (_) { return null; }
+  }
+  function vsStageEls() {
+    const out = [];
+    const b = document.querySelector("#dj-vstage"); if (b) out.push(b);
+    const s = document.querySelector("#st-ytbox .vstage"); if (s) out.push(s);
+    const m = document.querySelector("#dj-mini .vstage"); if (m) out.push(m);
+    return out;
+  }
+  function vsVid(stage) { let v = stage.querySelector("video.vslive"); if (!v) { v = document.createElement("video"); v.className = "vslive"; v.autoplay = true; v.muted = true; v.playsInline = true; stage.appendChild(v); } return v; }
+  function vsAttach(stream) { vsStageEls().forEach((st) => { const v = vsVid(st); try { if (v.srcObject !== stream) { v.srcObject = stream; const p = v.play(); if (p && p.catch) p.catch(() => {}); } } catch (_) {} st.classList.add("vs-on"); }); }
+  function vsDetach() { vsShown = { track: null, stream: null }; vsStageEls().forEach((st) => { st.classList.remove("vs-on"); const v = st.querySelector("video.vslive"); if (v) { try { v.pause(); v.srcObject = null; } catch (_) {} } }); }
+  function vsShowTrack(track) {
+    if (!track || track.readyState === "ended") { if (vsShown.track) vsDetach(); return; }
+    if (vsShown.track !== track) vsShown = { track, stream: new MediaStream([track]) };
+    vsAttach(vsShown.stream);
+  }
+  function vsPaintBtns() {
+    try {
+      const vs = S.vstream || {}, on = !!vs.on, kind = on ? (vs.kind || "") : "";
+      const sig = kind + "|" + (vsPubBusy ? "b" : "");
+      if (sig === vsPaintSig) return; vsPaintSig = sig;
+      const lb = document.getElementById("dj-vlivebtn");
+      if (lb) { lb.classList.toggle("on", kind === "cam"); lb.textContent = kind === "cam" ? "📹 Live Video · ON" : "📹 Live Video"; }
+      document.querySelectorAll("[data-capbtn]").forEach((b) => b.classList.toggle("on", kind === "screen"));
+    } catch (_) {}
+  }
+  /* ---------- publisher (the booth tab that tapped) ---------- */
+  async function vsPubTeardown() {
+    const p = vsPub; vsPub = null;
+    if (!p) return;
+    if (p.beat) { try { clearInterval(p.beat); } catch (_) {} }
+    if (p.meeting) {
+      try { if (p.meeting.self && p.meeting.self.disableScreenShare) await p.meeting.self.disableScreenShare(); } catch (_) {}
+      try { if (p.meeting.self && p.meeting.self.disableVideo) await p.meeting.self.disableVideo(); } catch (_) {}
+      try { await p.meeting.leave(); } catch (_) {}
+    }
+    if (p.ownStream) { try { p.ownStream.getTracks().forEach((t) => t.stop()); } catch (_) {} }
+  }
+  async function vsPubStop(msg) {
+    const was = vsPub;
+    await vsPubTeardown();
+    if (was || ((S.vstream || {}).on && (S.vstream || {}).by === vsUid())) {
+      S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "" };
+      save(true);
+    }
+    vsDetach(); vsPaintBtns();
+    if (msg) say(msg);
+  }
+  async function vsPubStart(kind) {
+    if (SANDBOX) { say("The DJ Playground is a sandbox — live video only runs on the real station."); return; }
+    if (!OWNER()) { say("Only Meechie can put a live picture on the master screen."); return; }
+    if (!boothLead) { say("📹 Live video runs on the screen that is driving the booth — make this screen the driver first."); return; }
+    if (vsPubBusy) return;
+    if (kind === "screen" && !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) {
+      say("🖥 This browser cannot capture your screen — screen capture needs a computer browser (Chrome or Edge). On this device, 📹 Live Video by the Cam button still works for your camera.");
+      return;
+    }
+    if (kind === "cam" && !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { say("📹 This browser cannot reach a camera."); return; }
+    vsPubBusy = true; vsPaintBtns();
+    try {
+      say(kind === "screen" ? "🖥 Setting up your screen share…" : "📹 Starting live video…");
+      const mint = await vsApi({ action: "live_mint", role: "host" });
+      if (!mint || !mint.token || !mint.meeting) { say((mint && mint.message) || "📹 Live video could not start — the streaming service did not answer. Nothing else was touched."); return; }
+      if (!(await vsLoadSdk())) { say("📹 The live video engine could not load — check your connection and tap again. Nothing else was touched."); return; }
+      const meeting = await RealtimeKitClient.init({ authToken: mint.token, defaults: { audio: false, video: false } });
+      await meeting.join();
+      vsPub = { meeting, mid: mint.meeting, kind, ownStream: null, beat: null };
+      if (kind === "cam") {
+        let track = (typeof camStream !== "undefined" && camStream && camStream.getVideoTracks()[0]) || null;
+        if (!track) {
+          const s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { max: 30 } }, audio: false });
+          vsPub.ownStream = s; track = s.getVideoTracks()[0];
+        }
+        await meeting.self.enableVideo(track);
+      } else {
+        await meeting.self.enableScreenShare();
+        const t = meeting.self.screenShareTrack;
+        if (t) {
+          try { await t.applyConstraints({ width: { max: 1280 }, height: { max: 720 } }); } catch (_) {}
+          t.addEventListener("ended", () => { if (vsPub && vsPub.kind === "screen") vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); });
+        }
+      }
+      S.vstream = { on: true, kind, at: Date.now(), by: vsUid(), meeting: mint.meeting };
+      save(true);
+      vsPub.beat = setInterval(() => { if (vsPub && S.vstream && S.vstream.on && S.vstream.meeting === vsPub.mid) { S.vstream.at = Date.now(); save(); } }, 45000);
+      vsSync();
+      say(kind === "screen" ? "🖥 Your screen is on the master screen — everyone sees it now. Tap Capture again to stop." : "📹 You are on the master screen in full motion. Tap Live Video again to stop.");
+    } catch (_) {
+      await vsPubTeardown(); vsDetach();
+      if (kind === "screen") say("🖥 Screen share did not start — if you closed the picker, tap Capture and pick the screen you want to show.");
+      else say("📹 Live video did not start — allow the camera for this site, then tap Live Video again.");
+    } finally { vsPubBusy = false; vsPaintBtns(); }
+  }
+  function vsToggle(kind) {
+    if (vsPub) { vsPubStop(kind === "screen" ? "🖥 Screen share stopped — the master screen is back to the video mix." : "📹 Live video stopped — the master screen is back to the video mix."); return; }
+    const vs = S.vstream || {};
+    if (vs.on && vs.by === vsUid() && vs.kind === kind) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "" }; save(true); vsSync(); say("Stopped — the master screen is back to the video mix."); return; }
+    if (vs.on && vs.by === vsUid()) { S.vstream = { on: false, kind: "", at: Date.now(), by: "", meeting: "" }; save(true); }
+    vsPubStart(kind);
+  }
+  /* ---------- watcher (every other screen) ---------- */
+  function vsPeers(meeting) {
+    const out = [];
+    const eat = (coll) => {
+      if (!coll) return;
+      try { if (typeof coll.forEach === "function") { coll.forEach((p) => { if (p) out.push(p); }); return; } } catch (_) {}
+      try { if (typeof coll.toArray === "function") { coll.toArray().forEach((p) => { if (p) out.push(p); }); return; } } catch (_) {}
+      try { Object.keys(coll).forEach((k) => { const p = coll[k]; if (p && typeof p === "object" && (p.videoTrack !== undefined || p.screenShareTrack !== undefined)) out.push(p); }); } catch (_) {}
+    };
+    try { eat(meeting.participants && meeting.participants.active); } catch (_) {}
+    try { eat(meeting.participants && meeting.participants.joined); } catch (_) {}
+    return out;
+  }
+  function vsWatchGrab() {
+    const w = vsWatch; if (!w || !w.meeting) return;
+    const kind = (S.vstream || {}).kind;
+    const order = kind === "screen" ? ["screenShareTrack", "videoTrack"] : ["videoTrack", "screenShareTrack"];
+    let best = null;
+    vsPeers(w.meeting).forEach((p) => { if (best || !p) return; for (const key of order) { const t = p[key]; if (t && t.readyState === "live") { best = t; break; } } });
+    if (best) { w.got = Date.now(); vsShowTrack(best); return; }
+    if (w.got && vsShown.track && vsShown.track.readyState === "ended") { vsWatchStop(); vsDetach(); } // the producer left mid-stream
+  }
+  async function vsWatchStop() {
+    const w = vsWatch; vsWatch = null;
+    if (!w) return;
+    if (w.iv) { try { clearInterval(w.iv); } catch (_) {} }
+    if (w.meeting) { try { await w.meeting.leave(); } catch (_) {} }
+  }
+  async function vsWatchStart(mid, at) {
+    if (vsWatchBusy || (vsWatch && vsWatch.mid === mid)) return;
+    if (vsWatchFailKey === mid + ":" + at) return;
+    vsWatchBusy = true;
+    try {
+      const mint = await vsApi({ action: "live_mint", role: "watch", meeting: mid });
+      if (!mint || !mint.token) { vsWatchFailKey = mid + ":" + at; return; }
+      if (!(await vsLoadSdk())) { vsWatchFailKey = mid + ":" + at; return; }
+      const meeting = await RealtimeKitClient.init({ authToken: mint.token, defaults: { audio: false, video: false } });
+      const w = { meeting, mid, got: 0, triedAt: Date.now(), iv: null };
+      vsWatch = w;
+      try { meeting.participants.joined.on("participantJoined", () => vsWatchGrab()); meeting.participants.joined.on("participantLeft", () => vsWatchGrab()); } catch (_) {}
+      try { meeting.participants.active.on("participantJoined", () => vsWatchGrab()); } catch (_) {}
+      await meeting.join();
+      vsWatchGrab();
+      w.iv = setInterval(() => { try { vsWatchGrab(); } catch (_) {} }, 2500);
+    } catch (_) { vsWatchFailKey = mid + ":" + at; if (vsWatch && !vsWatch.meeting) vsWatch = null; }
+    finally { vsWatchBusy = false; }
+  }
+  /* the master switch — runs on the stage cadence from stageApply */
+  function vsSync() {
+    try {
+      vsPaintBtns();
+      const vs = S.vstream || {};
+      if (vsPub) {
+        if (!vs.on || vs.meeting !== vsPub.mid) { vsPubTeardown(); vsDetach(); return; } // stopped or replaced from another of his screens
+        const m = vsPub.meeting; let tr = null;
+        try { tr = vsPub.kind === "screen" ? m.self.screenShareTrack : m.self.videoTrack; } catch (_) {}
+        if (tr) vsShowTrack(tr);
+        return;
+      }
+      if (SANDBOX || !vs.on || !vs.meeting) { if (vsWatch) vsWatchStop(); vsDetach(); return; }
+      if (vsWatch && vsWatch.mid !== vs.meeting) { vsWatchStop(); vsDetach(); }
+      // a stream stamped long ago with nobody producing is a ghost — the
+      // publisher re-stamps every 45s while it is really running
+      if (!vsWatch && Date.now() - (vs.at || 0) > 120000) { vsDetach(); return; }
+      if (vsWatch && !vsWatch.got && Date.now() - vsWatch.triedAt > 15000 && Date.now() - (vs.at || 0) > 120000) { vsWatchStop(); vsDetach(); return; }
+      if (!vsWatch) { vsWatchStart(vs.meeting, vs.at || 0); return; }
+      vsWatchGrab();
+    } catch (_) {}
+  }
+  document.addEventListener("click", (e) => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest("[data-capbtn]")) { vsToggle("screen"); return; }
+    if (t.closest("[data-vlive]")) { vsToggle("cam"); }
+  });
+
   /* ---------- the MASTER music-video screen ----------
    * Two player slots dissolve into each other exactly like the audio
    * crossfade: in AUTO the visuals ride the same gains the X fader gives the
@@ -2526,12 +2755,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try {
       if (OWNER()) { vmixPublish(); await renderScreen(scrBooth, true, 1, 1); camSync(); const box = $("#st-ytbox"); if (box) box.hidden = true; }
       else {
-        const has = vmixTargets().length > 0, box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
+        const has = vmixTargets().length > 0 || !!((S.vstream || {}).on && (S.vstream || {}).meeting), box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
         if (has) await renderScreen(scrView, !listening, listening ? mix : 1, duck);
         else if (S.live) { const sb = $("#st-vstandby"); if (sb) sb.textContent = stSlate(); await renderScreen(scrView, true, 1, 1); }
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
       await miniApply(mix, duck);
+      try { vsSync(); } catch (_) {}
     } catch (_) {}
     stageBusy = false;
   }
@@ -2544,7 +2774,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const box = $("#dj-mini"); if (!box || SANDBOX) return;
     const tg = vmixTargets(), top = tg.slice().sort((a, b) => b.op - a.op)[0], vid = top ? (S[top.k] && S[top.k].yt) || "" : "";
     let sessOff = false; try { sessOff = !!sessionStorage.getItem("mw_mini_off"); } catch (_) {}
-    const show = !!tg.length && !sessOff && vid !== miniOffVid && !stInView && !document.body.classList.contains("dj-on");
+    const show = (!!tg.length || !!((S.vstream || {}).on && (S.vstream || {}).meeting)) && !sessOff && vid !== miniOffVid && !stInView && !document.body.classList.contains("dj-on");
     box.hidden = !show;
     // a master video that errored or has not really started must not leave
     // a black box floating over the page: until this video's player has
@@ -3234,7 +3464,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272700;
+  const MW_DJ_BUILD = 1793272800;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -3515,6 +3745,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     m.vmix.trMs = Math.max(250, Math.min(1600, +m.vmix.trMs || 650)); m.vmix.at = +m.vmix.at || 0;
     m.vfx = Object.assign({ kind: "", at: 0 }, m.vfx || {});
     m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0; /* BOOTH OPTIMIZATION (2026-10-29): the broadcast frame no longer rides inside radio/dj — it lives in its own radio/camframe doc (camFrameTick writes it, camOvSync reads it), so every booth save and every listener poll of this doc stays small. A stale frame/frameAt still sitting in the stored doc is ignored, never normalized in. */ delete m.vcam.frame; delete m.vcam.frameAt;
+    // GO LIVE STUDIO (2026-10-29): S.vstream is the master-screen stream
+    // switch — {on, kind:"cam"|"screen", at, by, meeting}. Screen outranks
+    // camera stream, camera stream outranks the vmix deck videos; the
+    // meeting id is how viewers find the room the booth is publishing to.
+    m.vstream = Object.assign({ on: false, kind: "", at: 0, by: "", meeting: "" }, m.vstream || {});
+    m.vstream.on = !!m.vstream.on; m.vstream.at = +m.vstream.at || 0;
+    m.vstream.kind = (m.vstream.kind === "cam" || m.vstream.kind === "screen") ? m.vstream.kind : "";
+    m.vstream.by = String(m.vstream.by || "");
+    m.vstream.meeting = /^[A-Za-z0-9-]{8,80}$/.test(String(m.vstream.meeting || "")) ? String(m.vstream.meeting) : "";
+    if (!m.vstream.on) m.vstream.kind = "";
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
     const qn = (r) => (r && (r.src || r.yt)) ? { src: String(r.src || ""), yt: String(r.yt || ""), at: +r.at || 0 } : null;
     m.qStock = { A: qn((m.qStock || {}).A), B: qn((m.qStock || {}).B), C: qn((m.qStock || {}).C), D: qn((m.qStock || {}).D) };
