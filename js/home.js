@@ -83,8 +83,12 @@
       } else bAir.hidden = true;
     }
     if (bOnline) {
-      const el = $("#online");
-      const n = el ? parseInt(String(el.textContent || "").replace(/[^\d]/g, ""), 10) : NaN;
+      // the site's ONE online count: dj.js paintOnline publishes it from the
+      // keeper ping (the same value the header chip shows). The chat header's
+      // #online is that channel's own narrower count and must never feed
+      // this rail — reading it is what made home disagree with the header.
+      let n = (typeof window.MW_ONLINE_N === "number" && isFinite(window.MW_ONLINE_N)) ? window.MW_ONLINE_N : NaN;
+      if (!isFinite(n)) { const el = $("#online-n"); n = el ? parseInt(String(el.textContent || "").replace(/[^\d]/g, ""), 10) : NaN; }
       if (Number.isFinite(n) && n >= 1) {
         const h = `<h4>ONLINE NOW</h4><p>● ${n} here now</p>`;
         if (bOnline._h !== h) { bOnline.innerHTML = h; bOnline._h = h; }

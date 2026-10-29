@@ -143,7 +143,7 @@
         if (window.MW && MW.uploadMedia) { const up = await MW.uploadMedia(await (await fetch(dataUrl)).blob(), { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) cover = up.url; d._paint(); }
       } catch (err) { say("Couldn't add the cover photo: " + (err.message || err)); }
     });
-    d.querySelector("#ps-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_ps_later", "1"); } catch (_) {} d.close(); });
+    d.querySelector("#ps-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_ps_later", "1"); localStorage.setItem("mw_ps_later_at", String(Date.now())); } catch (_) {} d.close(); });
     d.querySelector("#ps-form").addEventListener("submit", save);
     return d;
   }
@@ -251,7 +251,7 @@
 <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost" type="button" id="pq-later">Skip for now</button><button class="btn" type="submit" id="pq-save">Save</button></div></form>`;
       document.body.appendChild(d);
       d._paint = picStrip(d.querySelector("#pq-pics"), () => qPics, (a) => { qPics = a; });
-      d.querySelector("#pq-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_pq_later", "1"); } catch (_) {} d.close(); });
+      d.querySelector("#pq-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_pq_later", "1"); localStorage.setItem("mw_pq_later_at", String(Date.now())); } catch (_) {} d.close(); });
       d.querySelector("#pq-form").addEventListener("submit", async (e) => {
         e.preventDefault(); if (qBusy || !DB() || !ME()) return;
         const phone = d.querySelector("#pq-phone").value.trim().replace(/[^\d+()\-.\s]/g, "").slice(0, 20);
@@ -284,19 +284,46 @@
   }
 
   // on entry: new members get the full designer (picture + phone at the top);
-  // members who skipped the picture or phone get the short card, once per visit.
-  // Both wait for the welcome video, the entrance and any other pop-up to finish first.
+  // members who skipped the picture or phone get the short card. The nudge is
+  // a dismissible CARD at the top of the home view — never a full-screen
+  // takeover while someone is browsing (owner report, 2026-10-29: the modal
+  // ambushed people mid-scroll on home). The dialogs themselves still open
+  // from the profile area (the button above, MW_profileSetup) as before.
+  // "Later" — on the card or in either dialog — is stamped in localStorage
+  // and holds for 30 days on this device; the card shows at most once per
+  // session, and a finished profile retires it for good.
+  const DAY30 = 30 * 24 * 3600 * 1000;
+  const laterAt = (k) => { try { return +localStorage.getItem(k) || 0; } catch (_) { return 0; } };
+  const sflag = (k) => { try { return sessionStorage.getItem(k) === "1"; } catch (_) { return false; } };
+  const stampLater = () => { try { const n = String(Date.now()); localStorage.setItem("mw_ps_later_at", n); localStorage.setItem("mw_pq_later_at", n); sessionStorage.setItem("mw_ps_later", "1"); sessionStorage.setItem("mw_pq_later", "1"); } catch (_) {} };
+  function nudgeCard(which) {
+    if (document.getElementById("ps-nudge")) return;
+    const home = document.getElementById("v-home"); if (!home) return;
+    const wrap = home.querySelector(".wrap") || home;
+    const card = document.createElement("div");
+    card.id = "ps-nudge"; card.className = "card";
+    card.style.cssText = "margin:0 0 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap";
+    card.innerHTML = "<span style='flex:1;min-width:200px'><b>🎨 Design your profile</b><br><small class='muted'>Add your picture and phone number so friends know it is really you.</small></span>";
+    const bOpen = document.createElement("button"); bOpen.type = "button"; bOpen.className = "btn sm"; bOpen.textContent = "🎨 Set up my profile";
+    bOpen.addEventListener("click", () => { card.remove(); (which === "full" ? open : quick)(); });
+    const bLat = document.createElement("button"); bLat.type = "button"; bLat.className = "btn ghost sm"; bLat.textContent = "Later";
+    bLat.addEventListener("click", () => { stampLater(); card.remove(); });
+    card.appendChild(bOpen); card.appendChild(bLat);
+    wrap.insertBefore(card, wrap.firstChild);
+  }
   let tries = 0;
   const t = setInterval(() => {
     if (++tries > 300) return clearInterval(t);
     const p = P(); if (!ME() || !p) return;
-    const flag = (k) => { try { return sessionStorage.getItem(k) === "1"; } catch (_) { return false; } };
+    if (sflag("mw_ps_shown")) return clearInterval(t);
     const missing = !p.photo || !(p.phone || privPhone());
-    const which = !p.setupDone ? (flag("mw_ps_later") ? null : "full") : (missing && !flag("mw_pq_later") ? "quick" : null);
+    const which = !p.setupDone ? "full" : (missing ? "quick" : null);
     if (!which) return clearInterval(t);
-    const en = document.getElementById("enter");
-    if ((en && !en.hidden) || document.getElementById("wv-box") || document.getElementById("mw-choices") || document.querySelector("dialog[open]") || document.documentElement.classList.contains("gated")) return;
-    if (window.MW_screenClear && !MW_screenClear("pq")) return;
-    clearInterval(t); setTimeout(() => { if (!document.querySelector("dialog[open]")) (which === "full" ? open : quick)(); }, 1500);
+    if (sflag(which === "full" ? "mw_ps_later" : "mw_pq_later")) return clearInterval(t);
+    if (Date.now() - laterAt(which === "full" ? "mw_ps_later_at" : "mw_pq_later_at") < DAY30) return clearInterval(t);
+    if (document.documentElement.classList.contains("gated")) return;
+    clearInterval(t);
+    try { sessionStorage.setItem("mw_ps_shown", "1"); } catch (_) {}
+    nudgeCard(which);
   }, 2000);
 })();

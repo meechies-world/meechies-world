@@ -101,7 +101,8 @@ body.has-player #vz-pill{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-i
     const today = [], t0 = Date.now(); let seen = new Set();
     const nameOf = (id) => (typeof members !== "undefined" && members[id] && members[id].handle) || "A member";
     function onNow() { const ps = (typeof room !== "undefined" && room && room.peers ? room.peers() : []); const ids = new Set(); ps.forEach((p) => { if (p.by && p.by !== me) ids.add(p.by); }); return [...ids]; }
-    function paint() { const n = onNow().length; pill.textContent = "👁 " + n + " on now"; }
+    const uniN = () => (typeof window.MW_ONLINE_N === "number" && isFinite(window.MW_ONLINE_N)) ? window.MW_ONLINE_N : null;
+    function paint() { const u = uniN(); const n = u != null ? u : onNow().length; pill.textContent = "👁 " + n + " on now"; }
     function hook() {
       if (typeof room === "undefined" || !room || !room.onPeers) { setTimeout(hook, 1000); return; }
       room.onPeers((ch) => {
@@ -117,7 +118,7 @@ body.has-player #vz-pill{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-i
     hook(); setInterval(paint, 5000);
     pill.addEventListener("click", async () => {
       let al = {}; try { const d = await db.doc("site/alerts").get(); al = (d.exists && d.data()) || {}; } catch (_) {}
-      const here = onNow();
+      const here = (window.MW_ONLINE instanceof Set && window.MW_ONLINE.size) ? [...window.MW_ONLINE].filter((id) => id !== me) : onNow();
       const sh = document.createElement("div"); sh.id = "vz-sheet";
       const t = (ms) => new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
       sh.innerHTML = `<div class="in" role="dialog" aria-label="Visitors">

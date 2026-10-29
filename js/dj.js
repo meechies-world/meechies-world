@@ -45,7 +45,7 @@
   let echoDly = null, flaLfo = null, phaWet = null, phaLfo = null, noiseWet = null, noiseBp = null;
   function actx() {
     if (!ctx) {
-      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { ctx = null; }
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "playback" }); } catch (_) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (__) { ctx = null; } }
       if (ctx) {
         masterIn = ctx.createGain();
         fxFilter = ctx.createBiquadFilter(); fxFilter.type = "lowpass"; fxFilter.frequency.value = 18000; fxFilter.Q.value = 0.4;
@@ -1231,8 +1231,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // phone viewport on load instead of stranding off-screen.
     const mnMaxW = () => Math.max(140, Math.min(innerWidth, (innerHeight - 30) * 16 / 9));
     const mnSize = (w) => { w = Math.max(140, Math.min(Math.round(w), mnMaxW())); mn.style.width = w + "px"; return w; };
-    try { const w = +localStorage.getItem("mw-mini-w"); if (w) mnSize(w); } catch (_) {}
-    if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = mn.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = mn.getBoundingClientRect(); mnPlace(r2.left, r2.top); try { localStorage.setItem("mw-mini-w", String(Math.round(mn.getBoundingClientRect().width))); } catch (_) {} }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
+    try { localStorage.removeItem("mw-mini-w"); } catch (_) {} // owner (2026-10-29): the pop-out opens at its regular size on every visit — a size dragged in an earlier session never carries over; the saved POSITION still restores (mnPlace above) and resizing still works freely within the visit
+    if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = mn.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = mn.getBoundingClientRect(); mnPlace(r2.left, r2.top); }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
     mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); addEventListener("resize", () => { const r = mn.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); }); }
   // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
   // decks — on wide screens the console grid still parks it at the top of the
@@ -2410,18 +2410,20 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const ready = () => { try { if (muted) w.mute(); w.seekTo(Math.max(0, posOf(deckK))); w.playVideo(); } catch (_) {} };
     try {
       if (vp.p === "yt") {
-        w._raw = new YT.Player(mountEl, { videoId: vp.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: () => ready(), onStateChange: (e) => { w._st = e.data; } } });
+        w._raw = new YT.Player(mountEl, { videoId: vp.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: () => ready(), onStateChange: (e) => { w._st = e.data; }, onError: (e) => { w._err = (e && e.data) || 1; } } });
       } else if (vp.p === "dm") {
         const p = DM.player(mountEl, { video: vp.id, width: "100%", height: "100%", params: { autoplay: false, controls: false, "endscreen-enable": false } });
         w._raw = p;
         const on = (ev, fn) => { try { p.addEventListener(ev, fn); } catch (_) {} };
         on("apiready", () => ready());
+        on("error", () => { w._err = 1; });
         on("timeupdate", (e) => { try { if (e && typeof e.time === "number") w._cur = e.time; } catch (_) {} });
         on("play", () => { w._st = 1; }); on("pause", () => { if (w._st !== 0) w._st = 2; }); on("ended", () => { w._st = 0; });
       } else {
         const p = new Vimeo.Player(mountEl, { id: vp.id, width: "100%", height: "100%", controls: false, title: false, byline: false, portrait: false });
         w._raw = p;
         p.ready().then(() => ready()).catch(() => {});
+        p.on("error", () => { w._err = 1; });
         p.on("timeupdate", (e) => { try { if (e && typeof e.seconds === "number") w._cur = e.seconds; } catch (_) {} });
         p.on("play", () => { w._st = 1; }); p.on("pause", () => { if (w._st !== 0) w._st = 2; }); p.on("ended", () => { w._st = 0; });
       }
@@ -2537,13 +2539,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * and the station screen): it shows the same mix in a small rectangle at the
    * top of every page, and steps aside when a big screen is in view, when the
    * booth itself is on screen, or when the viewer closed it for this video */
-  let miniOffVid = "", stInView = false;
+  let miniOffVid = "", stInView = false, miniOkVid = "", miniErrVid = "";
   async function miniApply(mix, duck) {
     const box = $("#dj-mini"); if (!box || SANDBOX) return;
     const tg = vmixTargets(), top = tg.slice().sort((a, b) => b.op - a.op)[0], vid = top ? (S[top.k] && S[top.k].yt) || "" : "";
     let sessOff = false; try { sessOff = !!sessionStorage.getItem("mw_mini_off"); } catch (_) {}
     const show = !!tg.length && !sessOff && vid !== miniOffVid && !stInView && !document.body.classList.contains("dj-on");
     box.hidden = !show;
+    // a master video that errored or has not really started must not leave
+    // a black box floating over the page: until this video's player has
+    // actually played, the box stays hidden (the render below still runs,
+    // so it pops in the moment the video does) — unless his camera square
+    // is live on the mini, which is reason enough to keep the box up
+    if (show && vid && miniOkVid !== vid) { const ov = document.getElementById("mw-camov"); if (miniErrVid === vid || !(ov && !ov.hidden)) box.hidden = true; }
     camOvSync();
     if (!tg.length) scrMini.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
     if (!show) return;
@@ -2552,6 +2560,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // itself is untouched — the lift is re-applied on the next pass)
     try { const pb = document.querySelector(".player-bar"); if (pb && document.body.classList.contains("has-player")) { const pr = pb.getBoundingClientRect(), mr = box.getBoundingClientRect(); if (pr.height > 0 && mr.bottom > pr.top - 4 && mr.left < pr.right && mr.right > pr.left) { box.style.top = Math.max(2, Math.round(pr.top - mr.height - 8)) + "px"; box.style.left = Math.round(mr.left) + "px"; box.style.right = "auto"; } } } catch (_) {}
     await renderScreen(scrMini, true, 1, 1);
+    if (vid) { const act = scrMini.slots.filter((sl) => sl.deck && sl.p), topP = top ? act.find((sl) => sl.deck === top.k) : null; if (topP && topP.p._err) miniErrVid = vid; if (act.some((sl) => { try { return (sl.p.getPlayerState ? sl.p.getPlayerState() : sl.p._st) === 1; } catch (_) { return false; } })) { miniOkVid = vid; miniErrVid = ""; } }
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
   function fltFreq(node, v) { // v: 0..100, 50 = fully open; left sweeps lowpass down, right sweeps highpass up
@@ -3202,11 +3211,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       window.MW_ONLINE_USERS = users; window.MW_PING_AT = Date.now();
       window.MW_GUESTS = Math.max(0, (o || 0) - n);
     }
+    window.MW_ONLINE_N = n; window.MW_LISTENING_N = l;
     const chip = document.getElementById("online-chip");
     if (chip) { chip.hidden = false; const nb = document.getElementById("online-n"); if (nb) nb.textContent = n; if (!chip._clk) { chip._clk = 1; chip.style.cursor = "pointer"; chip.title = "See who's online"; chip.addEventListener("click", () => { if (window.MW_showOnline) window.MW_showOnline(); }); } }
     const b = document.getElementById("dj-online"); if (b) b.textContent = "👥 " + n + " online · 🎧 " + l + " on the decks";
     const o2 = document.getElementById("dj-online2"); if (o2) o2.textContent = "🟢 " + n + " online · 🎧 " + l;
     const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + n + " on the site" : n + " on the site right now";
+    const li = document.getElementById("listeners"); if (li) li.textContent = l + " listening";
   }
   const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
     fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) clockOff = clockOff * 0.7 + (j.now - Date.now()) * 0.3; if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users); }).catch(() => {}); };
@@ -3223,7 +3234,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272600;
+  const MW_DJ_BUILD = 1793272700;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -4890,9 +4901,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   });
 
   /* ---------- start ---------- */
+  let initTries = 0;
   async function init() {
-    if (!window.claude) return;
-    const d = await claude.use("db"); if (!d) return;
+    // the backend facade can lag this script in a fresh window — the decks
+    // pop-out is exactly that, a new window where dj.js can run before the
+    // facade exists. Bailing here with no retry left the pop-out frozen on
+    // its empty OFF AIR markup while every other window showed the live
+    // station, so retry until the facade answers (the requests subscription
+    // above already retries the same way), then subscribe to the same
+    // radio/dj doc the station card reads — one live signal everywhere.
+    if (!window.claude) { if (initTries++ < 40) setTimeout(init, 750); return; }
+    const d = await claude.use("db"); if (!d) { if (initTries++ < 40) setTimeout(init, 750); return; }
     if (!SANDBOX) d.doc("radio/camframe").onSnapshot((snap) => { camFrameDoc = snap.exists ? snap.data() : null; camOvSync(); }, () => {}); // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }

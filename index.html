@@ -1580,7 +1580,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/float-layout.js?v=1793271573"></script>
 <script src="js/cf-client.js?v=1793271573"></script>
 <script src="js/platform.js?v=1793271573"></script>
-<script src="js/app-core.js?v=1793272400"></script>
+<script src="js/app-core.js?v=1793272700"></script>
 <script src="js/appnav.js?v=1793271573"></script>
 <script src="js/fb-feed.js?v=1793271573"></script>
 <script src="js/fb-feed-plus.js?v=1793271573"></script>
@@ -1590,7 +1590,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/site-coder-ui.js?v=1793271573"></script>
 <script src="js/messages.js?v=1793271573"></script>
 <script src="js/videos.js?v=1793271573"></script>
-<script src="js/dj.js?v=1793272600"></script>
+<script src="js/dj.js?v=1793272700"></script>
 <script src="js/live.js?v=1793271573"></script>
 <script src="js/friends.js?v=1793271573"></script>
 <script src="js/social.js?v=1793271573"></script>
@@ -1604,7 +1604,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/people.js?v=1793271573"></script>
 <script src="js/originals.js?v=1793271573"></script>
 <script src="js/welcome-show.js?v=1793271573"></script>
-<script src="js/profile-setup.js?v=1793271573"></script>
+<script src="js/profile-setup.js?v=1793272700"></script>
 <script src="js/profile-page.js?v=1793271573"></script>
 <script src="js/social-login.js?v=1793271573"></script>
 <script src="js/radio-keep.js?v=1793271573"></script>
@@ -1614,7 +1614,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/verify.js?v=1793271573"></script>
 <script src="js/biolock.js?v=1793271573"></script>
 <script src="js/engage.js?v=1793271573"></script>
-<script src="js/visitors.js?v=1793271573"></script>
+<script src="js/visitors.js?v=1793272700"></script>
 <script src="js/ai-widget.js?v=1793271573"></script>
 <script src="js/house-ads.js?v=1793271573"></script>
 <script>
@@ -1624,12 +1624,14 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   var CACHE = "mw-music", META = "mw-offline-meta";
   function meta() { try { return JSON.parse(localStorage.getItem(META) || "{}"); } catch (_) { return {}; } }
   function setMeta(m) { try { localStorage.setItem(META, JSON.stringify(m)); } catch (_) {} }
-  function byUrl(u) { try { return tracks.findIndex(function (t) { return trackUrl(t) === u; }); } catch (_) { return -1; } }
+  function abs(u) { try { return new URL(u, location.origin).href; } catch (_) { return u; } }
+  function metaFor(u, m) { if (m[u]) return m[u]; var ks = Object.keys(m); for (var i = 0; i < ks.length; i++) { var v = m[ks[i]] || {}; if (v.assetId && String(u).indexOf(v.assetId) >= 0) return v; if (abs(ks[i]) === u) return v; } return null; }
+  function byUrl(u) { try { var ix = tracks.findIndex(function (t) { return abs(trackUrl(t)) === u; }); if (ix >= 0) return ix; return tracks.findIndex(function (t) { return t.assetId && String(u).indexOf(t.assetId) >= 0; }); } catch (_) { return -1; } }
   function paintButtons() {
     var m = meta();
     document.querySelectorAll("[data-off]").forEach(function (b) {
       var t = tracks[+b.dataset.off]; if (!t) return;
-      var saved = !!m[trackUrl(t)];
+      var saved = !!metaFor(abs(trackUrl(t)), m);
       b.textContent = saved ? "✓ Saved" : "⬇ Save";
     });
   }
@@ -1638,18 +1640,18 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     var m = meta(), keys = [];
     if ("caches" in window) { try { var c = await caches.open(CACHE); keys = (await c.keys()).map(function (r) { return r.url; }); } catch (_) {} }
     var changed = false;
-    Object.keys(m).forEach(function (u) { if (keys.indexOf(u) < 0) { delete m[u]; changed = true; } });
+    Object.keys(m).forEach(function (u) { var v = m[u] || {}, hit = keys.indexOf(abs(u)) >= 0 || (v.assetId && keys.some(function (k) { return k.indexOf(v.assetId) >= 0; })); if (!hit) { delete m[u]; changed = true; } });
     if (changed) setMeta(m);
     if (!keys.length) { list.innerHTML = '<p class="muted" style="margin:0">Nothing saved yet. Save the rotation above, or tap ⬇ Save on any song in the library.</p>'; paintButtons(); return; }
     list.innerHTML = keys.map(function (u) {
-      var ix = byUrl(u), t = ix >= 0 ? tracks[ix] : null, it = m[u] || {};
+      var ix = byUrl(u), t = ix >= 0 ? tracks[ix] : null, it = metaFor(u, m) || {};
       var title = t ? t.title : (it.title || "Saved song"), artist = t ? t.artist : (it.artist || "");
       return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><span style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(title) + '</b><small class="muted">' + esc(artist || "") + '</small></span><button class="btn sm" type="button" data-offplay="' + esc(u) + '">▶ Play</button><button class="btn ghost sm" type="button" data-offdel="' + esc(u) + '">Remove</button></div>';
     }).join("");
     paintButtons();
   }
   async function saveTrack(t) {
-    var u = trackUrl(t);
+    var u = abs(trackUrl(t));
     var r = await fetch(u, { headers: { "x-mw-save": "1" } });
     if (!r || !r.ok) throw new Error("fetch failed");
     if ("caches" in window) { var c = await caches.open(CACHE); await c.put(u, r.clone()); }
@@ -1659,14 +1661,14 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     var b = e.target.closest("[data-off],[data-offplay],[data-offdel]"); if (!b) return;
     if (b.dataset.off != null) {
       var t = tracks[+b.dataset.off]; if (!t) return;
-      var u = trackUrl(t), m = meta();
-      if (m[u]) { toast("Already saved for offline."); return; }
+      var u = abs(trackUrl(t)), m = meta();
+      if (metaFor(u, m)) { toast("Already saved for offline."); return; }
       b.textContent = "Saving...";
       try { await saveTrack(t); toast("Saved — it plays offline now."); } catch (_) { toast("Could not save that one right now."); }
       refresh(); return;
     }
     if (b.dataset.offplay) {
-      var url = b.dataset.offplay, it0 = meta()[url] || {};
+      var url = b.dataset.offplay, it0 = metaFor(url, meta()) || {};
       if (it0.kind === "video") {
         var box = document.getElementById("off-video");
         if (box) { box.innerHTML = '<video controls playsinline preload="metadata" style="width:100%;border-radius:12px;background:#000" src="' + esc(url) + '"></video>'; box.scrollIntoView({ behavior: "smooth", block: "center" }); var vv = box.querySelector("video"); if (vv) vv.play().catch(function () {}); }
@@ -1674,7 +1676,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       }
       var ix = byUrl(url);
       if (ix >= 0) { playLib(ix); return; }
-      var it = meta()[url] || {};
+      var it = metaFor(url, meta()) || {};
       try { media.src = url; media.play().catch(function () {}); showBar({ title: it.title || "Saved song", artist: it.artist || "", cover: it.cover || "" }, "Offline · saved on this device"); document.getElementById("player-bar").hidden = false; } catch (_) {}
       return;
     }
@@ -1688,7 +1690,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   var sv = document.getElementById("off-save");
   if (sv) sv.addEventListener("click", async function () {
     var st = document.getElementById("off-status");
-    var todo = tracks.filter(function (t) { return !meta()[trackUrl(t)]; }).slice(0, 15);
+    var todo = tracks.filter(function (t) { return !metaFor(abs(trackUrl(t)), meta()); }).slice(0, 15);
     if (!todo.length) { if (st) st.textContent = "The rotation is already saved on this device."; return; }
     sv.disabled = true;
     var done = 0, failed = 0;
