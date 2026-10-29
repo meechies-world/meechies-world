@@ -4832,7 +4832,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274100;
+  const MW_DJ_BUILD = 1793274200;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6246,6 +6246,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     return out.slice(0, 5);
   }
   async function ytPage(q, page) {
+    // Same-origin relay first (functions/api/ytsearch.js): the server fans
+    // out over the full Invidious API pool from Cloudflare's network, so a
+    // dead or unreachable mirror can no longer kill booth search the way
+    // the single browser-side host did. Any failure here falls through to
+    // the direct path below, unchanged.
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {};
+      const r = await fetch("/api/ytsearch?q=" + encodeURIComponent(q) + "&page=" + page, ctl);
+      if (r.ok) {
+        const j = await r.json();
+        if (j && j.ok && Array.isArray(j.results) && j.results.length) return j.results;
+      }
+    } catch (_) {}
     const hosts = await ytHosts();
     for (const base of hosts) {
       try {
