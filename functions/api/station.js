@@ -39,7 +39,7 @@ export async function onRequestGet({ request, env }) {
   const origin = new URL(request.url).origin;
   // presence: every client pings this endpoint every ~12s, so a small ping table
   // doubles as the site's online count — counts only, no identities are stored
-  const counts = { online: 0, listening: 0 };
+  const counts = { online: 0, listening: 0, guestSince: 0 };
   try {
     const u = new URL(request.url);
     const cid = (u.searchParams.get("cid") || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
@@ -49,17 +49,19 @@ export async function onRequestGet({ request, env }) {
     await env.DB.prepare("create table if not exists pings (cid text primary key, at integer, listening integer)").run();
     try { await env.DB.prepare("alter table pings add column uid text").run(); } catch (_) {}
     try { await env.DB.prepare("alter table pings add column name text").run(); } catch (_) {}
-    if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name) values (?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name)").bind(cid, now, lis, pu || null, pn || null).run();
+    try { await env.DB.prepare("alter table pings add column first integer").run(); } catch (_) {}
+    if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
     await env.DB.prepare("delete from pings where at < ?").bind(now - 45000).run();
     const row = await env.DB.prepare("select count(*) as n, coalesce(sum(listening), 0) as l from pings where at > ?").bind(now - 35000).first();
     if (row) { counts.online = row.n || 0; counts.listening = row.l || 0; }
     // who's online: signed-in members identify themselves on the ping, so every
     // counter on the site (header chip, Book strip, booth) reads this ONE list
     counts.users = [];
-    try { const ur = await env.DB.prepare("select uid, name, max(at) as at from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); counts.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "" })); } catch (_) {}
+    try { const ur = await env.DB.prepare("select uid, name, max(at) as at, min(first) as since from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); counts.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "", since: r.since || 0 })); } catch (_) {}
+    try { const gr = await env.DB.prepare("select min(first) as f from pings where at > ? and (uid is null or uid = '')").bind(now - 35000).first(); counts.guestSince = (gr && gr.f) || 0; } catch (_) {}
   } catch (_) {}
   let S = await readDoc(env, "radio/dj");
-  if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users });
+  if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   S.A = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.A || {});
   S.B = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.B || {});
   S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
@@ -111,17 +113,17 @@ export async function onRequestGet({ request, env }) {
   // double-started. Same gates as the silence backstop: station live,
   // Auto-DJ on, no deliberate pause stamped.
   const handBreak = !!(S.live && S.autodj && !S.pausedAt && ["A", "B"].some((k) => { const dk = S[k]; const pk = S[k === "A" ? "B" : "A"]; return dk && dk.playing && +dk.dur > 0 && +dk.start > 0 && now >= +dk.start + (+dk.dur) * 1000 - XF * 1000 && !(pk && pk.playing); }));
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users });
+    return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   }
 
   const { results } = await env.DB.prepare("select data from docs where coll = 'tracks'").all();
   const lib = (results || []).map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
     .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
-  if (!lib.length) return json({ ok: true, mode: "empty-lib", now, online: counts.online, listening: counts.listening, users: counts.users });
+  if (!lib.length) return json({ ok: true, mode: "empty-lib", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   const byAsset = new Map(lib.map((t) => [t.assetId, t]));
   const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
@@ -226,7 +228,7 @@ export async function onRequestGet({ request, env }) {
   for (const k of ["C", "D"]) { const dk = S[k]; if (dk && dk.playing) { const dur = +dk.dur || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
     if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users });
+    return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
   if (S.silentSince && anyPlayingSB) delete S.silentSince; // mwSilentBreak: a playing deck ends any silence episode
@@ -324,7 +326,7 @@ export async function onRequestGet({ request, env }) {
   }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
   if (changed) { S.by = "keeper"; /* mwFlapFix: keeper writes carry their own stamp, so a booth tab never mistakes a rescue for its own save echo */ await writeDoc(env, "radio/dj", "radio", S); }
-  return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users });
+  return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
 }
 
 /* Guest song requests: the picker in js/dj.js first tries the member write; when

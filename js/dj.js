@@ -4751,13 +4751,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const doorPersist = () => { try { sessionStorage.setItem("mw-door-seen", JSON.stringify({ u: [...doorSeen].slice(-80), g: Math.max(0, doorGuestBase) })); } catch (_) {} };
   const doorOpen = () => { if (!OWNER() || SANDBOX) return false; const oe = document.getElementById("dj-owner"); return !!(oe && oe.offsetParent !== null); };
   const doorRel = (at) => { const s = Math.max(0, Math.round((Date.now() - at) / 1000)); if (s < 8) return "just now"; if (s < 60) return s + "s ago"; const m = Math.round(s / 60); if (m < 60) return m + "m ago"; return Math.round(m / 60) + "h ago"; };
+  /* how long a present visitor has been on, from the keeper first-seen stamp
+     (users[].since / guestSince in the /api/station answer), read against the
+     server clock via clockOff so a wrong device clock cannot bend it */
+  const doorDur = (since) => { if (!since) return ""; const s = Math.max(0, Math.round(((Date.now() + clockOff) - since) / 1000)); if (s < 60) return "under a minute"; const m = Math.floor(s / 60); if (m < 60) return m + "m"; return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"; };
+  let doorHereHTML = "";
   function doorBlip() { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const o = c.createOscillator(), g = c.createGain(); o.type = "sine"; o.frequency.setValueAtTime(880, c.currentTime); o.frequency.setValueAtTime(1320, c.currentTime + 0.12); g.gain.setValueAtTime(0.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(0.15, c.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.5); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.55); setTimeout(() => c.close(), 800); } catch (_) {} }
   function doorPaint() {
     const box = document.getElementById("door-list"); if (!box) return;
     const cool = Date.now() < shoutCoolUntil;
-    const sig = doorRows.map((r) => r.key + (r.greeted ? "g" : "") + (r.shouted ? "s" : "") + doorRel(r.at)).join(",") + "|" + (cool ? "c" : "");
+    const sig = doorRows.map((r) => r.key + (r.greeted ? "g" : "") + (r.shouted ? "s" : "") + doorRel(r.at) + (r.since ? doorDur(r.since) : "")).join(",") + "|" + (cool ? "c" : "") + "|" + doorHereHTML;
     if (sig === doorSig) return; doorSig = sig;
-    box.innerHTML = doorRows.length ? doorRows.map((r) => `<div class="door-row${r.fresh ? " new" : ""}"><span>🔔 <b>${E(r.name)}</b> <small>came in · ${doorRel(r.at)}</small></span><span class="door-acts"><button class="btn sm" type="button" data-door-greet="${r.key}"${r.greeted ? " disabled" : ""}>${r.greeted ? "👋 Greeted" : "👋 Greet"}</button><button class="btn ghost sm" type="button" data-door-shout="${r.key}"${cool || r.shouted ? " disabled" : ""}>🎙 Shout</button></span></div>`).join("") : '<small class="muted">Watching the door — people who come on the site while your booth is open land here.</small>';
+    box.innerHTML = doorRows.length ? doorRows.map((r) => `<div class="door-row${r.fresh ? " new" : ""}"><span>🔔 <b>${E(r.name)}</b> <small>came in · ${doorRel(r.at)}${r.since ? " · on the site " + doorDur(r.since) : ""}</small></span><span class="door-acts"><button class="btn sm" type="button" data-door-greet="${r.key}"${r.greeted ? " disabled" : ""}>${r.greeted ? "👋 Greeted" : "👋 Greet"}</button><button class="btn ghost sm" type="button" data-door-shout="${r.key}"${cool || r.shouted ? " disabled" : ""}>🎙 Shout</button></span></div>`).join("") : '<small class="muted">Watching the door — people who come on the site while your booth is open land here.</small>';
+    if (doorHereHTML) box.innerHTML += doorHereHTML;
     doorRows.forEach((r) => { r.fresh = false; });
   }
   function doorAdd(row) { doorRows.unshift(row); while (doorRows.length > 12) doorRows.pop(); doorPaint(); doorBlip(); }
@@ -4765,15 +4771,57 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const list = Array.isArray(users) ? users : [];
     const guests = (typeof window.MW_GUESTS === "number" && isFinite(window.MW_GUESTS)) ? window.MW_GUESTS : 0;
     const nowIds = new Set(list.map((u) => u && u.uid).filter(Boolean));
+    const myUid = (window.MW && MW.session && MW.session() && MW.session().user && MW.session().user.id) || "";
+    { const gs2 = (typeof window.MW_GUEST_SINCE === "number" && window.MW_GUEST_SINCE) || 0;
+      const rowsH = list.filter((u) => u && u.uid && u.uid !== myUid).map((u) => { const nm = String(u.name || (typeof members !== "undefined" && members && members[u.uid] && members[u.uid].handle) || "A member").slice(0, 40); return `<div class="door-row here"><span>🟢 <b>${E(nm)}</b> <small>${u.since ? "on the site " + doorDur(u.since) : "on the site now"}</small></span></div>`; });
+      if (guests > 0) rowsH.push(`<div class="door-row here"><span>🟢 <b>${guests} guest${guests > 1 ? "s" : ""}</b> <small>${gs2 ? "longest here " + doorDur(gs2) : "on the site now"}</small></span></div>`);
+      doorHereHTML = rowsH.join(""); }
     if (!doorPrimed) { doorPrimed = true; nowIds.forEach((id) => doorSeen.add(id)); if (doorGuestBase < 0) doorGuestBase = guests; doorPersist(); return; }
     if (!doorOpen()) { // booth closed or stale: absorb the room quietly — nobody is announced for a room he is not hosting
       nowIds.forEach((id) => doorSeen.add(id)); [...doorSeen].forEach((id) => { if (!nowIds.has(id)) doorSeen.delete(id); }); doorGuestBase = guests; doorPersist(); return;
     }
-    const myUid = (window.MW && MW.session && MW.session() && MW.session().user && MW.session().user.id) || "";
-    list.forEach((u) => { if (!u || !u.uid || u.uid === myUid || doorSeen.has(u.uid)) return; doorSeen.add(u.uid); const nm = String(u.name || (typeof members !== "undefined" && members && members[u.uid] && members[u.uid].handle) || "A member").slice(0, 40); doorAdd({ key: rid(), uid: u.uid, name: nm, call: nm, at: Date.now(), greeted: false, shouted: false, fresh: true }); });
+    list.forEach((u) => { if (!u || !u.uid || u.uid === myUid || doorSeen.has(u.uid)) return; doorSeen.add(u.uid); const nm = String(u.name || (typeof members !== "undefined" && members && members[u.uid] && members[u.uid].handle) || "A member").slice(0, 40); doorAdd({ key: rid(), uid: u.uid, name: nm, call: nm, at: Date.now(), since: u.since || 0, greeted: false, shouted: false, fresh: true }); });
     [...doorSeen].forEach((id) => { if (!nowIds.has(id)) doorSeen.delete(id); }); // left: if they walk in again, the door announces them again
     if (doorGuestBase >= 0 && guests > doorGuestBase) { for (let i = 0; i < guests - doorGuestBase; i++) doorAdd({ key: rid(), uid: null, name: "A guest", call: "friend", at: Date.now(), greeted: false, shouted: false, fresh: true }); }
     doorGuestBase = guests; doorPersist(); doorPaint();
+  }
+  /* ---------- Arrival alerts on every owner screen ----------
+   * The Door above only announces while the booth is open on THIS tab.
+   * Owner rule (2026-10-29): every screen he is signed in on gets a compact
+   * arrival notice — member by name, guests as a count — off the same 12s
+   * keeper paint, dismissible, never more than the latest two stacked.
+   * Its own seen-set, primed silently on the tab's first paint like the
+   * Door (and persisted in sessionStorage), so a fresh tab or a refresh
+   * never replays the room; someone who leaves and returns counts as new.
+   * While the booth IS open here the Door is the notice, so this stays
+   * quiet but keeps its set in sync — closing the booth dumps nobody old.
+   * Non-owners and the sandbox never see it; he is never told about himself. */
+  let arrSeen = new Set(), arrGuests = -1, arrPrimed = false;
+  try { const a0 = JSON.parse(sessionStorage.getItem("mw-arrive-seen") || "null"); if (a0 && Array.isArray(a0.u)) { arrSeen = new Set(a0.u.filter((x) => typeof x === "string")); arrGuests = Math.max(0, +a0.g || 0); } } catch (_) {}
+  const arrPersist = () => { try { sessionStorage.setItem("mw-arrive-seen", JSON.stringify({ u: [...arrSeen].slice(-80), g: Math.max(0, arrGuests) })); } catch (_) {} };
+  function arrNotice(html) {
+    let box = document.getElementById("mw-arrive");
+    if (!box) { box = document.createElement("div"); box.id = "mw-arrive"; box.style.cssText = "position:fixed;left:12px;bottom:calc(var(--tabbar,0px) + 84px);z-index:9500;display:flex;flex-direction:column;gap:8px;max-width:min(320px,86vw)"; document.body.appendChild(box); }
+    const el = document.createElement("div");
+    el.style.cssText = "background:#171307;border:1px solid #8a6a2a;color:#f5e7bd;border-radius:12px;padding:10px 34px 10px 12px;font:600 13.5px/1.35 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5);position:relative";
+    el.innerHTML = html + "<button type='button' aria-label='Dismiss' style='position:absolute;right:4px;top:2px;background:none;border:0;color:#c9a44a;font-size:18px;cursor:pointer'>×</button>";
+    el.querySelector("button").onclick = () => el.remove();
+    box.appendChild(el);
+    while (box.children.length > 2) box.firstChild.remove();
+    setTimeout(() => { try { el.remove(); } catch (_) {} }, 9000);
+  }
+  function arriveWatch(users) {
+    if (!OWNER() || SANDBOX) return;
+    const list = Array.isArray(users) ? users : [];
+    const guests = (typeof window.MW_GUESTS === "number" && isFinite(window.MW_GUESTS)) ? window.MW_GUESTS : 0;
+    const nowIds = new Set(list.map((u) => u && u.uid).filter(Boolean));
+    if (!arrPrimed) { arrPrimed = true; nowIds.forEach((id) => arrSeen.add(id)); arrGuests = guests; arrPersist(); return; }
+    const myUid = (window.MW && MW.session && MW.session() && MW.session().user && MW.session().user.id) || "";
+    const quiet = doorOpen();
+    list.forEach((u) => { if (!u || !u.uid || u.uid === myUid || arrSeen.has(u.uid)) return; arrSeen.add(u.uid); if (!quiet) { const nm = String(u.name || (typeof members !== "undefined" && members && members[u.uid] && members[u.uid].handle) || "A member").slice(0, 40); arrNotice("👋 <b>" + E(nm) + "</b> is on the site now"); } });
+    [...arrSeen].forEach((id) => { if (!nowIds.has(id)) arrSeen.delete(id); });
+    if (arrGuests >= 0 && guests > arrGuests && !quiet) arrNotice(guests - arrGuests === 1 ? "👋 A guest just came in" : "👋 " + (guests - arrGuests) + " guests just came in");
+    arrGuests = guests; arrPersist();
   }
   async function doorGreet(row) {
     if (!row || row.greeted) return; row.greeted = true; doorPaint();
@@ -4795,7 +4843,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     setTimeout(() => doorPaint(), 20100);
   }
   { const dl = document.getElementById("door-list"); if (dl && !dl._doorW) { dl._doorW = 1; dl.addEventListener("click", (e) => { const g = e.target.closest("[data-door-greet]"), s2 = e.target.closest("[data-door-shout]"); const k = g ? g.dataset.doorGreet : s2 ? s2.dataset.doorShout : ""; if (!k) return; const row = doorRows.find((r) => r.key === k); if (!row) return; if (g) doorGreet(row); else doorShout(row); }); } }
-  function paintOnline(o, l, users) {
+  function paintOnline(o, l, users, gs) {
     // ONE presence list for the whole site: when the keeper answers with the
     // signed-in members who are on right now, that list is the count everywhere
     // (header chip, booth, station card AND the Book strip via MW_ONLINE), so
@@ -4806,7 +4854,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       n = users.length;
       window.MW_ONLINE = new Set(users.map((x) => x.uid).filter(Boolean));
       window.MW_ONLINE_USERS = users; window.MW_PING_AT = Date.now();
-      window.MW_GUESTS = Math.max(0, (o || 0) - n);
+      window.MW_GUESTS = Math.max(0, (o || 0) - n); window.MW_GUEST_SINCE = gs || 0;
     }
     window.MW_ONLINE_N = n; window.MW_LISTENING_N = l;
     const chip = document.getElementById("online-chip");
@@ -4816,9 +4864,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const s = document.getElementById("st-online"); if (s) s.textContent = l > 0 ? "🎧 " + l + " listening on the decks right now · " + n + " on the site" : n + " on the site right now";
     const li = document.getElementById("listeners"); if (li) li.textContent = l + " listening";
     try { doorPing(users); } catch (_) {} // HOST MODE: the same paint feeds the booth door
+    try { arriveWatch(users); } catch (_) {} // and every owner screen gets the arrival notice
   }
   const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
-    fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) clockOff = clockOff * 0.7 + (j.now - Date.now()) * 0.3; if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users); }).catch(() => {}); };
+    fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) clockOff = clockOff * 0.7 + (j.now - Date.now()) * 0.3; if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); }).catch(() => {}); };
   let clockOff = 0; // this device's clock error vs the server, learned from keeper pings — the sync math below trusts it over the local clock
   if (!SANDBOX) { pingKeeper(); setInterval(pingKeeper, 12000); }
   /* ---------- stale-tab guardian (mwGuardian, 2026-10-28) ----------
@@ -4832,7 +4881,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274200;
+  const MW_DJ_BUILD = 1793274300;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
