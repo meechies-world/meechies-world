@@ -26,13 +26,12 @@ const LAZY_SRC={
   studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],
   books:["js/books.js?v=1793185302"],
   dating:["js/dating.js?v=1793185302"],
-  videos:["js/videos.js?v=1793185302"],
   preach:["js/preach.js?v=1793185302"],
   markets:["js/markets.js?v=1793185302"],
   coin:["js/coin.js?v=1793185302"],
   legal:["js/legal.js?v=1793185302"],
   world:["js/world3d.js?v=1793185302"],
-  games:["js/games.js?v=1793194000"],
+  games:["js/games.js?v=1793194200"],
   creators:["js/studio.js?v=1793185302"],
 };
 const lazyAt={}, lazyBusy={};

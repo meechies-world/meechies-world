@@ -2281,7 +2281,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793200800;
+  const MW_DJ_BUILD = 1793271573;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2432,9 +2432,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function stopListening() { listening = false; document.removeEventListener("pointerdown", tapStart, true); djKeepSet(false); wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   try {
-    if (!SANDBOX && djKeepWanted()) document.addEventListener("pointerdown", function djResumeTap() {
-      if (listening) { document.removeEventListener("pointerdown", djResumeTap); return; }
-      if (isLive() || OWNER()) startListening();
+    if (!SANDBOX && djKeepWanted()) document.addEventListener("pointerdown", function djResumeTap(e) {
+      if (listening || !djKeepWanted()) { document.removeEventListener("pointerdown", djResumeTap); return; }
+      // the listen / tune-in / blackout / bubble buttons start the radio themselves on click;
+      // starting it here first made their click see "listening" and stop it again
+      if (e && e.target && e.target.closest && e.target.closest("#dj-listen,#tune-in,#la-tune,[data-bobtn],[data-bubbtn]")) { document.removeEventListener("pointerdown", djResumeTap); return; }
+      if (isLive() || OWNER()) { startListening(); document.removeEventListener("pointerdown", djResumeTap); }
     });
   } catch (_) {}
   let autoMoved = false;
@@ -3008,7 +3011,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // the same pattern at the same moment, and play it here on the
       // driver. The stamp lands only on a REAL start — no more horns
       // over silence.
-      S.fxHornAt = Date.now(); hornStab();
+      S.fxHornAt = hornHeard = Date.now(); hornInit = true; hornStab(); // mark heard so an echo of this stamp does not horn again
       // the crossfade rides the pair's own axis: A/B on S.xf, C/D on S.xf2
       const cd = target === "C" || target === "D", key = cd ? "xf2" : "xf";
       const from = S[key] ?? 0.5, to = target === "B" || target === "D" ? 1 : 0, t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
