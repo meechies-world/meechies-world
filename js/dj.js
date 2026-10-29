@@ -362,7 +362,7 @@
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 } };
+  let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   let guestPostAt = 0;
@@ -1015,6 +1015,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="ticker" id="st-ticker" hidden><span id="st-ticker-t"></span></div>
   <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
+  <div id="st-battle" hidden></div>
   <div id="st-show"></div>
   <button class="bobig" type="button" data-bobtn>🌑 BLACKOUT MODE — screen goes black, music keeps playing</button>
   <button class="bubbig" type="button" data-bubbtn>🫧 BUBBLE MODE — the site shrinks into a bubble, music keeps playing</button>
@@ -1149,6 +1150,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px"><input type="checkbox" id="ad-drops" style="width:auto" checked> 🎙 Station drops: every 3rd song change, the station speaks ONE line from the rotation below — in the server male voice, over the join, instead of the pad ID</label>
       <div class="dj-list" id="ad-drops-list" style="max-height:120px"></div></div>
     <div class="dj-panel"><h4>🎛️ LIVE DJ REQUESTS</h4><div id="djguest-now"><small class="muted">No guest DJ on the tables right now.</small></div><div class="dj-list" id="djreq-list" style="max-height:180px"></div></div>
+    <div class="dj-panel"><h4>⚔️ BATTLES</h4><div id="battle-box"><small class="muted">Loading…</small></div><small class="muted" style="display:block;margin-top:6px">Battles run from your open booth — if the booth closes mid-battle, the battle state stays but the turns stop advancing.</small></div>
     <div class="dj-panel"><h4>📥 REQUESTS &amp; DROPS</h4><div class="dj-list" id="rq-list" style="max-height:220px"><small class="muted">Nothing yet. Listener requests land here.</small></div></div>
     <div class="dj-panel"><h4>🎹 MIDI CONTROLLER</h4>
       <div class="hint" id="dj-midi-stat">Plug any DJ controller into this device by USB, then tap Enable MIDI. Tap LEARN on a row and move the knob, button or jog wheel that should own it — the mapping saves on this device.</div>
@@ -2644,6 +2646,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     $("#st-now").textContent = live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
     $("#st-show").innerHTML = S.show && okUrl(S.show.url) && !DEAD(S.show.url) ? "<b style=\"font-size:13px;letter-spacing:.1em\">" + (S.show.video ? "🎬 LATEST SESSION VIDEO" : "🎙️ LATEST RECORDED SHOW") + "</b>" + (S.show.video ? "<video controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px;border-radius:10px;background:#000\"></video>" : "<audio controls preload=\"none\" src=\"" + E(S.show.url) + "\" style=\"width:100%;margin-top:6px\"></audio>") + "<small class=\"muted\">Recorded " + new Date(S.show.at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" }) + "</small>" : "";
     renderLog($("#st-log"));
+    try { paintBattleCard(); } catch (_) {}
   }
   setInterval(() => {
     const oe = document.getElementById("dj-owner"); if (oe && oe.hidden && OWNER()) showOwnerUI();
@@ -2778,7 +2781,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793272100;
+  const MW_DJ_BUILD = 1793272200;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -2990,11 +2993,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const ses = mySess(), user = ses && ses.user, uid = user && user.id;
     const g = S && S.djGuest, approved = !!(uid && g && g.uid === uid && g.until > Date.now());
     let liveOn = false; try { liveOn = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {}
+    const bt = S && S.battle, btMine = !!(uid && bt && bt.on && bt.id && (bt.phase === "live" || (bt.phase === "done" && Date.now() - (bt.at || 0) < 10 * 60e3)) && (bt.p1.uid === uid || bt.p2.uid === uid));
+    let btOn = false; try { btOn = sessionStorage.getItem("mw-battlelive") === "1"; } catch (_) {}
     if (uid && !approved && !OWNER() && Date.now() - djLivePendAt > 10000) { djLivePendAt = Date.now(); try { const d = DBF(); const snap = d ? await d.doc("requests/djlive-" + uid).get() : null; djLivePend = !!(snap && snap.exists); } catch (_) {} }
-    const sig = [OWNER() ? "owner" : "", uid || "", approved ? g.until : 0, liveOn, djLivePend].join("|");
+    const sig = [OWNER() ? "owner" : "", uid || "", approved ? g.until : 0, liveOn, djLivePend, btMine ? [bt.id, bt.phase, bt.round, bt.turn, bt.winner, btOn].join(":") : ""].join("|");
     if (sig === djLiveSig) return; djLiveSig = sig;
     if (OWNER()) { body.innerHTML = '<p class="muted">This is your station. When a member asks to DJ live, the request lands in your booth under 🎛️ LIVE DJ REQUESTS — approve it there and their table drives the radio until their slot ends, you end it, or you open your own booth.</p>'; return; }
     if (!uid) { body.innerHTML = '<p class="muted">Your table is the DJ Playground above — yours to play on any time, and the real radio can\'t hear it. Want the real radio? <b>Sign in</b>, then ask Meechie for a live slot right here.</p>'; return; }
+    if (btMine) {
+      const other = bt.p1.uid === uid ? bt.p2 : bt.p1, turnName = bt.turn === bt.p1.uid ? gName(bt.p1) : gName(bt.p2);
+      if (bt.phase === "done") {
+        const wn = bt.winner === bt.p1.uid ? gName(bt.p1) : bt.winner === bt.p2.uid ? gName(bt.p2) : "";
+        body.innerHTML = wn ? `<p>⚔️ <b>Battle over — ${E(wn)} takes it!</b> Thanks for battling on Meechie's World Radio. The final score is on the station card.</p>` : '<p>⚔️ <b>Battle over — it ended in a draw!</b> Thanks for battling on Meechie\'s World Radio. The final score is on the station card.</p>';
+        return;
+      }
+      body.innerHTML = `<p>⚔️ <b>You're in a DJ BATTLE</b> against <b>${E(gName(other))}</b> — Round ${bt.round} of ${bt.rounds}. ${bt.turn === uid ? "🎧 <b>Your turn — you're on the decks!</b>" : "⏳ <b>" + E(turnName) + "</b> is on the decks — you're up next."}</p><p class="muted" style="margin:6px 0">Open your battle table and play when it's your turn — the whole station hears it, and the crowd votes on the station card every round.</p><button class="btn" type="button" id="djlive-battle-toggle">${btOn ? "⏹ Leave the battle table" : "⚔️ Open your battle table"}</button>`;
+      const t = document.getElementById("djlive-battle-toggle");
+      if (t) t.addEventListener("click", () => { try { if (sessionStorage.getItem("mw-battlelive") === "1") sessionStorage.removeItem("mw-battlelive"); else { sessionStorage.removeItem("mw-guestlive"); sessionStorage.setItem("mw-battlelive", "1"); if (pgB) pgB.click(); say("⚔️ Battle table open — when it's your turn, your mix is on the radio"); } } catch (_) {} djLiveSig = ""; renderDjLive(); });
+      return;
+    }
     if (approved) { body.innerHTML = `<p>✅ <b>Meechie put you on!</b> Your live slot runs until ${new Date(g.until).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. Open your table (the Playground above), flip this on, and play — the whole station hears your mix.</p><button class="btn" type="button" id="djlive-toggle">${liveOn ? "⏹ Stop — take me off the radio" : "🔴 GO LIVE on the radio"}</button>`; const t = document.getElementById("djlive-toggle"); if (t) t.addEventListener("click", () => { try { if (sessionStorage.getItem("mw-guestlive") === "1") sessionStorage.removeItem("mw-guestlive"); else { sessionStorage.setItem("mw-guestlive", "1"); if (pgB) pgB.click(); say("🔴 You are LIVE — your table is driving the radio"); } } catch (_) {} djLiveSig = ""; renderDjLive(); }); return; }
     if (djLivePend) { body.innerHTML = '<p>⏳ <b>Request sent.</b> Meechie sees it in his booth — when he approves you, your GO LIVE button appears right here.</p><button class="btn ghost" type="button" id="djlive-cancel">Cancel my request</button>'; const c = document.getElementById("djlive-cancel"); if (c) c.addEventListener("click", async () => { try { const d = DBF(); if (d) await d.doc("requests/djlive-" + uid).delete(); } catch (_) {} djLivePend = false; djLiveSig = ""; renderDjLive(); }); return; }
     body.innerHTML = '<p class="muted">Your table is the DJ Playground above — yours any time, and the real radio can\'t hear it. Want the station to hear you? Ask Meechie — if he approves you in his booth, you get a live slot (up to 2 hours) and your table drives the real radio.</p><button class="btn" type="button" id="djlive-ask">🎧 Ask Meechie to DJ live</button>';
@@ -3049,6 +3066,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const qn = (r) => (r && (r.src || r.yt)) ? { src: String(r.src || ""), yt: String(r.yt || ""), at: +r.at || 0 } : null;
     m.qStock = { A: qn((m.qStock || {}).A), B: qn((m.qStock || {}).B), C: qn((m.qStock || {}).C), D: qn((m.qStock || {}).D) };
     m.dropsOn = m.dropsOn !== false; m.dropN = +m.dropN || 0; m.dropIx = +m.dropIx || 0;
+    // DJ BATTLES state (2026-10-29): normalized here like vcam — scores are
+    // NOT part of it (tallied server-side from the vote docs, see
+    // functions/api/battle.js); this is just who is battling and whose
+    // turn it is. turnSec persists the booth's turn-length pick so the
+    // server turn engine advances on the same clock the booth promised.
+    const bw = (w) => ({ uid: String((w && w.uid) || ""), name: String((w && w.name) || "").slice(0, 60) });
+    const bb = (m.battle && typeof m.battle === "object" && !Array.isArray(m.battle)) ? m.battle : {};
+    m.battle = { on: !!bb.on, id: String(bb.id || ""), p1: bw(bb.p1), p2: bw(bb.p2), round: Math.max(1, Math.min(99, +bb.round || 1)), rounds: [1, 2, 3, 5].indexOf(+bb.rounds) >= 0 ? +bb.rounds : 3, turnSec: [30, 60, 90, 120].indexOf(+bb.turnSec) >= 0 ? +bb.turnSec : 90, turn: String(bb.turn || ""), turnEndsAt: +bb.turnEndsAt || 0, phase: (bb.phase === "live" || bb.phase === "done") ? bb.phase : "off", winner: String(bb.winner || ""), at: +bb.at || 0, lastWrite: +bb.lastWrite || 0 };
     return m;
   }
   // the site-wide LIVE pill (owner ask 2026-10-26): when Meechie (or an approved
@@ -4055,6 +4080,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       : '<small class="muted">No guest DJ on the tables right now. Approve a request below and that member plays on the real radio for up to 2 hours — opening your own booth takes the tables back instantly.</small>';
     const rows = (reqCache || []).filter((r) => r.data && r.data.kind === "djlive").sort((a, b) => (a.data.at || 0) - (b.data.at || 0));
     list.innerHTML = rows.length ? rows.map((r) => `<div class="req"><span>🎧 <b>${E(r.data.name || "Member")}</b> wants to DJ live</span><small>${agoT(r.data.at || Date.now())}</small><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-djok="${E(r.id)}|${E(r.data.uid || "")}|${E(r.data.name || "Member")}">✅ Put them on</button><button class="btn ghost sm" type="button" data-djno="${E(r.id)}">✕ Not now</button></span></div>`).join("") : '<small class="muted">No requests waiting.</small>';
+    try { paintBattlePanel(); } catch (_) {}
   }
   function renderReqs(docs) {
     const box = $("#rq-list"); if (!box) return;
@@ -4077,6 +4103,191 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const no = e.target.closest("[data-djno]"); if (no && OWNER()) { DBF()?.doc("requests/" + no.dataset.djno).delete().catch(() => {}); return; }
     const end = e.target.closest("[data-djend]"); if (end && OWNER()) { S.djGuest = null; save(true); say("Guest set ended — the tables are yours"); renderDjReqs(); return; }
   });
+
+  /* ---------- DJ BATTLES (owner ask 2026-10-29) ----------
+   * Two members Malik picks go head-to-head on the decks in timed turns;
+   * the crowd votes on the station card; the winner is announced on air.
+   * State lives in S.battle (booth-written at START, server-written after
+   * that by functions/api/battle.js). Scores are tallied server-side from
+   * the vote docs — never stored in S. Turn switches are driven by the
+   * /api/battle advance action: this booth ticks it while a battle is
+   * live, and the battler whose turn just ended backstops it from their
+   * Playground — the server only transitions when the stored turnEndsAt
+   * has passed, and only once (optimistic write), so every caller
+   * computes the same next state. */
+  let battleTally = null, battleTallyId = "", battlePollAt = 0, battleAdvAt = 0, battlePushAt = 0, battleVoiceSent = "", battleCardSig = "", battlePanelSig = "", battleGuestTurnSeen = "";
+  const bName = (w) => gName(w || {});
+  const battleHdrs = () => { const ses = mySess(); const h = { "content-type": "application/json" }; if (ses && ses.access_token) h.authorization = "Bearer " + ses.access_token; return h; };
+  async function battleApi(body) { try { const r = await fetch("/api/battle", { method: "POST", headers: battleHdrs(), body: JSON.stringify(body) }); return await r.json().catch(() => null); } catch (_) { return null; } }
+  async function battleTallyFetch(id) {
+    try { const r = await fetch("/api/battle?battleId=" + encodeURIComponent(id)); const j = await r.json().catch(() => null); if (j && j.ok) { battleTally = { p1: +j.p1 || 0, p2: +j.p2 || 0 }; battleTallyId = id; paintBattleCard(); if (OWNER() && !SANDBOX) paintBattlePanel(); } } catch (_) {}
+  }
+  async function battleAdvanceCall() {
+    const t = Date.now(); if (t - battleAdvAt < 3000) return; battleAdvAt = t;
+    const j = await battleApi({ action: "advance" });
+    if (j && j.ok && typeof j.p1 === "number") { battleTally = { p1: j.p1, p2: j.p2 }; if (S.battle && S.battle.id) battleTallyId = S.battle.id; }
+  }
+  const battleVoted = (b) => { try { return localStorage.getItem("mw-bvote-" + b.id + "-" + b.round) || ""; } catch (_) { return ""; } };
+  async function battleVote(side) {
+    const b = S.battle; if (!b || !b.on || b.phase !== "live" || !b.id) return;
+    const ses = mySess();
+    if (!ses || !ses.access_token) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to vote in the battle 🔥"); return; }
+    const j = await battleApi({ action: "vote", battleId: b.id, side });
+    if (j && j.ok) {
+      try { localStorage.setItem("mw-bvote-" + b.id + "-" + b.round, side); } catch (_) {}
+      battleTally = { p1: +j.p1 || 0, p2: +j.p2 || 0 }; battleTallyId = b.id; battleCardSig = "";
+      paintBattleCard();
+      say(j.dup ? "You already voted this round 🔥" : "🔥 Vote counted!");
+    } else say("That vote did not land — try again in a moment.");
+  }
+  function paintBattleCard() {
+    const box = document.getElementById("st-battle"); if (!box || SANDBOX) return;
+    const b = S.battle;
+    const doneFresh = b && b.phase === "done" && Date.now() - (b.at || 0) < 5 * 60e3;
+    if (!b || !b.on || !b.id || (b.phase !== "live" && !doneFresh)) { box.hidden = true; if (box.innerHTML) box.innerHTML = ""; battleCardSig = ""; return; }
+    const t = (battleTallyId === b.id && battleTally) ? battleTally : null;
+    const voted = b.phase === "live" ? battleVoted(b) : "";
+    const sig = [b.id, b.phase, b.round, b.turn, b.winner, voted, t ? t.p1 + "-" + t.p2 : "x"].join("|");
+    if (sig === battleCardSig) return; battleCardSig = sig;
+    box.hidden = false;
+    if (b.phase === "done") {
+      const wn = b.winner === b.p1.uid ? bName(b.p1) : b.winner === b.p2.uid ? bName(b.p2) : "";
+      box.innerHTML = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0"><b>⚔️ DJ BATTLE — RESULT</b><div style="margin-top:4px">${wn ? ("🏆 <b>" + E(wn) + "</b> takes the battle!") : "🤝 It ended in a <b>draw</b>!"}</div><div class="muted" style="font-size:13px;margin-top:2px">Final score — ${E(bName(b.p1))} <b>${t ? t.p1 : "…"}</b> · <b>${t ? t.p2 : "…"}</b> ${E(bName(b.p2))}</div></div>`;
+      return;
+    }
+    const turnName = b.turn === b.p1.uid ? bName(b.p1) : bName(b.p2);
+    const secs = Math.max(0, Math.ceil(((b.turnEndsAt || 0) - Date.now()) / 1000));
+    const vbtn = (side, w) => voted
+      ? `<button class="btn sm" type="button" disabled>${voted === side ? "You voted 🔥" : "🔥 " + E(bName(w))}</button>`
+      : `<button class="btn sm" type="button" data-bvote="${side}">🔥 ${E(bName(w))}</button>`;
+    box.innerHTML = `<div style="border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0"><b>⚔️ DJ BATTLE — LIVE</b>
+      <div style="margin-top:4px"><b>${E(bName(b.p1))}</b> vs <b>${E(bName(b.p2))}</b> · Round ${b.round} of ${b.rounds}</div>
+      <div class="muted" style="font-size:13px;margin-top:2px">🎧 <b>${E(turnName)}</b> is on the decks · <span id="st-battle-cd">${secs}</span>s left this turn</div>
+      <div style="font-size:13px;margin-top:2px">🔥 Score — ${E(bName(b.p1))} <b>${t ? t.p1 : "…"}</b> · <b>${t ? t.p2 : "…"}</b> ${E(bName(b.p2))}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${vbtn("p1", b.p1)}${vbtn("p2", b.p2)}</div>
+      <small class="muted">One vote per member per round — vote for the DJ you are feeling.</small></div>`;
+  }
+  function battleCandidates() {
+    const out = [], seen = new Set();
+    const push = (uid, name) => { uid = String(uid || ""); if (!uid || seen.has(uid)) return; seen.add(uid); out.push({ uid, name: gName({ name: name || "Member" }) }); };
+    (reqCache || []).forEach((r) => { if (r.data && r.data.kind === "djlive") push(r.data.uid, r.data.name); });
+    const g = S.djGuest; if (g && g.until > Date.now()) push(g.uid, g.name);
+    return out;
+  }
+  function paintBattlePanel() {
+    const box = $("#battle-box"); if (!box || SANDBOX) return;
+    const b = S.battle;
+    if (b && b.on && b.phase === "live" && b.id) {
+      const sig = "live|" + b.id + "|" + b.round + "|" + b.turn;
+      if (sig !== battlePanelSig) {
+        battlePanelSig = sig;
+        box.innerHTML = `<div class="req"><span>⚔️ <b>${E(bName(b.p1))}</b> vs <b>${E(bName(b.p2))}</b> — Round ${b.round} of ${b.rounds}</span></div>
+          <div style="font-size:14px;margin:4px 0">🎧 On the decks: <b>${E(b.turn === b.p1.uid ? bName(b.p1) : bName(b.p2))}</b> · <span id="battle-cd">${Math.max(0, Math.ceil(((b.turnEndsAt || 0) - Date.now()) / 1000))}</span>s left</div>
+          <div style="font-size:14px;margin:4px 0">🔥 Score — ${E(bName(b.p1))} <b id="battle-sc1">…</b> · <b id="battle-sc2">…</b> ${E(bName(b.p2))}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" type="button" data-bswitch="1">⏭ SWITCH TURN NOW</button><button class="btn ghost sm" type="button" data-bend="1">⏹ END BATTLE</button></div>`;
+      }
+      const t = (battleTallyId === b.id && battleTally) ? battleTally : null;
+      const s1 = document.getElementById("battle-sc1"), s2 = document.getElementById("battle-sc2");
+      if (s1 && t) s1.textContent = t.p1; if (s2 && t) s2.textContent = t.p2;
+      return;
+    }
+    if (b && b.on && b.phase === "done" && b.id && Date.now() - (b.at || 0) < 60000) {
+      const sig = "done|" + b.id;
+      if (sig !== battlePanelSig) {
+        battlePanelSig = sig;
+        const wn = b.winner === b.p1.uid ? bName(b.p1) : b.winner === b.p2.uid ? bName(b.p2) : "";
+        box.innerHTML = `<div class="req"><span>⚔️ Battle over — ${wn ? ("🏆 <b>" + E(wn) + "</b> takes it!") : "🤝 a <b>draw</b>!"}</span></div><small class="muted">The result is on the station card. Setting up the next battle…</small>`;
+      }
+      return;
+    }
+    const cands = battleCandidates();
+    const sig = "setup|" + cands.map((c) => c.uid).join(",");
+    if (sig === battlePanelSig) return;
+    const keep = {}; ["battle-p1", "battle-p2", "battle-rounds", "battle-turnsec"].forEach((id) => { const el = document.getElementById(id); if (el) keep[id] = el.value; });
+    battlePanelSig = sig;
+    if (cands.length < 2) {
+      box.innerHTML = `<small class="muted">Battles need <b>two</b> members ready to DJ. Right now ${cands.length === 1 ? ("only <b>" + E(cands[0].name) + "</b> is") : "nobody is"} lined up — when members tap 🎧 Ask Meechie to DJ live (or one is on a guest set), their names land here to pick from.</small>`;
+      return;
+    }
+    const opts = (sel) => cands.map((c, i) => `<option value="${E(c.uid)}"${(keep[sel] ? keep[sel] === c.uid : i === (sel === "battle-p2" ? 1 : 0)) ? " selected" : ""}>${E(c.name)}</option>`).join("");
+    box.innerHTML = `<div style="display:grid;gap:8px">
+      <label class="lab">Battler 1<select id="battle-p1">${opts("battle-p1")}</select></label>
+      <label class="lab">Battler 2<select id="battle-p2">${opts("battle-p2")}</select></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <label class="lab" style="flex:1">Rounds<select id="battle-rounds">${[1, 2, 3, 5].map((n) => `<option value="${n}"${(keep["battle-rounds"] ? +keep["battle-rounds"] : 3) === n ? " selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label class="lab" style="flex:1">Turn length<select id="battle-turnsec">${[30, 60, 90, 120].map((n) => `<option value="${n}"${(keep["battle-turnsec"] ? +keep["battle-turnsec"] : 90) === n ? " selected" : ""}>${n} seconds</option>`).join("")}</select></label>
+      </div>
+      <button class="btn" type="button" data-bstart="1">⚔️ START BATTLE</button>
+      <small class="muted">Starting a battle takes the tables over from any guest set in progress. Battlers open their battle table from the DJ Station page; only the battler on turn can move the decks.</small></div>`;
+  }
+  function battleStart() {
+    const s1 = $("#battle-p1"), s2 = $("#battle-p2"); if (!s1 || !s2) return;
+    const u1 = s1.value, u2 = s2.value;
+    if (!u1 || !u2 || u1 === u2) { say("Pick two different battlers ⚔️"); return; }
+    const n1 = s1.options[s1.selectedIndex] ? s1.options[s1.selectedIndex].textContent : "DJ 1";
+    const n2 = s2.options[s2.selectedIndex] ? s2.options[s2.selectedIndex].textContent : "DJ 2";
+    const rounds = +($("#battle-rounds") || {}).value || 3, turnSec = +($("#battle-turnsec") || {}).value || 90;
+    const now = Date.now(), id = "b" + rid();
+    S.battle = { on: true, id, p1: { uid: u1, name: n1 }, p2: { uid: u2, name: n2 }, round: 1, rounds, turnSec, turn: u1, turnEndsAt: now + turnSec * 1000, phase: "live", winner: "", at: now, lastWrite: 0 };
+    if (S.djGuest) S.djGuest = null; // the battle takes the station: the guest relay door closes so turns rule alone
+    S.ticker = "⚔️ DJ BATTLE: " + n1 + " vs " + n2 + " — vote for your favorite on the station card!";
+    S.voice = { id: "battle-" + id + "-start", text: "Battle time! " + n1 + " versus " + n2 + " — round one, " + n1 + ", you are up!", at: now };
+    battleTally = { p1: 0, p2: 0 }; battleTallyId = id; battlePanelSig = ""; battleCardSig = "";
+    save(true); paintBattlePanel(); paintBattleCard();
+    say("⚔️ Battle started: " + n1 + " vs " + n2);
+  }
+  onMain("click", async (e) => {
+    const vb = e.target.closest("[data-bvote]"); if (vb) { battleVote(vb.dataset.bvote); return; }
+    const bs = e.target.closest("[data-bstart]"); if (bs && OWNER() && !SANDBOX) { battleStart(); return; }
+    const sw = e.target.closest("[data-bswitch]"); if (sw && OWNER() && !SANDBOX) { const j = await battleApi({ action: "switch" }); if (j && j.ok) { if (typeof j.p1 === "number") { battleTally = { p1: j.p1, p2: j.p2 }; battleTallyId = S.battle.id; } say(j.done ? "⚔️ Battle over!" : "⏭ Turn switched"); } else say("That did not go through — try again."); return; }
+    const en = e.target.closest("[data-bend]"); if (en && OWNER() && !SANDBOX) { const j = await battleApi({ action: "end" }); if (j && j.ok) { if (typeof j.p1 === "number") { battleTally = { p1: j.p1, p2: j.p2 }; battleTallyId = S.battle.id; } say("⚔️ Battle ended — the winner is on the station card!"); } else say("That did not go through — try again."); return; }
+  });
+  function battleSecondTick() {
+    if (SANDBOX) return;
+    const b = S.battle; if (!b || !b.on || !b.id) return;
+    const doneFresh = b.phase === "done" && Date.now() - (b.at || 0) < 5 * 60e3;
+    if (b.phase !== "live" && !doneFresh) return;
+    const secs = b.phase === "live" ? Math.max(0, Math.ceil(((b.turnEndsAt || 0) - Date.now()) / 1000)) : 0;
+    const cd = document.getElementById("st-battle-cd"); if (cd) cd.textContent = secs;
+    const cd2 = document.getElementById("battle-cd"); if (cd2) cd2.textContent = secs;
+    if (Date.now() - battlePollAt > 10000) { battlePollAt = Date.now(); battleTallyFetch(b.id); }
+    if (OWNER()) { paintBattlePanel(); if (b.phase === "live" && Date.now() > (b.turnEndsAt || 0)) battleAdvanceCall(); }
+  }
+  setInterval(() => { try { battleSecondTick(); } catch (_) {} }, 1000);
+  /* The battler's side: inside their Playground (SANDBOX), a battle table
+   * pushes performance state through the cf gate (merge_doc rpc — the
+   * server merges ONLY sanitized performance fields, and only while it
+   * is this battler's turn) and backstops the turn clock. Mirrors the
+   * guestdj relay's shape and discipline; the relay itself is untouched. */
+  function battlePushPerf() {
+    const t = Date.now(); if (t - battlePushAt < 2000) return;
+    const ses = mySess(); if (!ses || !ses.access_token) return;
+    const freshVoice = S.voice && S.voice.id && S.voice.id !== battleVoiceSent && (S.voice.at || 0) > t - 30000;
+    const anyDeck = DECKS.some((k) => S[k] && (S[k].src || S[k].yt));
+    if (!anyDeck && !freshVoice) return; // nothing on my table yet — the outgoing state stays on air until I put something on
+    battlePushAt = t;
+    const patch = { A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panY: S.panY, fx: S.fx };
+    if (freshVoice) { patch.voice = S.voice; battleVoiceSent = S.voice.id; }
+    fetch("/api/cf/rpc", { method: "POST", headers: battleHdrs(), body: JSON.stringify({ name: "merge_doc", args: { p_path: "radio/dj", p_patch: patch } }) }).catch(() => {});
+  }
+  async function battleGuestTick() {
+    let on = false; try { on = sessionStorage.getItem("mw-battlelive") === "1"; } catch (_) {}
+    if (!on) return;
+    const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) return;
+    let d = null;
+    try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); } catch (_) {}
+    if (!d) return;
+    const b = d.battle;
+    const mine = b && b.on && b.id && (b.p1.uid === uid || b.p2.uid === uid);
+    if (!mine || b.phase === "off") { try { sessionStorage.removeItem("mw-battlelive"); } catch (_) {} battleGuestTurnSeen = ""; say("⚔️ The battle is over for you — thanks for playing!"); return; }
+    if (b.phase === "done") { try { sessionStorage.removeItem("mw-battlelive"); } catch (_) {} battleGuestTurnSeen = ""; const wn = b.winner === b.p1.uid ? gName(b.p1) : b.winner === b.p2.uid ? gName(b.p2) : ""; say(wn ? ("⚔️ Battle over — " + wn + " takes it!") : "⚔️ Battle over — it is a draw!"); return; }
+    if (b.turn === uid) {
+      if (battleGuestTurnSeen !== uid + b.round) { battleGuestTurnSeen = uid + b.round; say("⚔️ Your turn — you're on the decks!"); }
+      battlePushPerf();
+    }
+    if (Date.now() > (b.turnEndsAt || 0)) battleAdvanceCall();
+  }
+  if (SANDBOX) setInterval(() => { battleGuestTick().catch(() => {}); }, 3000);
 
   /* ---------- listener song picker: the audience queues the radio ---------- */
   let pkTab = "mine", pkReal = null, pkItems = null, pkLabel = "", pkSubbed = false;
