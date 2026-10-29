@@ -21,7 +21,7 @@ const LAZY_SRC={
   jobs:["js/jobs.js?v=1793185302"],
   connect:["js/connect.js?v=1793185302"],
   fans:["js/fans.js?v=1793185302"],
-  home:["js/home.js?v=1793272400"],
+  home:["js/home.js?v=1793272700"],
   tv:["js/movies.js?v=1793185302"],
   clips:["js/clips.js?v=1793185302"],
   studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],
@@ -490,7 +490,7 @@ let eqGains=(()=>{ try{ const s=JSON.parse(localStorage.getItem("mw_eq")||"null"
 let eqOn=(()=>{ try{ return localStorage.getItem("mw_eq_on")!=="0"; }catch(_){ return true; } })();
 function applyEq(){ eqNodes.forEach((n,i)=>{ n.gain.value = eqOn ? eqGains[i] : 0; }); }
 function setupBoost(force){ if(boostCtx) return true; if((IOS||TOUCH) && !force) return false;
-  try{ const C=window.AudioContext||window.webkitAudioContext; boostCtx=new C();
+  try{ const C=window.AudioContext||window.webkitAudioContext; try{ boostCtx=new C({latencyHint:"playback"}); }catch(_){ boostCtx=new C(); }
     const src=boostCtx.createMediaElementSource(media); boostGain=boostCtx.createGain(); boostGain.gain.value=(IOS||TOUCH)?1:+(window.MW_SITE?.boost||2); /* booster is desktop-only; phones get the EQ alone */
     const lim=boostCtx.createDynamicsCompressor(); lim.threshold.value=-4; lim.knee.value=4; lim.ratio.value=20; lim.attack.value=0.002; lim.release.value=0.15;
     eqNodes=EQ_BANDS.map(b=>{ const f=boostCtx.createBiquadFilter(); f.type=b.type; f.frequency.value=b.f; if(b.type==="peaking") f.Q.value=1; return f; });
@@ -807,7 +807,7 @@ function subRadio(){
   db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); if(window._introPending && !window._welcomeOn){ window._introPending=false; playIntro().then(ok=>{ if(!ok && !autoTried) autoRadio(); }); } else if(!autoTried) setTimeout(autoRadio,400); }, e=>console.warn(e));
   db.doc("radio/state").onSnapshot(d=>{ radioEpoch=d.exists?(d.data().epoch||DEFAULT_EPOCH):DEFAULT_EPOCH; paintAir(); }, e=>console.warn(e));
   db.collection("requests").orderBy("createdAt","desc").limit(25).onSnapshot(s=>{
-    $("#req-list").innerHTML = s.empty ? '<p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p>' : s.docs.map(d=>{const r=d.data(); return `<div><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)} <small class="muted">${ago(r.createdAt)}</small></div>`;}).join("");
+    const rows = s.docs.map(d=>d.data()).filter(r=>String(r.text||"").trim()); $("#req-list").innerHTML = !rows.length ? '<p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p>' : rows.map(r=>`<div><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)} <small class="muted">${ago(r.createdAt)}</small></div>`).join("");
   }, e=>console.warn(e));
 }
 $("#req-form").addEventListener("submit",e=>{ e.preventDefault(); if(!needMember()) return; const t=$("#req-text").value.trim(); if(!t) return; $("#req-text").value="";
@@ -1153,8 +1153,8 @@ function subChannel(ch){ chUnsub?.(); channel=ch; msgs=[]; renderMsgs();
   chUnsub=db.collection("chat/"+ch+"/msgs").orderBy("createdAt","desc").limit(80).onSnapshot(s=>{msgs=s.docs.map(d=>d.data()).reverse(); renderMsgs();}, e=>console.warn(e));
   room?.presence({channel:ch}); updOnline();
 }
-function updOnline(){ const L=(room?.peers?.()||[]).filter(p=>p.presence?.radio).length; $("#listeners").textContent=L+" listening";
-  const n=(room?.peers?.()||[]).filter(p=>p.kind!=="agent" && p.presence?.channel===channel).length; $("#online").textContent="● "+Math.max(n, db?1:0)+" here now"; }
+function updOnline(){ /* people counts have ONE source: the keeper ping in dj.js (paintOnline) paints the header chip, booth, station card and #listeners from the same answer, so no two surfaces can disagree. The room-peers number below only ever described this chat channel, so it is labelled as exactly that and feeds nothing site-wide. */
+  const n=(room?.peers?.()||[]).filter(p=>p.kind!=="agent" && p.presence?.channel===channel).length; $("#online").textContent="● "+Math.max(n, db?1:0)+" in this chat"; }
 function renderMsgs(){
   const box=$("#msgs"); if(!box) return;
   if(!msgs.length){ box.innerHTML='<div class="empty" style="border:0">No messages yet. Say hello.</div>'; return; }
