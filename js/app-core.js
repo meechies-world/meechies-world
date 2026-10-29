@@ -9,7 +9,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","tv","mwtv","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
+const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","tv","mwtv","watch","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"]};
 /* ---------- Lazy feature scripts ----------
    Standalone feature files load once, the first time their view opens (any entry

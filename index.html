@@ -990,9 +990,48 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
       <span id="tw-what" class="tw-what"></span>
       <span class="tw-sp"></span>
       <button type="button" class="btn ghost sm" id="tw-sound">🔇 Radio off — tap for sound</button>
+      <button type="button" class="btn ghost sm" id="tw-watch">👀 Watch the setup</button>
       <button type="button" class="btn ghost sm" id="tw-fs" aria-label="Full screen">⛶</button>
       <a class="btn ghost sm" href="#home" data-go="home">← Meechie's World</a>
     </div>
+  </div>
+</section>
+
+<section class="view" data-theme="radio" id="v-watch" hidden>
+  <style id="watch-styles">
+#ws-body .ws-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#ws-body .ws-lamp{font:800 12px var(--body);letter-spacing:.08em;border:1px solid #2b2b30;border-radius:999px;padding:4px 10px;color:#b9ac8d}
+#ws-body .ws-lamp.on{color:#ff8b8f;border-color:#e5484d}
+#ws-body .ws-master{font-weight:700}
+#ws-body .ws-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+#ws-body .ws-deck,#ws-body .ws-xf,#ws-body .ws-fx,#ws-body .ws-queue{background:linear-gradient(180deg,#17181a,#0b0b0d);border:1px solid #2b2b30;border-radius:12px;padding:10px 12px}
+#ws-body .ws-deck,#ws-body .ws-xf,#ws-body .ws-fx{cursor:pointer}
+#ws-body .ws-dh{display:flex;justify-content:space-between;align-items:center}
+#ws-body .ws-dl{font:800 13px var(--body);letter-spacing:.12em;color:#f0cf78}
+#ws-body .ws-ds{font:700 11px var(--body);letter-spacing:.06em;color:#9a917c}
+#ws-body .ws-ds.on{color:#7ee2a0}
+#ws-body .ws-dt{font-weight:700;margin:6px 0;min-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ws-body .ws-prog{height:8px;background:#26262b;border-radius:99px;overflow:hidden}
+#ws-body .ws-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a6a2a,#f0cf78);transition:width .6s linear}
+#ws-body .ws-dm{display:flex;justify-content:space-between;color:#9a917c;font-size:12px;margin-top:5px}
+#ws-body .ws-dbtns{display:flex;gap:8px;margin-top:8px}
+#ws-body .ws-fbtn{display:grid;place-items:center;width:38px;height:30px;border:1px solid #3a3a41;border-radius:8px;background:#141518;font-size:13px}
+#ws-body .ws-xfl{display:flex;justify-content:space-between;font:700 11.5px var(--body);letter-spacing:.06em;color:#9a917c}
+#ws-body .ws-xfm{color:#f0cf78}
+#ws-body .ws-track{position:relative;height:10px;background:#26262b;border-radius:99px;margin:12px 2px 5px}
+#ws-body .ws-knob{position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:#f0cf78;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+#ws-body .ws-fx{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}
+#ws-body .ws-queue{margin-top:10px}
+#ws-body .ws-qrow{padding:5px 0;border-bottom:1px solid #222228}
+#ws-body .ws-qrow:last-child{border-bottom:0}
+  </style>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Meechie's World Radio</p><h2>👀 Watch the Setup</h2></div>
+      <p class="muted">Meechie's live DJ setup, mirrored as he works it — every deck, the queue, the crossfaders and the FX. Watching is free for everyone. The controls answer to Meechie only.</p>
+    </div>
+    <div id="ws-body"><p class="muted">Loading the setup...</p></div>
+    <p style="margin-top:14px"><a class="btn ghost sm" href="#radio" data-go="radio">🎧 Back to the radio</a> <a class="btn ghost sm" href="#mwtv" data-go="mwtv">📺 MW TV</a></p>
   </div>
 </section>
 
@@ -1634,7 +1673,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 <script src="js/float-layout.js?v=1793271573"></script>
 <script src="js/cf-client.js?v=1793271573"></script>
 <script src="js/platform.js?v=1793271573"></script>
-<script src="js/app-core.js?v=1793273300"></script>
+<script src="js/app-core.js?v=1793273600"></script>
 <script src="js/appnav.js?v=1793271573"></script>
 <script src="js/fb-feed.js?v=1793271573"></script>
 <script src="js/fb-feed-plus.js?v=1793271573"></script>
@@ -1644,7 +1683,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 <script src="js/site-coder-ui.js?v=1793271573"></script>
 <script src="js/messages.js?v=1793271573"></script>
 <script src="js/videos.js?v=1793271573"></script>
-<script src="js/dj.js?v=1793273500"></script>
+<script src="js/dj.js?v=1793273600"></script>
 <script src="js/live.js?v=1793271573"></script>
 <script src="js/friends.js?v=1793271573"></script>
 <script src="js/social.js?v=1793271573"></script>
