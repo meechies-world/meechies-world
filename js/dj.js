@@ -1585,7 +1585,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         if (prov === "yt") ytApi().then(go); else if (prov === "dm") dmApi().then(go); else vmApi().then(go);
       }
     } else if (tok && pipBox.player) {
-      try { const pst = pipBox.player.getPlayerState(); if (pst !== 1) pipBox.player.playVideo(); const cur = pipBox.player.getCurrentTime ? pipBox.player.getCurrentTime() : 0, want = posOf(pipBox.deck); if (cur > 0 && Math.abs(cur - want) > 8) pipBox.player.seekTo(want, true); } catch (_) {}
+      try { const pst = pipBox.player.getPlayerState(); if (pst !== 1) pipBox.player.playVideo(); const cur = pipBox.player.getCurrentTime ? pipBox.player.getCurrentTime() : 0, want = bcastPos(pipBox.deck); if (cur > 0 && syncLockCalc(cur - want, 1).act === "snap") pipBox.player.seekTo(want, true); } catch (_) {}
     }
   };
   const bubDocPip = async () => {
@@ -2590,7 +2590,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     vsStageEls().forEach((st) => { const v = vsVid(st); try {
       if (v._vsHlsUrl !== url) { vsKillHls(v); try { v.srcObject = null; } catch (_) {} v._vsHlsUrl = url;
         if (v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl")) v.src = url;
-        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 10 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
+        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 10, lowLatencyMode: true, liveSyncDurationCount: 2, maxLiveSyncPlaybackRate: 1.5 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
         else { vsLoadHls().then((ok) => { if (ok && vsShown.hls === url) vsShowHls(url); }); }
       }
       const p = v.play(); if (p && p.catch) p.catch(() => {});
@@ -2618,6 +2618,62 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (pick) { try { pick.muted = false; const p = pick.play(); if (p && p.catch) p.catch(() => { try { pick.muted = true; } catch (_) {} if (vsHlsSndEl === pick) vsHlsSndEl = null; vsSndBlocked = true; }); } catch (_) {} }
     } catch (_) {}
   }
+  /* ---------- SYNC LOCK for the share (owner, 2026-10-29) ----------
+   * On the WebRTC path the picture and the sound arrive as SEPARATE
+   * elements - muted video elements per stage, one body-level audio
+   * element - and separate elements have no shared clock: each one
+   * starts when its own play() lands and buffers on its own, so the
+   * lips drift away from the words a little more every minute. On
+   * the HLS path every stage element runs its OWN player instance of
+   * the same stream, so the muted copies drift from the one element
+   * that is sounding - and a viewer watching a muted copy (the mini,
+   * a second screen) hears sound timed to a different picture. This
+   * lock runs every 2s and corrects with the same hysteresis as the
+   * mix lock: inside 0.12s nothing moves; small drift rate-nudges
+   * the lagging element; past 0.35s the lagging side restarts at the
+   * live edge (a MediaStream element cannot seek - a fresh play()
+   * IS its seek) or, for HLS, seeks to the sounding element's
+   * position. A viewer who paused the capture for themselves is
+   * exempt, a hidden or reconnecting share is exempt, the publisher
+   * tab is exempt (it renders its own local stream), and restarts
+   * are rate-limited to one per 4s so the lock can never flap. */
+  let vsAvSnapAt = 0, vsAvRateEl = null;
+  function vsAvSyncLock() {
+    try {
+      if (SANDBOX || vsPub || vsLocalPause) return;
+      if (!vsBroadcast() || (S.vstream || {}).hidden || vsShareDown()) return;
+      const now = Date.now();
+      if (vsShown.hls) {
+        const ref = vsHlsSndEl;
+        vsStageEls().forEach((st) => { const v = st.querySelector("video.vslive"); if (!v) return;
+          try { if (v.seekable && v.seekable.length) { const end = v.seekable.end(v.seekable.length - 1); if (isFinite(end) && end - (v.currentTime || 0) > 6 && now - (v._avEdge || 0) >= 10000) { v.currentTime = Math.max(0, end - 1.2); v._avEdge = now; } } } catch (_) {}
+          if (!ref || v === ref) return;
+          if (!isFinite(v.currentTime) || !isFinite(ref.currentTime)) return;
+          const dec = syncLockCalc(v.currentTime - ref.currentTime, 1);
+          if (dec.act === "snap") { if (now - (v._avAt || 0) >= 3000) { try { v.currentTime = Math.max(0, ref.currentTime); } catch (_) {} v._avAt = now; try { v.playbackRate = 1; } catch (_) {} } }
+          else if (dec.act === "nudge") { try { v.playbackRate = v.currentTime > ref.currentTime ? 0.95 : 1.05; } catch (_) {} }
+          else { try { if (v.playbackRate !== 1) v.playbackRate = 1; } catch (_) {} }
+        });
+        return;
+      }
+      if (!vsShown.track || vsShown.track.readyState !== "live") return;
+      let pic = null;
+      vsStageEls().forEach((st) => { if (pic) return; const v = st.querySelector("video.vslive"); if (v && st.classList.contains("vs-on") && st.getClientRects().length) pic = v; });
+      if (!pic) return;
+      const a = document.getElementById("vs-audio");
+      if (!a || !a.srcObject) { if (vsAvRateEl) { try { vsAvRateEl.playbackRate = 1; } catch (_) {} vsAvRateEl = null; } return; }
+      if (!(pic.currentTime > 0) || !(a.currentTime > 0)) return;
+      const drift = pic.currentTime - a.currentTime; // positive: the picture is AHEAD of the sound
+      const dec = syncLockCalc(drift, 1);
+      if (dec.act === "none") { if (vsAvRateEl) { try { vsAvRateEl.playbackRate = 1; } catch (_) {} vsAvRateEl = null; } return; }
+      if (dec.act === "nudge") { const lag = drift > 0 ? a : pic; try { lag.playbackRate = 1.05; } catch (_) {} if (vsAvRateEl && vsAvRateEl !== lag) { try { vsAvRateEl.playbackRate = 1; } catch (_) {} } vsAvRateEl = lag; return; }
+      if (now - vsAvSnapAt < 4000) return; vsAvSnapAt = now;
+      if (vsAvRateEl) { try { vsAvRateEl.playbackRate = 1; } catch (_) {} vsAvRateEl = null; }
+      if (drift > 0) { try { a.pause(); const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
+      else { vsStageEls().forEach((st) => { const v = st.querySelector("video.vslive"); if (v && st.classList.contains("vs-on")) { try { v.pause(); const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} } }); }
+    } catch (_) {}
+  }
+  setInterval(() => { try { vsAvSyncLock(); } catch (_) {} }, 2000);
   /* ---------- the TV status line (owner + testers READ the watch) ----------
    * A plain-text line in the corner of the station stage and the MW TV
    * screen, present only while a share is on. Every watcher step is
@@ -3606,7 +3662,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       try { w.stageStatus = (w.meeting.self && w.meeting.self.stageStatus) || w.stageStatus || ""; } catch (_) {}
       vsDiag(w, peers, anyProducer);
       if (best) { w.got = Date.now(); if (vsShown.hls) vsDetach(); const at2 = bestP ? vsTrackOf(bestP, "at") : null; vsShowTrack(best, at2 && at2.readyState === "live" ? at2 : null); return; }
-      if (vsShown.hls) return; // the room playback is carrying the picture
+      if (vsShown.hls) { // the room playback is carrying the picture - but WebRTC stays the preferred path: while only HLS is up, retry the stage join about every 30s, and the moment a real track lands the branch above swaps the picture over to it
+        if (w.viewType === "LIVESTREAM" && Date.now() - (w.stageRetryAt || w.stageTried || 0) > 30000) { w.stageRetryAt = Date.now(); w.stageTried = Date.now(); vsTryStage(w); }
+        return;
+      }
       if (w.got && vsShown.track && vsShown.track.readyState === "ended") { vsWatchStop(); vsDetach(); return; } // the producer left mid-stream
       // no WebRTC track: in a LIVESTREAM room an off-stage watcher never
       // gets one (see the note above) - ask for the stage once, then
@@ -3873,6 +3932,56 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       save();
     }
   }
+  /* ================= SYNC LOCK (owner, 2026-10-29) =================
+   * "The lips dont match the audio in my master screens - make sure
+   * they all stay sync locked together, no lag, optimise everything."
+   * The audit found the drift: every master-screen player used to
+   * chase posOf() - the RAW local clock - with a 3s seek tolerance
+   * (6s for Dailymotion/Vimeo), while the deck audio chases the
+   * server-corrected clock (syncDecks: Date.now()+clockOff, a 0.08s
+   * deadband, a snap at 0.35s). Two different clocks plus a 3s
+   * allowance is a lip mismatch by construction. Worse, on the MW TV
+   * and Watch surfaces TWO mix screens could sound at once - the
+   * station stage kept rendering and unmuting underneath them - so a
+   * viewer could watch one player while hearing another one entirely.
+   * THE LOCK: one broadcast clock for every picture (bcastPos - the
+   * same basis syncDecks uses), one sounding mix screen at a time
+   * (vmixSndScr), and a correction loop with hysteresis: inside the
+   * 0.12s deadband nothing moves; small drift glides back on a
+   * playback-rate nudge (0.95/1.05); past 0.35s the player snaps to
+   * the broadcast position, at most one snap per slot per 3s, never
+   * while buffering, never in the last 5s of a track. On the booth's
+   * own tabs the screens lock to the deck element itself (audPos) -
+   * the sound Meechie actually hears - so his picture cannot drift
+   * from his speakers even while the wall clock is still settling. */
+  const SYNC_DEAD = 0.12, SYNC_SNAP = 0.35;
+  function syncLockCalc(drift, mul) {
+    const m = mul || 1, ad = Math.abs(drift || 0);
+    if (!(ad > SYNC_DEAD * m)) return { act: "none", rate: 1 };
+    if (ad <= SYNC_SNAP * m) return { act: "nudge", rate: drift > 0 ? 0.95 : 1.05 };
+    return { act: "snap", rate: 1 };
+  }
+  try { window.MW_syncLockCalc = syncLockCalc; } catch (_) {}
+  function bcastPos(k) { const s = S[k]; if (!s) return 0; if (!s.playing) return s.pos || 0; const now = boothLead ? Date.now() : Date.now() + clockOff; return Math.max(0, (now - (s.start || now)) / 1000); }
+  function audPos(k) { try { if (!OWNER()) return null; const d = decks[k]; if (!d || !d.el || !S[k] || !S[k].playing) return null; const ct = +d.el.currentTime; return isFinite(ct) && ct > 0 ? ct : null; } catch (_) { return null; } }
+  function slotWant(scr, k) { if (OWNER()) { const ap = audPos(k); if (ap != null) return ap; } return bcastPos(k); }
+  /* ONE SOUNDING SCREEN (the mix half of the one-audio-clock rule):
+   * exactly one mix screen may carry sound - MW TV when the channel
+   * is open, else the Watch screen when it is open, else the station
+   * stage (which is also what keeps the radio audible while a
+   * listener browses the rest of the site). The booth and the mini
+   * never sound - the decks and the big screens own the sound there -
+   * an owner's screens never sound (his decks do), and while a live
+   * share holds the master NO mix screen sounds at all: the capture
+   * carries its own audio, and that is the only sound (takeover). */
+  function vmixSndScr() {
+    if (OWNER() || !listening) return null;
+    if (vsBroadcast() && !(S.vstream || {}).hidden) return null;
+    if (SANDBOX) return scrView;
+    const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return scrTV;
+    const wa = document.getElementById("v-watch"); if (wa && !wa.hidden) return scrWatch;
+    return scrView;
+  }
   /* one screen player for any video platform: the wrapper speaks the YT-ish
    * surface renderScreen already uses, whatever player is underneath */
   function mkVidPlayer(mountEl, tok, muted, deckK) {
@@ -3884,11 +3993,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       getCurrentTime() { try { if (vp.p === "yt" && w._raw) return w._raw.getCurrentTime() || 0; } catch (_) {} return w._cur || 0; },
       getPlayerState() { try { if (vp.p === "yt" && w._raw) return w._raw.getPlayerState(); } catch (_) {} return w._st; },
       setVolume(v) { try { if (!w._raw) return; if (vp.p === "yt") w._raw.setVolume(v); else w._raw.setVolume(Math.max(0, Math.min(1, v / 100))); } catch (_) {} },
+      setPlaybackRate(r) { try { if (!w._raw) return; if (vp.p === "yt") w._raw.setPlaybackRate(r); else if (vp.p === "dm") { if (w._raw.setPlaybackRate) w._raw.setPlaybackRate(r); } else { const q = w._raw.setPlaybackRate(r); if (q && q.catch) q.catch(() => {}); } } catch (_) {} },
+      rateOk() { try { if (!w._raw) return false; if (vp.p === "yt") { const av = w._raw.getAvailablePlaybackRates ? (w._raw.getAvailablePlaybackRates() || []) : []; return av.some((x) => Math.abs(x - 0.95) < 0.03 || Math.abs(x - 1.05) < 0.03); } if (vp.p === "dm") return !!(w._raw && w._raw.setPlaybackRate); return true; } catch (_) { return false; } },
       mute() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.mute(); else w._raw.setVolume(0); } catch (_) {} },
       unMute() { try { if (vp.p === "yt" && w._raw) w._raw.unMute(); } catch (_) {} },
       loadVideoById(tok2, t) { const v2 = vparseTok(tok2); try { if (!w._raw) return; if (vp.p === "yt") w._raw.loadVideoById(v2.id, t); else if (vp.p === "dm") { if (w._raw.load) w._raw.load(v2.id); if (t) setTimeout(() => w.seekTo(t), 900); } else { const r = w._raw.loadVideo(v2.id); if (r && r.then) r.then(() => { if (t) w.seekTo(t); w.playVideo(); }); } } catch (_) {} },
       destroy() { try { if (w._raw && vp.p !== "dm") w._raw.destroy(); } catch (_) {} w._raw = null; } };
-    const ready = () => { try { if (muted) w.mute(); w.seekTo(Math.max(0, posOf(deckK))); w.playVideo(); } catch (_) {} };
+    const ready = () => { try { if (muted) w.mute(); const ap = audPos(deckK); w.seekTo(Math.max(0, ap != null ? ap : bcastPos(deckK))); w.playVideo(); } catch (_) {} };
     try {
       if (vp.p === "yt") {
         w._raw = new YT.Player(mountEl, { videoId: vp.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: () => ready(), onStateChange: (e) => { w._st = e.data; }, onError: (e) => { w._err = (e && e.data) || 1; } } });
@@ -3927,7 +4038,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     el.classList.add(cls);
     setTimeout(() => el.classList.remove(cls), (ms || 650) + 600);
     const sl = scr.slots[i];
-    if (sl.p) { try { const want = posOf(k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : want, stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1; if (Math.abs(cur - want) > 1 && stt !== 3) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); } } catch (_) {} }
+    if (sl.p) { try { const want = slotWant(scr, k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : want, stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1; if (Math.abs(cur - want) > SYNC_SNAP && stt !== 3) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); } } catch (_) {} }
   }
   async function renderScreen(scr, muted, mix, duck) {
     const tg = vmixTargets();
@@ -3959,16 +4070,40 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         continue;
       }
       const sl = scr.slots[i];
-      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, posOf(t.k))); } catch (_) {} } }
+      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
       const el = $(scr.ids[i]); if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
-        const want = posOf(t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
+        const want = slotWant(scr, t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
-        /* mwFlapFix: at most one seek per slot per 3s, never while the player reports buffering, and a looser 6s threshold for Dailymotion and Vimeo whose clocks are coarse; re-seeking on every state flap is audible stutter */
-        const seekTol = (vparseTok(sl.vid).p === "dm" || vparseTok(sl.vid).p === "vm") ? 6 : 3;
-        if (Math.abs(cur - want) > seekTol && stt !== 3 && Date.now() - (sl.seekAt || 0) >= 3000) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); }
-        if (stt !== 1 && S[t.k].playing) sl.p.playVideo();
-        if (stt === 1 && !S[t.k].playing) sl.p.pauseVideo();
+        /* SYNC LOCK (see the block above mkVidPlayer): the slot is held
+         * to the broadcast clock on the stage cadence. Inside the
+         * deadband nothing moves; small drift nudges the rate; past
+         * the snap threshold it seeks - at most one snap per slot per
+         * 3s, never while the player is not in the playing state
+         * (buffering included, mwFlapFix), never in the last 5s of
+         * the track where the handover owns the ending. A player that
+         * cannot rate-nudge near 1x (YouTube quantizes its rates to
+         * 0.25 steps) takes a brief hold when it runs AHEAD of the
+         * sound and a small forward seek when it falls BEHIND, so
+         * the picture never sits seconds off the words. Dailymotion
+         * and Vimeo clocks are coarse (timeupdate-fed), so their
+         * thresholds scale by 3 - still three times tighter than the
+         * old flat 6s allowance. */
+        if (S[t.k].playing && stt === 1) {
+          const durL = +S[t.k].dur || 0, provL = vparseTok(sl.vid).p, mulL = (provL === "dm" || provL === "vm") ? 3 : 1;
+          if (!(durL > 0 && durL - want <= 5)) {
+            const dec = syncLockCalc(cur - want, mulL);
+            if (dec.act === "snap") { if (Date.now() - (sl.seekAt || 0) >= 3000) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); if (sl.rateCur && sl.rateCur !== 1 && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(1); sl.rateCur = 1; } } }
+            else if (dec.act === "nudge") {
+              if (sl.p.rateOk && sl.p.rateOk()) { if (sl.rateCur !== dec.rate && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(dec.rate); sl.rateCur = dec.rate; } }
+              else if (cur > want) { if (Date.now() - (sl.holdAt || 0) >= 4000) { sl.holdAt = Date.now(); const pHold = sl.p, kHold = t.k, msHold = Math.max(60, Math.min(340, Math.round((cur - want) * 1000))); sl.holdUntil = Date.now() + msHold; pHold.pauseVideo(); setTimeout(() => { try { if (S[kHold].playing) pHold.playVideo(); } catch (_) {} }, msHold); } }
+              else if (Date.now() - (sl.seekAt || 0) >= 3000) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); }
+            }
+            else if (sl.rateCur && sl.rateCur !== 1 && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(1); sl.rateCur = 1; }
+          }
+        }
+        if (stt !== 1 && S[t.k].playing && !(sl.holdUntil && Date.now() < sl.holdUntil)) sl.p.playVideo();
+        if (stt === 1 && !S[t.k].playing) { sl.p.pauseVideo(); if (sl.rateCur && sl.rateCur !== 1 && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(1); sl.rateCur = 1; } }
         if (!muted) { if (sl.p.unMute) sl.p.unMute(); sl.p.setVolume(Math.round(Math.max(0, Math.min(1, stageGain(t.k) * (duck || 1) * (mix || 1) * boostMk())) * 100)); }
         else if (sl.p.mute) sl.p.mute();
       } catch (_) {} }
@@ -4009,7 +4144,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (OWNER()) { vmixPublish(); await renderScreen(scrBooth, true, 1, 1); camSync(); const box = $("#st-ytbox"); if (box) box.hidden = true; }
       else {
         const has = vmixTargets().length > 0 || !!((S.vstream || {}).on && (S.vstream || {}).meeting), box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
-        if (has) await renderScreen(scrView, !listening, listening ? mix : 1, duck);
+        if (has) { const sndV = vmixSndScr(); await renderScreen(scrView, sndV !== scrView, sndV === scrView ? mix : 1, duck); }
         else if (S.live) { const sb = $("#st-vstandby"); if (sb) sb.textContent = stSlate(); await renderScreen(scrView, true, 1, 1); }
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
@@ -4046,7 +4181,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (scrTV.slots.some((sl) => sl.deck)) scrTV.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       return;
     }
-    await renderScreen(scrTV, OWNER() ? true : !listening, listening ? mix : 1, duck);
+    const sndT = vmixSndScr(); await renderScreen(scrTV, sndT !== scrTV, sndT === scrTV ? mix : 1, duck);
     // leaving any view pauses its <video> elements (go() in app-core) — if
     // that caught the live stream on the way out, set it playing again here
     const lv = document.querySelector("#tw-stage video.vslive");
@@ -4066,7 +4201,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       return;
     }
     if (!vmixTargets().length && S.live) { const sb = document.getElementById("wb-vstandby"); if (sb) sb.textContent = stSlate(); }
-    await renderScreen(scrWatch, !listening, listening ? mix : 1, duck);
+    const sndW = vmixSndScr(); await renderScreen(scrWatch, sndW !== scrWatch, sndW === scrWatch ? mix : 1, duck);
     const lv = document.querySelector("#wb-stage video.vslive");
     if (lv && lv.paused && (lv.srcObject || lv.currentSrc)) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
   }
@@ -5014,7 +5149,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793274900;
+  const MW_DJ_BUILD = 1793275000;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
