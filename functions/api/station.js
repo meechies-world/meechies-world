@@ -13,6 +13,7 @@
  * updatedAt touch so clients keep reading the station as live. */
 import { userFrom } from "../../lib/cf.js";
 import { encrypt, vapid } from "./push.js";
+import { cleanBrainEvent, recordBrainEvents, readTaste, weightedBagOrder } from "../../lib/brain-taste.js";
 
 const XF = 5; // crossfade lead in seconds: the next song starts this long before the current one ends, so the two are audibly playing together with no pause (Malik, 2026-10-28: widened from 3.5; the booth lead in dj.js matches)
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
@@ -209,10 +210,32 @@ export async function onRequestGet({ request, env }) {
   const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
 
-  const bagPick = (avoidSrc) => {
+  // DJ BRAIN (PR-B1): the keeper teaches the brain what it plays while the
+  // booth is away. Starts and consumed picks collect here and flush once at
+  // the end of the tick through the shared writer (lib/brain-taste.js:
+  // brain_events rows + the brain/taste fold). Best-effort like the
+  // doorbell — a brain failure may never break the station ping.
+  const brainEvts = [];
+  const brainPlay = (k, item) => {
+    let artist = "";
+    if (!item.yt && item.src) { const t = lib.find((x) => String(item.src).includes(x.assetId)); if (t && t.artist) artist = String(t.artist).slice(0, 80); }
+    // pool and pick titles carry the artist after the middle dot ("Song · Johnny Cash")
+    if (!artist && !item.yt) { const parts = String(item.title || "").split("·"); if (parts.length > 1) artist = parts[parts.length - 1].trim().slice(0, 80); }
+    const ev = cleanBrainEvent({ type: "play", yt: item.yt || "", src: item.src || "", title: item.title || "", artist, deck: k, at: now, live: !!S.live }, "keeper");
+    if (ev) brainEvts.push(ev);
+  };
+  const bagPick = async (avoidSrc) => {
     if (!Array.isArray(S.bag) || !S.bag.length) {
-      S.bag = lib.map((t) => t.assetId);
-      for (let i = S.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [S.bag[i], S.bag[j]] = [S.bag[j], S.bag[i]]; }
+      // DJ BRAIN (PR-B1): the refill is a weighted shuffle over the taste
+      // profile — favorites land where they are drawn sooner, but the bag
+      // stays a permutation of the whole library drawn without replacement
+      // (no-repeat-until-empty holds by construction), and with no profile
+      // every weight is 1 and the order is the plain uniform shuffle this
+      // replaces. Only this refill is weighted: listener picks, schedQ and
+      // Malik's own queue draws are his word, never the brain's.
+      let taste = null;
+      try { taste = await readTaste(env); } catch (_) {}
+      S.bag = weightedBagOrder(lib, taste);
     }
     let id = S.bag.pop();
     if (avoidSrc && id && avoidSrc.includes(id) && S.bag.length) { const other = S.bag.pop(); S.bag.push(id); id = other; }
@@ -221,6 +244,7 @@ export async function onRequestGet({ request, env }) {
   const startDeckItem = (k, item, startMs) => {
     S[k] = { src: item.src || "", yt: item.yt || "", title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
     S.log = [{ t: item.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== item.title)).slice(0, 30);
+    brainPlay(k, item); // DJ BRAIN: the unattended start is a play the brain learns from
   };
   const startDeck = (k, t, startMs) => startDeckItem(k, { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 }, startMs);
   /* listener picks (docs in the requests collection, kind:"pick") jump the queue:
@@ -239,7 +263,7 @@ export async function onRequestGet({ request, env }) {
         try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); iaDur = +f.length || 0; } } catch (_) {}
       }
       try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); } catch (_) {}
-      if (src) return { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) };
+      if (src) { const ev = cleanBrainEvent({ type: "request", src, title: p.d.title || "", at: now, live: !!S.live }, "keeper"); if (ev) brainEvts.push(ev); return { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) }; }
     }
     return null;
   };
@@ -293,7 +317,7 @@ export async function onRequestGet({ request, env }) {
     }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
     if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
-    const t = bagPick(avoidSrc);
+    const t = await bagPick(avoidSrc);
     return { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 };
   };
 
@@ -414,6 +438,10 @@ export async function onRequestGet({ request, env }) {
     if ((+fx.boost || 1) > 1.3) { fx.boost = 1.3; changed = true; }
   }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
+  // DJ BRAIN flush: one shared write for everything this tick started or
+  // consumed (brain_events rows + the brain/taste fold). Best-effort — the
+  // station answers the same whether or not the brain remembers.
+  if (brainEvts.length) { try { await recordBrainEvents(env, brainEvts); } catch (_) {} }
   if (changed) { S.by = "keeper"; /* mwFlapFix: keeper writes carry their own stamp, so a booth tab never mistakes a rescue for its own save echo */ await writeDoc(env, "radio/dj", "radio", S); }
   return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
 }
