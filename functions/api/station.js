@@ -258,9 +258,10 @@ export async function onRequestGet({ request, env }) {
       }
     }
   } catch (_) {}
+  const xfToward = (x, amt) => { const v = (x ?? 0.5) + Math.max(-amt, Math.min(amt, 0.5 - (x ?? 0.5))); return Math.round(v * 1000) / 1000; };
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
-  if (!cur) { // dead air — start the rotation on deck A right now
-    startDeckItem("A", await nextItem(""), now); S.xf = 0; changed = true; cur = "A";
+  if (!cur) { // dead air — start the rotation on deck A right now (fader home is CENTER, owner 2026-10-29)
+    startDeckItem("A", await nextItem(""), now); S.xf = 0.5; changed = true; cur = "A";
   }
   for (let i = 0; i < 60; i++) {
     const other = cur === "A" ? "B" : "A";
@@ -269,7 +270,7 @@ export async function onRequestGet({ request, env }) {
     if (now >= endAt) { // song fully over: stop it; the other deck (already started at the fade) takes the wheel
       if (S[cur].playing) { S[cur].playing = false; S[cur].pos = 0; changed = true; }
       if (S[other].playing) { cur = other; continue; }
-      startDeckItem(other, await nextItem(S[cur].src), endAt); S.xf = other === "A" ? 0 : 1; changed = true; cur = other; continue;
+      startDeckItem(other, await nextItem(S[cur].src), endAt); S.xf = 0.5; changed = true; cur = other; continue;
     }
     if (now >= endAt - XF * 1000 && !S[other].playing) { // crossfade point: bring the next song in under this one
       startDeckItem(other, await nextItem(S[cur].src), endAt - XF * 1000);
@@ -280,9 +281,25 @@ export async function onRequestGet({ request, env }) {
          starts (dead air, silence-breaker rescues, schedule/pool starts
          with nothing playing) never do. */
       S.fxHornAt = now;
-      S.xf = other === "A" ? 0 : 1; changed = true;
+      S.xf = xfToward(S.xf, 0.34); changed = true; // no more slamming the fader to the edge (owner, 2026-10-29: "keeps jumping") — one step toward center; the settle below finishes the walk
     }
     break;
+  }
+  /* Crossfader home (owner, 2026-10-29): the fader rests at CENTER and
+     follows what is playing. Each keeper pass walks it toward 0.5 — gently
+     when the playing deck is audible, in one step when a playing deck is
+     faded out (gain under 0.2: the station reads as off while a song
+     plays). Booth away only; his hand on the pad outranks this entirely. */
+  if (!boothFreshSB) {
+    const gAB = (x, side) => Math.cos((side === "A" ? x : 1 - x) * Math.PI / 2);
+    [["xf", "A", "B"], ["xf2", "C", "D"]].forEach(([key, a, b]) => {
+      const pa = !!(S[a] && S[a].playing), pb = !!(S[b] && S[b].playing);
+      if (pa === pb) return;
+      const k = pa ? a : b, x = S[key] ?? 0.5;
+      const step = gAB(x, k === "B" || k === "D" ? "B" : "A") < 0.2 ? 0.5 : 0.12;
+      const nx = xfToward(x, step);
+      if (nx !== x) { S[key] = nx; changed = true; }
+    });
   }
   // station clock: about once an hour the unattended station IDs itself with
   // the first sound-board pad, the way a real station does at the top of the hour
