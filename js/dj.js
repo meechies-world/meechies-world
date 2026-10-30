@@ -610,12 +610,12 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
 @media(min-width:1100px){body[data-view="radio"] #fb-left,body[data-view="radio"] #fb-right{display:none!important}body[data-view="radio"] main{margin-left:0!important;margin-right:0!important}body[data-view="radio"] #v-radio .wrap{max-width:1740px}}
 /* compact decks on desktop: smaller platters, waves, buttons and gaps so a whole
    table fits the screen without a long scroll (Malik: "make these tabs smaller") */
-@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:148px;height:148px}}
+@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:7px 11px;font-size:13px;min-height:38px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:148px;height:148px}}
 /* three-zone console on wide screens (Malik: "A and B decks on the left, C and D on
    the right, make the song pick and mixer in the middle"): the deck bank unwraps so
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
    column stacks main mixer, SONG PICKER, C/D mixer. */
-@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2/span 3;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
+@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2/span 4;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
 html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
 @media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
@@ -762,7 +762,11 @@ html.popdj .popdj-hint{display:block}
 #dj-screen>small{display:block;color:var(--muted);font-size:11px;letter-spacing:.12em;margin-bottom:6px}
 #dj-screen .vstage{aspect-ratio:16/9;max-height:66vh;min-height:200px;border-radius:14px}
 @media(max-width:760px){#dj-screen .vstage{min-height:160px;max-height:52vh}}
-@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner>#dj-edit{grid-column:1/-1;grid-row:4}#dj-owner .deck[data-deck="A"]{grid-row:5/span 3}#dj-owner .deck[data-deck="B"]{grid-row:5/span 3}#dj-owner .deck[data-deck="C"]{grid-row:5/span 3}#dj-owner .deck[data-deck="D"]{grid-row:5/span 3}#dj-owner #dj-browser{grid-row:5}#dj-owner #dj-xfbar{grid-column:3;grid-row:6}#dj-owner .mixer.m1{grid-row:7}#dj-owner .mixer.m2{grid-row:8}}
+/* FINAL fixed zone on the wide grid (owner, 2026-10-29): TV row 3,
+   search + queue band row 4, edit row 5, decks rows 6-8 with the X
+   fader cluster at the top of the center column (row 6) and the pair
+   mixers under it - the center column holds no search or queue. */
+@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner>#dj-edit{grid-column:1/-1;grid-row:5}#dj-owner .deck[data-deck="A"]{grid-row:6/span 3}#dj-owner .deck[data-deck="B"]{grid-row:6/span 3}#dj-owner .deck[data-deck="C"]{grid-row:6/span 3}#dj-owner .deck[data-deck="D"]{grid-row:6/span 3}#dj-owner #dj-browser{grid-column:1/-1;grid-row:4}#dj-owner #dj-xfbar{grid-column:3;grid-row:6}#dj-owner .mixer.m1{grid-row:7}#dj-owner .mixer.m2{grid-row:8}}
 /* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
    top of every page in a little rectangle; it steps aside whenever a big screen
    (the booth's or the station card's) is already in front of them */
@@ -1097,6 +1101,31 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 @media(min-width:1900px){
 #dj-owner>.dj-grid2>.dj-panel{grid-column:span 1}
 }
+/* the search + queue band (owner FINAL, 2026-10-29): inside the band
+   the video search takes the wide share with its results in the open,
+   the queue and the schedule stack in the other share, and the music
+   lists run full width underneath. Every box keeps its own fold
+   button; the band itself is a fixed placement, never draggable. */
+@media(min-width:1100px){
+#dj-owner #dj-browser{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:14px;align-items:start}
+#dj-owner #dj-browser>div{margin-bottom:0!important;min-width:0}
+#dj-owner #dj-browser>div:nth-of-type(1){grid-column:1;grid-row:1/span 2}
+#dj-owner #dj-browser>div:nth-of-type(2){grid-column:2;grid-row:1}
+#dj-owner #dj-browser>div:nth-of-type(3){grid-column:2;grid-row:2}
+#dj-owner #dj-browser>div:nth-of-type(4){grid-column:1/-1}
+#dj-owner #dj-browser>#br-panes{grid-column:1/-1}
+}
+/* deck side rail (owner, 2026-10-29: buttons next to the discs): on
+   wide screens the transport row (Play / Cue / Brake) stands beside
+   the platter instead of under it. The platter keeps its exact size
+   and touch area; below 1900px a deck column is too narrow to rail
+   without shrinking the disc, so the buttons stay stacked there. */
+@media(min-width:1900px){
+#dj-owner .deck{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px}
+#dj-owner .deck>*,#dj-owner .deck>.pfold>*{grid-column:1/-1;min-width:0}
+#dj-owner .deck>.platter,#dj-owner .deck>.pfold>.platter{grid-column:1}
+#dj-owner .deck>.row,#dj-owner .deck>.pfold>.row{grid-column:2;flex-direction:column;align-items:stretch;justify-content:center;gap:8px}
+}
 
 /* booth organize (owner, 2026-10-29): buttons a little bigger on the shared booth and station button surfaces */
 #dj-owner .btn,#dj-station .btn{padding:13px 24px}
@@ -1350,20 +1379,22 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try { localStorage.removeItem("mw-mini-w"); } catch (_) {} // owner (2026-10-29): the pop-out opens at its regular size on every visit — a size dragged in an earlier session never carries over; the saved POSITION still restores (mnPlace above) and resizing still works freely within the visit
     if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = mn.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = mn.getBoundingClientRect(); mnPlace(r2.left, r2.top); }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
     mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); addEventListener("resize", () => { const r = mn.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); }); }
-  // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
-  // decks — on wide screens the console grid still parks it at the top of the
-  // middle column; everywhere else it now leads the booth instead of hiding
-  // below all four decks
+  // FINAL fixed zone (owner, 2026-10-29): TV on top, then the search +
+  // queue band, then the decks. In flow layouts DOM order is the layout:
+  // the browser moves directly above the deck row; on wide screens the
+  // console grid stretches it into the full-width band (row 4) instead.
+  // The master screen keeps its template home at the top (see below).
   const brEl = document.getElementById("dj-browser"), dkEl = boothEl && boothEl.querySelector(".dj-decks");
   if (brEl && dkEl) dkEl.before(brEl);
-  // the X fader rides right under the music browser / YouTube search (owner,
-  // 2026-10-26: "put the cross fader at the top under the youtube search")
-  const xfEl = document.getElementById("dj-xfbar"); if (xfEl && brEl) brEl.after(xfEl);
+  // the X fader cluster - fader, ABCD pad and the four deck volume knobs
+  // in one element - sits directly under the deck row in flow; the wide
+  // grid places it at the top of the center column between the pairs
+  const xfEl = document.getElementById("dj-xfbar"); if (xfEl && dkEl) dkEl.after(xfEl);
   // the master screen rides directly above the deck row (owner, voice call
   // 2026-10-29: a big widescreen TV above the decks) — the block moves as
   // one, skip row and Customize unit included; every id inside it is
   // untouched, so renderScreen and the vmix machinery never notice
-  const scrEl = document.getElementById("dj-screen"); if (scrEl && dkEl) dkEl.before(scrEl);
+  const scrEl = document.getElementById("dj-screen"), stEl = boothEl && boothEl.querySelector(".dj-setups"); if (scrEl && stEl) stEl.after(scrEl);
   // MASTER FX strip (owner ask, 2026-10-26): the FX slider stack leaves the
   // center mixer — it ran long with empty space beside it — and becomes a
   // full-width panel under the console, sliders lined up in even cells. Same
@@ -1536,14 +1567,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // wraps in a .pfold (display:contents, so the grid layout is untouched until it
   // is shut), and the choice sticks on this device like the page folds
   function foldPanels() {
-    document.querySelectorAll("#dj-owner .deck, #dj-owner .dj-panel").forEach((p) => {
+    document.querySelectorAll("#dj-owner .deck, #dj-owner .dj-panel, #dj-owner #dj-screen").forEach((p) => {
       if (p.dataset.folded || p.id === "dj-browser") return;
-      const h = p.querySelector(":scope > h4"); if (!h) return;
+      let h = p.querySelector(":scope > h4"); if (!h && p.id === "dj-screen") h = p.querySelector(":scope > small"); if (!h) return;
       p.dataset.folded = "1";
       const body = document.createElement("div"); body.className = "pfold";
       while (h.nextSibling) body.appendChild(h.nextSibling);
       p.appendChild(body);
-      const key = "mw-fold-p-" + (p.dataset.deck ? "deck" + p.dataset.deck : (h.textContent || "panel").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 24));
+      const key = "mw-fold-p-" + (p.dataset.deck ? "deck" + p.dataset.deck : p.id === "dj-screen" ? "screen" : (h.textContent || "panel").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 24));
       const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost sm"; b.setAttribute("aria-label", "Fold this section");
       const paint = () => { b.textContent = body.classList.contains("shut") ? "▸" : "▾"; };
       try { if (localStorage.getItem(key)) body.classList.add("shut"); } catch (_) {}
@@ -1659,7 +1690,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * no audio, no panel logic. The Customize reset restores this shipped
    * default order too (see the data-ckreset listener below).
    * ORG-BEGIN */
-  const ORG_DEFAULT = ["door", "brain", "livereq", "autodj", "mic", "record", "fx", "vfx", "pads", "midi", "log", "reqdrops", "campro", "battles", "afterhours"];
+  const ORG_DEFAULT = ["door", "livereq", "autodj", "mic", "fx", "pads", "brain", "reqdrops", "battles", "campro", "record", "vfx", "midi", "log", "afterhours"];
   const ORG_BY_ID = { "dj-door": "door", "dj-brain": "brain", "dj-fxpanel": "fx", "dj-vfxpanel": "vfx", "dj-campro": "campro", "dj-afterhours": "afterhours" };
   const ORG_BY_H4 = [["LIVE DJ REQUESTS", "livereq"], ["AUTO-DJ", "autodj"], ["LIVE MIC", "mic"], ["RECORD THE SHOW", "record"], ["JINGLE", "pads"], ["MIDI CONTROLLER", "midi"], ["PROGRAM LOG", "log"], ["REQUESTS & DROPS", "reqdrops"], ["BATTLES", "battles"]];
   function orgKeyOf(p) {
@@ -5596,7 +5627,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275500;
+  const MW_DJ_BUILD = 1793275600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
