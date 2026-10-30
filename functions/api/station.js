@@ -13,7 +13,7 @@
  * updatedAt touch so clients keep reading the station as live. */
 import { userFrom } from "../../lib/cf.js";
 import { encrypt, vapid } from "./push.js";
-import { cleanBrainEvent, recordBrainEvents, readTaste, weightedBagOrder } from "../../lib/brain-taste.js";
+import { cleanBrainEvent, recordBrainEvents, readTaste, tasteScore, weightedBagOrder } from "../../lib/brain-taste.js";
 
 const XF = 5; // crossfade lead in seconds: the next song starts this long before the current one ends, so the two are audibly playing together with no pause (Malik, 2026-10-28: widened from 3.5; the booth lead in dj.js matches)
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
@@ -34,6 +34,230 @@ async function writeDoc(env, path, coll, data) {
   // new state would sit in the table unseen
   await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", path, coll, null, null, Date.now()).run();
 }
+
+/* AIDJ-BEGIN */
+/* AI DJ (PR-C1, 2026-10-30 — owner direction: "Make my ai robot auto pick
+ * my youtube songs ive serched enough for it to know what i want"): when
+ * Malik has been away from the booth a long while and his own queue has
+ * played out, the keeper digs for NEW YouTube music in his taste and
+ * stocks it in a dedicated slot, S.aiQ, which nextItem serves after
+ * listener picks, the schedule and his queue, ahead of the frozen
+ * pool/library rotation it exists to refresh. Queries are templates over
+ * the brain/taste profile plus the lane seeds of the current
+ * brain/dayparts block — counting and string work only, ZERO AI model
+ * calls. Search runs through the same /api/ytsearch relay the booth
+ * uses, as an internal self-call, so every candidate arrives already
+ * age/embed filtered and clear of the shared brain/ytblock ban list —
+ * exactly what his own search would have shown him. The whole pass is
+ * failure-silent: any error ends it with the station exactly as it was.
+ * Design: website/site-brain/AI-DJ.md. */
+const AIDJ_AWAY = 30 * 60e3; // booth stale this long = he is really away (the deliberate-pause horizon, the longest owner-intent window in this file)
+const AIDJ_THROTTLE = 10 * 60e3; // at most one pass per 10 minutes, stamped on attempts and not just successes
+const AIDJ_MAX = 4; // bounded stock: at most 4 unplayed AI picks may exist at any moment
+const AIDJ_STOCK_MAX = 1; // the pass tops up only when the AI stock ahead of the rotation is this low
+const AIDJ_DAY = 864e5; // AI stock older than 24h expires unplayed; event dedupe looks back over the same window
+
+/* Dayparts are DATA: a brain/dayparts doc ({blocks:[{start,end,name,
+ * seeds}]}) wins whenever it exists and is well formed, so the daily
+ * program can be re-tuned without a code ship. Until that doc exists,
+ * the fallback below is the owner spec of 2026-10-29 transcribed as-is
+ * (his hours, his lanes), nothing invented. */
+function aiDjDefaultDayparts() {
+  return [
+    { start: "18:00", end: "03:00", name: "night", seeds: ["trap music mix", "female rappers mix", "sexy r&b slow jams", "hip hop mix"] },
+    { start: "03:00", end: "05:30", name: "rnb", seeds: ["r&b slow jams", "90s r&b mix", "r&b love songs mix"] },
+    { start: "05:30", end: "06:30", name: "morning", seeds: ["good morning mix", "feel good music mix", "upbeat pop mix"] },
+    { start: "06:30", end: "09:00", name: "weed", seeds: ["weed smoking music mix", "chill hip hop mix", "stoner music mix"] },
+    { start: "09:00", end: "17:00", name: "mixed", seeds: ["hip hop mix", "r&b mix", "country hits mix", "pop hits mix", "edm mix", "metal mix"] },
+    { start: "17:00", end: "18:00", name: "bridge", seeds: ["trap mix", "r&b mix", "trap r&b mix"] },
+  ];
+}
+function aiDjValidBlocks(doc) {
+  if (!doc || !Array.isArray(doc.blocks) || !doc.blocks.length) return null;
+  const hmOk = (v) => /^([01]?\d|2[0-3]):[0-5]\d$/.test(String(v || ""));
+  const out = [];
+  for (const b of doc.blocks) {
+    if (!b || !hmOk(b.start) || !hmOk(b.end)) return null;
+    const seeds = (Array.isArray(b.seeds) ? b.seeds : []).filter((s) => typeof s === "string" && s.trim()).map((s) => s.trim().slice(0, 60));
+    if (!seeds.length) return null;
+    out.push({ start: String(b.start), end: String(b.end), name: String(b.name || "").slice(0, 24), seeds });
+  }
+  return out.length ? out : null;
+}
+function aiDjEasternMinutes(ms) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(ms));
+  const gp = (t) => +(parts.find((x) => x.type === t) || {}).value || 0;
+  return (gp("hour") % 24) * 60 + gp("minute");
+}
+function aiDjBlockAt(blocks, ms) {
+  const nowMin = aiDjEasternMinutes(ms);
+  const hm = (s) => { const p = String(s).split(":"); return (+p[0] || 0) * 60 + (+p[1] || 0); };
+  for (const b of blocks || []) {
+    const a = hm(b.start), e = hm(b.end);
+    if (a === e) return b; // a block spanning the whole day
+    if (e > a ? (nowMin >= a && nowMin < e) : (nowMin >= a || nowMin < e)) return b; // the night block wraps past midnight
+  }
+  return null;
+}
+/* The run gates that protect the owner, checked before any mutation:
+ * the kill switch, the station actually being his live Auto-DJ, a
+ * respected deliberate pause, the booth long stale, and the throttle.
+ * Placement in the tick already inherits live/autodj/pause (the tick
+ * returns earlier on each), but the pass re-tests every gate itself so
+ * it can never fall through a fresh booth on a breaker tick. */
+function aiDjGateCore(S, now) {
+  if (!S || typeof S !== "object") return "nostate";
+  if (S.aiDj === false) return "kill"; // owner kill switch (the booth toggle lands in PR-C2); default is on
+  if (!S.live) return "notlive";
+  if (!S.autodj) return "noautodj";
+  if (S.pausedAt && now - S.pausedAt < 30 * 60e3) return "paused"; // a pause he chose is never second-guessed
+  if (!(now - (+S.boothAt || 0) > AIDJ_AWAY)) return "booth"; // he is at (or recently left) the tables: the AI adds nothing
+  if (!(now - (+S.aiDjAt || 0) > AIDJ_THROTTLE)) return "throttle";
+  return "";
+}
+/* The stock gates, checked after the throttle stamp and stale-stock
+ * expiry: his queue still has songs = the AI waits; enough AI stock
+ * already waiting = the AI waits. */
+function aiDjGateStock(S) {
+  if (Array.isArray(S.queue) && S.queue.length) return "queue";
+  if (Array.isArray(S.aiQ) && S.aiQ.length > AIDJ_STOCK_MAX) return "stocked";
+  return "";
+}
+/* Anchor artists, best first: the taste profile artist scores lead,
+ * and only artists he actually leans toward — a zero or negative score
+ * is music he skips, never an anchor. With no usable profile, the
+ * library artist fields carry the pass (frequency order). No anchor
+ * anywhere and no lane seeds means the pass does nothing: the AI never
+ * wanders genres on its own. */
+function aiDjAnchors(taste, lib, scoreFn) {
+  const out = [];
+  const okName = (n) => typeof n === "string" && n.trim().length >= 2 && n.trim().length <= 48;
+  if (taste && taste.artists && typeof taste.artists === "object") {
+    const rows = [];
+    for (const name of Object.keys(taste.artists)) {
+      if (!okName(name)) continue;
+      const c = taste.artists[name] || {};
+      const sc = scoreFn ? scoreFn(c) : 0;
+      if (sc > 0) rows.push({ name: name.trim(), sc, p: +c.p || 0 });
+    }
+    rows.sort((a, b) => (b.sc - a.sc) || (b.p - a.p) || (a.name < b.name ? -1 : 1));
+    for (const r of rows) out.push(r.name);
+  }
+  if (!out.length && Array.isArray(lib)) {
+    const freq = new Map();
+    for (const t of lib) { const a = t && t.artist ? String(t.artist).trim() : ""; if (okName(a)) freq.set(a, (freq.get(a) || 0) + 1); }
+    const rows = [...freq.entries()].sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : 1));
+    for (const [name] of rows) out.push(name);
+  }
+  return out.slice(0, 12);
+}
+/* Up to 3 searches per pass, rotating by the pass index so successive
+ * passes walk the anchors and lane seeds instead of hammering the same
+ * ones: the current daypart lane seed leads (it is the program for this
+ * hour), then taste anchors in the shapes Malik types into the booth
+ * search himself. With no anchors, the block lane seeds alone carry the
+ * pass — the lanes are the owner declared taste, never generic fare. */
+function aiDjQueries(taste, lib, block, passIx, scoreFn) {
+  const anchors = aiDjAnchors(taste, lib, scoreFn);
+  const seeds = block && Array.isArray(block.seeds) ? block.seeds.filter((s) => typeof s === "string" && s.trim()) : [];
+  const rot = (arr, i) => arr.length ? arr[(((passIx + i) % arr.length) + arr.length) % arr.length] : null;
+  const templates = [(a) => a, (a) => a + " live", (a) => a + " mix"];
+  const qs = [];
+  if (seeds.length) { const s = rot(seeds, 0); qs.push({ q: s, anchor: "" }); }
+  for (let i = 0; qs.length < 3; i++) {
+    const a = rot(anchors, i);
+    if (a) { qs.push({ q: templates[(((passIx + i) % 3) + 3) % 3](a), anchor: a }); continue; }
+    const s = rot(seeds, i + 1);
+    if (s && !qs.some((x) => x.q === s)) { qs.push({ q: s, anchor: "" }); continue; }
+    break;
+  }
+  return qs.slice(0, 3);
+}
+const aiDjNorm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+/* Survivor hygiene: known song-length durations only (the relay filters
+ * already ran upstream of this list; the pass applies its own screen
+ * too), nothing that is already anywhere in the station world, and
+ * results whose title names their anchor artist ranked first. */
+function aiDjSurvivors(merged, ctx) {
+  const seen = new Set(), out = [];
+  for (const r of merged || []) {
+    if (!r || !r.id || seen.has(r.id)) continue;
+    seen.add(r.id);
+    const dur = +r.dur || 0;
+    if (dur < 45 || dur > 1200) continue; // fragments and hour-long mixes never stock the unattended station (and a stocked video must carry a known duration)
+    if (ctx.bannedIds && ctx.bannedIds.has(r.id)) continue;
+    const nt = aiDjNorm(r.title);
+    if (nt && ctx.logTitles && ctx.logTitles.has(nt)) continue;
+    if (nt && ctx.libTitles && ctx.libTitles.has(nt)) continue;
+    out.push({ id: r.id, title: r.title, dur, q: r.q || "", anchor: r.anchor || "", boost: r.anchor && nt && nt.includes(aiDjNorm(r.anchor)) ? 1 : 0 });
+  }
+  return out.filter((x) => x.boost).concat(out.filter((x) => !x.boost)).slice(0, Math.max(0, ctx.cap | 0));
+}
+async function aiDjSearch(deps, q) {
+  try {
+    const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(6500) } : {};
+    const r = await deps.fetchFn(deps.origin + "/api/ytsearch?q=" + encodeURIComponent(q) + "&page=1", ctl);
+    const j = await r.json();
+    if (j && j.ok && Array.isArray(j.results)) return j.results.filter((x) => x && x.id).map((x) => ({ id: String(x.id), title: String(x.title || "").slice(0, 120), dur: +x.dur || 0 }));
+  } catch (_) {}
+  return [];
+}
+/* The pass itself. It mutates only S.aiQ and S.aiDjAt on the shared doc
+ * and returns { changed, events, note }: the caller folds `changed` into
+ * the write the tick was already going to make (the pass writes nothing
+ * of its own) and hands the events to the tick brain flush. Every stock
+ * pick is logged as a brain_events row with actor "aidj" before it can
+ * ever play — nothing the AI queues is anonymous. The shipped B1 schema
+ * has no "queue" event type and no source column, so the row uses the
+ * canonical "draw" type (Auto-DJ chose it next; history-only in the
+ * taste fold, so a stock action never moves a weight — the play that
+ * follows is what counts) with the attribution carried in actor. */
+async function aiDjPass(deps, S, now) {
+  const gate = aiDjGateCore(S, now);
+  if (gate) return { changed: false, events: [], note: gate };
+  const prevAt = +S.aiDjAt || 0;
+  S.aiDjAt = now; // stamped on every attempt, so a dead relay is not retried on the next 12s ping
+  let changed = true;
+  if (Array.isArray(S.aiQ)) { // expire stale stock before topping up: current taste, not last month leftovers
+    const keep = S.aiQ.filter((it) => it && now - (+it.at || 0) < AIDJ_DAY);
+    if (keep.length !== S.aiQ.length) S.aiQ = keep;
+  }
+  const sg = aiDjGateStock(S);
+  if (sg) return { changed, events: [], note: sg };
+  if (!Array.isArray(S.aiQ)) S.aiQ = [];
+  let taste = null;
+  try { taste = await deps.readTaste(deps.env); } catch (_) {}
+  let blocks = aiDjDefaultDayparts();
+  try { const doc = await deps.readDoc(deps.env, "brain/dayparts"); const valid = aiDjValidBlocks(doc); if (valid) blocks = valid; } catch (_) {}
+  const block = aiDjBlockAt(blocks, now);
+  const passIx = Math.floor(prevAt / AIDJ_THROTTLE);
+  const queries = aiDjQueries(taste, deps.lib, block, passIx, deps.tasteScore);
+  if (!queries.length) return { changed, events: [], note: "noanchor" };
+  const lists = await Promise.all(queries.map((x) => aiDjSearch(deps, x.q)));
+  const merged = [], seenQ = new Set();
+  lists.forEach((list, i) => { for (const r of list) { if (seenQ.has(r.id)) continue; seenQ.add(r.id); merged.push({ id: r.id, title: r.title, dur: r.dur, q: queries[i].q, anchor: queries[i].anchor }); } });
+  const bannedIds = new Set();
+  const addId = (v) => { if (v) bannedIds.add(String(v)); };
+  for (const it of S.aiQ) addId(it && it.yt);
+  if (Array.isArray(S.queue)) for (const it of S.queue) addId(it && it.yt);
+  if (Array.isArray(S.schedQ)) for (const it of S.schedQ) addId(it && it.yt);
+  for (const k of ["A", "B", "C", "D"]) addId(S[k] && S[k].yt);
+  try { // anything the station played, ended, skipped or stalled on in the last 24h is never re-queued
+    const rows = await deps.env.DB.prepare("select key from brain_events where at > ? and type in ('play','end','skip','stall')").bind(now - AIDJ_DAY).all();
+    for (const r of (rows.results || [])) addId(r && r.key);
+  } catch (_) {}
+  const logTitles = new Set((S.log || []).map((x) => aiDjNorm(x && x.t)));
+  const libTitles = new Set((deps.lib || []).map((t) => aiDjNorm(t && t.title)));
+  const survivors = aiDjSurvivors(merged, { bannedIds, logTitles, libTitles, cap: AIDJ_MAX - S.aiQ.length });
+  const events = [];
+  for (const sv of survivors) {
+    S.aiQ.push({ yt: sv.id, title: String(sv.title || "").slice(0, 120), cover: "", dur: sv.dur, ai: 1, q: sv.q, at: now });
+    const ev = deps.cleanBrainEvent ? deps.cleanBrainEvent({ type: "draw", yt: sv.id, title: sv.title || "", artist: sv.anchor || "", at: now, live: !!S.live }, "aidj") : null;
+    if (ev) events.push(ev);
+  }
+  return { changed: true, events, note: "stocked " + survivors.length };
+}
+/* AIDJ-END */
 
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
 const BELL_WINDOW = 120000; // at most one doorbell push per two minutes
@@ -414,6 +638,21 @@ export async function onRequestGet({ request, env }) {
         if (src && !src.includes("supabase.co")) return { src, title, cover, dur: +it.dur || 0 };
       }
     }
+    /* AI DJ stock (PR-C1): Meechie AI picks, stocked by aiDjPass from
+       the owner taste profile while he is away. The slot sits exactly here —
+       listener picks, the schedule and every song Malik queued play
+       first, always; AI stock plays only when his line is empty, ahead
+       of the frozen pool/library rotation it exists to refresh. Items
+       arrive pre-filtered (playable, known duration, deduped), and the
+       draw re-checks the same known-duration rule the queue branch
+       enforces, so an AI video can never stall the unattended station. */
+    if (Array.isArray(S.aiQ) && S.aiQ.length) {
+      while (S.aiQ.length) {
+        const it = S.aiQ.shift(); changed = true;
+        if (!it) continue;
+        if (it.yt && +it.dur > 0) return { src: "", yt: String(it.yt), title: String(it.title || "").slice(0, 120), cover: String(it.cover || "").slice(0, 300), dur: +it.dur };
+      }
+    }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
     if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
     const t = await bagPick(avoidSrc);
@@ -471,6 +710,19 @@ export async function onRequestGet({ request, env }) {
         }
       }
     }
+  } catch (_) {}
+  /* AI DJ pass (PR-C1): after the deliberate-pause return above and the
+     schedule block, immediately before the rotation loop — a point this
+     tick only reaches when the keeper is running the station itself.
+     The pass re-tests every gate internally (kill switch, booth stale
+     30 minutes, his queue empty, AI stock low, 10-minute throttle), so
+     a breaker fall-through with a fresh booth can never trigger it.
+     Fully wrapped: a pass failure leaves the rotation untouched, and
+     anything it stocks rides this same tick write via the changed flag. */
+  try {
+    const aidj = await aiDjPass({ env, origin, lib, readDoc, readTaste, tasteScore, cleanBrainEvent, fetchFn: fetch }, S, now);
+    if (aidj && aidj.changed) changed = true;
+    if (aidj && aidj.events && aidj.events.length) brainEvts.push(...aidj.events);
   } catch (_) {}
   const xfToward = (x, amt) => { const v = (x ?? 0.5) + Math.max(-amt, Math.min(amt, 0.5 - (x ?? 0.5))); return Math.round(v * 1000) / 1000; };
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
