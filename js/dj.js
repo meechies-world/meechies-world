@@ -1342,6 +1342,144 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     + "<button class='pad' type='button' data-vfx='invert'>\uD83D\uDD04 INVERT<small>color flip</small></button>"
     + "<button class='pad' type='button' data-vfx='hue'>\uD83C\uDF08 HUE SPIN<small>color wheel</small></button>"
     + "</div><small class='muted'>Transitions dress the master-screen switch; the pads fire one-shot picture hits on EVERY screen at once - booth, station and mini. Wrappers only: the video itself never reloads, so the picture stays locked to the sound.</small>"; g2v.appendChild(vp); } }
+  // BRAIN panel (PR-B2): the DJ brain's readout, appended to the same
+  // studio grid as THE DOOR — a new block only; nothing existing moves,
+  // reorders or restyles. Created here, before foldPanels() and the
+  // Customize registration below run, so it folds and hides exactly like
+  // every other panel. The body is painted at runtime by brainPaint().
+  { const doorP = document.getElementById("dj-door"); if (doorP && doorP.parentElement && !document.getElementById("dj-brain")) { const bp = document.createElement("div"); bp.className = "dj-panel"; bp.id = "dj-brain"; bp.innerHTML = "<h4>🧠 BRAIN</h4><div id=\"brain-body\"><small class=\"muted\">The brain is listening. Play, skip, and finish songs and it will start leaning your way.</small></div>"; doorP.parentElement.appendChild(bp); } }
+  /* ---------- DJ BRAIN capture (PR-B2) ----------
+   * The booth teaches the brain: every play, natural end, skip, watchdog
+   * stall and queue draw on the DRIVING booth (owner + lead — a lead-booth
+   * play IS the live station by the site's own rule, and the event's live
+   * flag is stamped from S.live) is batched in memory and posted to
+   * /api/brain/event, which folds it into the brain/taste doc (PR-B1,
+   * lib/brain-taste.js). The sandbox never emits — a practice set must
+   * never teach the live brain — and neither do listeners or mirror
+   * windows: exactly one booth speaks for a set. Transport is
+   * failure-silent by design: no session, no post; a failed post drops
+   * its batch; nothing here may ever touch the music.
+   * The event shape matches the server contract exactly: the client
+   * sends {type, yt or src, title, artist, deck, heard, live, at} and
+   * NEVER an actor — the server stamps the actor from the session and
+   * derives the fold key itself (the yt id, or the /m/assets/ tail of a
+   * library src, which is the assetId the keeper's bag reads).
+   * BRAIN-B2-BEGIN */
+  const brainSess = {}; // deck -> the play session the brain is watching
+  const brainQ = []; // events waiting for the next flush
+  const brainOn = () => { try { return !SANDBOX && OWNER() && boothLead; } catch (_) { return false; } };
+  const brainKeyOf = (x) => { if (!x) return ""; if (x.yt) return "yt:" + x.yt; return "f:" + (x.src || ""); };
+  /* The artist the fold needs: the item's own field first, then the
+   * library track behind the src, then the "Artist - Title" convention
+   * in the title itself. Empty when none of them know — the fold simply
+   * skips the artist map for that event. */
+  function brainArtistOf(x) {
+    if (!x) return "";
+    if (x.artist) return String(x.artist).slice(0, 80);
+    try { if (x.src) { const t = TRACKS().find((tr) => tr && tr.artist && URLOF(tr) === x.src); if (t) return String(t.artist).slice(0, 80); } } catch (_) {}
+    const ttl = String(x.title || ""), ix = ttl.indexOf(" - ");
+    if (ix > 0 && ix < 60) return ttl.slice(0, ix).trim().slice(0, 80);
+    return "";
+  }
+  /* End or skip is decided by the CLOCK, never by which door the track
+   * left through: the skip button (PR #389) rides deckEnded, so an early
+   * vskip must still read as a skip. Heard position inside the last 20s
+   * (or the last tenth) of a known duration = the song ended; anything
+   * earlier = it was skipped. With no known duration, only the natural
+   * end path itself (via "ended") counts as an end. A watchdog handover
+   * (sess.wdHand) closes silently — the stall rows already told it. */
+  function brainClassify(sess, posEnd, via) {
+    if (!sess || sess.wdHand) return null;
+    const dur = +sess.dur || 0;
+    if (dur > 0) return (posEnd >= dur - 20 || posEnd >= dur * 0.9) ? "end" : "skip";
+    return via === "ended" ? "end" : "skip";
+  }
+  const brainScore = (c) => { if (!c) return 0; return 2 * (+c.e || 0) + (+c.p || 0) + (+c.heard || 0) / 120 - 1.5 * (+c.s || 0) - 0.5 * (+c.st || 0); }; // the fold's own score, mirrored from lib/brain-taste.js
+  function brainEmit(ev) {
+    if (!brainOn()) return;
+    ev.at = Date.now();
+    ev.live = S.live || ev.type === "play" ? 1 : 0; // a lead-booth play flips the station live in the same breath (togglePlay)
+    brainQ.push(ev);
+    if (brainQ.length > 100) brainQ.splice(0, brainQ.length - 100); // a dead endpoint can never grow this without bound
+    if (brainQ.length >= 25) brainFlush();
+  }
+  function brainFlush() {
+    if (!brainQ.length) return;
+    const batch = brainQ.splice(0, 25); // the server cap: one flush is a handful of songs, never a flood
+    try {
+      const ses = mySess(), tok = ses && ses.access_token;
+      if (!tok) return; // signed out: silent no-op, the batch is gone — never retried, never announced
+      fetch("/api/brain/event", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ events: batch }), keepalive: true }).catch(() => {});
+    } catch (_) {}
+  }
+  /* A deck went playing: open a session and emit play. A resume of the
+   * same track continues the open session (the first flip counted it);
+   * a different track landing on the deck closes the old session first. */
+  function brainPlay(k) {
+    if (!brainOn()) return;
+    const s = S[k]; if (!s || (!s.src && !s.yt)) return;
+    const key = brainKeyOf(s), cur = brainSess[k];
+    if (cur && cur.key === key) return;
+    if (cur) brainClose(k, "load");
+    brainSess[k] = { key: key, yt: s.yt || "", src: s.src || "", title: s.title || "", artist: brainArtistOf(s), dur: +s.dur || 0, pos0: Math.max(0, posOf(k) || 0), wdHand: false };
+    brainEmit({ type: "play", yt: s.yt || "", src: s.src || "", title: s.title || "", artist: brainSess[k].artist, deck: k, heard: 0 });
+  }
+  /* A watched play is over: classify it by the clock and emit. Heard is
+   * the position span actually played — a pause freezes the deck
+   * position, so paused time never inflates it. */
+  function brainClose(k, via) {
+    const sess = brainSess[k]; if (!sess) return;
+    brainSess[k] = null;
+    if (!brainOn()) return;
+    const posEnd = Math.max(0, posOf(k) || 0);
+    const type = brainClassify(sess, posEnd, via);
+    if (!type) return;
+    brainEmit({ type: type, yt: sess.yt, src: sess.src, title: sess.title, artist: sess.artist, deck: k, heard: Math.max(0, Math.min(86400, Math.round(posEnd - sess.pos0))) });
+  }
+  function brainDraw(it) {
+    if (!it) return;
+    brainEmit({ type: "draw", yt: it.yt || "", src: it.src || "", title: it.title || "", artist: brainArtistOf(it), deck: "", heard: 0 });
+  }
+  function brainStall(k) {
+    const s = S[k]; if (!s || (!s.src && !s.yt)) return;
+    brainEmit({ type: "stall", yt: s.yt || "", src: s.src || "", title: s.title || "", artist: brainArtistOf(s), deck: k, heard: 0 });
+  }
+  /* The watchdog is handing this deck over itself: the stall rows carry
+   * the story, so the forced end must not also land as a clean end. */
+  function brainWdHand(k) { const sess = brainSess[k]; if (sess) sess.wdHand = true; }
+  setInterval(brainFlush, 15000);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) brainFlush(); });
+  addEventListener("pagehide", () => { brainFlush(); });
+  /* ---------- the BRAIN panel readout ----------
+   * Painted from the brain/taste doc, read through the same docs facade
+   * as every other booth doc: a get() on open, the doc's own snapshot
+   * feed while the booth lives (the fold writes a changes row, so taste
+   * rides the sync like any doc), and a slow re-read as a backstop. */
+  function brainPaint(taste) {
+    const box = document.getElementById("brain-body"); if (!box) return;
+    const empty = "<small class=\"muted\">The brain is listening. Play, skip, and finish songs and it will start leaning your way.</small>";
+    if (!taste || typeof taste !== "object") { box.innerHTML = empty; return; }
+    const tracks = taste.tracks && typeof taste.tracks === "object" ? taste.tracks : {};
+    const artists = taste.artists && typeof taste.artists === "object" ? taste.artists : {};
+    const topA = Object.keys(artists).map((n) => [n, artists[n]]).filter((x) => (x[1].p || 0) + (x[1].e || 0) + (x[1].s || 0) > 0).sort((a, b) => brainScore(b[1]) - brainScore(a[1])).slice(0, 5);
+    const topT = Object.keys(tracks).map((k2) => [k2, tracks[k2]]).sort((a, b) => brainScore(b[1]) - brainScore(a[1])).slice(0, 5);
+    if (!topA.length && !topT.length && !taste.plays && !taste.ends && !taste.skips) { box.innerHTML = empty; return; }
+    let h = "<div style=\"font-size:14px;margin-bottom:6px\">▶ " + (+taste.plays || 0) + " plays · ⏹ " + (+taste.ends || 0) + " finishes · ⏭ " + (+taste.skips || 0) + " skips</div>";
+    if (topA.length) h += "<b style=\"font-size:12px;letter-spacing:.1em\">TOP ARTISTS</b>" + topA.map((x) => "<div class=\"dj-item\"><span>" + E(x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
+    if (topT.length) h += "<b style=\"font-size:12px;letter-spacing:.1em;display:block;margin-top:8px\">TOP TRACKS</b>" + topT.map((x) => "<div class=\"dj-item\"><span title=\"" + E(x[1].title || x[0]) + "\">" + E(x[1].title || x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
+    if (topA.length) h += "<div style=\"margin-top:8px;font-size:14px\">🎧 Auto-DJ is leaning on: <b>" + E(topA[0][0]) + "</b></div>";
+    box.innerHTML = h;
+  }
+  function brainTasteRead() {
+    if (SANDBOX || !OWNER()) return;
+    try { const d = DBF(); if (!d) return; d.doc("brain/taste").get().then((snap) => { brainPaint(snap && snap.exists && snap.data ? snap.data() : null); }).catch(() => {}); } catch (_) {}
+  }
+  setTimeout(() => {
+    brainTasteRead();
+    try { const d = DBF(); if (d && !SANDBOX && OWNER()) d.doc("brain/taste").onSnapshot((snap) => { brainPaint(snap && snap.exists && snap.data ? snap.data() : null); }, () => {}); } catch (_) {}
+  }, 1500);
+  setInterval(() => { if (document.getElementById("dj-brain")) brainTasteRead(); }, 60000);
+  /* BRAIN-B2-END */
   // foldable page sections: a [data-fold] button hides its block and everything
   // below pulls up to fill the space; the choice sticks on this device
   const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
@@ -5029,10 +5167,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
             if (Math.abs(pos - wd.pos) >= 0.25) { wd.pos = pos; wd.adv = nowW; wd.step = 0; }
             else if (!(grainSess && grainSess.k === k) && !ddw.el.seeking && !(ddw.noSync && nowW < ddw.noSync) && !(durW > 0 && pos >= durW - 0.75) && !ddw.el.ended && nowW - wd.adv >= 5000 && nowW - wd.act >= 5000) {
               wd.act = nowW; wd.adv = nowW;
-              if (wd.step === 0 && wd.reloads >= 1) { console.log("[watchdog] deck " + k + " stalled again at " + pos.toFixed(1) + "s after a reload this play - handing over, no second reload"); wd.key = ""; wd.step = 0; wd.reloads = 0; deckEnded(k); }
-              else if (wd.step === 0) { wd.step = 1; console.log("[watchdog] deck " + k + " stalled at " + pos.toFixed(1) + "s - rung 1: play again"); wdKick(k); }
-              else if (wd.step === 1 && wd.reloads < 1) { wd.step = 2; wd.reloads++; console.log("[watchdog] deck " + k + " still stalled at " + pos.toFixed(1) + "s - rung 2: reload track at position"); wdReload(k, pos); }
-              else { console.log("[watchdog] deck " + k + " still stalled at " + pos.toFixed(1) + "s - rung 3: hand over"); wd.key = ""; wd.step = 0; wd.reloads = 0; deckEnded(k); }
+              if (wd.step === 0 && wd.reloads >= 1) { console.log("[watchdog] deck " + k + " stalled again at " + pos.toFixed(1) + "s after a reload this play - handing over, no second reload"); wd.key = ""; wd.step = 0; wd.reloads = 0; brainStall(k); brainWdHand(k); deckEnded(k); }
+              else if (wd.step === 0) { wd.step = 1; console.log("[watchdog] deck " + k + " stalled at " + pos.toFixed(1) + "s - rung 1: play again"); wdKick(k); brainStall(k); }
+              else if (wd.step === 1 && wd.reloads < 1) { wd.step = 2; wd.reloads++; console.log("[watchdog] deck " + k + " still stalled at " + pos.toFixed(1) + "s - rung 2: reload track at position"); wdReload(k, pos); brainStall(k); }
+              else { console.log("[watchdog] deck " + k + " still stalled at " + pos.toFixed(1) + "s - rung 3: hand over"); wd.key = ""; wd.step = 0; wd.reloads = 0; brainStall(k); brainWdHand(k); deckEnded(k); }
             }
           }
         }
@@ -5290,7 +5428,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275300;
+  const MW_DJ_BUILD = 1793275400;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -5859,6 +5997,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   let net = [];
   async function load(k, item, opts) {
     qClear(k); // any fresh load replaces what the deck held — its stocked record is void (stockDeck re-records after its own load)
+    brainClose(k, "load"); // PR-B2: the replaced track's play closes here, classified by the clock (an early replacement is a skip)
     if (serverMirror()) leadTakeAt = Date.now();
     const d = deck(k); actx();
     // a pick from his own hand loads STOPPED (owner, 2026-10-27): the deck
@@ -5903,7 +6042,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (s.yt) { const okY = await d.setYt(s.yt); if (!okY) { if (ageIsLocked(s.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
-      logPlay(s.title);
+      logPlay(s.title); brainPlay(k); // PR-B2: the playing flip is the brain's play event — every start path (hand, Auto-DJ, queue) funnels through here
       // The tables ARE the radio: pressing play on a deck goes live, no separate switch.
       if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintOwner(); paintStation(); say("🔴 You're LIVE — whatever you play on the tables is on the radio for everyone."); }
     }
@@ -6179,6 +6318,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // booth unable to end or roll a deck while the keeper stands down for
     // its fresh heartbeat (2026-10-28, the song that ended and rolled nothing).
     if (!OWNER() || (listening && !boothLead) || !S[k].playing) return;
+    brainClose(k, "ended"); // PR-B2: classify by position vs duration BEFORE the deck state is wiped — a full play is an end, an early vskip through this same door is a skip
     S[k].playing = false; S[k].pos = 0; lastEndedK = k; paintOwner(); save(true);
     // Only Auto-DJ picks songs by itself. With Auto-DJ off the DJ is in charge: a deck that ends just stops
     // (owner, 2026-10-27: "it keeps forcing songs to change").
@@ -6294,7 +6434,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * out and dropped instead of returned — the caller's saveQueue() +
    * paintQueue() upkeep persists the shorter queue. */
   function drawQueueItem() {
-    while (queue.length) { const qi = Math.floor(Math.random() * queue.length); const it = queue.splice(qi, 1)[0]; if (it && it.yt && ageIsLocked(it.yt)) { ageNote(it); continue; } return it; }
+    while (queue.length) { const qi = Math.floor(Math.random() * queue.length); const it = queue.splice(qi, 1)[0]; if (it && it.yt && ageIsLocked(it.yt)) { ageNote(it); continue; } brainDraw(it); return it; }
     return null;
   }
   /* pickNextItem: what plays next, in the booth's order — a listener pick
