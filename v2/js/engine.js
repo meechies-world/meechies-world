@@ -160,6 +160,10 @@ export function createEngine(ctx) {
   let listening = false;
   const listenSubs = new Set();
   function setListening(on) {
+    /* the shell's presence ping carries l=1 while this seat listens
+       (Phase 5 — the live dj.js stationPing rule), so the station's
+       listening count includes v2 seats */
+    if (ctx.presence && ctx.presence.setListening) { try { ctx.presence.setListening(on); } catch (_) {} }
     on = !!on;
     if (on === listening) return;
     listening = on;

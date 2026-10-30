@@ -1,0 +1,33 @@
+/* v2 fans view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from the view's live JS style blocks --- */
+#fans-root{display:grid;gap:16px}
+.fn-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.fn-tabs button{border:1px solid var(--gold,#d6aa4a);background:rgba(10,8,5,.6);color:var(--gold-hi,#ffe08a);border-radius:999px;padding:8px 14px;font:800 13px var(--display,serif);letter-spacing:.05em;cursor:pointer}
+.fn-tabs button[aria-pressed=true]{background:linear-gradient(172deg,#fff6cf,#ffd76a 30%,#e0a93a 60%,#ffe08a);color:#130e04}
+.fn-card{border-radius:18px;padding:16px;display:grid;gap:10px;background:linear-gradient(165deg,rgba(22,18,11,.95),rgba(8,7,5,.97));border:1px solid rgba(214,170,74,.45)}
+.fn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.fn-head{display:flex;gap:10px;align-items:center}
+.fn-av{width:44px;height:44px;border-radius:50%;background:#241d10 center/cover;flex:none;box-shadow:0 0 0 2px #d6aa4a}
+.fn-media{display:grid;gap:6px}
+.fn-media img,.fn-media video{width:100%;max-height:80vh;object-fit:contain;background:#000;border-radius:14px}
+.fn-lock{position:relative;min-height:260px;border-radius:14px;overflow:hidden;display:grid;place-items:center;text-align:center;background:#0b0906 center/cover}
+.fn-lock::before{content:"";position:absolute;inset:0;background:inherit;filter:blur(18px) brightness(.55);transform:scale(1.15)}
+.fn-lock>div{position:relative;display:grid;gap:8px;justify-items:center;padding:20px}
+.fn-lock b{font:800 18px var(--display,serif);color:#ffe08a}
+.fn-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.fn-form{display:grid;gap:10px}
+.fn-form label{display:grid;gap:5px;font-weight:700;font-size:14px}
+.fn-form input,.fn-form textarea,.fn-form select{width:100%;padding:10px;border-radius:10px;font:16px var(--body,system-ui)}
+.fn-form .chk{display:flex;gap:8px;align-items:flex-start;font-weight:600}
+.fn-form .chk input{width:auto;margin-top:4px}
+.fn-note{font-size:13px;color:var(--muted,#bbb);line-height:1.5}
+.fn-warn{border-left:3px solid #e0a93a;padding:10px 12px;background:rgba(224,169,58,.08);border-radius:0 10px 10px 0;font-size:14px}
+.fn-packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.fn-packs button{display:grid;gap:2px;justify-items:center;padding:12px 6px;border-radius:12px;border:1px solid #d6aa4a;background:#120f09;color:#fff;font:700 13px var(--body,system-ui);cursor:pointer}
+.fn-packs button span{font-size:18px;color:#ffe08a}
+.fn-thumbs{display:flex;gap:6px;flex-wrap:wrap}
+.fn-thumbs img,.fn-thumbs video{width:72px;height:72px;object-fit:cover;border-radius:8px}
+.fn-rel{border:1px dashed #6b5a35;border-radius:12px;padding:10px;display:grid;gap:8px}
+.fn-id img{max-width:100%;max-height:340px;border-radius:10px;background:#000}

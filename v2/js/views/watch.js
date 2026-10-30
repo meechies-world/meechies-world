@@ -9,20 +9,24 @@
    dot, the pan readout, the FX values). It is RENDERED from state,
    never a capture, and it has zero control hooks: every control-
    looking surface carries .ws-ctl, whose only click path runs the
-   upsell card with Law 12's verbatim prices. Watching and listening
-   are free forever; the master screen is a real engine screen, so
-   the video mix and the live share land on it like everywhere else.
+   upsell card. Watching and listening are free forever; the master
+   screen is a real engine screen, so the video mix and the live
+   share land on it like everywhere else.
 
-   Phase 2 is the read path: an existing free trial paints as on
-   (read from the member doc), but STARTING a trial writes state and
-   is deferred to the commerce phase — the button says so in the
-   modal's own note slot rather than faking a save. Flagged in the
-   differences list.
+   Phase 5 completes the trial: STARTING a trial stamps the member
+   doc (trial_started_at + setup_tier "trial") through merge_doc.
+   The prices are the owner's NEW ladder (2026-10-30, superseding
+   the old #366 upsell everywhere): 7 days free, then $10/month the
+   tables, $15/month + YouTube search, $20/month + save sessions,
+   and the DJ Video Package at $35/month (price packaged by Amani,
+   owner-adjustable). Presentation + stamps only — no charging, no
+   fake checkout; billing is a later phase.
    ============================================================================ */
 
 import { DECKS, posOf, xfGain, pairXGain, vmixTargets, vsBroadcast, stationLive, fmt, esc } from "../station.js";
 import { getEngine } from "../engine.js";
 import { mountMini } from "../mini.js";
+import { mountRails } from "../rails.js";
 
 const okUrl = (u) => typeof u === "string" && /^https?:\/\//.test(u);
 const gName = (g) => { const n = ((g && g.name) || "").trim(); return n ? (n.includes("@") ? n.split("@")[0] : n) : "Guest DJ"; };
@@ -62,7 +66,7 @@ function wbBuild(body) {
   body.innerHTML = `<div id="wb-root">
     <div class="wb-top"><span class="onair-lamp" id="wb-lamp"><span class="dot"></span>OFF AIR</span><span class="wb-now" id="wb-now"></span></div>
     <div class="dj-screen"><small>📺 MASTER SCREEN — MUSIC VIDEO · EVERYONE SEES THIS SCREEN LIVE</small>
-    <div class="vstage" id="wb-stage"><div class="vslot" id="wb-vs1"></div><div class="vslot" id="wb-vs2"></div><div class="vstandby" id="wb-vstandby">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="wb-vposter"><img src="/img/radio-promo.jpg" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="wb-vchip" hidden></div></div></div>
+    <div class="stage-row"><aside class="srail" id="wb-rail-l" aria-label="From the shop"></aside><div class="stage-mid"><div class="vstage" id="wb-stage"><div class="vslot" id="wb-vs1"></div><div class="vslot" id="wb-vs2"></div><div class="vstandby" id="wb-vstandby">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="wb-vposter"><img src="/img/radio-promo.jpg" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="wb-vchip" hidden></div></div><div class="st-shout" id="wb-shout" hidden></div><div class="stage-bar"><button class="btn" type="button" data-rqopen="wb">🎤 SONG REQUEST / SHOUT-OUT</button><span class="rq-mystat" id="wb-mystat"></span></div><div class="rq-form2" id="wb-rqform" hidden><div class="dj-search"><input type="text" id="wb-rq-song" maxlength="100" placeholder="Type a song — Meechie AI finds the video" aria-label="Song to request"><input type="text" id="wb-rq-shout" maxlength="140" placeholder="Shout-out (optional) — it shows when your song plays" aria-label="Shout-out"></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" data-rqgo="wb">🎵 Request it</button><small class="muted">One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class="rq-results" id="wb-rqres"></div></div></div><aside class="srail" id="wb-rail-r" aria-label="Promotions"></aside></div><div class="stage-strip" id="wb-strip"></div></div>
     <div class="dj-panel wb-band"><h4>🎶 UP NEXT — THE QUEUE</h4><div class="dj-list" id="wb-queue"></div></div>
     <div class="dj-decks wb-decks">${deckA}${deckB}
     <div class="mixer xfbar ws-ctl"><div class="xfrow"><div class="xfvols">${xv("A")}${xv("B")}</div><div class="xfpad big"><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="wb-xfdot"></div></div><div class="xfvols">${xv("C")}${xv("D")}</div></div>
@@ -90,23 +94,26 @@ let wsUpsellAt = 0, wsTrialAt = 0, wsTrialChecked = false;
 function wsEnsureModals() {
   if (!document.getElementById("ws-upsell")) {
     const u = document.createElement("div"); u.id = "ws-upsell"; u.className = "ws-modal"; u.hidden = true;
-    u.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wsu-x" aria-label="Close">✕</button><h3 style="margin:0 0 8px">👀 You are watching Meechie's setup</h3><p style="margin:0 0 10px">This is Meechie's live DJ setup. You can watch everything he does on it — the controls answer to Meechie only.</p><p style="margin:0 0 14px">Want tables of your own? The <b>basic setup is FREE</b>, and the <b>full setup is free for 30 days</b>. After the trial, Basic is <b>$5/month</b>. Paid plans run <b>$20, $50, $100, $350 and $500</b> a month.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn wsu-free">Use the free basic setup</button><button type="button" class="btn ghost wsu-plans">See plans</button></div></div>`;
+    u.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wsu-x" aria-label="Close">✕</button><h3 style="margin:0 0 8px">👀 You are watching Meechie's setup</h3><p style="margin:0 0 10px">This is Meechie's live DJ setup. You can watch everything he does on it — the controls answer to Meechie only.</p><p style="margin:0 0 14px">Want tables of your own? Run the full setup <b>free for 7 days</b>. After the trial: <b>$10/month</b> keeps your tables, <b>$15</b> adds YouTube search, <b>$20</b> adds saving your sessions, and the <b>DJ Video Package</b> adds the master screen and video mix.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn wsu-trial">Start my 7-day free trial</button><button type="button" class="btn ghost wsu-plans">See plans</button></div></div>`;
     document.body.appendChild(u);
   }
   if (!document.getElementById("ws-plans")) {
     const p = document.createElement("div"); p.id = "ws-plans"; p.className = "ws-modal"; p.hidden = true;
-    p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Basic</b><span>The free basic setup — your own tables, any time</span></div><b class="wpl-pr">FREE</b></div><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 30-day free trial</b><span>Free for 30 days. After the trial, Basic continues at $5/month</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 30-day free trial</button><button type="button" class="btn ghost wpl-free">Use the free basic setup</button></div><div class="wpl-row"><div class="wpl-nm"><b>Basic</b><span>After the free trial</span></div><b class="wpl-pr">$5/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$20/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$50/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$100/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$350/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$500/month</b></div></div>`;
+    p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 7-day free trial</b><span>Every feature below, free for 7 days</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 7-day free trial</button></div><div class="wpl-row"><div class="wpl-nm"><b>The Tables</b><span>Keep your DJ setup on your own site</span></div><b class="wpl-pr">$10/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>+ YouTube Search</b><span>Search YouTube and play videos on your tables</span></div><b class="wpl-pr">$15/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>+ Save Sessions</b><span>Save and reload your sets</span></div><b class="wpl-pr">$20/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>DJ Video Package</b><span>The master screen, video mix and camera — your own TV channel</span></div><b class="wpl-pr">$35/month</b></div><p class="muted" style="margin:6px 0 0">Plans turn on when payments do — starting the free trial today saves your spot, and nothing is ever charged without you choosing a plan.</p></div>`;
     document.body.appendChild(p);
   }
 }
 function wsModal(id, show) { wsEnsureModals(); const m = document.getElementById(id); if (m) m.hidden = !show; if (show && id === "ws-plans") wsTrialPaint(); }
 function wsUpsell() { const now = Date.now(); if (now - wsUpsellAt < 60000) return; wsUpsellAt = now; wsModal("ws-upsell", true); }
-function wsGoBasic() { location.hash = "#dj"; }
+const TRIAL_MS = 7 * 24 * 3600 * 1000;
 function wsTrialPaint() {
   if (!wsTrialAt) return;
   const note = document.getElementById("wpl-trial-note"); const btn = document.getElementById("wpl-trial");
-  if (btn) { btn.disabled = true; btn.textContent = "✅ Trial on"; }
-  if (note) note.innerHTML = `<p style="margin:6px 0">✅ Your 30-day free trial is on — Basic continues at $5/month after. We will remind you before it ends.</p>`;
+  const ends = wsTrialAt + TRIAL_MS, left = ends - Date.now();
+  if (btn) { btn.disabled = true; btn.textContent = left > 0 ? "✅ Trial on" : "Trial ended"; }
+  if (note) note.innerHTML = left > 0
+    ? `<p style="margin:6px 0">✅ Your 7-day free trial is on — it runs to ${new Date(ends).toLocaleDateString()}. After that, $10/month keeps your tables. We will remind you before it ends.</p>`
+    : `<p style="margin:6px 0">Your 7-day free trial has ended. Pick a plan above to keep your tables — watching Meechie stays free either way.</p>`;
 }
 let modalWireCtx = null;
 function wsWireModals(ctx) {
@@ -118,9 +125,8 @@ function wsWireModals(ctx) {
     if (!t || !t.closest) return;
     if (t.closest(".wsu-x")) { wsModal("ws-upsell", false); return; }
     if (t.closest(".wsu-plans")) { wsModal("ws-upsell", false); wsModal("ws-plans", true); wsPaintPlans(); return; }
-    if (t.closest(".wsu-free")) { wsModal("ws-upsell", false); wsGoBasic(); return; }
+    if (t.closest(".wsu-trial")) { wsModal("ws-upsell", false); wsModal("ws-plans", true); wsPaintPlans(); wsStartTrial(); return; }
     if (t.closest(".wpl-x")) { wsModal("ws-plans", false); return; }
-    if (t.closest(".wpl-free")) { wsModal("ws-plans", false); wsGoBasic(); return; }
     if (t.closest(".wpl-trial")) { wsStartTrial(); return; }
   });
 }
@@ -133,15 +139,25 @@ async function wsPaintPlans() {
   const data = await modalWireCtx.gateway.readDoc("members/" + uid).catch(() => null);
   if (data && data.trial_started_at) { wsTrialAt = +data.trial_started_at || 0; wsTrialPaint(); }
 }
-function wsStartTrial() {
-  /* read path (Phase 2): an existing trial already paints as on via
-     wsPaintPlans. Starting one stamps the member doc — a write, held
-     for the commerce phase; the note slot says so plainly. */
+async function wsStartTrial() {
+  /* Phase 5: starting a trial stamps the member doc — trial start
+     AND the entitlement tier — through the gateway's merge_doc rpc,
+     the same door the social layer writes through (the live booth's
+     own write is doc("members/"+uid).update({trial_started_at})).
+     The stamps are the entitlement: the gated uses (YouTube search,
+     session save, video / go-live) check the member doc, and real
+     enforcement rides the shared server at those doors. No charge
+     is involved or implied — billing is a later phase. */
   if (wsTrialAt) { wsTrialPaint(); return; }
   const note = document.getElementById("wpl-trial-note");
   const u = modalWireCtx && modalWireCtx.session.user();
   if (!u) { if (note) note.innerHTML = `<p style="margin:6px 0">Join free first — the trial rides on your free account.</p>`; return; }
-  if (note) note.innerHTML = `<p style="margin:6px 0">Trials start on the main site while the new build is being tested — watching Meechie here stays free.</p>`;
+  const btn = document.getElementById("wpl-trial");
+  if (btn) { btn.disabled = true; btn.textContent = "Starting…"; }
+  const j = await modalWireCtx.gateway.call("rpc", { name: "merge_doc", args: { p_path: "members/" + u.id, p_patch: { trial_started_at: Date.now(), setup_tier: "trial" } } }).catch(() => ({ error: { message: "network" } }));
+  if (j && !j.error) { wsTrialAt = Date.now(); wsTrialChecked = true; wsTrialPaint(); return; }
+  if (btn) { btn.disabled = false; btn.textContent = "Start my 7-day free trial"; }
+  if (note) note.innerHTML = `<p style="margin:6px 0">The trial could not start just now — give it a moment and tap again.</p>`;
 }
 
 /* ---------- the view ---------- */
@@ -188,6 +204,7 @@ export function render(root, ctx) {
 
   const paint = () => paintWatch(root, ctx, engine, feed);
   unsubs.push(feed.subscribe(paint));
+  unsubs.push(mountRails(root, ctx, { prefix: "wb", getS: () => feed.S }));
   paintIv = setInterval(paint, 1000);
   paint();
 }
@@ -200,6 +217,18 @@ export function destroy() {
   const u = document.getElementById("ws-upsell"); if (u) u.hidden = true;
   const p = document.getElementById("ws-plans"); if (p) p.hidden = true;
 }
+
+/* PERSISTENT STAGE (Phase 5): Watch is a keep-alive view — the shell
+   hides its section instead of destroying it, so the master screen
+   (and its sound) never stop when the visitor steps away. Suspend
+   only closes the body-level modals so they cannot strand over
+   another view; the screen, surface and paint cadence keep running,
+   exactly as the live site's always-mounted sections behave. */
+export function suspend() {
+  const u = document.getElementById("ws-upsell"); if (u) u.hidden = true;
+  const p = document.getElementById("ws-plans"); if (p) p.hidden = true;
+}
+export function resume() {}
 
 function wbWave(root, S, k) {
   const cv = root.querySelector("#wb-wv-" + k); if (!cv) return;

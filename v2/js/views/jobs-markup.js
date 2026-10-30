@@ -1,0 +1,3 @@
+/* jobs view markup — the live section's own inner markup, verbatim (Phase 5). */
+export const MARKUP = `
+<div class="wrap"><div class="lux-banner"><img src="/img/lux/hiring.webp" alt="We're hiring! Join the Meechies World team: call businesses, bring us clients, get paid. Work from home, flexible hours." loading="lazy" width="1000" height="1499"></div><div class="section-head"><div><p class="eyebrow">Work & hiring</p><h2>Jobs</h2></div><p class="muted">Companies post jobs and find workers. Workers list their skills and get hired. Message each other right here.</p></div><div id="jb-root"></div></div>`;

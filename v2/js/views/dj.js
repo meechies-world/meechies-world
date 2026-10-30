@@ -648,6 +648,23 @@ function nextFromLibrary() {
   const i = Math.floor(Math.random() * bagCache.length);
   return bagCache.splice(i, 1)[0];
 }
+
+/* Listener Requests playlist (server-kept at station/rqplaylist —
+   the parallel live build's doc; this surface only READS it, the
+   keeper owns the folding + the rotation lane): shown here like
+   any playlist — Load drops its songs into the queue. The v2 seam
+   is exactly this read; nothing here writes the playlist. */
+const RQ_PL_NAME = "🎤 Listener Requests";
+let rqPlItems = null, rqPlTried = false;
+function rqPlQueueItems() { return (rqPlItems || []).filter((r) => r && (r.yt || r.src)).map((r) => ({ src: r.src || "", yt: r.yt || "", title: r.title || "", cover: r.cover || "", dur: +r.dur || 0 })); }
+function rqRowHTML() { return rqPlItems && rqPlItems.length ? `<div class="dj-item"><span>${RQ_PL_NAME} (${rqPlItems.length})</span><button type="button" class="btn ghost sm" data-plload="${RQ_PL_NAME}">Load</button></div>` : ""; }
+function localRowsHTML(all) { return Object.keys(all).length ? Object.keys(all).map((n) => `<div class="dj-item"><span>📂 ${esc(n)} (${all[n].length})</span><button type="button" class="btn ghost sm" data-plload="${esc(n)}">Load</button></div>`).join("") : (rqRowHTML() ? "" : '<small class="muted">No saved playlists yet.</small>'); }
+function loadRqPlaylist(R, done) {
+  if (rqPlTried) { if (done) done(); return; }
+  rqPlTried = true;
+  R.ctx.gateway.readDoc("station/rqplaylist").then((d) => { const it = d && d.items; if (Array.isArray(it)) rqPlItems = it; if (done) done(); }).catch(() => { rqPlTried = false; });
+}
+
 async function pickNextItem() {
   if (!R) return null;
   const store = R.store, S = store.S;
@@ -660,9 +677,21 @@ async function pickNextItem() {
     try { localStorage.setItem("mw-dj-usedpicks", JSON.stringify(used.slice(-200))); } catch (_) {}
     const p = pick.data;
     R.ctx.gateway.call("rest", { table: "docs", op: "delete", filters: [["path", "eq", "requests/" + pick.id]] }).catch(() => {});
-    say("🎵 Listener pick up next: " + (p.title || ""));
-    if (p.src) return { src: p.src, title: p.title || "", cover: p.cover || "", dur: p.dur || 0 };
-    if (p.iaId) { const src = await iaFile(p.iaId); if (src) return { src, title: p.title || "", cover: p.cover || "" }; }
+    let item = null;
+    /* a YouTube pick (the request slot's shape) loads as a video
+       deck item, exactly like a queued video — so when it plays,
+       its picture takes the master screen through the vmix flow
+       (the live booth's rule, PR #427) */
+    if (p.yt && /^[A-Za-z0-9_-]{11}$/.test(String(p.yt))) item = { yt: String(p.yt), title: p.title || "", cover: p.cover || ("https://i.ytimg.com/vi/" + p.yt + "/hqdefault.jpg"), dur: +p.dur || 0 };
+    else if (p.src) item = { src: p.src, title: p.title || "", cover: p.cover || "", dur: p.dur || 0 };
+    else if (p.iaId) { const src = await iaFile(p.iaId); if (src) item = { src, title: p.title || "", cover: p.cover || "" }; }
+    if (item) {
+      say("🎵 Listener pick up next: " + item.title);
+      /* the shout-out rides the shared state, so every screen
+         shows it while the requested song plays */
+      if (p.shoutout) S.shout = { text: String(p.shoutout).slice(0, 140), by: String(p.by || "A listener").slice(0, 40), title: item.title, at: Date.now() };
+      return item;
+    }
   }
   // (2) his queue — shuffle draw, no repeats, age-locked skipped
   while (store.queue.length) {
@@ -1350,12 +1379,13 @@ function wireEvents(root) {
         const box = $(root, "#dj-playlists"); if (!box) return;
         box.hidden = !box.hidden;
         let all = {}; try { all = JSON.parse(localStorage.getItem("mw-dj-playlists") || "{}"); } catch (_) {}
-        box.innerHTML = Object.keys(all).length ? Object.keys(all).map((n) => `<div class="dj-item"><span>📂 ${esc(n)} (${all[n].length})</span><button type="button" class="btn ghost sm" data-plload="${esc(n)}">Load</button></div>`).join("") : '<small class="muted">No saved playlists yet.</small>';
+        loadRqPlaylist(R, () => { const b2 = $(root, "#dj-playlists"); if (b2 && !b2.hidden) b2.innerHTML = rqRowHTML() + localRowsHTML(all); });
+        box.innerHTML = rqRowHTML() + localRowsHTML(all);
       }
       return;
     }
     const pll = t.closest("[data-plload]");
-    if (pll) { let all = {}; try { all = JSON.parse(localStorage.getItem("mw-dj-playlists") || "{}"); } catch (_) {} const items = all[pll.dataset.plload] || []; store.queue.push(...items); store.saveQueue(); paintQueue(); say("📂 Playlist loaded into the queue."); return; }
+    if (pll) { const items = pll.dataset.plload === RQ_PL_NAME ? rqPlQueueItems() : (JSON.parse(localStorage.getItem("mw-dj-playlists") || "{}")[pll.dataset.plload] || []); store.queue.push(...items); store.saveQueue(); paintQueue(); say("📂 Playlist loaded into the queue."); return; }
     if (t.closest("[data-sched='add']") || t.closest("[data-sched]")) {
       const time = ($(root, "#sched-time") || {}).value, sel = $(root, "#sched-sel");
       const it = sel && store.queue[+sel.value];

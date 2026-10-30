@@ -1,0 +1,32 @@
+/* v2 jobs view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.badge{display:inline-flex;align-items:center;gap:4px;font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:4px 7px;border-radius:999px;border:1px solid var(--gold-lo);color:var(--gold-hi)}
+.badge.ok{border-color:color-mix(in srgb,var(--ok) 60%,transparent);color:var(--ok)}
+.act{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px}
+.act:hover{background:var(--panel-2);color:var(--text)}
+.act.on{color:var(--gold-hi)}
+.empty{text-align:center;padding:44px 20px;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+.empty h3{color:var(--text);font-size:20px;margin-bottom:6px}
+.emotes .chip{display:inline-flex;gap:6px;align-items:center}
+.wardrobe .empty,.designs .empty{grid-column:1/-1}
+.squads .empty{grid-column:1/-1}
+.shop-grid .empty{grid-column:1/-1}
+.yt-grid .empty{grid-column:1/-1}
+
+/* --- from the view's live JS style blocks --- */
+#jb-root{display:grid;gap:16px}
+.jb-top{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.jb-top input{flex:1;min-width:180px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)}
+.jb-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:12px}
+.jb.sp{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-lo)}
+.jb h3{margin:0;font-size:18px}
+.jb .co{color:var(--gold-hi);font-weight:700}
+.jb .tags{display:flex;gap:6px;flex-wrap:wrap}
+.jb .tags span{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--muted)}
+.jb p{margin:0;font-size:14px;line-height:1.5;color:var(--text);white-space:pre-wrap;max-height:9em;overflow:hidden}
+.jb .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.jb-form{display:grid;gap:10px;border:1px solid var(--gold-lo);border-radius:16px;padding:16px}
+.jb-form .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jb-form input,.jb-form select,.jb-form textarea{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}

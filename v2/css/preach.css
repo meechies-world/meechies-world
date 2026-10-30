@@ -1,0 +1,19 @@
+/* v2 preach view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.yt-empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:10px;color:var(--muted)}
+
+/* --- from the view's live JS style blocks --- */
+.pr-stage{padding:0;overflow:hidden}
+.pr-frame{aspect-ratio:16/9;background:#000;display:grid;place-items:center}
+.pr-frame iframe{width:100%;height:100%;border:0;display:block}
+.pr-frame .pr-poster{width:100%;height:100%;border:0;padding:0;cursor:pointer;background:#000 center/cover no-repeat;position:relative}
+.pr-frame .pr-poster::after{content:"▶";position:absolute;inset:0;margin:auto;width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:var(--ink);font-size:30px;box-shadow:0 0 0 10px rgba(212,168,67,.25)}
+.pr-now{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 16px}
+.pr-now b{display:block;font-size:17px;line-height:1.3}
+.pr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:18px}
+.pr-card:hover,.pr-card.on{border-color:var(--gold)}
+.pr-card .th{aspect-ratio:16/9;background:#000 center/cover no-repeat}
+.pr-card b{font-size:14px;line-height:1.35;padding:0 12px}
+.pr-card small{color:var(--muted);padding:0 12px;font-size:12px}
