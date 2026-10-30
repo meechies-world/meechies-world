@@ -6144,7 +6144,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793369767;
+  const MW_DJ_BUILD = 1793370448;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6490,29 +6490,86 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function wsEnsureModals() {
     if (!document.getElementById("ws-upsell")) {
       const u = document.createElement("div"); u.id = "ws-upsell"; u.className = "ws-modal"; u.hidden = true;
-      u.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wsu-x" aria-label="Close">✕</button><h3 style="margin:0 0 8px">👀 You are watching Meechie's setup</h3><p style="margin:0 0 10px">This is Meechie's live DJ setup. You can watch everything he does on it — the controls answer to Meechie only.</p><p style="margin:0 0 14px">Want tables of your own? The <b>basic setup is FREE</b>, and the <b>full setup is free for 30 days</b>. After the trial, Basic is <b>$5/month</b>. Paid plans run <b>$20, $50, $100, $350 and $500</b> a month.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn wsu-free">Use the free basic setup</button><button type="button" class="btn ghost wsu-plans">See plans</button></div></div>`;
+      u.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wsu-x" aria-label="Close">✕</button><h3 style="margin:0 0 8px">👀 You are watching Meechie's setup</h3><p style="margin:0 0 10px">This is Meechie's live DJ setup. You can watch everything he does on it — the controls answer to Meechie only.</p><p style="margin:0 0 14px">Want tables of your own? You get an <b>exact copy of Meechie's own setup</b> — the same tables, the same look, the same arrangement as his radio. Run the <b>full setup FREE for 7 days</b>. After the trial, <b>Tables are $10/month</b>, <b>YouTube search is $15</b>, <b>save sessions is $20</b> — and the <b>DJ Video Package is $35/month</b>.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn wsu-free">🎛️ Open the tables</button><button type="button" class="btn ghost wsu-plans">See plans</button></div></div>`;
       document.body.appendChild(u);
     }
     if (!document.getElementById("ws-plans")) {
       const p = document.createElement("div"); p.id = "ws-plans"; p.className = "ws-modal"; p.hidden = true;
-      p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Basic</b><span>The free basic setup — your own tables, any time</span></div><b class="wpl-pr">FREE</b></div><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 30-day free trial</b><span>Free for 30 days. After the trial, Basic continues at $5/month</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 30-day free trial</button><button type="button" class="btn ghost wpl-free">Use the free basic setup</button></div><div class="wpl-row"><div class="wpl-nm"><b>Basic</b><span>After the free trial</span></div><b class="wpl-pr">$5/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$20/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$50/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$100/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$350/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Paid plan</b><span>For DJs who want more</span></div><b class="wpl-pr">$500/month</b></div></div>`;
+      p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 7-day free trial</b><span>Every feature free for 7 days: the tables, YouTube search, save sessions and the DJ Video Package</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 7-day free trial</button><button type="button" class="btn ghost wpl-free">🎛️ Open the tables</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables</b><span>Keep the exact same setup Meechie runs — same tables, same look, same arrangement. Play manually, or run your set the way he does</span></div><b class="wpl-pr">$10/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search</b><span>Everything in Tables, plus search YouTube right from your tables</span></div><b class="wpl-pr">$15/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search + Save sessions</b><span>Everything in YouTube search, plus save your sessions and playlists to run again</span></div><b class="wpl-pr">$20/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>🎬 DJ VIDEO PACKAGE</b><span>Everything in Save sessions, plus the master screen: video mixes and your camera, like Meechie's TV station</span></div><b class="wpl-pr">$35/month</b></div></div>`;
       document.body.appendChild(p);
     }
   }
   function wsModal(id, show) { wsEnsureModals(); const m = document.getElementById(id); if (m) m.hidden = !show; if (show && id === "ws-plans") wsTrialPaint(); }
   function wsUpsell() { const now = Date.now(); if (now - wsUpsellAt < 60000) return; wsUpsellAt = now; wsModal("ws-upsell", true); }
   function wsGoBasic() { if (typeof go === "function") go("dj"); const pg = document.getElementById("pg-open"); if (pg) { try { pg.click(); } catch (_) {} } }
-  function wsTrialPaint() { if (!wsTrialAt) return; const note = document.getElementById("wpl-trial-note"); const btn = document.getElementById("wpl-trial"); if (btn) { btn.disabled = true; btn.textContent = "✅ Trial on"; } if (note) note.innerHTML = `<p style="margin:6px 0">✅ Your 30-day free trial is on — Basic continues at $5/month after. We will remind you before it ends.</p>`; }
-  function wsPaintPlans() { if (wsTrialChecked) return; const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) return; wsTrialChecked = true; const d = DB(); if (!d) return; d.doc("members/" + uid).get().then((snap) => { const data = snap && snap.exists && snap.data ? snap.data() : null; if (data && data.trial_started_at) { wsTrialAt = +data.trial_started_at || 0; wsTrialPaint(); } }).catch(() => {}); }
+  function wsTrialPaint() { const note = document.getElementById("wpl-trial-note"); const btn = document.getElementById("wpl-trial"); if (btn && wsTrialAt) { btn.disabled = true; btn.textContent = wsTrialActive() ? "✅ Trial on" : "⌛ Trial ended"; } if (!note) return; if (wsTier >= 10) note.innerHTML = `<p style="margin:6px 0">✅ Your plan is on: <b>${SETUP_TIERS[wsTier] || "Tables"}</b> — $${wsTier}/month. Every feature in your plan is open on your tables.</p>`; else if (wsTrialAt && wsTrialActive()) note.innerHTML = `<p style="margin:6px 0">✅ Your 7-day free trial is on — every feature is open until ${new Date(wsTrialAt + SETUP_TRIAL_MS).toLocaleDateString()}. After that, $10/month keeps your tables. We will remind you before it ends.</p>`; else if (wsTrialAt) note.innerHTML = `<p style="margin:6px 0">⌛ Your 7-day free trial ended. Pick a plan below to keep your tables running — watching and listening to Meechie stays free forever.</p>`; else note.innerHTML = ""; }
+  function wsPaintPlans() { const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) return; if (wsEntLoaded) { wsTrialPaint(); return; } wsLoadEnt().then(() => wsTrialPaint()); }
   async function wsStartTrial(btn) {
     const ses = mySess(); const uid = ses && ses.user && ses.user.id;
     if (!uid) { wsModal("ws-plans", false); if (typeof openAuth === "function") openAuth("signup"); say("Join free first — the trial rides on your free account."); return; }
     if (wsTrialAt) { wsTrialPaint(); return; }
     const d = DB(); if (!d) { say("One moment — still connecting."); return; }
     if (btn) btn.disabled = true;
-    try { await d.doc("members/" + uid).update({ trial_started_at: Date.now() }); wsTrialAt = Date.now(); wsTrialChecked = true; wsTrialPaint(); }
+    try { await d.doc("members/" + uid).update({ trial_started_at: Date.now() }); wsTrialAt = Date.now(); wsTrialChecked = true; wsEntLoaded = true; wsTrialPaint(); }
     catch (e) { if (btn) btn.disabled = false; say("That did not save — tap it once more."); }
   }
+  /* ---------- SETUP PLANS — entitlement (owner directive 2026-10-30,
+   * supersedes the #366 ladder): 7 days free, then Tables $10/month,
+   * +YouTube search $15, +Save sessions $20, DJ Video Package $35.
+   * The member doc carries the stamps: trial_started_at (already the
+   * #366 field, window now 7 days) + setup_tier (the dollar tier:
+   * 0/10/15/20/35). No real charging in this phase — Stripe
+   * subscriptions come later; this is presentation + entitlement
+   * only, never a fake checkout. Malik (the real isOwner) is never
+   * gated, the station is never gated, watching/listening stays free
+   * forever, and a member performing on the station under Malik's own
+   * grant (guest DJ / battle) is on air, not on a plan. ------------ */
+  const SETUP_TRIAL_MS = 7 * 24 * 3600 * 1000;
+  const SETUP_TIERS = { 10: "Tables", 15: "YouTube Search", 20: "Save Sessions", 35: "DJ Video Package" };
+  let wsTier = 0, wsEntLoaded = false, wsEntPromise = null;
+  const wsRealOwner = () => typeof isOwner !== "undefined" && !!isOwner;
+  const wsOnAir = () => { try { return sessionStorage.getItem("mw-guestlive") === "1" || sessionStorage.getItem("mw-battlelive") === "1"; } catch (_) { return false; } };
+  const wsTrialActive = () => !!wsTrialAt && (Date.now() - wsTrialAt) < SETUP_TRIAL_MS;
+  function wsEntitled(level) { if (wsRealOwner() || wsOnAir()) return true; if (wsTrialActive()) return true; return (wsTier || 0) >= level; }
+  function wsLoadEnt() {
+    if (wsEntPromise) return wsEntPromise;
+    wsEntPromise = (async () => {
+      const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) { wsEntLoaded = true; wsTrialChecked = true; return; }
+      for (let i = 0; i < 12; i++) {
+        const d = DB(); if (!d) { await new Promise((r) => setTimeout(r, 1500)); continue; }
+        try { const snap = await d.doc("members/" + uid).get(); const data = snap && snap.exists && snap.data ? snap.data() : null; if (data) { if (data.trial_started_at) wsTrialAt = +data.trial_started_at || 0; if (data.setup_tier) wsTier = +data.setup_tier || 0; } } catch (_) {}
+        break;
+      }
+      wsEntLoaded = true; wsTrialChecked = true;
+    })();
+    return wsEntPromise;
+  }
+  /* feature gate for a signed-in setup user in the Playground: returns
+   * true when the tap must stop here (plan card shown instead). Guests
+   * keep today's behavior — their door is the join flow on the cards. */
+  function setupGate(level) {
+    const ses = mySess(); const uid = ses && ses.user && ses.user.id;
+    if (!uid || wsRealOwner() || wsOnAir()) return false;
+    if (!wsEntLoaded) { wsLoadEnt(); say("One moment — checking your plan."); return true; }
+    if (wsEntitled(level)) return false;
+    say(level >= 20 ? "💾 Save sessions rides the $20/month plan — here are the plans." : "🔒 That feature rides a plan — here are the plans.");
+    wsModal("ws-plans", true);
+    return true;
+  }
+  /* the Tables gate on the Playground itself: a member whose 7-day
+   * trial has ended with no Tables plan gets the word at the door of
+   * their own setup (presentation — their tables stay visible). */
+  if (SANDBOX) wsLoadEnt().then(() => {
+    const ses = mySess(); const uid = ses && ses.user && ses.user.id;
+    if (!uid || wsRealOwner() || wsOnAir()) return;
+    if (wsTrialAt && !wsTrialActive() && (wsTier || 0) < 10) {
+      const host = document.getElementById("v-dj"); if (!host || document.getElementById("setup-lock")) return;
+      const card = document.createElement("div"); card.className = "card"; card.id = "setup-lock"; card.style.marginBottom = "14px";
+      card.innerHTML = `<h3 style="margin-top:0">⌛ Your 7-day free trial ended</h3><p class="muted">The <b>Tables plan — $10/month</b> — keeps your setup running. Watching and listening to Meechie stays free forever.</p><button class="btn" type="button" id="setup-lock-plans">See the plans</button>`;
+      host.insertBefore(card, host.firstChild);
+      const b = document.getElementById("setup-lock-plans"); if (b) b.addEventListener("click", () => wsModal("ws-plans", true));
+    }
+  });
   /* ---------- the spectator booth (watch-setup2) ----------
    * The booth itself, built a second time for the room: the same markup
    * and classes the owner console uses (deck, platter, wave, beatbox,
@@ -6872,7 +6929,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (b.dataset.qact) { const a = b.dataset.qact;
       if (a === "clear") { queue = []; saveQueue(); paintQueue(); say("Queue cleared."); }
       else if (a === "open") { plOpen = !plOpen; paintPlaylists(); }
-      else if (a === "save") { if (!queue.length) { say("The queue is empty — add songs first, then save the list."); return; } const name = prompt("Name this playlist:"); if (!name || !name.trim()) return; const rec = { name: name.trim().slice(0, 60), items: queue.slice() }; const ex = playlists.findIndex((p) => (p.name || "").toLowerCase() === rec.name.toLowerCase()); if (ex >= 0) playlists[ex] = rec; else playlists.unshift(rec); savePlaylists(); plOpen = true; paintPlaylists(); paintSched(); say("💾 Playlist saved: " + rec.name); }
+      else if (a === "save") { if (SANDBOX && setupGate(20)) return; if (!queue.length) { say("The queue is empty — add songs first, then save the list."); return; } const name = prompt("Name this playlist:"); if (!name || !name.trim()) return; const rec = { name: name.trim().slice(0, 60), items: queue.slice() }; const ex = playlists.findIndex((p) => (p.name || "").toLowerCase() === rec.name.toLowerCase()); if (ex >= 0) playlists[ex] = rec; else playlists.unshift(rec); savePlaylists(); plOpen = true; paintPlaylists(); paintSched(); say("💾 Playlist saved: " + rec.name); }
       else if (a === "play") { if (!queue.length) { say("The queue is empty — add songs with ＋Q first."); return; } if (!SANDBOX) { playQueueStock(); return; } if (DECKS.some((k) => S[k].playing)) { say("▶ The queue is rolling — the next one in line loads when this deck finishes."); return; } const it = queue.shift(); saveQueue(); paintQueue(); load("A", it).then(() => togglePlay("A")); say("▶ Playing the queue: " + (it.title || "")); }
       return; }
     if (b.dataset.plload != null || b.dataset.pladd != null || b.dataset.pldel != null) { const i = +(b.dataset.plload ?? b.dataset.pladd ?? b.dataset.pldel); const p = playlists[i]; if (!p) return; if (b.dataset.pldel != null) { playlists.splice(i, 1); savePlaylists(); paintPlaylists(); paintSched(); say("Playlist deleted: " + (p.name || "")); } else if (b.dataset.plload != null) { queue = (p.items || []).slice(); saveQueue(); paintQueue(); say("📂 In the queue: " + (p.name || "") + " — press ▶ Play the queue, or it rolls in as decks finish."); } else { queue = queue.concat(p.items || []); saveQueue(); paintQueue(); say("📂 Added to the queue: " + (p.name || "")); } return; }
@@ -7712,9 +7769,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // the direct path below, unchanged.
     try {
       const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {};
-      const r = await fetch("/api/ytsearch?q=" + encodeURIComponent(q) + "&page=" + page, ctl);
+      // Setup users (a signed-in member searching on their own tables)
+      // identify themselves: the relay checks their plan server-side
+      // (functions/api/ytsearch.js, setup=1) — YouTube search rides the
+      // $15 tier. The real booth never sends the marker and is never
+      // gated; a member on air under Malik's grant is not marked either.
+      let setupQ = "", setupH = null;
+      if (SANDBOX && !wsOnAir()) { const ses = mySess(); if (ses && ses.access_token) { setupQ = "&setup=1"; setupH = { authorization: "Bearer " + ses.access_token }; } }
+      const r = await fetch("/api/ytsearch?q=" + encodeURIComponent(q) + "&page=" + page + setupQ, setupH ? { ...ctl, headers: setupH } : ctl);
       if (r.ok) {
         const j = await r.json();
+        if (j && j.tier) return "TIER"; // plan gate: a hard stop, never the direct-path fallback
         if (j && j.ok && Array.isArray(j.results) && j.results.length) return ytUnblocked(j.results);
       }
     } catch (_) {}
@@ -7733,9 +7798,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function ytSearch(q) {
     const a = await ytPage(q, 1);
     if (!a) return null;
+    if (a === "TIER") return "TIER";
     const b = await ytPage(q, 2);
     const seen = new Set(), out = [];
-    for (const it of a.concat(b || [])) { if (!seen.has(it.id)) { seen.add(it.id); out.push(it); } }
+    for (const it of a.concat(b && b !== "TIER" ? b : [])) { if (!seen.has(it.id)) { seen.add(it.id); out.push(it); } }
     return out.slice(0, 30);
   }
   let iaPage = 1;
@@ -7769,7 +7835,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     vQuery = q; iaPage = 1; vNextPage = 3; vMoreOn = false;
     paintVRes("Searching " + ({ yt: "YouTube", ia: "the Archive" })[vSrc] + "...");
     let res = null;
-    if (vSrc === "yt") { const r = await ytSearch(q); res = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: it.thumb || ("https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg") })) : null; if (res) vMoreOn = res.length >= 20; }
+    if (vSrc === "yt") { const r = await ytSearch(q); if (r === "TIER") { vRes = []; vMoreOn = false; paintVRes("🔒 YouTube search rides the $15/month plan — your 7-day free trial covers it. The plans are open for you."); wsModal("ws-plans", true); return; } res = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: it.thumb || ("https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg") })) : null; if (res) vMoreOn = res.length >= 20; }
     else { res = await iaVidSearch(q); if (res) vMoreOn = res.length >= 24; }
     if (!res) { vRes = []; vMoreOn = false; paintVRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
     vRes = res; paintVRes(res.length ? "" : "Nothing found for that — try another name.");
@@ -7779,7 +7845,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const m = e.target.closest && e.target.closest("[data-vmore]"); if (!m || !vQuery) return;
     m.disabled = true; m.textContent = "Loading more...";
     let add = null;
-    if (vSrc === "yt") { const r = await ytPage(vQuery, vNextPage); if (r) { add = r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })); vNextPage++; vMoreOn = r.length >= 15; } }
+    if (vSrc === "yt") { const r = await ytPage(vQuery, vNextPage); if (r === "TIER") { vMoreOn = false; paintVRes("🔒 YouTube search rides the $15/month plan — your 7-day free trial covers it. The plans are open for you."); wsModal("ws-plans", true); return; } if (r) { add = r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })); vNextPage++; vMoreOn = r.length >= 15; } }
     else { iaPage++; const r = await iaVidSearch(vQuery); if (r) { add = r; vMoreOn = r.length >= 24; } else iaPage--; }
     if (add && add.length) { const seen = new Set(vRes.map((x) => x.kind + ":" + x.id)); vRes = vRes.concat(add.filter((x) => !seen.has(x.kind + ":" + x.id))); }
     else vMoreOn = false;
