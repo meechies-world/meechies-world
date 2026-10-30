@@ -73,6 +73,32 @@
 //     not a bot" — bot-wall language, not a gate. "Sign in to confirm
 //     your age" still convicts via the "confirm your age" branch.
 //
+// Learned bans, shared by every device (fix-search-filter-3,
+// 2026-10-29): the gate-error net above is real but probabilistic,
+// and live testing proved it cannot be the only net — the deployed
+// relay returned the canonical gated video (PTFwQP86BRs) in six
+// straight searches for "nine inch nails closer". Diagnosis: the
+// Invidious registry currently contributes ZERO api:true hosts, so
+// the verify phase's five checks land on the static tail, where
+// exactly one host (the seed) answers detail calls at all — and its
+// companions were in a cooperative mood, serving the gated video's
+// full payload with no gate error anywhere. Every other server-side
+// signal was probed and ruled out with evidence: payload fields do
+// not discriminate (isFamilyFriendly is inverted garbage — see
+// above), oEmbed answers 200 for gated videos, Piped detail calls
+// are bot-walled, and YouTube's own playability check from
+// datacenter egress bot-walls NORMAL videos (Rick Astley read
+// UNPLAYABLE, Adele LOGIN_REQUIRED). So conviction here is now
+// two-layered: the probabilistic verify pre-check above PLUS a
+// deterministic learned ban list. When a video actually errors in a
+// deck (101/150), the booth records it on the device (js/dj.js
+// ageMarkLocked) and posts it to POST /api/brain/block; the ids
+// collect in the brain/ytblock doc, and filterPlayable below drops
+// them for EVERYONE, permanently, no companion mood involved. The
+// list only ever removes ids a real player already convicted; a
+// read failure resolves to an empty list (fail open), never a
+// broken search.
+//
 // Second family + hard budget (fix-ytsearch3, 2026-10-29): after ytsearch2
 // the relay answered most queries, but failures stayed intermittent and
 // QUERY-STICKY for minutes (drake failed 3 retries in a row while usher
@@ -227,23 +253,57 @@ async function verifyOne(id, invHosts, ms) {
   if (vs.includes("bad")) { cacheVerdict(id, "bad"); return false; }
   return true; // fail open
 }
+// --- Shared learned bans (fix-search-filter-3, see the header note) ---
+// The brain/ytblock doc ({ ids: [...] }) holds every video id a real
+// deck player has convicted (error 101/150), posted by the booth to
+// POST /api/brain/block. Read with the same docs query station.js
+// uses for radio/dj (select data from docs where path = ?), cached
+// in-isolate for ~60s so the common path costs no query at all.
+// ANY failure — no DB binding, no row yet, corrupt JSON, a thrown
+// query — resolves to an empty set: the list can only ever remove
+// known-bad ids, it can never break search.
+let blockCache = null, blockAt = 0;
+async function bannedIds(env) {
+  if (blockCache && Date.now() - blockAt < 60000) return blockCache;
+  let set = new Set();
+  try {
+    const row = await env.DB.prepare("select data from docs where path = ?").bind("brain/ytblock").first();
+    if (row) {
+      const d = JSON.parse(row.data);
+      if (d && Array.isArray(d.ids)) for (const id of d.ids) if (typeof id === "string" && id) set.add(id);
+    }
+  } catch (_) { set = new Set(); }
+  blockCache = set; blockAt = Date.now();
+  return set;
+}
 // Verify the top ~15 candidates in parallel inside whatever is left of
 // the hard deadline: per-call timeouts are sized so the whole phase ends
 // before the deadline, and with too little time left the list goes back
 // unverified rather than late (the booth client falls back at ~8s).
-async function filterPlayable(results, invHosts, t0) {
+async function filterPlayable(results, invHosts, t0, env) {
   if (!results.length) return results;
+  // Learned bans first (fix-3): deterministic, and they hold even
+  // when no verify time is left — a banned id never reaches the
+  // verify phase, so its budget goes to videos that are actually new.
+  const banned = await bannedIds(env);
+  let list = results;
+  if (banned.size) {
+    const kept = results.filter((it) => !banned.has(it.id));
+    // The empty-list guard covers the bans too: if EVERY result is
+    // banned, the unfiltered list still goes back (guard below).
+    if (kept.length) list = kept;
+  }
   const leftMs = DEADLINE_MS - (Date.now() - t0);
-  if (leftMs < 800) return results;
+  if (leftMs < 800) return list;
   const ms = Math.max(400, Math.min(2500, leftMs - 300));
-  const top = results.slice(0, 15), rest = results.slice(15);
+  const top = list.slice(0, 15), rest = list.slice(15);
   const keep = await Promise.all(top.map((it) => verifyOne(it.id, invHosts, ms)));
   const out = top.filter((_, i) => keep[i]).concat(rest);
   // If filtering would empty the list entirely, return the unfiltered
   // list instead: a bad result beats a dead search.
   return out.length ? out : results;
 }
-export async function onRequestGet({ request }) {
+export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim().slice(0, 100);
   if (!q) return json({ ok: false, results: [] }, 0);
@@ -259,7 +319,7 @@ export async function onRequestGet({ request }) {
       if (budget <= 250) return json({ ok: false, results: [] }, 0); // out of time: stop starting tries
       try {
         const results = c.fam === "piped" ? await tryPiped(c.base, q, page, Math.min(TRY_MS, budget)) : await tryInv(c.base, q, page, Math.min(TRY_MS, budget));
-        if (results) return json({ ok: true, results: await filterPlayable(results, invHosts, t0) }, 120);
+        if (results) return json({ ok: true, results: await filterPlayable(results, invHosts, t0, env) }, 120);
       } catch (_) {}
     }
   }
