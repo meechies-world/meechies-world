@@ -45,6 +45,23 @@
   });
 } catch (e) {} })();
 </script>
+<script>
+/* Boot self-heal (owner directive, 2026-10-29): if the app core never boots — a stale
+   tab or a broken script in the chain — reload ONCE on a fresh URL (?mw_heal=1) instead
+   of leaving a dead page. A healthy boot sets window.__MW_BOOTED and clears the counter;
+   a previous fully-loaded page (mw-boot-ok, set by js/report.js) also refreshes the budget. */
+(function(){ try{
+  if(/[?&]mw_heal=1([&#]|$)/.test(location.search)) return;
+  var tries=0; try{ tries=parseInt(sessionStorage.getItem("mw-heal-tries")||"0",10)||0;
+    if(sessionStorage.getItem("mw-boot-ok")==="1"){ sessionStorage.removeItem("mw-boot-ok"); tries=0; } }catch(_){}
+  if(tries>=1) return;
+  setTimeout(function(){ if(window.__MW_BOOTED) return;
+    try{ sessionStorage.setItem("mw-heal-tries","1"); }catch(_){}
+    var u=new URL(location.href); u.searchParams.set("mw_heal","1"); location.replace(u.href);
+  },12000);
+}catch(_){} })();
+</script>
+<script src="js/report.js?v=1" defer></script>
 <style>
 html.appmode #fb-tabs,html.appmode #fb-left,html.appmode #fb-right,html.appmode .announce,html.appmode .apptab,html.appmode #mx-fab,html.appmode #mw-fab,html.appmode #ai-fab,html.appmode #vz-pill,html.appmode footer{display:none!important}
 html.appmode .player-bar{bottom:56px!important}
@@ -1581,6 +1598,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
     <p class="latin" style="margin:6px 0 0">Lux e tenebris</p>
     <div class="f-links"><a href="#services" data-go="services">Services</a><a href="#community" data-go="community">Community</a><a href="#radio" data-go="radio">Radio</a><a href="#world" data-go="world">Virtual World</a><a href="#creators" data-go="creators">Creators</a><a href="#contact" data-go="contact">Contact</a></div>
     <p style="margin:14px 0 0"><a href="/privacy" style="color:var(--gold-hi)">Privacy Policy</a> · <a href="/privacy#delete" style="color:var(--gold-hi)">Delete my data</a></p>
+    <p style="margin:10px 0 0"><button class="btn ghost sm" type="button" id="mw-report-btn">⚠ Report a problem</button></p>
     <p style="margin:8px 0 0">© 2026 Meechie's World Inc. All rights reserved.</p>
   </div>
 </footer>
@@ -1670,6 +1688,16 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
       <button class="act" type="button" id="auth-forgot">Forgot password</button>
     </div>
     <button class="btn ghost sm" type="button" data-close>Close</button>
+  </form>
+</dialog>
+<dialog id="report-dialog">
+  <form id="report-form" method="dialog">
+    <h3 style="font-size:22px">Report a problem</h3>
+    <p class="muted" style="margin:0">Tell us what went wrong — your report goes straight to the people who fix the site.</p>
+    <div class="field"><label for="report-cat">What kind of problem?</label><select id="report-cat"><option value="broken">Something's broken</option><option value="audio">No sound</option><option value="video">Video problem</option><option value="other">Something else</option></select></div>
+    <div class="field"><label for="report-text">What went wrong?</label><textarea id="report-text" maxlength="500" placeholder="What went wrong?"></textarea></div>
+    <p class="muted" id="report-msg" style="margin:0" aria-live="polite"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="submit">Send report</button></div>
   </form>
 </dialog>
 <div class="toast" id="toast" hidden></div>
