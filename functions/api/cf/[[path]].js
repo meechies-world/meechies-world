@@ -302,6 +302,14 @@ async function linkProvider(env, key, email, name, picture) {
 
 /* ---------------- tables ---------------- */
 const DOC_COLS = ["path", "coll", "owner", "data", "created_at", "updated_at"];
+/* Collections only the server writes (2026-10-30 daily check): paid gifts come from
+ * /api/coins/gift, battle gifts/likes/votes from /api/battle, the owner's phone
+ * subscriptions from /api/push/subscribe, the DJ brain from /api/brain/*. Through this
+ * generic door a member could otherwise insert a battlegifts doc with any amount
+ * (free gifts deciding a battle), raise their own battlelikes count, plant a pushsubs
+ * row to receive the owner's doorbell alerts, or seed the brain docs. Admins keep
+ * the door for repairs. */
+const SERVER_COLLS = ["gifts", "battlegifts", "battlelikes", "battlevotes", "pushsubs", "brain"];
 async function rest(request, env) {
   const q = await request.json().catch(() => null);
   if (!q || typeof q !== "object") return err("Bad request");
@@ -316,7 +324,7 @@ async function rest(request, env) {
       const where = [], args = [];
       for (const c of ["coll", "path", "owner"]) { const v = f(c); if (v !== undefined) { where.push(c + " = ?"); args.push(String(v)); } }
       // reports are private to the sender and Meechie; the phone-alert channel only to Meechie (same as the old database)
-      if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'"); args.push(uid || "-"); }
+      if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'", "coll <> 'pushsubs'"); args.push(uid || "-"); }
       const W = where.length ? " where " + where.join(" and ") : "";
       if (q.count && q.head) { const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: r ? r.n : 0, error: null }); }
       let order = " order by created_at asc";
@@ -333,6 +341,7 @@ async function rest(request, env) {
       if (rows.length !== 1) return err("One at a time.");
       const r = rows[0] || {}, path = String(r.path || ""), coll = String(r.coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins. Update the page and try again."); // gifts only come from /api/coins/gift (paid)
+      if (SERVER_COLLS.includes(coll) && !(await isAdmin(env, uid))) throw new RuleError("That isn't allowed.");
       checkInsert(path, coll, r.data, uid, await isAdmin(env, uid));
       r.data = await leadLock(env, path, r.data); /* mwLeadLock */
       r.data = await corpseGuard(env, path, r.data); /* mwCorpseGuard */
@@ -349,7 +358,7 @@ async function rest(request, env) {
       const path = f("path"); if (typeof path !== "string") return err("Say which one.");
       const row = await env.DB.prepare("select owner, coll from docs where path = ?").bind(path).first();
       if (!row) return json({ data: null, error: null });
-      if (!uid || !((row.owner === uid && row.coll !== "members") || (await isAdmin(env, uid)))) throw new RuleError("You can only delete your own.");
+      if (!uid || !((row.owner === uid && row.coll !== "members" && !SERVER_COLLS.includes(row.coll)) || (await isAdmin(env, uid)))) throw new RuleError("You can only delete your own.");
       await env.DB.batch([env.DB.prepare("delete from docs where path = ?").bind(path), change(env, "docs", path, row.coll)]);
       return json({ data: null, error: null });
     }
@@ -422,6 +431,7 @@ async function rpc(request, env) {
       if (name === "merge_doc") return err("That item no longer exists.", 404, "not_found");
       const coll = String(args.p_coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins.");
+      if (SERVER_COLLS.includes(coll) && !admin) throw new RuleError("That isn't allowed.");
       checkInsert(path, coll, args.p_data, uid, admin);
       let freshData = await leadLock(env, path, args.p_data); /* mwLeadLock */
       freshData = await corpseGuard(env, path, freshData); /* mwCorpseGuard */
@@ -445,6 +455,7 @@ async function rpc(request, env) {
         return json({ data: null, error: null });
       }
     }
+    if (SERVER_COLLS.includes(row.coll) && !admin) throw new RuleError("That isn't allowed.");
     let next;
     if (name === "set_doc") next = args.p_data;
     else { const patch = args.p_patch; if (!patch || typeof patch !== "object" || Array.isArray(patch)) return err("Bad change."); next = { ...JSON.parse(row.data || "{}"), ...patch }; }

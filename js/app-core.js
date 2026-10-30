@@ -22,7 +22,7 @@ const LAZY_SRC={
   connect:["js/connect.js?v=1793185302"],
   fans:["js/fans.js?v=1793185302"],
   home:["js/home.js?v=1793272700"],
-  tv:["js/movies.js?v=1793185302"],
+  tv:["js/movies.js?v=1793275800"],
   clips:["js/clips.js?v=1793185302"],
   studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],
   books:["js/books.js?v=1793274500"],

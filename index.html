@@ -2,8 +2,8 @@
 <html lang="en" class="lux">
 <head>
 <meta charset="utf-8">
-<script src="js/media-cdn.js?v=1793271573"></script>
-<meta name="mw-build" content="1793271573">
+<script src="js/media-cdn.js?v=1793333011"></script>
+<meta name="mw-build" content="1793333011">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc. — Conscientia</title>
 <meta name="description" content="Meechie's World Inc. — music, media, AI, artist development, legal document preparation, creator exclusives, books, apparel, and a community built to grow together.">
@@ -61,7 +61,7 @@
   },12000);
 }catch(_){} })();
 </script>
-<script src="js/report.js?v=1" defer></script>
+<script src="js/report.js?v=1793333011" defer></script>
 <style>
 html.appmode #fb-tabs,html.appmode #fb-left,html.appmode #fb-right,html.appmode .announce,html.appmode .apptab,html.appmode #mx-fab,html.appmode #mw-fab,html.appmode #ai-fab,html.appmode #vz-pill,html.appmode footer{display:none!important}
 html.appmode .player-bar{bottom:56px!important}
@@ -107,7 +107,7 @@ body[data-view=services]{--sec-accent:#d08a4c}
 #v-shop{--gold:#34d399;--gold-hi:#9ff0cf;--gold-lo:#16775a;--panel:#0f1714;--line:#1f3b31;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(52,211,153,0.16),transparent 70%),repeating-linear-gradient(45deg,rgba(52,211,153,0.045) 0 1px,transparent 1px 22px),repeating-linear-gradient(-45deg,rgba(52,211,153,0.045) 0 1px,transparent 1px 22px)}
 body[data-view=shop]{--sec-accent:#34d399}
 #v-community{--gold:#fbbf24;--gold-hi:#fde68a;--gold-lo:#92650a;--panel:#17140b;--line:#3d3418;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(251,191,36,0.16),transparent 70%),radial-gradient(rgba(251,191,36,0.07) 1.2px,transparent 1.6px) 0 0/26px 26px}
-#v-community .book-poster{display:block;width:100%;max-width:880px;height:auto;margin:0 auto 18px;border:1px solid var(--gold-lo);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+#v-community .book-poster{display:block;width:100%;max-width:880px;height:auto;aspect-ratio:3/2;object-fit:cover;background:radial-gradient(ellipse 80% 60% at 50% 0,rgba(251,191,36,.12),transparent 70%),#17140b;margin:0 auto 18px;border:1px solid var(--gold-lo);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 body[data-view=community]{--sec-accent:#fbbf24}
 #v-radio{--gold:#b77cff;--gold-hi:#dcc2ff;--gold-lo:#5f3a96;--panel:#15111c;--line:#352a4a;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(183,124,255,0.16),transparent 70%),repeating-radial-gradient(circle at 50% -10%,rgba(183,124,255,0.07) 0 1px,transparent 1px 34px)}
 body[data-view=radio]{--sec-accent:#b77cff}
@@ -669,7 +669,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div><p class="eyebrow">Meechie's World</p><h2>Meechie's Book</h2></div>
       <p class="muted">Post photos, share what you're working on, and talk with each other. Free for every member.</p>
     </div>
-    <img class="book-poster" src="/img/book-cover.jpg" alt="Meechies World — The Book" loading="lazy" width="1536" height="1024">
+    <img class="book-poster" src="/img/book-cover.jpg" alt="Meechies World — The Book" loading="eager" fetchpriority="high" decoding="async" width="1536" height="1024">
     <div class="live-strip" id="live-strip" hidden></div>
     <div class="grid-2">
       <div>
@@ -939,6 +939,14 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 
 <!-- TV: Meechie's World Cinema — free public-domain movies that play on the page -->
 <section class="view" data-theme="videos" id="v-tv" hidden>
+  <style id="mv-styles">
+#mv-grid .mv-skel{border:1px solid var(--gold-lo);border-radius:12px;padding:8px;background:#0d0b08}
+#mv-grid .mv-skel .sk-img{aspect-ratio:4/3;border-radius:8px;background:linear-gradient(100deg,#171208 40%,#241b0d 50%,#171208 60%);background-size:200% 100%;animation:mvSk 1.2s linear infinite}
+#mv-grid .mv-skel .sk-line{height:12px;border-radius:6px;margin-top:8px;background:linear-gradient(100deg,#171208 40%,#241b0d 50%,#171208 60%);background-size:200% 100%;animation:mvSk 1.2s linear infinite}
+@keyframes mvSk{to{background-position:-200% 0}}
+#mv-grid .mv-note{grid-column:1/-1;text-align:center;padding:18px 10px;color:var(--muted)}
+#mv-grid .mv-note b{display:block;color:#e9e2cf;font-size:15px;margin-bottom:6px}
+  </style>
   <div class="wrap">
     <div class="section-head">
       <div><p class="eyebrow">Meechie's World TV</p><h2>📺 TV — Free Movies</h2></div>
@@ -963,8 +971,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <button class="btn ghost sm mv-shelf" type="button" data-shelf="cartoons">🐰 Classic Cartoons</button>
       </div>
     </div>
-    <div id="mv-count" class="muted" style="font-size:13px;margin-bottom:8px"></div>
-    <div id="mv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"></div>
+    <div id="mv-count" class="muted" style="font-size:13px;margin-bottom:8px">Loading the shelves…</div>
+    <div id="mv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"><div class="mv-note"><b>🍿 Loading the shelves…</b>Free movies are on the way — this only takes a moment.</div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div><div class="mv-skel" aria-hidden="true"><div class="sk-img"></div><div class="sk-line"></div><div class="sk-line" style="width:55%"></div></div></div>
     <div style="text-align:center;margin-top:16px"><button class="btn ghost" type="button" id="mv-more" hidden>Load more movies</button></div>
   </div>
 </section>
@@ -985,8 +993,9 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 .tw-sb{text-align:center;padding:20px}
 .tw-sb-logo{font:800 clamp(34px,7vw,64px) Georgia,serif;letter-spacing:.05em;color:#f0cf78}
 .tw-sb p{margin:12px 0 0;color:#b9ac8d;font-size:clamp(14px,2.4vw,19px);font-weight:600;letter-spacing:.03em}
-#tw-vstandby{padding:0}
+#tw-vstandby{padding:0;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(240,207,120,.14),transparent 65%),radial-gradient(rgba(240,207,120,.06) 1.2px,transparent 1.6px) 0 0/26px 26px,linear-gradient(160deg,#17130b 0%,#000 55%,#100d07 100%)}
 .tw-sb-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#tw-vstandby .tw-sb-logo{text-shadow:0 2px 18px rgba(0,0,0,.9)}
 #tw-vstandby .tw-sb{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:38px 20px 16px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.86))}
 #tw-bar{position:absolute;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,0));color:#f3ead2}
 .tw-mark{font:800 17px Georgia,serif;letter-spacing:.05em;color:#f0cf78;white-space:nowrap}
@@ -995,14 +1004,14 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 .tw-what{color:#e9e2cf;font:600 13px var(--body,system-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tw-sp{flex:1}
 #tw-bar .btn{white-space:nowrap;text-decoration:none}
-@media(max-width:640px){.tw-what{display:none}.tw-mark{font-size:15px}}
+@media(max-width:640px){#tw-bar{flex-wrap:wrap;gap:6px;padding:10px}#tw-bar .tw-sp{display:none}.tw-what{display:none}.tw-mark{font-size:15px}}
   </style>
   <div id="tw-shell">
     <div id="tw-stagebox">
       <div class="vstage" id="tw-stage">
         <div class="vslot" id="tw-vs1"></div>
         <div class="vslot" id="tw-vs2"></div>
-        <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster.jpg" alt="" loading="lazy" decoding="async"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
+        <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster.jpg" alt="" loading="eager" fetchpriority="high" decoding="async"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
         <div class="vchip" id="tw-vchip" hidden></div>
       </div>
     </div>
@@ -1563,7 +1572,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
       <p class="muted">DM us on TikTok or Snapchat for the fastest reply, or ask our AI assistant right now.</p>
     </div>
     <div class="card" id="ai-card" style="margin-bottom:24px">
-      <h3 style="font-size:22px;display:flex;align-items:center;gap:12px"><img src="/img/meechie-ai.jpg" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-hi)">Ask Meechie (AI assistant)</h3>
+      <h3 style="font-size:22px;display:flex;align-items:center;gap:12px"><img src="/img/meechie-ai.jpg" alt="" width="52" height="52" decoding="async" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-hi)">Ask Meechie (AI assistant)</h3>
       <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
       <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
       <form class="reply-form" id="ai-form"><input type="text" id="ai-q" aria-label="Ask Meechie" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
@@ -1702,48 +1711,48 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 </dialog>
 <div class="toast" id="toast" hidden></div>
 
-<script src="js/config.js?v=1793271573"></script>
-<script src="js/outage.js?v=1793274300"></script>
-<script src="js/float-layout.js?v=1793271573"></script>
-<script src="js/cf-client.js?v=1793271573"></script>
-<script src="js/platform.js?v=1793271573"></script>
-<script src="js/app-core.js?v=1793273600"></script>
-<script src="js/appnav.js?v=1793271573"></script>
-<script src="js/fb-feed.js?v=1793271573"></script>
-<script src="js/fb-feed-plus.js?v=1793271573"></script>
-<script src="js/stories.js?v=1793271573"></script>
-<script src="js/book-plus.js?v=1793271573"></script>
-<script src="js/owner.js?v=1793271573"></script>
-<script src="js/site-coder-ui.js?v=1793271573"></script>
-<script src="js/messages.js?v=1793271573"></script>
-<script src="js/videos.js?v=1793271573"></script>
-<script src="js/dj.js?v=1793275700"></script>
-<script src="js/live.js?v=1793271573"></script>
-<script src="js/friends.js?v=1793271573"></script>
-<script src="js/social.js?v=1793271573"></script>
-<script src="js/app-list.js?v=1793271573"></script>
-<script src="js/app-offer.js?v=1793271573"></script>
-<script src="js/shop-gift.js?v=1793271573"></script>
-<script src="js/coins.js?v=1793271573"></script>
-<script src="js/share.js?v=1793271573"></script>
-<script src="js/gifts-plus.js?v=1793271573"></script>
-<script src="js/gold-icons.js?v=1793271573"></script>
-<script src="js/people.js?v=1793271573"></script>
-<script src="js/originals.js?v=1793271573"></script>
-<script src="js/welcome-show.js?v=1793271573"></script>
-<script src="js/profile-setup.js?v=1793272700"></script>
-<script src="js/profile-page.js?v=1793271573"></script>
-<script src="js/social-login.js?v=1793271573"></script>
-<script src="js/radio-keep.js?v=1793271573"></script>
-<script src="js/share-song.js?v=1793271573"></script>
-<script src="js/push.js?v=1793271573"></script>
-<script src="js/email-find.js?v=1793271573"></script>
-<script src="js/verify.js?v=1793271573"></script>
-<script src="js/biolock.js?v=1793271573"></script>
-<script src="js/engage.js?v=1793271573"></script>
-<script src="js/visitors.js?v=1793272700"></script>
-<script src="js/ai-widget.js?v=1793274300"></script>
-<script src="js/house-ads.js?v=1793271700"></script>
+<script src="js/config.js?v=1793333011"></script>
+<script src="js/outage.js?v=1793333011"></script>
+<script src="js/float-layout.js?v=1793333011"></script>
+<script src="js/cf-client.js?v=1793333011"></script>
+<script src="js/platform.js?v=1793333011"></script>
+<script src="js/app-core.js?v=1793333011"></script>
+<script src="js/appnav.js?v=1793333011"></script>
+<script src="js/fb-feed.js?v=1793333011"></script>
+<script src="js/fb-feed-plus.js?v=1793333011"></script>
+<script src="js/stories.js?v=1793333011"></script>
+<script src="js/book-plus.js?v=1793333011"></script>
+<script src="js/owner.js?v=1793333011"></script>
+<script src="js/site-coder-ui.js?v=1793333011"></script>
+<script src="js/messages.js?v=1793333011"></script>
+<script src="js/videos.js?v=1793333011"></script>
+<script src="js/dj.js?v=1793333011"></script>
+<script src="js/live.js?v=1793333011"></script>
+<script src="js/friends.js?v=1793333011"></script>
+<script src="js/social.js?v=1793333011"></script>
+<script src="js/app-list.js?v=1793333011"></script>
+<script src="js/app-offer.js?v=1793333011"></script>
+<script src="js/shop-gift.js?v=1793333011"></script>
+<script src="js/coins.js?v=1793333011"></script>
+<script src="js/share.js?v=1793333011"></script>
+<script src="js/gifts-plus.js?v=1793333011"></script>
+<script src="js/gold-icons.js?v=1793333011"></script>
+<script src="js/people.js?v=1793333011"></script>
+<script src="js/originals.js?v=1793333011"></script>
+<script src="js/welcome-show.js?v=1793333011"></script>
+<script src="js/profile-setup.js?v=1793333011"></script>
+<script src="js/profile-page.js?v=1793333011"></script>
+<script src="js/social-login.js?v=1793333011"></script>
+<script src="js/radio-keep.js?v=1793333011"></script>
+<script src="js/share-song.js?v=1793333011"></script>
+<script src="js/push.js?v=1793333011"></script>
+<script src="js/email-find.js?v=1793333011"></script>
+<script src="js/verify.js?v=1793333011"></script>
+<script src="js/biolock.js?v=1793333011"></script>
+<script src="js/engage.js?v=1793333011"></script>
+<script src="js/visitors.js?v=1793333011"></script>
+<script src="js/ai-widget.js?v=1793333011"></script>
+<script src="js/house-ads.js?v=1793333200"></script>
 <script>
 /* Offline music shelf: songs saved to this device (from here, or automatically
  * when played — the service worker stores them) keep playing with no internet. */
