@@ -1190,10 +1190,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   root.innerHTML = `
 <div class="dj-banner" id="dj-banner" hidden><span><b>● LIVE DJ SET</b> &nbsp;Meechie is on the decks right now</span><button class="btn sm" type="button" id="dj-listen">🎧 Listen live</button><button class="btn sm ghost" type="button" id="dj-bobtn" data-bobtn>🌑 Blackout</button><button class="btn sm ghost" type="button" data-bubbtn>🫧 Bubble</button><button class="btn sm ghost" type="button" data-capbtn>🖥 Capture My Screen</button><button class="btn sm ghost" type="button" data-hidebtn data-lab-off="🙈 Hide Share" data-lab-on="👁 Show Share" hidden>🙈 Hide Share</button></div>
 <div class="station" id="dj-station" hidden>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span style="display:flex;gap:8px;align-items:center"><span class="onair-lamp" id="st-lamp"><span class="dot"></span>OFF AIR</span><button class="btn ghost sm" type="button" data-fold="st-body" aria-label="Fold the station panel">▾</button></span></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3>📻 Meechie's World Radio</h3><span style="display:flex;gap:8px;align-items:center"><span class="onair-lamp" id="st-lamp"><span class="dot"></span>CONNECTING</span><button class="btn ghost sm" type="button" data-fold="st-body" aria-label="Fold the station panel">▾</button></span></div>
   <div id="st-body">
   <div class="ticker" id="st-ticker" hidden><span id="st-ticker-t"></span></div>
-  <div id="st-now" class="muted" style="font-size:14px">The station is on the playlist right now.</div>
+  <div id="st-now" class="muted" style="font-size:14px">Connecting to the station…</div>
   <div id="st-online" class="muted" style="font-size:13px"></div>
   <div id="st-host" style="font-size:13.5px;font-weight:700;color:#ff8b8f" hidden></div>
   <button class="btn ghost sm" type="button" id="st-watch" style="margin:6px 0" hidden>👀 Watch Meechie's setup — live, look only</button>
@@ -5376,6 +5376,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     box.innerHTML = lg.length ? lg.map((x) => `<div><span>${E(x.t)}${x.live ? ' <small style="color:#ff8b8f">● LIVE</small>' : ""}</span><time>${agoT(x.at)}</time></div>`).join("") : '<small class="muted">Nothing played yet this session.</small>';
   }
   function paintStation() {
+    if (!stateSeen && !OWNER() && !SANDBOX) { const lamp0 = $("#st-lamp"); if (lamp0) { lamp0.classList.toggle("on", false); if (lamp0.lastChild) lamp0.lastChild.textContent = "CONNECTING"; } const now0 = $("#st-now"); if (now0) now0.textContent = "Connecting to the station…"; const sw0 = $("#st-watch"); if (sw0) sw0.hidden = true; return; } // no state snapshot yet: never paint OFF AIR from default state
     const tvLive = vsBroadcast() && !(S.vstream || {}).hidden; // SHARING = LIVE: a TV broadcast lights the station even with the radio switch off and the tables paused for the share
     const live = isLive() || tvLive;
     const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : live ? "PRACTICE" : "STANDBY") : (live ? "ON AIR" : "OFF AIR");
