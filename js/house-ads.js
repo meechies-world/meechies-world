@@ -3,7 +3,10 @@
    never covers content (phones-first rule). Skips the Shop view (already the store) and Clips
    (full-screen video). A visitor can close the ads for 24 hours — the hide used to last the
    rest of the session, but inside an installed app a "session" can run for weeks, which
-   starved the apps of ads for good (owner, 2026-10-27: "make sure my ads are on all my apps"). */
+   starved the apps of ads for good (owner, 2026-10-27: "make sure my ads are on all my apps").
+   One owner-ordered exception to the in-flow rule (2026-10-30): when the master screen is
+   popped out big (the MW TV channel), a slim bar from this same pool rides the bottom of
+   that screen — see mountScreenBar. Everywhere else the in-flow rule stands. */
 (function () {
   "use strict";
   if (window.__mwHouseAds) return;
@@ -36,12 +39,40 @@
     ".mw-card .mw-card-pr{display:block;color:#d4af37;font-weight:800;font-size:13px;margin-top:3px}" +
     ".mw-card .mw-card-src{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#0e0c07;background:#d4af37;border-radius:99px;padding:1px 7px;margin-top:6px}" +
     ".mw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:8px}" +
-    ".mw-grid .mw-card{flex:none}";
+    ".mw-grid .mw-card{flex:none}" +
+    /* Screen ad bar (owner, 2026-10-30: "when people pop up the screen i
+       want a small ad at the bottom of it"): one slim strip riding the
+       bottom of the popped-out big screen (the MW TV channel shell). It
+       lives only inside #tw-shell, sits below the video frame's own
+       top-bar controls, and is fed by this same product pool below. */
+    ".mw-adbar{position:absolute;left:0;right:0;bottom:0;z-index:10;height:42px;box-sizing:border-box;display:flex;align-items:stretch;background:rgba(8,7,4,.93);border-top:1px solid rgba(212,175,55,.55)}" +
+    ".mw-adbar a{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:0 12px;text-decoration:none;color:#f3ead2}" +
+    ".mw-adbar img{width:30px;height:30px;object-fit:cover;border-radius:7px;flex:0 0 auto;background:#141414}" +
+    ".mw-adbar .mw-adbar-tag{flex:0 0 auto;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#d4af37;font-weight:700}" +
+    ".mw-adbar .mw-adbar-title{flex:1;min-width:0;font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+    ".mw-adbar .mw-adbar-price{flex:0 0 auto;color:#d4af37;font-weight:800;font-size:13.5px;white-space:nowrap}" +
+    ".mw-adbar .mw-adbar-cta{flex:0 0 auto;white-space:nowrap;font-weight:700;font-size:12.5px;color:#d4af37}" +
+    ".mw-adbar .mw-adbar-x{flex:0 0 auto;background:none;border:0;color:#f3ead2;opacity:.55;font-size:17px;cursor:pointer;line-height:1;padding:0 10px}" +
+    "@media (max-width:640px){.mw-adbar{height:38px}.mw-adbar .mw-adbar-tag{display:none}.mw-adbar .mw-adbar-title{font-size:12.5px}}";
   document.head.appendChild(css);
 
   var products = [];
   var slots = [];
   var shelves = [];
+  var barSlots = [];
+
+  /* One hide for every house-ad surface (owner rule: closing an ad hides
+     the ads for 24 hours): the banners, the shelves and the screen bar
+     all come down together and stay down together. */
+  function hideAll() {
+    setHidden();
+    slots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
+    slots = [];
+    shelves.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
+    shelves = [];
+    barSlots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
+    barSlots = [];
+  }
 
   function fill(slot) {
     if (!products.length) return;
@@ -73,14 +104,60 @@
     var x = document.createElement("button");
     x.className = "mw-ad-x"; x.type = "button";
     x.setAttribute("aria-label", "Hide this ad"); x.textContent = "×";
-    x.addEventListener("click", function () {
-      setHidden();
-      slots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
-      slots = [];
-      shelves.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
-      shelves = [];
-    });
+    x.addEventListener("click", function () { hideAll(); });
     slot.appendChild(a); slot.appendChild(x);
+  }
+
+  /* The screen bar renders ONE product as a single slim line — thumb,
+     title, price, Shop now — never the full banner card, so it stays a
+     strip at the bottom of the big screen and nothing more. */
+  function fillBar(slot) {
+    if (!products.length) return;
+    var p = products[Math.floor(Math.random() * products.length)];
+    slot.innerHTML = "";
+    var a = document.createElement("a");
+    a.href = p.url; a.target = "_blank"; a.rel = "noopener";
+    if (p.img) {
+      var img = document.createElement("img");
+      img.src = p.img; img.alt = ""; img.loading = "lazy";
+      a.appendChild(img);
+    }
+    var tag = document.createElement("span");
+    tag.className = "mw-adbar-tag"; tag.textContent = "Meechie's World Merch · " + (p.src || "Ad");
+    var ttl = document.createElement("span");
+    ttl.className = "mw-adbar-title"; ttl.textContent = p.title;
+    a.appendChild(tag); a.appendChild(ttl);
+    if (p.price) {
+      var pr = document.createElement("span");
+      pr.className = "mw-adbar-price"; pr.textContent = p.price;
+      a.appendChild(pr);
+    }
+    var cta = document.createElement("span");
+    cta.className = "mw-adbar-cta"; cta.textContent = "Shop now →";
+    a.appendChild(cta);
+    slot.appendChild(a);
+    var x = document.createElement("button");
+    x.className = "mw-adbar-x"; x.type = "button";
+    x.setAttribute("aria-label", "Hide ads for 24 hours"); x.textContent = "×";
+    x.addEventListener("click", function () { hideAll(); });
+    slot.appendChild(x);
+  }
+
+  /* The bar is created only inside the MW TV channel shell — the
+     popped-out big screen. The small docked mini never gets one (it is
+     hidden on the channel page anyway), the booth never gets one, and
+     pages without the channel shell simply skip this. It is created
+     empty and filled from the same pool as every other house ad; when
+     the pool comes back empty it is removed again (see start()), so an
+     empty strip never rides the screen. */
+  function mountScreenBar() {
+    if (isHidden()) return;
+    var shell = document.getElementById("tw-shell");
+    if (!shell || shell.querySelector(".mw-adbar")) return;
+    var bar = document.createElement("div");
+    bar.className = "mw-adbar";
+    shell.appendChild(bar);
+    barSlots.push(bar);
   }
 
   /* No-jump rule (owner, 2026-10-27: "when they refresh it, it doesn't jump"):
@@ -103,6 +180,7 @@
       slots.push(slot);
     });
     mountRadioSlots();
+    mountScreenBar();
   }
 
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -178,11 +256,13 @@
         // no ads to show: hand the reserved space back so nothing sits empty
         slots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); slots = [];
         shelves.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); shelves = [];
+        barSlots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); barSlots = [];
         return;
       }
       slots.forEach(fill);
+      barSlots.forEach(fillBar);
       fillRadio();
-      if (slots.length) setInterval(function () { if (!document.hidden) slots.forEach(fill); }, 12000);
+      if (slots.length || barSlots.length) setInterval(function () { if (!document.hidden) { slots.forEach(fill); barSlots.forEach(fillBar); } }, 12000);
     };
     var n = 0, step = function () { if (++n === 2) done(); };
     fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) { got.printify = (j && j.products) || []; }).catch(function () {}).then(step);
