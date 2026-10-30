@@ -17,7 +17,6 @@
 
 import { DECKS, vmixTargets, vsBroadcast, stationLive, esc } from "../station.js";
 import { getEngine } from "../engine.js";
-import { mountMini } from "../mini.js";
 import { mountRails } from "../rails.js";
 
 const agoT = (at) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
@@ -56,7 +55,7 @@ const MARKUP = `
     <div id="st-host" style="font-size:13.5px;font-weight:700;color:#ff8b8f" hidden></div>
     <button class="btn ghost sm" type="button" id="st-watch" style="margin:6px 0" hidden>👀 Watch Meechie's setup — live, look only</button>
     <div id="st-show"></div>
-    <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="stage-row"><aside class="srail" id="st-rail-l" aria-label="From the shop"></aside><div class="stage-mid"><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="st-vposter"><img src="/img/radio-promo.jpg" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="st-vchip" hidden></div></div><div class="st-shout" id="st-shout" hidden></div><div class="stage-bar"><button class="btn" type="button" data-rqopen="st">🎤 SONG REQUEST / SHOUT-OUT</button><span class="rq-mystat" id="st-mystat"></span></div><div class="rq-form2" id="st-rqform" hidden><div class="dj-search"><input type="text" id="st-rq-song" maxlength="100" placeholder="Type a song — Meechie AI finds the video" aria-label="Song to request"><input type="text" id="st-rq-shout" maxlength="140" placeholder="Shout-out (optional) — it shows when your song plays" aria-label="Shout-out"></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" data-rqgo="st">🎵 Request it</button><small class="muted">One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class="rq-results" id="st-rqres"></div></div></div><aside class="srail" id="st-rail-r" aria-label="Promotions"></aside></div><div class="stage-strip" id="st-strip"></div></div>
+    <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="stage-row"><aside class="srail" id="st-rail-l" aria-label="From the shop"></aside><div class="stage-mid"><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="st-vposter"><img src="/img/radio-promo-640.webp" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="st-vchip" hidden></div></div><div class="st-shout" id="st-shout" hidden></div><div class="stage-bar"><button class="btn" type="button" data-rqopen="st">🎤 SONG REQUEST / SHOUT-OUT</button><span class="rq-mystat" id="st-mystat"></span></div><div class="rq-form2" id="st-rqform" hidden><div class="dj-search"><input type="text" id="st-rq-song" maxlength="100" placeholder="Type a song — Meechie AI finds the video" aria-label="Song to request"><input type="text" id="st-rq-shout" maxlength="140" placeholder="Shout-out (optional) — it shows when your song plays" aria-label="Shout-out"></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" data-rqgo="st">🎵 Request it</button><small class="muted">One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class="rq-results" id="st-rqres"></div></div></div><aside class="srail" id="st-rail-r" aria-label="Promotions"></aside></div><div class="stage-strip" id="st-strip"></div></div>
     <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
     </div>
   </div>
@@ -69,7 +68,8 @@ export function render(root, ctx) {
   const engine = getEngine(ctx);
   engineRef = engine;
   const feed = engine.feed;
-  mountMini(ctx);
+  /* the cement band is shell furniture — core binds it at boot on
+     every view; views no longer mount it themselves */
   const scr = engine.createScreen({
     kind: "stage",
     stageEl: root.querySelector("#st-ytbox .vstage"),
@@ -151,6 +151,11 @@ function paintStation(root, ctx, feed) {
   const lamp = root.querySelector("#st-lamp");
   if (!feed.seen) {
     if (lamp) { lamp.classList.toggle("on", false); if (lamp.lastChild) lamp.lastChild.textContent = "CONNECTING"; }
+    /* the on-air card flag too: its static markup reads OFF AIR, so
+       leaving it unpainted here was the transient OFF AIR flash on
+       every cold entry — no snapshot yet means CONNECTING, never a
+       false off-air (the same rule tvSlatePaint states for MW TV) */
+    const flag0 = root.querySelector("#onair-flag"); if (flag0) { flag0.classList.toggle("off", true); flag0.textContent = "● CONNECTING"; }
     const now0 = root.querySelector("#st-now"); if (now0) now0.textContent = "Connecting to the station…";
     const sw0 = root.querySelector("#st-watch"); if (sw0) sw0.hidden = true;
     return;

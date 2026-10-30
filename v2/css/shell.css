@@ -509,3 +509,47 @@ nav.tabs a{letter-spacing:.02em}
 .appmore .grid a{display:grid;justify-items:center;gap:6px;padding:14px 6px;border:1px solid var(--line,#3a3223);border-radius:14px;color:var(--text,#f3ecdc);text-decoration:none;font:700 13px var(--body,system-ui);text-align:center;background:#0f0d09}
 .appmore .grid a span{font-size:24px}
 .appmore .grid a[aria-current=page]{border-color:var(--gold,#d4a843);color:var(--gold-hi,#f0cf78)}
+
+/* ===== CEMENT MASTER BAND (owner, 2026-10-30 12:46) — shell furniture.
+   The band's home styles live HERE, in the shell's first load, not in
+   the lazy engine.css: the band must look right from first paint,
+   before any script runs. It is a normal block in the document flow
+   (no fixed/absolute positioning, no drag, no resize, no close), in
+   the shell's black/gold. The screen caps at ~640px on wide screens
+   and the group centers; on phones the screen takes the row with a
+   shop chip at its left edge (the live #436 geometry). Only the
+   picture inside the screen ever changes. ===== */
+#dj-band{display:block;background:linear-gradient(180deg,#141109,#0b0a08);border-bottom:1px solid var(--gold-lo,#8c6d26)}
+#dj-mini{max-width:1120px;margin:0 auto}
+#dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
+#dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
+#dj-mini .mn-row{display:flex;align-items:stretch;justify-content:center;max-width:780px;margin:0 auto;padding:0 6px}
+#dj-mini .mn-row .vstage{flex:0 1 640px;width:100%;min-width:0;position:relative;aspect-ratio:16/9;background:#000;border:6px solid #0c0c0e;outline:2px solid #77777f;box-shadow:inset 0 0 0 2px rgba(240,207,120,.28);overflow:hidden}
+#dj-mini .vslot{position:absolute;inset:0;opacity:0;overflow:hidden;pointer-events:none}
+#dj-mini .vslot iframe{width:100%;height:100%;border:0}
+#dj-mini .vposter{position:absolute;inset:0;background:#000}
+#dj-mini .vposter img{width:100%;height:100%;object-fit:contain;display:block}
+#dj-mini .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo,#8c6d26);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
+#dj-mini .mn-chip-l{display:block;width:54px;flex:none;margin:4px 4px 4px 0}
+#dj-mini .mn-chipcol{display:flex;flex-direction:column;gap:4px;width:54px;flex:none;padding:4px 4px 4px 0}
+#dj-mini .mn-rqbtn{background:linear-gradient(180deg,#2a2110,#171106);border:1px solid var(--gold-lo,#8c6d26);color:var(--gold-hi,#f0cf78);border-radius:8px;font-size:17px;line-height:1;padding:7px 0;cursor:pointer}
+#dj-mini .mn-chip{overflow:hidden;border-radius:6px;background:#100d07}
+#dj-mini .mn-chip a{display:block;color:var(--gold-hi,#f0cf78);text-decoration:none}
+#dj-mini .mn-chip img{width:100%;height:46px;object-fit:cover;display:block}
+#dj-mini .mn-chip-n{display:block;font:600 8.5px var(--body);line-height:1.25;padding:3px 4px;overflow:hidden}
+#dj-mini .mn-chip-p2{display:block;font:700 8.5px var(--body);color:#ffe9b0;padding:0 4px 3px}
+#dj-mini .mn-chip-t{display:block;font:700 7.5px var(--body);letter-spacing:.08em;color:var(--muted);padding:3px 4px 0}
+#dj-mini .mn-chip-p{flex:1 1 auto}
+#dj-mini .mn-chip-p .mn-chip-n{max-height:64px}
+#dj-mini .mn-chip[hidden]{display:none!important}
+#dj-mini .mn-rqwrap{padding:0 6px;max-width:780px;margin:0 auto}
+#dj-mini .rq-mystat{display:block;font-size:10px;color:var(--gold-hi,#f0cf78);padding:2px 0}
+#dj-mini .rq-mystat:empty{display:none}
+#dj-mini .rq-form2{padding:2px 0 6px}
+@media(max-width:760px){#dj-mini .mn-row{max-width:none;margin:0;padding:0}#dj-mini .mn-row .vstage{flex:1 1 auto}#dj-mini .mn-chip-l{width:15%;min-width:44px;max-width:64px;margin:4px 0 4px 4px}#dj-mini .mn-chipcol{width:52px}#dj-mini .mn-rqwrap{max-width:none;margin:0}}
+/* the only suppressions: MW TV (the screen IS the page), the DJ booth
+   view (its own master screen is built in), the Playground. The
+   sign-in gate does NOT hide the band — the gate overlays the page,
+   and the band is already in place the instant the wall lifts. */
+body[data-view="mwtv"] #dj-band,body[data-view="dj"] #dj-band,html.popdj #dj-band{display:none!important}
