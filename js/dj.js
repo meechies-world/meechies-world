@@ -4974,21 +4974,22 @@ html.popdj #dj-mini{display:none!important}
         // warm (paused, muted) player is promoted in place - the switch
         // lands on a loaded player instead of a cold build.
         const wi = scr.slots.findIndex((sl) => !sl.deck && sl.warmK === t.k && sl.p && sl.vid === S[t.k].yt);
-        if (wi >= 0) { i = wi; const sl = scr.slots[i], el = $(scr.ids[i]); sl.deck = t.k; sl.warmK = ""; if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; } }
+        if (wi >= 0) { i = wi; const sl = scr.slots[i], el = $(scr.ids[i]); sl.deck = t.k; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._bornAt = Date.now(); sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; /* COLD-START CURE ROUND 2: a promoted warm player starts a NEW featured life here - its heal bookkeeping restarts with it (the creation-path reset, mirrored), so no stale no-frame stamp or spent ladder from an earlier life can kill it on arrival */ if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; } }
       }
       if (i < 0) {
         i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
         const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
         if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
-        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; mount.innerHTML = "<div></div>";
+        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._bornAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; mount.innerHTML = "<div></div>";
         mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
         const prov = vparseTok(sl.vid).p;
         if ((prov === "yt" && (!window.YT || !YT.Player)) || (prov === "dm" && (!window.DM || !DM.player)) || (prov === "vm" && (!window.Vimeo || !Vimeo.Player))) { sl.deck = ""; continue; }
         sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k, false, scr !== scrBooth ? { cap: vCapFor(scr) } : null);
+        sl._bornAt = Date.now(); /* COLD-START CURE ROUND 2: this player's featured life starts now - firstPatience measures the landed-seek extension from this stamp */
         continue;
       }
       const sl = scr.slots[i];
-      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
+      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._bornAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } sl._bornAt = Date.now(); }
       const el = $(scr.ids[i]); if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
         const want = slotWant(scr, t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
@@ -5061,6 +5062,34 @@ html.popdj #dj-mini{display:none!important}
        * normal cold start is not a retry. healFlag routes the
        * flag by whether either ladder has spent a rebuild yet. */
       const healFlag = (hsl, hk) => { if ((hsl._healN || 0) === 0 && (hsl._bufHealN || 0) === 0) scr._startK = hk; else scr._healK = hk; };
+      /* COLD-START CURE ROUND 2 (2026-10-30, instrumented on cold
+       * guest tabs - band and MW TV, three reproductions): the
+       * round-1 grace keyed on _hadFrame, but the target loop earns
+       * _hadFrame from ANY sampled state 1/2/5, and a cold YouTube
+       * player sits in state 5 (cued) while its iframe loads - so
+       * the featured player was classed as framed before it ever
+       * presented a frame, the grace never applied, the no-frame
+       * ladder was switched off, and the 6s buffering fuse destroyed
+       * the player ~7s after birth, mid-deep-seek, with its seek
+       * already landed (state 3, clock sitting at the broadcast
+       * position). Both ladders now key on _frameAt - real
+       * moving-frame evidence (state 1 with an advancing clock) -
+       * and firstPatience gives a never-framed player that is
+       * BUFFERING with its seek landed (state 3, clock past the
+       * start) an extended first-frame patience: the 12s baseline
+       * stretches up to 30s from its birth stamp (_bornAt) instead
+       * of expiring mid-buffer. A player stuck unstarted, or
+       * buffering without a landed seek, gets no extension and is
+       * rebuilt on the normal ladder. Framed-then-stalled slots
+       * (_frameAt set) keep the exact round-1 behavior. */
+      const firstPatience = (hsl) => {
+        if (!hsl._bornAt || !hsl.p) return 12000;
+        let alive = false;
+        try { alive = hsl.p.getPlayerState() === 3 && hsl.p.getCurrentTime() > 2; } catch (_) {}
+        if (!alive) return 12000;
+        const ext = Math.min(30000, hsl._bornAt + 30000 - (hsl._noFrameAt || hsl._bornAt));
+        return ext > 12000 ? ext : 12000;
+      };
       tg.forEach((t) => {
         const si = scr.slots.findIndex((x) => x.deck === t.k); if (si < 0) return;
         const sl = scr.slots[si];
@@ -5098,19 +5127,19 @@ html.popdj #dj-mini{display:none!important}
          * this branch may rebuild it. A slot that framed and
          * now stalls — this branch's reason to exist — is
          * untouched. */
-        if (sl._bufSince && S[t.k].playing && nowH - sl._bufSince > 6000 && (sl._hadFrame || (sl._noFrameAt && nowH - sl._noFrameAt > 12000))) {
+        if (sl._bufSince && S[t.k].playing && nowH - sl._bufSince > 6000 && (sl._frameAt || (sl._noFrameAt && nowH - sl._noFrameAt > firstPatience(sl)))) {
           if ((sl._bufHealN || 0) >= 2) return;
           healFlag(sl, t.k);
           if ((sl._bufHealN || 0) === 1 && sl._lastHealAt && nowH - sl._lastHealAt < 24000) return;
           const mountB = $(scr.ids[si]); if (!mountB) return;
           if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
           sl.p = null; mountB.innerHTML = "<div></div>";
-          sl._bufHealN = (sl._bufHealN || 0) + 1; sl._lastHealAt = nowH; sl._noFrameAt = nowH; sl._hadFrame = false; sl._sawPlay = false; sl._cleanPlayAt = 0;
+          sl._bufHealN = (sl._bufHealN || 0) + 1; sl._lastHealAt = nowH; sl._noFrameAt = nowH; sl._bornAt = nowH; sl._hadFrame = false; sl._frameAt = 0; sl._sawPlay = false; sl._cleanPlayAt = 0;
           sl._bufSince = nowH; sl._bMask = true; sl._bStateAt = 0; sl._bLastCur = null; sl._bAdvAt = 0; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; sl._maskSnapAt = 0;
           sl.p = mkVidPlayer(mountB.firstChild, sl.vid, muted, t.k, false, { cap: vCapFor(scr) });
           return;
         }
-        if (sl._hadFrame) { sl._noFrameAt = 0; return; }
+        if (sl._frameAt) { sl._noFrameAt = 0; return; }
         if (!sl.p) return;
         if (!sl._noFrameAt) { sl._noFrameAt = nowH; healFlag(sl, t.k); return; }
         /* VIEWER-LEG FIX (4): once this ladder is exhausted the chip
@@ -5118,12 +5147,12 @@ html.popdj #dj-mini{display:none!important}
          * rests masked (poster showing) until the deck or video
          * changes and the slot bookkeeping resets. */
         if ((sl._healN || 0) < 2) healFlag(sl, t.k);
-        const wait = sl._healN === 0 ? 12000 : sl._healN === 1 ? 24000 : Infinity;
+        const wait = sl._healN === 0 ? firstPatience(sl) : sl._healN === 1 ? 24000 : Infinity;
         if (nowH - sl._noFrameAt < wait) return;
         const mount = $(scr.ids[si]); if (!mount) return;
         try { sl.p.destroy(); } catch (_) {}
         sl.p = null; mount.innerHTML = "<div></div>";
-        sl._healN = (sl._healN || 0) + 1; sl._noFrameAt = nowH; sl._lastHealAt = nowH; sl._sawPlay = false; sl._cleanPlayAt = 0;
+        sl._healN = (sl._healN || 0) + 1; sl._noFrameAt = nowH; sl._bornAt = nowH; sl._frameAt = 0; sl._lastHealAt = nowH; sl._sawPlay = false; sl._cleanPlayAt = 0;
         sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k, false, { cap: vCapFor(scr) });
       });
     }
@@ -6454,7 +6483,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793381502;
+  const MW_DJ_BUILD = 1793385275;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
