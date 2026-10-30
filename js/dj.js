@@ -1106,6 +1106,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .edivb.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.4)}
 #dj-mini{border:3px solid #0a0a0c;outline:1px solid #2c2c30}
 #dj-mini .mn-grip{position:absolute;right:0;bottom:0;width:24px;height:24px;z-index:5;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 52%,rgba(240,207,120,.65) 52%,rgba(240,207,120,.65) 64%,transparent 64%,transparent 76%,rgba(240,207,120,.65) 76%,rgba(240,207,120,.65) 88%,transparent 88%)}
+#dj-mini .mn-row{display:flex;align-items:stretch}
+#dj-mini .mn-row .vstage{flex:1 1 auto;width:auto;min-width:0}
+#dj-mini .mn-chip-l{display:none}
+#dj-mini .mn-chipcol{display:flex;flex-direction:column;gap:4px;width:54px;flex:none;padding:4px 4px 4px 0}
+#dj-mini .mn-rqbtn{background:linear-gradient(180deg,#2a2110,#171106);border:1px solid var(--gold-lo);color:var(--gold-hi,#f0cf78);border-radius:8px;font-size:17px;line-height:1;padding:7px 0;cursor:pointer}
+#dj-mini .mn-chip{overflow:hidden;border-radius:6px;background:#100d07}
+#dj-mini .mn-chip a{display:block;color:var(--gold-hi,#f0cf78);text-decoration:none}
+#dj-mini .mn-chip img{width:100%;height:46px;object-fit:cover;display:block}
+#dj-mini .mn-chip-n{display:block;font:600 8.5px var(--body);line-height:1.25;padding:3px 4px;overflow:hidden}
+#dj-mini .mn-chip-p2{display:block;font:700 8.5px var(--body);color:#ffe9b0;padding:0 4px 3px}
+#dj-mini .mn-chip-t{display:block;font:700 7.5px var(--body);letter-spacing:.08em;color:var(--muted);padding:3px 4px 0}
+#dj-mini .mn-chip-p{flex:1 1 auto}
+#dj-mini .mn-chip-p .mn-chip-n{max-height:64px}
+#dj-mini .mn-rqwrap{padding:0 6px}
+#dj-mini .rq-mystat{display:block;font-size:10px;color:var(--gold-hi,#f0cf78);padding:2px 0}
+#dj-mini .rq-mystat:empty{display:none}
+#dj-mini .rq-form2{padding:2px 0 6px}
+#dj-mini .mn-chip[hidden]{display:none!important}
+@media(max-width:760px){#dj-mini #mn-close{display:none}#dj-mini .mn-chip-l{display:block;width:15%;min-width:44px;max-width:64px;flex:none;margin:4px 0 4px 4px}#dj-mini .mn-chipcol{width:52px}}
 #dj-owner .xfpad{background:linear-gradient(135deg,#17181a,#0b0b0d);border:1px solid #2e2e33;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 18px #000}
 #dj-owner .xfdot{background:linear-gradient(180deg,#f2f2f5,#9a9aa2 50%,#55555c);border:1px solid #000;box-shadow:0 3px 8px rgba(0,0,0,.6)}
 #dj-owner .dj-top{border-bottom:2px solid #26272b;box-shadow:0 1px 0 rgba(240,207,120,.25)}
@@ -1467,7 +1486,22 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // music video follows viewers around the whole site (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
   if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go(vsBroadcast() && !(S.vstream || {}).hidden ? "mwtv" : "radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
-  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>⤢</button><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; try { if (window.MW_vsDismiss) window.MW_vsDismiss(); } catch (_) {} }); mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
+  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>⤢</button><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='mn-row'><aside class='mn-chip mn-chip-l' id='mn-chip-l' hidden></aside><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><aside class='mn-chipcol'><button type='button' class='mn-rqbtn' data-rqopen='mn' aria-label='Request a song — Meechie AI finds the video'>🎤</button><div class='mn-chip mn-chip-p' id='mn-chip-p' hidden></div></aside></div><div class='mn-rqwrap'><span class='rq-mystat' id='mn-mystat'></span><div class='rq-form2' id='mn-rqform' hidden><div class='dj-search'><input type='text' id='mn-rq-song' maxlength='100' placeholder='Type a song — Meechie AI finds the video' aria-label='Song to request'><input type='text' id='mn-rq-shout' maxlength='140' placeholder='Shout-out (optional) — it shows when your song plays' aria-label='Shout-out'></div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='btn sm' type='button' data-rqgo='mn'>🎵 Request it</button><small class='muted'>One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class='rq-results' id='mn-rqres'></div></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; try { if (window.MW_vsDismiss) window.MW_vsDismiss(); } catch (_) {} }); mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
+    // MANDATORY SCREEN package: the mini lives on document.body, outside
+    // the <main> delegation (onMain only fires inside #dj-root /
+    // #dj-booth-root), so its request controls wire directly here — into
+    // the SAME flow the stage buttons use: the data-rqopen form toggle,
+    // rqSubmit("mn"), and the result-pick branch, surface "mn". Nothing
+    // is forked: one search, one enqueue, one queue.
+    mn.addEventListener("click", async (e) => {
+      const open = e.target.closest && e.target.closest("[data-rqopen='mn']");
+      if (open) { const f = document.getElementById("mn-rqform"); if (f) { f.hidden = !f.hidden; if (!f.hidden) { const inp = f.querySelector("input"); if (inp) inp.focus(); } } return; }
+      const go2 = e.target.closest && e.target.closest("[data-rqgo='mn']");
+      if (go2) { rqSubmit("mn"); return; }
+      const pk = e.target.closest && e.target.closest("[data-rqpick]");
+      if (pk && pk.dataset.rqpick.indexOf("mn:") === 0) { const parts = pk.dataset.rqpick.split(":"); const it = (rqResCache[parts[0]] || [])[+parts[1]]; if (!it) return; const shoutEl = document.getElementById("mn-rq-shout"); await rqEnqueue(it, shoutEl ? shoutEl.value : ""); const resEl = document.getElementById("mn-rqres"); if (resEl) resEl.innerHTML = ""; const songEl = document.getElementById("mn-rq-song"); if (songEl) songEl.value = ""; if (shoutEl) shoutEl.value = ""; }
+    });
+    mn.addEventListener("keydown", (e) => { if (e.key !== "Enter") return; const inp = e.target.closest && e.target.closest("#mn-rq-song,#mn-rq-shout"); if (!inp) return; e.preventDefault(); rqSubmit("mn"); });
     // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
     // "make the music video screen moveable") — drag it anywhere; the spot is
     // remembered per device and restored on every page
@@ -4709,8 +4743,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * exactly one mix screen may carry sound - MW TV when the channel
    * is open, else the Watch screen when it is open, else the station
    * stage (which is also what keeps the radio audible while a
-   * listener browses the rest of the site). The booth and the mini
-   * never sound - the decks and the big screens own the sound there -
+   * listener browses the rest of the site on a desktop). The booth
+   * never sounds - the decks own the sound there - and the mini
+   * sounds only in its phone-dock form (MANDATORY SCREEN, in the
+   * ladder below) -
    * an owner's screens never sound (his decks do), and while a live
    * share holds the master NO mix screen sounds at all: the capture
    * carries its own audio, and that is the only sound (takeover). */
@@ -4720,6 +4756,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (SANDBOX) return scrView;
     const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return scrTV;
     const wa = document.getElementById("v-watch"); if (wa && !wa.hidden) return scrWatch;
+    /* MANDATORY SCREEN (owner, 2026-10-30: the dock goes "on all tabs
+     * with sound there"): on a phone, while the docked master screen
+     * is up it is the sounding surface — the screen the viewer is
+     * looking at carries the mix, and the hidden station stage mutes.
+     * On desktop the floater stays a silent mirror and the stage
+     * keeps the sound, exactly as before. */
+    try { const mb = document.getElementById("dj-mini"); if (mb && !mb.hidden && matchMedia("(max-width:760px)").matches) return scrMini; } catch (_) {}
     return scrView;
   }
   /* one screen player for any video platform: the wrapper speaks the YT-ish
@@ -5133,10 +5176,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const lv = document.querySelector("#wb-stage video.vslive");
     if (lv && lv.paused && (lv.srcObject || lv.currentSrc)) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
   }
-  /* the mini screen is a silent mirror (the sound already travels with the decks
-   * and the station screen): it shows the same mix in a small rectangle at the
-   * top of every page, and steps aside when a big screen is in view, when the
-   * booth itself is on screen, or when the viewer closed it for this video */
+  /* the mini screen is the MANDATORY SCREEN unit (owner, 2026-10-30):
+   * the same mix in a small rectangle at the top of every page, with
+   * the shop/promo chips and the song-request slot riding its sides.
+   * Presence follows content on every tab (see miniApply); on the
+   * phone dock it also carries the sound, on the desktop floater it
+   * stays a silent mirror and the station screen sounds. */
   let miniOffVid = "", stInView = false, miniOkVid = "", miniErrVid = "", miniLastVid = "", miniBufVid = "", miniBufAt = 0, miniGateVid = "", miniGateAt = 0, miniGraceVid = "", miniGraceAt = 0;
   /* RADIO MINI FIX (2): durable play evidence for the mini. renderScreen
    * calls this the moment the mini screen featured slot is sampled in
@@ -5163,33 +5208,33 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * would keep the mini down forever); the session close, the stage-in-
      * view step-aside and the booth-on-screen rule all still apply, and a
      * hidden share never pops. */
-    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !sessOff && !stInView && !onTV && !document.body.classList.contains("dj-on") && !!((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) && vsPopReady();
-    const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && !sessOff && vid !== miniOffVid && !stInView && !onTV && !document.body.classList.contains("dj-on")) || vsShareShow;
+    /* MANDATORY SCREEN (owner, 2026-10-30 10:54: "we're removing that
+     * part and putting in the mandatory one on all tabs"): presence
+     * follows content, on every tab. The stage-in-view step-aside is
+     * gone on both form factors, and the session close no longer
+     * applies to the phone dock at all — it is the one step-aside
+     * the desktop floater keeps.
+     * What still hides the unit is structural only: the MW TV page
+     * (it IS the screen), the booth on screen (its own master
+     * screen), and the sign-in wall / Playground (CSS, as before). */
+    const mnPh = (() => { try { return matchMedia("(max-width:760px)").matches; } catch (_) { return false; } })();
+    const sessGate = sessOff && !mnPh;
+    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !sessGate && !onTV && !document.body.classList.contains("dj-on") && !!((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) && vsPopReady();
+    const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && !sessGate && vid !== miniOffVid && !onTV && !document.body.classList.contains("dj-on")) || vsShareShow;
     box.hidden = !show;
-    // a master video that errored or has not really started must not leave
-    // a black box floating over the page: until this video's player has
-    // actually played, the box stays hidden (the render below still runs,
-    // so it pops in the moment the video does) — unless his camera square
-    // is live on the mini, which is reason enough to keep the box up
-    /* RADIO MINI FIX (3/4): the proof gate, bounded and graced. The
-     * gate still keeps an unproven player from floating a black box
-     * over the page, but it may no longer hide the box forever: an
-     * error latched against this video still hides it outright, the
-     * camera square still keeps it up (both exactly as before), a
-     * fresh clean change sits inside its proof grace and cannot be
-     * gate-hidden at all, and every other gate-hidden stretch is
-     * clocked per video - past ~20s with no error latch the box is
-     * forced visible, thumbnail and all. A permanently hidden mini
-     * with no error latch and no explicit gate (session close,
-     * stage in view, booth on screen, MW TV page) is now impossible. */
-    if (show && vid && miniOkVid !== vid) {
-      const ov = document.getElementById("mw-camov"), nowG = Date.now();
-      if (miniErrVid === vid) { box.hidden = true; miniGateVid = ""; miniGateAt = 0; }
-      else if (ov && !ov.hidden) { miniGateVid = ""; miniGateAt = 0; }
-      else if (miniGraceVid === vid && nowG - miniGraceAt < 18000) { miniGateVid = ""; miniGateAt = 0; }
-      else { if (miniGateVid !== vid) { miniGateVid = vid; miniGateAt = nowG; } if (nowG - miniGateAt <= 20000) box.hidden = true; }
-    } else { miniGateVid = ""; miniGateAt = 0; }
+    /* MANDATORY SCREEN: the proof gate is GONE. It was the floating
+     * mini's rule (RADIO MINI FIX 3/4), and it is what kept vanishing
+     * the screen on tab switches and song changes — an unproven
+     * player hid the box for up to ~20s per video, an error latch
+     * hid it outright. An unproven or unstarted video now shows the
+     * dock with the slot's own poster/thumbnail slate (the render
+     * pass below paints that state), so the screen is present from
+     * the first pass and never a black hole. miniOkVid / miniErrVid
+     * are still stamped at pass end — the buffer-mask restore below
+     * reads them, exactly as before. */
+    miniGateVid = ""; miniGateAt = 0;
     camOvSync();
+    try { mnRailPaint(); } catch (_) {}
     if (!tg.length) scrMini.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
     /* RADIO MINI FIX (1): the render is decoupled from the box
      * visibility. The old early return here meant that whenever the
@@ -5216,7 +5261,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       else if (docked && document.body.dataset.view !== "community") { box.style.left = ""; box.style.right = ""; delete box.dataset.mnDock; }
     } catch (_) {}
     }
-    await renderScreen(scrMini, true, 1, 1);
+    const sndM = vmixSndScr();
+    await renderScreen(scrMini, sndM !== scrMini, sndM === scrMini ? mix : 1, sndM === scrMini ? duck : 1);
     /* VIEWER-LEG FIX (5/6) begin */
     const actM = scrMini.slots.filter((sl) => sl.deck && sl.p), topPM = top ? actM.find((sl) => sl.deck === top.k) : null;
     if (scrMini._bufK) {
@@ -6221,14 +6267,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * no-store) once a minute for the current dj build. Three stamps carry
    * that one number and move together on every dj.js ship: the "dj" field
    * in version.json, MW_DJ_BUILD below, and dj.js ?v= in index.html.
-   * A listener reloads once, right away. A booth is never yanked mid-set:
-   * it shows a notice, reloads itself the moment every deck is stopped,
-   * and in all cases within 10 minutes of the update first being seen.
-   * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793372600;
+   * A listener reloads once, right away — UNLESS the tab is sounding
+   * (SOUND GATE, owner law 2026-10-30: an automatic refresh never cuts
+   * music): a tuned-in listener (MW_DJ.listening(), the l=1 flag) holds
+   * behind the notice and reloads the moment listening stops. A booth is
+   * never yanked mid-set: it shows a notice, reloads itself the moment
+   * every deck is stopped, and in all cases within 10 minutes of the
+   * update first being seen. A sessionStorage stamp per build makes a
+   * reload loop impossible, and that same stamp (mw-guard-<build>) is
+   * the handshake with the shell checker in app-core.js: whichever
+   * checker fires first stamps it, and the other stands down for that
+   * build — one reload per build, whoever gets the safe moment first. */
+  const MW_DJ_BUILD = 1793373390;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
+    const isListening = () => { try { return !!(window.MW_DJ && typeof window.MW_DJ.listening === "function" && window.MW_DJ.listening()); } catch (_) { return false; } };
+    const guardDone = () => { try { return sessionStorage.getItem("mw-guard-" + updBuild) === "1"; } catch (_) { return false; } };
     const showUpdNote = (playing) => {
       let n = document.getElementById("dj-upd-note");
       if (!n) {
@@ -6247,11 +6302,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     };
     const evaluate = () => {
       if (!updBuild) return;
-      if (!OWNER()) { doReload(); return; }
+      if (guardDone()) return;
+      if (!OWNER()) {
+        if (isListening()) { showUpdNote(true); if (!updTimer) updTimer = setTimeout(() => { updTimer = null; evaluate(); }, 5000); return; }
+        doReload(); return;
+      }
       if (Date.now() - updSince > 10 * 60e3) { doReload(); return; }
-      if (anyPlaying()) { showUpdNote(true); return; }
+      if (anyPlaying() || isListening()) { showUpdNote(true); return; }
       showUpdNote(false);
-      if (!updTimer) updTimer = setTimeout(() => { updTimer = null; if (!anyPlaying()) doReload(); else evaluate(); }, 5000);
+      if (!updTimer) updTimer = setTimeout(() => { updTimer = null; if (!anyPlaying() && !isListening()) doReload(); else evaluate(); }, 5000);
     };
     const check = async () => {
       try {
@@ -8396,7 +8455,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     let txt = "";
     if (rqMine && pos > 0) txt = "🎵 Your request “" + rqMine.title + "” is #" + pos + " in the DJ queue line" + (pos === 1 ? " — up next, right after this song" : "");
     else if (rqMine && rqGoneAt) txt = "🎵 Your request is starting…";
-    ["#st-mystat", "#wb-mystat"].forEach((sel) => { const el = $(sel); if (el && el.textContent !== txt) el.textContent = txt; });
+    ["#st-mystat", "#wb-mystat", "#mn-mystat"].forEach((sel) => { const el = $(sel); if (el && el.textContent !== txt) el.textContent = txt; });
     if (!rqMine) { rqLastPos = 0; rqGoneAt = 0; return; }
     if (rqLastPos === -1) { rqLastPos = pos; if (pos > 0) rqGoneAt = 0; return; } // first sight of the line this visit: paint only, no notices for an older request
     if (pos > 0) {
@@ -8491,7 +8550,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       for (let i = mix.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = mix[i]; mix[i] = mix[j]; mix[j] = t; }
       railData = mix;
     } catch (_) { if (!railData) railData = []; }
-    railBusy = false; railPaint();
+    railBusy = false; railPaint(); mnRailPaint();
   }
   function railCard(x) { return `<a class="srcard" href="${E(x.url)}" target="_blank" rel="noopener">${x.img ? `<img src="${E(x.img)}" alt="" loading="lazy" decoding="async">` : ""}<span class="srcard-b"><span class="srcard-t">🛍️ ${E(x.src || "SHOP")}</span><span class="srcard-n">${E(x.title)}</span>${x.price ? `<span class="srcard-p">${E(x.price)}</span>` : ""}</span></a>`; }
   function railPromo(pr) { return `<a class="srpromo" href="${pr.href}"><span class="srcard-t">${E(pr.tag)}</span><br>${pr.html}</a>`; }
@@ -8513,13 +8572,42 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       else { el.innerHTML = `<a href="${pr.href}"><span>${E(pr.tag)} — ${pr.html.replace(/<[^>]+>/g, "")}</span></a>`; el.classList.add("on"); }
     });
   }
+
+  /* MANDATORY SCREEN package: the all-tabs unit carries the same rails
+   * inventory in miniature — one rotating shop thumb riding the phone
+   * dock's left edge, a promo chip under the 🎤 in the right column
+   * (the desktop floater shows the promo chip only; its left chip
+   * stays folded). Painted off the same railData / railIx the stage
+   * rails rotate on, so everything cycles together every 12s. When
+   * neither a product nor a promo exists, both chips fold away and
+   * the screen takes the whole row. */
+  function mnChipHTML(prods, promos, ix) {
+    const p = prods && prods.length ? prods[ix % prods.length] : null;
+    const pr = promos && promos.length ? promos[ix % promos.length] : null;
+    const left = p ? `<a href="${E(p.url)}" target="_blank" rel="noopener">${p.img ? `<img src="${E(p.img)}" alt="" loading="lazy" decoding="async">` : ""}<span class="mn-chip-n">${E(p.title)}</span>${p.price ? `<span class="mn-chip-p2">${E(p.price)}</span>` : ""}</a>` : "";
+    const promo = pr ? `<a href="${pr.href}"><span class="mn-chip-t">${E(pr.tag)}</span><span class="mn-chip-n">${E(pr.text)}</span></a>` : "";
+    return { left, promo, any: !!(p || pr) };
+  }
+  let mnChipSig = "";
+  function mnRailPaint() {
+    const l = document.getElementById("mn-chip-l"), r = document.getElementById("mn-chip-p");
+    if (!l && !r) return;
+    let annT = ""; try { const bar = document.getElementById("announce"), t = document.getElementById("announce-text"); if (bar && !bar.hidden && t && t.textContent.trim()) annT = t.textContent.trim().slice(0, 160); } catch (_) {}
+    const promos = (annT ? [{ tag: "📣 FROM MEECHIE", text: annT, href: "#home" }] : []).concat(RAIL_PROMOS.map((x) => ({ tag: x.tag, text: String(x.html || "").replace(/<[^>]+>/g, ""), href: x.href })));
+    const h = mnChipHTML(railData || [], promos, railIx);
+    const sig = railIx + "|" + (railData ? railData.length : -1) + "|" + (annT ? "a" : "") + "|" + h.any;
+    if (sig === mnChipSig) return; mnChipSig = sig;
+    if (l) { l.innerHTML = h.left; l.hidden = !h.left; }
+    if (r) { r.innerHTML = h.promo; r.hidden = !h.promo; }
+    const row = document.querySelector("#dj-mini .mn-row"); if (row) row.classList.toggle("mn-naked", !h.any);
+  }
   setInterval(() => {
     if (document.hidden) return;
-    const stb = document.getElementById("st-ytbox"), wbv = document.getElementById("v-watch");
-    const active = (stb && !stb.hidden) || (wbv && !wbv.hidden);
+    const stb = document.getElementById("st-ytbox"), wbv = document.getElementById("v-watch"), mnb = document.getElementById("dj-mini");
+    const active = (stb && !stb.hidden) || (wbv && !wbv.hidden) || (mnb && !mnb.hidden);
     if (!active) return;
     if (!railData) { railLoad(); return; }
-    railIx++; railPaint();
+    railIx++; railPaint(); mnRailPaint();
   }, 12000);
 
   /* ---------- ticker ---------- */
