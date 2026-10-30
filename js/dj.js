@@ -829,10 +829,11 @@ body[data-view="dj"] #dj-livealert{display:none}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
 #dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
+#dj-mini #mn-pop{display:none}
 #dj-mini .mn-bar{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
 #dj-mini.mn-drag .mn-bar{cursor:grabbing}
 #dj-mini .vstage{border:0;border-radius:0}
-@media(max-width:760px){#dj-mini{top:auto;bottom:76px;width:168px}}
+@media(max-width:760px){#dj-mini{top:calc(env(safe-area-inset-top,0px) + 56px)!important;bottom:auto!important;left:0!important;right:0!important;width:auto!important;max-width:none!important;border-left:0;border-right:0;border-radius:0}#dj-mini .mn-grip{display:none}#dj-mini .mn-bar{cursor:default}#dj-mini #mn-pop{display:block}}
 html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner [data-ckey]{position:relative}
 #dj-owner [data-ckey].ck-off{display:none!important}
@@ -1021,6 +1022,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner .platter{touch-action:pan-y}
 #dj-owner .xfpad{touch-action:pan-y}
 #dj-owner .deck .wave{touch-action:pan-y}
+/* LAW 22 (owner, 2026-10-30): the booth sliders ride the same pan-y rule -
+   a vertical scroll that starts on a slider scrolls the page and leaves
+   the value untouched; only a sideways drag along the track moves it */
+#dj-owner input[type=range]{touch-action:pan-y}
 /* LIVE ALERT: the buttons get their own flex row so a phone can stack the
    pill into a compact card instead of ballooning (owner screenshot,
    2026-10-29: the pill stretched huge and clipped Tune in down to UN). */
@@ -1422,11 +1427,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // music video follows viewers around the whole site (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
   if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go(vsBroadcast() && !(S.vstream || {}).hidden ? "mwtv" : "radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
-  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; try { if (window.MW_vsDismiss) window.MW_vsDismiss(); } catch (_) {} });
+  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>⤢</button><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; try { if (window.MW_vsDismiss) window.MW_vsDismiss(); } catch (_) {} }); mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
     // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
     // "make the music video screen moveable") — drag it anywhere; the spot is
     // remembered per device and restored on every page
     const mnBar = mn.querySelector(".mn-bar");
+    // PHONE DOCKED SCREEN (owner, 2026-10-30): on phone widths the mini is
+    // not a floating pop-up at all — the CSS docks the same one box full
+    // width under the site header, in the same spot on every tab, and the
+    // drag / resize / re-place machinery below simply never engages there
+    const mnPhone = () => { try { return matchMedia("(max-width:760px)").matches; } catch (_) { return false; } };
     const mnPlace = (x, y) => { const w = mn.offsetWidth || 208, h = mn.offsetHeight || 140; x = Math.max(2, Math.min(Math.round(x), Math.max(2, innerWidth - w - 2))); y = Math.max(2, Math.min(Math.round(y), Math.max(2, innerHeight - h - 2))); mn.style.left = x + "px"; mn.style.top = y + "px"; mn.style.right = "auto"; };
     try { const p = JSON.parse(localStorage.getItem("mw-mini-pos") || "null"); if (p && typeof p.x === "number" && typeof p.y === "number") mnPlace(p.x, p.y); } catch (_) {}
     // and RESIZEABLE by its corner grip (owner, 2026-10-27): drag the corner
@@ -1443,8 +1453,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const mnMaxW = () => Math.max(140, Math.min(innerWidth, (innerHeight - 30) * 16 / 9));
     const mnSize = (w) => { w = Math.max(140, Math.min(Math.round(w), mnMaxW())); mn.style.width = w + "px"; return w; };
     try { localStorage.removeItem("mw-mini-w"); } catch (_) {} // owner (2026-10-29): the pop-out opens at its regular size on every visit — a size dragged in an earlier session never carries over; the saved POSITION still restores (mnPlace above) and resizing still works freely within the visit
-    if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = mn.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = mn.getBoundingClientRect(); mnPlace(r2.left, r2.top); }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
-    mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); delete mn.dataset.mnDock; try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); addEventListener("resize", () => { const r = mn.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); }); }
+    if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { if (mnPhone()) return; e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = mn.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = mn.getBoundingClientRect(); mnPlace(r2.left, r2.top); }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
+    mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close") || e.target.closest("#mn-pop")) return; if (mnPhone()) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); delete mn.dataset.mnDock; try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); addEventListener("resize", () => { if (mnPhone()) return; const r = mn.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); }); }
   // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
   // decks — on wide screens the console grid still parks it at the top of the
   // middle column; everywhere else it now leads the booth instead of hiding
@@ -5342,7 +5352,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * left, C+D on the right. Drag up/down to ride a deck volume; the knob drives
    * the deck's own volume slider so state, sound and saves follow the one path.
    * Double-tap resets to 90%. */
-  document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv; let drag = null; el.addEventListener("pointerdown", (e) => { if (!OWNER()) return; if (serverMirror()) { takeControl(); return; } drag = { y: e.clientY, v: S[k] ? S[k].vol : 0 }; try { el.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); }); el.addEventListener("pointermove", (e) => { if (!drag) return; const v = Math.max(0, Math.min(2, drag.v + (drag.y - e.clientY) / 140)); midiSetSlider("[data-vol=\"" + k + "\"]", v / 2); paintXfPads(); }); const end = () => { drag = null; }; el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("dblclick", () => { if (!OWNER()) return; midiSetSlider("[data-vol=\"" + k + "\"]", 0.45); paintXfPads(); }); });
+  document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv; let drag = null, pend = null; el.addEventListener("pointerdown", (e) => { if (!OWNER()) return; if (serverMirror()) { takeControl(); return; } pend = { y: e.clientY, t: performance.now(), v: S[k] ? S[k].vol : 0, dwell: false }; try { el.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); }); el.addEventListener("pointermove", (e) => { if (pend && !drag) { const dy = e.clientY - pend.y, ady = Math.abs(dy), dt = performance.now() - pend.t; if (ady <= 4) { if (dt >= 70) pend.dwell = true; return; } if (!pend.dwell && dt < 110 && ady >= 20) { pend = null; return; } if (ady >= 10 && (pend.dwell || (dt >= 110 && ady <= dt * 0.35))) { drag = { y: pend.y, v: pend.v }; pend = null; } else return; } if (!drag) return; const v = Math.max(0, Math.min(2, drag.v + (drag.y - e.clientY) / 140)); midiSetSlider("[data-vol=\"" + k + "\"]", v / 2); paintXfPads(); }); const end = () => { drag = null; pend = null; }; el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("dblclick", () => { if (!OWNER()) return; midiSetSlider("[data-vol=\"" + k + "\"]", 0.45); paintXfPads(); }); });
 
   function playVoice() {
     const v = S.voice; if (!v || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
@@ -6134,7 +6144,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793367058;
+  const MW_DJ_BUILD = 1793369147;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6900,9 +6910,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (b.dataset.xfc) { S.xfCurve = b.dataset.xfc; paintXfPads(); levels(); save(true); say("Crossfader curve: " + S.xfCurve + (S.xfCurve === "cut" ? " — instant switch at the center." : S.xfCurve === "sharp" ? " — stays loud in the middle, made for scratch work." : " — the smooth equal-power blend.")); return; }
   });
   // long-press a hot cue clears it
-  let hotTimer = null;
-  onMain("pointerdown", (e) => { const b = e.target.closest("[data-hot]"); if (!b || !OWNER()) return; hotTimer = setTimeout(() => { const [k, n] = b.dataset.hot.split(":"); deck(k).cues[+n - 1] = null; S[k].cues = deck(k).cues.slice(); save(true); paintCues(k); say("Cue " + n + " cleared"); hotTimer = "done"; }, 650); });
-  onMainRaw("pointerup", (e) => { if (hotTimer === "done") { e.preventDefault(); return; } clearTimeout(hotTimer); hotTimer = null; }, true);
+  let hotTimer = null, hotAt = null;
+  onMain("pointerdown", (e) => { const b = e.target.closest("[data-hot]"); if (!b || !OWNER()) return; hotAt = { x: e.clientX, y: e.clientY }; hotTimer = setTimeout(() => { const [k, n] = b.dataset.hot.split(":"); deck(k).cues[+n - 1] = null; S[k].cues = deck(k).cues.slice(); save(true); paintCues(k); say("Cue " + n + " cleared"); hotTimer = "done"; }, 650); });
+  onMainRaw("pointerup", (e) => { hotAt = null; if (hotTimer === "done") { e.preventDefault(); return; } clearTimeout(hotTimer); hotTimer = null; }, true);
+  // LAW 22: a press that turns into a scroll (it moves off the button, or
+  // the browser cancels it) is not a long-press — the hold is abandoned,
+  // so scrolling across a hot cue can never clear the cue mid-scroll.
+  onMainRaw("pointermove", (e) => { if (hotAt && Math.hypot(e.clientX - hotAt.x, e.clientY - hotAt.y) > 10) { hotAt = null; if (hotTimer !== "done") { clearTimeout(hotTimer); hotTimer = null; } } }, true);
+  onMainRaw("pointercancel", () => { hotAt = null; if (hotTimer !== "done") { clearTimeout(hotTimer); hotTimer = null; } }, true);
   onMain("input", (e) => {
     if (!OWNER()) return;
     const t = e.target;
@@ -6954,17 +6969,26 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // (S.xf / S.xf2) are no longer written by the pad — they belong to the
   // automated blends, the follow guard and the curve, exactly as the
   // crossfade code below expects.
+  // LAW 22 (owner, 2026-10-30): scroll and touch never touch the music.
+  // A press on a sideways booth surface (the X pad, a waveform, a platter)
+  // is classified ONCE by pressIntent and the verdict never flips back:
+  // "control" = sideways travel of 10px or more, at least 1.6x the vertical
+  // travel (a deliberate drag); "scroll" = vertical travel of 10px or more,
+  // at least the sideways travel (a page scroll, however it veers later);
+  // anything else is undecided and the press does nothing yet.
+  const pressIntent = (pend, e) => { const dx = e.clientX - pend.x, dy = e.clientY - pend.y; if (Math.abs(dx) >= 10 && Math.abs(dx) >= Math.abs(dy) * 1.6) return "control"; if (Math.abs(dy) >= 10 && Math.abs(dy) >= Math.abs(dx)) return "scroll"; return ""; };
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
     const center = () => { xfTouchedAt = Date.now(); S.xf = 0.5; S.xf2 = 0.5; S.panX = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
     const apply = (e) => { if (serverMirror()) { takeControl(); return; } const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.panX = Math.round(((dx + 1) / 2) * 1000) / 1000; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
-    // scroll gate (owner, 2026-10-29): a press applies nothing until the
-    // gesture proves it is a fader move — horizontal travel of 8px or more,
-    // more sideways than vertical. A vertical scroll starting on the pad is
-    // the page scroll (pan-y) and a pointercancel drops the press untouched;
-    // a clean tap applies the tapped point on release.
+    // scroll gate (owner, 2026-10-29; LAW 22, 2026-10-30): a press applies
+    // nothing until pressIntent calls it a control move, and the moment it
+    // calls it a scroll the press is dropped for good — a scroll that veers
+    // sideways mid-page can never grab the fader. A vertical scroll starting
+    // on the pad is the page scroll (pan-y) and a pointercancel drops the
+    // press untouched; a clean tap applies the tapped point on release.
     let pend = null;
     pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; pend = { x: e.clientX, y: e.clientY, id: e.pointerId }; e.preventDefault(); });
-    pad.addEventListener("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const dx = e.clientX - pend.x, dy = e.clientY - pend.y; if (Math.abs(dx) >= 8 && Math.abs(dx) > Math.abs(dy)) { drag = true; try { pad.setPointerCapture(pend.id); } catch (_) {} apply(e); pend = null; } return; } if (drag) apply(e); });
+    pad.addEventListener("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const intent = pressIntent(pend, e); if (intent === "scroll") { pend = null; return; } if (intent !== "control") return; drag = true; try { pad.setPointerCapture(pend.id); } catch (_) {} apply(e); pend = null; } if (drag) apply(e); });
     pad.addEventListener("pointerup", (e) => { if (pend) { pend = null; apply(e); save(true); return; } if (drag) { drag = false; save(true); } });
     pad.addEventListener("pointercancel", () => { pend = null; drag = false; });
     pad.addEventListener("dblclick", () => { if (OWNER()) center(); });
@@ -6982,15 +7006,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       try { d.el.currentTime = t; } catch (_) {}
       if (S[k].playing) S[k].start = Date.now() - t * 1000; else S[k].pos = t;
       paintCues(k); peaks(k); };
-    // scroll gate (owner, 2026-10-29): the wave no longer seeks on
-    // touch-down — the seek waits until the gesture proves deliberate
-    // (horizontal travel of 8px or more, more sideways than vertical), then
+    // scroll gate (owner, 2026-10-29; LAW 22, 2026-10-30): the wave no
+    // longer seeks on touch-down — the seek waits until pressIntent calls
+    // the gesture a control move, and a scroll verdict drops the press for
+    // good, so a scroll veering sideways can never scrub the song. It then
     // seeks to the current pointer spot and scrubs on as before. A vertical
     // scroll starting on the wave just scrolls the page (pan-y) and a
     // pointercancel abandons the press; a clean tap still seeks, on release.
     let pend = null;
     cv.addEventListener("pointerdown", (e) => { if (!OWNER()) return; pend = { x: e.clientX, y: e.clientY, id: e.pointerId }; e.preventDefault(); });
-    cv.addEventListener("pointermove", (e) => { if (pend && !scrub) { if (!e.buttons) { pend = null; return; } const dx = e.clientX - pend.x, dy = e.clientY - pend.y; if (Math.abs(dx) >= 8 && Math.abs(dx) > Math.abs(dy)) { scrub = true; try { cv.setPointerCapture(pend.id); } catch (_) {} seekTo(e); pend = null; } return; } if (scrub) seekTo(e); });
+    cv.addEventListener("pointermove", (e) => { if (pend && !scrub) { if (!e.buttons) { pend = null; return; } const intent = pressIntent(pend, e); if (intent === "scroll") { pend = null; return; } if (intent !== "control") return; scrub = true; try { cv.setPointerCapture(pend.id); } catch (_) {} seekTo(e); pend = null; } if (scrub) seekTo(e); });
     cv.addEventListener("pointerup", (e) => { if (pend) { pend = null; seekTo(e); save(true); return; } if (scrub) { scrub = false; save(true); } });
     cv.addEventListener("pointercancel", () => { pend = null; scrub = false; });
   });
@@ -7027,20 +7052,24 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const grainStop = () => { if (!grainSess) return; const s = grainSess; grainSess = null; clearInterval(s.timer); try { s.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.03); setTimeout(() => { try { s.bus.disconnect(); } catch (_) {} }, 200); } catch (_) {} };
   DECKS.forEach((k) => {
     const pl = () => $("#pl-" + k); let drag = null, pend = null;
-    // scroll gate (owner, 2026-10-29): the platter no longer pauses on
-    // touch-down — a press only arms the scratch, and the scratch (pause,
-    // grain, noise bed) starts when the gesture proves deliberate:
-    // horizontal travel of 8px or more, more sideways than vertical. A
-    // vertical scroll starting on the platter scrolls the page (pan-y) and
-    // pointercancel drops the armed press with nothing started. A clean tap
-    // left no trace before either (down paused, up resumed at the same spot,
-    // slip shadow included — the song ends up where it would have played
-    // to), so a gated tap simply does nothing.
+    // scroll gate (owner, 2026-10-29; LAW 22, 2026-10-30): the platter no
+    // longer pauses on touch-down — a press only arms the scratch, and the
+    // scratch (pause, grain, noise bed) starts when pressIntent calls the
+    // gesture a control move. A scroll verdict drops the armed press for
+    // good: a scroll that veers sideways mid-page can never grab the disc.
+    // A vertical scroll starting on the platter scrolls the page (pan-y).
+    // A clean tap left no trace before either (down paused, up resumed at
+    // the same spot, slip shadow included — the song ends up where it
+    // would have played to), so a gated tap simply does nothing.
     const beginScratch = (e) => { drag = { x: e.clientX, t: performance.now(), at: performance.now(), pos: deck(k).el.currentTime || 0, was: !deck(k).el.paused }; deck(k).el.pause(); scratchBed(); deckBuffer(k).then(() => { if (drag) grainStart(k); }); if (bufCache.has(deck(k).src)) grainStart(k); };
     onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; pend = { x: e.clientX, y: e.clientY }; e.preventDefault(); });
-    onMainRaw("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const pdx = e.clientX - pend.x, pdy = e.clientY - pend.y; if (Math.abs(pdx) >= 8 && Math.abs(pdx) > Math.abs(pdy)) { beginScratch(e); pend = null; } else return; } if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * JOGF)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; d.scrVel = (d.scrVel || 0) * 0.55 + (Math.abs(dx * JOGF) / (dt / 1000)) * 0.45; scratchSound(dx / dt); });
+    onMainRaw("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const intent = pressIntent(pend, e); if (intent === "scroll") { pend = null; return; } if (intent !== "control") return; beginScratch(e); pend = null; } if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * JOGF)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; d.scrVel = (d.scrVel || 0) * 0.55 + (Math.abs(dx * JOGF) / (dt / 1000)) * 0.45; scratchSound(dx / dt); });
     onMainRaw("pointerup", () => { if (pend) { pend = null; return; } if (!drag) return; grainStop(); scratchStop(); const d = deck(k); if (drag.was && d.slip) { const sh = drag.pos + (performance.now() - drag.at) / 1000 * (S[k].rate || 1); try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} } if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
-    onMainRaw("pointercancel", () => { pend = null; if (!drag) return; grainStop(); scratchStop(); drag = null; });
+    // LAW 22: a pointercancel means the browser took the gesture away (a
+    // page scroll) — an interrupted scratch is undone as if it never
+    // happened: a playing deck lands where the song would have played to
+    // and resumes; a paused deck returns to the exact spot it was grabbed.
+    onMainRaw("pointercancel", () => { pend = null; if (!drag) return; grainStop(); scratchStop(); const d = deck(k); if (drag.was) { const sh = drag.pos + (performance.now() - drag.at) / 1000 * (S[k].rate || 1); try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else { try { d.el.currentTime = drag.pos; } catch (_) {} if (S[k]) S[k].pos = drag.pos; } drag = null; save(true); });
   });
   // deck ended -> owner bookkeeping + Auto-DJ
   // dead-air guard: a deck that runs out (or stalls at the end) while the station is
@@ -7494,9 +7523,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     box.innerHTML = SYNTH.map((p, i) => `<button class="pad" type="button" data-synth="${i}">${p.name}<small>booth + recording</small></button>`).join("") +
       custom.map((p, i) => p ? `<button class="pad custom" type="button" data-pad="${i}">🎙️ Drop ${i + 1}<small>▶ booth · long-press = 📡 on air</small></button>` : `<button class="pad custom" type="button" data-padrec="${i}">➕ Drop ${i + 1}<small>tap to record 8s</small></button>`).join("");
   }
-  let padPress = null;
-  onMain("pointerdown", (e) => { const b = e.target.closest("[data-pad]"); if (!b) return; padPress = setTimeout(() => { const p = (S.pads || [])[+b.dataset.pad]; if (p && okUrl(p.url)) { S.voice = { id: p.id, url: p.url, at: Date.now() }; heardVoice = p.id; save(true); say("Drop sent out over the air 📡"); } padPress = "done"; }, 650); });
-  onMainRaw("pointerup", () => { clearTimeout(padPress); if (padPress !== "done") padPress = null; }, true);
+  let padPress = null, padAt = null;
+  onMain("pointerdown", (e) => { const b = e.target.closest("[data-pad]"); if (!b) return; padAt = { x: e.clientX, y: e.clientY }; padPress = setTimeout(() => { const p = (S.pads || [])[+b.dataset.pad]; if (p && okUrl(p.url)) { S.voice = { id: p.id, url: p.url, at: Date.now() }; heardVoice = p.id; save(true); say("Drop sent out over the air 📡"); } padPress = "done"; }, 650); });
+  onMainRaw("pointerup", () => { padAt = null; clearTimeout(padPress); if (padPress !== "done") padPress = null; }, true);
+  // LAW 22: the same hold guard as the hot cues — a press that turns into
+  // a scroll abandons the long-press, so a voice drop can never go on air
+  // mid-scroll.
+  onMainRaw("pointermove", (e) => { if (padAt && Math.hypot(e.clientX - padAt.x, e.clientY - padAt.y) > 10) { padAt = null; if (padPress !== "done") { clearTimeout(padPress); padPress = null; } } }, true);
+  onMainRaw("pointercancel", () => { padAt = null; if (padPress !== "done") { clearTimeout(padPress); padPress = null; } }, true);
   onMain("click", async (e) => {
     const s = e.target.closest("[data-synth]"); if (s && OWNER()) { s.classList.add("hit"); setTimeout(() => s.classList.remove("hit"), 200); if (boothLead) SYNTH[+s.dataset.synth].fn(); stampPad({ kind: "synth", i: +s.dataset.synth }); return; }
     const pb = e.target.closest("[data-pad]"); if (pb && OWNER()) { if (padPress === "done") { padPress = null; return; } const p = (S.pads || [])[+pb.dataset.pad]; if (p) { pb.classList.add("hit"); setTimeout(() => pb.classList.remove("hit"), 200); if (boothLead) playPadUrl(p.url); stampPad({ kind: "url", i: +pb.dataset.pad, url: p.url }); } return; }
@@ -8218,7 +8252,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // dj-on now means: the booth's top has scrolled up to the viewport top AND
     // the booth still fills the lower screen — i.e. he is working the tables.
     // At the hero, scrolling back up, or on any other view, every bar stays.
-    const boothGate = () => { if (!boothHome2) return; const r = boothHome2.getBoundingClientRect(); const on = r.top <= 80 && r.bottom > innerHeight * 0.5; document.body.classList.toggle("dj-on", on); document.body.classList.toggle("dj-past", !on && r.bottom < 0); };
+    // LAW 22: the gate state is cached and the classes are written only
+    // when it actually changes — a scroll frame that changes nothing does
+    // one rect read and no DOM writes, so scrolling never restyles the
+    // booth chrome or competes with the music.
+    let gateState = "";
+    const boothGate = () => { if (!boothHome2) return; const r = boothHome2.getBoundingClientRect(); const on = r.top <= 80 && r.bottom > innerHeight * 0.5, st = on ? "on" : (r.bottom < 0 ? "past" : ""); if (st === gateState) return; gateState = st; document.body.classList.toggle("dj-on", st === "on"); document.body.classList.toggle("dj-past", st === "past"); };
     if (boothHome2) { let gateQueued = false; const gateSoon = () => { if (gateQueued) return; gateQueued = true; requestAnimationFrame(() => { gateQueued = false; boothGate(); }); }; addEventListener("scroll", gateSoon, { passive: true }); addEventListener("resize", gateSoon); addEventListener("hashchange", () => { boothGate(); setTimeout(boothGate, 300); }); if ("IntersectionObserver" in window) new IntersectionObserver(() => boothGate(), { threshold: 0 }).observe(boothHome2); boothGate(); setTimeout(boothGate, 800); }
     const stBox2 = document.getElementById("st-ytbox");
     if (stBox2 && "IntersectionObserver" in window) new IntersectionObserver((es) => { es.forEach((en) => { stInView = en.isIntersecting; }); }, { threshold: 0.05 }).observe(stBox2);
