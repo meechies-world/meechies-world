@@ -553,6 +553,34 @@ eq("drop rotation is the owner's five lines", djs.DROP_TEXTS.length, 5);
   ok("autodj defaults ON", S4.autodj === true);
 }
 
+
+/* Law 22 — SCROLL AND TOUCH NEVER TOUCH THE MUSIC: the gesture
+   classifier that every booth drag runs through, plus static
+   passivity asserts over the booth sources (no scroll/wheel
+   listener may exist in the booth layer at all; the one wake
+   listener is passive; fit runs on resize, never on scroll; the
+   stylesheet releases vertical drags on sliders to the page). */
+console.log("\n--- Phase 4 Law 22 fixtures ---");
+eq("drag: straight down is a page scroll", djv.classifyDrag(0, 20, false), "scroll");
+eq("drag: down-dominant is a page scroll", djv.classifyDrag(4, 12, false), "scroll");
+eq("drag: straight across engages the control", djv.classifyDrag(20, 0, false), "engage");
+eq("drag: across-dominant engages", djv.classifyDrag(12, 4, false), "engage");
+eq("drag: a nudge is not yet a decision", djv.classifyDrag(3, 3, false), "wait");
+eq("drag: small vertical is still undecided", djv.classifyDrag(0, 7, false), "wait");
+eq("drag: vertical past the line is a scroll", djv.classifyDrag(0, 9, false), "scroll");
+eq("drag: once engaged, a drag stays engaged", djv.classifyDrag(0, 30, true), "engage");
+{
+  const boothSrc = ["js/djstate.js", "js/djdecks.js", "js/djshare.js", "js/views/dj.js"]
+    .map((f) => readFileSync(join(V2, f), "utf8")).join("\n");
+  ok("Law 22: no scroll listener anywhere in the booth layer", !/addEventListener\(["']scroll["']/.test(boothSrc));
+  ok("Law 22: no wheel listener anywhere in the booth layer", !/addEventListener\(["']wheel["']/.test(boothSrc));
+  ok("Law 22: no scroll-driven fit (boothFit is resize-only)", !/["']scroll["']\s*,\s*\(\)\s*=>\s*\{[^}]*boothFit/.test(boothSrc) && /addEventListener\("resize"/.test(boothSrc));
+  ok("Law 22: the audio wake listener is passive", /addEventListener\("pointerdown", wake, \{ passive: true \}\)/.test(boothSrc));
+  const djCss = readFileSync(join(V2, "css/dj.css"), "utf8");
+  ok("Law 22: platter, X pad and waveform carry pan-y for the owner", /#dj-owner \.platter\{touch-action:pan-y\}/.test(djCss) && /#dj-owner \.xfpad\{touch-action:pan-y\}/.test(djCss) && /#dj-owner \.deck \.wave\{touch-action:pan-y\}/.test(djCss));
+  ok("Law 22: booth sliders release vertical drags to the page", /#dj-owner input\[type="range"\]\{touch-action:pan-y\}/.test(djCss));
+}
+
 console.log(`fixtures: ${fixPass} passed, ${fixFail} failed`);
 if (fixFail) failed += fixFail;
 

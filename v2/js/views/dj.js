@@ -1260,9 +1260,28 @@ function gripDrag(e, grip) {
   };
   addEventListener("pointermove", move); addEventListener("pointerup", up);
 }
-/* Law 22 drag discipline for the X pad / pairwaves / platters: a drag
-   engages only after horizontal-dominant movement; a vertical-dominant
-   start is yielded to the page and never touches the music. */
+/* Law 22 gesture intent, as a pure classifier (fixture-pinned in the
+   harness): a drag is one of three things —
+   "scroll": vertical-dominant movement; the gesture belongs to the
+     page and the control is never engaged, so a scroll that starts
+     on or crosses a deck, slider, knob or platter scrolls the page
+     and cannot seek, scratch, or change a rate;
+   "wait":   movement too small to judge yet;
+   "engage": a deliberate horizontal-dominant drag of the control
+     itself (the X pad, a pairwave fader, the disc worked as a disc).
+   Once engaged, a drag stays engaged until it ends. */
+export function classifyDrag(dx, dy, engaged) {
+  if (engaged) return "engage";
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  if (ay > ax) return ay > 8 ? "scroll" : "wait";
+  if (ax < 6) return "wait";
+  return "engage";
+}
+/* Law 22 drag discipline for the X pad / pairwaves / platters: the
+   classifier above decides; "scroll" releases the gesture to the
+   page (the browser's own pan takes over — every one of these
+   surfaces is touch-action:pan-y in css/dj.css) and the music is
+   never touched. */
 function horizDrag(el, onDrag, onEnd) {
   if (!el) return;
   el.addEventListener("pointerdown", (e) => {
@@ -1271,8 +1290,9 @@ function horizDrag(el, onDrag, onEnd) {
     const move = (ev) => {
       const dx = ev.clientX - sx, dy = ev.clientY - sy;
       if (!engaged) {
-        if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 8) { cleanup(); return; } // page scroll wins
-        if (Math.abs(dx) < 6) return;
+        const intent = classifyDrag(dx, dy, false);
+        if (intent === "scroll") { cleanup(); return; } // page scroll wins
+        if (intent === "wait") return;
         engaged = true;
         try { el.setPointerCapture(e.pointerId); } catch (_) {}
       }

@@ -453,13 +453,27 @@ live booth coexist on one station under the one-leader rule.
 
 **BEHAVIOR differences** (each an intent-restoration or a named gap):
 
-1. **INTENT-RESTORATION — Law 22 by construction.** The v2 booth
-   installs no wheel handlers and no scroll listeners (fit runs on
-   resize only); X-pad / pairwave / platter drags engage only after
-   horizontal-dominant movement and yield vertical starts to the
-   page, so a scroll that starts on a control scrolls the page and
-   never seeks, scratches or re-rates the music. (The live-side
-   Law 22 fix is its own PR on main.)
+1. **INTENT-RESTORATION — Law 22 by construction, fixture-pinned.**
+   The v2 booth installs no wheel handlers and no scroll listeners
+   anywhere in the booth layer (fit runs on resize only; the one
+   audio-wake pointerdown listener is passive). Every booth drag —
+   X pad, pairwave faders, the platter — runs through one pure
+   gesture classifier (`classifyDrag`, exported from the view):
+   vertical-dominant movement is a page scroll and is released to
+   the page (the surfaces are `touch-action:pan-y`, so the browser
+   itself takes the scroll over), a control engages only on a
+   deliberate horizontal-dominant drag of itself, and the platter
+   scratches only as that deliberate disc drag — never as a scroll
+   side-effect. One marked deviation from the pure CSS extraction:
+   a Law 22 patch block at the end of css/dj.css gives booth range
+   inputs `touch-action:pan-y` (the extracted sheet leaves sliders
+   at `touch-action:none`, so a scroll starting on a slider would
+   have grabbed it). The harness pins all of it: classifier cases
+   (scroll / wait / engage / stays-engaged), static asserts that no
+   scroll or wheel listener exists in the booth sources, the
+   passive wake listener, and the pan-y rules for platter, X pad,
+   waveform and sliders. (The live-side Law 22 fix is its own PR
+   on main.)
 2. **NAMED GAP — Go Live Studio crop pipeline.** The publisher
    ships the full switch-first order, proof supervisor, Hide Share,
    source swap, tables-pause and sanctioned endings, but publishes

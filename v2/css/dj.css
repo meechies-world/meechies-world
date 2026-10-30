@@ -801,3 +801,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 }
 /* END MW TEXT-BIGGER BOOTH OVERRIDES */
 
+
+/* ---- LAW 22 patch (v2 addition, marked — not part of the live
+   extraction above): range inputs release vertical drags to the
+   page. The extracted sheet leaves sliders at touch-action:none
+   (.xv especially), so a page scroll starting on a slider or knob
+   would grab it and move the music. With pan-y, a vertical drag on
+   any booth slider scrolls the page; the control answers only to a
+   deliberate horizontal drag or a tap — worked as a control. */
+#dj-owner input[type="range"]{touch-action:pan-y}
