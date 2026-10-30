@@ -12,7 +12,7 @@
  * through the one shared writer (lib/brain-taste.js) — the station keeper
  * writes its own unattended starts through the same path, so there is
  * exactly one fold in the world. */
-import { userFrom, json, take } from "../../../lib/cf.js";
+import { userFrom, json, take, isAdmin } from "../../../lib/cf.js";
 import { cleanBrainEvent, recordBrainEvents } from "../../../lib/brain-taste.js";
 
 const MAX_BATCH = 25; // the blueprint cap: one flush is a handful of songs, never a flood
@@ -21,6 +21,9 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const me = await userFrom(request, env).catch(() => null);
   if (!me) return json({ ok: false, error: "sign_in" }, 401);
+  // Only Meechie's booth feeds the brain (the client sends from the owner lead booth only);
+  // without this any member could plant artists the unattended AI DJ then plays on air.
+  if (!(await isAdmin(env, me.id))) return json({ ok: false, error: "owner_only" }, 403);
   if (!(await take(env, "bevent:" + me.id, 60, 20))) return json({ ok: false, error: "too_fast" }, 429); // each call is ~28 D1 writes: keep the free tier safe
   let b = null; try { b = await request.json(); } catch (_) {}
   const list = Array.isArray(b) ? b : (b && Array.isArray(b.events) ? b.events : null);

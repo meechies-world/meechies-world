@@ -245,10 +245,15 @@ async function checkInvDetail(base, id, ms) {
 // under gate-wins its payloads cannot acquit, so the calls were pure
 // latency. With no gate error anywhere the video is kept (fail open):
 // timeouts, generic errors and dead hosts say nothing about the video.
+// Cloudflare's free plan allows 50 outgoing fetches per request. The
+// registry + search tries use a few, so the verify phase is held to
+// VERIFY_TOP x VERIFY_HOSTS = 36: past the cap fetches throw, fail
+// open, and the lower results were silently never checked.
+const VERIFY_HOSTS = 3, VERIFY_TOP = 12;
 async function verifyOne(id, invHosts, ms) {
   if (verdictCache.get(id) === "bad") return false;
   const checks = [];
-  invHosts.slice(0, 5).forEach((b) => checks.push(checkInvDetail(b, id, ms)));
+  invHosts.slice(0, VERIFY_HOSTS).forEach((b) => checks.push(checkInvDetail(b, id, ms)));
   const vs = await Promise.all(checks);
   if (vs.includes("bad")) { cacheVerdict(id, "bad"); return false; }
   return true; // fail open
@@ -296,7 +301,7 @@ async function filterPlayable(results, invHosts, t0, env) {
   const leftMs = DEADLINE_MS - (Date.now() - t0);
   if (leftMs < 800) return list;
   const ms = Math.max(400, Math.min(2500, leftMs - 300));
-  const top = list.slice(0, 15), rest = list.slice(15);
+  const top = list.slice(0, VERIFY_TOP), rest = list.slice(VERIFY_TOP);
   const keep = await Promise.all(top.map((it) => verifyOne(it.id, invHosts, ms)));
   const out = top.filter((_, i) => keep[i]).concat(rest);
   // If filtering would empty the list entirely, return the unfiltered
