@@ -4980,7 +4980,7 @@ html.popdj #dj-mini{display:none!important}
         i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
         const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
         if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
-        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; mount.innerHTML = "<div></div>";
+        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; mount.innerHTML = "<div></div>";
         mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
         const prov = vparseTok(sl.vid).p;
         if ((prov === "yt" && (!window.YT || !YT.Player)) || (prov === "dm" && (!window.DM || !DM.player)) || (prov === "vm" && (!window.Vimeo || !Vimeo.Player))) { sl.deck = ""; continue; }
@@ -4988,13 +4988,14 @@ html.popdj #dj-mini{display:none!important}
         continue;
       }
       const sl = scr.slots[i];
-      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
+      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
       const el = $(scr.ids[i]); if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
         const want = slotWant(scr, t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
         if (stt === 1 || stt === 2 || stt === 5) sl._hadFrame = true;
         if (stt === 1) sl._sawPlay = true; /* VIEWER-LEG FIX (5): durable evidence this slot really played - the mini OK gate reads it */
+        if (stt === 1 && (sl._bLastCur == null || Math.abs(cur - sl._bLastCur) > 0.02)) sl._frameAt = Date.now(); /* SLATE HYSTERESIS: the last moment this slot truly presented a moving frame (state playing WITH its clock advancing - a frozen-clock player earns no stamp); the slate/cover gates measure dips against it */
         if (stt === 1 && scr === scrMini && srt.length && t.k === srt[srt.length - 1].k) miniMarkOk(sl.vid); /* RADIO MINI FIX (2): the mini featured slot earns its proof HERE, at sample time - a heal rebuild further down can reset the slot flag, never this */
         if (sl._hadFrame) picLive = true;
         if (scr !== scrBooth) bufStep(sl, stt, cur, want, !!S[t.k].playing, Date.now());
@@ -5052,6 +5053,14 @@ html.popdj #dj-mini{display:none!important}
     if (scr !== scrBooth) {
       const nowH = Date.now();
       scr._healK = "";
+      scr._startK = "";
+      /* CHIP HONESTY (cold-start cure, 2026-10-30): _healK paints
+       * " · retrying…" on the chip, which is only true once a
+       * rebuild has actually fired for the slot. Before that the
+       * slot is simply starting, and the chip must say so — a
+       * normal cold start is not a retry. healFlag routes the
+       * flag by whether either ladder has spent a rebuild yet. */
+      const healFlag = (hsl, hk) => { if ((hsl._healN || 0) === 0 && (hsl._bufHealN || 0) === 0) scr._startK = hk; else scr._healK = hk; };
       tg.forEach((t) => {
         const si = scr.slots.findIndex((x) => x.deck === t.k); if (si < 0) return;
         const sl = scr.slots[si];
@@ -5072,10 +5081,26 @@ html.popdj #dj-mini{display:none!important}
          * firing - never once the ladder is exhausted and at rest.
          * This branch still runs before the _hadFrame line below
          * on purpose: a slot that framed once and now buffers is
-         * exactly the case the old ladder never saw. */
-        if (sl._bufSince && S[t.k].playing && nowH - sl._bufSince > 6000) {
+         * exactly the case the old ladder never saw.
+         * COLD-START CURE (2026-10-30, reproduced in a cold guest
+         * tab): a never-framed slot also lands in this branch,
+         * and its _bufSince is back-stamped by bufStep to the
+         * moment its clock first failed to advance — for a cold
+         * player that is its infancy, before the broadcast seek
+         * has even landed — so the 6s fuse destroyed the first
+         * player ~7s after birth with only ~3s of real buffering
+         * spent and its buffer discarded; the replacement got
+         * the same treatment on the backoff, and the ladder
+         * retired while the last player was still legitimately
+         * buffering a deep seek. A slot that has never framed
+         * now gets the no-frame ladder's own first patience
+         * (12s from its first heal sight, _noFrameAt) before
+         * this branch may rebuild it. A slot that framed and
+         * now stalls — this branch's reason to exist — is
+         * untouched. */
+        if (sl._bufSince && S[t.k].playing && nowH - sl._bufSince > 6000 && (sl._hadFrame || (sl._noFrameAt && nowH - sl._noFrameAt > 12000))) {
           if ((sl._bufHealN || 0) >= 2) return;
-          scr._healK = t.k;
+          healFlag(sl, t.k);
           if ((sl._bufHealN || 0) === 1 && sl._lastHealAt && nowH - sl._lastHealAt < 24000) return;
           const mountB = $(scr.ids[si]); if (!mountB) return;
           if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
@@ -5087,12 +5112,12 @@ html.popdj #dj-mini{display:none!important}
         }
         if (sl._hadFrame) { sl._noFrameAt = 0; return; }
         if (!sl.p) return;
-        if (!sl._noFrameAt) { sl._noFrameAt = nowH; scr._healK = t.k; return; }
+        if (!sl._noFrameAt) { sl._noFrameAt = nowH; healFlag(sl, t.k); return; }
         /* VIEWER-LEG FIX (4): once this ladder is exhausted the chip
          * must stop claiming a retry that will never come - the slot
          * rests masked (poster showing) until the deck or video
          * changes and the slot bookkeeping resets. */
-        if ((sl._healN || 0) < 2) scr._healK = t.k;
+        if ((sl._healN || 0) < 2) healFlag(sl, t.k);
         const wait = sl._healN === 0 ? 12000 : sl._healN === 1 ? 24000 : Infinity;
         if (nowH - sl._noFrameAt < wait) return;
         const mount = $(scr.ids[si]); if (!mount) return;
@@ -5110,8 +5135,8 @@ html.popdj #dj-mini{display:none!important}
      * instead of the skip itself. A healthy outgoing picture in a
      * blend is never hidden: any other target with a frame up and
      * no mask of its own keeps the whole screen live. */
-    let bufScr = false;
-    if (scr !== scrBooth && top) { const fsl = scr.slots.find((x) => x.deck === top.k); const otherClean = tg.some((t) => { if (t.k === top.k) return false; const os = scr.slots.find((x) => x.deck === t.k); return !!(os && os._hadFrame && !os._bMask); }); bufScr = !!(fsl && fsl._bMask && S[top.k].playing && !otherClean); }
+    let bufScr = false, bufHard = false;
+    if (scr !== scrBooth && top) { const fsl = scr.slots.find((x) => x.deck === top.k); const otherClean = tg.some((t) => { if (t.k === top.k) return false; const os = scr.slots.find((x) => x.deck === t.k); return !!(os && os._hadFrame && !os._bMask); }); bufScr = !!(fsl && fsl._bMask && S[top.k].playing && !otherClean); /* SLATE HYSTERESIS (poster-flash cure, 2026-10-30): bufScr still drives the chip's " · buffering…" the moment a dip starts, but the slate/poster may only cover the picture on a SUSTAINED stall. A player oscillating in and out of buffering on a weak connection (state 1<->3 at a 1-3s cadence, filmed on a guest tablet) re-slated the screen on every dip; bufHard is bufScr gated on the featured slot having presented no moving frame for 4s (its _frameAt stamp, kept in the target loop). Brief dips hold the last presented frame. */ bufHard = !!(bufScr && (Date.now() - (fsl._frameAt || 0) > 4000)); }
     scr._bufK = bufScr && top ? top.k : "";
     /* VIEWER-LEG FIX (1) begin: the mask must COVER the player.
      * #404 only toggled the slate and the chip text, but a featured
@@ -5130,7 +5155,7 @@ html.popdj #dj-mini{display:none!important}
         const ctt = tg.find((x) => x.k === csl.deck); if (!ctt) { csl._maskCov = false; return; }
         const cel = $(scr.ids[csxi]); if (!cel) return;
         const otherClean = tg.some((x) => { if (x.k === csl.deck) return false; const os = scr.slots.find((y) => y.deck === x.k); return !!(os && os._hadFrame && !os._bMask); });
-        const covered = !!(csl._bMask && S[csl.deck].playing && !otherClean);
+        const covered = !!(csl._bMask && S[csl.deck].playing && !otherClean && (Date.now() - (csl._frameAt || 0) > 4000)); // SLATE HYSTERESIS: the cover obeys the same 4s sustained-stall gate as bufHard — a transient dip never covers the last presented frame
         if (covered) { cel.style.opacity = "0"; csl._maskCov = true; }
         else if (csl._maskCov) { cel.style.opacity = (disp[csl.deck] != null ? disp[csl.deck] : ctt.op).toFixed(2); csl._maskCov = false; }
       });
@@ -5154,14 +5179,14 @@ html.popdj #dj-mini{display:none!important}
       if (stamped || hardSwap) { const tr2 = vmNow.tr || "fade"; if (tr2 !== "cut") vtrSlot(scr, vTop, tr2, vmNow.trMs || 650); }
       scr._vAt = vmNow.at || 0; scr._vTop = vTop;
     } else if (vTop) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
-    if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : "") + (scr._healK === top.k ? " · retrying…" : "") + (scr._bufK === top.k ? " · buffering…" : ""); }
+    if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : "") + (scr._healK === top.k ? " · retrying…" : "") + (scr._startK === top.k ? " · starting…" : "") + (scr._bufK === top.k ? " · buffering…" : ""); }
     // BUFFER PASS (honest loading): with targets up, the standby slate
     // and poster stay on screen until a target slot's player has really
     // loaded its video (a playing, paused or cued frame - _hadFrame).
     // Targets existing only means the mix WANTS a deck; hiding the
     // slate on that alone left a silently black screen while a cold
     // player spun up, which is the loading the owner called out.
-    if (tg.length) { if (stb) stb.style.display = (picLive && !bufScr) ? "none" : "grid"; if (pst) pst.style.display = (picLive && !bufScr) ? "none" : "block"; }
+    if (tg.length) { if (stb) stb.style.display = (picLive && !bufHard) ? "none" : "grid"; if (pst) pst.style.display = (picLive && !bufHard) ? "none" : "block"; }
     /* BUFFER PASS - warm the next picture: the handover always lands
      * on the featured deck's pair, so while a deck is featured and
      * playing, the FREE slot cues that pair deck's video early - a
@@ -6429,7 +6454,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793379600;
+  const MW_DJ_BUILD = 1793381502;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
