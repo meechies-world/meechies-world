@@ -1118,6 +1118,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-screen" id="dj-screen">
     <small>📺 MASTER SCREEN — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
     <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span><div id="dj-cambanner" hidden></div></div><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="mw-sharp" x="-10%" y="-10%" width="120%" height="120%"><feConvolveMatrix id="mw-sharp-k" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" preserveAlpha="true"/></filter><filter id="mw-duo" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 1 0"/><feComponentTransfer><feFuncR type="table" tableValues="0.043 0.941"/><feFuncG type="table" tableValues="0.035 0.812"/><feFuncB type="table" tableValues="0.027 0.471"/></feComponentTransfer></filter></defs></svg></div>
+    <div class="vmixrow" id="dj-vskiprow"><button class="btn ghost sm" type="button" id="dj-vskip" data-vskip disabled>⏭ Skip — end this song, roll the next</button></div>
     <div id="dj-studio" hidden><div class="studio-hd"><b>🎬 STUDIO — CROP YOUR SCREEN</b><span class="muted">what you frame here is exactly what everyone sees</span><span style="flex:1"></span><button class="btn ghost sm" type="button" data-studiofit>🖼 Frame: Fit</button><button class="btn ghost sm" type="button" data-studioreset>Reset crop</button></div><div class="studio-sl"><label>Left <input type="range" min="0" max="45" step="1" value="0" data-crop="l"><span data-cropv="l">0%</span></label><label>Right <input type="range" min="0" max="45" step="1" value="0" data-crop="r"><span data-cropv="r">0%</span></label><label>Top <input type="range" min="0" max="45" step="1" value="0" data-crop="t"><span data-cropv="t">0%</span></label><label>Bottom <input type="range" min="0" max="45" step="1" value="0" data-crop="b"><span data-cropv="b">0%</span></label></div></div>
     <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><button class="btn ghost sm" type="button" data-vlive id="dj-vlivebtn">📹 Live Video</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
   </div>
@@ -3932,6 +3933,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       save();
     }
   }
+  /* ---------- the booth SKIP button under the master screen ----------
+   * (owner, 2026-10-29: "Give me a skip button underneeth my screen").
+   * The featured deck is the vmix target with the highest opacity -
+   * the same "top" the station title chip names. The button ends that
+   * deck through deckEnded, the natural-end path, so blends, horns,
+   * queue and Auto-DJ advance and brain capture all behave exactly as
+   * if the song had run out on its own. While a live, unhidden stream
+   * (screen share or Live Video) holds the master there is no deck
+   * video to skip, so the row hides; while the featured deck is not
+   * playing the button sits disabled instead of lying. */
+  const vmixTop = () => { const tg = vmixTargets(); return tg.length ? tg.slice().sort((a, b) => b.op - a.op)[0] : null; };
+  function paintVSkip() {
+    const b = document.getElementById("dj-vskip"); if (!b) return;
+    const row = document.getElementById("dj-vskiprow");
+    const shareHolds = vsBroadcast() && !(S.vstream || {}).hidden && !vsShareDown();
+    if (row) row.style.display = shareHolds ? "none" : "";
+    if (shareHolds) return;
+    const top = vmixTop(), on = !!(top && S[top.k] && S[top.k].playing);
+    b.disabled = !on;
+    b.textContent = on ? "⏭ Skip deck " + top.k + " — end this song, roll the next" : "⏭ Skip — nothing playing on the master screen";
+  }
   /* ================= SYNC LOCK (owner, 2026-10-29) =================
    * "The lips dont match the audio in my master screens - make sure
    * they all stay sync locked together, no lag, optimise everything."
@@ -4734,6 +4756,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     document.querySelectorAll("[data-vsrc]").forEach((x) => x.classList.toggle("on", !!S.vmix && S.vmix.mode === "man" && S.vmix.a === x.dataset.vsrc && !S.vmix.b));
     document.querySelectorAll("[data-vtr]").forEach((x) => x.classList.toggle("on", ((S.vmix && S.vmix.tr) || "fade") === x.dataset.vtr));
     document.querySelectorAll("[data-vspd]").forEach((x) => x.classList.toggle("on", ((S.vmix && +S.vmix.trMs) || 650) === +x.dataset.vspd));
+    paintVSkip();
     DECKS.forEach((k) => {
       const s = S[k], pl = $("#pl-" + k);
       $("#ttl-" + k).textContent = s.title || "Load a song";
@@ -5149,7 +5172,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275000;
+  const MW_DJ_BUILD = 1793275100;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -5807,6 +5830,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const step = () => { const p = Math.min(1, (performance.now() - t0) / 1200); S.vmix.t = p; stageApply(1, 1); save(); if (p < 1) requestAnimationFrame(step); else { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); paintOwner(); save(true); } };
       requestAnimationFrame(step); return;
     }
+    if (b.dataset.vskip != null) {
+      const top = vmixTop();
+      if (top && S[top.k] && S[top.k].playing) deckEnded(top.k);
+      return;
+    }
     if (b.dataset.preset) {
       const P = {
         loud: { fx: { mf: 100, echo: 0, fb: 0.3, verb: 0.1, fla: 0, gate: 0, crush: 0, boost: 1.25 }, vinyl: false, keepMix: true, msg: "🔊 Loud & Clear: the phone setup — mud off, boost set, and the broadcast polish brings the bass and clarity. Your mix and deck volumes stay right where they are." },
@@ -6103,7 +6131,24 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * the booth that video again. Only a real player error marks a
    * video — a slow load never does. */
   function ageSkipSet() { try { return new Set(JSON.parse(localStorage.getItem("mw-dj-ageskip") || "[]")); } catch (_) { return new Set(); } }
-  function ageMarkLocked(tok) { const vp = vparseTok(tok || ""); if (vp.p !== "yt" || !vp.id) return; const s = ageSkipSet(); if (s.has(vp.id)) return; s.add(vp.id); try { localStorage.setItem("mw-dj-ageskip", JSON.stringify([...s].slice(-300))); } catch (_) {} }
+  const ageSharedSent = new Set();
+  /* fix-3 write side (2026-10-29): a local 100/101/150 conviction also
+   * reports the id to the shared ban list (POST /api/brain/block, which
+   * appends to the brain/ytblock doc) so the search relay can drop the
+   * video for every device, not just this one. Fire-and-forget on the
+   * house session pattern: no session = silence, any failure = silence,
+   * at most one POST per id per page session, and nothing here may
+   * ever throw into the deck error path that called ageMarkLocked. */
+  function ageShareBlock(id) {
+    try {
+      if (!id || ageSharedSent.has(id)) return;
+      const ses = mySess(), tok = ses && ses.access_token;
+      if (!tok) return;
+      ageSharedSent.add(id);
+      fetch("/api/brain/block", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ id }) }).catch(() => {});
+    } catch (_) {}
+  }
+  function ageMarkLocked(tok) { const vp = vparseTok(tok || ""); if (vp.p !== "yt" || !vp.id) return; const s = ageSkipSet(); if (s.has(vp.id)) return; s.add(vp.id); try { localStorage.setItem("mw-dj-ageskip", JSON.stringify([...s].slice(-300))); } catch (_) {} ageShareBlock(vp.id); }
   function ageIsLocked(tok) { const vp = vparseTok(tok || ""); return vp.p === "yt" && !!vp.id && ageSkipSet().has(vp.id); }
   /* Search side of the same lock (fix-search-filter, 2026-10-29): the
    * relay now drops age / embed-gated videos server-side before they are
