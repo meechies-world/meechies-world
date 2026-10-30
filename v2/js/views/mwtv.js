@@ -26,7 +26,7 @@ const MARKUP = `
     <div class="vstage" id="tw-stage">
       <div class="vslot" id="tw-vs1"></div>
       <div class="vslot" id="tw-vs2"></div>
-      <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster.jpg" alt="" loading="eager" fetchpriority="high" decoding="async"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
+      <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster-640.webp" alt="" loading="eager" fetchpriority="high" decoding="async"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
       <div class="vchip" id="tw-vchip" hidden></div>
       <div class="stage-strip" id="tv-adbar"></div>
     </div>
