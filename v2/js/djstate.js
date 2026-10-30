@@ -231,12 +231,19 @@ export function createBoothStore(ctx, opts) {
     },
     /* Take control for real (live takeControl): fetch the row's real
        updated_at first so the server honors the take stamp, then the
-       next save carries _lead.take. */
+       next save carries _lead.take. The base rides as the row's ISO
+       updated_at STRING, verbatim — the server compares it to the
+       stored column with strict equality (functions/api/cf leadLock:
+       lead.base === row.updated_at), so a millisecond number could
+       never match. The current live client sends the string; an
+       earlier v2 build parsed it to a number, which would have made
+       every v2 takeover a silent no-op — caught by the Phase 5
+       server-acceptance audit and fixed here. */
     async takeControl() {
       try {
         const { data } = await gateway.rest({ table: "docs", select: "updated_at", filters: [["path", "eq", "radio/dj"]], limit: 1 });
         const iso = data && data[0] && data[0].updated_at;
-        if (iso) lastBaseAt = Date.parse(iso) || 0;
+        if (iso) lastBaseAt = String(iso);
       } catch (_) {}
       leadTakeAt = Date.now();
       boothLeadLocal = true;

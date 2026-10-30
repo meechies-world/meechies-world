@@ -17,6 +17,7 @@
    Phase 3 differences list.
    ============================================================================ */
 import { createSocial, esc, safeUrl, safeImg, initial, ago, say, compress, GIFTS, OWNER_ID, likeCountVisible, commentCountVisible, sortFeed, trendingIds, storyGroups, STORY_BGS, emailHash } from "../social.js";
+import { openGift, paintDailyCard } from "../commerce.js";
 
 const REACTS = [["👍", "Like"], ["❤️", "Love"], ["🤗", "Care"], ["😂", "Haha"], ["😮", "Wow"], ["😢", "Sad"], ["😡", "Angry"]];
 const REACT_NAMES = Object.fromEntries(REACTS);
@@ -148,6 +149,7 @@ export async function render(root, ctx) {
     state.posts = posts; state.stories = stories; state.gifts = gifts;
     state.myReacts = {}; if (me) for (const p of posts) if (p.reacts && p.reacts[me]) state.myReacts[p.id] = p.reacts[me];
   };
+  paintDailyCard(root.querySelector("#daily-card"), ctx).catch(() => {});
   await refreshData();
 
   /* keep my email fingerprint current (find-by-email, live email-find.js) */
@@ -628,7 +630,7 @@ export async function render(root, ctx) {
     const rep = t.closest("[data-replies],[data-comments]"); if (rep) return toggleReplies(rep.dataset.replies || rep.dataset.comments);
     const sh = t.closest("[data-share]");
     if (sh) { const p = state.posts.find((x) => x.id === sh.dataset.share); const txt = p ? (p.text || "A post on Meechie's Book") : "Meechie's Book"; const url = location.origin + "/#community"; if (navigator.share) navigator.share({ title: "Meechie's Book", text: txt, url }).catch(() => {}); else { try { await navigator.clipboard.writeText(txt + " " + url); say("Link copied — share it anywhere 🔗"); } catch (_) { say(url); } } return; }
-    const gf = t.closest("[data-gift]"); if (gf) return say("Gifting opens with the coin update — it's the next phase after the booth.");
+    const gf = t.closest("[data-gift]"); if (gf) { openGift(ctx, gf.dataset.gift, S.handleOf(gf.dataset.gift)); return; }
     const pin = t.closest("[data-pin]");
     if (pin) { const p = state.posts.find((x) => x.id === pin.dataset.pin); if (p) { try { await S.mergeDoc("posts/" + p.id, { sponsored: !p.sponsored }); p.sponsored = !p.sponsored; renderFeed(); say(p.sponsored ? "Pinned as promoted 📌" : "Unpinned."); } catch (err) { say(err.message); } } return; }
     const del = t.closest("[data-del]");

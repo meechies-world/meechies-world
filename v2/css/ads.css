@@ -1,0 +1,17 @@
+/* v2 ads view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.empty{text-align:center;padding:44px 20px;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+.empty h3{color:var(--text);font-size:20px;margin-bottom:6px}
+.ads{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;margin-top:24px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.shops{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-block:18px 36px}
+.emotes .chip{display:inline-flex;gap:6px;align-items:center}
+#v-radio .tracks{max-height:540px;overflow-y:auto;padding-right:4px}
+#v-radio .rn-box{margin-top:18px}
+.wardrobe .empty,.designs .empty{grid-column:1/-1}
+.squads .empty{grid-column:1/-1}
+.shop-grid .empty{grid-column:1/-1}
+.prod .pr{color:var(--gold-hi);font-weight:800;font-size:17px}
+.yt-grid .empty{grid-column:1/-1}

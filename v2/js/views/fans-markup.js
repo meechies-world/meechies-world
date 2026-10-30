@@ -1,0 +1,3 @@
+/* fans view markup — the live section's own inner markup, verbatim (Phase 5). */
+export const MARKUP = `
+<div class="wrap"><div class="section-head"><div><p class="eyebrow">18+ only · verified creators</p><h2>Meechie's Fans</h2></div><p class="muted">Subscribe to your favorite creators, unlock exclusive posts, and tip. Creators: sell your content and keep 40% of every sale.</p></div><div id="fans-root"></div><p class="muted" style="font-size:12px;margin-top:24px">All creators are verified adults (18+) with ID and consent records kept on file as required by 18 U.S.C. § 2257. Report anything that looks wrong and it's hidden right away.</p></div>`;

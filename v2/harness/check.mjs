@@ -607,6 +607,154 @@ eq("drag: once engaged, a drag stays engaged", djv.classifyDrag(0, 30, true), "e
   ok("Law 22: booth sliders release vertical drags to the page", /#dj-owner input\[type="range"\]\{touch-action:pan-y\}/.test(djCss));
 }
 
+/* ---- 7. Phase 5 commerce payload + fixtures --------------------
+   COMMERCE AND THE REST OF THE HOUSE load lazily, view by view:
+   commerce.js (the shop union, the coins client, the wallet, the
+   daily card, the gift dialog), jackpot.js (the games), the ports
+   (beatmaker / beatlab / design studio / world3d / obs / golive /
+   movies / shopgift), rails.js (stage rails + the request slot)
+   and platform.js (the generic doors). The shell budget is
+   untouched: none of it is in the core. Fixtures pin the pure
+   logic: the shop union rules (Phase 1a verified), the pot rake,
+   the daily bonus math, the Predict pot split, the request-line
+   position math, and the _lead takeover base (Phase 4 Gate T item:
+   the base must be the row's updated_at ISO text, character for
+   character — the server compares it strictly). */
+const p5Files = [
+  "js/commerce.js", "js/jackpot.js", "js/platform.js", "js/rails.js", "js/shopgift.js",
+  "js/beatmaker.js", "js/beatlab.js", "js/designstudio.js", "js/world3d.js",
+  "js/obs.js", "js/golive.js", "js/movies.js", "sw.js",
+  "js/views/shop.js", "js/views/games.js", "js/views/coin.js", "js/views/jobs.js",
+  "js/views/services.js", "js/views/contact.js", "js/views/predict.js", "js/views/markets.js",
+  "js/views/preach.js", "js/views/connect.js", "js/views/world.js", "js/views/profile.js",
+  "js/views/legal.js", "js/views/ads.js", "js/views/promote.js", "js/views/tv.js",
+  "js/views/videos.js", "js/views/live.js", "js/views/studio.js", "js/views/books.js",
+  "js/views/dating.js", "js/views/fans.js", "js/views/creators.js", "js/views/exclusives.js",
+  "js/views/directory.js", "js/views/directory-cards.js",
+];
+console.log("\nPhase 5 commerce + remaining-views payload (all lazy):");
+let p5Gz = 0, p5Raw = 0;
+for (const f of p5Files) {
+  try {
+    const s = size(f);
+    p5Gz += s.gz; p5Raw += s.raw;
+    console.log(`  ${f.padEnd(30)} raw ${kb(s.raw).padStart(9)}   gzip ${kb(s.gz).padStart(9)}`);
+  } catch (_) { failed++; console.log("FAIL  missing", f); }
+}
+console.log(`  ${"TOTAL".padEnd(30)} raw ${kb(p5Raw).padStart(9)}   gzip ${kb(p5Gz).padStart(9)}`);
+for (const f of ["js/views/home.js"]) {
+  const s = readFileSync(join(V2, f), "utf8");
+  const pays = /commerce\.js|jackpot\.js|rails\.js|shopgift\.js|platform\.js/.test(s);
+  console.log(`${f} imports the Phase 5 layer: ${pays ? "YES — FAIL" : "no — PASS"}`);
+  if (pays) failed++;
+}
+{
+  /* registry completeness: no view may still point at the
+     placeholder module; every entry carries css + a lazy load */
+  const lines = coreSrc.split("\n").filter((l) => /^\s+\w+:\s+\{ name:/.test(l));
+  let bad = 0;
+  for (const l of lines) { if (!/css:/.test(l) || !/import\("\.\/views\//.test(l)) bad++; }
+  console.log(`registry: ${lines.length} views, all with css + lazy load: ${bad === 0 && lines.length >= 35 ? "PASS" : "FAIL (" + bad + " bad)"}`);
+  if (bad || lines.length < 35) failed++;
+  ok("registry: the placeholder module is gone", !/views\/placeholder/.test(coreSrc));
+  /* persistent stage: the keep-alive set + suspenders */
+  ok("persistent stage: KEEPALIVE holds radio, mwtv, watch", /KEEPALIVE = new Set\(\["radio", "mwtv", "watch"\]\)/.test(coreSrc));
+  for (const f of ["js/views/radio.js", "js/views/mwtv.js", "js/views/watch.js"]) {
+    const s = readFileSync(join(V2, f), "utf8");
+    ok(`persistent stage: ${f} exports suspend`, /export function suspend/.test(s));
+  }
+  /* the l=1 listening flag rides the shell presence pings */
+  const eng = readFileSync(join(V2, "js/engine.js"), "utf8");
+  ok("l=1: the engine reports listening to presence", /presence\.setListening\(on\)/.test(eng) || /setListening\(on\)/.test(coreSrc) && /_listening/.test(coreSrc));
+  ok("l=1: presence sends the flag", /qs\.set\("l", this\._listening \? "1" : "0"\)/.test(coreSrc));
+}
+
+console.log("\n--- Phase 5 fixtures ---");
+const com = await import("../js/commerce.js");
+eq("normTitle trims and lowers (the Phase 1a rule)", com.normTitle("  Gold Chain "), "gold chain");
+{
+  const pf = [{ title: "Gold Chain", price: "$40", img: "a", url: "https://p/1" }, { title: "Hoodie", price: "$60", img: "b", url: "https://p/2" }];
+  const sh = [
+    { title: "gold chain", price: "$38", img: "c", url: "https://s/1", digital: false },
+    { title: "eBook One", price: "$9", img: "d", url: "https://s/2", digital: true, buy: "https://s/2/buy" },
+    { title: "Tee", price: "$25", img: "e", url: "https://s/3", digital: false },
+    { title: "Bad", price: "$1", img: "f", url: "http://insecure/4", digital: false },
+  ];
+  const u = com.shopUnion(pf, sh);
+  eq("shop union: Printify first, order kept", u.map((p) => p.title), ["Gold Chain", "Hoodie", "eBook One", "Tee"]);
+  eq("shop union: duplicate title suppressed (earlier wins)", u.filter((p) => com.normTitle(p.title) === "gold chain").length, 1);
+  eq("shop union: digital sorts first inside Shopify", u.findIndex((p) => p.title === "eBook One") < u.findIndex((p) => p.title === "Tee"), true);
+  eq("shop union: non-https Shopify dropped", u.some((p) => p.title === "Bad"), false);
+}
+eq("pot prize: 10% rake on the doubled pot", com.potPrize(100), 180);
+eq("pot prize: rake floors", com.potPrize(25), 45);
+eq("daily: plain day pays 10", com.dailyAmount(3), 10);
+eq("daily: day 7 pays 50 (10 + 40 bonus)", com.dailyAmount(7), 50);
+eq("daily: day 14 pays 50", com.dailyAmount(14), 50);
+eq("usd formats cents", com.usd(12345), "$123.45");
+{
+  const pr = await import("../js/views/predict.js");
+  const qs = [{ id: "q1", options: ["a", "b"], resolved: 0 }, { id: "q2", options: ["x"], resolved: -1 }];
+  const picks = [
+    { q: "q1", opt: 0, pts: 100, authorId: "u1" }, { q: "q1", opt: 0, pts: 300, authorId: "u2" },
+    { q: "q1", opt: 1, pts: 200, authorId: "u3" }, { q: "q2", opt: 0, pts: 50, authorId: "u1" },
+  ];
+  const bal = pr.predictBalance(qs, picks, "u1", pr.PREDICT_START);
+  eq("predict: winner share by stake (600 pot, 100 of 400 winning)", bal, pr.PREDICT_START - 100 - 50 + 150 + 50);
+  const bal3 = pr.predictBalance(qs, picks, "u3", pr.PREDICT_START);
+  eq("predict: loser loses the stake", bal3, pr.PREDICT_START - 200);
+}
+{
+  const rails = await import("../js/rails.js");
+  const line = [{ rqid: "r1" }, { rqid: "r2" }, { rqid: "r3" }];
+  eq("request line: first position", rails.pickPosition(line, "r1"), 1);
+  eq("request line: third position", rails.pickPosition(line, "r3"), 3);
+  eq("request line: not in line is 0", rails.pickPosition(line, "rx"), 0);
+  eq("request line: empty line is 0", rails.pickPosition([], "r1"), 0);
+}
+{
+  /* _lead takeover (the Gate T verification, as a fixture): the
+     save after takeControl must carry _lead.base as the row's
+     updated_at ISO string, verbatim — a number never matches the
+     server's strict comparison */
+  const ISO = "2026-10-30T14:13:06.452Z";
+  let rpc = null;
+  const gw = { rest: async () => ({ data: [{ updated_at: ISO }] }), call: async (p, b) => { if (p === "rpc") rpc = b; return {}; } };
+  const ses = { user: () => ({ id: djs.OWNER_ID }), get: () => null };
+  const store = djs.createBoothStore({ gateway: gw, session: ses }, { say: () => {} });
+  await store.takeControl();
+  ok("_lead: takeover save was written", !!rpc && rpc.name === "set_doc");
+  eq("_lead: base is the ISO string verbatim", rpc && rpc.args.p_data._lead.base, ISO);
+  eq("_lead: take flag set", rpc && rpc.args.p_data._lead.take, true);
+}
+{
+  /* the setup ladder (owner, 2026-10-30): 7 days free, then
+     $10 / $15 / $20 / DJ Video Package — the old #366 prices must
+     not appear anywhere in the Watch surface */
+  const w = readFileSync(join(V2, "js/views/watch.js"), "utf8");
+  ok("ladder: 7-day trial copy present", /7-day free trial/.test(w) && /7 days free/.test(w));
+  ok("ladder: $10/$15/$20 tiers present", w.includes("$10/month") && w.includes("$15") && w.includes("$20"));
+  ok("ladder: DJ Video Package present", w.includes("DJ Video Package"));
+  ok("ladder: no #366 leftovers", !/\$5\/month|30-day|\$350|\$500|wsGoBasic/.test(w));
+  ok("ladder: trial stamps trial_started_at + setup_tier", /trial_started_at/.test(w) && /setup_tier/.test(w));
+}
+{
+  /* the service worker (owner decision, MAP v2 §4.7): the API and
+     media stay out of the cache path, the stamp versions the
+     skeleton, the Watch module is a permanent fixture, and no
+     forced-reload exists in the update path */
+  const sw = readFileSync(join(V2, "sw.js"), "utf8");
+  ok("sw: BUILD stamp versions the shell cache", /const BUILD = "/.test(sw) && /mw2-shell-" \+ BUILD/.test(sw));
+  ok("sw: /api is never intercepted", /url\.pathname\.startsWith\("\/api\/"\)\) return;/.test(sw));
+  ok("sw: HLS + streams are never intercepted", /\.m3u8/.test(sw) && /\/m\/streams\//.test(sw));
+  ok("sw: Watch module is precached (skeleton fixture)", sw.includes("/v2/js/views/watch.js"));
+  ok("sw: engine + station precached with it", sw.includes("/v2/js/engine.js") && sw.includes("/v2/js/station.js"));
+  ok("sw: offline music keeps the stable mw-music name", /const MUSIC = "mw-music"/.test(sw));
+  ok("sw: no forced reload anywhere in the worker", !/location\.reload|clients\.navigate/.test(sw));
+  ok("sw: the shell registers without a controllerchange hook", !/controllerchange/.test(coreSrc) && /serviceWorker\.register\("\/v2\/sw\.js"/.test(coreSrc));
+  ok("sw: the shell never reloads for an update", !/serviceWorker[\s\S]{0,200}location\.reload/.test(coreSrc));
+}
+
 console.log(`fixtures: ${fixPass} passed, ${fixFail} failed`);
 if (fixFail) failed += fixFail;
 

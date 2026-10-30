@@ -199,6 +199,12 @@ const Gateway = {
 const Presence = {
   cid: null,
   last: null,
+  /* the l=1 listening flag (Phase 5): the player engine reports this
+     seat's TUNE IN state here, and every ping carries it — the live
+     site's own rule (dj.js stationPing sends l = listening ? 1 : 0),
+     so /api/station listening counts include v2 seats. */
+  _listening: false,
+  setListening(on) { this._listening = !!on; },
   init() {
     try {
       this.cid = sessionStorage.getItem("mw-v2-cid");
@@ -218,6 +224,7 @@ const Presence = {
     try {
       const u = Session.user();
       const qs = new URLSearchParams({ cid: this.cid });
+      qs.set("l", this._listening ? "1" : "0");
       if (u && u.id) { qs.set("u", u.id); qs.set("n", u.name || ""); }
       const r = await fetch("/api/station?" + qs.toString(), { cache: "no-store" });
       const j = await r.json().catch(() => null);
@@ -250,47 +257,64 @@ const VIEWS = {
   messages:  { name: "Messages",        css: "css/messages.css", load: () => import("./views/messages.js") },
   clips:     { name: "Clips",           css: "css/clips.css",    load: () => import("./views/clips.js") },
   chat:      { name: "Chat & Walkie",   css: "css/chat.css",     load: () => import("./views/chat.js") },
-  dating:    { name: "Dating",          blurb: "Dating profiles, swiping, and matches. 18+ only." },
+  dating:    { name: "Dating",          css: "css/dating.css", load: () => import("./views/dating.js") },
   radio:     { name: "Radio",           css: "css/radio.css", load: () => import("./views/radio.js") },
   dj:        { name: "DJ Station",      css: "css/dj.css", load: () => import("./views/dj.js") },
-  tv:        { name: "Cinema & TV",     blurb: "16,000+ free public-domain films, most-watched first." },
+  tv:        { name: "Cinema & TV",     css: "css/tv.css", load: () => import("./views/tv.js") },
   mwtv:      { name: "MW TV",           css: "css/mwtv.css", load: () => import("./views/mwtv.js") },
   watch:     { name: "Watch the Setup", css: "css/watch.css", load: () => import("./views/watch.js") },
-  live:      { name: "Live",            blurb: "Go live from your camera, or watch streamers with chat and gifts." },
-  studio:    { name: "Studio",          blurb: "The music and design studio." },
-  shop:      { name: "Shop",            blurb: "Printify merch first, then Shopify — apparel and gear from the movement." },
-  exclusives:{ name: "Exclusives",      blurb: "Creator memberships and premium content experiences." },
-  books:     { name: "Books",           blurb: "Meechie's World Books — read them right here, free for members." },
-  games:     { name: "Games",           blurb: "The game floor, home of the Coin Jackpot." },
-  coin:      { name: "Meechie's Coin",  blurb: "Your coin wallet, packs, and cashout of earned cents." },
-  jobs:      { name: "Jobs",            blurb: "Companies post jobs; workers list skills and get hired." },
-  ads:       { name: "Ad Board",        blurb: "Shops and free ads — list your business free." },
-  promote:   { name: "Promote",         blurb: "Spotlight, Featured, and Takeover campaigns from $50." },
-  legal:     { name: "Legal Help",      blurb: "Legal document preparation — prep and support, not a law firm." },
-  contact:   { name: "Contact",         blurb: "Quotes and contact — remodeling, services, and everything else." },
-  services:  { name: "Services",        blurb: "The divisions: barbering, apparel & printing, property, security, legal prep." },
-  fans:      { name: "Meechie's Fans",  blurb: "Verified creators, subscriptions, and unlocks. 18+ only." },
-  creators:  { name: "Creators",        blurb: "The creator directory." },
-  predict:   { name: "Predictions",     blurb: "Call the game before it happens — free points, real leaderboard." },
-  markets:   { name: "Markets",         blurb: "Live stock and crypto boards." },
-  preach:    { name: "ASAP Preach",     blurb: "Preaching and faith clips." },
-  connect:   { name: "Connect",         blurb: "Your email, socials, and money tools — one tap away." },
-  videos:    { name: "Videos",          blurb: "The video library." },
-  world:     { name: "Virtual World",   blurb: "Dress up your character and hang out in the 3D world." },
-  liveradio: { name: "Live Radio",      blurb: "The live radio streams directory." },
-  livetv:    { name: "Live TV",         blurb: "The live TV directory." },
+  live:      { name: "Live",            css: "css/live.css", load: () => import("./views/live.js") },
+  studio:    { name: "Studio",          css: "css/studio.css", load: () => import("./views/studio.js") },
+  shop:      { name: "Shop",            css: "css/shop.css", load: () => import("./views/shop.js") },
+  exclusives:{ name: "Exclusives",      css: "css/exclusives.css", load: () => import("./views/exclusives.js") },
+  books:     { name: "Books",           css: "css/books.css", load: () => import("./views/books.js") },
+  games:     { name: "Games",           css: "css/games.css", load: () => import("./views/games.js") },
+  coin:      { name: "Meechie's Coin",  css: "css/coin.css", load: () => import("./views/coin.js") },
+  jobs:      { name: "Jobs",            css: "css/jobs.css", load: () => import("./views/jobs.js") },
+  ads:       { name: "Ad Board",        css: "css/ads.css", load: () => import("./views/ads.js") },
+  promote:   { name: "Promote",         css: "css/promote.css", load: () => import("./views/promote.js") },
+  legal:     { name: "Legal Help",      css: "css/legal.css", load: () => import("./views/legal.js") },
+  contact:   { name: "Contact",         css: "css/contact.css", load: () => import("./views/contact.js") },
+  services:  { name: "Services",        css: "css/services.css", load: () => import("./views/services.js") },
+  fans:      { name: "Meechie's Fans",  css: "css/fans.css", load: () => import("./views/fans.js") },
+  creators:  { name: "Creators",        css: "css/creators.css", load: () => import("./views/creators.js") },
+  predict:   { name: "Predictions",     css: "css/predict.css", load: () => import("./views/predict.js") },
+  markets:   { name: "Markets",         css: "css/markets.css", load: () => import("./views/markets.js") },
+  preach:    { name: "ASAP Preach",     css: "css/preach.css", load: () => import("./views/preach.js") },
+  connect:   { name: "Connect",         css: "css/connect.css", load: () => import("./views/connect.js") },
+  videos:    { name: "Videos",          css: "css/videos.css", load: () => import("./views/videos.js") },
+  world:     { name: "Virtual World",   css: "css/world.css", load: () => import("./views/world.js") },
+  liveradio: { name: "Live Radio",      css: "css/directory.css", load: () => import("./views/directory.js") },
+  livetv:    { name: "Live TV",         css: "css/directory.css", load: () => import("./views/directory.js") },
+  profile:   { name: "Profile",         css: "css/profile.css", load: () => import("./views/profile.js") },
 };
-const PLACEHOLDER = () => import("./views/placeholder.js");
+
+/* PERSISTENT STAGE (Phase 5, carried Phase 2 gap 2): the viewer views
+   that carry an engine stage — radio, mwtv, watch — are mounted ONCE
+   and kept alive in the shell, exactly the live site's own model (its
+   sections stay mounted and are only hidden). Leaving one suspends it
+   and hides its section; its engine screen, players and surfaces are
+   never destroyed, so video and music never stop when the visitor
+   navigates away (Law 5). Every other view keeps the mount/unmount
+   lifecycle. A kept view exports optional suspend()/resume(). */
+const KEEPALIVE = new Set(["radio", "mwtv", "watch"]);
 
 const Router = {
   current: null,
   _mod: null,
   _cssDone: new Set(),
+  _kept: new Map(),
   root: null,
   init(root) {
     this.root = root;
     addEventListener("hashchange", () => this.route());
     document.addEventListener("click", (e) => {
+      const pf = e.target.closest("[data-profile]");
+      if (pf) {
+        const uid = pf.getAttribute("data-profile");
+        if (uid) { e.preventDefault(); location.hash = "#profile/" + encodeURIComponent(uid); }
+        return;
+      }
       const a = e.target.closest("[data-go]");
       if (!a) return;
       const go = a.getAttribute("data-go");
@@ -302,14 +326,39 @@ const Router = {
     this.route();
   },
   name() {
-    const h = (location.hash || "").replace(/^#\/?/, "").split(/[?&]/)[0];
+    const h = (location.hash || "").replace(/^#\/?/, "").split(/[?&/]/)[0];
     return VIEWS[h] ? h : "home";
+  },
+  /* the tail after "#view/" — profile pages ride it (#profile/<uid>) */
+  arg() {
+    const h = (location.hash || "").replace(/^#\/?/, "");
+    const parts = h.split("/");
+    return parts.length > 1 ? decodeURIComponent(parts.slice(1).join("/")) : "";
   },
   async route() {
     const name = this.name();
-    if (this._mod && this._mod.destroy) { try { this._mod.destroy(); } catch (_) {} }
-    this._mod = null;
+    const arg = this.arg();
+    if (name === this.current && this._mod) {
+      /* same view, new argument (a different profile): re-render in place */
+      if (KEEPALIVE.has(name)) { this.syncChrome(name); return; }
+      if (arg && this._arg !== arg && this._mod.render && this._section) {
+        this._arg = arg;
+        this._mod.render(this._section, this._ctx(name));
+      }
+      this.syncChrome(name);
+      return;
+    }
+    const prev = this.current;
+    if (prev && prev !== name) {
+      if (KEEPALIVE.has(prev) && this._kept.has(prev)) {
+        const k = this._kept.get(prev);
+        if (k.mod && k.mod.suspend) { try { k.mod.suspend(); } catch (_) {} }
+        k.section.hidden = true;
+      } else if (this._mod && this._mod.destroy) { try { this._mod.destroy(); } catch (_) {} }
+      this._mod = null;
+    }
     this.current = name;
+    this._arg = arg;
     document.body.dataset.view = name;
     this.syncChrome(name);
     const def = VIEWS[name];
@@ -320,6 +369,14 @@ const Router = {
       link.href = def.css;
       document.head.appendChild(link);
     }
+    if (KEEPALIVE.has(name) && this._kept.has(name)) {
+      const k = this._kept.get(name);
+      k.section.hidden = false;
+      this._mod = k.mod;
+      if (k.mod && k.mod.resume) { try { k.mod.resume(); } catch (_) {} }
+      scrollTo(0, 0);
+      return;
+    }
     let mod;
     try {
       mod = await (def.load ? def.load() : PLACEHOLDER());
@@ -328,16 +385,24 @@ const Router = {
     }
     if (this.current !== name) return; // navigated away while loading
     this._mod = mod;
-    this.root.innerHTML = "";
+    [...this.root.children].forEach((c) => { if (!c._mw2keep) c.remove(); });
     const section = document.createElement("section");
     section.className = "view view-" + name;
     section.id = "v-" + name;
+    this._section = section;
+    if (KEEPALIVE.has(name)) {
+      section._mw2keep = true;
+      this._kept.set(name, { section, mod });
+    }
     this.root.appendChild(section);
-    mod.render(section, {
-      session: Session, gateway: Gateway, presence: Presence,
-      view: { id: name, ...def },
-    });
+    mod.render(section, this._ctx(name));
     scrollTo(0, 0);
+  },
+  _ctx(name) {
+    return {
+      session: Session, gateway: Gateway, presence: Presence,
+      view: { id: name, arg: this._arg || "", ...VIEWS[name] },
+    };
   },
   syncChrome(name) {
     document.querySelectorAll("[data-go]").forEach((a) => {
@@ -524,3 +589,13 @@ Session.refresh().then(() => paintAuthBar());
 /* The shell's public face for view modules and later core work. */
 window.MW2 = { session: Session, gateway: Gateway, presence: Presence, router: Router, views: VIEWS };
 window.__MW_BOOTED = true;
+
+/* Device-saved skeleton (Phase 5, owner decision 2026-10-30):
+   register the v2 service worker — registration ONLY. A new
+   skeleton activates on the visitor's next natural load; this
+   page never listens for the swap and never reloads itself
+   (the stale-tab lesson of live #398, and the music must not
+   stop). See v2/sw.js for the cache rules. */
+try {
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/v2/sw.js", { scope: "/v2/" }).catch(() => {});
+} catch (_) {}

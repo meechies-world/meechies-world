@@ -232,8 +232,21 @@ v2/
         order, lead-lock rules, FX caps, queue draw, stock records,
         automation windows, drop cadence, the watchdog ladder, the
         dead-air gate, booth mergeState defaults
-- [ ] **Phase 5 — commerce & the rest** (shop, coin/games, jobs, ads,
-      services, legal, apps)
+- [x] **Phase 5 — commerce & the rest** (shop, coin/games, jobs, ads,
+      services, legal, apps + profile, predict/markets/preach/connect/
+      world/creators/fans/dating/books/videos/tv/live/studio/
+      exclusives/directory views; the rails + request slot; the
+      device-saved skeleton service worker)
+  - [x] Shop: the Phase 1a client union (Printify first, Shopify
+        below, normalized-title suppression) + gift-this-item layer
+  - [x] Coins wallet + daily check-in + gift dialog + Jackpot (all
+        8 games + PvP pots at the 10% rake) over the live /api/coins
+  - [x] Carried items: l=1 listening flag; Watch trial stamps; the
+        PERSISTENT STAGE (router keep-alive); the _lead takeover
+        base verified (ISO string, never a number — see notes)
+  - [x] Harness: Phase 5 payload report + isolation asserts +
+        fixtures (union, rake, daily, predict split, request-line
+        position, _lead base, ladder copy, service-worker rules)
 - [ ] **Phase 6 — Gate T "test the 2"** + cutover (owner's explicit go)
 
 ## Home parity notes (vs live `#v-home` at main `1be5b8fe`)
@@ -510,3 +523,130 @@ live booth coexist on one station under the one-leader rule.
    live, and never writes radio/dj or the brain — the same walls as
    live, enforced inside djstate.save/brainEmit rather than by
    checks scattered through the view.
+
+## Phase 5 parity notes (vs live at main PR #427/#428 state)
+
+Every remaining view from the MAP inventory is now a real lazy
+module on the same backend — no forked data anywhere. Ports are
+mechanical (live markup verbatim, live section CSS extracted
+rule-for-rule, live logic re-pointed at the v2 doors: gateway,
+platform.js, commerce.js). The phase harness section reports the
+whole lazy payload and pins the pure logic. Differences, in the
+parity standard's two columns:
+
+LOOK (a difference here is a defect unless owner-approved):
+
+1. **Stage rails + request slot (owner-directed addition, built
+   live in parallel as PR #427; v2 mirrors its contracts).** The
+   Radio and Watch stages carry the live stage-row shape: cover-fit
+   video, ≥1024px shop/promo rails both sides (the Phase 5 shop
+   union, shuffled once, 12s rotation), a slim strip under the
+   screen below that width (on Watch the strip shows at every
+   width — it is the big-stage ad bar), the 🎤 request bar and the
+   shout-out line. MW TV gets the pop-out ad bar inside its stage
+   (owner, 2026-10-30 10:12); the small docked state stays ad-free.
+2. **The 3D World wall-art builder runs.** Live world3d declares
+   two top-level `frame` functions; the render loop shadows the
+   wall-art builder, so the builder is dead on live. The port
+   renames it (frameArt) so the rooms' wall art appears as
+   written. Gate T judges the look; the code intent is restored,
+   not invented.
+3. Everything else is intended LOOK-identical: shop cards, the
+   wallet dialog, the daily card, the Jackpot floor (its live
+   mount id "casino" became a class in v2 — the visitor word is
+   Jackpot everywhere, Law 18), jobs, services (the .books strip
+   and pay box ride along, pay buttons hidden exactly as live —
+   nothing paints them there today), legal, ads, promote,
+   exclusives, the cinema, books, videos, the Live page (OBS via
+   the engine's own attachHls), studio (beatmaker + beatlab +
+   design studio), creators, fans, dating, preach, connect,
+   markets, predict, world, the directory cards (liveradio /
+   livetv), and profile pages (avatar clicks land here via the
+   shell's data-profile routing).
+
+BEHAVIOR (each an explained intent-restoration or owner decision):
+
+1. **PERSISTENT STAGE (carried Phase 2 item, owner law: playback
+   never stops on navigation).** The Router keeps the radio, MW TV
+   and Watch sections mounted once inside the view root and
+   hides/shows them like the live site's always-mounted sections;
+   their views export suspend()/resume() and destroy() never fires
+   on navigation. (Reparenting the stage subtree was rejected: it
+   reloads its players' iframes and breaks NO-SKIP.)
+2. **l=1 listening flag.** The engine reports this seat's TUNE IN
+   state to the shell presence, and every /api/station ping
+   carries l=1/0 — the live stationPing rule, so v2 seats count.
+3. **The _lead takeover base (Phase 4 Gate T item) — VERIFIED.**
+   Code audit of the live leadLock: it consumes _lead, stamps
+   leadTab/leadAt itself, and honors a takeover only when
+   _lead.base strictly equals the radio/dj row's updated_at ISO
+   text. Production read (2026-10-30) confirmed the claim stamps
+   on the live doc and that REST returns the real ISO updated_at.
+   The audit also caught a v2 defect: djstate stored the base as
+   a NUMBER (Date.parse) — every v2 mirror takeover would have
+   been a silent no-op. Fixed: the ISO string is kept verbatim,
+   and a harness fixture now drives takeControl against a fake
+   gateway and asserts the save payload carries it exactly.
+4. **The setup ladder (owner, 2026-10-30 — supersedes #366).**
+   The Watch upsell and plans present the new ladder: 7 days free,
+   then $10/month the tables, $15 + YouTube search, $20 + save
+   sessions, $35 the DJ Video Package (price packaged by Amani,
+   owner-adjustable). Starting the trial stamps trial_started_at
+   and setup_tier on the member doc (merge_doc). Presentation and
+   stamps only — no charging, no fake checkout; the server-side
+   checks at the gated uses (ytsearch relay, session save,
+   go-live) are the Stripe-phase work, listed for Gate T. No #366
+   copy or price appears anywhere in v2 (harness-asserted).
+5. **PRODUCT FIDELITY (owner, 2026-10-30): the sold setup is the
+   owner's own booth, not a variant.** The Watch mirror, the
+   owner's booth and the product all render from the one
+   LAYOUT-as-data booth (Phase 4) — the Playground runs the same
+   djstate store and the same deck layout; tiers gate FEATURES
+   (YouTube search, session saving, the video package) and never
+   the look.
+6. **Requests join the DJ setup's own queue (owner correction,
+   2026-10-30).** There is no standalone listener queue: the slot
+   auto-searches /api/ytsearch (playable filter), enqueues the
+   pick through the live doors (member facade add / guest
+   /api/station door), and the booth's pickNextItem now takes the
+   YouTube branch — the pick plays as a YouTube queue item, its
+   video takes the master screen via vmix, and its shout-out
+   rides S.shout onto both stages. Position = the requester's
+   place among picks in the DJ queue line (pickPosition, harness
+   fixture); one active request per listener.
+7. **Listener Requests playlist (Addition 3) — the seam.** The
+   v2 booth library shows "🎤 Listener Requests" like a normal
+   playlist (Load / Add / schedule), read from the live build's
+   station/rqplaylist doc. The doc's folding and the keeper
+   rotation lane are owned by the live build (PR #427) — v2 reads
+   only, never writes it.
+8. **The device-saved skeleton (owner decision, MAP §4.7
+   settled).** v2/sw.js precaches the whole frame atomically under
+   a BUILD stamp: shell, every lazy view module + css, the brand
+   images — with the Watch view module, engine and station code
+   as PERMANENT fixtures of the saved shell (owner, 2026-10-30:
+   his setup on the listener side is hard-wired into the
+   skeleton). /api/*, the docs/changes feeds and all media
+   streams are never intercepted; song files keep the live
+   offline-music strategy under the stable "mw-music" name. The
+   shell only registers the worker — no controllerchange hook, no
+   reload anywhere in the update path (harness-asserted); a new
+   skeleton activates on the visitor's next natural load.
+9. **Small seams, named:** profile's Edit-profile routes to the
+   Book (the same editor lives there; live opens the overlay from
+   any page); legal's hire-request DM writes the same dms table
+   through the v2 door (live reaches it through the sbshim path);
+   golive's radio-bed level is the listener volume (the engine
+   has no separate bed gain); the cinema does not duck the radio
+   (live parity); dating's match toast does not fire while the
+   view is hidden (matches show in its Matches tab); the contact
+   AI chat's hosted selfie matcher has no v2 door (its local
+   fallback runs, as live does when the matcher is absent).
+10. **Static siblings parity-checked, not rebuilt:** the apps
+    index and the kids/radio/ai-app install pages are repo-level
+    pages shared by both sites and untouched by the rebuild; the
+    shell's app bar mirrors the section apps as live does.
+11. **Carried Gate T gap (from Phase 1):** the home view's TikTok
+    grids (.htt-grid) are not in v2 home yet, so the videos
+    view's home-grid painter is a no-op in v2 — already on the
+    Gate T list with the other home-chrome items.

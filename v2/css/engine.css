@@ -100,3 +100,43 @@ html.gated #dj-mini{display:none!important}
 .mw-camov img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
 .mw-camov-tag{position:absolute;left:4px;bottom:3px;font:800 8.5px var(--body);letter-spacing:.08em;color:#f0cf78;text-shadow:0 1px 3px #000;pointer-events:none}
 #mw-camov-x{position:absolute;right:2px;top:2px;width:16px;height:16px;line-height:1;background:rgba(0,0,0,.65);border:1px solid rgba(240,207,120,.5);color:#f0cf78;border-radius:50%;font-size:10px;cursor:pointer;padding:0;z-index:2}
+
+/* STAGE RAILS + SONG REQUEST SLOT (owner, 2026-10-30 — the live
+   PR #427 rules, verbatim): cover-fit on the viewer stages, rails
+   at 1024px+, the strip under the screen below that (on Watch the
+   strip is the big-stage ad bar and rides at every width). */
+#st-ytbox .vposter img,#wb-stage .vposter img{object-fit:cover}
+#st-ytbox .vslive,#wb-stage .vslive{object-fit:cover}
+.stage-row{display:flex;gap:10px;align-items:flex-start}
+.stage-mid{flex:1;min-width:0}
+.srail{display:none}
+@media(min-width:1024px){.srail{display:flex;flex-direction:column;gap:10px;width:196px;flex:none}}
+.srail .srail-h{font:800 11px var(--body);letter-spacing:.12em;color:var(--gold-hi,#f0cf78)}
+.srcard{display:block;border:1px solid var(--gold-lo);border-radius:10px;overflow:hidden;background:#101010;text-decoration:none;color:var(--text)}
+.srcard img{width:100%;height:104px;object-fit:cover;display:block;background:#1c1c1c;border:0}
+.srcard .srcard-b{display:block;padding:7px 9px}
+.srcard .srcard-t{display:block;font-size:9.5px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.srcard .srcard-n{display:block;font-size:12.5px;line-height:1.25;font-weight:700}
+.srcard .srcard-p{display:block;color:var(--gold-hi,#f0cf78);font-weight:800;font-size:12.5px;margin-top:2px}
+.srpromo{display:block;border:1px solid var(--gold-lo);border-radius:10px;padding:9px;background:linear-gradient(160deg,rgba(240,207,120,.14),rgba(240,207,120,.03));color:var(--text);font-size:12.5px;line-height:1.4;text-decoration:none}
+.srpromo b{color:var(--gold-hi,#f0cf78)}
+.stage-strip{display:none;margin-top:8px}
+.stage-strip.on{display:block}
+.stage-strip a{display:flex;gap:8px;align-items:center;border:1px solid var(--gold-lo);border-radius:999px;padding:5px 12px;color:var(--text);text-decoration:none;font-size:12.5px;background:#101010;white-space:nowrap;overflow:hidden}
+.stage-strip a span{overflow:hidden;text-overflow:ellipsis}
+.stage-strip img{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:none;background:#1c1c1c}
+@media(min-width:1024px){#st-strip{display:none!important}}
+.stage-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.rq-mystat{font-size:13px;color:var(--gold-hi,#f0cf78);font-weight:700}
+.rq-form2{display:grid;gap:6px;margin-top:8px}
+.rq-form2[hidden]{display:none}
+.rq-form2 .dj-search{position:static;background:none;padding:0;flex-wrap:wrap}
+.rq-form2 input{flex:1;min-width:150px}
+.rq-results{display:grid;gap:4px}
+.rq-results:empty{display:none}
+.st-shout{margin-top:8px;border:1px solid var(--gold-lo);border-left:4px solid var(--gold,#f0cf78);border-radius:8px;padding:7px 10px;background:rgba(240,207,120,.08);font-size:13.5px;line-height:1.4}
+.st-shout[hidden]{display:none}
+/* MW TV pop-out ad bar (owner, 2026-10-30 10:12): the slim strip
+   rides the bottom of the popped-out screen only. */
+#tv-adbar{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;width:min(680px,92vw);z-index:5}
+#tv-adbar a{justify-content:center}

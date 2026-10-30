@@ -17,6 +17,7 @@
 
 import { vmixTargets } from "../station.js";
 import { getEngine } from "../engine.js";
+import { mountAdBar } from "../rails.js";
 import { mountMini } from "../mini.js";
 
 const MARKUP = `
@@ -27,6 +28,7 @@ const MARKUP = `
       <div class="vslot" id="tw-vs2"></div>
       <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster.jpg" alt="" loading="eager" fetchpriority="high" decoding="async"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
       <div class="vchip" id="tw-vchip" hidden></div>
+      <div class="stage-strip" id="tv-adbar"></div>
     </div>
   </div>
   <div id="tw-bar">
@@ -67,6 +69,10 @@ export function render(root, ctx) {
     try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {}
   });
   unsubs.push(engine.onListenChange(() => { tvSig = ""; }));
+  /* the pop-out ad bar (owner, 2026-10-30): a slim house strip
+     rides the bottom of the TV screen — the docked mini stays
+     ad-free; the rotation is the rails one (js/rails.js) */
+  unsubs.push(mountAdBar(root.querySelector("#tv-adbar")));
 
   engine.addSurface("tv", async () => {
     tvSlatePaint(root, feed);
@@ -85,6 +91,13 @@ export function destroy() {
   if (engineRef) { engineRef.removeSurface("tv"); engineRef.destroyScreen(scrRef); }
   engineRef = null; scrRef = null;
 }
+
+/* PERSISTENT STAGE (Phase 5): MW TV is a keep-alive view — the shell
+   hides its section instead of destroying it, so the channel never
+   stops when the visitor steps back into the site (Law 5). Nothing
+   suspends; the tv surface keeps rendering while hidden. */
+export function suspend() {}
+export function resume() {}
 
 /* the live tvSlatePaint: the slate's words are earned only by a
    snapshot — connecting, off-air, or live-on-the-tables */

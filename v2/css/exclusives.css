@@ -1,0 +1,22 @@
+/* v2 exclusives view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.inbox .item{background:var(--panel-2);border-radius:10px;padding:12px 14px;font-size:14px;overflow-wrap:anywhere}
+
+/* --- from the view's live JS style blocks --- */
+.prod-wrap{display:grid;gap:8px;align-content:start;min-width:0}
+.prod-wrap .sg-btn{border:1px solid var(--gold,#d6aa4a);background:rgba(10,8,5,.7);color:var(--gold-hi,#ffe08a);border-radius:999px;padding:9px 12px;font:800 13px var(--display,serif);letter-spacing:.05em;cursor:pointer}
+.prod-wrap .sg-btn:hover{box-shadow:0 0 16px rgba(255,190,70,.3)}
+#sg-dlg{width:min(460px,calc(100vw - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:0}
+#sg-dlg form{display:grid;gap:12px;padding:20px}
+#sg-dlg .item{display:flex;gap:12px;align-items:center}
+#sg-dlg .item img{width:72px;height:72px;object-fit:cover;border-radius:12px}
+#sg-dlg label{display:grid;gap:5px;font-weight:700;font-size:14px}
+#sg-dlg input,#sg-dlg select{width:100%;padding:10px;border-radius:10px;font:16px var(--body,system-ui)}
+#sg-list{display:grid;gap:4px;max-height:180px;overflow:auto}
+#sg-list button{display:flex;gap:8px;align-items:center;text-align:left;border:1px solid #3a3223;background:#0e0c09;color:#fff;border-radius:10px;padding:6px 8px;cursor:pointer;font:600 14px var(--body,system-ui)}
+#sg-list button[aria-pressed=true]{border-color:#ffe08a;box-shadow:0 0 0 1px #ffe08a inset}
+#sg-list .avatar{width:30px;height:30px;margin:0}
+#sg-own{display:grid;gap:8px}
+#sg-own .g{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;border-bottom:1px solid #2a2418;padding:8px 0}

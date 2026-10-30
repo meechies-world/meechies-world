@@ -1,0 +1,16 @@
+/* v2 connect view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from the view's live JS style blocks --- */
+.cn-card h3{margin:2px 0 0;font-size:24px}
+.cn-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.cn-tile{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0c0a07;color:var(--text);text-decoration:none;font:700 14.5px var(--body)}
+.cn-tile:hover{border-color:var(--gold)}
+.cn-tile .ic{font-size:21px;flex:none}
+.cn-group{font:800 12px var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:6px 0 0}
+.cn-soc{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.cn-soc{grid-template-columns:1fr}}
+.cn-soc label{display:grid;gap:5px;font-weight:700;font-size:13.5px}
+.cn-soc input{background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}
+.cn-chips{display:flex;flex-wrap:wrap;gap:6px}
+.cn-chips a{border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;color:var(--text);text-decoration:none}

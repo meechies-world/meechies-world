@@ -1,0 +1,32 @@
+/* v2 predict view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.act{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px}
+.act:hover{background:var(--panel-2);color:var(--text)}
+.act.on{color:var(--gold-hi)}
+.empty{text-align:center;padding:44px 20px;border:1px dashed var(--line);border-radius:14px;color:var(--muted)}
+.empty h3{color:var(--text);font-size:20px;margin-bottom:6px}
+.emotes .chip{display:inline-flex;gap:6px;align-items:center}
+.wardrobe .empty,.designs .empty{grid-column:1/-1}
+.arena-top .sub-h{text-align:center!important}
+.squads .empty{grid-column:1/-1}
+.shop-grid .empty{grid-column:1/-1}
+.yt-grid .empty{grid-column:1/-1}
+
+/* --- from the view's live JS style blocks --- */
+#pr-root{display:grid;gap:16px}
+.pr-me{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:14px 16px;border:1px solid var(--gold-lo);border-radius:16px;background:radial-gradient(ellipse at 0 0,#2a2112,#0f0d09 70%)}
+.pr-me b{font-size:26px;color:var(--gold-hi)}
+.pr-q{border:1px solid var(--line);border-radius:16px;padding:16px;background:linear-gradient(180deg,#17130c,#0f0d09);display:grid;gap:10px}
+.pr-q h3{margin:0;font-size:18px}
+.pr-opts{display:grid;gap:8px}
+.pr-opt{position:relative;display:flex;justify-content:space-between;gap:8px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:10px 12px;overflow:hidden;background:#0c0a07;color:var(--text);cursor:pointer;font:600 15px var(--body);text-align:left}
+.pr-opt i{position:absolute;left:0;top:0;bottom:0;background:rgba(212,168,67,.18);z-index:0}
+.pr-opt span{position:relative;z-index:1}
+.pr-opt.mine{border-color:var(--gold)}
+.pr-opt.win{border-color:#4ade80;background:#0e1f14}
+.pr-lb{display:grid;gap:6px}
+.pr-lb div{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.pr-new{display:grid;gap:8px;border:1px dashed var(--gold-lo);border-radius:14px;padding:14px}
+.pr-new input{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px var(--body)}

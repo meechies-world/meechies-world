@@ -1,0 +1,413 @@
+/* v2 BEATLAB (Phase 5) — the live js/beatlab.js, ported: the
+   multi-track recorder/mixer under the beatmaker in the Studio
+   view. Same tracks, same plugin pack rules (basic FX free, the
+   advanced pack is the paid Plugin Pack — the owner unlocks members
+   with the pro stamp on their member doc, exactly the live rule),
+   same upload door. Styles live in css/studio.css. */
+import { firestore } from "./platform.js";
+import { toast } from "./commerce.js";
+
+export function mountBeatlab(viewRoot, vctx) {
+  const fdb = firestore(vctx);
+  let myDocCache = null, membersMap = {};
+  fdb.base.listDocs("members", { limit: 200 }).then((rows) => { rows.forEach((m) => { membersMap[m.id] = m; }); myDocCache = membersMap[fdb.base.me()] || null; try { ownerPanel(); } catch (_) {} }).catch(() => {});
+
+  "use strict";
+  const view = viewRoot;
+  const root = viewRoot.querySelector("#bl-root");
+  if (!root) return;
+  const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const say = toast;
+  const ME = () => fdb.base.me();
+  const DB = () => fdb;
+  const PRO = () => fdb.base.isOwner() || !!(myDocCache && myDocCache.pro);
+  const FREE_TRACKS = 4, PRO_TRACKS = 12;
+  // basic effects are free; advanced ones are in the paid Plugin Pack (anyone can preview them, saving/posting needs the pack)
+  const PLUGINS = [["reverb", "Reverb", 0], ["echo", "Echo", 0], ["bass", "Bass Boost", 0], ["lofi", "Lo-Fi", 0], ["phone", "Phone Voice", 0],
+    ["autotune", "Auto-Tune", 1], ["hardtune", "Hard Tune (T-Pain)", 1], ["polish", "Vocal Polish", 1], ["doubler", "Doubler", 1], ["distort", "Distortion", 1],
+    ["up", "Pitch Up", 1], ["down", "Pitch Down", 1], ["eightd", "8D Audio", 1]];
+  const PAID = new Set(PLUGINS.filter((p) => p[2]).map((p) => p[0]));
+  const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  let keyRoot = 0, keyScale = "chromatic", master = { slowed: false, sped: false };
+  const COLORS = ["#d4a843", "#3de0ff", "#ff5c8a", "#7b5cff", "#6fbf8b", "#ff9f43", "#e8e2d5", "#b0263a"];
+
+  let curRate = 1, ctx = null, tracks = [], playing = false, recording = false, startAt = 0, playhead = 0, sources = [], raf = 0, bpm = 90, metro = false, metroNodes = [], nextId = 1;
+  let rec = null, recChunks = [], recStream = null, recTrack = null, recBegin = 0;
+  const audio = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); return ctx; };
+  const PX = 60; // pixels per second on the timeline
+
+  
+
+  root.innerHTML = `
+  <div class="bl-bar">
+    <button class="bl-btn" type="button" id="bl-home" aria-label="Back to start">⏮</button>
+    <button class="bl-btn" type="button" id="bl-play" aria-label="Play">▶</button>
+    <button class="bl-btn rec" type="button" id="bl-rec" aria-label="Record">● REC</button>
+    <span class="t" id="bl-time">0:00.0</span>
+    <label>BPM <input type="number" id="bl-bpm" min="40" max="220" value="90"></label>
+    <button class="bl-btn" type="button" id="bl-metro" aria-label="Metronome">🥁 Click</button>
+    <label class="bl-inl" title="Hear 4 clicks before recording starts, so you come in on the beat"><input type="checkbox" id="bl-countin" checked> Count-in</label>
+    <label>Key <select id="bl-key" aria-label="Song key">${NOTES.map((n, i) => `<option value="${i}">${n}</option>`).join("")}</select></label>
+    <label><select id="bl-scale" aria-label="Scale"><option value="chromatic">Any note</option><option value="minor">Minor</option><option value="major">Major</option></select></label>
+    <button class="bl-btn" type="button" id="bl-slowed" title="Plugin Pack">🌙 Slowed + Reverb</button>
+    <button class="bl-btn" type="button" id="bl-sped" title="Plugin Pack">⚡ Sped Up</button>
+    <span style="flex:1"></span>
+    <button class="bl-btn" type="button" id="bl-export">⬇ Save WAV</button>
+    <button class="bl-btn on" type="button" id="bl-post">📣 Post my song</button>
+  </div>
+  <div class="bl-in" id="bl-in">
+    <label class="bl-inl">🎙️ Microphone <select id="bl-dev" aria-label="Microphone"><option value="">Default mic</option></select></label>
+    <button class="bl-btn" type="button" id="bl-devscan" title="Plug in your mic or audio interface, then tap">🔌 Find my mic</button>
+    <label class="bl-inl"><input type="checkbox" id="bl-hq" checked> Studio quality (raw sound, no phone filters)</label>
+    <label class="bl-inl"><input type="checkbox" id="bl-stack" checked> New layer each take</label>
+    <label class="bl-inl"><input type="checkbox" id="bl-mon"> Hear myself (headphones only)</label>
+    <label class="bl-inl">Input <input type="range" id="bl-gain" min="0" max="2.5" step="0.05" value="1" aria-label="Input volume"></label>
+    <div class="bl-meter" aria-hidden="true"><i id="bl-lvl"></i></div>
+    <button class="bl-btn" type="button" id="bl-test">Test mic</button>
+  </div>
+  <div class="bl-tracks"><div class="bl-scroll" id="bl-scroll"><div class="bl-ruler" id="bl-ruler"></div><div id="bl-rows"></div><div class="bl-ph" id="bl-ph"></div></div>
+    <div class="bl-add">
+      <button class="bl-btn" type="button" id="bl-new">＋ Vocal track</button>
+      <label class="bl-btn bl-file">📂 Import a beat or sound<input type="file" id="bl-import" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg" aria-label="Import audio"></label>
+      <button class="bl-btn" type="button" id="bl-libbtn">📻 Beats from the radio library</button>
+      <small class="muted" id="bl-st" style="align-self:center">Tap ● REC to record. Every take stacks as a new layer. Plug in a USB mic or audio interface (on phones use a USB-C/Lightning adapter) and tap 🔌 Find my mic. Use headphones so the beat doesn't get into your mic.</small>
+    </div>
+    <div class="bl-lib" id="bl-lib" hidden style="padding:0 10px 10px"></div>
+  </div>
+  <div class="bl-pro" id="bl-pro">
+    <b style="font-size:18px;color:var(--gold-hi)">🔌 Plugin Pack</b>
+    <span class="muted"><b>Free:</b> record, mix, Reverb, Echo, Bass Boost, Lo-Fi, Phone Voice, ${FREE_TRACKS} tracks.<br><b>Plugin Pack ($4.99 one time):</b> Auto-Tune, Hard Tune (T-Pain), Vocal Polish, Doubler, Distortion, Pitch Up/Down, 8D Audio, Slowed + Reverb, Sped Up, and up to ${PRO_TRACKS} tracks. Try any of them for free; unlock to save or post your song with them.</span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center" id="bl-pro-row"><a class="btn pay-btn" data-pay="plugins" href="#" hidden>Unlock the Plugin Pack</a><small class="muted" id="bl-pro-note">After you pay, Meechie unlocks your plugins (usually same day).</small></div>
+    <div id="bl-owner" hidden style="display:grid;gap:6px;margin-top:8px;border-top:1px solid var(--line);padding-top:10px"><b>Owner: unlock a member</b><div style="display:flex;gap:8px"><input type="search" id="bl-uq" placeholder="Member name" aria-label="Member name" style="flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px;color:var(--text);font:16px var(--body)"></div><div id="bl-ulist" style="display:grid;gap:6px"></div></div>
+  </div>`;
+  const $ = (s) => root.querySelector(s);
+
+  /* ---------- tracks ---------- */
+  function addTrack(name, buffer, offset) {
+    const max = PRO() ? PRO_TRACKS : FREE_TRACKS;
+    if (tracks.length >= max) { say(PRO() ? "That's the most tracks for one song." : "Free studio has " + FREE_TRACKS + " tracks. Unlock the Plugin Pack for up to " + PRO_TRACKS + "."); return null; }
+    const t = { id: nextId++, name: name || "Track " + (tracks.length + 1), buffer: buffer || null, offset: offset || 0, vol: 0.85, pan: 0, mute: false, solo: false, fx: {}, color: COLORS[tracks.length % COLORS.length], armed: !buffer };
+    tracks.forEach((x) => { if (!buffer) x.armed = false; });
+    tracks.push(t); draw(); return t;
+  }
+  // The Beat Maker hands finished beats to the studio through this
+  window.MW_STUDIO = { addBeat(name, buf, beatBpm) {
+    const t = addTrack(name, buf, 0); if (!t) return false;
+    if (beatBpm) { bpm = beatBpm; const b = root.querySelector("#bl-bpm"); if (b) b.value = beatBpm; }
+    const st = root.querySelector("#bl-st"); if (st) st.textContent = "Your beat \"" + name + "\" is on a track. Tap ＋ Vocal track, then ● REC to record over it.";
+    return true;
+  } };
+  function songLen() { return Math.max(30, ...tracks.map((t) => (t.buffer ? t.offset + t.buffer.duration : 0))) + 4; }
+  function peaks(buf, w) {
+    const d = buf.getChannelData(0), step = Math.max(1, Math.floor(d.length / w)), out = new Float32Array(w);
+    for (let i = 0; i < w; i++) { let m = 0; for (let j = i * step, e = Math.min(d.length, j + step); j < e; j += 8) { const v = Math.abs(d[j]); if (v > m) m = v; } out[i] = m; }
+    return out;
+  }
+  function drawWave(cv, t) {
+    const w = Math.max(10, Math.round(t.buffer.duration * PX)), h = 76; cv.width = w; cv.height = h;
+    const g = cv.getContext("2d"); g.fillStyle = t.color + "33"; g.fillRect(0, 0, w, h); g.fillStyle = t.color;
+    const p = peaks(t.buffer, w); for (let x = 0; x < w; x++) { const y = p[x] * h * 0.48; g.fillRect(x, h / 2 - y, 1, Math.max(1, y * 2)); }
+  }
+  function draw() {
+    const len = songLen(), W = Math.ceil(len * PX);
+    $("#bl-ruler").style.width = W + "px";
+    $("#bl-ruler").innerHTML = Array.from({ length: Math.ceil(len) }, (_, s) => (s % 5 === 0 ? `<span style="left:${s * PX}px">${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}</span>` : "")).join("");
+    const pro = PRO();
+    $("#bl-rows").innerHTML = tracks.map((t) => `<div class="bl-row" data-t="${t.id}">
+      <div class="bl-head"><input type="text" value="${E(t.name)}" maxlength="24" data-name="${t.id}" aria-label="Track name">
+        <div class="r"><button type="button" class="${t.armed ? "on" : ""}" data-arm="${t.id}" title="Record on this track">●</button><button type="button" class="${t.mute ? "on" : ""}" data-mute="${t.id}">M</button><button type="button" class="${t.solo ? "on" : ""}" data-solo="${t.id}">S</button><button type="button" data-del="${t.id}" aria-label="Delete track">🗑</button></div>
+        <input type="range" min="0" max="1.2" step="0.01" value="${t.vol}" data-vol="${t.id}" aria-label="Volume">
+        <input type="range" min="-1" max="1" step="0.05" value="${t.pan}" data-pan="${t.id}" aria-label="Pan left or right">
+        <div class="bl-fx">${PLUGINS.map(([k, n, paid]) => `<button type="button" class="${t.fx[k] ? "on" : ""} ${paid && !pro ? "lock" : ""} ${t.busy && t.fx[k] && /tune|up|down/.test(k) ? "busy" : ""}" data-fx="${k}" data-tid="${t.id}">${n}</button>`).join("")}</div>
+      </div>
+      <div class="bl-lane" data-lane="${t.id}" style="width:${W}px">${t.buffer ? `<div class="bl-clip" data-clip="${t.id}" style="left:${t.offset * PX}px;width:${t.buffer.duration * PX}px"><canvas></canvas></div>` : ""}${recording && recTrack === t ? `<div class="bl-clip rec" id="bl-recclip" style="left:${recBegin * PX}px;width:2px"></div>` : ""}</div></div>`).join("") || `<div style="padding:28px;text-align:center" class="muted">Your song starts here. Add a vocal track or import a beat.</div>`;
+    tracks.forEach((t) => { const c = root.querySelector(`[data-clip="${t.id}"] canvas`); if (c && t.buffer) drawWave(c, t); });
+    const own = fdb.base.isOwner();
+    $("#bl-pro").hidden = false; $("#bl-pro-note").textContent = own ? "✅ Owner: everything is unlocked for you, free." : pro ? "✅ Your Plugin Pack is unlocked. Tap any effect on a track." : "After you pay, Meechie unlocks your plugins (usually same day).";
+    const payBtn = root.querySelector('[data-pay="plugins"]'); if (payBtn) payBtn.style.display = pro ? "none" : "";
+    movePH();
+  }
+  function movePH() { const hw = parseFloat(getComputedStyle(root).getPropertyValue("--hw")) || 170; $("#bl-ph").style.left = hw + playhead * PX + "px"; $("#bl-time").textContent = Math.floor(playhead / 60) + ":" + (playhead % 60).toFixed(1).padStart(4, "0"); }
+
+  /* ---------- effects ---------- */
+  function impulse(c, sec, decay) { const n = Math.floor(c.sampleRate * sec), b = c.createBuffer(2, n, c.sampleRate); for (let ch = 0; ch < 2; ch++) { const d = b.getChannelData(ch); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decay); } return b; }
+  function curve(amount) { const n = 1024, c = new Float32Array(n); for (let i = 0; i < n; i++) { const x = i * 2 / n - 1; c[i] = (1 + amount) * x / (1 + amount * Math.abs(x)); } return c; }
+  function chain(c, t, src) {
+    let node = src; const fx = t.fx;
+    const add = (n) => { node.connect(n); node = n; return n; };
+    if (fx.polish) { const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 90; add(hp); const pres = c.createBiquadFilter(); pres.type = "peaking"; pres.frequency.value = 3500; pres.gain.value = 4; add(pres); const air = c.createBiquadFilter(); air.type = "highshelf"; air.frequency.value = 10000; air.gain.value = 3; add(air); const comp = c.createDynamicsCompressor(); comp.threshold.value = -22; comp.ratio.value = 4; comp.attack.value = 0.005; comp.release.value = 0.15; add(comp); }
+    if (fx.bass) { const ls = c.createBiquadFilter(); ls.type = "lowshelf"; ls.frequency.value = 120; ls.gain.value = 8; add(ls); }
+    if (fx.distort) { const ws = c.createWaveShaper(); ws.curve = curve(12); ws.oversample = "4x"; add(ws); const tame = c.createGain(); tame.gain.value = 0.6; add(tame); }
+    if (fx.phone) { const a = c.createBiquadFilter(); a.type = "highpass"; a.frequency.value = 500; add(a); const b = c.createBiquadFilter(); b.type = "lowpass"; b.frequency.value = 3000; add(b); const ws = c.createWaveShaper(); ws.curve = curve(3); add(ws); }
+    if (fx.lofi) { const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3800; add(lp); const hs = c.createBiquadFilter(); hs.type = "highpass"; hs.frequency.value = 120; add(hs); const ws = c.createWaveShaper(); ws.curve = curve(1.5); add(ws); }
+    const g = c.createGain(); g.gain.value = t.vol; add(g);
+    const p = c.createStereoPanner ? c.createStereoPanner() : null;
+    if (p) { p.pan.value = t.pan; add(p); if (fx.eightd) { const lfo = c.createOscillator(), dep = c.createGain(); lfo.frequency.value = 0.18; dep.gain.value = 0.95; lfo.connect(dep); dep.connect(p.pan); p.pan.value = 0; lfo.start(); sources.push(lfo); } }
+    const out = c.createGain(); node.connect(out);
+    if (fx.doubler) { [[0.017, -0.7], [0.027, 0.7]].forEach(([d, pan]) => { const dl = c.createDelay(0.1); dl.delayTime.value = d; const lfo = c.createOscillator(), dep = c.createGain(); lfo.frequency.value = 0.6 + d * 10; dep.gain.value = 0.002; lfo.connect(dep); dep.connect(dl.delayTime); lfo.start(); sources.push(lfo); const pn = c.createStereoPanner ? c.createStereoPanner() : c.createGain(); if (pn.pan) pn.pan.value = pan; const wg = c.createGain(); wg.gain.value = 0.55; node.connect(dl); dl.connect(pn); pn.connect(wg); wg.connect(out); }); }
+    if (fx.reverb) { const cv = c.createConvolver(); cv.buffer = impulse(c, 2.4, 2.6); const wet = c.createGain(); wet.gain.value = 0.32; node.connect(cv); cv.connect(wet); wet.connect(out); }
+    if (fx.echo) { const dl = c.createDelay(2); dl.delayTime.value = 60 / bpm * 0.75; const fb = c.createGain(); fb.gain.value = 0.35; const wet = c.createGain(); wet.gain.value = 0.35; node.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(out); }
+    return out;
+  }
+  /* master effects on the whole song */
+  const rate = () => (master.slowed ? 0.85 : master.sped ? 1.25 : 1);
+  function masterOut(c) {
+    const m = c.createGain(); m.connect(c.destination);
+    if (master.slowed) { const cv = c.createConvolver(); cv.buffer = impulse(c, 3.2, 2.2); const wet = c.createGain(); wet.gain.value = 0.4; m.connect(cv); cv.connect(wet); wet.connect(c.destination); }
+    return m;
+  }
+  /* pitch effects (Auto-Tune, Hard Tune, Pitch Up/Down) re-make the take in the background */
+  function pitchKey(t) { const f = t.fx; return [f.autotune ? "a" : "", f.hardtune ? "h" : "", f.up ? "u" : "", f.down ? "d" : "", keyRoot, keyScale].join(":"); }
+  function needsPitch(t) { return t.fx.autotune || t.fx.hardtune || t.fx.up || t.fx.down; }
+  function bufOf(t) { return needsPitch(t) && t.procBuf && t.procKey === pitchKey(t) ? t.procBuf : t.buffer; }
+  async function processPitch(t) {
+    if (!needsPitch(t) || !t.buffer || !window.MWPitch) { t.procBuf = null; t.procKey = ""; return; }
+    const k = pitchKey(t); if (t.procKey === k && t.procBuf) return; if (t.busyKey === k) return;
+    t.busy = true; t.busyKey = k; draw(); $("#bl-st").textContent = "Applying effects to " + t.name + "... (a few seconds)";
+    try {
+      let b = t.buffer;
+      if (t.fx.autotune || t.fx.hardtune) b = await MWPitch.autotune(b, { key: keyRoot, scale: keyScale, strength: t.fx.hardtune ? 1 : 0.75, speed: t.fx.hardtune ? 0 : 0.6 });
+      if (t.fx.up || t.fx.down) b = await MWPitch.shift(b, t.fx.up ? 3 : -4);
+      if (t.busyKey === k) { t.procBuf = b; t.procKey = k; }
+      $("#bl-st").textContent = "Done. " + (t.fx.hardtune ? "Hard Tune is on." : t.fx.autotune ? "Auto-Tune is on." : "Pitch effect is on.");
+    } catch (err) { $("#bl-st").textContent = "That effect couldn't be applied."; }
+    t.busy = false; t.busyKey = ""; draw(); if (playing) { stop(); play(); }
+  }
+  function usesPaid() { return master.slowed || master.sped || tracks.length > FREE_TRACKS || tracks.some((t) => Object.keys(t.fx).some((k) => t.fx[k] && PAID.has(k))); }
+  function needUnlock(what) { if (PRO() || !usesPaid()) return false; root.querySelector("#bl-pro").scrollIntoView({ behavior: "smooth", block: "center" }); say("Your song uses Plugin Pack effects. Unlock the pack ($4.99) to " + what + " it, or turn those effects off."); return true; }
+  function audible(t) { const solo = tracks.some((x) => x.solo); return t.buffer && !t.mute && (!solo || t.solo); }
+
+  /* ---------- transport ---------- */
+  function play(fromRec) {
+    const c = audio(); stopSources();
+    const r = fromRec ? 1 : rate(); curRate = r;
+    startAt = c.currentTime + 0.06 - playhead / r;
+    const mo = masterOut(c);
+    tracks.forEach((t) => {
+      if (!audible(t) || (fromRec && t === recTrack)) return;
+      const b = bufOf(t), src = c.createBufferSource(); src.buffer = b; src.playbackRate.value = r;
+      const begin = t.offset - playhead;
+      if (begin + b.duration <= 0) return;
+      chain(c, t, src).connect(mo);
+      if (begin >= 0) src.start(c.currentTime + 0.06 + begin / r); else src.start(c.currentTime + 0.06, -begin);
+      sources.push(src);
+    });
+    if (metro) scheduleMetro(c);
+    try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
+    playing = true; $("#bl-play").textContent = "⏸"; tick();
+  }
+  function scheduleMetro(c) {
+    const beat = 60 / bpm, first = Math.ceil(playhead / beat) * beat;
+    for (let b = first; b < playhead + 600; b += beat) {
+      const o = c.createOscillator(), g = c.createGain(), at = startAt + b; if (at < c.currentTime) continue;
+      o.frequency.value = Math.round(b / beat) % 4 === 0 ? 1600 : 1000; g.gain.setValueAtTime(0.25, at); g.gain.exponentialRampToValueAtTime(0.001, at + 0.05);
+      o.connect(g).connect(c.destination); o.start(at); o.stop(at + 0.06); metroNodes.push(o);
+      if (metroNodes.length > 1200) break;
+    }
+  }
+  function stopSources() { sources.forEach((s) => { try { s.stop(); } catch (_) {} }); sources = []; metroNodes.forEach((o) => { try { o.stop(); } catch (_) {} }); metroNodes = []; }
+  function stop() { if (recording) stopRec(); stopSources(); if (playing && ctx) playhead = Math.max(0, (ctx.currentTime - startAt) * curRate); playing = false; cancelAnimationFrame(raf); $("#bl-play").textContent = "▶"; movePH(); }
+  function tick() {
+    if (!playing) return; playhead = Math.max(0, (ctx.currentTime - startAt) * curRate); movePH();
+    if (recording) { const rc = root.querySelector("#bl-recclip"); if (rc) rc.style.width = Math.max(2, (playhead - recBegin) * PX) + "px"; }
+    const sc = $("#bl-scroll"), x = playhead * PX; if (x > sc.scrollLeft + sc.clientWidth - 120 || x < sc.scrollLeft) sc.scrollLeft = Math.max(0, x - 80);
+    if (!recording && playhead > songLen()) { stop(); playhead = 0; movePH(); return; }
+    raf = requestAnimationFrame(tick);
+  }
+
+  /* ---------- recording ---------- */
+  /* ---------- input: pick your mic (USB mic, audio interface, headset), studio quality, level meter, monitoring ---------- */
+  let inStream = null, inSrc = null, inGain = null, inAn = null, inDest = null, inMon = null, inDevice = "", inHQ = true, meterRaf = 0;
+  async function listMics() {
+    try {
+      const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
+      const sel = $("#bl-dev"), cur = sel.value;
+      sel.innerHTML = '<option value="">Default mic</option>' + devs.filter((d) => d.deviceId && d.deviceId !== "default").map((d, i) => `<option value="${E(d.deviceId)}">${E(d.label || "Microphone " + (i + 1))}</option>`).join("");
+      if ([...sel.options].some((o) => o.value === cur)) sel.value = cur;
+      // a newly plugged-in mic (USB / interface / headset) gets picked automatically
+      const ext = devs.find((d) => /usb|interface|focusrite|scarlett|audient|presonus|behringer|shure|rode|blue|yeti|at2020|headset|external|line in/i.test(d.label || ""));
+      if (!cur && ext) { sel.value = ext.deviceId; }
+      return devs.length;
+    } catch (_) { return 0; }
+  }
+  async function openInput(force) {
+    const want = $("#bl-dev").value, hq = $("#bl-hq").checked;
+    if (inStream && !force && want === inDevice && hq === inHQ) return true;
+    closeInput();
+    const c = audio();
+    const cons = { echoCancellation: !hq, noiseSuppression: !hq, autoGainControl: !hq, channelCount: { ideal: hq ? 2 : 1 }, sampleRate: { ideal: 48000 }, ...(want ? { deviceId: { exact: want } } : {}) };
+    try { inStream = await navigator.mediaDevices.getUserMedia({ audio: cons }); }
+    catch (err) { try { inStream = await navigator.mediaDevices.getUserMedia({ audio: want ? { deviceId: want } : true }); } catch (_) { say("Allow the microphone to record."); return false; } }
+    inDevice = want; inHQ = hq;
+    inSrc = c.createMediaStreamSource(inStream); inGain = c.createGain(); inGain.gain.value = +$("#bl-gain").value;
+    inAn = c.createAnalyser(); inAn.fftSize = 1024; inDest = c.createMediaStreamDestination(); inMon = c.createGain(); inMon.gain.value = $("#bl-mon").checked ? 1 : 0;
+    inSrc.connect(inGain); inGain.connect(inAn); inGain.connect(inDest); inGain.connect(inMon); inMon.connect(c.destination);
+    await listMics(); meter();
+    const tr = inStream.getAudioTracks()[0]; const lbl = tr && tr.label ? tr.label : "your mic";
+    $("#bl-st").textContent = "Using " + lbl + (hq ? " in studio quality." : ".");
+    return true;
+  }
+  function closeInput() { cancelAnimationFrame(meterRaf); try { inStream && inStream.getTracks().forEach((t) => t.stop()); } catch (_) {} try { inSrc && inSrc.disconnect(); inMon && inMon.disconnect(); } catch (_) {} inStream = inSrc = inGain = inAn = inDest = inMon = null; $("#bl-lvl").style.width = "0"; }
+  function meter() {
+    cancelAnimationFrame(meterRaf); if (!inAn) return; const d = new Float32Array(inAn.fftSize);
+    const loop = () => { if (!inAn) return; inAn.getFloatTimeDomainData(d); let pk = 0; for (const v of d) pk = Math.max(pk, Math.abs(v)); $("#bl-lvl").style.width = Math.min(100, pk * 110) + "%"; if (pk > 0.98) $("#bl-st").textContent = "Too loud! Turn the Input slider down so the meter stays out of the red."; meterRaf = requestAnimationFrame(loop); };
+    loop();
+  }
+  $("#bl-devscan").addEventListener("click", async () => { const ok = await openInput(true); if (ok) { const n = await listMics(); say(n > 1 ? "Found " + n + " microphones. Pick yours from the list." : "Using your mic. Plug in a USB mic or interface and tap again."); await openInput(true); } });
+  $("#bl-dev").addEventListener("change", () => openInput(true));
+  $("#bl-hq").addEventListener("change", () => { if (inStream) openInput(true); });
+  $("#bl-gain").addEventListener("input", (e) => { if (inGain) inGain.gain.value = +e.target.value; });
+  $("#bl-mon").addEventListener("change", (e) => { if (e.target.checked) say("Use headphones, or you'll get loud feedback."); if (inMon) inMon.gain.value = e.target.checked ? 1 : 0; else if (e.target.checked) openInput(); });
+  $("#bl-test").addEventListener("click", async (e) => { if (inStream && !recording) { closeInput(); e.currentTarget.textContent = "Test mic"; $("#bl-st").textContent = "Mic test off."; return; } const b = e.currentTarget; if (await openInput()) { b.textContent = "Stop test"; } });
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) navigator.mediaDevices.addEventListener("devicechange", async () => { await listMics(); if (inStream) openInput(true); say("Mic change detected"); });
+
+  async function startRec() {
+    if (typeof needMember === "function" && !needMember()) return;
+    let t = tracks.find((x) => x.armed) || tracks.find((x) => !x.buffer);
+    if (t && t.buffer && $("#bl-stack").checked) { const base = t.name.replace(/ \(take \d+\)$/, ""); const n = tracks.filter((x) => x.name.startsWith(base)).length + 1; t.armed = false; t = addTrack(base + " (take " + n + ")"); } // stack a new layer
+    if (!t) t = addTrack("Vocals"); if (!t) return;
+    if (t.buffer && !confirm("Record over \"" + t.name + "\"? The old take will be replaced.")) return;
+    const c = audio();
+    const ok = await openInput(); if (!ok) return;
+    const type = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((x) => window.MediaRecorder && MediaRecorder.isTypeSupported(x)) || "";
+    rec = new MediaRecorder(inDest.stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 256000 }); recChunks = [];
+    rec.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
+    recTrack = t; recBegin = playhead; recording = true;
+    $("#bl-rec").classList.add("on");
+    const myRec = rec;
+    const go = () => { if (!recording || rec !== myRec) return; $("#bl-st").textContent = "Recording on " + t.name + "... tap ● again to stop."; try { rec.start(); } catch (_) {} play(true); draw(); };
+    const cin = $("#bl-countin");
+    if (cin && cin.checked) {
+      const c2 = audio(), spb = 60 / bpm; let n = 4;
+      const clickNow = (hi) => { try { const o = c2.createOscillator(), g = c2.createGain(); o.frequency.value = hi ? 1600 : 1000; g.gain.setValueAtTime(0.25, c2.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c2.currentTime + 0.06); o.connect(g).connect(c2.destination); o.start(); o.stop(c2.currentTime + 0.07); } catch (_) {} };
+      $("#bl-st").textContent = "Count-in: 4 — get ready..."; clickNow(true);
+      const iv = setInterval(() => { if (rec !== myRec) { clearInterval(iv); return; } n--; if (n <= 0) { clearInterval(iv); go(); return; } $("#bl-st").textContent = "Count-in: " + n; clickNow(false); }, spb * 1000);
+    } else go();
+  }
+  async function stopRec() {
+    if (!rec) return; const r = rec; rec = null; recording = false; $("#bl-rec").classList.remove("on");
+    await new Promise((res) => { r.onstop = res; try { r.stop(); } catch (_) { res(); } });
+    $("#bl-st").textContent = "Processing your take...";
+    try {
+      const buf = await audio().decodeAudioData(await new Blob(recChunks, { type: r.mimeType }).arrayBuffer());
+      const inLat = (() => { try { return inStream.getAudioTracks()[0].getSettings().latency || 0; } catch (_) { return 0; } })();
+      const lat = Math.min(0.5, (ctx.baseLatency || 0) + (ctx.outputLatency || 0.05) + inLat); // line the take up with the beat
+      recTrack.buffer = buf; recTrack.offset = Math.max(0, recBegin - lat); recTrack.armed = false; recTrack.procBuf = null; recTrack.procKey = ""; processPitch(recTrack);
+      $("#bl-st").textContent = "Got it. Drag the take to move it, or tap ● on a track to record again.";
+    } catch (_) { $("#bl-st").textContent = "That take couldn't be saved. Try again."; }
+    draw();
+  }
+
+  /* ---------- import ---------- */
+  async function importArrayBuffer(ab, name) {
+    try { const buf = await audio().decodeAudioData(ab); const t = addTrack(name.slice(0, 24), buf, 0); if (t) $("#bl-st").textContent = "Added " + name + ". Now add a vocal track and record over it."; }
+    catch (_) { say("That file isn't audio we can open. Try an MP3 or WAV."); }
+  }
+  $("#bl-import").addEventListener("change", async (e) => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; if (f.size > 60 * 1048576) { say("That file is too big (over 60 MB)."); return; } $("#bl-st").textContent = "Opening " + f.name + "..."; importArrayBuffer(await f.arrayBuffer(), f.name.replace(/\.[^.]+$/, "")); });
+  $("#bl-libbtn").addEventListener("click", () => {
+    const lib = $("#bl-lib"), rad = (window.MW_TRACKS ? window.MW_TRACKS() : []) || []; // the radio library (main page)
+    lib.hidden = !lib.hidden; if (lib.hidden) return;
+    lib.innerHTML = rad && rad.length ? rad.map((t, i) => `<div><span>${E(t.title)}</span><button class="btn ghost sm" type="button" data-rl="${i}">Use</button></div>`).join("") : '<small class="muted">The radio library is empty.</small>';
+    lib.onclick = async (e) => { const b = e.target.closest("[data-rl]"); if (!b) return; const t = rad[+b.dataset.rl]; b.disabled = true; b.textContent = "Loading..."; try { const ab = await (await fetch(fdb.base.assetUrl(t.assetId))).arrayBuffer(); await importArrayBuffer(ab, t.title); lib.hidden = true; } catch (_) { say("Couldn't load that song."); b.disabled = false; b.textContent = "Use"; } };
+  });
+
+  /* ---------- export ---------- */
+  async function render() {
+    for (const t of tracks) if (needsPitch(t) && bufOf(t) === t.buffer) await processPitch(t);
+    const r = rate(), len = (Math.max(1, ...tracks.filter(audible).map((t) => t.offset + bufOf(t).duration)) + 1.5) / r + (master.slowed ? 3 : 0);
+    const sr = 44100, oc = new OfflineAudioContext(2, Math.ceil(len * sr), sr), mo = masterOut(oc);
+    const keep = sources; sources = []; // LFOs made while building the mix belong to the offline render
+    tracks.forEach((t) => { if (!audible(t)) return; const s = oc.createBufferSource(); s.buffer = bufOf(t); s.playbackRate.value = r; chain(oc, t, s).connect(mo); s.start(t.offset / r); });
+    sources = keep;
+    return oc.startRendering();
+  }
+  function wav(buf) {
+    const ch = 2, sr = buf.sampleRate, n = buf.length, out = new DataView(new ArrayBuffer(44 + n * ch * 2)); let o = 0;
+    const w = (s) => { for (let i = 0; i < s.length; i++) out.setUint8(o++, s.charCodeAt(i)); }, u32 = (v) => { out.setUint32(o, v, true); o += 4; }, u16 = (v) => { out.setUint16(o, v, true); o += 2; };
+    w("RIFF"); u32(36 + n * ch * 2); w("WAVE"); w("fmt "); u32(16); u16(1); u16(ch); u32(sr); u32(sr * ch * 2); u16(ch * 2); u16(16); w("data"); u32(n * ch * 2);
+    const L = buf.getChannelData(0), R = buf.numberOfChannels > 1 ? buf.getChannelData(1) : L;
+    for (let i = 0; i < n; i++) { for (const d of [L, R]) { const v = Math.max(-1, Math.min(1, d[i])); out.setInt16(o, v < 0 ? v * 0x8000 : v * 0x7fff, true); o += 2; } }
+    return new Blob([out], { type: "audio/wav" });
+  }
+  $("#bl-export").addEventListener("click", async () => {
+    if (!tracks.some(audible)) { say("Record or import something first."); return; }
+    if (needUnlock("save")) return;
+    $("#bl-st").textContent = "Mixing your song..."; const blob = wav(await render());
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "meechies-world-song.wav"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    $("#bl-st").textContent = "Saved to your device.";
+  });
+  $("#bl-post").addEventListener("click", async (e) => {
+    if (typeof needMember === "function" && !needMember()) return;
+    if (!tracks.some(audible)) { say("Record or import something first."); return; }
+    if (needUnlock("post")) return;
+    const title = prompt("Name your song", "My new song"); if (title === null) return;
+    const b = e.currentTarget; b.disabled = true; b.textContent = "Mixing...";
+    try {
+      const blob = wav(await render());
+      if (blob.size > 50 * 1048576) throw new Error("This song is too long to post (over 50 MB). Save the WAV instead.");
+      const up = await fdb.base.uploadMedia(blob, { type: "audio/wav", ext: "wav", onProg: (f) => { b.textContent = "Uploading " + Math.round(f * 100) + "%"; } });
+      await DB().collection("posts").add({ authorId: ME(), text: "🎤 New song: " + String(title).slice(0, 80) + " (made in the Meechie's World Studio)", photo: "", audio: up.url, audioPath: up.path, likes: [], replyCount: 0, sponsored: false, announce: false, createdAt: Date.now() });
+      say("Your song is posted! Want more people to hear it? Promote it from the Promote page.");
+    } catch (err) { say(err.message || "Couldn't post."); }
+    b.disabled = false; b.textContent = "📣 Post my song";
+  });
+
+  /* ---------- controls ---------- */
+  $("#bl-play").addEventListener("click", () => (playing ? stop() : play()));
+  $("#bl-key").addEventListener("change", (e) => { keyRoot = +e.target.value; tracks.forEach(processPitch); });
+  $("#bl-scale").addEventListener("change", (e) => { keyScale = e.target.value; tracks.forEach(processPitch); });
+  ["slowed", "sped"].forEach((m) => $("#bl-" + m).addEventListener("click", (e) => {
+    master[m] = !master[m]; if (master[m]) master[m === "slowed" ? "sped" : "slowed"] = false;
+    $("#bl-slowed").classList.toggle("on", master.slowed); $("#bl-sped").classList.toggle("on", master.sped);
+    if (master[m] && !PRO()) say("Previewing a Plugin Pack effect. Unlock the pack to save or post with it.");
+    if (playing) { stop(); play(); }
+  }));
+  $("#bl-home").addEventListener("click", () => { const p = playing; stop(); playhead = 0; movePH(); $("#bl-scroll").scrollLeft = 0; if (p) play(); });
+  $("#bl-rec").addEventListener("click", () => (recording ? stop() : (playing && stop(), startRec())));
+  $("#bl-metro").addEventListener("click", (e) => { metro = !metro; e.currentTarget.classList.toggle("on", metro); if (playing) { stop(); play(); } });
+  $("#bl-bpm").addEventListener("change", (e) => { bpm = Math.max(40, Math.min(220, +e.target.value || 90)); e.target.value = bpm; });
+  $("#bl-new").addEventListener("click", () => { const t = addTrack("Vocals " + (tracks.filter((x) => /vocal/i.test(x.name)).length + 1)); if (t) $("#bl-st").textContent = "New track ready. Tap ● REC to record."; });
+  $("#bl-ruler").addEventListener("click", (e) => { const r = e.currentTarget.getBoundingClientRect(); const p = playing; stop(); playhead = Math.max(0, (e.clientX - r.left) / PX); movePH(); if (p) play(); });
+  root.addEventListener("input", (e) => {
+    const t = tracks.find((x) => x.id === +(e.target.dataset.vol || e.target.dataset.pan || e.target.dataset.name)); if (!t) return;
+    if (e.target.dataset.vol) t.vol = +e.target.value; if (e.target.dataset.pan) t.pan = +e.target.value; if (e.target.dataset.name) t.name = e.target.value;
+  });
+  root.addEventListener("change", (e) => { if ((e.target.dataset.vol || e.target.dataset.pan) && playing) { stop(); play(); } });
+  root.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const id = +(b.dataset.arm || b.dataset.mute || b.dataset.solo || b.dataset.del || b.dataset.tid || 0); const t = tracks.find((x) => x.id === id); if (!t) return;
+    if (b.dataset.arm) { tracks.forEach((x) => (x.armed = x === t ? !x.armed : false)); draw(); }
+    if (b.dataset.mute) { t.mute = !t.mute; draw(); if (playing) { stop(); play(); } }
+    if (b.dataset.solo) { t.solo = !t.solo; draw(); if (playing) { stop(); play(); } }
+    if (b.dataset.del) { if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = "Sure?"; return; } stop(); tracks = tracks.filter((x) => x !== t); draw(); }
+    if (b.dataset.fx) {
+      const k = b.dataset.fx; t.fx[k] = !t.fx[k];
+      if (k === "autotune" && t.fx.autotune) t.fx.hardtune = false; if (k === "hardtune" && t.fx.hardtune) t.fx.autotune = false;
+      if (k === "up" && t.fx.up) t.fx.down = false; if (k === "down" && t.fx.down) t.fx.up = false;
+      if (PAID.has(k) && t.fx[k] && !PRO()) say("Previewing a Plugin Pack effect. Unlock the pack to save or post with it.");
+      draw(); if (/tune|^up$|^down$/.test(k)) processPitch(t); else if (playing) { stop(); play(); }
+    }
+  });
+  // drag a clip to move it in time
+  root.addEventListener("pointerdown", (e) => {
+    const cl = e.target.closest(".bl-clip[data-clip]"); if (!cl) return;
+    const t = tracks.find((x) => x.id === +cl.dataset.clip); if (!t) return;
+    e.preventDefault(); cl.setPointerCapture(e.pointerId); const x0 = e.clientX, o0 = t.offset;
+    const mv = (ev) => { t.offset = Math.max(0, o0 + (ev.clientX - x0) / PX); cl.style.left = t.offset * PX + "px"; };
+    const up = () => { cl.removeEventListener("pointermove", mv); cl.removeEventListener("pointerup", up); cl.removeEventListener("pointercancel", up); if (playing) { stop(); play(); } };
+    cl.addEventListener("pointermove", mv); cl.addEventListener("pointerup", up); cl.addEventListener("pointercancel", up);
+  });
+  // owner: unlock the Plugin Pack for members who paid
+  function ownerPanel() {
+    const own = fdb.base.isOwner(), box = $("#bl-owner"); box.hidden = !own; if (!own) return;
+    const q = ($("#bl-uq").value || "").toLowerCase(), mem = membersMap;
+    const rows = Object.entries(mem).filter(([id, m]) => m && m.handle && (q ? m.handle.toLowerCase().includes(q) : m.pro)).slice(0, 12);
+    $("#bl-ulist").innerHTML = rows.map(([id, m]) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span>${E(m.handle)}${m.pro ? " ✅" : ""}</span><button class="btn ${m.pro ? "ghost" : ""} sm" type="button" data-unlock="${E(id)}" data-on="${m.pro ? 0 : 1}">${m.pro ? "Remove" : "Unlock"}</button></div>`).join("") || `<small class="muted">${q ? "No one by that name." : "Type a member's name to unlock their plugins."}</small>`;
+  }
+  $("#bl-uq").addEventListener("input", ownerPanel);
+  $("#bl-ulist").addEventListener("click", async (e) => { const b = e.target.closest("[data-unlock]"); if (!b) return; try { await DB().doc("members/" + b.dataset.unlock).update({ pro: b.dataset.on === "1" }); say(b.dataset.on === "1" ? "Plugins unlocked" : "Plugins removed"); setTimeout(ownerPanel, 600); } catch (err) { say(err.message || err.code); } });
+  draw();
+  setTimeout(() => { draw(); ownerPanel(); }, 1500);
+  return () => { try { if (playing || recording) stop(); closeInput(); } catch (_) {} fdb.base.stop(); };
+
+}
