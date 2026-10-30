@@ -1182,6 +1182,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #wb-root .wb-decks>.deck[data-deck="D"]{grid-column:5;grid-row:1}
 @media(max-width:900px){#wb-root .wb-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#wb-root .wb-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}#wb-root .wb-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}#wb-root .wb-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}#wb-root .wb-decks>.deck[data-deck="C"]{grid-column:1;grid-row:3}#wb-root .wb-decks>.deck[data-deck="D"]{grid-column:2;grid-row:3}}
 
+/* MW TEXT-BIGGER BOOTH OVERRIDES - pass 2: the most-read booth text lives in rules shared with the Watch mirror and the station card, so those base rules stay untouched and the booth alone grows through these booth-rooted font-size overrides (factor 1.25, rounded to the nearest 0.5px). Font-size only - no geometry, no line-height, no markup. Deck buttons: the shared 12px governs the booth only at phone widths (at 761px and up the booth already sits at 15.5px via the pass-1 media rule), so that one override lives in the phone media block below at 15px and nothing anywhere gets smaller. */
+#dj-owner .deck .ttl, #dj-booth-root #dj-owner .deck .ttl{font-size:21px}
+#dj-owner .deck .tm, #dj-booth-root #dj-owner .deck .tm{font-size:15px}
+#dj-owner .dj-panel h4, #dj-booth-root #dj-owner .dj-panel h4{font-size:15px}
+#dj-owner .dj-item, #dj-booth-root #dj-owner .dj-item{font-size:17.5px}
+#dj-owner .mixer small, #dj-booth-root #dj-owner .mixer small{font-size:14px}
+#dj-owner .xv span, #dj-booth-root #dj-owner .xv span{font-size:12px}
+#dj-owner .xv b, #dj-booth-root #dj-owner .xv b{font-size:13px}
+#dj-owner .xfpl, #dj-booth-root #dj-owner .xfpl{font-size:15px}
+#dj-owner .deck label.lab, #dj-booth-root #dj-owner .deck label.lab{font-size:14px}
+#dj-owner .bpmv, #dj-booth-root #dj-owner .bpmv{font-size:17.5px}
+#dj-owner .keyv, #dj-booth-root #dj-owner .keyv{font-size:14px}
+#dj-owner .onair-lamp, #dj-booth-root #dj-owner .onair-lamp{font-size:16.5px}
+#dj-owner .btn.sm, #dj-booth-root #dj-owner .btn.sm{font-size:19px}
+#dj-owner .loglist, #dj-booth-root #dj-owner .loglist{font-size:16.5px}
+#dj-owner .loglist time, #dj-booth-root #dj-owner .loglist time{font-size:14px}
+@media (max-width:760px){
+#dj-owner .dj-decks>.deck .ttl, #dj-booth-root #dj-owner .dj-decks>.deck .ttl{font-size:15px}
+#dj-owner .dj-decks>.deck .btn, #dj-booth-root #dj-owner .dj-decks>.deck .btn{font-size:15px}
+}
+/* END MW TEXT-BIGGER BOOTH OVERRIDES */
 `;
   document.head.appendChild(css);
 
