@@ -14,7 +14,13 @@
 <meta name="apple-mobile-web-app-title" content="MW Kids">
 <style>
   *{box-sizing:border-box}
+  html{background:#070605}
   body{margin:0;background:#0b0a08;color:#f3ead2;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0 16px 48px;-webkit-tap-highlight-color:transparent}
+  @media(min-width:820px){
+    html{background:radial-gradient(rgba(240,207,120,.07) 1.2px,transparent 1.6px) 0 0/26px 26px,radial-gradient(ellipse 70% 420px at 50% 0,rgba(240,207,120,.10),transparent 70%),#070605}
+    body{background:transparent}
+    body::before{content:"";position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:716px;max-width:100%;background:linear-gradient(180deg,#131009,#0c0a07);border-left:1px solid #2c2413;border-right:1px solid #2c2413;box-shadow:0 0 60px rgba(0,0,0,.55);z-index:-1}
+  }
   /* slim app bar, sibling to the other Meechie's World app pages */
   .bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;padding:12px 2px;background:linear-gradient(180deg,#0b0a08 82%,transparent)}
   .bar a{color:#8a8268;font-size:13.5px;text-decoration:none;flex:none}
@@ -148,6 +154,7 @@
   .plan-price{font:800 20px/1 inherit;color:var(--gold);white-space:nowrap}
   .plan-price small{font-size:12px;color:var(--mut);font-weight:600}
   input[type="time"],select{background:#0c0b09;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+  #kids-endtime{flex:0 0 auto;width:9.5em;min-width:9.5em;text-align:center}
   .lbl{font-size:13px;color:var(--mut);align-self:center}
   .hint{color:var(--mut);font-size:12.5px;align-self:center}
   .abtn.go{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;border-color:#c39a2e}
