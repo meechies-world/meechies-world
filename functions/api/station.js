@@ -75,6 +75,96 @@ async function doorbell(env, name, online, now) {
   }));
 }
 
+/* MWVMIXRESCUE-BEGIN */
+/* VMIX RESCUE (mwVmixRescue, 2026-10-29): the second deliberate keeper
+ * exception, sibling to the ghost-share switch below. The keeper already
+ * rescues the AUDIO when the booth goes stale (it drives A/B itself), but
+ * it never touched vmix, and it does not drive C/D — so when a booth tab
+ * wedged mid-set with the master screen featuring a C/D deck it had left
+ * flagged playing at pos 0, MW TV sat on that corpse forever: every viewer
+ * surface follows vmix, and the honest screen slate rightly refuses to
+ * fake a picture for a deck that is not producing one. This pass runs
+ * only inside the stale-booth authority: booth fresh, a deliberate pause
+ * stamped, or the station off, and it never acts. A featured deck counts
+ * DEAD when it is not playing at all, when its timeline has run past the
+ * end of the track without parking, when its published position has sat
+ * at 0 with a known duration for the full zero grace, or when its
+ * published position has not moved across observations. Published
+ * position is posOf — the start anchor while playing, the pos snapshot
+ * otherwise, the same math every client uses — never the raw pos field
+ * alone: a keeper-driven deck legitimately sits at snapshot 0 for its
+ * whole song while its anchored position advances, and only the
+ * anchored reading separates it from a corpse whose position froze at 0.
+ * Another deck counts HEALTHY only when its effective position is
+ * genuinely advancing across observations and still inside its track.
+ * Dead featured plus healthy deck: vmix re-points at the healthy deck
+ * (b cleared, t reset, rescueAt stamped) through the normal writeDoc
+ * path, so the booth mirrors, Watch, MW TV and the station stage all
+ * follow the living deck at once. No healthy deck: hands off — the
+ * rotation below creates one, and a later tick rescues. Mode is not a
+ * gate: in auto or any owner-set mode the same stale + dead + healthy
+ * test applies, because while the booth is stale there is no owner
+ * present whose screen choice a dead picture could be honoring.
+ * Observations live in an in-isolate map: a first sight (fresh isolate
+ * included) is only ever unknown, never a verdict, so an isolate restart
+ * can delay a rescue by one grace window but can never cause one. */
+const MW_VMIX_OBS = new Map();
+const VMIX_ZERO_GRACE = 45000; // a featured deck whose published position sits at 0 this long while the booth is stale is a corpse, not a slow start
+const VMIX_FREEZE_GAP = 10000; // the effective position must fail to move across at least this long an observation gap before frozen counts
+function mwVmixRescue(S, now, obs) {
+  if (!S || !S.live) return "";
+  if (S.pausedAt) { obs.clear(); return ""; } // a deliberate pause is his choice: the TV slate is correct then
+  if (!S.vmix || typeof S.vmix !== "object") return "";
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return ""; // booth present: his screen choices are law
+  const vm = S.vmix;
+  const eff = (k) => { const dk = S[k]; if (!dk) return 0; return dk.playing ? (+dk.start > 0 ? Math.max(0, (now - +dk.start) / 1000) : (+dk.pos || 0)) : (+dk.pos || 0); };
+  // observe every deck first: dead and healthy are both judged across
+  // ticks, and a first sight is only ever unknown, never a verdict
+  const seen = {};
+  for (const k of ["A", "B", "C", "D"]) {
+    const dk = S[k] || {};
+    const prev = obs.get(k);
+    const cur = { eff: eff(k), at: now, playing: !!dk.playing, zeroSince: 0 };
+    if (dk.playing && cur.eff <= 0.05 && +dk.dur > 0) cur.zeroSince = (prev && prev.playing && prev.eff <= 0.05 && prev.zeroSince) ? prev.zeroSince : now;
+    seen[k] = { cur, prev };
+    obs.set(k, cur);
+  }
+  const healthy = (k) => {
+    const dk = S[k]; if (!dk || !dk.playing) return false;
+    const s = seen[k];
+    if (!s.prev || !s.prev.playing) return false;
+    if (s.cur.eff - s.prev.eff < 1) return false; // genuinely advancing, not jitter
+    if (+dk.dur > 0 && s.cur.eff > +dk.dur + 5) return false; // past its end is a corpse, not a healthy deck
+    return true;
+  };
+  const dead = (k) => {
+    const dk = S[k]; if (!dk) return true;
+    if (!dk.playing) return true; // a stopped deck on the master screen while the station plays elsewhere
+    const s = seen[k];
+    const dur = +dk.dur || 0;
+    if (dur > 0 && s.cur.eff > dur + 30) return true; // timeline ran past the end and never parked
+    if (dur > 0 && s.cur.eff <= 0.05 && s.cur.zeroSince && now - s.cur.zeroSince >= VMIX_ZERO_GRACE) return true; // published position sat at zero past the grace window
+    // frozen across observations — mid-track, or at zero with no known
+    // duration (the grace rule above needs a duration, so a zero-frozen
+    // deck without one is judged here instead; zero with a duration is
+    // governed by the grace alone, so a slow start is never rushed)
+    if (s.prev && s.prev.playing && now - s.prev.at >= VMIX_FREEZE_GAP && s.cur.eff - s.prev.eff < 0.5 && (s.cur.eff > 0.05 || !(dur > 0))) return true;
+    return false;
+  };
+  const a = String(vm.a || ""), b = String(vm.b || "");
+  const t = +vm.t || 0;
+  if (b && t > 0 && t < 1) return ""; // mid-transition: never yank the screen mid-fade
+  const featured = [];
+  if (a) featured.push(a);
+  if (b && t >= 1 && b !== a) featured.push(b);
+  if (featured.some((k) => !dead(k))) return ""; // a living deck is on the screen: hands off
+  const target = ["A", "B", "C", "D"].find((k) => !featured.includes(k) && healthy(k));
+  if (!target) return "";
+  vm.a = target; vm.b = ""; vm.t = 0; vm.at = now; vm.rescueAt = now;
+  return target;
+}
+/* MWVMIXRESCUE-END */
+
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const now = Date.now();
@@ -196,6 +286,15 @@ export async function onRequestGet({ request, env }) {
   // Auto-DJ on, no deliberate pause stamped.
   const handBreak = !!(S.live && S.autodj && !S.pausedAt && ["A", "B"].some((k) => { const dk = S[k]; const pk = S[k === "A" ? "B" : "A"]; return dk && dk.playing && +dk.dur > 0 && +dk.start > 0 && now >= +dk.start + (+dk.dur) * 1000 - XF * 1000 && !(pk && pk.playing); }));
   if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+  // VMIX RESCUE (mwVmixRescue, 2026-10-29): past this line the booth is
+  // stale or a breaker fell through; the helper re-tests staleness itself
+  // (a breaker fall-through with a fresh booth must never move the
+  // screen) and re-points a dead featured deck at a genuinely advancing
+  // one. The write rides writeDoc like the ghost-share switch above,
+  // stamped by the keeper; the rotation below then runs as normal, and
+  // on the tick where no deck is advancing yet the helper simply waits
+  // for a later one.
+  if (mwVmixRescue(S, now, MW_VMIX_OBS)) { S.updatedAt = now; S.by = "keeper"; await writeDoc(env, "radio/dj", "radio", S); }
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
