@@ -21,14 +21,24 @@
     try { console.warn("[MW] outage mode:", reason); } catch (_) {}
   }
   window.MW_guestMode = guest;
-  async function probe() {
-    if (c.BACKEND !== "cf") return;
+  async function healthy() {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 7000);
     try {
       const r = await fetch("/api/cf/health", { signal: ctl.signal, cache: "no-store" });
-      if (!r.ok) guest("auth " + r.status);
-    } catch (e) { guest("auth unreachable"); }
-    clearTimeout(t);
+      const j = await r.json().catch(() => null);
+      return !!(r.ok && j && j.ok === true);
+    } catch (e) { return false; }
+    finally { clearTimeout(t); }
+  }
+  async function probe() {
+    if (c.BACKEND !== "cf") return;
+    if (await healthy()) return;
+    /* One failed probe is not an outage (verified 2026-10-29: the health route
+       answers 200 {"ok":true}; a cold function, a slow network, an aborted
+       fetch or a bot-blocked UA all fail once). Confirm with a second probe
+       15s later before declaring sign-in down — a false "down" also lifts the
+       5-minute sign-in wall for everyone, via MW_OUTAGE. */
+    setTimeout(async () => { if (!(await healthy())) guest("auth check failed twice"); }, 15000);
   }
   probe();
   // a sign-in attempt that can't reach the service also opens the site in guest mode

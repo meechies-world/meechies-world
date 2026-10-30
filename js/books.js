@@ -41,6 +41,13 @@
   const css = document.createElement("style");
   css.textContent = `
 #bk-root{display:grid;gap:18px}
+.bk-featured{border:1px solid var(--gold-lo);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#1d1608,#0b0a08);box-shadow:0 12px 34px rgba(0,0,0,.55)}
+.bk-featured img{display:block;width:100%;height:auto}
+.bk-featured-in{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 16px}
+.bk-featured-in h3{margin:0;font:700 22px var(--display,Georgia,serif);color:var(--gold-hi)}
+.bk-featured-in p{margin:2px 0 0;color:var(--muted)}
+.bk-featured-in .btn{margin-left:auto}
+@media (max-width:640px){.bk-featured-in .btn{margin-left:0}}
 .bk-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:18px}
 .bk-card{display:grid;gap:8px;text-align:left;background:none;border:0;color:var(--text);cursor:pointer;padding:0}
 .bk-cover{aspect-ratio:2/3;border-radius:6px 12px 12px 6px;background:linear-gradient(135deg,#2a2112,#0b0a08) center/cover;border:1px solid var(--gold-lo);box-shadow:6px 8px 22px rgba(0,0,0,.6),inset 6px 0 10px rgba(0,0,0,.45);display:grid;place-items:center;padding:14px;text-align:center;font:700 18px var(--display,Georgia,serif);color:var(--gold-hi)}
@@ -93,9 +100,10 @@
     }
   } catch (_) {}
 
+  const featuredBook = `<div class="bk-featured"><img src="/img/book-cover.jpg" alt="Meechies World — The Book cover" loading="lazy" width="1536" height="1024"><div class="bk-featured-in"><div><h3>Meechies World — The Book</h3><p>Real Life · Real Hustle · Real Legacy</p></div><a class="btn" href="#shop" data-go="shop">Get your copy</a></div></div>`;
   function shelf() {
     const own = OWNER();
-    root.innerHTML = `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages${okBuy(b.buy) && b.price ? " · " + E(b.price) : ""}</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
+    root.innerHTML = featuredBook + `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages${okBuy(b.buy) && b.price ? " · " + E(b.price) : ""}</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
       books.filter((b) => /^[a-z0-9-]+\.html$/.test(b.media || "")).map((b) => `<p class="bk-listen"><a class="btn" href="${E(b.media)}">🎧 Listen to &amp; watch “${E(String(b.title).split(":")[0])}”</a></p>`).join("") +
       (own ? `<div class="bk-admin"><b>Owner: publish a book</b>
         <input type="text" id="bk-t" maxlength="120" placeholder="Book title">

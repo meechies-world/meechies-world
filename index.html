@@ -45,6 +45,23 @@
   });
 } catch (e) {} })();
 </script>
+<script>
+/* Boot self-heal (owner directive, 2026-10-29): if the app core never boots — a stale
+   tab or a broken script in the chain — reload ONCE on a fresh URL (?mw_heal=1) instead
+   of leaving a dead page. A healthy boot sets window.__MW_BOOTED and clears the counter;
+   a previous fully-loaded page (mw-boot-ok, set by js/report.js) also refreshes the budget. */
+(function(){ try{
+  if(/[?&]mw_heal=1([&#]|$)/.test(location.search)) return;
+  var tries=0; try{ tries=parseInt(sessionStorage.getItem("mw-heal-tries")||"0",10)||0;
+    if(sessionStorage.getItem("mw-boot-ok")==="1"){ sessionStorage.removeItem("mw-boot-ok"); tries=0; } }catch(_){}
+  if(tries>=1) return;
+  setTimeout(function(){ if(window.__MW_BOOTED) return;
+    try{ sessionStorage.setItem("mw-heal-tries","1"); }catch(_){}
+    var u=new URL(location.href); u.searchParams.set("mw_heal","1"); location.replace(u.href);
+  },12000);
+}catch(_){} })();
+</script>
+<script src="js/report.js?v=1" defer></script>
 <style>
 html.appmode #fb-tabs,html.appmode #fb-left,html.appmode #fb-right,html.appmode .announce,html.appmode .apptab,html.appmode #mx-fab,html.appmode #mw-fab,html.appmode #ai-fab,html.appmode #vz-pill,html.appmode footer{display:none!important}
 html.appmode .player-bar{bottom:56px!important}
@@ -90,6 +107,7 @@ body[data-view=services]{--sec-accent:#d08a4c}
 #v-shop{--gold:#34d399;--gold-hi:#9ff0cf;--gold-lo:#16775a;--panel:#0f1714;--line:#1f3b31;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(52,211,153,0.16),transparent 70%),repeating-linear-gradient(45deg,rgba(52,211,153,0.045) 0 1px,transparent 1px 22px),repeating-linear-gradient(-45deg,rgba(52,211,153,0.045) 0 1px,transparent 1px 22px)}
 body[data-view=shop]{--sec-accent:#34d399}
 #v-community{--gold:#fbbf24;--gold-hi:#fde68a;--gold-lo:#92650a;--panel:#17140b;--line:#3d3418;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(251,191,36,0.16),transparent 70%),radial-gradient(rgba(251,191,36,0.07) 1.2px,transparent 1.6px) 0 0/26px 26px}
+#v-community .book-poster{display:block;width:100%;max-width:880px;height:auto;margin:0 auto 18px;border:1px solid var(--gold-lo);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 body[data-view=community]{--sec-accent:#fbbf24}
 #v-radio{--gold:#b77cff;--gold-hi:#dcc2ff;--gold-lo:#5f3a96;--panel:#15111c;--line:#352a4a;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(183,124,255,0.16),transparent 70%),repeating-radial-gradient(circle at 50% -10%,rgba(183,124,255,0.07) 0 1px,transparent 1px 34px)}
 body[data-view=radio]{--sec-accent:#b77cff}
@@ -133,6 +151,7 @@ body[data-view=predict]{--sec-accent:#a78bfa}
 body[data-view=jobs]{--sec-accent:#60a5fa}
 #v-legal{--gold:#93b4ff;--gold-hi:#d6e2ff;--gold-lo:#3f5a9c;--panel:#0f131c;--line:#26324a;--sec-bg:radial-gradient(ellipse 80% 420px at 50% 0,rgba(147,180,255,.16),transparent 70%),repeating-linear-gradient(0deg,rgba(147,180,255,.045) 0 1px,transparent 1px 30px)}
 body[data-view=legal]{--sec-accent:#93b4ff}
+body[data-view=mwtv]{--sec-accent:#ff3b4f}
 </style>
 <style>
 /* Members-only gate */
@@ -331,7 +350,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script>
 /* Show the Enter screen once per visit, before the page paints behind it */
 (function(){ var seen=false; try{ seen=sessionStorage.getItem("mw_entered")==="1"; }catch(_){}
-  if(!seen){ var e=document.getElementById("enter"); if(e){ e.hidden=false; document.documentElement.style.overflow="hidden"; } } })();
+  if(!seen && (location.hash||"")!=="#mwtv"){ var e=document.getElementById("enter"); if(e){ e.hidden=false; document.documentElement.style.overflow="hidden"; } } })();
 </script>
 
 <div id="gate" role="dialog" aria-modal="true" aria-labelledby="gt-title" hidden>
@@ -361,7 +380,12 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     return /[?&#](code=|access_token=|type=recovery)/.test(location.href); }
   if(signedIn()) return;
   setTimeout(function(){ if(signedIn() || window.MW_OUTAGE) return; /* signed in meanwhile, or sign-in is down: keep browsing */
-    document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true;
+    var gate=function(){ if(signedIn() || window.MW_OUTAGE) return; document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true; };
+    /* MW TV is a viewing channel: no sign-in wall while someone is watching it.
+       If the 5 minutes run out on the channel, the wall waits and lands the
+       moment they step back into the site proper. */
+    if(document.body && document.body.dataset && document.body.dataset.view==="mwtv"){ var iv=setInterval(function(){ if(!(document.body && document.body.dataset && document.body.dataset.view==="mwtv")){ clearInterval(iv); gate(); } },30000); return; }
+    gate();
   }, 5*60*1000);
 })();
 </script>
@@ -381,6 +405,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <a href="#shop" data-go="shop">Shop</a>
       <a href="#radio" data-go="radio">Radio</a>
       <a href="#tv" data-go="tv">📺 TV</a>
+      <a href="#mwtv" data-go="mwtv">📺 MW TV</a>
       <a href="#dj" data-go="dj">🎛️ DJ</a>
       <a href="#liveradio" data-go="liveradio">Live Radio</a>
       <a href="#livetv" data-go="livetv">Live TV</a>
@@ -417,6 +442,37 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <main>
 <!-- HOME -->
 <section class="view" id="v-home">
+  <style id="home2-styles">
+#v-home .lux-hero{margin-bottom:14px;padding-top:clamp(14px,2.4vw,28px)}
+#v-home .home-live{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:11px 14px;border:1px solid rgba(216,180,90,.55);border-radius:14px;background:linear-gradient(180deg,#1a1509,#0c0a06);color:#f4d98a;font-weight:700;font-size:15px;line-height:1.4}
+#v-home .home-live[hidden]{display:none}
+#v-home .home-live .btn{flex:0 0 auto}
+#v-home .home-jump-head{margin-top:24px}
+#v-home .home-jump-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 20px}
+@media(min-width:820px){#v-home .home-jump-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#v-home .home-card{display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;min-height:118px;padding:16px 15px;border:1px solid rgba(216,180,90,.38);border-radius:18px;background:linear-gradient(160deg,rgba(216,180,90,.09),rgba(255,255,255,.015));color:inherit;text-decoration:none;font:inherit;cursor:pointer;transition:border-color .2s,transform .2s}
+#v-home .home-card:hover,#v-home .home-card:focus-visible{border-color:rgba(244,217,138,.85);transform:translateY(-2px)}
+#v-home .home-card .hc-ico{font-size:30px;line-height:1}
+#v-home .home-card b{font-size:17px;line-height:1.25}
+#v-home .home-card .hc-line{font-size:13px;line-height:1.45;color:#b9ac8d}
+#v-home .home-card .hc-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+#v-home .home-card .hc-links a{border:1px solid rgba(216,180,90,.5);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;color:#f4d98a;text-decoration:none}
+#v-home .home-now{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;margin:0 0 10px;scrollbar-width:thin}
+#v-home .home-now[hidden]{display:none}
+#v-home .home-now-block{flex:0 0 auto;min-width:230px;max-width:86vw;border:1px solid rgba(216,180,90,.3);border-radius:16px;background:#0d0b08;padding:12px 14px}
+#v-home .home-now-block[hidden]{display:none}
+#v-home .home-now-block h4{margin:0 0 8px;font-size:12px;letter-spacing:.14em;color:#f4d98a}
+#v-home .home-now-block p{margin:0;font-size:14px;line-height:1.5}
+#v-home .home-now-prods{display:flex;gap:10px}
+#v-home .home-prod{display:flex;flex-direction:column;gap:3px;width:96px;text-decoration:none;color:inherit}
+#v-home .home-prod img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid rgba(216,180,90,.25);background:#000}
+#v-home .home-prod b{font-size:11.5px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#v-home .home-prod span{font-size:12px;color:#f4d98a;font-weight:700}
+#v-home .mw-path{border-color:rgba(216,180,90,.45);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#v-home .mw-path:hover{border-color:rgba(244,217,138,.8)}
+#v-home .mw-path-art span{color:#f4d98a;text-shadow:0 0 22px rgba(255,190,70,.45)}
+@media(prefers-reduced-motion:reduce){#v-home .home-card{transition:none}}
+  </style>
   <div class="wrap">
     <div class="lux-hero">
       <div class="crestimg" role="img" aria-label="Meechie with a gold crown, globe and city skyline: Meechies World Inc, More than clothing, it's a movement"></div>
@@ -428,6 +484,28 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <div class="pillars"><span>Business</span><span>Mindset</span><span>Wealth</span><span>Family</span><span>Community</span></div>
         <div class="ctas"><a class="btn" href="#community" data-go="community">Join Meechie's Book free</a><a class="btn ghost" href="#shop" data-go="shop">Shop the movement</a><a class="btn ghost" href="#services" data-go="services">Our services</a></div>
       </div>
+    </div>
+    <div class="home-live" id="home-live" hidden></div>
+    <div class="section-head home-jump-head">
+      <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
+      <p class="muted">Free to browse, free to join. Tap a card and step inside.</p>
+    </div>
+    <div class="home-jump-grid">
+      <a class="home-card" href="#radio" data-go="radio"><span class="hc-ico" aria-hidden="true">🎧</span><b>Live Radio &amp; DJ Battles</b><span class="hc-line">The 24/7 station, guest DJs, requests and head-to-head battles.</span></a>
+      <a class="home-card" href="#live" data-go="live"><span class="hc-ico" aria-hidden="true">📡</span><b>Go Live — Stream &amp; Watch</b><span class="hc-line">Go live from your own camera, or pull up a chair and watch.</span></a>
+      <a class="home-card" href="#games" data-go="games"><span class="hc-ico" aria-hidden="true">🎰</span><b>Coin Jackpot</b><span class="hc-line">Play the games, stack your coins, cash out real winnings.</span></a>
+      <a class="home-card" href="#shop" data-go="shop"><span class="hc-ico" aria-hidden="true">🛍️</span><b>Shop the Drop</b><span class="hc-line">Apparel and gear from the movement, new pieces first.</span></a>
+      <a class="home-card" href="#community" data-go="community"><span class="hc-ico" aria-hidden="true">📖</span><b>Meechie's Book</b><span class="hc-line">Post, talk, gift and build with the whole community.</span></a>
+      <a class="home-card" href="#tv" data-go="tv"><span class="hc-ico" aria-hidden="true">🎬</span><b>Cinema &amp; TV</b><span class="hc-line">16,000+ free movies: classics, horror, sci-fi and cartoons.</span></a>
+      <a class="home-card" href="#mwtv" data-go="mwtv"><span class="hc-ico" aria-hidden="true">📺</span><b>MW TV</b><span class="hc-line">Meechie's own TV station: his live screen, his camera and the music-video mix — fullscreen, nothing else.</span></a>
+      <a class="home-card" href="#services" data-go="services"><span class="hc-ico" aria-hidden="true">🏠</span><b>We Remodel Houses</b><span class="hc-line">Kitchens, floors, paint and full home makeovers.</span></a>
+      <button type="button" class="home-card" data-ai-open><span class="hc-ico" aria-hidden="true">🤖</span><b>Ask Meechie AI</b><span class="hc-line">Questions about anything here, answered day or night.</span></button>
+      <div class="home-card"><span class="hc-ico" aria-hidden="true">📱</span><b>Get the Apps</b><span class="hc-line">Take Meechie's World with you.</span><span class="hc-links"><a href="/radio-app/">🎧 MW Radio app</a><a href="/ai-app/">🤖 Meechie AI app</a></span></div>
+    </div>
+    <div class="home-now" id="home-now" hidden>
+      <div class="home-now-block" id="home-now-air" hidden></div>
+      <div class="home-now-block" id="home-now-online" hidden></div>
+      <div class="home-now-block home-now-shop" id="home-now-shop" hidden></div>
     </div>
     <div class="feat-vid" id="feat-vid">
       <!-- Streams through the site's own media relay (/m/), which sends the video in pieces (iPhones won't play it otherwise). The plain file copy is the backup. -->
@@ -490,11 +568,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div class="tt-head"><div><p class="eyebrow" style="margin:0">Watch Meechie</p><h3 style="margin:2px 0 0">Latest on TikTok · @meechiesworldinc</h3></div><a class="btn" href="https://www.tiktok.com/@meechiesworldinc" target="_blank" rel="noopener">Follow on TikTok</a></div>
       <div class="htt-wrap"><div class="htt-grid" id="home-tt-grid"><small class="muted">Loading Meechie's TikToks...</small></div></div>
     </div>
-    <div class="section-head" style="margin-top:64px">
-      <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
-      <p class="muted">Free to join. Tap any tile to step inside.</p>
-    </div>
-    <div class="bento">
+    <div class="bento" style="margin-top:56px">
       <a class="tile t-radio" href="#radio" data-go="radio">
         <div class="t-art"><div class="vinyl"></div><div class="arm"></div></div>
         <div class="t-copy"><span class="pill live">● Live now</span><h3>Meechie's World Radio</h3><p>A 24/7 station where everybody hears the same song at the same moment. Requests, shoutouts, and a full music library.</p><span class="go">Tune in →</span></div>
@@ -595,6 +669,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div><p class="eyebrow">Meechie's World</p><h2>Meechie's Book</h2></div>
       <p class="muted">Post photos, share what you're working on, and talk with each other. Free for every member.</p>
     </div>
+    <img class="book-poster" src="/img/book-cover.jpg" alt="Meechies World — The Book" loading="lazy" width="1536" height="1024">
     <div class="live-strip" id="live-strip" hidden></div>
     <div class="grid-2">
       <div>
@@ -891,6 +966,95 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <div id="mv-count" class="muted" style="font-size:13px;margin-bottom:8px"></div>
     <div id="mv-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px"></div>
     <div style="text-align:center;margin-top:16px"><button class="btn ghost" type="button" id="mv-more" hidden>Load more movies</button></div>
+  </div>
+</section>
+
+<!-- MW TV: Meechie's own TV station — the master screen, fullscreen, and nothing else.
+     The feed is the same one the station stage shows: his live stream (screen share or
+     camera) over the music-video mix over a standby slate, rendered by the DJ screens
+     machinery in js/dj.js (scrTV). No entry splash, no sign-in wall, no pop-ups here:
+     people land and watch. -->
+<section class="view" data-theme="live" id="v-mwtv" hidden>
+  <style id="mwtv-styles">
+#v-mwtv{padding:0}
+body[data-view="mwtv"]{overflow:hidden}
+body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv"] .announce,body[data-view="mwtv"] #appbar,body[data-view="mwtv"] .apptab,body[data-view="mwtv"] #player-bar,body[data-view="mwtv"] #ai-fab,body[data-view="mwtv"] #ai-widget,body[data-view="mwtv"] #mw-show,body[data-view="mwtv"] #mw-show-pill,body[data-view="mwtv"] #mw-choices,body[data-view="mwtv"] #mw-appoffer,body[data-view="mwtv"] #dj-livealert{display:none!important}
+#tw-shell{position:fixed;inset:0;z-index:9000;background:#000}
+#tw-stagebox{position:absolute;inset:0;display:grid;place-items:center}
+#tw-stage{width:min(100vw,177.78vh);border:0;border-radius:0}
+.tw-sb{text-align:center;padding:20px}
+.tw-sb-logo{font:800 clamp(34px,7vw,64px) Georgia,serif;letter-spacing:.05em;color:#f0cf78}
+.tw-sb p{margin:12px 0 0;color:#b9ac8d;font-size:clamp(14px,2.4vw,19px);font-weight:600;letter-spacing:.03em}
+#tw-vstandby{padding:0}
+.tw-sb-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#tw-vstandby .tw-sb{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:38px 20px 16px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.86))}
+#tw-bar{position:absolute;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,0));color:#f3ead2}
+.tw-mark{font:800 17px Georgia,serif;letter-spacing:.05em;color:#f0cf78;white-space:nowrap}
+.tw-live{background:#e5484d;color:#fff;border-radius:999px;padding:3px 10px;font:800 11.5px var(--body,system-ui);letter-spacing:.08em;white-space:nowrap}
+.tw-live.mix{background:#241d10;color:#f0cf78;border:1px solid #8a6a2a}
+.tw-what{color:#e9e2cf;font:600 13px var(--body,system-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tw-sp{flex:1}
+#tw-bar .btn{white-space:nowrap;text-decoration:none}
+@media(max-width:640px){.tw-what{display:none}.tw-mark{font-size:15px}}
+  </style>
+  <div id="tw-shell">
+    <div id="tw-stagebox">
+      <div class="vstage" id="tw-stage">
+        <div class="vslot" id="tw-vs1"></div>
+        <div class="vslot" id="tw-vs2"></div>
+        <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster.jpg" alt="" loading="lazy" decoding="async"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
+        <div class="vchip" id="tw-vchip" hidden></div>
+      </div>
+    </div>
+    <div id="tw-bar">
+      <span class="tw-mark">📺 MW TV</span>
+      <span id="tw-live" class="tw-live" hidden>🔴 LIVE</span>
+      <span id="tw-what" class="tw-what"></span>
+      <span class="tw-sp"></span>
+      <button type="button" class="btn ghost sm" id="tw-sound">🔇 Radio off — tap for sound</button>
+      <button type="button" class="btn ghost sm" id="tw-watch">👀 Watch the setup</button>
+      <button type="button" class="btn ghost sm" id="tw-fs" aria-label="Full screen">⛶</button>
+      <a class="btn ghost sm" href="#home" data-go="home">← Meechie's World</a>
+    </div>
+  </div>
+</section>
+
+<section class="view" data-theme="radio" id="v-watch" hidden>
+  <style id="watch-styles">
+/* watch-setup2: the spectator booth wears the booth own classes (deck,
+   platter, wave, xfpad, fxgrid, dj-panel) — these rules only supply the
+   geometry the booth gets from its #dj-owner scopes, under #wb-root */
+#wb-root{display:grid;gap:14px}
+#wb-root .wb-top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#wb-root .wb-now{font-weight:600}
+#wb-root .dj-screen{display:grid;gap:6px}
+#wb-root .dj-screen .vstage{border:1px solid #3a3a41;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 0 1px rgba(240,207,120,.12)}
+#wb-root .dj-decks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;align-items:stretch}
+#wb-root .deck .platter{width:min(196px,100%);margin-inline:auto}
+#wb-root .deck .wave{width:100%;height:58px}
+#wb-root .wb-yt{width:100%;border:1px dashed #3a3a41;border-radius:10px;color:var(--muted);font-size:11.5px;letter-spacing:.06em;padding:7px 4px}
+#wb-root .xfdot{position:absolute;width:34px;height:34px;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%,#f5f5f7,#a8a8b0 55%,#55555c);border:2px solid #000;box-shadow:0 4px 10px rgba(0,0,0,.65),0 0 0 3px rgba(240,207,120,.25);z-index:3;pointer-events:none}
+#wb-root .xfpad.big{width:148px;height:148px}
+#wb-root .xfcurve{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:7px}
+#wb-root .xfcurve span{font:800 10px var(--body);letter-spacing:.12em;color:var(--muted)}
+#wb-root .xfcurve button{background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;border-radius:8px;padding:5px 10px;font:700 11px var(--body);cursor:pointer;box-shadow:0 2px 0 #000}
+#wb-root .xfcurve button.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.35)}
+#wb-root .ws-ctl{cursor:pointer}
+#wb-root input[type="range"]:disabled{opacity:.85}
+@media(max-width:900px){#wb-root .dj-decks{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){#wb-root .deck .platter{width:min(150px,100%)}}
+  </style>
+  <div class="wrap">
+    <div class="section-head">
+      <div><p class="eyebrow">Meechie's World Radio</p><h2>👀 Watch the Setup</h2></div>
+      <p class="muted">Meechie's own DJ booth, live — the same tables he sees, working the way he works them: the master screen, all four decks, the X fader, the FX and the queue. Watching and listening are free for everyone. The controls answer to Meechie only.</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <button type="button" class="btn sm" id="wb-sound">🔇 Sound off — tap for sound</button>
+      <span class="muted" style="font-size:13px">The station sound rides along with the picture. Tap any deck, the fader or the FX and you will see whose tables these are.</span>
+    </div>
+    <div id="ws-body"><p class="muted">Loading the setup...</p></div>
+    <p style="margin-top:14px"><a class="btn ghost sm" href="#radio" data-go="radio">🎧 Back to the radio</a> <a class="btn ghost sm" href="#mwtv" data-go="mwtv">📺 MW TV</a></p>
   </div>
 </section>
 
@@ -1434,6 +1598,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <p class="latin" style="margin:6px 0 0">Lux e tenebris</p>
     <div class="f-links"><a href="#services" data-go="services">Services</a><a href="#community" data-go="community">Community</a><a href="#radio" data-go="radio">Radio</a><a href="#world" data-go="world">Virtual World</a><a href="#creators" data-go="creators">Creators</a><a href="#contact" data-go="contact">Contact</a></div>
     <p style="margin:14px 0 0"><a href="/privacy" style="color:var(--gold-hi)">Privacy Policy</a> · <a href="/privacy#delete" style="color:var(--gold-hi)">Delete my data</a></p>
+    <p style="margin:10px 0 0"><button class="btn ghost sm" type="button" id="mw-report-btn">⚠ Report a problem</button></p>
     <p style="margin:8px 0 0">© 2026 Meechie's World Inc. All rights reserved.</p>
   </div>
 </footer>
@@ -1525,14 +1690,24 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <button class="btn ghost sm" type="button" data-close>Close</button>
   </form>
 </dialog>
+<dialog id="report-dialog">
+  <form id="report-form" method="dialog">
+    <h3 style="font-size:22px">Report a problem</h3>
+    <p class="muted" style="margin:0">Tell us what went wrong — your report goes straight to the people who fix the site.</p>
+    <div class="field"><label for="report-cat">What kind of problem?</label><select id="report-cat"><option value="broken">Something's broken</option><option value="audio">No sound</option><option value="video">Video problem</option><option value="other">Something else</option></select></div>
+    <div class="field"><label for="report-text">What went wrong?</label><textarea id="report-text" maxlength="500" placeholder="What went wrong?"></textarea></div>
+    <p class="muted" id="report-msg" style="margin:0" aria-live="polite"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end"><button class="btn ghost" type="button" data-close>Cancel</button><button class="btn" type="submit">Send report</button></div>
+  </form>
+</dialog>
 <div class="toast" id="toast" hidden></div>
 
 <script src="js/config.js?v=1793271573"></script>
-<script src="js/outage.js?v=1793271573"></script>
+<script src="js/outage.js?v=1793274300"></script>
 <script src="js/float-layout.js?v=1793271573"></script>
 <script src="js/cf-client.js?v=1793271573"></script>
 <script src="js/platform.js?v=1793271573"></script>
-<script src="js/app-core.js?v=1793271573"></script>
+<script src="js/app-core.js?v=1793273600"></script>
 <script src="js/appnav.js?v=1793271573"></script>
 <script src="js/fb-feed.js?v=1793271573"></script>
 <script src="js/fb-feed-plus.js?v=1793271573"></script>
@@ -1542,7 +1717,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/site-coder-ui.js?v=1793271573"></script>
 <script src="js/messages.js?v=1793271573"></script>
 <script src="js/videos.js?v=1793271573"></script>
-<script src="js/dj.js?v=1793271573"></script>
+<script src="js/dj.js?v=1793275700"></script>
 <script src="js/live.js?v=1793271573"></script>
 <script src="js/friends.js?v=1793271573"></script>
 <script src="js/social.js?v=1793271573"></script>
@@ -1556,7 +1731,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/people.js?v=1793271573"></script>
 <script src="js/originals.js?v=1793271573"></script>
 <script src="js/welcome-show.js?v=1793271573"></script>
-<script src="js/profile-setup.js?v=1793271573"></script>
+<script src="js/profile-setup.js?v=1793272700"></script>
 <script src="js/profile-page.js?v=1793271573"></script>
 <script src="js/social-login.js?v=1793271573"></script>
 <script src="js/radio-keep.js?v=1793271573"></script>
@@ -1566,8 +1741,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <script src="js/verify.js?v=1793271573"></script>
 <script src="js/biolock.js?v=1793271573"></script>
 <script src="js/engage.js?v=1793271573"></script>
-<script src="js/visitors.js?v=1793271573"></script>
-<script src="js/ai-widget.js?v=1793271573"></script>
+<script src="js/visitors.js?v=1793272700"></script>
+<script src="js/ai-widget.js?v=1793274300"></script>
 <script src="js/house-ads.js?v=1793271700"></script>
 <script>
 /* Offline music shelf: songs saved to this device (from here, or automatically
@@ -1576,12 +1751,14 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   var CACHE = "mw-music", META = "mw-offline-meta";
   function meta() { try { return JSON.parse(localStorage.getItem(META) || "{}"); } catch (_) { return {}; } }
   function setMeta(m) { try { localStorage.setItem(META, JSON.stringify(m)); } catch (_) {} }
-  function byUrl(u) { try { return tracks.findIndex(function (t) { return trackUrl(t) === u; }); } catch (_) { return -1; } }
+  function abs(u) { try { return new URL(u, location.origin).href; } catch (_) { return u; } }
+  function metaFor(u, m) { if (m[u]) return m[u]; var ks = Object.keys(m); for (var i = 0; i < ks.length; i++) { var v = m[ks[i]] || {}; if (v.assetId && String(u).indexOf(v.assetId) >= 0) return v; if (abs(ks[i]) === u) return v; } return null; }
+  function byUrl(u) { try { var ix = tracks.findIndex(function (t) { return abs(trackUrl(t)) === u; }); if (ix >= 0) return ix; return tracks.findIndex(function (t) { return t.assetId && String(u).indexOf(t.assetId) >= 0; }); } catch (_) { return -1; } }
   function paintButtons() {
     var m = meta();
     document.querySelectorAll("[data-off]").forEach(function (b) {
       var t = tracks[+b.dataset.off]; if (!t) return;
-      var saved = !!m[trackUrl(t)];
+      var saved = !!metaFor(abs(trackUrl(t)), m);
       b.textContent = saved ? "✓ Saved" : "⬇ Save";
     });
   }
@@ -1590,18 +1767,18 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     var m = meta(), keys = [];
     if ("caches" in window) { try { var c = await caches.open(CACHE); keys = (await c.keys()).map(function (r) { return r.url; }); } catch (_) {} }
     var changed = false;
-    Object.keys(m).forEach(function (u) { if (keys.indexOf(u) < 0) { delete m[u]; changed = true; } });
+    Object.keys(m).forEach(function (u) { var v = m[u] || {}, hit = keys.indexOf(abs(u)) >= 0 || (v.assetId && keys.some(function (k) { return k.indexOf(v.assetId) >= 0; })); if (!hit) { delete m[u]; changed = true; } });
     if (changed) setMeta(m);
     if (!keys.length) { list.innerHTML = '<p class="muted" style="margin:0">Nothing saved yet. Save the rotation above, or tap ⬇ Save on any song in the library.</p>'; paintButtons(); return; }
     list.innerHTML = keys.map(function (u) {
-      var ix = byUrl(u), t = ix >= 0 ? tracks[ix] : null, it = m[u] || {};
+      var ix = byUrl(u), t = ix >= 0 ? tracks[ix] : null, it = metaFor(u, m) || {};
       var title = t ? t.title : (it.title || "Saved song"), artist = t ? t.artist : (it.artist || "");
       return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><span style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(title) + '</b><small class="muted">' + esc(artist || "") + '</small></span><button class="btn sm" type="button" data-offplay="' + esc(u) + '">▶ Play</button><button class="btn ghost sm" type="button" data-offdel="' + esc(u) + '">Remove</button></div>';
     }).join("");
     paintButtons();
   }
   async function saveTrack(t) {
-    var u = trackUrl(t);
+    var u = abs(trackUrl(t));
     var r = await fetch(u, { headers: { "x-mw-save": "1" } });
     if (!r || !r.ok) throw new Error("fetch failed");
     if ("caches" in window) { var c = await caches.open(CACHE); await c.put(u, r.clone()); }
@@ -1611,14 +1788,14 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     var b = e.target.closest("[data-off],[data-offplay],[data-offdel]"); if (!b) return;
     if (b.dataset.off != null) {
       var t = tracks[+b.dataset.off]; if (!t) return;
-      var u = trackUrl(t), m = meta();
-      if (m[u]) { toast("Already saved for offline."); return; }
+      var u = abs(trackUrl(t)), m = meta();
+      if (metaFor(u, m)) { toast("Already saved for offline."); return; }
       b.textContent = "Saving...";
       try { await saveTrack(t); toast("Saved — it plays offline now."); } catch (_) { toast("Could not save that one right now."); }
       refresh(); return;
     }
     if (b.dataset.offplay) {
-      var url = b.dataset.offplay, it0 = meta()[url] || {};
+      var url = b.dataset.offplay, it0 = metaFor(url, meta()) || {};
       if (it0.kind === "video") {
         var box = document.getElementById("off-video");
         if (box) { box.innerHTML = '<video controls playsinline preload="metadata" style="width:100%;border-radius:12px;background:#000" src="' + esc(url) + '"></video>'; box.scrollIntoView({ behavior: "smooth", block: "center" }); var vv = box.querySelector("video"); if (vv) vv.play().catch(function () {}); }
@@ -1626,7 +1803,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       }
       var ix = byUrl(url);
       if (ix >= 0) { playLib(ix); return; }
-      var it = meta()[url] || {};
+      var it = metaFor(url, meta()) || {};
       try { media.src = url; media.play().catch(function () {}); showBar({ title: it.title || "Saved song", artist: it.artist || "", cover: it.cover || "" }, "Offline · saved on this device"); document.getElementById("player-bar").hidden = false; } catch (_) {}
       return;
     }
@@ -1640,7 +1817,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   var sv = document.getElementById("off-save");
   if (sv) sv.addEventListener("click", async function () {
     var st = document.getElementById("off-status");
-    var todo = tracks.filter(function (t) { return !meta()[trackUrl(t)]; }).slice(0, 15);
+    var todo = tracks.filter(function (t) { return !metaFor(abs(trackUrl(t)), meta()); }).slice(0, 15);
     if (!todo.length) { if (st) st.textContent = "The rotation is already saved on this device."; return; }
     sv.disabled = true;
     var done = 0, failed = 0;
