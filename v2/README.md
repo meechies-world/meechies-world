@@ -205,8 +205,33 @@ v2/
         fixtures for feed ordering, the count rules at 24/25 and 2/3,
         cleanRow, the DM protocol + thread grouping, story grouping,
         the clip filter, socUrl
-- [ ] **Phase 4 — the booth** (the DJ station, Watch control side,
+- [x] **Phase 4 — the booth** (the DJ station, Watch control side,
       battles, Go Live Studio) on the typed state layer
+  - [x] Typed write layer (js/djstate.js): the live save discipline
+        (corpse guard, 250 ms debounce, SANDBOX sessionStorage-only,
+        mirror pad-hit-only writes), mwLeadLock claim/renew/take with
+        the row-version base, guest-DJ relay, brain capture batching
+  - [x] Audio half (js/djdecks.js): the master polish chain + sends
+        under the broadcast caps, file decks with the CORS swap, the
+        YouTube shim (honest seeking, muted-rescue loan), fader law
+        levels; this closes Phase 2 gap 1 (v2 listeners hear file
+        decks through the same chain rules)
+  - [x] The booth view (js/views/dj.js) at layout-as-data parity
+        (LAYOUT export: top zone, A B | X | C D, the shipped
+        below-decks panel order), transport + gentle load, queue
+        stocking/draws, autoNext with stocked rotation + preload fast
+        path + 4-attempt roll, fader settle/follow guard, the stall
+        watchdog, the dead-air rescue, voice drops, per-deck pads,
+        BRAIN panel + AI-DJ C2 (S.aiDj toggle + robot stock readout),
+        Door, REPORTS, guest-DJ grants, Battles, MIDI, SANDBOX
+  - [x] Share publishing (js/djshare.js): switch-first publish order,
+        the 2 s proof supervisor, Hide Share, source swap while
+        hidden, tables-pause for screen shares, sanctioned endings
+  - [x] Harness: booth payload byte report + isolation asserts (no
+        other view imports the booth layer) + fixtures for layout
+        order, lead-lock rules, FX caps, queue draw, stock records,
+        automation windows, drop cadence, the watchdog ladder, the
+        dead-air gate, booth mergeState defaults
 - [ ] **Phase 5 — commerce & the rest** (shop, coin/games, jobs, ads,
       services, legal, apps)
 - [ ] **Phase 6 — Gate T "test the 2"** + cutover (owner's explicit go)
@@ -391,3 +416,97 @@ consequence of the shell's shape, flagged for Gate T):
    live's `g…` shape; local prefs (mw_saved_posts, mw_hidden_posts,
    mw_story_seen, mw_fb_seen, mw_mx_prefs) share the live keys, so
    they carry over on the same device.
+
+## Phase 4 parity notes (vs live booth at main `ebc7da70`)
+
+Evidence basis: full code-level comparison against live dj.js @
+ebc7da70 (8,227 lines, read in full during this phase's research) +
+the harness fixtures pinning the pure logic to the live constants.
+**Gate T is the live side-by-side and has NOT been run for the
+booth** — nothing here claims it. The booth drives the SAME shared
+radio/dj doc through the same /api/cf write path the live booth's
+facade uses, with the same _lead claim payload, so a v2 booth and a
+live booth coexist on one station under the one-leader rule.
+
+**LOOK differences** (defects unless owner-approved):
+
+1. **None in the booth's own furniture.** The booth stylesheet is
+   the live booth's injected stylesheet extracted mechanically
+   (css/dj.css — including PR #413's mini cure and the Law 22
+   touch-action:pan-y owner rules), and the markup reproduces the
+   live structure/id set: banner → station card → top bar → setups →
+   master screen → edit panel → browser band (moved above the decks
+   at build, as live) → A B | X cluster | C D → below-decks grid in
+   the shipped panel order. The X cluster is rendered in the top
+   zone and moved into .dj-decks before deck C, exactly live's move.
+2. **Pair crossfaders have no visible slider** (same as the shipped
+   live xfbar, whose visible controls are the VOL knobs + X pad):
+   in v2 they are dragged horizontally on the pairwave canvases.
+   Gate T should confirm whether the live booth exposes another
+   pair-fader surface this build did not reproduce.
+3. **The station card inside the DJ view is compact** (poster +
+   slate, no engine screen of its own) so it cannot fight the
+   booth's master screen for the engine's one stage slot; the full
+   member stage lives on the Radio view, as Phase 2 shipped it. On
+   the live site the card and the booth share one view; Gate T
+   judges whether the split is acceptable.
+
+**BEHAVIOR differences** (each an intent-restoration or a named gap):
+
+1. **INTENT-RESTORATION — Law 22 by construction, fixture-pinned.**
+   The v2 booth installs no wheel handlers and no scroll listeners
+   anywhere in the booth layer (fit runs on resize only; the one
+   audio-wake pointerdown listener is passive). Every booth drag —
+   X pad, pairwave faders, the platter — runs through one pure
+   gesture classifier (`classifyDrag`, exported from the view):
+   vertical-dominant movement is a page scroll and is released to
+   the page (the surfaces are `touch-action:pan-y`, so the browser
+   itself takes the scroll over), a control engages only on a
+   deliberate horizontal-dominant drag of itself, and the platter
+   scratches only as that deliberate disc drag — never as a scroll
+   side-effect. One marked deviation from the pure CSS extraction:
+   a Law 22 patch block at the end of css/dj.css gives booth range
+   inputs `touch-action:pan-y` (the extracted sheet leaves sliders
+   at `touch-action:none`, so a scroll starting on a slider would
+   have grabbed it). The harness pins all of it: classifier cases
+   (scroll / wait / engage / stays-engaged), static asserts that no
+   scroll or wheel listener exists in the booth sources, the
+   passive wake listener, and the pan-y rules for platter, X pad,
+   waveform and sliders. (The live-side Law 22 fix is its own PR
+   on main.)
+2. **NAMED GAP — Go Live Studio crop pipeline.** The publisher
+   ships the full switch-first order, proof supervisor, Hide Share,
+   source swap, tables-pause and sanctioned endings, but publishes
+   the RAW screen track: the live canvas-crop frame (vsCropStart)
+   and the studio crop panel are not ported yet. The separate
+   golive.js OBS/RTMPS surface stays with Phase 5, as Phase 2
+   deferred the Live surface there.
+3. **NAMED GAP — Dailymotion/Vimeo deck tokens.** vparseTok still
+   parses dm:/vm: tokens and state carries them, but only YouTube
+   gets a deck shim in v2; a dm:/vm: load reports it would not load
+   instead of mounting a player. (Dailymotion is OFF in the live
+   booth's own state today.)
+4. **NAMED GAP — library source.** The booth's fallback library bag
+   is the Free Shelf + the keeper's S.pool until the shell's tracks
+   feed is wired as a module (Phase 5); live's TRACKS() reads a
+   shell global. Pool picks resolve through the Archive exactly as
+   live (iaSearch/iaFile ported verbatim).
+5. **NAMED GAP — smaller pieces.** SETUPS preset values other than
+   Loud & Clear (whose keep-mix rule is honored: presets never touch
+   crossfaders or deck volumes) are reasonable values, not extracted
+   constants; the horn STAMP lands on automated transitions when
+   S.hornOn === true but the local stab synth is not ported (horns
+   are OFF by the owner's 2026-10-29 law, so the silent default
+   matches his station today); voice-drop text plays through
+   /api/ai TTS with a speechSynthesis fallback; Camera Pro is the
+   compact looks/banner subset; the battle panel starts/ends and
+   ticks the server advance, while the per-turn performance push is
+   the battle surface's own later pass; session video records via
+   display capture to a download (live's post-as-Latest-Show upload
+   is not ported); the swap bar keeps his deck order and says so
+   instead of moving decks.
+6. **SANDBOX parity.** ?playdj=1 renders the full booth, persists
+   only to sessionStorage (mw-playdj), guest-relays when a slot is
+   live, and never writes radio/dj or the brain — the same walls as
+   live, enforced inside djstate.save/brainEmit rather than by
+   checks scattered through the view.
