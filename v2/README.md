@@ -510,3 +510,35 @@ live booth coexist on one station under the one-leader rule.
    live, and never writes radio/dj or the brain — the same walls as
    live, enforced inside djstate.save/brainEmit rather than by
    checks scattered through the view.
+
+## Pop-out ad bar notes (owner directive 2026-10-30 10:12)
+
+"When people pop up the screen i want a small add at the bottom of
+it." The phone dock pops out to MW TV, so the bar lives in the MW
+TV view — the popped-out state. (Built on the dock branch; the
+live site is building the same component in parallel.)
+
+**LOOK** — an owner-directed addition, not a parity defect: a slim
+black/gold strip riding the bottom of the popped-out screen, in the
+live house ads' own styling language (gold merch tag, product
+title, price, "Shop now →"). It is a deliberate, owner-ordered
+exception to the MW TV screen-only shape, and it exists ONLY in
+the popped-out state — the small docked screen carries no ad,
+ever (the harness asserts mini.js holds no ad code).
+
+**BEHAVIOR**
+
+- The inventory and rules are the live house ads (js/house-ads.js)
+  exactly: Printify via /api/store + Shopify via /api/shopify
+  (https product urls only; a digital product taps through to its
+  buy link), one shuffled deck, a fresh pick every 12 s (never
+  while the tab is hidden), and the shared `mw_ad_hide` stamp —
+  closing the bar hides house ads everywhere for 24 hours, the
+  same as on the live site.
+- Nothing renders when no ad is eligible: empty feeds, or the
+  24-hour hide still running, both leave the element hidden and
+  the stage at its full frame — no placeholder, no reserved space.
+- The bar owns its strip: while a bar is up, the stage box gives
+  up exactly the bar's height (52 px, the `tw-has-ad` rule), so
+  the bar never covers the video, the stage's chip / pause
+  button, or the top control bar.

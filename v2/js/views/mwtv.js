@@ -13,11 +13,98 @@
      the channel shell.
    The guest wall already defers on this view (core, Law 10), and the
    mini never doubles up here (its onTV gate).
+
+   THE POP-OUT AD BAR rides this view: the phone dock pops out to MW
+   TV, and the popped-out screen carries a slim house-ad bar at the
+   bottom of its frame (owner, 2026-10-30 — see the house-ad block
+   below for the inventory, the rules, and the never-cover contract).
    ============================================================================ */
 
 import { vmixTargets } from "../station.js";
 import { getEngine } from "../engine.js";
 import { mountMini } from "../mini.js";
+
+/* ---------------- the POP-OUT AD BAR (owner, 2026-10-30 10:12:
+   "when people pop up the screen i want a small add at the bottom
+   of it") ----------------------------------------------------------
+   The dock pops out to THIS view, and the popped-out screen carries
+   a slim ad bar riding the bottom of its frame. The inventory and
+   the rules are the live house ads (js/house-ads.js) exactly:
+   Printify from /api/store + Shopify from /api/shopify (https
+   product urls only; a digital product taps through to its buy
+   link), one shuffled deck, a fresh pick every 12 s (never while
+   the tab is hidden), and the shared mw_ad_hide stamp — closing
+   the bar hides house ads everywhere for 24 hours. The small
+   DOCKED state never carries the bar (mini.js has no ad code at
+   all), and when nothing is eligible — no products back, or ads
+   hidden for the day — the bar renders NOTHING: the element stays
+   hidden and no space is reserved. The bar never covers the
+   screen: it owns a strip at the bottom of the shell and the stage
+   box gives up exactly the bar height (the tw-has-ad class in
+   mwtv.css), so the top control bar and the stage's own chip /
+   pause button stay clear by construction. The pure inventory +
+   eligibility logic is exported bare for the harness. */
+export const TW_AD_ROTATE_MS = 12000;
+export const TW_AD_HIDE_MS = 24 * 3600 * 1000;
+export const TW_AD_HIDE_KEY = "mw_ad_hide";
+
+export function houseAdProducts(printify, shopify) {
+  const pf = (Array.isArray(printify) ? printify : []).map((p) => ({ title: p.title, img: p.img, price: p.price, url: p.url, src: "Printify" }));
+  const sh = (Array.isArray(shopify) ? shopify : []).filter((p) => /^https:\/\//.test(p.url || "")).map((p) => ({ title: p.title, img: p.img, price: p.price, url: (p.digital && p.buy) ? p.buy : p.url, src: "Shopify" }));
+  return pf.concat(sh);
+}
+export function houseAdsHiddenAt(now, raw) { return now < (+raw || 0); }
+export function twAdEligible(products, now, rawHide) {
+  return !!(products && products.length) && !houseAdsHiddenAt(now, rawHide);
+}
+export function nextAdIndex(cur, len) { return len > 0 ? (cur + 1) % len : 0; }
+
+let adTimer = 0, adSeq = 0;
+function teardownTwAd() { if (adTimer) { clearInterval(adTimer); adTimer = 0; } adSeq++; }
+
+function shuffleAds(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+function paintTwAd(bar, p) {
+  bar.innerHTML = "";
+  const a = document.createElement("a");
+  a.className = "tw-ad-link"; a.href = p.url; a.target = "_blank"; a.rel = "noopener";
+  if (p.img) { const img = document.createElement("img"); img.src = p.img; img.alt = ""; img.loading = "lazy"; a.appendChild(img); }
+  const mid = document.createElement("span"); mid.className = "tw-ad-mid";
+  const tag = document.createElement("span"); tag.className = "tw-ad-tag"; tag.textContent = "Meechie's World Merch · " + (p.src || "Ad");
+  const ttl = document.createElement("span"); ttl.className = "tw-ad-title"; ttl.textContent = p.title || "";
+  mid.append(tag, ttl); a.appendChild(mid);
+  if (p.price) { const pr = document.createElement("span"); pr.className = "tw-ad-price"; pr.textContent = p.price; a.appendChild(pr); }
+  const cta = document.createElement("span"); cta.className = "tw-ad-cta"; cta.textContent = "Shop now →"; a.appendChild(cta);
+  const x = document.createElement("button");
+  x.className = "tw-ad-x"; x.type = "button"; x.setAttribute("aria-label", "Hide ads for a day"); x.textContent = "×";
+  x.addEventListener("click", () => {
+    try { localStorage.setItem(TW_AD_HIDE_KEY, String(Date.now() + TW_AD_HIDE_MS)); } catch (_) {}
+    teardownTwAd();
+    const shell = bar.closest("#tw-shell"); if (shell) shell.classList.remove("tw-has-ad");
+    bar.hidden = true; bar.innerHTML = "";
+  });
+  bar.append(a, x);
+}
+
+async function mountTwAdBar(root) {
+  const bar = root.querySelector("#tw-adbar"); if (!bar) return;
+  let rawHide = null; try { rawHide = localStorage.getItem(TW_AD_HIDE_KEY); } catch (_) {}
+  if (houseAdsHiddenAt(Date.now(), rawHide)) return; /* hidden for the day: nothing renders */
+  const seq = ++adSeq;
+  let pf = [], sh = [];
+  try { const r = await fetch("/api/store"); const j = await r.json().catch(() => null); pf = (j && j.products) || []; } catch (_) {}
+  try { const r = await fetch("/api/shopify"); const j = await r.json().catch(() => null); sh = (j && j.products) || []; } catch (_) {}
+  if (seq !== adSeq || !bar.isConnected) return; /* the view went away while fetching */
+  let raw2 = null; try { raw2 = localStorage.getItem(TW_AD_HIDE_KEY); } catch (_) {}
+  const products = shuffleAds(houseAdProducts(pf, sh));
+  if (!twAdEligible(products, Date.now(), raw2)) return; /* no ad eligible: nothing renders */
+  const shell = root.querySelector("#tw-shell");
+  let ix = 0;
+  paintTwAd(bar, products[ix]);
+  bar.hidden = false;
+  if (shell) shell.classList.add("tw-has-ad");
+  if (products.length > 1) adTimer = setInterval(() => { if (document.hidden) return; ix = nextAdIndex(ix, products.length); paintTwAd(bar, products[ix]); }, TW_AD_ROTATE_MS);
+}
 
 const MARKUP = `
 <div id="tw-shell">
@@ -29,6 +116,7 @@ const MARKUP = `
       <div class="vchip" id="tw-vchip" hidden></div>
     </div>
   </div>
+  <div id="tw-adbar" hidden></div>
   <div id="tw-bar">
     <span class="tw-mark">📺 MW TV</span>
     <span id="tw-live" class="tw-live" hidden>🔴 LIVE</span>
@@ -60,6 +148,7 @@ export function render(root, ctx) {
   });
   scrRef = scr;
 
+  mountTwAdBar(root);
   root.querySelector("#tw-sound").addEventListener("click", () => { engine.toggleListening(); tvSig = ""; tvPaint(root, engine, feed); });
   root.querySelector("#tw-watch").addEventListener("click", () => { engine.setListening(true); location.hash = "#watch"; });
   root.querySelector("#tw-fs").addEventListener("click", () => {
@@ -80,6 +169,7 @@ export function render(root, ctx) {
 }
 
 export function destroy() {
+  teardownTwAd();
   unsubs.forEach((u) => { try { u(); } catch (_) {} });
   unsubs = [];
   if (engineRef) { engineRef.removeSurface("tv"); engineRef.destroyScreen(scrRef); }

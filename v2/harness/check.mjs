@@ -607,6 +607,47 @@ eq("drag: once engaged, a drag stays engaged", djv.classifyDrag(0, 30, true), "e
   ok("Law 22: booth sliders release vertical drags to the page", /#dj-owner input\[type="range"\]\{touch-action:pan-y\}/.test(djCss));
 }
 
+/* ---- 7. Pop-out ad bar fixtures --------------------------------
+   The dock pops out to MW TV; the popped-out screen carries a slim
+   house-ad bar at the bottom of its frame (owner, 2026-10-30). The
+   pure inventory + eligibility logic lives in views/mwtv.js (the
+   live house-ads rules: /api/store + /api/shopify, https only,
+   digital taps to the buy link, 12 s rotation, the shared 24 h
+   mw_ad_hide stamp). The docked mini must stay ad-free, and the
+   bar owns a strip below the stage instead of covering it. */
+console.log("\n--- Pop-out ad bar fixtures ---");
+const twv = await import("../js/views/mwtv.js");
+eq("ad inventory: printify maps through", twv.houseAdProducts([{ title: "Tee", img: "i", price: "$1", url: "https://x" }], []),
+  [{ title: "Tee", img: "i", price: "$1", url: "https://x", src: "Printify" }]);
+eq("ad inventory: shopify keeps https only", twv.houseAdProducts([], [
+  { title: "A", img: "", price: "", url: "http://no" },
+  { title: "B", img: "", price: "", url: "https://yes" },
+]).map((p) => p.title), ["B"]);
+eq("ad inventory: digital shopify taps to its buy link", (twv.houseAdProducts([], [{ title: "D", url: "https://p", digital: true, buy: "https://buy" }])[0] || {}).url, "https://buy");
+eq("ad inventory: empty feeds mean no ads", twv.houseAdProducts([], []), []);
+eq("ad inventory: junk feeds mean no ads", twv.houseAdProducts(null, undefined), []);
+ok("ads hidden inside the 24h stamp", twv.houseAdsHiddenAt(1000, "2000") === true);
+ok("ads back after the 24h stamp", twv.houseAdsHiddenAt(3000, "2000") === false);
+ok("no stamp means ads show", twv.houseAdsHiddenAt(3000, null) === false);
+ok("eligible: products and not hidden", twv.twAdEligible([{ title: "x" }], 1000, null) === true);
+ok("not eligible: no products", twv.twAdEligible([], 1000, null) === false);
+ok("not eligible: hidden for the day", twv.twAdEligible([{ title: "x" }], 1000, "9999") === false);
+eq("rotation advances", twv.nextAdIndex(0, 3), 1);
+eq("rotation wraps to the top", twv.nextAdIndex(2, 3), 0);
+eq("rotation of one stays put", twv.nextAdIndex(0, 1), 0);
+eq("rotation is the live 12 seconds", twv.TW_AD_ROTATE_MS, 12000);
+eq("the hide is the live 24 hours", twv.TW_AD_HIDE_MS, 24 * 3600 * 1000);
+{
+  const twSrc = readFileSync(join(V2, "js/views/mwtv.js"), "utf8");
+  const twCss = readFileSync(join(V2, "css/mwtv.css"), "utf8");
+  ok("ad bar: markup ships hidden inside the TV shell", /<div id="tw-adbar" hidden><\/div>/.test(twSrc));
+  ok("ad bar: same two feeds as the live house ads", /fetch\("\/api\/store"\)/.test(twSrc) && /fetch\("\/api\/shopify"\)/.test(twSrc));
+  ok("ad bar: the shared mw_ad_hide stamp rules it", /mw_ad_hide/.test(twSrc));
+  ok("ad bar: it owns a bottom strip, the stage gives up the height", /#tw-adbar\{[^}]*bottom:0/.test(twCss) && /tw-has-ad #tw-stagebox\{bottom:52px\}/.test(twCss));
+  ok("ad bar: hidden means display none", /#tw-adbar\[hidden\]\{display:none!important\}/.test(twCss));
+  ok("the docked mini stays ad-free (no ad code in mini.js)", !/tw-adbar|houseAd|mw_ad_hide/.test(miniSrc));
+}
+
 console.log(`fixtures: ${fixPass} passed, ${fixFail} failed`);
 if (fixFail) failed += fixFail;
 

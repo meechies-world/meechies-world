@@ -26,3 +26,23 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 .tw-sp{flex:1}
 #tw-bar .btn{white-space:nowrap;text-decoration:none}
 @media(max-width:640px){#tw-bar{flex-wrap:wrap;gap:6px;padding:10px}#tw-bar .tw-sp{display:none}.tw-what{display:none}.tw-mark{font-size:15px}}
+/* the POP-OUT AD BAR (owner, 2026-10-30: "when people pop up the
+   screen i want a small add at the bottom of it") — a slim house-ad
+   strip riding the bottom of the popped-out screen, in the live
+   house ads' black/gold language. It OWNS its strip: while a bar
+   is up, the stage box gives up exactly the bar height, so the bar
+   never covers the video, its chip / pause button, or the top
+   control bar. No eligible ad, no bar: the element stays hidden
+   and the stage keeps the full frame. */
+#tw-adbar{position:absolute;left:0;right:0;bottom:0;z-index:9;height:52px;box-sizing:border-box;display:flex;align-items:stretch;background:linear-gradient(90deg,rgba(212,175,55,.18),rgba(212,175,55,.05)),#0b0906;border-top:1px solid rgba(212,175,55,.55)}
+#tw-adbar[hidden]{display:none!important}
+#tw-shell.tw-has-ad #tw-stagebox{bottom:52px}
+.tw-ad-link{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:6px 14px;padding-right:34px;text-decoration:none;color:#f3ead2}
+.tw-ad-link img{width:38px;height:38px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:#141414}
+.tw-ad-mid{flex:1;min-width:0;display:flex;flex-direction:column}
+.tw-ad-tag{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#d4af37;font-weight:700;white-space:nowrap}
+.tw-ad-title{font-weight:700;font-size:14px;line-height:1.25;color:#f5f0e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tw-ad-price{color:#d4af37;font-weight:800;font-size:14px;white-space:nowrap}
+.tw-ad-cta{white-space:nowrap;font-weight:700;font-size:13px;color:#d4af37}
+.tw-ad-x{position:absolute;top:0;right:4px;background:none;border:0;color:#f5f0e6;opacity:.55;font-size:17px;cursor:pointer;line-height:1;padding:6px}
+@media(max-width:640px){.tw-ad-cta{display:none}.tw-ad-title{font-size:13px}}
