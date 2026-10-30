@@ -1,0 +1,22 @@
+/* v2 FRIENDS — styles for js/views/friends.js: the style block
+   js/friends.js injects on the live site, verbatim, plus the live .chip
+   tab rule from css/app.css and the Facebook-chrome section-head rule. */
+
+
+#fr-root{display:grid;gap:16px}
+.fr-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.fr-search{display:flex;gap:8px}.fr-search input{flex:1;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text);font:16px var(--body)}
+.fr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.fr-card{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#17130c,#0f0d09)}
+.fr-card .avatar{width:48px;height:48px;font-size:18px}
+.fr-card b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fr-card small{color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-card .acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.fr-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:#e5484d;color:#fff;font:800 11px var(--body);margin-left:6px}
+.fr-feed{display:grid;gap:12px}
+
+/* --- css/app.css --- */
+.chip{border:1px solid var(--line);background:none;border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--muted);font-weight:600;font-size:14px}
+.chip[aria-pressed="true"]{border-color:var(--gold);color:var(--gold-hi)}
+.sub-h{font:700 15px var(--body);margin:4px 0 10px}
+/* --- js/fb-feed.js chrome rule --- */
+#v-friends .section-head{display:none}
