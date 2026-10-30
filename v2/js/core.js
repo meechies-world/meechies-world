@@ -94,9 +94,7 @@ function paintAppBar() {
   const aib = document.getElementById("appbar-ai");
   if (aib) aib.addEventListener("click", (e) => {
     e.preventDefault();
-    // The AI panel is a later-phase module; until it lands, the bar keeps
-    // the live site's shape and this button reports that honestly.
-    aib.querySelector("span").textContent = "Meechie AI — soon";
+    openAI();
   });
   if (!location.hash && AppMode.tabs[0]) location.hash = "#" + AppMode.tabs[0][0];
 }
@@ -586,9 +584,40 @@ Presence.init();
 Router.init(document.getElementById("view-root"));
 Session.refresh().then(() => paintAuthBar());
 
+/* ------------------------------------------------------------------ *
+ * 9. MEECHIE AI (Law 17) — the shell-wide assistant is a LAZY module
+ * (js/ai.js): the live widget's bubble + panel, loaded after the
+ * frame paints like any view module, never counted against the boot
+ * budget. openAI() is the one door in — the AI app bar's Meechie AI
+ * button calls it, and view modules can reach it via MW2.openAI.
+ * In the AI app mode the panel opens on arrival, exactly like the
+ * live /ai-app/ (Meechie is the point of that app).
+ * ------------------------------------------------------------------ */
+let _aiApi = null, _aiLoading = null;
+function loadAI() {
+  if (_aiApi) return Promise.resolve(_aiApi);
+  if (_aiLoading) return _aiLoading;
+  _aiLoading = import("./ai.js")
+    .then((m) => { _aiApi = m.initAI({ session: Session, appMode: AppMode }); return _aiApi; })
+    .catch(() => { _aiLoading = null; return null; });
+  return _aiLoading;
+}
+async function openAI() {
+  const api = await loadAI();
+  if (api) api.openPanel();
+}
+
 /* The shell's public face for view modules and later core work. */
-window.MW2 = { session: Session, gateway: Gateway, presence: Presence, router: Router, views: VIEWS };
+window.MW2 = { session: Session, gateway: Gateway, presence: Presence, router: Router, views: VIEWS, openAI };
 window.__MW_BOOTED = true;
+
+/* Meechie AI loads right after boot — requestIdleCallback keeps it
+   off the first-paint path; the AI app mode opens its panel. */
+try {
+  const kick = () => { loadAI().then((api) => { if (api && AppMode.id === "ai") api.openPanel(); }); };
+  if (window.requestIdleCallback) requestIdleCallback(kick, { timeout: 2500 });
+  else setTimeout(kick, 1200);
+} catch (_) {}
 
 /* Device-saved skeleton (Phase 5, owner decision 2026-10-30):
    register the v2 service worker — registration ONLY. A new
