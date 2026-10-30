@@ -17,7 +17,7 @@
  * because without the changes row the sync feed never sees the doc.
  * Idempotent by construction: re-posting an id that is already
  * banned changes nothing (not even a write) and still answers ok. */
-import { userFrom, json } from "../../../lib/cf.js";
+import { userFrom, json, take } from "../../../lib/cf.js";
 
 const BLOCK_PATH = "brain/ytblock";
 const BLOCK_CAP = 1000; // FIFO: past this many bans, the oldest fall off
@@ -58,6 +58,8 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const me = await userFrom(request, env).catch(() => null);
   if (!me) return json({ ok: false, error: "sign_in" }, 401);
+  // one member must not be able to flood the shared ban list (it keeps only the newest ids)
+  if (!(await take(env, "ytblock:" + me.id, 3600, 60))) return json({ ok: false, error: "too_fast" }, 429);
   let b = null; try { b = await request.json(); } catch (_) {}
   const id = b && typeof b.id === "string" ? b.id.trim() : "";
   if (!ID_SHAPE.test(id)) return json({ ok: false, error: "bad_id" }, 400);

@@ -15,6 +15,8 @@
  * through the docs REST select, never exposed publicly.
  */
 
+import { take } from "../../lib/cf.js";
+
 const KINDS = ["manual", "auto"];
 const CATEGORIES = ["broken", "audio", "video", "bug", "other"];
 const INDEX_PATH = "reports/index";
@@ -123,6 +125,8 @@ export async function onRequestPost({ request, env }) {
     if (len > BODY_CAP) return json({ ok: false, error: "too_large" }, 400);
     const raw = await request.text();
     if (raw.length > BODY_CAP) return json({ ok: false, error: "too_large" }, 400);
+    // no sign-in here on purpose, so cap each address: a loop of POSTs must not grow D1 without limit (stay-free rule)
+    if (!(await take(env, "report:" + (request.headers.get("cf-connecting-ip") || "x"), 3600, 30))) return json({ ok: false, error: "too_fast" }, 429);
     let input;
     try { input = JSON.parse(raw); } catch (_) { return json({ ok: false, error: "bad_json" }, 400); }
     const v = validateReport(input);
