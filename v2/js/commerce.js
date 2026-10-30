@@ -35,27 +35,41 @@ export function toast(msg) {
    (the two pop-up storefronts merged server-side, earlier store wins);
    /api/shopify is a SEPARATE feed. The single shop list a visitor
    sees is assembled here, client-side: Printify FIRST, then Shopify,
-   with the store merge rule carried across the feeds — a product
-   whose normalized title (trimmed, lowercased) already appeared is
-   suppressed, and the earlier feed wins. Shopify keeps its live
-   client rules: https product URLs only, eBooks (digital) first. */
+   with the store merge rule carried across AND within the feeds —
+   a product whose identity (id, URL, or normalized title + price)
+   already appeared is suppressed, and the earlier feed wins.
+   Shopify keeps its live client rules: https product URLs only,
+   eBooks (digital) first. */
 export const normTitle = (t) => String(t || "").trim().toLowerCase();
+/* One dedupe pass for BOTH feeds (Gate T gap 4): the old union only
+   checked titles on the Shopify side, so a product listed twice in
+   the Printify feed itself (the "Vegan Wallet" x3, same title + same
+   $31.42, three product ids) rendered three times. A product is now
+   offered once, in feed order (Printify wins), and suppressed when
+   ANY identity matches an earlier offer: source product id, then
+   canonical product URL, then normalized title + price as backstop.
+   Title alone is NOT a key: same title at a different price is a
+   different product (the two "Unisex Heavy Cotton Tee" listings at
+   $27.68 / $22.99 both stay). */
+const canonUrl = (u) => String(u || "").trim().toLowerCase().replace(/\/+$/, "");
 export function shopUnion(printify, shopify) {
-  const seen = new Set();
+  const seenIds = new Set(), seenUrls = new Set(), seenTitlePrice = new Set();
   const out = [];
-  for (const p of printify || []) {
-    if (!p || !p.title) continue;
-    seen.add(normTitle(p.title));
-    out.push({ ...p, source: "printify" });
-  }
+  const offer = (p, source) => {
+    if (!p || !p.title) return;
+    const id = p.id ? source + ":" + String(p.id) : "";
+    const url = canonUrl(p.url);
+    const tp = normTitle(p.title) + "|" + String(p.price || "").trim().toLowerCase();
+    if ((id && seenIds.has(id)) || (url && seenUrls.has(url)) || seenTitlePrice.has(tp)) return;
+    if (id) seenIds.add(id);
+    if (url) seenUrls.add(url);
+    seenTitlePrice.add(tp);
+    out.push({ ...p, source });
+  };
+  for (const p of printify || []) offer(p, "printify");
   const sh = (shopify || []).filter((p) => p && /^https:\/\//.test(p.url || ""));
   sh.sort((a, b) => (b.digital ? 1 : 0) - (a.digital ? 1 : 0)); // eBooks first (live)
-  for (const p of sh) {
-    const n = normTitle(p.title);
-    if (!p.title || seen.has(n)) continue;
-    seen.add(n);
-    out.push({ ...p, source: "shopify" });
-  }
+  for (const p of sh) offer(p, "shopify");
   return out;
 }
 export async function loadShopFeed() {
