@@ -26,6 +26,20 @@
      the share automatically once the greeting has passed and the feed
      is actually flowing — never for a hidden share; closing it
      dismisses THIS share only.
+   - the PHONE DOCK (owner, 2026-10-30 — "a standard one goes there
+     that can pop out... put the screen there on all tabs with sound
+     there, its a better wire"): at phone widths the floating mini is
+     replaced by ONE STANDARD DOCKED SCREEN — the same body-level box
+     and the same player set, presented full-width at the top of the
+     viewport just under the shell header (the gold banner line),
+     present across ALL views. No drag, no resize, NO arrival pop-up:
+     the dock appearing when video goes on air IS the presentation.
+     The dock SOUNDS — it is the phone's master surface (the engine's
+     soundingScreen picks a shown dock over the station stage; still
+     exactly one sounding screen). Its ⤢ control pops out to MW TV.
+     Desktop keeps the floating mini exactly as above. Every gate and
+     proof rule in this file applies to the dock unchanged — only the
+     presentation differs.
 
    The gate math lives in the pure miniStep/miniPost functions below —
      the harness drives them with fixtures; the controller is a thin
@@ -40,6 +54,11 @@ import { getEngine } from "./engine.js";
 /* ---------------- the pure gate (harness surface) ---------------- */
 export function miniMarkOk(st, v) { if (v) { st.okVid = v; if (st.errVid === v) st.errVid = ""; } }
 
+/* the presentation breakpoint — one number, shared by the CSS media
+   query in engine.css: at or under it the mini is the PHONE DOCK,
+   above it the floating mini */
+export function miniPresentation(w) { return w <= 760 ? "dock" : "float"; }
+
 export function miniStep(st, inp) {
   /* video-change bookkeeping: an error latched against a previous
      video must not hide the new one; a clean change opens a proof
@@ -53,7 +72,11 @@ export function miniStep(st, inp) {
   /* live's shareOn already excludes a hidden share — the mirror leg
      only ever sees the share when it is not hidden */
   const shareMir = !!(inp.shareOn && !inp.shareHidden);
-  const shareShow = !!(shareMir && !inp.sessOff && !inp.stageInView && !inp.onTV && !inp.boothOn && inp.shareFlowing && inp.popReady);
+  /* the floating mini's share path is the arrival pop-out: greeting
+     first (popReady), feed actually flowing. The DOCK has no pop to
+     gate — the dock slot appearing is the presentation — so in dock
+     presentation the share path asks for neither. */
+  const shareShow = !!(shareMir && !inp.sessOff && !inp.stageInView && !inp.onTV && !inp.boothOn && (inp.dock || (inp.shareFlowing && inp.popReady)));
   const show = ((inp.hasTargets || shareMir) && !inp.sessOff && !inp.stageInView && !inp.onTV && !inp.boothOn) || shareShow;
   let hidden = !show;
   /* the proof gate, bounded and graced (fix 3/4) */
@@ -98,7 +121,7 @@ export function mountMini(ctx) {
   if (!box) {
     box = document.createElement("div");
     box.id = "dj-mini"; box.hidden = true;
-    box.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>";
+    box.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-snd' aria-label='Turn the screen sound on or off' hidden>🔇</button><button type='button' id='mn-pop' aria-label='Pop out to MW TV' hidden>⤢</button><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>";
     document.body.appendChild(box);
     box.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} box.hidden = true; try { engine.dismissSharePop(); } catch (_) {} });
     /* draggable by its title bar — the spot is remembered per device;
@@ -107,14 +130,44 @@ export function mountMini(ctx) {
        size every visit and resizes freely within the visit */
     const mnBar = box.querySelector(".mn-bar");
     const mnPlace = (x, y) => { const w = box.offsetWidth || 208, h = box.offsetHeight || 140; x = Math.max(2, Math.min(Math.round(x), Math.max(2, innerWidth - w - 2))); y = Math.max(2, Math.min(Math.round(y), Math.max(2, innerHeight - h - 2))); box.style.left = x + "px"; box.style.top = y + "px"; box.style.right = "auto"; };
-    try { const p = JSON.parse(localStorage.getItem("mw-mini-pos") || "null"); if (p && typeof p.x === "number" && typeof p.y === "number") mnPlace(p.x, p.y); } catch (_) {}
+    const restorePos = () => { try { const p = JSON.parse(localStorage.getItem("mw-mini-pos") || "null"); if (p && typeof p.x === "number" && typeof p.y === "number") mnPlace(p.x, p.y); } catch (_) {} };
+    /* ---- the presentation: PHONE DOCK vs floating mini ----
+       One box, one player set — only the presentation flips with the
+       viewport (miniPresentation is the pure breakpoint; the CSS in
+       engine.css keys off the same .mn-docked class). Docked: the
+       float machinery stands down (no drag, no grip, no remembered
+       spot, no repositioning), the sound + pop-out controls appear,
+       and the engine is told the dock can sound. Floating again: the
+       remembered spot is restored and the float rules resume. */
+    const mqDock = matchMedia("(max-width: 760px)");
+    let dockMode = null;   // null until the first applyMode runs the full path
+    const sndBtn = box.querySelector("#mn-snd"), popBtn = box.querySelector("#mn-pop");
+    const paintSnd = () => { if (sndBtn) sndBtn.textContent = engine.listening ? "🔊" : "🔇"; };
+    if (sndBtn) sndBtn.addEventListener("click", () => { engine.setListening(!engine.listening); paintSnd(); });
+    if (popBtn) popBtn.addEventListener("click", () => { location.hash = "#mwtv"; });
+    engine.onListenChange(paintSnd);
+    function applyMode() {
+      const dock = mqDock.matches;
+      if (dock === dockMode && box.classList.contains("mn-docked") === dock) { engine.setMiniDock(dock); return; }
+      dockMode = dock;
+      box.classList.toggle("mn-docked", dock);
+      if (sndBtn) sndBtn.hidden = !dock;
+      if (popBtn) popBtn.hidden = !dock;
+      if (dock) { box.style.left = ""; box.style.top = ""; box.style.right = ""; box.style.width = ""; delete box.dataset.mnDock; }
+      else restorePos();
+      engine.setMiniDock(dock);
+      paintSnd();
+    }
+    if (mqDock.addEventListener) mqDock.addEventListener("change", applyMode);
+    else if (mqDock.addListener) mqDock.addListener(applyMode);
+    applyMode();
     const mnGrip = box.querySelector(".mn-grip");
     const mnMaxW = () => Math.max(140, Math.min(innerWidth, (innerHeight - 30) * 16 / 9));
     const mnSize = (w) => { w = Math.max(140, Math.min(Math.round(w), mnMaxW())); box.style.width = w + "px"; return w; };
     try { localStorage.removeItem("mw-mini-w"); } catch (_) {}
-    if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = box.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = box.getBoundingClientRect(); mnPlace(r2.left, r2.top); }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
-    mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = box.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} box.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); delete box.dataset.mnDock; try { const r2 = box.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); });
-    addEventListener("resize", () => { const r = box.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); });
+    if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { if (dockMode) return; e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = box.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = box.getBoundingClientRect(); mnPlace(r2.left, r2.top); }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
+    mnBar.addEventListener("pointerdown", (e) => { if (dockMode) return; if (e.target.closest("#mn-close")) return; e.preventDefault(); const r = box.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} box.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); delete box.dataset.mnDock; try { const r2 = box.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); });
+    addEventListener("resize", () => { if (dockMode) return; const r = box.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); });
   }
 
   const stageEl = box.querySelector(".vstage");
@@ -208,14 +261,15 @@ export function mountMini(ctx) {
       shareOn: !!(vsM.on && vsM.meeting), shareHidden: !!vsM.hidden,
       sessOff, stageInView: stageInView(), onTV: view === "mwtv", boothOn: view === "dj",
       shareFlowing: engine.shareFlowing(), popReady: engine.popReady(),
+      dock: !!dockMode,
       camOn: !!(ov && !ov.hidden), now: Date.now(),
     });
     box.hidden = res.hidden;
     camOvSync();
     if (S.vcam && S.vcam.on && Date.now() - camLastPoll > 2000) { camLastPoll = Date.now(); feed.readCamFrame().then((d) => { if (d) camFrameDoc = d; }).catch(() => {}); }
     if (!tg.length) scr.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
-    if (!res.render) return;
-    if (res.show) {
+    if (!res.render) { engine.setMiniShown(false); return; }
+    if (res.show && !dockMode) {
       // keep the mini clear of the bottom player bar (the bar is a
       // later surface; the lift applies whenever one is on the page)
       try { const pb = document.querySelector(".player-bar"); if (pb && document.body.classList.contains("has-player")) { const pr = pb.getBoundingClientRect(), mr = box.getBoundingClientRect(); if (pr.height > 0 && mr.bottom > pr.top - 4 && mr.left < pr.right && mr.right > pr.left) { box.style.top = Math.max(2, Math.round(pr.top - mr.height - 8)) + "px"; box.style.left = Math.round(mr.left) + "px"; box.style.right = "auto"; } } } catch (_) {}
@@ -225,7 +279,12 @@ export function mountMini(ctx) {
         else if (docked && view !== "community") { box.style.left = ""; box.style.right = ""; delete box.dataset.mnDock; }
       } catch (_) {}
     }
-    await engine.renderScreen(scr, true, 1, 1);
+    /* the floating mini renders muted, always (it never sounds). The
+       DOCK renders through the surface path: the engine's one
+       sounding screen decides, and a shown dock is that screen on a
+       phone — so the dock carries the mix sound (and the duck). */
+    if (dockMode) await engine.renderSurface(scr);
+    else await engine.renderScreen(scr, true, 1, 1);
     const actM = scr.slots.filter((sl) => sl.deck && sl.p), topPM = top ? actM.find((sl) => sl.deck === top.k) : null;
     let topState1 = false;
     try { topState1 = actM.some((sl) => { try { return (sl.p.getPlayerState ? sl.p.getPlayerState() : sl.p._st) === 1; } catch (_) { return false; } }); } catch (_) {}
@@ -235,6 +294,7 @@ export function mountMini(ctx) {
       topErr: !!(topPM && topPM.p._err), now: Date.now(),
     });
     box.hidden = post.hidden;
+    engine.setMiniShown(!!dockMode && !post.hidden);
   });
 
   mounted = { box, scr, state: st };

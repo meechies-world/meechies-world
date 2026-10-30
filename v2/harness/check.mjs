@@ -228,6 +228,32 @@ ok("slot error latches the vid", ms.errVid === "v1");
 mni.miniPost(ms, { vid: "v1", show: true, hidden: false, bufMasked: false, topErr: false, topSawPlay: true, topState1: true, now: T0 + 700 });
 ok("play evidence proves the vid and clears the latch", ms.okVid === "v1" && ms.errVid === "");
 
+/* the PHONE DOCK (owner, 2026-10-30): at phone widths the mini is ONE
+   STANDARD DOCKED SCREEN — fixed spot on all views, with sound, no
+   arrival pop-up; wider viewports keep the floating mini. The pure
+   breakpoint, the dock's no-pop-gate share contract, and the wiring
+   (CSS class, sounding rule, pop-out target) are asserted here. */
+eq("phone width presents the dock", mni.miniPresentation(390), "dock");
+eq("760px exactly is still the dock", mni.miniPresentation(760), "dock");
+eq("761px floats", mni.miniPresentation(761), "float");
+eq("desktop floats", mni.miniPresentation(1440), "float");
+ok("dock shows the share with NO pop gate (no arrival pop-up on phone)", mni.miniStep(mni.newMiniState(), minIn({ hasTargets: false, shareOn: true, shareFlowing: false, popReady: false, dock: true })).show === true);
+ok("dock still steps aside on the MW TV page", mni.miniStep(mni.newMiniState(), minIn({ dock: true, onTV: true })).hidden === true);
+ok("dock still steps aside for the booth", mni.miniStep(mni.newMiniState(), minIn({ dock: true, boothOn: true })).hidden === true);
+ok("hidden share never docks", mni.miniStep(mni.newMiniState(), minIn({ hasTargets: false, shareOn: true, shareHidden: true, dock: true })).hidden === true);
+ok("session close still hides the dock", mni.miniStep(mni.newMiniState(), minIn({ dock: true, sessOff: true })).hidden === true);
+const engineCssSrc = readFileSync(join(V2, "css/engine.css"), "utf8");
+const engineSrc = readFileSync(join(V2, "js/engine.js"), "utf8");
+const miniSrc = readFileSync(join(V2, "js/mini.js"), "utf8");
+ok("dock CSS: full-width screen docked under the shell header", /#dj-mini\.mn-docked\{[^}]*width:100%/.test(engineCssSrc) && /#dj-mini\.mn-docked\{[^}]*top:calc\(56px/.test(engineCssSrc));
+ok("dock CSS: the resize grip stands down when docked", /#dj-mini\.mn-docked \.mn-grip\{display:none\}/.test(engineCssSrc));
+ok("undocked phones keep the small floating mini", /#dj-mini:not\(\.mn-docked\)\{top:auto;bottom:76px;width:168px\}/.test(engineCssSrc));
+ok("engine: a shown dock can be the one sounding screen", /miniDock && miniShown && miniScr/.test(engineSrc) && /setMiniDock/.test(engineSrc) && /setMiniShown/.test(engineSrc));
+ok("mini: the dock class drives the presentation", /classList\.toggle\("mn-docked", dock\)/.test(miniSrc) && /matchMedia\("\(max-width: 760px\)"\)/.test(miniSrc));
+ok("mini: dock renders via the sounding surface, float renders muted", /if \(dockMode\) await engine\.renderSurface\(scr\)/.test(miniSrc) && /else await engine\.renderScreen\(scr, true, 1, 1\)/.test(miniSrc));
+ok("mini: the dock pops out to MW TV", /location\.hash = "#mwtv"/.test(miniSrc));
+ok("mini: drag and grip stand down while docked", /mnGrip\.addEventListener\("pointerdown", \(e\) => \{ if \(dockMode\) return;/.test(miniSrc) && /mnBar\.addEventListener\("pointerdown", \(e\) => \{ if \(dockMode\) return;/.test(miniSrc));
+
 /* ---- 5. Phase 3 social payload + fixtures ---------------------
    The Book + social core (Book, Friends, Messages, Chat, Clips)
    loads ONLY when a social view is first entered: js/social.js is

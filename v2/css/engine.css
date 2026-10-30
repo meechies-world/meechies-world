@@ -80,7 +80,17 @@
 #dj-mini.mn-drag .mn-bar{cursor:grabbing}
 #dj-mini .vstage{border:6px solid #0c0c0e;outline:2px solid #77777f;box-shadow:inset 0 0 0 2px rgba(240,207,120,.28);border-radius:0}
 #dj-mini .mn-grip{position:absolute;right:0;bottom:0;width:24px;height:24px;z-index:5;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 52%,rgba(240,207,120,.65) 52%,rgba(240,207,120,.65) 64%,transparent 64%,transparent 76%,rgba(240,207,120,.65) 76%,rgba(240,207,120,.65) 88%,transparent 88%)}
-@media(max-width:760px){#dj-mini{top:auto;bottom:76px;width:168px}}
+@media(max-width:760px){
+  #dj-mini:not(.mn-docked){top:auto;bottom:76px;width:168px}
+  /* the PHONE DOCK (owner, 2026-10-30): one standard docked screen —
+     full width, fixed in the same spot on every view, just under the
+     shell header (the gold banner line). No float, no drag, no grip.
+     It carries the sound (see soundingScreen in engine.js) and its
+     bar pops out to MW TV. */
+  #dj-mini.mn-docked{top:calc(56px + env(safe-area-inset-top,0px));left:0;right:0;width:100%;max-width:none;border-left:0;border-right:0;border-radius:0}
+  #dj-mini.mn-docked .mn-bar{cursor:default;touch-action:auto}
+  #dj-mini.mn-docked .mn-grip{display:none}
+}
 html.gated #dj-mini{display:none!important}
 
 /* his camera square inside the mini's stage: bottom-right by default,
