@@ -585,6 +585,25 @@ Router.init(document.getElementById("view-root"));
 Session.refresh().then(() => paintAuthBar());
 
 /* ------------------------------------------------------------------ *
+ * 8b. THE CEMENT MASTER BAND (Law 1, owner 2026-10-30 12:46) — the
+ * band's markup is STATIC in index.html (shell furniture, styled by
+ * shell.css from first paint); this is only its BINDING. The band
+ * module (js/mini.js) and the player engine it rides are lazy like
+ * any view module — never counted against the boot budget — loaded
+ * once here at boot so the band binds on EVERY view, not just the
+ * viewer views that used to mount the old floating mini themselves.
+ * ------------------------------------------------------------------ */
+let _bandLoading = null;
+function loadBand() {
+  if (_bandLoading) return _bandLoading;
+  _bandLoading = import("./mini.js")
+    .then((m) => m.mountBand({ session: Session, gateway: Gateway, presence: Presence, view: { id: "band" } }))
+    .catch(() => { _bandLoading = null; return null; });
+  return _bandLoading;
+}
+loadBand();
+
+/* ------------------------------------------------------------------ *
  * 9. MEECHIE AI (Law 17) — the shell-wide assistant is a LAZY module
  * (js/ai.js): the live widget's bubble + panel, loaded after the
  * frame paints like any view module, never counted against the boot

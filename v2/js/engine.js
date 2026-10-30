@@ -2,7 +2,8 @@
    v2 PLAYER ENGINE — the ONE player (MAP §4.3 player-engine).
 
    Every viewer surface — the radio station stage, MW TV, Watch the
-   Setup, the MASTER mini, the master-screen share leg, and the HLS
+   Setup, the MASTER BAND (kind "mini" — the engine's name for the
+   band screen), the master-screen share leg, and the HLS
    stream screen — renders through this module and no other. A surface
    owns markup and paint; it never owns player logic. That fork is the
    documented root of the live site's mini bug family, and it does not
@@ -21,8 +22,11 @@
      (a masked slot is opacity-covered so the poster/slate shows —
      never a black iframe over the poster);
    - quality caps per surface (stage/mini 480 "large", TV/Watch 720);
-   - one sounding mix screen at a time (MW TV > Watch > station
-     stage); the mini and (in the booth phase) the booth never sound;
+   - one sounding mix screen at a time (MW TV > Watch > the master
+     BAND > station stage); the booth (in the booth phase) never
+     sounds. The band is the cemented in-flow master screen (owner,
+     2026-10-30 12:46): static shell markup, always present, the
+     sounding master surface at every width whenever it is shown;
    - the share leg: the RealtimeKit watcher sweep (1 s polling grab,
      stage-join for LIVESTREAM rooms, room HLS fallback), the capture's
      own sound as the only sound while a share holds the master
@@ -176,12 +180,13 @@ export function createEngine(ctx) {
   const shareStages = new Set();   // stage elements the share leg paints onto
   let stageScr = null, tvScr = null, watchScr = null, miniScr = null;
   const flags = { tv: false, watch: false, mini: false };
-  /* the mini's PHONE DOCK presentation (owner, 2026-10-30): docked,
-     the mini is the phone's sounding master surface. The mini module
-     owns the presentation and reports both facts every tick. */
-  let miniDock = false, miniShown = false;
-  function setMiniDock(on) { miniDock = !!on; if (!miniDock) miniShown = false; }
-  function setMiniShown(on) { miniShown = !!on; }
+  /* the BAND's shown fact (CEMENT LAW, owner 2026-10-30 12:46): the
+     band module owns the band's presence (present on every view
+     except MW TV / the booth / the Playground) and reports it every
+     tick; a shown band is the sounding master surface at EVERY
+     width — the old floating-mini / phone-dock split is gone. */
+  let bandShown = false;
+  function setBandShown(on) { bandShown = !!on; }
 
   function createScreen(cfg) {
     ensureCss();
@@ -190,8 +195,8 @@ export function createEngine(ctx) {
       stageEl: cfg.stageEl, slotEls: cfg.slotEls,
       standbyEl: cfg.standbyEl || null, chipEl: cfg.chipEl || null, posterEl: cfg.posterEl || null,
       slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }],
-      _vAt: null, _vTop: "", _bufK: "", _healK: "",
-      onFeaturedPlay: null,   // the mini's durable proof hook (miniMarkOk)
+      _vAt: null, _vTop: "", _bufK: "", _healK: "", _startK: "",
+      onFeaturedPlay: null,   // a surface's featured-play hook (the band's state tracker)
     };
     screens.add(scr);
     if (cfg.stageEl) { shareStages.add(cfg.stageEl); stageKind.set(cfg.stageEl, cfg.kind); }
@@ -209,22 +214,21 @@ export function createEngine(ctx) {
     if (scr === stageScr) stageScr = null;
     if (scr === tvScr) { tvScr = null; flags.tv = false; }
     if (scr === watchScr) { watchScr = null; flags.watch = false; }
-    if (scr === miniScr) { miniScr = null; flags.mini = false; miniShown = false; }
+    if (scr === miniScr) { miniScr = null; flags.mini = false; bandShown = false; }
   }
   /* ONE SOUNDING SCREEN (live vmixSndScr): MW TV when the channel is
-     open, else Watch when it is open, else the station stage. While a
-     live share holds the master, NO mix screen sounds — the capture
-     carries its own audio (takeover). The FLOATING mini never sounds.
-     The phone DOCK is the one exception (owner, 2026-10-30): docked,
-     the mini is the phone's master screen, so a shown dock sounds in
-     place of the station stage — still exactly one sounding screen:
-     TV > Watch > dock > stage. */
+     open, else Watch when it is open, else THE BAND, else the station
+     stage. While a live share holds the master, NO mix screen sounds
+     — the capture carries its own audio (takeover). The band sounds
+     at every width whenever it is shown (CEMENT LAW: it is the
+     master picture, the radio is the master sound) — still exactly
+     one sounding screen: TV > Watch > band > stage. */
   function soundingScreen() {
     if (!listening) return null;
     if (vsBroadcast(S()) && !(S().vstream || {}).hidden) return null;
     if (flags.tv && tvScr) return tvScr;
     if (flags.watch && watchScr) return watchScr;
-    if (miniDock && miniShown && miniScr) return miniScr;
+    if (bandShown && miniScr) return miniScr;
     return stageScr;
   }
 
@@ -318,7 +322,7 @@ export function createEngine(ctx) {
         i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
         const sl = scr.slots[i], mount = scr.slotEls[i]; if (!mount) continue;
         if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
-        sl.deck = t.k; sl.vid = st[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; mount.innerHTML = "<div></div>";
+        sl.deck = t.k; sl.vid = st[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; mount.innerHTML = "<div></div>";
         mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
         const prov = vparseTok(sl.vid).p;
         if ((prov === "yt" && (!window.YT || !YT.Player)) || (prov === "dm" && (!window.DM || !DM.player)) || (prov === "vm" && (!window.Vimeo || !Vimeo.Player))) { sl.deck = ""; continue; }
@@ -326,13 +330,18 @@ export function createEngine(ctx) {
         continue;
       }
       const sl = scr.slots[i];
-      if (sl.vid !== st[t.k].yt) { sl.vid = st[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(t.k))); } catch (_) {} } }
+      if (sl.vid !== st[t.k].yt) { sl.vid = st[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._bufHealN = 0; sl._cleanPlayAt = 0; sl._sawPlay = false; sl._frameAt = 0; sl._maskCov = false; sl._bCleanAcc = 0; sl._bDirtySince = 0; sl._bPrevAt = 0; sl._bPrevClean = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(t.k))); } catch (_) {} } }
       const el = scr.slotEls[i]; if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
         const want = slotWant(t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
         if (stt === 1 || stt === 2 || stt === 5) sl._hadFrame = true;
         if (stt === 1) sl._sawPlay = true;
+        /* SLATE HYSTERESIS stamp (#443): the last moment this slot
+           truly presented a moving frame (state playing WITH its
+           clock advancing — a frozen-clock player earns no stamp);
+           the slate/cover gates below measure dips against it */
+        if (stt === 1 && (sl._bLastCur == null || Math.abs(cur - sl._bLastCur) > 0.02)) sl._frameAt = Date.now();
         if (stt === 1 && scr.isMini && srt.length && t.k === srt[srt.length - 1].k && scr.onFeaturedPlay) scr.onFeaturedPlay(sl.vid);
         if (sl._hadFrame) picLive = true;
         bufStep(sl, stt, cur, want, !!st[t.k].playing, Date.now());
@@ -363,17 +372,33 @@ export function createEngine(ctx) {
        continuously >6 s rebuilds on the buffering ladder (own counter,
        24 s backoff, then rest masked on the slate); a slot with no
        frame for 12 s rebuilds once, a second failure waits 24 s, then
-       rests. The chip stays honest: _healK is set only while a rebuild
-       is pending or firing. */
+       rests.
+       #443 COLD-START CURE (ported from the live cold-start build —
+       these lessons now live in the ONE engine, for every surface
+       including the band):
+       - a never-framed slot gets its full first-frame patience: the
+         buffering ladder may not rebuild it before ~12 s from its
+         first heal sight (_noFrameAt) — a cold player's _bufSince is
+         back-stamped to its infancy, so the 6 s fuse alone destroyed
+         first players ~7 s after birth and discarded their buffer;
+       - CHIP HONESTY: _healK paints " · retrying…", which is only
+         true once a rebuild has actually fired for the slot. Before
+         that the slot is simply starting and the chip says so via
+         _startK (" · starting…") — a normal cold start is not a
+         retry. healFlag routes the flag by whether either ladder has
+         spent a rebuild yet; once a ladder is exhausted the chip
+         stops claiming a retry that will never come. */
     {
       const nowH = Date.now();
       scr._healK = "";
+      scr._startK = "";
+      const healFlag = (hsl, hk) => { if ((hsl._healN || 0) === 0 && (hsl._bufHealN || 0) === 0) scr._startK = hk; else scr._healK = hk; };
       tg.forEach((t) => {
         const si = scr.slots.findIndex((x) => x.deck === t.k); if (si < 0) return;
         const sl = scr.slots[si];
-        if (sl._bufSince && st[t.k].playing && nowH - sl._bufSince > 6000) {
+        if (sl._bufSince && st[t.k].playing && nowH - sl._bufSince > 6000 && (sl._hadFrame || (sl._noFrameAt && nowH - sl._noFrameAt > 12000))) {
           if ((sl._bufHealN || 0) >= 2) return;
-          scr._healK = t.k;
+          healFlag(sl, t.k);
           if ((sl._bufHealN || 0) === 1 && sl._lastHealAt && nowH - sl._lastHealAt < 24000) return;
           const mountB = scr.slotEls[si]; if (!mountB) return;
           if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
@@ -385,8 +410,8 @@ export function createEngine(ctx) {
         }
         if (sl._hadFrame) { sl._noFrameAt = 0; return; }
         if (!sl.p) return;
-        if (!sl._noFrameAt) { sl._noFrameAt = nowH; scr._healK = t.k; return; }
-        if ((sl._healN || 0) < 2) scr._healK = t.k;
+        if (!sl._noFrameAt) { sl._noFrameAt = nowH; healFlag(sl, t.k); return; }
+        if ((sl._healN || 0) < 2) healFlag(sl, t.k);
         const wait = sl._healN === 0 ? 12000 : sl._healN === 1 ? 24000 : Infinity;
         if (nowH - sl._noFrameAt < wait) return;
         const mount = scr.slotEls[si]; if (!mount) return;
@@ -399,19 +424,29 @@ export function createEngine(ctx) {
     const top = tg.slice().sort((a, b) => b.op - a.op)[0];
     /* the screen-level mask: the featured slot is stalling and no other
        target is cleanly showing, so the viewer watches the slate/poster
-       (the chip says "buffering") instead of the skip itself */
-    let bufScr = false;
-    if (top) { const fsl = scr.slots.find((x) => x.deck === top.k); const otherClean = tg.some((t) => { if (t.k === top.k) return false; const os = scr.slots.find((x) => x.deck === t.k); return !!(os && os._hadFrame && !os._bMask); }); bufScr = !!(fsl && fsl._bMask && st[top.k].playing && !otherClean); }
+       (the chip says "buffering") instead of the skip itself.
+       SLATE HYSTERESIS (#443, poster-flash cure): bufScr still drives
+       the chip's " · buffering…" the moment a dip starts, but the
+       slate/poster may only COVER the picture on a SUSTAINED stall —
+       bufHard is bufScr gated on the featured slot having presented
+       no moving frame for ~4 s (its _frameAt stamp). A player
+       oscillating in and out of buffering on a weak connection used
+       to re-slate the screen on every dip; brief dips now hold the
+       last presented frame. */
+    let bufScr = false, bufHard = false;
+    if (top) { const fsl = scr.slots.find((x) => x.deck === top.k); const otherClean = tg.some((t) => { if (t.k === top.k) return false; const os = scr.slots.find((x) => x.deck === t.k); return !!(os && os._hadFrame && !os._bMask); }); bufScr = !!(fsl && fsl._bMask && st[top.k].playing && !otherClean); bufHard = !!(bufScr && (Date.now() - (fsl._frameAt || 0) > 4000)); }
     scr._bufK = bufScr && top ? top.k : "";
     /* the mask COVERS the player (viewer-leg fix 1): a masked slot is
        opacity-covered itself, so the slate/poster underneath is the
-       visible surface; restored from disp the moment it unmasks */
+       visible surface; restored from disp the moment it unmasks. The
+       cover obeys the same ~4 s sustained-stall gate as bufHard —
+       a transient dip never covers the last presented frame (#443). */
     scr.slots.forEach((csl, csxi) => {
       if (!csl.deck) { csl._maskCov = false; return; }
         const ctt = tg.find((x) => x.k === csl.deck); if (!ctt) { csl._maskCov = false; return; }
       const cel = scr.slotEls[csxi]; if (!cel) return;
       const otherClean = tg.some((x) => { if (x.k === csl.deck) return false; const os = scr.slots.find((y) => y.deck === x.k); return !!(os && os._hadFrame && !os._bMask); });
-      const covered = !!(csl._bMask && st[csl.deck].playing && !otherClean);
+      const covered = !!(csl._bMask && st[csl.deck].playing && !otherClean && (Date.now() - (csl._frameAt || 0) > 4000));
       if (covered) { cel.style.opacity = "0"; csl._maskCov = true; }
       else if (csl._maskCov) { cel.style.opacity = (disp[csl.deck] != null ? disp[csl.deck] : ctt.op).toFixed(2); csl._maskCov = false; }
     });
@@ -424,10 +459,11 @@ export function createEngine(ctx) {
       if (stamped || hardSwap) { const tr2 = vmNow.tr || "fade"; if (tr2 !== "cut") vtrSlot(scr, vTop, tr2, vmNow.trMs || 650); }
       scr._vAt = vmNow.at || 0; scr._vTop = vTop;
     } else if (vTop) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
-    if (chip && top) { chip.hidden = false; chip.textContent = "▶ DECK " + top.k + (st[top.k].title ? " — " + st[top.k].title : "") + (scr._healK === top.k ? " · retrying…" : "") + (scr._bufK === top.k ? " · buffering…" : ""); }
+    if (chip && top) { chip.hidden = false; chip.textContent = "▶ DECK " + top.k + (st[top.k].title ? " — " + st[top.k].title : "") + (scr._healK === top.k ? " · retrying…" : "") + (scr._startK === top.k ? " · starting…" : "") + (scr._bufK === top.k ? " · buffering…" : ""); }
     /* the standby slate and poster stay up until a target slot has
-       really framed (picLive) and the screen is not masked */
-    if (tg.length) { if (stb) stb.style.display = (picLive && !bufScr) ? "none" : "grid"; if (pst) pst.style.display = (picLive && !bufScr) ? "none" : "block"; }
+       really framed (picLive) and the screen is not HARD-masked —
+       a transient buffering dip holds the last frame (#443) */
+    if (tg.length) { if (stb) stb.style.display = (picLive && !bufHard) ? "none" : "grid"; if (pst) pst.style.display = (picLive && !bufHard) ? "none" : "block"; }
     /* warm the next picture: the featured deck's pair first, then any
        deck the shared vmix record names — viewer warm players ROLL
        muted and are held near the broadcast position */
@@ -797,10 +833,12 @@ export function createEngine(ctx) {
 
   /* ---------------- the stage cadence ----------------
      Surfaces register a tick callback under a canonical name; the
-     engine runs them in the live stageApply order (stage → mini → tv
-     → watch) on the 700 ms cadence, then the share switch. The render
-     loop is the surfaces' only clock — and it never skips a surface
-     because its box is hidden (the mini renders while hidden, #410). */
+     engine runs them in the live stageApply order (stage → mini →
+     tv → watch) on the 700 ms cadence, then the share switch. The
+     render loop is the surfaces' only clock. (Under the CEMENT LAW
+     the band is never box-hidden except on its suppressed views,
+     where its surface skips rendering entirely — players exist only
+     in visible surfaces, #443.) */
   const surfaces = new Map();
   let tickBusy = false;
   async function tick() {
@@ -836,7 +874,7 @@ export function createEngine(ctx) {
     registerStageKind(el, kind) { stageKind.set(el, kind); },
     shareSync, popReady, shareFlowing, dismissSharePop,
     shareDown: vsShareDown,
-    setMiniDock, setMiniShown,
+    setBandShown,
     get localPause() { return vsLocalPause; },
     toggleLocalPause: vsToggleLocalPause,
   };

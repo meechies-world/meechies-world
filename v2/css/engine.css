@@ -70,28 +70,14 @@
 .onair-lamp.on .dot{background:#ff5b60;animation:djpulse 1.2s infinite}
 @keyframes djpulse{50%{opacity:.35}}
 
-/* the MASTER mini — a small rectangle at the top of every page,
-   draggable by its bar, resizable by its corner grip */
-#dj-mini{position:fixed;top:64px;right:10px;width:208px;height:max-content;max-width:calc(100vw - 20px);z-index:65;background:#000;border:3px solid #0a0a0c;outline:1px solid #2c2c30;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
-#dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
-#dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
-#dj-mini .mn-bar{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
-#dj-mini.mn-drag .mn-bar{cursor:grabbing}
-#dj-mini .vstage{border:6px solid #0c0c0e;outline:2px solid #77777f;box-shadow:inset 0 0 0 2px rgba(240,207,120,.28);border-radius:0}
-#dj-mini .mn-grip{position:absolute;right:0;bottom:0;width:24px;height:24px;z-index:5;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 52%,rgba(240,207,120,.65) 52%,rgba(240,207,120,.65) 64%,transparent 64%,transparent 76%,rgba(240,207,120,.65) 76%,rgba(240,207,120,.65) 88%,transparent 88%)}
-@media(max-width:760px){
-  #dj-mini:not(.mn-docked){top:auto;bottom:76px;width:168px}
-  /* the PHONE DOCK (owner, 2026-10-30): one standard docked screen —
-     full width, fixed in the same spot on every view, just under the
-     shell header (the gold banner line). No float, no drag, no grip.
-     It carries the sound (see soundingScreen in engine.js) and its
-     bar pops out to MW TV. */
-  #dj-mini.mn-docked{top:calc(56px + env(safe-area-inset-top,0px));left:0;right:0;width:100%;max-width:none;border-left:0;border-right:0;border-radius:0}
-  #dj-mini.mn-docked .mn-bar{cursor:default;touch-action:auto}
-  #dj-mini.mn-docked .mn-grip{display:none}
-}
-html.gated #dj-mini{display:none!important}
+/* the MASTER BAND (#dj-band / #dj-mini): its home styles live in
+   css/shell.css now — the CEMENT LAW (owner, 2026-10-30 12:46) made
+   the band shell furniture that must be styled from first paint, and
+   the floating-mini / phone-dock presentations it replaces are gone
+   (no fixed positioning, no drag, no grip, no close, and the gated
+   wall no longer hides it). The shared screen rules above (.vstage,
+   .vslot, .vposter, .vchip, the share overlay) still apply to the
+   band's stage exactly as to every other engine screen. */
 
 /* his camera square inside the mini's stage: bottom-right by default,
    draggable anywhere over the screen */
@@ -137,6 +123,7 @@ html.gated #dj-mini{display:none!important}
 .st-shout{margin-top:8px;border:1px solid var(--gold-lo);border-left:4px solid var(--gold,#f0cf78);border-radius:8px;padding:7px 10px;background:rgba(240,207,120,.08);font-size:13.5px;line-height:1.4}
 .st-shout[hidden]{display:none}
 /* MW TV pop-out ad bar (owner, 2026-10-30 10:12): the slim strip
-   rides the bottom of the popped-out screen only. */
+   rides the bottom of the popped-out screen only; the band's own
+   small state stays ad-free (its chips are the rails in miniature). */
 #tv-adbar{position:absolute;left:50%;transform:translateX(-50%);bottom:10px;width:min(680px,92vw);z-index:5}
 #tv-adbar a{justify-content:center}
