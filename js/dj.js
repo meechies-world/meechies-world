@@ -1552,7 +1552,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // member and guest booths never create it. Read-only: it reads the
   // reports/index doc and the newest report docs through the docs REST
   // select (see reportsRead) and paints them; it never writes.
-  { const doorR = document.getElementById("dj-door"); if (OWNER() && doorR && doorR.parentElement && !document.getElementById("dj-reports")) { const rp = document.createElement("div"); rp.className = "dj-panel"; rp.id = "dj-reports"; rp.innerHTML = "<h4>📋 REPORTS</h4><div id=\"reports-body\"><small class=\"muted\">Loading reports…</small></div>"; doorR.parentElement.appendChild(rp); } }
+  { const doorR = document.getElementById("dj-door"); if (OWNER() && doorR && doorR.parentElement && !document.getElementById("dj-reports")) { const rp = document.createElement("div"); rp.className = "dj-panel"; rp.id = "dj-reports"; rp.innerHTML = "<h4>📋 REPORTS</h4><div style=\"display:flex;align-items:center;gap:8px;margin:2px 0 6px\"><button type=\"button\" class=\"btn sm\" id=\"reports-send\">📤 SEND TO AMANI</button><small class=\"muted\" id=\"reports-send-note\"></small></div><div id=\"reports-body\"><small class=\"muted\">Loading reports…</small></div>"; doorR.parentElement.appendChild(rp); } }
   /* ---------- DJ BRAIN capture (PR-B2) ----------
    * The booth teaches the brain: every play, natural end, skip, watchdog
    * stall and queue draw on the DRIVING booth (owner + lead — a lead-booth
@@ -1685,48 +1685,89 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }, 1500);
   setInterval(() => { if (document.getElementById("dj-brain")) brainTasteRead(); }, 60000);
   /* BRAIN-B2-END */
-  /* ---------- the REPORTS panel readout ----------
-   * Reads reports/index, then the newest 20 report docs, newest first.
-   * The mechanism is the docs REST select with the session Bearer from
-   * mySess() - the established helper shape (see battleHdrs); dj.js
-   * never reads the session store directly. The server excludes the
-   * reports coll from non-admin selects, so when the index fetch
-   * returns no row the panel says so in one plain line, no error
-   * styling. Read-only: nothing here stores or writes anything. */
+  /* ---------- the REPORTS panel readout (REPORTS LAW, 2026-10-30) ------
+   * One door now: POST /api/reports with the session Bearer (mySess() —
+   * the established helper shape, see battleHdrs; dj.js never reads the
+   * session store directly). The server checks the session against the
+   * admins table and answers with the report bodies straight from the
+   * docs store, so what is stored is what paints here. The old chain —
+   * one REST select for reports/index plus one per body — could only
+   * see what the index listed, and index maintenance loses ids when
+   * auto-reports burst in together, which is how real reports became
+   * invisible. Failures no longer share one misleading line either: a
+   * 403 paints the not-recognized note, any other failure paints a
+   * retry line, and an empty store says so plainly. */
+  function reportsHdrs() {
+    const ses = mySess(); const h = { "content-type": "application/json" };
+    if (ses && ses.access_token) h.authorization = "Bearer " + ses.access_token;
+    return h;
+  }
+  function reportsApi(action) {
+    return fetch("/api/reports", { method: "POST", headers: reportsHdrs(), body: JSON.stringify({ action: action }) })
+      .then((r) => r.json().then((j) => ({ status: r.status, j: j || {} })).catch(() => ({ status: r.status, j: {} })))
+      .catch(() => ({ status: 0, j: {} }));
+  }
+  function reportsNote(handoff, count) {
+    const el = document.getElementById("reports-send-note"); if (!el) return;
+    if (handoff && handoff.at) el.textContent = "Sent " + (+handoff.count || 0) + " to Amani · " + new Date(+handoff.at).toLocaleString();
+    else if (typeof count === "number" && count) el.textContent = count + " waiting — tap SEND TO AMANI and Amani gets them to fix.";
+    else el.textContent = "";
+  }
   function reportsPaint(docs) {
     const box = document.getElementById("reports-body"); if (!box) return;
-    if (!docs) { box.innerHTML = "<small class=\"muted\">No reports yet — or reports are private to the admin account.</small>"; return; }
-    if (!docs.length) { box.innerHTML = "<small class=\"muted\">No reports yet.</small>"; return; }
-    box.innerHTML = docs.map((r) => {
+    if (!docs || !docs.length) { box.innerHTML = "<small class=\"muted\">No reports yet.</small>"; return; }
+    const shown = docs.slice(0, 50);
+    box.innerHTML = shown.map((r) => {
       const when = r.at ? new Date(+r.at).toLocaleString() : "";
       const badge = r.kind === "auto" ? "🤖 auto" : "🧑 person";
       const where = [r.page || "", r.view || ""].filter(Boolean).join(" · ");
-      return "<div class=\"dj-item\" style=\"align-items:flex-start\"><span style=\"white-space:normal\">" + badge + " · " + E(r.category || "other") + (when ? " · " + E(when) : "") + "<br>" + E(r.text || "") + (where ? "<br><small class=\"muted\">" + E(where) + "</small>" : "") + "</span></div>";
-    }).join("");
+      const meta = [r.ua || "", (r.state && typeof r.state === "object" && Object.keys(r.state).length) ? JSON.stringify(r.state).slice(0, 300) : ""].filter(Boolean).join(" · ");
+      return "<div class=\"dj-item\" style=\"align-items:flex-start\"><span style=\"white-space:normal\">" + badge + " · " + E(r.category || "other") + (when ? " · " + E(when) : "") + "<br>" + E(r.text || "") + (where ? "<br><small class=\"muted\">" + E(where) + "</small>" : "") + (meta ? "<br><small class=\"muted\">" + E(meta) + "</small>" : "") + "</span></div>";
+    }).join("") + (docs.length > shown.length ? "<small class=\"muted\">+ " + (docs.length - shown.length) + " older reports — SEND TO AMANI includes every one of them.</small>" : "");
   }
-  function reportsSelect(path) {
-    const ses = mySess(); const h = { "content-type": "application/json" };
-    if (ses && ses.access_token) h.authorization = "Bearer " + ses.access_token;
-    return fetch("/api/cf/rest", { method: "POST", headers: h, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", path]] }) }).then((r) => r.json()).then((j) => { const row = (j.data || [])[0]; if (!row) return null; const d = typeof row.data === "string" ? JSON.parse(row.data) : row.data; return d || null; }).catch(() => null);
+  function reportsDenied() {
+    const box = document.getElementById("reports-body"); if (!box) return;
+    box.innerHTML = "<small class=\"muted\">Reports are private to the owner account, and this tab was not recognized as the owner. Reload the booth tab, make sure you are signed in as Meechie, and tap REPORTS again.</small>";
+  }
+  function reportsFailed() {
+    const box = document.getElementById("reports-body"); if (!box) return;
+    box.innerHTML = "<small class=\"muted\">Reports could not load just now — tap REPORTS to try again.</small>";
   }
   function reportsRead() {
     if (SANDBOX || !OWNER()) return;
     if (!document.getElementById("dj-reports")) return;
-    reportsSelect("reports/index").then((idx) => {
-      if (!idx || !Array.isArray(idx.ids)) { reportsPaint(null); return; }
-      const ids = idx.ids.slice(-20).reverse();
-      if (!ids.length) { reportsPaint([]); return; }
-      Promise.all(ids.map((id) => reportsSelect(id))).then((docs) => reportsPaint(docs.filter(Boolean)));
-    }).catch(() => reportsPaint(null));
+    reportsApi("read").then((res) => {
+      if (res.status === 403) { reportsDenied(); reportsNote(null, 0); return; }
+      if (!res.j || !res.j.ok) { reportsFailed(); return; }
+      reportsPaint(Array.isArray(res.j.reports) ? res.j.reports : []);
+      reportsNote(res.j.handoff || null, res.j.count || 0);
+    });
   }
+  /* SEND TO AMANI (the law's second half): one tap writes the handoff
+   * doc — when, how many, exactly which ids — through the owner
+   * session. The write lands on the public changes feed, which is the
+   * site watch's cue to pull those bodies through its gated door and
+   * hand them to Amani to fix. The panel confirms with count + time. */
+  function reportsSend() {
+    const btn = document.getElementById("reports-send"); if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    const note = document.getElementById("reports-send-note"); if (note) note.textContent = "Sending…";
+    reportsApi("handoff").then((res) => {
+      btn.disabled = false;
+      if (res.status === 403) { reportsDenied(); return; }
+      if (!res.j || !res.j.ok) { if (note) note.textContent = "Send failed — tap again."; return; }
+      reportsNote(res.j.handoff || null, res.j.count || 0);
+    });
+  }
+  { const sb0 = document.getElementById("reports-send"); if (sb0 && !sb0.dataset.wired) { sb0.dataset.wired = "1"; sb0.addEventListener("click", reportsSend); } }
   setTimeout(reportsRead, 1600);
   setInterval(() => { if (document.getElementById("dj-reports")) reportsRead(); }, 60000);
   /* ---------- the REPORTS button (owner fix, 2026-10-30) ----------
    * He could not find the reports: the inbox panel sits deep in the
    * studio grid. So the booth top cluster gets a 📋 REPORTS button
-   * beside the AUTO-DJ and HORNS switches. The badge is the report
-   * count from reports/index, read through the panel's own
-   * reportsSelect (the same read, refreshed on the panel's cadence:
+   * beside the AUTO-DJ and HORNS switches. The badge is the true
+   * stored report count from the panel's own door (POST /api/reports,
+   * the same read, refreshed on the panel's cadence:
    * booth open, then every 60s); it hides at 0 and on any read
    * failure — never a made-up number. A tap reuses the panel's own
    * machinery to bring it into view: the phone-console tab switch,
@@ -1739,10 +1780,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!rpBtn) return;
     if (SANDBOX || !OWNER()) { rpBtn.hidden = true; return; }
     rpBtn.hidden = false;
-    reportsSelect("reports/index").then((idx) => {
-      const n = idx && Array.isArray(idx.ids) ? idx.ids.length : 0;
+    reportsApi("read").then((res) => {
+      const n = res.j && res.j.ok ? (+res.j.count || 0) : 0;
       if (rpBadge) { rpBadge.textContent = n ? String(n) : ""; rpBadge.hidden = !n; }
-    }).catch(() => { if (rpBadge) rpBadge.hidden = true; });
+    });
   }
   if (rpBtn) rpBtn.addEventListener("click", () => {
     const rp = document.getElementById("dj-reports"); if (!rp) return;
@@ -6184,7 +6225,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793371500;
+  const MW_DJ_BUILD = 1793372600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
