@@ -370,7 +370,7 @@
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, xf: 0.5, xf2: 0.5, panX: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
+  let S = { live: false, xf: 0.5, xf2: 0.5, panX: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, hornOn: false, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   let guestPostAt = 0;
@@ -379,7 +379,7 @@
     if (!on) return;
     const t = Date.now(); if (t - guestPostAt < 2500) return; guestPostAt = t;
     const ses = (window.MW && MW.session && MW.session()) || null; const tok = ses && ses.access_token; if (!tok) return;
-    fetch("/api/station", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ kind: "guestdj", A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panX: S.panX ?? 0.5, panY: S.panY, fx: S.fx, voice: S.voice }) }).then((r) => r.json()).then((j) => { if (j && j.ok === false) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended — thanks for spinning 🎧"); } }).catch(() => {});
+    fetch("/api/station", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ kind: "guestdj", A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panX: S.panX ?? 0.5, panY: S.panY, fx: S.fx, hornOn: S.hornOn === true, voice: S.voice }) }).then((r) => r.json()).then((j) => { if (j && j.ok === false) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended — thanks for spinning 🎧"); } }).catch(() => {});
   }
   /* ---------- multi-screen lead claim (mwLeadLock client, 2026-10-28) ----------
    * The radio/dj doc can carry leadTab/leadAt: whichever booth screen
@@ -1216,7 +1216,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
-    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button><button class="btn sm" type="button" data-capbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🖥 CAPTURE</button><button class="btn sm" type="button" data-hidebtn data-lab-off="🙈 HIDE" data-lab-on="👁 SHOW" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🙈 HIDE</button></div>
+    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><label class="dj-live"><input type="checkbox" id="dj-horn-top"> 📯 HORNS</label><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button><button class="btn sm" type="button" data-capbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🖥 CAPTURE</button><button class="btn sm" type="button" data-hidebtn data-lab-off="🙈 HIDE" data-lab-on="👁 SHOW" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🙈 HIDE</button></div>
   <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
@@ -1456,6 +1456,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // Customize registration below run, so it folds and hides exactly like
   // every other panel. The body is painted at runtime by brainPaint().
   { const doorP = document.getElementById("dj-door"); if (doorP && doorP.parentElement && !document.getElementById("dj-brain")) { const bp = document.createElement("div"); bp.className = "dj-panel"; bp.id = "dj-brain"; bp.innerHTML = "<h4>🧠 BRAIN</h4><div id=\"brain-body\"><small class=\"muted\">The brain is listening. Play, skip, and finish songs and it will start leaning your way.</small></div>"; doorP.parentElement.appendChild(bp); } }
+  // REPORTS panel: the visitor + auto report inbox (POST /api/report),
+  // created right after the BRAIN panel in the same grid, OWNER only -
+  // member and guest booths never create it. Read-only: it reads the
+  // reports/index doc and the newest report docs through the docs REST
+  // select (see reportsRead) and paints them; it never writes.
+  { const doorR = document.getElementById("dj-door"); if (OWNER() && doorR && doorR.parentElement && !document.getElementById("dj-reports")) { const rp = document.createElement("div"); rp.className = "dj-panel"; rp.id = "dj-reports"; rp.innerHTML = "<h4>📋 REPORTS</h4><div id=\"reports-body\"><small class=\"muted\">Loading reports…</small></div>"; doorR.parentElement.appendChild(rp); } }
   /* ---------- DJ BRAIN capture (PR-B2) ----------
    * The booth teaches the brain: every play, natural end, skip, watchdog
    * stall and queue draw on the DRIVING booth (owner + lead — a lead-booth
@@ -1588,6 +1594,42 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }, 1500);
   setInterval(() => { if (document.getElementById("dj-brain")) brainTasteRead(); }, 60000);
   /* BRAIN-B2-END */
+  /* ---------- the REPORTS panel readout ----------
+   * Reads reports/index, then the newest 20 report docs, newest first.
+   * The mechanism is the docs REST select with the session Bearer from
+   * mySess() - the established helper shape (see battleHdrs); dj.js
+   * never reads the session store directly. The server excludes the
+   * reports coll from non-admin selects, so when the index fetch
+   * returns no row the panel says so in one plain line, no error
+   * styling. Read-only: nothing here stores or writes anything. */
+  function reportsPaint(docs) {
+    const box = document.getElementById("reports-body"); if (!box) return;
+    if (!docs) { box.innerHTML = "<small class=\"muted\">No reports yet — or reports are private to the admin account.</small>"; return; }
+    if (!docs.length) { box.innerHTML = "<small class=\"muted\">No reports yet.</small>"; return; }
+    box.innerHTML = docs.map((r) => {
+      const when = r.at ? new Date(+r.at).toLocaleString() : "";
+      const badge = r.kind === "auto" ? "🤖 auto" : "🧑 person";
+      const where = [r.page || "", r.view || ""].filter(Boolean).join(" · ");
+      return "<div class=\"dj-item\" style=\"align-items:flex-start\"><span style=\"white-space:normal\">" + badge + " · " + E(r.category || "other") + (when ? " · " + E(when) : "") + "<br>" + E(r.text || "") + (where ? "<br><small class=\"muted\">" + E(where) + "</small>" : "") + "</span></div>";
+    }).join("");
+  }
+  function reportsSelect(path) {
+    const ses = mySess(); const h = { "content-type": "application/json" };
+    if (ses && ses.access_token) h.authorization = "Bearer " + ses.access_token;
+    return fetch("/api/cf/rest", { method: "POST", headers: h, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", path]] }) }).then((r) => r.json()).then((j) => { const row = (j.data || [])[0]; if (!row) return null; const d = typeof row.data === "string" ? JSON.parse(row.data) : row.data; return d || null; }).catch(() => null);
+  }
+  function reportsRead() {
+    if (SANDBOX || !OWNER()) return;
+    if (!document.getElementById("dj-reports")) return;
+    reportsSelect("reports/index").then((idx) => {
+      if (!idx || !Array.isArray(idx.ids)) { reportsPaint(null); return; }
+      const ids = idx.ids.slice(-20).reverse();
+      if (!ids.length) { reportsPaint([]); return; }
+      Promise.all(ids.map((id) => reportsSelect(id))).then((docs) => reportsPaint(docs.filter(Boolean)));
+    }).catch(() => reportsPaint(null));
+  }
+  setTimeout(reportsRead, 1600);
+  setInterval(() => { if (document.getElementById("dj-reports")) reportsRead(); }, 60000);
   // foldable page sections: a [data-fold] button hides its block and everything
   // below pulls up to fill the space; the choice sticks on this device
   const applyFolds = () => { try { document.querySelectorAll("[data-fold]").forEach((b) => { const t = document.getElementById(b.dataset.fold); if (!t) return; const shut = !!localStorage.getItem("mw-fold-" + b.dataset.fold); t.hidden = shut; b.textContent = (shut ? "▸ " : "▾ ") + (b.dataset.foldLabel || ""); }); } catch (_) {} };
@@ -1720,8 +1762,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * no audio, no panel logic. The Customize reset restores this shipped
    * default order too (see the data-ckreset listener below).
    * ORG-BEGIN */
-  const ORG_DEFAULT = ["door", "brain", "livereq", "autodj", "mic", "record", "fx", "vfx", "pads", "midi", "log", "reqdrops", "campro", "battles", "afterhours"];
-  const ORG_BY_ID = { "dj-door": "door", "dj-brain": "brain", "dj-fxpanel": "fx", "dj-vfxpanel": "vfx", "dj-campro": "campro", "dj-afterhours": "afterhours" };
+  const ORG_DEFAULT = ["door", "brain", "reports", "livereq", "autodj", "mic", "record", "fx", "vfx", "pads", "midi", "log", "reqdrops", "campro", "battles", "afterhours"];
+  const ORG_BY_ID = { "dj-door": "door", "dj-brain": "brain", "dj-reports": "reports", "dj-fxpanel": "fx", "dj-vfxpanel": "vfx", "dj-campro": "campro", "dj-afterhours": "afterhours" };
   const ORG_BY_H4 = [["LIVE DJ REQUESTS", "livereq"], ["AUTO-DJ", "autodj"], ["LIVE MIC", "mic"], ["RECORD THE SHOW", "record"], ["JINGLE", "pads"], ["MIDI CONTROLLER", "midi"], ["PROGRAM LOG", "log"], ["REQUESTS & DROPS", "reqdrops"], ["BATTLES", "battles"]];
   function orgKeyOf(p) {
     if (!p) return "";
@@ -3572,7 +3614,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function vsPubStart(kind) {
     if (SANDBOX) { say("The DJ Playground is a sandbox — live video only runs on the real station."); return; }
     if (!OWNER()) { say("Only Meechie can put a live picture on the master screen."); return; }
-    if (!boothLead) { say("📹 Live video runs on the screen that is driving the booth — make this screen the driver first."); return; }
+    if (!leadDrive()) { say("📹 Live video runs on the screen that is driving the booth — make this screen the driver first."); return; } // gate aligned to leadDrive (was boothLead): the publish-proof chain belongs to the claim holder, like every other automation gate
     if (vsPubBusy) return;
     if (kind === "screen" && !(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)) {
       say("🖥 This browser cannot capture your screen — screen capture needs a computer browser (Chrome or Edge). On this device, 📹 Live Video by the Cam button still works for your camera.");
@@ -4339,6 +4381,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, null); // no title chip on the pop-out screen (owner, 2026-10-28: "take the title off the screen in my master video pop out")
   const scrTV = mkScreen(["#tw-vs1", "#tw-vs2"], "#tw-vstandby", "#tw-vchip"); // MW TV: the channel page's screen — same mix renderer, its own branded standby slate
   const scrWatch = mkScreen(["#wb-vs1", "#wb-vs2"], "#wb-vstandby", "#wb-vchip", "#wb-vposter"); // WATCH THE SETUP: the spectator booth master screen — same mix renderer, the radio poster in its standby slot like the station stage
+  /* stateSeen: has a real radio/dj snapshot reached this tab yet? The
+   * viewer slates (MW TV first) must not assert a station state - on
+   * air or off air - before the first one lands: a cold tab paints the
+   * neutral connecting slate until onState says otherwise. */
+  let stateSeen = false;
   function vmixTargets() {
     const vm = S.vmix || { mode: "auto", a: "", b: "", t: 0 };
     if (vm.mode === "man" && vm.a && S[vm.a] && S[vm.a].yt) {
@@ -4714,7 +4761,22 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (wt) wt.textContent = label;
     if (sb) sb.textContent = listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound";
   }
+  /* MW TV slate wording (owner, 2026-10-29: "Mw tv isnt fixed"): the
+   * static first paint used to declare the station off air before any
+   * state had arrived - a false off-air slate on a live station, which
+   * on a slow or stale tab could stick and read as broken. Until the
+   * first snapshot lands the slate is the neutral connecting line; the
+   * off-air words are earned only by a snapshot that says the station
+   * is not live with nothing featured. A warm tab (a snapshot already
+   * in) paints the earned words on its first tvApply, as before. */
+  let twSlateSig = "";
+  function tvSlatePaint() {
+    const p = document.querySelector("#tw-vstandby .tw-sb p"); if (!p) return;
+    const txt = !stateSeen ? "TV: connecting…" : (!S.live && !(S.vstream || {}).on && !vmixTargets().length) ? "Meechie is off air — the radio is always on." : "🔴 Meechie is live on the tables — the video mix appears here the moment a music video plays.";
+    if (txt !== twSlateSig) { twSlateSig = txt; p.textContent = txt; }
+  }
   async function tvApply(mix, duck) {
+    tvSlatePaint();
     const vw = document.getElementById("v-mwtv");
     if (!vw || vw.hidden) {
       if (scrTV.slots.some((sl) => sl.deck)) scrTV.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
@@ -4739,7 +4801,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (scrWatch.slots.some((sl) => sl.deck)) scrWatch.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       return;
     }
-    if (!vmixTargets().length && S.live) { const sb = document.getElementById("wb-vstandby"); if (sb) sb.textContent = stSlate(); }
+    if (!stateSeen) { const sb = document.getElementById("wb-vstandby"); if (sb) sb.textContent = "TV: connecting…"; }
+    else if (!vmixTargets().length && S.live) { const sb = document.getElementById("wb-vstandby"); if (sb) sb.textContent = stSlate(); }
+    else if (!vmixTargets().length && !S.live && !(S.vstream || {}).on) { const sb = document.getElementById("wb-vstandby"); if (sb) sb.textContent = "Meechie is off air — the radio is always on."; }
     const sndW = vmixSndScr(); await renderScreen(scrWatch, sndW !== scrWatch, sndW === scrWatch ? mix : 1, duck);
     const lv = document.querySelector("#wb-stage video.vslive");
     if (lv && lv.paused && (lv.srcObject || lv.currentSrc)) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
@@ -5058,6 +5122,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   let hornHeard = 0, hornInit = false;
   function watchHorn() {
     const t = +(S && S.fxHornAt) || 0; if (!t) return;
+    if (S.hornOn !== true) { hornInit = true; hornHeard = t; return; } // horns OFF (owner, 2026-10-29: turn off the horn sound): the stamp is still tracked, so one from before the toggle can never fire late - it just makes no sound
     if (!hornInit) { hornInit = true; hornHeard = t; return; }
     if (t === hornHeard) return;
     hornHeard = t;
@@ -5298,6 +5363,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const adp = $("#ad-drops"); if (adp) adp.checked = S.dropsOn !== false;
     const adl = $("#ad-drops-list"); if (adl && !adl.dataset.done) { adl.dataset.done = "1"; adl.innerHTML = DROP_TEXTS.map((t, i) => `<div class="dj-item"><span title="${E(t)}">${i + 1}. ${E(t)}</span></div>`).join(""); }
     const adT = $("#dj-ad-top"); if (adT) adT.checked = !!S.autodj;
+    const hnT = $("#dj-horn-top"); if (hnT) hnT.checked = S.hornOn === true;
     const lamp = $("#dj-lamp"); lamp.classList.toggle("on", !!S.live || vsBroadcast()); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : S.live ? "PRACTICE" : "STANDBY") : (S.live || vsBroadcast() ? "ON AIR" : "OFF AIR");
     renderLog($("#dj-log")); paintPads();
   }
@@ -5697,7 +5763,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275600;
+  const MW_DJ_BUILD = 1793275700;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -5978,7 +6044,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panX: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, vcam: { on: false, at: 0 } }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panX: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, hornOn: false, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, vcam: { on: false, at: 0 } }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
     m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, m.vmix || {});
     if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
@@ -6211,6 +6277,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   setInterval(() => { try { paintWatch(); } catch (_) {} }, 1000);
   function onState(d) {
+    stateSeen = true; // the first real snapshot has landed - viewer slates may now speak for the station (see tvSlatePaint)
     try { paintVEdit(); } catch (_) {} try { paintLiveAlert(); } catch (_) {}
     const firstOwnerLoad = OWNER() && !ownerLoaded;
     if (OWNER() && ownerLoaded) {
@@ -6275,6 +6342,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   async function load(k, item, opts) {
     qClear(k); // any fresh load replaces what the deck held — its stocked record is void (stockDeck re-records after its own load)
     brainClose(k, "load"); // PR-B2: the replaced track's play closes here, classified by the clock (an early replacement is a skip)
+    const wasSounding = !!(S[k] && S[k].playing); // GENTLE LOAD: was this deck the sounding one before this pick replaced it
     if (serverMirror()) leadTakeAt = Date.now();
     const d = deck(k); actx();
     // a pick from his own hand loads STOPPED (owner, 2026-10-27): the deck
@@ -6293,6 +6361,20 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
     d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k);
     paintOwner(); $("#ttl-" + k).textContent = "Loading " + item.title + "...";
+    /* GENTLE LOAD (owner, 2026-10-29: "when I clicked to choose a song it
+     * started skipping"): a MANUAL pick (the cue flag) onto a deck that
+     * is not sounding records the state exactly as a normal load - the
+     * song sits loaded and STOPPED, per his law - but does NOT build the
+     * deck's video player. Building an iframe player at click time
+     * steals the main thread from the deck that IS sounding, and the
+     * sound stutters. Any old player is torn down so no stale picture
+     * sits under the new title. The player builds lazily at the first
+     * moment it is actually needed: his Play press builds it inside
+     * togglePlay (which already calls setYt for a video deck), and
+     * every automation path - queue draw, stockDeck, preload, Auto-DJ -
+     * calls load WITHOUT the cue flag, so it builds right here exactly
+     * as before. File picks are cheap and keep the path below as is. */
+    if (item.yt && cueDeck && !wasSounding) { try { d.clearYt(); } catch (_) {} paintOwner(); levels(); save(); return; }
     if (item.yt) { const okY = await d.setYt(item.yt); if (!okY) { if (ageIsLocked(item.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
     const ok = await d.set(item.src);
     if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
@@ -6482,7 +6564,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
-  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-horn-top") { S.hornOn = e.target.checked; save(true); say(S.hornOn ? "📯 Transition horns ON — automated crossfades get the air horn again." : "🔇 Transition horns OFF — automated crossfades stay quiet."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
   // circular pan pads: drag the gold dot — left/right is the X between the
   // pairs (A+B on the left, C+D on the right, the ends at 100%), up/down
   // tilts between the pairs. Same mix as the sliders and the phone fader
@@ -6927,7 +7009,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // the same pattern at the same moment, and play it here on the
       // driver. The stamp lands only on a REAL start — no more horns
       // over silence.
-      S.fxHornAt = hornHeard = Date.now(); hornInit = true; hornStab(); // mark heard so an echo of this stamp does not horn again
+      if (S.hornOn === true) { S.fxHornAt = hornHeard = Date.now(); hornInit = true; hornStab(); } // horns OFF (owner, 2026-10-29): no stamp and no stab; when on, mark heard so an echo of this stamp does not horn again
       // The crossfade: every deck rides its pair fader — A/B on S.xf,
       // C/D on S.xf2 — toward the value where that deck is full and its
       // pair mate is silent (xfGain: A and C are full at 0, B and D at
