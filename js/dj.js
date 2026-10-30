@@ -358,11 +358,19 @@
   // 64%). Video volume now gets a makeup factor from the same boost setting.
   const boostMk = () => Math.min(1.5, Math.max(1, +(S.fx && S.fx.boost) || 1));
   const xfGain = (xf, side) => { const t = side === "A" ? xf : 1 - xf, c = Math.cos(t * Math.PI / 2); if (XFCURVE === "sharp") return Math.sqrt(Math.max(0, c)); if (XFCURVE === "cut") return t < 0.5 ? 1 : (t > 0.5 ? 0 : 0.7071); return c; }; // equal-power smooth by default; sharp = louder middle for scratch work; cut = instant switch at center
+  // THE X LAW (owner, voice call 2026-10-29): the X (S.panX, 0..1) rides
+  // BETWEEN THE PAIRS. Hard left (0): the A/B pair at 100%, C/D silent.
+  // Hard right (1): C/D at 100%, A/B silent. Center (0.5, the home): both
+  // pairs at 100%. Between, the far pair fades on a smooth cosine while
+  // the near pair holds full — the pair factor multiplies the deck gains
+  // alongside (never instead of) the deck volume knob and the pair faders
+  // (S.xf / S.xf2), which keep their within-pair jobs, blends included.
+  const pairXGain = (px, cd) => { const p = Math.min(1, Math.max(0, px == null ? 0.5 : px)); return cd ? (p >= 0.5 ? 1 : Math.cos((0.5 - p) * Math.PI)) : (p <= 0.5 ? 1 : Math.cos((p - 0.5) * Math.PI)); };
 
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, xf: 0.5, xf2: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
+  let S = { live: false, xf: 0.5, xf2: 0.5, panX: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   let guestPostAt = 0;
@@ -371,7 +379,7 @@
     if (!on) return;
     const t = Date.now(); if (t - guestPostAt < 2500) return; guestPostAt = t;
     const ses = (window.MW && MW.session && MW.session()) || null; const tok = ses && ses.access_token; if (!tok) return;
-    fetch("/api/station", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ kind: "guestdj", A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panY: S.panY, fx: S.fx, voice: S.voice }) }).then((r) => r.json()).then((j) => { if (j && j.ok === false) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended — thanks for spinning 🎧"); } }).catch(() => {});
+    fetch("/api/station", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ kind: "guestdj", A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panX: S.panX ?? 0.5, panY: S.panY, fx: S.fx, voice: S.voice }) }).then((r) => r.json()).then((j) => { if (j && j.ok === false) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended — thanks for spinning 🎧"); } }).catch(() => {});
   }
   /* ---------- multi-screen lead claim (mwLeadLock client, 2026-10-28) ----------
    * The radio/dj doc can carry leadTab/leadAt: whichever booth screen
@@ -1148,7 +1156,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     </div>
   </div>
   <div class="mixer xfbar" id="dj-xfbar">
-      <div class="xfrow"><div class="xfvols"><div class="xv" data-xv="A" style="--dk:#f0cf78" title="Deck A volume — drag up or down, double-tap for 90%"><i></i><span>VOL A</span><b>90%</b></div><div class="xv" data-xv="B" style="--dk:#38bdf8" title="Deck B volume — drag up or down, double-tap for 90%"><i></i><span>VOL B</span><b>90%</b></div></div><div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader runs all four decks — slide toward a corner deck to give it the volume. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div><div class="xfvols"><div class="xv" data-xv="C" style="--dk:#4ade80" title="Deck C volume — drag up or down, double-tap for 90%"><i></i><span>VOL C</span><b>90%</b></div><div class="xv" data-xv="D" style="--dk:#f472b6" title="Deck D volume — drag up or down, double-tap for 90%"><i></i><span>VOL D</span><b>90%</b></div></div></div>
+      <div class="xfrow"><div class="xfvols"><div class="xv" data-xv="A" style="--dk:#f0cf78" title="Deck A volume — drag up or down, double-tap for 90%"><i></i><span>VOL A</span><b>90%</b></div><div class="xv" data-xv="B" style="--dk:#38bdf8" title="Deck B volume — drag up or down, double-tap for 90%"><i></i><span>VOL B</span><b>90%</b></div></div><div class="xfpad big" id="dj-xfpad" tabindex="0" title="The X fader rides between the pairs — slide left for decks A+B, right for C+D; all the way over gives that pair 100% and silences the other. Center is both pairs full. Double-tap to center."><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="dj-xfdot"></div></div><div class="xfvols"><div class="xv" data-xv="C" style="--dk:#4ade80" title="Deck C volume — drag up or down, double-tap for 90%"><i></i><span>VOL C</span><b>90%</b></div><div class="xv" data-xv="D" style="--dk:#f472b6" title="Deck D volume — drag up or down, double-tap for 90%"><i></i><span>VOL D</span><b>90%</b></div></div></div>
       <small>✕ THE X FADER — slide the dot anywhere in the X: the corners are the decks, the center is all even. It has complete control of all four volumes, and the master screen up top blends with it</small>
       <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="dj-pan-read" style="letter-spacing:.02em">A 100% · B 100% · C 100% · D 100%</small><button class="btn ghost sm" type="button" id="dj-pan-center">◎ CENTER</button></div>
       <div class="xfcurve" role="group" aria-label="Crossfader curve"><span>CURVE</span><button type="button" data-xfc="smooth">Smooth</button><button type="button" data-xfc="sharp">Sharp</button><button type="button" data-xfc="cut">Cut</button></div>
@@ -1399,6 +1407,56 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   document.addEventListener("click", (e) => { const b = e.target.closest && e.target.closest("[data-swap]"); if (!b) return; const v = b.dataset.swap.split(":").pop(); const row = document.querySelector(".dj-decks"); if (row) row.dataset.show = v; b.parentElement.querySelectorAll("[data-swap]").forEach((x) => x.classList.toggle("on", x === b)); });
   // music browser tabs (Serato-style: one browser, three sources, right under the decks)
   document.addEventListener("click", (e) => { const bt = e.target.closest && e.target.closest("[data-brow]"); if (!bt) return; document.querySelectorAll("[data-brow]").forEach((x) => { const on = x === bt; x.classList.toggle("on", on); x.classList.toggle("ghost", !on); }); document.querySelectorAll("[data-browpane]").forEach((p) => { p.hidden = p.dataset.browpane !== bt.dataset.brow; }); if (bt.dataset.brow === "prep") paintPrep(); });
+  /* ---------- booth fit (owner, voice call 2026-10-29: "fill the screen
+   * with no scrolling and no open side gaps — you can shrink it so that
+   * more things fit in; everything stays exactly where it is"). Nothing
+   * in the console moves: this pass only (a) stretches the booth root
+   * edge to edge inside its view (the page wrap caps at 1740px, which is
+   * where the side gaps came from) and (b) sets a CSS zoom on #dj-owner,
+   * the one scale that shrinks layout, text and hit targets together.
+   * Zoom is layout-based, so every booth pointer handler keeps working
+   * untouched: they all read getBoundingClientRect() (the visual, zoomed
+   * box) against clientX/clientY (visual), and the ratios come out
+   * identical at any zoom — the #377 scroll gate (8px of horizontal
+   * proof before a surface engages) reads raw client deltas, which the
+   * browser reports in that same visual space. A transform scale was
+   * rejected here: it would trap the booth's position:fixed children
+   * inside a transformed ancestor and desync the offsetWidth readers.
+   * The zoom is the smaller of the width fit and the height fit, never
+   * above 1, and never below FIT_MIN — below the floor the console keeps
+   * the floor size and the page scrolls the remainder, rather than
+   * shrinking the tables into print too small to work. The fit measures
+   * the booth as it stands: Customize-hidden and folded blocks take no
+   * space, so folding a panel re-fits the console bigger. */
+  const FIT_MIN = 0.5;
+  let fitTimer = 0;
+  function boothFit() {
+    const o = boothEl, root = boothHome;
+    if (!o || !o.isConnected) return;
+    const de = document.documentElement;
+    if (root) { // (a) edge to edge — except the pop-out modes, already full-bleed
+      const full = innerWidth >= 1100 && !de.classList.contains("popdj") && !de.classList.contains("playdj");
+      if (full && o.offsetParent) { const ml = parseFloat(getComputedStyle(root).marginLeft) || 0; root.style.width = de.clientWidth + "px"; const rr = root.getBoundingClientRect(); root.style.marginLeft = (ml - rr.left) + "px"; }
+      else if (root.style.width) { root.style.width = ""; root.style.marginLeft = ""; }
+    }
+    if (!o.offsetParent || !o.clientWidth) { if (o.style.zoom) o.style.zoom = ""; return; }
+    o.style.zoom = "1"; // measure the console at its natural size
+    const nw = o.scrollWidth, nh = o.scrollHeight;
+    if (!nw || !nh) { o.style.zoom = ""; return; }
+    const top = o.getBoundingClientRect().top;
+    const availW = root && root.clientWidth ? root.clientWidth : de.clientWidth;
+    const availH = Math.max(240, innerHeight - Math.max(0, top));
+    let s = Math.min(availW / nw, availH / nh, 1);
+    if (s < FIT_MIN) s = FIT_MIN;
+    o.style.zoom = s >= 0.999 ? "" : String(Math.round(s * 1000) / 1000);
+  }
+  const fitSoon = () => { if (fitTimer) return; fitTimer = setTimeout(() => { fitTimer = 0; boothFit(); }, 140); };
+  addEventListener("resize", fitSoon);
+  addEventListener("hashchange", () => { fitSoon(); setTimeout(boothFit, 480); });
+  document.addEventListener("click", (e) => { const t = e.target; if (t && t.closest && (t.closest("#dj-owner") || t.closest("[data-view]") || t.closest("#dj-ptabs"))) setTimeout(boothFit, 320); }, true);
+  if ("IntersectionObserver" in window && boothEl) new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) fitSoon(); }, { threshold: 0.05 }).observe(boothEl);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitSoon());
+  boothFit(); setTimeout(boothFit, 500); setTimeout(boothFit, 1800);
   const $ = (s) => document.querySelector(s);
   const decks = { A: null, B: null, C: null, D: null };
   const DECKS = ["A", "B", "C", "D"]; const PAIR = { A: "B", B: "A", C: "D", D: "C" };
@@ -2403,7 +2461,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04 || Date.now() < dropDuckUntil) ? 0.28 : 1;
     const mix = listening && !OWNER() ? mixVol : 1;
-    DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * duck * mix); } });
+    DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * pairXGain(S.panX, cd) * duck * mix); } });
     stageApply(mix, duck);
   }
   /* ================= GO LIVE STUDIO (owner, 2026-10-29) =================
@@ -3907,7 +3965,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * the SAME screen on the station card, with the sound, mixed by the same
    * numbers. The booth can also mix the picture by hand: S.vmix holds
    * {mode:"man", a, b, t} and every screen follows it. */
-  const stageGain = (k) => { const s = S[k], cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); return (s.vol ?? 0.9) * xfGain(x, side) * pairG; };
+  const stageGain = (k) => { const s = S[k], cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); return (s.vol ?? 0.9) * xfGain(x, side) * pairG * pairXGain(S.panX, cd); };
   const mkScreen = (ids, standby, chip, poster) => ({ ids, standby, chip, poster: poster || null, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
   const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
   const scrView = mkScreen(["#st-vs1", "#st-vs2"], "#st-vstandby", "#st-vchip", "#st-vposter"); // station stage carries the radio poster in its standby slot (owner, 2026-10-29)
@@ -4497,7 +4555,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (midiLearnKey) { const f = MIDI_FUNCS.find((x) => x[0] === midiLearnKey); if (!f) { midiLearnKey = null; return; } if (f[1] === "btn" && isNote) midiMap[midiLearnKey] = { t: "note", n, ch }; else if (f[1] === "knob" && isCc) midiMap[midiLearnKey] = { t: "cc", n, ch }; else if (f[1] === "jog" && isCc) midiMap[midiLearnKey] = { t: "jog", n, ch }; else return; midiLearnKey = null; midiSaveMap(); midiPaintList(); midiStat("Learned — that control now owns: " + f[2] + ". Learn another row, or just play."); midiLed(); return; }
     for (const key in midiMap) { const b = midiMap[key]; if (!b || b.ch !== ch || b.n !== n) continue; const f = MIDI_FUNCS.find((x) => x[0] === key); if (!f) continue;
       if (b.t === "note") { if (key === "talk") { const tk = document.getElementById("dj-talk"); if (tk) tk.dispatchEvent(new PointerEvent(isNote ? "pointerdown" : "pointerup", { bubbles: true })); continue; } if (!isNote) continue; if (key.indexOf("play") === 0) midiClick("[data-play=\"" + key.slice(4) + "\"]"); else if (key.indexOf("cue") === 0) midiClick("[data-cue0=\"" + key.slice(3) + "\"]"); else if (key.indexOf("brake") === 0) midiClick("[data-brake=\"" + key.slice(5) + "\"]"); setTimeout(midiLed, 60); continue; }
-      if (b.t === "cc" && isCc) { if (key === "xf") { xfTouchedAt = Date.now(); S.xf = v / 127; paintXfPads(); levels(); save(); continue; } if (f[3]) { midiSetSlider(f[3], v / 127); midiDirty(); } continue; }
+      if (b.t === "cc" && isCc) { if (key === "xf") { xfTouchedAt = Date.now(); S.panX = v / 127; paintXfPads(); levels(); save(); continue; } if (f[3]) { midiSetSlider(f[3], v / 127); midiDirty(); } continue; } // a hardware crossfader rides the X law (S.panX, between the pairs)
       if (b.t === "jog" && isCc) { const k = key.slice(3), d = deck(k); if (!d || !d.el) continue; const delta = v < 64 ? v : v - 128; if (!delta) continue; try { const nt = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, (d.el.currentTime || 0) + delta * 0.03)); d.el.currentTime = nt; if (S[k].playing) S[k].start = Date.now() - nt * 1000; else S[k].pos = nt; } catch (_) {} midiDirty(); continue; }
     } }
   async function midiEnable() { if (!navigator.requestMIDIAccess) { midiStat("This browser can't do Web MIDI — controllers work in Chrome or Edge on a computer or Android. (Safari and iPhone don't support it; that's Apple's limit, not the site's.)"); return; } try { midiAcc = await navigator.requestMIDIAccess(); const hook = () => { midiAcc.inputs.forEach((i) => { i.onmidimessage = onMidiMsg; }); const names = []; midiAcc.inputs.forEach((i) => { if (i.name) names.push(i.name); }); midiStat(names.length ? "Connected: " + names.join(", ") + " — tap LEARN on a row, then move the control that should own it." : "MIDI is on but no controller was found. Plug it in by USB and it shows up here automatically."); midiLed(); }; midiAcc.onstatechange = hook; hook(); } catch (_) { midiStat("MIDI permission was blocked — allow it in the browser's site settings, then tap Enable again."); } }
@@ -5232,7 +5290,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275200;
+  const MW_DJ_BUILD = 1793275300;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -5506,7 +5564,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, vcam: { on: false, at: 0 } }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panX: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, vcam: { on: false, at: 0 } }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
     m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, m.vmix || {});
     if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
@@ -5716,9 +5774,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       wbWave(k);
     });
     const dot = document.getElementById("wb-xfdot");
-    if (dot) { const xfv = S.xf == null ? 0.5 : S.xf; dot.style.left = (50 + (xfv - 0.5) * 84) + "%"; dot.style.top = (50 + (S.panY || 0) * 42) + "%"; }
+    if (dot) { const xfv = S.panX == null ? 0.5 : S.panX; dot.style.left = (50 + (xfv - 0.5) * 84) + "%"; dot.style.top = (50 + (S.panY || 0) * 42) + "%"; }
     const rd = document.getElementById("wb-pan-read");
-    if (rd) { const py = S.panY || 0, ab = py > 0 ? 1 - py : 1, cd = py < 0 ? 1 + py : 1; const g = { A: xfGain(S.xf, "A") * ab, B: xfGain(S.xf, "B") * ab, C: xfGain(S.xf2 ?? 0.5, "A") * cd, D: xfGain(S.xf2 ?? 0.5, "B") * cd }; const mx = Math.max(g.A, g.B, g.C, g.D, 0.0001); rd.textContent = ["A", "B", "C", "D"].map((k) => k + " " + Math.round(g[k] / mx * 100) + "%").join(" · "); }
+    if (rd) { const py = S.panY || 0, ab = py > 0 ? 1 - py : 1, cd = py < 0 ? 1 + py : 1; const g = { A: xfGain(S.xf, "A") * ab * pairXGain(S.panX, false), B: xfGain(S.xf, "B") * ab * pairXGain(S.panX, false), C: xfGain(S.xf2 ?? 0.5, "A") * cd * pairXGain(S.panX, true), D: xfGain(S.xf2 ?? 0.5, "B") * cd * pairXGain(S.panX, true) }; const mx = Math.max(g.A, g.B, g.C, g.D, 0.0001); rd.textContent = ["A", "B", "C", "D"].map((k) => k + " " + Math.round(g[k] / mx * 100) + "%").join(" · "); }
     document.querySelectorAll(".wb-xfc").forEach((x) => x.classList.toggle("on", x.dataset.v === (S.xfCurve || "smooth")));
     const fx = S.fx || {};
     const fxSet = (id, v, lab) => { const el = document.getElementById("wb-fx-" + id); if (el) el.value = v; const t = document.getElementById("wb-fxv-" + id); if (t) t.textContent = lab; };
@@ -5904,7 +5962,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         chop: { fx: { mf: 100, echo: 0.15, fb: 0.4, verb: 0.1, fla: 0, gate: 4, crush: 0 }, vinyl: false, msg: "⚡ Transformer setup: the chop is ON at medium speed — the beat gets sliced live for everyone." },
       }[b.dataset.preset];
       if (!P) return;
-      S.fx = Object.assign(defFx(), P.fx); if (!P.keepMix) { S.xf = 0.5; S.xf2 = 0.5; }
+      S.fx = Object.assign(defFx(), P.fx); if (!P.keepMix) { S.xf = 0.5; S.xf2 = 0.5; S.panX = 0.5; }
       DECKS.forEach((k) => { const d = deck(k); d.vinyl = P.vinyl; d.el.preservesPitch = !P.vinyl; const vc = document.querySelector(`[data-vinyl="${k}"]`); if (vc) vc.checked = P.vinyl; if (!P.keepMix) S[k].vol = 0.9; });
       document.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate));
       applyFx(); levels(); paintOwner(); save(true); say(P.msg); return;
@@ -6005,20 +6063,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
   onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
-  // circular pan pads: drag the gold dot anywhere in the circle — the further it
-  // moves toward a deck, the more that deck plays. Same mix as the sliders and the
-  // phone fader bar; everything stays in sync, including Auto-DJ crossfades.
+  // circular pan pads: drag the gold dot — left/right is the X between the
+  // pairs (A+B on the left, C+D on the right, the ends at 100%), up/down
+  // tilts between the pairs. Same mix as the sliders and the phone fader
+  // bar; everything stays in sync, including Auto-DJ crossfades.
   function paintXfPads() { // THE ONE FADER dot: full-travel paint (the dot reaches the edge your finger reaches) + live mix readout
     XFCURVE = S.xfCurve || "smooth"; document.querySelectorAll("[data-xfc]").forEach((x) => x.classList.toggle("on", x.dataset.xfc === XFCURVE));
-    const dot = $("#dj-xfdot"); if (dot) { dot.style.left = (50 + (S.xf - 0.5) * 84) + "%"; dot.style.top = (50 + (S.panY || 0) * 42) + "%"; }
-    const rd = $("#dj-pan-read"); if (rd) { const py = S.panY || 0, ab = py > 0 ? 1 - py : 1, cd = py < 0 ? 1 + py : 1; const g = { A: xfGain(S.xf, "A") * ab, B: xfGain(S.xf, "B") * ab, C: xfGain(S.xf2 ?? 0.5, "A") * cd, D: xfGain(S.xf2 ?? 0.5, "B") * cd }; const mx = Math.max(g.A, g.B, g.C, g.D, 0.0001); rd.textContent = ["A", "B", "C", "D"].map((k) => k + " " + Math.round(g[k] / mx * 100) + "%").join(" · "); }
+    const dot = $("#dj-xfdot"); if (dot) { dot.style.left = (50 + ((S.panX ?? 0.5) - 0.5) * 84) + "%"; dot.style.top = (50 + (S.panY || 0) * 42) + "%"; }
+    const rd = $("#dj-pan-read"); if (rd) { const py = S.panY || 0, ab = py > 0 ? 1 - py : 1, cd = py < 0 ? 1 + py : 1; const g = { A: xfGain(S.xf, "A") * ab * pairXGain(S.panX, false), B: xfGain(S.xf, "B") * ab * pairXGain(S.panX, false), C: xfGain(S.xf2 ?? 0.5, "A") * cd * pairXGain(S.panX, true), D: xfGain(S.xf2 ?? 0.5, "B") * cd * pairXGain(S.panX, true) }; const mx = Math.max(g.A, g.B, g.C, g.D, 0.0001); rd.textContent = ["A", "B", "C", "D"].map((k) => k + " " + Math.round(g[k] / mx * 100) + "%").join(" · "); }
     document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv, v = S[k] ? (S[k].vol || 0) : 0; el.style.setProperty("--rot", (-135 + (v / 2) * 270) + "deg"); const b = el.querySelector("b"); if (b) b.textContent = Math.round(v * 100) + "%"; });
   }
-  // ONE pan dot for all four decks: left/right rides both crossfaders together,
-  // up/down picks which pair rules (top = A/B, bottom = C/D). Center = everything even.
+  // ONE pan dot for all four decks. THE X LAW (owner, 2026-10-29):
+  // left/right is the X — it rides BETWEEN THE PAIRS (S.panX): all the way
+  // left = decks A+B at 100% and C+D silent, all the way right = C+D at
+  // 100% and A+B silent, center = both pairs full. Up/down still tilts
+  // between the pairs (top = A/B, bottom = C/D). The within-pair faders
+  // (S.xf / S.xf2) are no longer written by the pad — they belong to the
+  // automated blends, the follow guard and the curve, exactly as the
+  // crossfade code below expects.
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
-    const center = () => { xfTouchedAt = Date.now(); S.xf = 0.5; S.xf2 = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
-    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.xf = Math.round(((dx + 1) / 2) * 1000) / 1000; S.xf2 = S.xf; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
+    const center = () => { xfTouchedAt = Date.now(); S.xf = 0.5; S.xf2 = 0.5; S.panX = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
+    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.panX = Math.round(((dx + 1) / 2) * 1000) / 1000; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
     // scroll gate (owner, 2026-10-29): a press applies nothing until the
     // gesture proves it is a fader move — horizontal travel of 8px or more,
     // more sideways than vertical. A vertical scroll starting on the pad is
@@ -6030,7 +6095,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     pad.addEventListener("pointerup", (e) => { if (pend) { pend = null; apply(e); save(true); return; } if (drag) { drag = false; save(true); } });
     pad.addEventListener("pointercancel", () => { pend = null; drag = false; });
     pad.addEventListener("dblclick", () => { if (OWNER()) center(); });
-    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { S.xf = Math.max(0, S.xf - st); S.xf2 = S.xf; } else if (e.key === "ArrowRight") { S.xf = Math.min(1, S.xf + st); S.xf2 = S.xf; } else if (e.key === "ArrowUp") { S.panY = Math.max(-1, (S.panY || 0) - st); } else if (e.key === "ArrowDown") { S.panY = Math.min(1, (S.panY || 0) + st); } else return; xfTouchedAt = Date.now(); paintXfPads(); levels(); save(); e.preventDefault(); });
+    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { S.panX = Math.max(0, (S.panX ?? 0.5) - st); } else if (e.key === "ArrowRight") { S.panX = Math.min(1, (S.panX ?? 0.5) + st); } else if (e.key === "ArrowUp") { S.panY = Math.max(-1, (S.panY || 0) - st); } else if (e.key === "ArrowDown") { S.panY = Math.min(1, (S.panY || 0) + st); } else return; xfTouchedAt = Date.now(); paintXfPads(); levels(); save(); e.preventDefault(); });
     const cb = $("#dj-pan-center"); if (cb) cb.addEventListener("click", () => { if (OWNER()) center(); });
   })();
   // touch the waveform to jump the song there: tap a spot to play from it, or drag
@@ -6290,6 +6355,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       const from = x, t0 = performance.now();
       xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 1200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
     });
+    // THE X LAW rescue, same hands-off spirit: if the ONLY deck playing
+    // sits on the pair the parked X has silenced (pair gain under 0.2
+    // while its own pair fader would pass it), the station would be
+    // silent under Auto-DJ — ease the X home to center. Layered play
+    // (decks on both pairs) never triggers it: a parked X with decks
+    // playing on the favored pair is the owner's mix, not a stranding.
+    if (xfAnim) return;
+    const px = S.panX ?? 0.5;
+    if (Math.abs(px - 0.5) < 0.01) return;
+    const playing = DECKS.filter((k) => S[k].playing);
+    if (playing.length !== 1) return;
+    const k = playing[0], cd = k === "C" || k === "D";
+    if (pairXGain(px, cd) >= 0.2) return;
+    const x = cd ? (S.xf2 ?? 0.5) : S.xf;
+    if (xfGain(x, k === "B" || k === "D" ? "B" : "A") < 0.2) return; // the pair fader owns that silence — the loop above handles it
+    const from = px, t0 = performance.now();
+    xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 1200); S.panX = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
   }
   /* qKeyOf: the content key for "what is on this deck", applied to
    * BOTH the deck state and the stock record so the two sides always
@@ -6435,11 +6517,16 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // rides to the ended deck's silent value. The other two decks are
       // not playing during a handover, so their gains moving changes
       // nothing heard. Afterwards every fader that moved settles back
-      // to center (xfSettle / xfSettleKeys).
+      // to center (xfSettle / xfSettleKeys). THE X LAW rides along on a
+      // cross-pair handover only: if the owner left the X (S.panX) parked
+      // off center, the blend eases it home to center in the same
+      // interval, so the incoming pair rises to full instead of landing
+      // in the parked pair's silence; at center (the home) nothing about
+      // the X moves and the blend is gain-identical to before the law.
       const fullAt = (k) => (k === "B" || k === "D") ? 1 : 0;
       const eKey = (endedK === "C" || endedK === "D") ? "xf2" : "xf", tKey = (target === "C" || target === "D") ? "xf2" : "xf";
       const moves = [{ key: tKey, from: S[tKey] ?? 0.5, to: fullAt(target) }];
-      if (eKey !== tKey) moves.push({ key: eKey, from: S[eKey] ?? 0.5, to: 1 - fullAt(endedK) });
+      if (eKey !== tKey) { moves.push({ key: eKey, from: S[eKey] ?? 0.5, to: 1 - fullAt(endedK) }); if (Math.abs((S.panX ?? 0.5) - 0.5) > 0.01) moves.push({ key: "panX", from: S.panX ?? 0.5, to: 0.5 }); }
       const t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
       const touch0 = xfTouchedAt;
       clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); moves.forEach((m) => { S[m.key] = m.from + (m.to - m.from) * p; }); levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); if (moves.length === 1) xfSettle(moves[0].key, touch0); else xfSettleKeys(moves.map((m) => m.key), touch0); } }, 100);
@@ -7105,7 +7192,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const anyDeck = DECKS.some((k) => S[k] && (S[k].src || S[k].yt));
     if (!anyDeck && !freshVoice) return; // nothing on my table yet — the outgoing state stays on air until I put something on
     battlePushAt = t;
-    const patch = { A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panY: S.panY, fx: S.fx };
+    const patch = { A: S.A, B: S.B, C: S.C, D: S.D, xf: S.xf, xf2: S.xf2, panX: S.panX ?? 0.5, panY: S.panY, fx: S.fx };
     if (freshVoice) { patch.voice = S.voice; battleVoiceSent = S.voice.id; }
     fetch("/api/cf/rpc", { method: "POST", headers: battleHdrs(), body: JSON.stringify({ name: "merge_doc", args: { p_path: "radio/dj", p_patch: patch } }) }).catch(() => {});
   }
