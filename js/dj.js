@@ -393,6 +393,15 @@
   let lastBaseAt = 0, leadTakeAt = 0, padSentAt = 0;
   const leadFresh = () => !!(S && S.leadTab && Date.now() - (S.leadAt || 0) < 20000);
   const serverMirror = () => leadFresh() && S.leadTab !== tabId;
+  /* mwLeadLock CLIENT PHASE (2026-10-29): station automation answers to
+   * the server claim, not to this windows local sound lease. While a claim
+   * is fresh only the claim holder drives - auto-advance, the stall
+   * watchdog, preload, handover, the schedule and brain capture - so two
+   * open booths can never duel (the 21:14 skipping: two tabs advancing
+   * the same set). With no claim on record the local lease decides,
+   * exactly as before, and the drivers next save records the claim, so a
+   * single booth never notices the lock at all. */
+  const leadDrive = () => { if (!OWNER()) return false; if (SANDBOX) return true; if (leadFresh()) return S.leadTab === tabId; return boothLead; };
   function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; /* GO LIVE STUDIO liveness is proof-based now (fix-studio5): saves never re-stamp vstream.at — only the publisher supervisor does, after verifying the capture chain end to end (see vsPubProof) */ const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking) { if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
@@ -615,7 +624,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
    the right, make the song pick and mixer in the middle"): the deck bank unwraps so
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
    column stacks main mixer, SONG PICKER, C/D mixer. */
-@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2/span 3;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
+@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
 html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
 @media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
@@ -762,7 +771,7 @@ html.popdj .popdj-hint{display:block}
 #dj-screen>small{display:block;color:var(--muted);font-size:11px;letter-spacing:.12em;margin-bottom:6px}
 #dj-screen .vstage{aspect-ratio:16/9;max-height:66vh;min-height:200px;border-radius:14px}
 @media(max-width:760px){#dj-screen .vstage{min-height:160px;max-height:52vh}}
-@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner>#dj-edit{grid-column:1/-1;grid-row:4}#dj-owner .deck[data-deck="A"]{grid-row:5/span 3}#dj-owner .deck[data-deck="B"]{grid-row:5/span 3}#dj-owner .deck[data-deck="C"]{grid-row:5/span 3}#dj-owner .deck[data-deck="D"]{grid-row:5/span 3}#dj-owner #dj-browser{grid-row:5}#dj-owner #dj-xfbar{grid-column:3;grid-row:6}#dj-owner .mixer.m1{grid-row:7}#dj-owner .mixer.m2{grid-row:8}}
+@media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner>#dj-edit{grid-column:1/-1;grid-row:4}#dj-owner .deck[data-deck="A"]{grid-row:6/span 3}#dj-owner .deck[data-deck="B"]{grid-row:6/span 3}#dj-owner .deck[data-deck="C"]{grid-row:6/span 3}#dj-owner .deck[data-deck="D"]{grid-row:6/span 3}#dj-owner #dj-browser{grid-row:5}#dj-owner #dj-xfbar{grid-column:3;grid-row:6}#dj-owner .mixer.m1{grid-row:7}#dj-owner .mixer.m2{grid-row:8}}
 /* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
    top of every page in a little rectangle; it steps aside whenever a big screen
    (the booth's or the station card's) is already in front of them */
@@ -1107,6 +1116,52 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner.org-open .org-grip{display:inline-grid;place-items:center}
 #dj-owner .dj-panel.org-drag{opacity:.55;outline:2px dashed var(--gold);outline-offset:2px;position:relative;z-index:5}
 #dj-orglock.on{border-color:var(--gold);color:#191104;background:var(--gold)}
+/* BOOTH PLACEMENTS (owner, voice call 2026-10-29): the search + queue band
+   sits directly under the widescreen master screen and directly above the
+   decks, spanning the wide space; the X fader cluster rides in the CENTER
+   of the deck bank between the pairs at every width; each decks transport
+   buttons ride in a rail beside its platter. Fixed placements, like the
+   screen move - never part of the draggable below-decks zone. */
+/* wide screens: the band takes its own full-width row (5) between the
+   edit row (4) and the deck rows (6-8); the center column stack in that
+   zone is now the X cluster (row 6), main mixer (7), second mixer (8) */
+@media(min-width:1500px){#dj-owner>#dj-browser{grid-column:1/-1;grid-row:5}}
+/* band internals: video search wide at the left, the queue beside it at
+   the right, the schedule strip and the music header + panes full width
+   below - the search gets the wide presentation the owner asked for
+   instead of a squeezed panel column */
+@media(min-width:1100px){#dj-owner>#dj-browser{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;align-items:start}#dj-owner>#dj-browser>*{margin-top:0!important;margin-bottom:0!important}#dj-owner>#dj-browser>div:nth-child(1){grid-column:1}#dj-owner>#dj-browser>div:nth-child(2){grid-column:2}#dj-owner>#dj-browser>div:nth-child(3),#dj-owner>#dj-browser>div:nth-child(4),#dj-owner>#dj-browser>#br-panes{grid-column:1/-1}}
+/* mid widths: the cluster spans the bank between the A/B row and C/D row */
+@media(min-width:761px) and (max-width:1499px){#dj-owner .dj-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}#dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:2;grid-row:3}#dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:3;grid-row:3}#dj-owner .dj-decks>.mixer.m2{grid-column:1;grid-row:3}}
+/* phones: the same split stacked - A/B, cluster, main mixer, C/D, mixer 2 */
+@media(max-width:760px){#dj-owner .dj-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}#dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:3}#dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:1;grid-row:4}#dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:2;grid-row:4}#dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:5}}
+/* short landscape: all four decks on one row, the cluster standing in
+   the center column between the pairs */
+@media (orientation:landscape) and (max-height:540px) and (max-width:1100px){#dj-owner .dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 240px minmax(0,1fr) minmax(0,1fr)}#dj-owner .dj-decks>.mixer.xfbar{grid-column:3;grid-row:1}#dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:4;grid-row:1}#dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:5;grid-row:1}}
+@media (orientation:landscape) and (max-height:600px) and (max-width:1200px){#dj-booth-root #dj-owner .dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 240px minmax(0,1fr) minmax(0,1fr)}#dj-booth-root #dj-owner .dj-decks>.mixer.xfbar{grid-column:3;grid-row:1}#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:4;grid-row:1}#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:5;grid-row:1}}
+/* booth-root portrait phones and tablets: the same split with the full
+   booth-root selectors, so the booth roots own bank rules hand the rows
+   over cleanly */
+@media (max-width:760px) and (orientation:portrait){#dj-booth-root #dj-owner .dj-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:3}#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:1;grid-row:4}#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:2;grid-row:4}#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:5}}
+@media (min-width:761px) and (max-width:1100px) and (orientation:portrait){#dj-booth-root #dj-owner .dj-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:3}#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:1;grid-row:4}#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:2;grid-row:4}#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:5}}
+/* transport rail beside the platter: the platter keeps its exact box and
+   the rail is its own flex column to the right of it; the wave canvas
+   below stays full width, so the rail can never overlap the platter or
+   wave pointer surfaces the scroll gate guards */
+.decktop{display:flex;gap:10px;align-items:center;justify-content:center;width:100%}
+.drail{display:grid;gap:6px}
+.drail .btn{white-space:nowrap}
+/* WATCH THE SETUP: the spectator bank mirrors the booth as the placements
+   leave it - one bank split A/B, center cluster, C/D, with the queue band
+   directly under the master screen */
+#wb-root .wb-decks{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 300px minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+#wb-root .wb-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}
+#wb-root .wb-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}
+#wb-root .wb-decks>.mixer.xfbar{grid-column:3;grid-row:1}
+#wb-root .wb-decks>.deck[data-deck="C"]{grid-column:4;grid-row:1}
+#wb-root .wb-decks>.deck[data-deck="D"]{grid-column:5;grid-row:1}
+@media(max-width:900px){#wb-root .wb-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#wb-root .wb-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}#wb-root .wb-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}#wb-root .wb-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}#wb-root .wb-decks>.deck[data-deck="C"]{grid-column:1;grid-row:3}#wb-root .wb-decks>.deck[data-deck="D"]{grid-column:2;grid-row:3}}
+
 `;
   document.head.appendChild(css);
 
@@ -1114,13 +1169,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // on this device — fold a deck down to just its platter, wave and Play row
   const secState = (() => { try { return Object.assign({ tempo: 1, cues: 0, sound: 1 }, JSON.parse(localStorage.getItem("mw-dsec-v1") || "{}")); } catch (_) { return { tempo: 1, cues: 0, sound: 1 }; } })();
   const secShut = (n) => (secState[n] ? "" : " shut");
-  const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div>
+  const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="decktop"><div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div><div class="drail"><button class="btn sm" type="button" data-play="${k}">▶ Play</button><button class="btn ghost sm" type="button" data-cue0="${k}">⏮ Cue</button><button class="btn ghost sm" type="button" data-brake="${k}">🛑 Brake</button></div></div>
     <canvas class="wave" id="wv-${k}" width="520" height="84"></canvas>
     <div class="ytbox" id="ytw-${k}" hidden><div id="yt-${k}"></div></div>
     <div class="ttl" id="ttl-${k}">Load a song</div><div class="tm" id="tm-${k}">0:00</div>
     <div class="beatbox"><span class="bpmv" id="bpm-${k}">BPM —</span><span class="keyv" id="key-${k}"></span><span class="bdots" id="dots-${k}"><i></i><i></i><i></i><i></i></span></div>
     <div class="dsec${secShut("tempo")}" data-dsec="tempo"><button class="dsec-h" type="button" data-dsecbtn="tempo">⏱ Tempo & grid<span class="dsec-a">▾</span></button><div class="dsec-b"><div class="row"><button class="btn ghost sm" type="button" data-tap="${k}">👆 TAP</button><button class="btn ghost sm" type="button" data-bpmadj="${k}:-0.1">BPM −</button><button class="btn ghost sm" type="button" data-bpmadj="${k}:0.1">BPM +</button><button class="btn ghost sm" type="button" data-bpmx="${k}:2">×2</button><button class="btn ghost sm" type="button" data-bpmx="${k}:0.5">÷2</button><button class="btn ghost sm" type="button" data-nudge="${k}:-1">◀ grid</button><button class="btn ghost sm" type="button" data-nudge="${k}:1">grid ▶</button></div></div></div>
-    <div class="row"><button class="btn sm" type="button" data-play="${k}">▶ Play</button><button class="btn ghost sm" type="button" data-cue0="${k}">⏮ Cue</button><button class="btn ghost sm" type="button" data-brake="${k}">🛑 Brake</button></div>
     <div class="dsec${secShut("cues")}" data-dsec="cues"><button class="dsec-h" type="button" data-dsecbtn="cues">🎯 Cues, loops & jumps<span class="dsec-a">▾</span></button><div class="dsec-b"><div class="row">${[1, 2, 3].map((n) => `<button class="btn ghost sm cuebtn" type="button" data-hot="${k}:${n}">CUE ${n}</button>`).join("")}</div>
     <div class="row"><button class="btn ghost sm loopbtn" type="button" data-loopb="${k}:4">Loop 4 beats</button><button class="btn ghost sm loopbtn" type="button" data-loopb="${k}:8">Loop 8 beats</button><button class="btn ghost sm" type="button" data-sync="${k}">SYNC</button></div>
     <div class="row"><button class="btn ghost sm rollbtn" type="button" data-roll="${k}:4">🌀 Roll 4</button><button class="btn ghost sm rollbtn" type="button" data-roll="${k}:8">🌀 Roll 8</button><button class="btn ghost sm" type="button" data-bjump="${k}:-16">⏪⏪ 16</button><button class="btn ghost sm" type="button" data-bjump="${k}:16">16 ⏩⏩</button></div>
@@ -1355,15 +1409,22 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // middle column; everywhere else it now leads the booth instead of hiding
   // below all four decks
   const brEl = document.getElementById("dj-browser"), dkEl = boothEl && boothEl.querySelector(".dj-decks");
-  if (brEl && dkEl) dkEl.before(brEl);
-  // the X fader rides right under the music browser / YouTube search (owner,
-  // 2026-10-26: "put the cross fader at the top under the youtube search")
-  const xfEl = document.getElementById("dj-xfbar"); if (xfEl && brEl) brEl.after(xfEl);
   // the master screen rides directly above the deck row (owner, voice call
   // 2026-10-29: a big widescreen TV above the decks) — the block moves as
   // one, skip row and Customize unit included; every id inside it is
   // untouched, so renderScreen and the vmix machinery never notice
   const scrEl = document.getElementById("dj-screen"); if (scrEl && dkEl) dkEl.before(scrEl);
+  // BOOTH PLACEMENTS (owner, voice call 2026-10-29): the browser becomes
+  // the search + queue BAND - it moves in directly under the master
+  // screen and directly above the decks, where the wide space lets the
+  // search breathe; the placements CSS lays its faces out wide there.
+  if (brEl && dkEl) dkEl.before(brEl);
+  // the X fader cluster (the pad, the ABCD pad and the deck volume
+  // knobs) leaves the top zone and moves INTO the deck bank, between
+  // the B and C decks - the center column between the pairs at every
+  // width. Same element, same ids: paintXfPads, the knob and pad
+  // handlers and the fader law never notice the move.
+  const xfEl = document.getElementById("dj-xfbar"); if (xfEl && dkEl) { const dC = dkEl.querySelector('.deck[data-deck="C"]'); if (dC) dkEl.insertBefore(xfEl, dC); else dkEl.appendChild(xfEl); }
   // MASTER FX strip (owner ask, 2026-10-26): the FX slider stack leaves the
   // center mixer — it ran long with empty space beside it — and becomes a
   // full-width panel under the console, sliders lined up in even cells. Same
@@ -1414,7 +1475,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * BRAIN-B2-BEGIN */
   const brainSess = {}; // deck -> the play session the brain is watching
   const brainQ = []; // events waiting for the next flush
-  const brainOn = () => { try { return !SANDBOX && OWNER() && boothLead; } catch (_) { return false; } };
+  const brainOn = () => { try { return !SANDBOX && OWNER() && leadDrive(); } catch (_) { return false; } };
   const brainKeyOf = (x) => { if (!x) return ""; if (x.yt) return "yt:" + x.yt; return "f:" + (x.src || ""); };
   /* The artist the fold needs: the item's own field first, then the
    * library track behind the src, then the "Artist - Title" convention
@@ -4478,7 +4539,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
         const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
         if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
-        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; mount.innerHTML = "<div></div>";
+        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; mount.innerHTML = "<div></div>";
         mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
         const prov = vparseTok(sl.vid).p;
         if ((prov === "yt" && (!window.YT || !YT.Player)) || (prov === "dm" && (!window.DM || !DM.player)) || (prov === "vm" && (!window.Vimeo || !Vimeo.Player))) { sl.deck = ""; continue; }
@@ -4486,7 +4547,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         continue;
       }
       const sl = scr.slots[i];
-      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
+      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
       const el = $(scr.ids[i]); if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
         const want = slotWant(scr, t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
@@ -4526,6 +4587,38 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         else if (sl.p.mute) sl.p.mute();
       } catch (_) {} }
     }
+    /* mwScreenHeal begin - VIEWER SCREEN SELF-HEAL (2026-10-29): the booth
+     * has its stall watchdog; the viewer screens (station stage, MW TV,
+     * Watch, the mini screen - every renderScreen surface except the
+     * booths own, which the booth watchdog already covers) had none, so a
+     * wedged embed or a failed seek into a long video left the honest
+     * slate up forever while the broadcast played on. When a target slot
+     * has produced no frame (_hadFrame) for 12s, its player is rebuilt
+     * ONCE for that video and lands back on the broadcast clock through
+     * mkVidPlayer (slotWant / bcastPos); a second failure waits 24s and
+     * rebuilds once more, then the surface rests on the slate. The sync
+     * lock, the one-sounding-screen entitlement (the rebuild reuses this
+     * pass muted value) and the slate logic are untouched. */
+    if (scr !== scrBooth) {
+      const nowH = Date.now();
+      scr._healK = "";
+      tg.forEach((t) => {
+        const si = scr.slots.findIndex((x) => x.deck === t.k); if (si < 0) return;
+        const sl = scr.slots[si];
+        if (sl._hadFrame) { sl._noFrameAt = 0; sl._healN = 0; return; }
+        if (!sl.p) return;
+        if (!sl._noFrameAt) { sl._noFrameAt = nowH; scr._healK = t.k; return; }
+        scr._healK = t.k;
+        const wait = sl._healN === 0 ? 12000 : sl._healN === 1 ? 24000 : Infinity;
+        if (nowH - sl._noFrameAt < wait) return;
+        const mount = $(scr.ids[si]); if (!mount) return;
+        try { sl.p.destroy(); } catch (_) {}
+        sl.p = null; mount.innerHTML = "<div></div>";
+        sl._healN = (sl._healN || 0) + 1; sl._noFrameAt = nowH;
+        sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k);
+      });
+    }
+    /* mwScreenHeal end */
     const top = tg.slice().sort((a, b) => b.op - a.op)[0];
     // VIDEO TRANSITIONS (owner, 2026-10-28): a discrete switch of the
     // dominant deck - a stamped S.vmix.at action (Cut / Fade / solo / Auto
@@ -4545,7 +4638,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (stamped || hardSwap) { const tr2 = vmNow.tr || "fade"; if (tr2 !== "cut") vtrSlot(scr, vTop, tr2, vmNow.trMs || 650); }
       scr._vAt = vmNow.at || 0; scr._vTop = vTop;
     } else if (vTop) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
-    if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : ""); }
+    if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : "") + (scr._healK === top.k ? " · retrying…" : ""); }
     // BUFFER PASS (honest loading): with targets up, the standby slate
     // and poster stay on screen until a target slot's player has really
     // loaded its video (a playing, paused or cued frame - _hadFrame).
@@ -4889,7 +4982,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * left, C+D on the right. Drag up/down to ride a deck volume; the knob drives
    * the deck's own volume slider so state, sound and saves follow the one path.
    * Double-tap resets to 90%. */
-  document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv; let drag = null; el.addEventListener("pointerdown", (e) => { if (!OWNER()) return; drag = { y: e.clientY, v: S[k] ? S[k].vol : 0 }; try { el.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); }); el.addEventListener("pointermove", (e) => { if (!drag) return; const v = Math.max(0, Math.min(2, drag.v + (drag.y - e.clientY) / 140)); midiSetSlider("[data-vol=\"" + k + "\"]", v / 2); paintXfPads(); }); const end = () => { drag = null; }; el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("dblclick", () => { if (!OWNER()) return; midiSetSlider("[data-vol=\"" + k + "\"]", 0.45); paintXfPads(); }); });
+  document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv; let drag = null; el.addEventListener("pointerdown", (e) => { if (!OWNER()) return; if (serverMirror()) { takeControl(); return; } drag = { y: e.clientY, v: S[k] ? S[k].vol : 0 }; try { el.setPointerCapture(e.pointerId); } catch (_) {} e.preventDefault(); }); el.addEventListener("pointermove", (e) => { if (!drag) return; const v = Math.max(0, Math.min(2, drag.v + (drag.y - e.clientY) / 140)); midiSetSlider("[data-vol=\"" + k + "\"]", v / 2); paintXfPads(); }); const end = () => { drag = null; }; el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("dblclick", () => { if (!OWNER()) return; midiSetSlider("[data-vol=\"" + k + "\"]", 0.45); paintXfPads(); }); });
 
   function playVoice() {
     const v = S.voice; if (!v || heardVoice === v.id || Date.now() - (v.at || 0) > 90000) return;
@@ -5235,6 +5328,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     try { paintBattleCard(); } catch (_) {}
   }
   /* ---------- AGGRESSIVE STALL WATCHDOG (mwStallWatchdog) ----------
+   * GATE AUDIT (2026-10-29, owner live defect): this watchdog used to arm
+   * on boothLead - the LOCAL sound lease, which is per browser and says
+   * nothing about who authors the shared state. A booth tab could hold
+   * its own lease while another screen drove the set (or hold no lease
+   * while its saves kept boothAt fresh and the keeper stood down), and
+   * wedged decks sat flagged playing at pos 0 for minutes with no
+   * rescue. It arms on leadDrive() now - the mwLeadLock server claim -
+   * so exactly one booth, the one actually driving, runs the ladder.
    * Owner spec 2026-10-28 ("if music stops for any reason it automatically
    * cuts back on"), tightened by the owner 2026-10-29: "yes an agresive
    * watch dog". The element-state stall check inside the tick below trusts
@@ -5281,14 +5382,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     DECKS.forEach((k) => {
       const el = $("#tm-" + k); if (el && decks[k]) { const dd = decks[k], mirror = !boothLead && S[k].playing, cur = mirror ? posOf(k) : dd.el.currentTime, dur = dd.el.duration || S[k].dur || 0; el.textContent = fmt(cur) + (dur ? " / " + fmt(dur) + " · −" + fmt(Math.max(0, dur - cur)) : ""); const dkEl = document.querySelector('.deck[data-deck="' + k + '"]'); if (dkEl) dkEl.classList.toggle("playing", !!S[k].playing); }
       // watchdog: an element that reached the end without firing 'ended' still hands over
-      if (OWNER() && boothLead && S.live && S.autodj && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
+      if (OWNER() && leadDrive() && S.live && S.autodj && S[k].playing && decks[k] && decks[k].el.ended) deckEnded(k);
       // wall-clock backstop (owner, 2026-10-27: "the turntables dont stop at the
       // end of their song"): a deck whose clock has run past the end of its song
       // and whose player has stopped — or which is a video deck, whose shim has
       // no "ended" property for the check above — still stops here, Auto-DJ or
       // not. deckEnded itself decides: with Auto-DJ or a queue it rolls on,
       // otherwise the deck just stops, like a real turntable at the runout.
-      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durT = (decks[k].el && decks[k].el.duration) || +S[k].dur || 0; const elD = decks[k].el; /* a video deck must be done on its OWN clock too: the wall clock runs ahead of its player by the load delay, so firing on the wall clock alone cut video decks that were still playing their final seconds */ const elDone = decks[k].shim ? (elD.paused && durT > 0 && (elD.currentTime || 0) >= durT - 0.5) : (elD.ended || elD.paused); if (durT > 0 && posOf(k) > durT + 2 && elDone) deckEnded(k); }
+      if (OWNER() && leadDrive() && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durT = (decks[k].el && decks[k].el.duration) || +S[k].dur || 0; const elD = decks[k].el; /* a video deck must be done on its OWN clock too: the wall clock runs ahead of its player by the load delay, so firing on the wall clock alone cut video decks that were still playing their final seconds */ const elDone = decks[k].shim ? (elD.paused && durT > 0 && (elD.currentTime || 0) >= durT - 0.5) : (elD.ended || elD.paused); if (durT > 0 && posOf(k) > durT + 2 && elDone) deckEnded(k); }
       // HARD-END WATCHDOG (mwHardEnd, 2026-10-28 station-down fix): element-state
       // independent. Every check above trusts the player — a YouTube shim in a
       // throttled tab can keep reporting "playing" forever after its video has
@@ -5298,7 +5399,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // the song IS over — end the deck through deckEnded (rolls Auto-DJ/queue,
       // otherwise parks it) whatever the player claims. Fires once: deckEnded
       // clears the playing flag, so the tick cannot re-trigger it.
-      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durH = +S[k].dur || (decks[k].el && decks[k].el.duration) || 0; if (durH > 0 && posOf(k) > durH + 15) deckEnded(k); }
+      if (OWNER() && leadDrive() && S.live && S[k].playing && decks[k] && !decks[k].loop && !decks[k].roll) { const durH = +S[k].dur || (decks[k].el && decks[k].el.duration) || 0; if (durH > 0 && posOf(k) > durH + 15) deckEnded(k); }
       // Stall watchdog (owner, 2026-10-28: if the music stops for any
       // reason it cuts back on by itself): on the DRIVING booth, a deck the
       // station says is playing whose own player has sat paused — or
@@ -5310,7 +5411,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // hidden tab's frozen player is the browser's doing, and the keeper
       // covers the station meanwhile. An active grain scratch on the deck
       // is a hand on the record, never a stall.
-      if (OWNER() && boothLead && S.live && S[k].playing && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S.pausedAt && !document.hidden && !(grainSess && grainSess.k === k)) {
+      if (OWNER() && leadDrive() && S.live && S[k].playing && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S.pausedAt && !document.hidden && !(grainSess && grainSess.k === k)) {
         const dd = decks[k], ct = dd.el.currentTime || 0;
         const frozen = !dd.el.paused && dd.el.readyState < 3 && Math.abs(ct - (dd._stallCt ?? ct)) < 0.05;
         const stalled = (dd.el.paused && !dd.el.ended) || frozen;
@@ -5327,7 +5428,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       {
         const wd = wdPos[k] || (wdPos[k] = { key: "", pos: 0, adv: 0, act: 0, step: 0, reloads: 0 });
         if (!S[k].playing || S.pausedAt) { wd.key = ""; wd.step = 0; wd.reloads = 0; wd.adv = 0; wd.act = 0; }
-        else if (OWNER() && boothLead && S.live && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S[k].loop) {
+        else if (OWNER() && leadDrive() && S.live && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S[k].loop) {
           const key = wdKeyOf(k), ddw = decks[k];
           if (wd.key !== key) { wd.key = key; wd.pos = ddw.el.currentTime || 0; wd.adv = Date.now(); wd.act = 0; wd.step = 0; wd.reloads = 0; }
           else {
@@ -5350,10 +5451,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       // their player (setYt only presses play when the deck is flagged
       // playing, so a preload mount sits cued and silent) — and the
       // handover at 5 seconds becomes just play + fade.
-      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !S[PAIR[k]].playing && !(handoverBusy && Date.now() - handoverAt < 20000) && !(preLoad && preLoad.forStart === S[k].start) && (SANDBOX || !qStockValid(ROT[k]))) { const elP = decks[k].el, remP = elP && elP.duration && isFinite(elP.duration) ? elP.duration - elP.currentTime : 99; if (remP > 5 && remP <= 15) { const tgtP = PAIR[k]; preLoad = { target: tgtP, forStart: S[k].start, item: null }; pickNextItem().then(async (it) => { if (!it || !preLoad || preLoad.forStart !== S[k].start || preLoad.target !== tgtP) return; preLoad.item = it; saveQueue(); paintQueue(); try { await load(tgtP, it); if (it.yt) { const dp = decks[tgtP]; if (dp) { await dp.setYt(it.yt); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {} }).catch(() => {}); } }
+      if (OWNER() && leadDrive() && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !S[PAIR[k]].playing && !(handoverBusy && Date.now() - handoverAt < 20000) && !(preLoad && preLoad.forStart === S[k].start) && (SANDBOX || !qStockValid(ROT[k]))) { const elP = decks[k].el, remP = elP && elP.duration && isFinite(elP.duration) ? elP.duration - elP.currentTime : 99; if (remP > 5 && remP <= 15) { const tgtP = PAIR[k]; preLoad = { target: tgtP, forStart: S[k].start, item: null }; pickNextItem().then(async (it) => { if (!it || !preLoad || preLoad.forStart !== S[k].start || preLoad.target !== tgtP) return; preLoad.item = it; saveQueue(); paintQueue(); try { await load(tgtP, it); if (it.yt) { const dp = decks[tgtP]; if (dp) { await dp.setYt(it.yt); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {} }).catch(() => {}); } }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
-      if (OWNER() && boothLead && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 5) autoNext(k, true, Math.max(1200, rem * 1000)); /* blend lead 5s (owner, 2026-10-28): the next song is audibly IN before this one ends — never a pause between songs */ }
+      if (OWNER() && leadDrive() && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 5) autoNext(k, true, Math.max(1200, rem * 1000)); /* blend lead 5s (owner, 2026-10-28): the next song is audibly IN before this one ends — never a pause between songs */ }
       const d = decks[k]; if (d && d.loop && !d.el.paused && d.el.currentTime >= d.loop[1]) { try { d.el.currentTime = d.loop[0]; } catch (_) {} if (OWNER() && S[k].playing) { S[k].start = Date.now() - d.loop[0] * 1000; } }
       if (OWNER() && decks[k] && S[k].playing) peaks(k);
     });
@@ -5365,7 +5466,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // until something is actually playing. This is the booth-side rescue
     // that does not depend on the keeper: the keeper's own rescue is a
     // doc write that a live booth's next heartbeat can overwrite.
-    if (OWNER() && boothLead && !serverMirror() && S.live && (S.autodj || queue.length) && !S.pausedAt && !DECKS.some((x) => S[x].playing)) {
+    if (OWNER() && leadDrive() && !serverMirror() && S.live && (S.autodj || queue.length) && !S.pausedAt && !DECKS.some((x) => S[x].playing)) {
       if (!deadAirAt) deadAirAt = Date.now();
       if (Date.now() - deadAirAt > 5000) { if (handoverBusy && Date.now() - handoverAt >= 6000) handoverBusy = false; if (!handoverBusy) autoNext(lastEndedK, true); }
     } else deadAirAt = 0;
@@ -5596,7 +5697,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275500;
+  const MW_DJ_BUILD = 1793275600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -5692,11 +5793,18 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * screen. The adopted state goes up unchanged: the song on air keeps
    * its shared start, and adoptDeck (fired by the lease gain) joins it
    * in position. Nothing restarts. */
-  function takeControl() {
+  async function takeControl() {
     if (!serverMirror()) return;
     driveWant = Date.now();
     try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {}
     leadTakeAt = Date.now();
+    /* the server honors a takeover only when _lead.base equals the stored
+     * rows updated_at column - an ISO string the snapshot feed never
+     * carries (the old client sent the docs ms updatedAt, so a takeover
+     * could NEVER match and the button silently did nothing). Fetch the
+     * rows real updated_at through the same REST door the battles code
+     * uses, then send the takeover save on top of it. */
+    try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,updated_at", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; if (row && row.updated_at) lastBaseAt = row.updated_at; } catch (_) {}
     save(true);
     leaseBeat();
     actx();
@@ -5996,17 +6104,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     return `<div class="fxcell"><small>${lab} · <span id="wb-fxv-${id}"></span></small><input type="range" min="${min}" max="${max}" step="${step}" value="${min}" id="wb-fx-${id}" disabled></div>`;
   }
   function wbBuild(body) {
-    const decks = ["A", "B", "C", "D"].map(wbDeckHTML).join("");
+    const deckA = wbDeckHTML("A"), deckB = wbDeckHTML("B"), deckC = wbDeckHTML("C"), deckD = wbDeckHTML("D");
     const xv = (k) => `<div class="xv" id="wb-xv-${k}" style="--dk:${WB_DK[k]}"><i></i><span>VOL ${k}</span><b id="wb-xvb-${k}">90%</b></div>`;
     body.innerHTML = `<div id="wb-root">
     <div class="wb-top"><span class="onair-lamp" id="wb-lamp"><span class="dot"></span>OFF AIR</span><span class="wb-now" id="wb-now"></span></div>
     <div class="dj-screen"><small>📺 MASTER SCREEN — MUSIC VIDEO · EVERYONE SEES THIS SCREEN LIVE</small>
     <div class="vstage" id="wb-stage"><div class="vslot" id="wb-vs1"></div><div class="vslot" id="wb-vs2"></div><div class="vstandby" id="wb-vstandby">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="wb-vposter"><img src="/img/radio-promo.jpg" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="wb-vchip" hidden></div></div></div>
-    <div class="dj-decks">${decks}</div>
+    <div class="dj-panel wb-band"><h4>🎶 UP NEXT — THE QUEUE</h4><div class="dj-list" id="wb-queue"></div></div>
+    <div class="dj-decks wb-decks">${deckA}${deckB}
     <div class="mixer xfbar ws-ctl"><div class="xfrow"><div class="xfvols">${xv("A")}${xv("B")}</div><div class="xfpad big"><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="wb-xfdot"></div></div><div class="xfvols">${xv("C")}${xv("D")}</div></div>
     <small>✕ THE X FADER — slide toward a corner deck to give it the volume; the center is all even, and the master screen up top blends with it</small>
     <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="wb-pan-read">A 100% · B 100% · C 100% · D 100%</small></div>
     <div class="xfcurve" role="group" aria-label="Crossfader curve"><span>CURVE</span><button type="button" class="wb-xfc" data-v="smooth">Smooth</button><button type="button" class="wb-xfc" data-v="sharp">Sharp</button><button type="button" class="wb-xfc" data-v="cut">Cut</button></div></div>
+    ${deckC}${deckD}</div>
     <div class="dj-panel ws-ctl"><h4>🎛️ MASTER FX</h4><div class="fxgrid">
     ${wbFxCell("boost", "🔊 BOOST", 1, 2, 0.01)}
     ${wbFxCell("mf", "FILTER", 0, 100, 1)}
@@ -6019,7 +6129,6 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     ${wbFxCell("crush", "GRIT (CRUSH)", 0, 100, 1)}
     <div class="fxcell wide"><small>TRANSFORMER (CHOP)</small><div style="display:flex;gap:5px"><button class="btn ghost sm gatebtn wb-gate" type="button" data-v="0">OFF</button><button class="btn ghost sm gatebtn wb-gate" type="button" data-v="2">SLOW</button><button class="btn ghost sm gatebtn wb-gate" type="button" data-v="4">MED</button><button class="btn ghost sm gatebtn wb-gate" type="button" data-v="8">FAST</button></div></div>
     </div></div>
-    <div class="dj-panel"><h4>🎶 UP NEXT — THE QUEUE</h4><div class="dj-list" id="wb-queue"></div></div>
     </div>`;
     wbBuilt = true; wbQSsig = ""; wbWaveSig = {};
   }
@@ -6224,6 +6333,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const b = e.target.closest("button"); if (!b || !OWNER()) return;
     if (b.dataset.pop != null) { popOut(); return; }
     if (b.dataset.dsecbtn) { const n = b.dataset.dsecbtn; secState[n] = secState[n] ? 0 : 1; try { localStorage.setItem("mw-dsec-v1", JSON.stringify(secState)); } catch (_) {} document.querySelectorAll('.dsec[data-dsec="' + n + '"]').forEach((s) => s.classList.toggle("shut", !secState[n])); return; }
+    /* mwLeadLock client phase: on a mirror booth (another screen holds the
+     * server claim) performance taps never touch the decks - they ask for
+     * control instead, so a second booth cannot silently drive the set. */
+    if (serverMirror() && (b.dataset.mwauto != null || b.closest("#dj-owner .deck, #dj-owner #dj-browser, #dj-owner #dj-xfbar, #dj-owner .mixer"))) { takeControl(); return; }
     if (b.dataset.vtr || b.dataset.vspd || b.dataset.vfx) {
       if (b.dataset.vfx) { fireVfx(b.dataset.vfx); return; }
       if (b.dataset.vtr) { S.vmix = Object.assign({}, S.vmix || {}, { tr: b.dataset.vtr }); paintOwner(); save(true); say("\uD83D\uDCFA Video transition: " + b.dataset.vtr.toUpperCase() + " - it dresses the next master-screen switch on every screen."); return; }
@@ -6390,7 +6503,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // crossfade code below expects.
   (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
     const center = () => { xfTouchedAt = Date.now(); S.xf = 0.5; S.xf2 = 0.5; S.panX = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
-    const apply = (e) => { const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.panX = Math.round(((dx + 1) / 2) * 1000) / 1000; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
+    const apply = (e) => { if (serverMirror()) { takeControl(); return; } const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.panX = Math.round(((dx + 1) / 2) * 1000) / 1000; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
     // scroll gate (owner, 2026-10-29): a press applies nothing until the
     // gesture proves it is a fader move — horizontal travel of 8px or more,
     // more sideways than vertical. A vertical scroll starting on the pad is
@@ -6526,7 +6639,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const etHM = () => { try { const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(new Date()); const g = (t) => (p.find((x) => x.type === t) || {}).value || "00"; return g("hour").padStart(2, "0") + ":" + g("minute").padStart(2, "0"); } catch (_) { return ""; } };
   const etDay = () => { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); } catch (_) { return ""; } };
   function fireSched(en) { queue = (en.items || []).slice(); saveQueue(); paintQueue(); say("📅 Schedule: " + (en.name || "playlist") + " is up — " + queue.length + " in line."); if (queue.length && !DECKS.some((k) => S[k].playing)) { const it = queue.shift(); saveQueue(); paintQueue(); load("A", it).then(() => togglePlay("A")); } }
-  setInterval(() => { if (!OWNER() || !boothLead || !sched.length) return; const hm = etHM(), day = etDay(); if (!hm || !day) return; let fired = {}; try { fired = JSON.parse(localStorage.getItem("mw-dj-sched-fired") || "{}"); } catch (_) {} sched.forEach((en) => { const key = en.id + "@" + day; if (en.time === hm && fired[key] !== 1) { fired[key] = 1; try { localStorage.setItem("mw-dj-sched-fired", JSON.stringify(fired)); } catch (_) {} fireSched(en); } }); }, 20000);
+  setInterval(() => { if (!OWNER() || !leadDrive() || !sched.length) return; const hm = etHM(), day = etDay(); if (!hm || !day) return; let fired = {}; try { fired = JSON.parse(localStorage.getItem("mw-dj-sched-fired") || "{}"); } catch (_) {} sched.forEach((en) => { const key = en.id + "@" + day; if (en.time === hm && fired[key] !== 1) { fired[key] = 1; try { localStorage.setItem("mw-dj-sched-fired", JSON.stringify(fired)); } catch (_) {} fireSched(en); } }); }, 20000);
   let schedDocTried = false;
   function loadSchedDoc() { if (schedDocTried || !OWNER()) return; schedDocTried = true; try { const d = DBF(); if (!d) { schedDocTried = false; return; } d.doc("station/schedule").get().then((doc) => { const e = doc && doc.exists && doc.data() && doc.data().entries; if (Array.isArray(e)) { sched = e; saveSchedLocal(); paintSched(); } }).catch(() => {}); } catch (_) {} }
   /* the library rotation: a shuffled bag of the whole library, refilled when it runs out —
@@ -6653,7 +6766,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 2200); keys.forEach((key, i) => { S[key] = froms[i] + (0.5 - froms[i]) * p; }); levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
   }
   function xfFollowGuard() {
-    if (!OWNER() || !boothLead || !S.autodj || xfAnim || Date.now() - xfTouchedAt < 8000) return;
+    if (!OWNER() || !leadDrive() || !S.autodj || xfAnim || Date.now() - xfTouchedAt < 8000) return;
     [["xf", "A", "B"], ["xf2", "C", "D"]].forEach(([key, a, b]) => {
       if (xfAnim) return;
       const pa = !!S[a].playing, pb = !!S[b].playing;
@@ -6743,7 +6856,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     "Feeling lucky? The Coin Jackpot is open — play fair, win real coins."
   ];
   async function autoNext(endedK, force, fadeMs) {
-    if ((!S.autodj && !force) || !boothLead) return;
+    if ((!S.autodj && !force) || !leadDrive()) return;
     // A handover that died mid-flight (an unsettled load or play promise)
     // must not hold this latch forever: one older than 20s is stuck, and
     // this call takes over (2026-10-28: a stuck latch meant the song ended
