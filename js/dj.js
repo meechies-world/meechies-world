@@ -4736,6 +4736,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
         if (stt === 1 || stt === 2 || stt === 5) sl._hadFrame = true;
         if (stt === 1) sl._sawPlay = true; /* VIEWER-LEG FIX (5): durable evidence this slot really played - the mini OK gate reads it */
+        if (stt === 1 && scr === scrMini && srt.length && t.k === srt[srt.length - 1].k) miniMarkOk(sl.vid); /* RADIO MINI FIX (2): the mini featured slot earns its proof HERE, at sample time - a heal rebuild further down can reset the slot flag, never this */
         if (sl._hadFrame) picLive = true;
         if (scr !== scrBooth) bufStep(sl, stt, cur, want, !!S[t.k].playing, Date.now());
         /* VIEWER-LEG FIX (3) clean-play tracking begin: the heal
@@ -5045,11 +5046,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * and the station screen): it shows the same mix in a small rectangle at the
    * top of every page, and steps aside when a big screen is in view, when the
    * booth itself is on screen, or when the viewer closed it for this video */
-  let miniOffVid = "", stInView = false, miniOkVid = "", miniErrVid = "", miniLastVid = "", miniBufVid = "", miniBufAt = 0;
+  let miniOffVid = "", stInView = false, miniOkVid = "", miniErrVid = "", miniLastVid = "", miniBufVid = "", miniBufAt = 0, miniGateVid = "", miniGateAt = 0, miniGraceVid = "", miniGraceAt = 0;
+  /* RADIO MINI FIX (2): durable play evidence for the mini. renderScreen
+   * calls this the moment the mini screen featured slot is sampled in
+   * the playing state, so the proof lives in miniOkVid itself - not
+   * only in the slot _sawPlay flag, which a heal rebuild resets before
+   * miniApply pass-end read ever gets to spend it. Once a video has
+   * really played on the mini, no rebuild of that same video player
+   * can un-earn it. */
+  function miniMarkOk(v) { if (v) { miniOkVid = v; if (miniErrVid === v) miniErrVid = ""; } }
   async function miniApply(mix, duck) {
     const box = $("#dj-mini"); if (!box || SANDBOX) return;
     const tg = vmixTargets(), top = tg.slice().sort((a, b) => b.op - a.op)[0], vid = top ? (S[top.k] && S[top.k].yt) || "" : "";
-    if (vid !== miniLastVid) { miniErrVid = ""; miniLastVid = vid; } // VIEWER-LEG FIX (5): an error latched against a previous video must not hide the new one
+    if (vid !== miniLastVid) { const prevErr = !!miniLastVid && miniErrVid === miniLastVid; miniErrVid = ""; if (vid && !prevErr) { miniGraceVid = vid; miniGraceAt = Date.now(); } else { miniGraceVid = ""; miniGraceAt = 0; } miniGateVid = ""; miniGateAt = 0; miniLastVid = vid; } // VIEWER-LEG FIX (5): an error latched against a previous video must not hide the new one. RADIO MINI FIX (4): a clean change also opens a proof grace for the new video (only when the outgoing video was not error-latched), and the bounded-gate clock restarts
     let sessOff = false; try { sessOff = !!sessionStorage.getItem("mw_mini_off"); } catch (_) {}
     const vsM = S.vstream || {};
     const onTV = !!(document.body && document.body.dataset && document.body.dataset.view === "mwtv"); // the MW TV page IS the screen: the mini and its pop-out never double up there
@@ -5071,10 +5080,41 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // actually played, the box stays hidden (the render below still runs,
     // so it pops in the moment the video does) — unless his camera square
     // is live on the mini, which is reason enough to keep the box up
-    if (show && vid && miniOkVid !== vid) { const ov = document.getElementById("mw-camov"); if (miniErrVid === vid || !(ov && !ov.hidden)) box.hidden = true; }
+    /* RADIO MINI FIX (3/4): the proof gate, bounded and graced. The
+     * gate still keeps an unproven player from floating a black box
+     * over the page, but it may no longer hide the box forever: an
+     * error latched against this video still hides it outright, the
+     * camera square still keeps it up (both exactly as before), a
+     * fresh clean change sits inside its proof grace and cannot be
+     * gate-hidden at all, and every other gate-hidden stretch is
+     * clocked per video - past ~20s with no error latch the box is
+     * forced visible, thumbnail and all. A permanently hidden mini
+     * with no error latch and no explicit gate (session close,
+     * stage in view, booth on screen, MW TV page) is now impossible. */
+    if (show && vid && miniOkVid !== vid) {
+      const ov = document.getElementById("mw-camov"), nowG = Date.now();
+      if (miniErrVid === vid) { box.hidden = true; miniGateVid = ""; miniGateAt = 0; }
+      else if (ov && !ov.hidden) { miniGateVid = ""; miniGateAt = 0; }
+      else if (miniGraceVid === vid && nowG - miniGraceAt < 18000) { miniGateVid = ""; miniGateAt = 0; }
+      else { if (miniGateVid !== vid) { miniGateVid = vid; miniGateAt = nowG; } if (nowG - miniGateAt <= 20000) box.hidden = true; }
+    } else { miniGateVid = ""; miniGateAt = 0; }
     camOvSync();
     if (!tg.length) scrMini.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
-    if (!show) return;
+    /* RADIO MINI FIX (1): the render is decoupled from the box
+     * visibility. The old early return here meant that whenever the
+     * box was stepped aside - above all while the station stage was
+     * in view - the mini players got no play or seek commands at
+     * all, so the proof the gate above demands could never be
+     * earned and the box stayed vanished long after the stage had
+     * scrolled away. renderScreen now runs whenever there is a mix
+     * to mirror or a share is live, whatever the box is doing; the
+     * step-asides and gates only ever set box.hidden. Rendering is
+     * skipped only when there is nothing to render (no targets and
+     * no live share - the sandbox already returned at the top), and
+     * the box-lifting layout passes below still run only for a box
+     * that is actually showing. */
+    if (!tg.length && !(vsM.on && vsM.meeting)) return;
+    if (show) {
     // keep the mini clear of the bottom player bar: if a saved spot leaves it
     // under the bar, lift it above the bar while the bar is up (the saved spot
     // itself is untouched — the lift is re-applied on the next pass)
@@ -5084,6 +5124,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (!box.style.left && innerWidth >= 1100 && document.body.dataset.view === "community") { const side = document.querySelector("#v-community .side"); if (side) { const sr = side.getBoundingClientRect(), mr2 = box.getBoundingClientRect(); if (sr.width > 0 && mr2.right > sr.left - 8 && mr2.top < sr.bottom && mr2.bottom > sr.top) { box.style.left = Math.max(2, Math.round(sr.left - mr2.width - 12)) + "px"; box.style.right = "auto"; box.dataset.mnDock = "1"; } } }
       else if (docked && document.body.dataset.view !== "community") { box.style.left = ""; box.style.right = ""; delete box.dataset.mnDock; }
     } catch (_) {}
+    }
     await renderScreen(scrMini, true, 1, 1);
     /* VIEWER-LEG FIX (5/6) begin */
     const actM = scrMini.slots.filter((sl) => sl.deck && sl.p), topPM = top ? actM.find((sl) => sl.deck === top.k) : null;
@@ -5095,7 +5136,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
        * for a whole song the way the unbounded #404 rule let it. */
       if (miniBufVid !== vid || !miniBufAt) { miniBufVid = vid; miniBufAt = Date.now(); }
       if (Date.now() - miniBufAt <= 15000) box.hidden = true;
-      else if (miniOkVid === vid || (topPM && topPM._sawPlay)) box.hidden = false;
+      else if (show && (miniOkVid === vid || (topPM && topPM._sawPlay))) box.hidden = false; /* RADIO MINI FIX (1): the restore may only raise a box the show gates allowed up - never over a session close, the stage in view, the booth on screen, or the MW TV page */
     } else { miniBufVid = ""; miniBufAt = 0; }
     /* (5) the OK evidence no longer has to be a state-1 sample at
      * exactly this pass end: a featured slot that has really played
@@ -6093,7 +6134,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793338955;
+  const MW_DJ_BUILD = 1793339511;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
