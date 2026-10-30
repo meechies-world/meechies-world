@@ -87,6 +87,7 @@ html.appmode #appbar{display:flex}
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Meechie's World Inc","url":"https://meechiesworldinc.com/","logo":"https://meechiesworldinc.com/img/icon-512.png","email":"meechiesworldinc@aol.com","sameAs":["https://www.tiktok.com/@meechiesworldinc","https://www.snapchat.com/add/elpesidentay","https://meechiesworld-inc.printify.me"]}</script>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Kaushan+Script&family=Cinzel+Decorative:wght@700;900&family=Cormorant+Garamond:ital,wght@1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&family=Nosifer&display=swap">
 <link rel="stylesheet" href="css/app.css?v=1793201000">
 <style>
@@ -669,7 +670,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <div><p class="eyebrow">Meechie's World</p><h2>Meechie's Book</h2></div>
       <p class="muted">Post photos, share what you're working on, and talk with each other. Free for every member.</p>
     </div>
-    <img class="book-poster" src="/img/book-cover.jpg" alt="Meechies World — The Book" loading="eager" fetchpriority="high" decoding="async" width="1536" height="1024">
+    <img class="book-poster" src="/img/book-cover.jpg" srcset="/img/book-cover-640.webp 640w, /img/book-cover-1080.webp 1080w" sizes="(max-width: 920px) 100vw, 880px" alt="Meechies World — The Book" loading="eager" fetchpriority="high" decoding="async" width="1536" height="1024">
     <div class="live-strip" id="live-strip" hidden></div>
     <div class="grid-2">
       <div>
@@ -1011,7 +1012,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
       <div class="vstage" id="tw-stage">
         <div class="vslot" id="tw-vs1"></div>
         <div class="vslot" id="tw-vs2"></div>
-        <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster.jpg" alt="" loading="eager" fetchpriority="high" decoding="async"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
+        <div class="vstandby" id="tw-vstandby"><img class="tw-sb-art" src="/img/tv-poster.jpg" srcset="/img/tv-poster-640.webp 640w, /img/tv-poster-1080.webp 1080w" sizes="100vw" alt="" loading="eager" fetchpriority="high" decoding="async" width="1536" height="1024"><div class="tw-sb"><div class="tw-sb-logo">📺 MW TV</div><p>TV: connecting…</p></div></div>
         <div class="vchip" id="tw-vchip" hidden></div>
       </div>
     </div>
@@ -1572,7 +1573,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
       <p class="muted">DM us on TikTok or Snapchat for the fastest reply, or ask our AI assistant right now.</p>
     </div>
     <div class="card" id="ai-card" style="margin-bottom:24px">
-      <h3 style="font-size:22px;display:flex;align-items:center;gap:12px"><img src="/img/meechie-ai.jpg" alt="" width="52" height="52" decoding="async" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-hi)">Ask Meechie (AI assistant)</h3>
+      <h3 style="font-size:22px;display:flex;align-items:center;gap:12px"><img src="/img/meechie-ai-104.webp" alt="" width="52" height="52" decoding="async" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gold-hi)">Ask Meechie (AI assistant)</h3>
       <p class="muted" style="margin:6px 0 14px">Ask about services, pricing, ads, or how the platform works. It answers 24/7 and points you to the right next step.</p>
       <div class="msgs" id="ai-log" style="max-height:340px;padding:0 0 12px"></div>
       <form class="reply-form" id="ai-form"><input type="text" id="ai-q" aria-label="Ask Meechie" maxlength="500" placeholder="e.g. How much to record a song and shoot a video?" autocomplete="off"><button class="btn" type="submit">Ask</button></form>
@@ -1726,7 +1727,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 <script src="js/site-coder-ui.js?v=1793357741"></script>
 <script src="js/messages.js?v=1793357741"></script>
 <script src="js/videos.js?v=1793357741"></script>
-<script src="js/dj.js?v=1793366456"></script>
+<script src="js/dj.js?v=1793367058"></script>
 <script src="js/live.js?v=1793357741"></script>
 <script src="js/friends.js?v=1793357741"></script>
 <script src="js/social.js?v=1793357741"></script>
