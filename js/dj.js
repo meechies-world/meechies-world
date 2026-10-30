@@ -1162,6 +1162,90 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #wb-root .wb-decks>.deck[data-deck="C"]{grid-column:4;grid-row:1}
 #wb-root .wb-decks>.deck[data-deck="D"]{grid-column:5;grid-row:1}
 @media(max-width:900px){#wb-root .wb-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#wb-root .wb-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}#wb-root .wb-decks>.deck[data-deck="B"]{grid-column:2;grid-row:1}#wb-root .wb-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}#wb-root .wb-decks>.deck[data-deck="C"]{grid-column:1;grid-row:3}#wb-root .wb-decks>.deck[data-deck="D"]{grid-column:2;grid-row:3}}
+/* SOUND PADS LEFT RAIL (owner, 2026-10-29: "Put sound pads on the left of
+   the discs on the turn tables"): the JINGLE / SPOT BOARD panel leaves the
+   below-decks grid and stands in the deck bank as a fixed left column,
+   immediately left of deck A, level with the discs. Only the left end of
+   each bank grid gains a track; the decks, the mixers and the X cluster
+   (still centered between the B and C pairs) keep their shipped relative
+   places, shifted one column right where a regime names columns. The pad
+   buttons keep their full tappable size inside a two-wide board. */
+#dj-booth-root #dj-owner .dj-padsrail{align-self:start}
+#dj-booth-root #dj-owner .dj-padsrail .pads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#dj-booth-root #dj-owner .dj-padsrail .pad{min-height:58px}
+@media(min-width:761px){
+#dj-booth-root #dj-owner .dj-decks{grid-template-columns:224px repeat(3,minmax(0,1fr))}
+#dj-booth-root #dj-owner .dj-decks>.dj-padsrail{grid-column:1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:2}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="B"]{grid-column:3}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:4}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:2}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:3}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:4}
+}
+@media(min-width:1500px){
+#dj-booth-root #dj-owner{grid-template-columns:216px minmax(0,1fr) minmax(0,1fr) 500px minmax(0,1fr) minmax(0,1fr)}
+#dj-booth-root #dj-owner .dj-padsrail{grid-column:1;grid-row:6/span 3}
+#dj-booth-root #dj-owner .deck[data-deck="A"]{grid-column:2;grid-row:6/span 3}
+#dj-booth-root #dj-owner .deck[data-deck="B"]{grid-column:3;grid-row:6/span 3}
+#dj-booth-root #dj-owner .deck[data-deck="C"]{grid-column:5;grid-row:6/span 3}
+#dj-booth-root #dj-owner .deck[data-deck="D"]{grid-column:6;grid-row:6/span 3}
+#dj-booth-root #dj-owner #dj-xfbar{grid-column:4;grid-row:6}
+#dj-booth-root #dj-owner .mixer.m1{grid-column:4;grid-row:7}
+#dj-booth-root #dj-owner .mixer.m2{grid-column:4;grid-row:8}
+}
+@media(max-width:760px){
+#dj-booth-root #dj-owner .dj-decks{grid-template-columns:148px minmax(0,1fr) minmax(0,1fr)}
+#dj-booth-root #dj-owner .dj-decks>.dj-padsrail{grid-column:1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:2;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="B"]{grid-column:3;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:2;grid-row:4}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:3;grid-row:4}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:5}
+#dj-booth-root #dj-owner .dj-padsrail .pads{gap:6px}
+}
+@media(min-width:761px) and (max-width:1100px) and (orientation:portrait){
+#dj-booth-root #dj-owner .dj-decks{grid-template-columns:200px minmax(0,1fr) minmax(0,1fr)}
+#dj-booth-root #dj-owner .dj-decks>.dj-padsrail{grid-column:1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:2;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="B"]{grid-column:3;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.mixer.xfbar{grid-column:1/-1;grid-row:2}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:3}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:2;grid-row:4}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:3;grid-row:4}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:5}
+}
+@media (orientation:landscape) and (max-height:540px) and (max-width:1100px), (orientation:landscape) and (max-height:600px) and (max-width:1200px){
+#dj-booth-root #dj-owner .dj-decks{grid-template-columns:200px minmax(0,1fr) minmax(0,1fr) 240px minmax(0,1fr) minmax(0,1fr)}
+#dj-booth-root #dj-owner .dj-decks>.dj-padsrail{grid-column:1;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:2;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="B"]{grid-column:3;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.mixer.xfbar{grid-column:4;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="C"]{grid-column:5;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.deck[data-deck="D"]{grid-column:6;grid-row:1}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m1{grid-column:1/-1;grid-row:2}
+#dj-booth-root #dj-owner .dj-decks>.mixer.m2{grid-column:1/-1;grid-row:3}
+}
+/* Watch mirror: the same left pads column in the spectator bank */
+#wb-root .wb-decks{grid-template-columns:216px minmax(0,1fr) minmax(0,1fr) 300px minmax(0,1fr) minmax(0,1fr)}
+#wb-root .wb-padsrail{grid-column:1;grid-row:1;align-self:start}
+#wb-root .wb-decks>.deck[data-deck="A"]{grid-column:2}
+#wb-root .wb-decks>.deck[data-deck="B"]{grid-column:3}
+#wb-root .wb-decks>.mixer.xfbar{grid-column:4}
+#wb-root .wb-decks>.deck[data-deck="C"]{grid-column:5}
+#wb-root .wb-decks>.deck[data-deck="D"]{grid-column:6}
+#wb-root .wb-padsrail .pads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#wb-root .wb-padsrail .pad{min-height:56px;cursor:default}
+@media(max-width:900px){
+#wb-root .wb-decks{grid-template-columns:148px minmax(0,1fr) minmax(0,1fr)}
+#wb-root .wb-decks>.wb-padsrail{grid-column:1;grid-row:1}
+#wb-root .wb-decks>.deck[data-deck="A"]{grid-column:2;grid-row:1}
+#wb-root .wb-decks>.deck[data-deck="B"]{grid-column:3;grid-row:1}
+#wb-root .wb-decks>.deck[data-deck="C"]{grid-column:2;grid-row:3}
+#wb-root .wb-decks>.deck[data-deck="D"]{grid-column:3;grid-row:3}
+}
 
 `;
   document.head.appendChild(css);
@@ -1260,6 +1344,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   </div>
   <div id="dj-phset" data-n="1"><div class="phrow"><span class="phlab">📱 SETUP</span><button type="button" data-phn="1" class="on">1 DECK</button><button type="button" data-phn="2">2</button><button type="button" data-phn="3">3</button><button type="button" data-phn="4">4</button></div><div class="phrow" id="dj-phdeck"><span class="phlab">DECK</span><button type="button" data-phd="A" class="on">A<i class="phdot"></i></button><button type="button" data-phd="B">B<i class="phdot"></i></button><button type="button" data-phd="C">C<i class="phdot"></i></button><button type="button" data-phd="D">D<i class="phdot"></i></button></div></div>
   <div class="dj-decks" data-show="C" data-phn="1">
+    <div class="dj-panel dj-padsrail" id="dj-padsrail"><h4>🔊 JINGLE / SPOT BOARD</h4>
+      <div class="pads" id="dj-pads"></div>
+      <small class="muted">Built-in station sounds first, then your own drops — tap an empty pad to record up to 8 seconds. ▶ plays it in the booth, 📡 sends it out over the air.</small></div>
     ${deckHTML("A")}
     ${deckHTML("B")}
     <div class="mixer m1">
@@ -1322,9 +1409,6 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <div class="micmeter"><i id="mic-lvl"></i></div>
       <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="mic-duck" checked style="width:auto"> Auto-duck the music while I talk (radio style)</label>
       <small class="muted">Your live mic feeds the show recording. To talk TO the listeners, use the big HOLD TO TALK button — it sends your voice out over the mix.</small></div>
-    <div class="dj-panel"><h4>🔊 JINGLE / SPOT BOARD</h4>
-      <div class="pads" id="dj-pads"></div>
-      <small class="muted">Built-in station sounds first, then your own drops — tap an empty pad to record up to 8 seconds. ▶ plays it in the booth, 📡 sends it out over the air.</small></div>
     <div class="dj-panel"><h4>⏺️ RECORD THE SHOW</h4>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" id="rec-btn">⏺ Start recording</button><span id="rec-st" class="muted" style="font-size:13px">Captures the full mix + your mic.</span></div>
       <div id="rec-out"></div>
@@ -1671,6 +1755,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   ckReg(boothEl.querySelector(".mixer.m1"), "mixer1", "🎛️ Mixer — mic, master & FX");
   ckReg(boothEl.querySelector(".mixer.m2"), "mixer2", "🎛️ C/D strip");
   ckReg(boothEl.querySelector(".dj-setups"), "setups", "⚙️ Setups row");
+  ckReg(document.getElementById("dj-padsrail"), "padsrail", "🔊 Sound pads");
   boothEl.querySelectorAll(".dj-grid2 > .dj-panel").forEach((p) => { const h = p.querySelector("h4"); const label = h ? h.textContent.trim().slice(0, 26) : "Studio panel"; ckReg(p, "panel-" + label.replace(/[^a-z0-9]+/gi, "-").toLowerCase(), label); });
   let ckHidden = []; try { ckHidden = JSON.parse(localStorage.getItem("mw-booth-hide") || "[]"); if (!Array.isArray(ckHidden)) ckHidden = []; } catch (_) {}
   const ckBar = document.createElement("div"); ckBar.id = "dj-ckbar"; boothEl.querySelector(".dj-top").after(ckBar);
@@ -1763,9 +1848,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * no audio, no panel logic. The Customize reset restores this shipped
    * default order too (see the data-ckreset listener below).
    * ORG-BEGIN */
-  const ORG_DEFAULT = ["door", "brain", "reports", "livereq", "autodj", "mic", "record", "fx", "vfx", "pads", "midi", "log", "reqdrops", "campro", "battles", "afterhours"];
+  const ORG_DEFAULT = ["door", "brain", "reports", "livereq", "autodj", "mic", "record", "fx", "vfx", "midi", "log", "reqdrops", "campro", "battles", "afterhours"];
   const ORG_BY_ID = { "dj-door": "door", "dj-brain": "brain", "dj-reports": "reports", "dj-fxpanel": "fx", "dj-vfxpanel": "vfx", "dj-campro": "campro", "dj-afterhours": "afterhours" };
-  const ORG_BY_H4 = [["LIVE DJ REQUESTS", "livereq"], ["AUTO-DJ", "autodj"], ["LIVE MIC", "mic"], ["RECORD THE SHOW", "record"], ["JINGLE", "pads"], ["MIDI CONTROLLER", "midi"], ["PROGRAM LOG", "log"], ["REQUESTS & DROPS", "reqdrops"], ["BATTLES", "battles"]];
+  const ORG_BY_H4 = [["LIVE DJ REQUESTS", "livereq"], ["AUTO-DJ", "autodj"], ["LIVE MIC", "mic"], ["RECORD THE SHOW", "record"], ["MIDI CONTROLLER", "midi"], ["PROGRAM LOG", "log"], ["REQUESTS & DROPS", "reqdrops"], ["BATTLES", "battles"]];
   function orgKeyOf(p) {
     if (!p) return "";
     if (p.dataset && p.dataset.org) return p.dataset.org;
@@ -5770,7 +5855,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275800;
+  const MW_DJ_BUILD = 1793275900;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6178,13 +6263,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function wbBuild(body) {
     const deckA = wbDeckHTML("A"), deckB = wbDeckHTML("B"), deckC = wbDeckHTML("C"), deckD = wbDeckHTML("D");
+    const wbPads = `<div class="dj-panel ws-ctl wb-padsrail"><h4>🔊 SOUND PADS</h4><div class="pads" id="wb-pads">${["📯 Air Horn", "🚨 Siren", "🔫 Laser", "✨ Sting", "🎺 Scratch", "💥 Impact", "🔔 Bell", "⏪ Rewind", "🥁 Drum Fill"].map((n, i) => `<div class="pad" id="wb-pad-s${i}">${n}<small>booth + recording</small></div>`).join("")}${[1, 2, 3, 4].map((n) => `<div class="pad custom" id="wb-pad-d${n}">🎙️ Drop ${n}<small>his recorded drops</small></div>`).join("")}</div><small class="muted">Meechie's sound board, standing left of the decks like in his booth.</small></div>`;
     const xv = (k) => `<div class="xv" id="wb-xv-${k}" style="--dk:${WB_DK[k]}"><i></i><span>VOL ${k}</span><b id="wb-xvb-${k}">90%</b></div>`;
     body.innerHTML = `<div id="wb-root">
     <div class="wb-top"><span class="onair-lamp" id="wb-lamp"><span class="dot"></span>OFF AIR</span><span class="wb-now" id="wb-now"></span></div>
     <div class="dj-screen"><small>📺 MASTER SCREEN — MUSIC VIDEO · EVERYONE SEES THIS SCREEN LIVE</small>
     <div class="vstage" id="wb-stage"><div class="vslot" id="wb-vs1"></div><div class="vslot" id="wb-vs2"></div><div class="vstandby" id="wb-vstandby">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="wb-vposter"><img src="/img/radio-promo.jpg" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="wb-vchip" hidden></div></div></div>
     <div class="dj-panel wb-band"><h4>🎶 UP NEXT — THE QUEUE</h4><div class="dj-list" id="wb-queue"></div></div>
-    <div class="dj-decks wb-decks">${deckA}${deckB}
+    <div class="dj-decks wb-decks">${wbPads}${deckA}${deckB}
     <div class="mixer xfbar ws-ctl"><div class="xfrow"><div class="xfvols">${xv("A")}${xv("B")}</div><div class="xfpad big"><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="wb-xfdot"></div></div><div class="xfvols">${xv("C")}${xv("D")}</div></div>
     <small>✕ THE X FADER — slide toward a corner deck to give it the volume; the center is all even, and the master screen up top blends with it</small>
     <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small id="wb-pan-read">A 100% · B 100% · C 100% · D 100%</small></div>
