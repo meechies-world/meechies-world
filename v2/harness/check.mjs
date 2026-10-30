@@ -228,6 +228,160 @@ ok("slot error latches the vid", ms.errVid === "v1");
 mni.miniPost(ms, { vid: "v1", show: true, hidden: false, bufMasked: false, topErr: false, topSawPlay: true, topState1: true, now: T0 + 700 });
 ok("play evidence proves the vid and clears the latch", ms.okVid === "v1" && ms.errVid === "");
 
+/* ---- 5. Phase 3 social payload + fixtures ---------------------
+   The Book + social core (Book, Friends, Messages, Chat, Clips)
+   loads ONLY when a social view is first entered: js/social.js is
+   the shared data layer (the live platform ops + the pure logic),
+   each view is its own lazy module. Home and the viewer views must
+   never import any of it — the byte proof below, then fixtures for
+   the pure logic in js/social.js (feed ordering, the owner's count
+   rules, the DM tag protocol + thread grouping, story grouping,
+   the clip filter) and the friends card's socUrl builder. */
+const p3Files = [
+  "js/social.js",
+  "js/views/community.js", "js/views/friends.js", "js/views/messages.js", "js/views/chat.js", "js/views/clips.js",
+  "css/book.css", "css/friends.css", "css/messages.css", "css/chat.css", "css/clips.css",
+];
+console.log("\nPhase 3 social payload (lazy — first social view only, never on Home or the viewer views):");
+let p3Gz = 0, p3Raw = 0;
+for (const f of p3Files) {
+  try {
+    const s = size(f);
+    p3Gz += s.gz; p3Raw += s.raw;
+    console.log(`  ${f.padEnd(24)} raw ${kb(s.raw).padStart(9)}   gzip ${kb(s.gz).padStart(9)}`);
+  } catch (_) { failed++; console.log("FAIL  missing", f); }
+}
+console.log(`  ${"TOTAL".padEnd(24)} raw ${kb(p3Raw).padStart(9)}   gzip ${kb(p3Gz).padStart(9)}`);
+for (const f of ["js/views/home.js", "js/views/radio.js", "js/views/mwtv.js", "js/views/watch.js", "js/engine.js", "js/station.js", "js/mini.js"]) {
+  const s = readFileSync(join(V2, f), "utf8");
+  const pays = /social\.js|views\/(community|friends|messages|chat|clips)\.js/.test(s);
+  console.log(`${f} imports the social layer: ${pays ? "YES — FAIL" : "no — PASS"}`);
+  if (pays) failed++;
+}
+for (const v of ["community", "friends", "messages", "clips", "chat"]) {
+  const line = coreSrc.split("\n").find((l) => l.trim().startsWith(v + ":"));
+  const reg = !!line && /css:/.test(line) && /import\("\.\/views\//.test(line);
+  console.log(`registry ${v}: ${reg ? "css + lazy load — PASS" : "MISSING — FAIL"}`);
+  if (!reg) failed++;
+}
+
+console.log("\n--- Phase 3 social fixtures ---");
+const soc = await import("../js/social.js");
+const frn = await import("../js/views/friends.js");
+const NOW = 1700000000000;
+
+/* feed ordering: rank (announce 4, sponsored 2, following 1) beats
+   recency; createdAt breaks ties inside a rank */
+const FOL = new Set(["friend1"]);
+const fp = (id, over) => Object.assign({ id, authorId: "someone", createdAt: 0, likes: [], replyCount: 0 }, over || {});
+const orderedIds = soc.sortFeed([
+  fp("fresh-plain", { createdAt: NOW }),
+  fp("old-announce", { createdAt: 10, announce: true }),
+  fp("mid-sponsored", { createdAt: 20, sponsored: true }),
+  fp("friend-post", { createdAt: 30, authorId: "friend1" }),
+  fp("older-plain", { createdAt: 5 }),
+  fp("fresh-announce", { createdAt: NOW + 1000, announce: true }),
+], FOL).map((p) => p.id);
+eq("feed order: announce > sponsored > following > plain, newest first in rank", orderedIds,
+  ["fresh-announce", "old-announce", "mid-sponsored", "friend-post", "fresh-plain", "older-plain"]);
+eq("announce+sponsored stacks (rank 6)", soc.feedRank(fp("x", { announce: true, sponsored: true }), FOL), 6);
+
+/* trending: last 7 days, score = likes + 2*replies >= 3, top 3 */
+const trend = soc.trendingIds([
+  fp("t1", { createdAt: NOW, likes: ["a", "b", "c"] }),
+  fp("t2", { createdAt: NOW, likes: ["a"], replyCount: 1 }),
+  fp("t3", { createdAt: NOW, likes: ["a", "b"] }),
+  fp("t4", { createdAt: NOW - 8 * 864e5, likes: ["a", "b", "c", "d", "e"] }),
+  fp("t5", { createdAt: NOW, replyCount: 2 }),
+], NOW);
+ok("trending includes score>=3 in-window", trend.has("t1") && trend.has("t2") && trend.has("t5"));
+ok("trending excludes score 2 and 8-day-old", !trend.has("t3") && !trend.has("t4"));
+
+/* the owner's count rules (Law 11 + the comment twin) */
+eq("like count 24 hidden", soc.likeCountVisible(24, false), false);
+eq("like count 25 shown", soc.likeCountVisible(25, false), true);
+eq("like count 24 shown to the owner seat", soc.likeCountVisible(24, true), true);
+eq("like count 0 never shown", soc.likeCountVisible(0, true), false);
+eq("comment count 2 hidden", soc.commentCountVisible(2, false), false);
+eq("comment count 3 shown", soc.commentCountVisible(3, false), true);
+eq("comment count 2 shown to the owner seat", soc.commentCountVisible(2, true), true);
+
+/* cleanRow: the platform layer's junk filter */
+ok("cleanRow accepts a normal post", soc.cleanRow({ path: "posts/abc123", data: { authorId: "u-1_2", text: "hi" } }));
+ok("cleanRow rejects a bad doc id", !soc.cleanRow({ path: "posts/a b!", data: {} }));
+ok("cleanRow rejects an HTML authorId", !soc.cleanRow({ path: "posts/abc", data: { authorId: "<script>" } }));
+ok("cleanRow accepts rows without id fields", soc.cleanRow({ path: "members/u1", data: { handle: "M" } }));
+
+/* the DM tag protocol */
+eq("tags parse in any order", soc.dmTags("⟦x:1893456000000⟧⟦g:gab12⟧⟦m:m123456⟧⟦q:42⟧hello").t, { x: "1893456000000", g: "gab12", m: "m123456", q: "42" });
+eq("bareText strips every tag", soc.bareText("⟦g:gab12⟧⟦m:m123456⟧hey"), "hey");
+eq("quoteOf reads the q tag", soc.quoteOf("⟦q:77⟧yo"), "77");
+eq("react tail parses", soc.reactOf("⟦react:123:❤️⟧"), { target: "123", emoji: "❤️" });
+eq("group react tail parses (@ form)", soc.reactOf("⟦g:gab12⟧⟦react:@m999:🔥⟧"), { target: "m999", emoji: "🔥" });
+eq("a plain body is not a reaction", soc.reactOf("hello ❤️"), null);
+eq("preview: legacy voice body", soc.dmPreview({ body: "🎙️ Voice message ⟦https://yjouaysczttqbytksejq.supabase.co/storage/v1/object/public/media/u1/a.webm⟧" }), "🎙️ Voice message");
+eq("preview: /m/media voice body (current send format)", soc.dmPreview({ body: "🎙️ Voice message ⟦https://meechiesworldinc.com/m/media/u1/abc.webm⟧" }), "🎙️ Voice message");
+eq("preview: /m/media photo body", soc.dmPreview({ body: "📷 Photo ⟦https://meechiesworldinc.com/m/media/u1/abc.jpg⟧" }), "📷 Photo");
+eq("preview: reaction body", soc.dmPreview({ body: "⟦react:5:😂⟧" }), "Reacted 😂 to a message");
+eq("preview: plain text", soc.dmPreview({ body: "⟦g:gab12⟧meet at 7" }), "meet at 7");
+ok("expired vanish body is expired", soc.dmExpired({ body: "⟦x:1000000000000⟧gone" }));
+ok("future vanish body is not expired", !soc.dmExpired({ body: "⟦x:9999999999999⟧here" }));
+
+/* thread grouping: rows are newest-first, like the live load */
+const ME = "me", T = (s) => new Date(1700000000000 + s * 1000).toISOString();
+const dmr = (id, sender, recipient, body, s, read) => ({ id, sender, recipient, body, created_at: T(s), read_at: read ? T(s + 1) : null });
+const rows = [
+  dmr(9, "ann", ME, "⟦react:7:❤️⟧", 90),
+  dmr(8, ME, "ann", "mine latest", 80, true),
+  dmr(7, "ann", ME, "ann latest", 70),
+  dmr(6, "bob", ME, "bob says hi", 60),
+  dmr(5, ME, "bob", "⟦g:gab12⟧⟦m:mAAA111⟧group hello", 50, true),
+  dmr(4, ME, "ann", "⟦g:gab12⟧⟦m:mAAA111⟧group hello", 50, true),
+  dmr(3, "ann", ME, "⟦g:gab12⟧⟦m:mBBB222⟧ann in group", 40),
+  dmr(2, ME, "ann", "older mine", 20, true),
+  dmr(1, "ann", ME, "oldest ann", 10, true),
+];
+const convos = soc.groupConvos(rows, ME, { gab12: { name: "Crew", members: [ME, "ann", "bob"] } });
+eq("convo list: group + two people, newest first", convos.map((c) => c.id), ["ann", "bob", "g:gab12"]);
+eq("ann convo unread excludes the reaction", (convos.find((c) => c.id === "ann") || {}).unread, 1);
+eq("group convo unread counts only incoming non-reactions", (convos.find((c) => c.gid === "gab12") || {}).unread, 1);
+eq("unknown groups are skipped", soc.groupConvos(rows, ME, {}).map((c) => c.id), ["ann", "bob"]);
+const th = soc.threadSplit(rows, ME, "ann", null);
+eq("thread rows come back oldest-first, reactions split out", th.msgs.map((r) => r.id), [1, 2, 7, 8]);
+eq("reactions fold onto their target", th.reacts, { 7: { ann: "❤️" } });
+const gth = soc.threadSplit(rows, ME, null, "gab12");
+eq("group thread keys messages by their shared muid", gth.msgs.map((r) => soc.msgKey(r, "gab12")), ["mBBB222", "mAAA111", "mAAA111"]);
+
+/* stories: 24h window, then mine > unseen > friends > latest */
+const st = (id, authorId, createdAt) => ({ id, authorId, kind: "text", text: "x", createdAt });
+const sgs = soc.storyGroups([
+  st("s-old", "zoe", NOW - 25 * 3600e3),
+  st("s-zoe", "zoe", NOW - 3600e3),
+  st("s-pal-seen", "pal", NOW - 2 * 3600e3),
+  st("s-pal-new", "pal", NOW - 1800e3),
+  st("s-fan", "fan", NOW - 900e3),
+  st("s-me", ME, NOW - 7200e3),
+], new Set(["s-pal-seen", "s-pal-new"]), ME, new Set(["pal"]), NOW);
+eq("story order: mine, unseen, friends, then latest; 24h cutoff", sgs.map((g) => g.uid), [ME, "fan", "zoe", "pal"]);
+ok("seen group reports no unseen", sgs.find((g) => g.uid === "pal").unseen === false);
+
+/* clips: https only, the retired storage host excluded, newest first */
+eq("clip filter", soc.clipList([
+  { id: "c1", video: "https://cdn.example.com/a.mp4", createdAt: 5 },
+  { id: "c2", video: "https://yjouaysczttqbytksejq.supabase.co/storage/v1/object/public/media/a.mp4", createdAt: 9 },
+  { id: "c3", video: "http://example.com/b.mp4", createdAt: 7 },
+  { id: "c4", video: "https://example.com/d.mp4", createdAt: 3 },
+  { id: "c5", createdAt: 11 },
+]).map((p) => p.id), ["c1", "c4"]);
+
+/* the friends card URL builder (live MW_socUrl) */
+eq("socUrl instagram handle", frn.socUrl("instagram", "@meechie"), "https://instagram.com/meechie");
+eq("socUrl tiktok adds @", frn.socUrl("tiktok", "meechie"), "https://tiktok.com/@meechie");
+eq("socUrl full link passes through", frn.socUrl("instagram", "https://instagram.com/meechie"), "https://instagram.com/meechie");
+eq("socUrl link-only app needs a real link", frn.socUrl("spotify", "someartist"), "");
+eq("socUrl bandcamp subdomain", frn.socUrl("bandcamp", "meechie"), "https://meechie.bandcamp.com");
+eq("socUrl whatsapp number", frn.socUrl("whatsapp", "3019881469"), "https://wa.me/13019881469");
+
 console.log(`fixtures: ${fixPass} passed, ${fixFail} failed`);
 if (fixFail) failed += fixFail;
 

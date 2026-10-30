@@ -1,0 +1,27 @@
+/* v2 CLIPS — styles for js/views/clips.js: the style block js/clips.js
+   injects on the live site, verbatim. */
+
+
+#v-clips .clips-wrap{position:relative;max-width:520px;margin:0 auto}
+#v-clips .clips{height:calc(100dvh - 150px - var(--shell-h,48px));min-height:420px;overflow-y:auto;scroll-snap-type:y mandatory;border-radius:18px;background:#000;border:1px solid var(--line);scrollbar-width:none;overscroll-behavior:contain}
+#v-clips .clips::-webkit-scrollbar{display:none}
+#v-clips .clip{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:grid;place-items:center;overflow:hidden;background:#000}
+#v-clips .clip video{width:100%;height:100%;object-fit:cover;background:#000}
+#v-clips .clip .shade{position:absolute;inset:auto 0 0 0;height:45%;background:linear-gradient(transparent,rgba(0,0,0,.75));pointer-events:none}
+#v-clips .clip .cap{position:absolute;left:14px;right:84px;bottom:18px;color:#fff;text-shadow:0 1px 3px #000;display:grid;gap:4px}
+#v-clips .clip .cap b{font-size:16px}#v-clips .clip .cap p{margin:0;font-size:14px;line-height:1.35;max-height:5.4em;overflow:hidden}
+#v-clips .rail{position:absolute;right:10px;bottom:22px;display:grid;gap:16px;justify-items:center}
+#v-clips .rail button,#v-clips .rail a{display:grid;justify-items:center;gap:2px;background:none;border:0;color:#fff;font:700 12px system-ui,sans-serif;cursor:pointer;text-shadow:0 1px 3px #000;text-decoration:none}
+#v-clips .rail .ic{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font-size:22px;background:rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+#v-clips .rail .on .ic{color:#ff3d5a}
+#v-clips .rail .avatar{width:46px;height:46px;border:2px solid var(--gold);font-size:18px}
+#v-clips .snd{position:absolute;top:14px;right:14px;border:0;border-radius:999px;background:rgba(0,0,0,.5);color:#fff;padding:8px 12px;font:700 13px system-ui,sans-serif;cursor:pointer}
+#v-clips .paused-ic{position:absolute;font-size:64px;color:rgba(255,255,255,.85);pointer-events:none;text-shadow:0 2px 12px #000}
+#v-clips .clip-empty{height:100%;display:grid;place-content:center;text-align:center;color:var(--muted);padding:24px}
+#v-clips .clip-add{display:grid;place-items:center;position:absolute;left:50%;transform:translateX(-50%);bottom:14px;width:58px;height:40px;border-radius:12px;border:0;background:linear-gradient(90deg,#25f4ee 0 12%,#fff 12% 88%,#fe2c55 88%);color:#000;font:800 26px/1 system-ui,sans-serif;cursor:pointer;overflow:hidden}
+#v-clips .clip-add input{position:absolute;inset:0;opacity:0;cursor:pointer}
+#v-clips .clip-up{position:absolute;left:12px;right:12px;bottom:66px;background:var(--panel);border:1px solid var(--gold);border-radius:14px;padding:14px;display:grid;gap:10px;z-index:5}
+#v-clips .clip-up input[type=text]{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px system-ui,sans-serif}
+@media (max-width:640px){#v-clips .clips{height:calc(100dvh - 120px - var(--shell-h,48px));border-radius:0;border:0}}
+body.has-player #v-clips .clips{height:calc(100dvh - 230px - var(--shell-h,48px) - env(safe-area-inset-bottom,0px))}
+body.has-player #v-clips .rail{bottom:70px}

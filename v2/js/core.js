@@ -245,11 +245,11 @@ const Presence = {
  * ------------------------------------------------------------------ */
 const VIEWS = {
   home:      { name: "Home",            css: "css/home.css", load: () => import("./views/home.js") },
-  community: { name: "Meechie's Book",  blurb: "The community feed — post, talk, gift and build with the whole community." },
-  friends:   { name: "Friends",         blurb: "Your people — friend requests, and what your friends are posting." },
-  messages:  { name: "Messages",        blurb: "Member messaging, right here on Meechie's World." },
-  clips:     { name: "Clips",           blurb: "Short-form video from the community." },
-  chat:      { name: "Chat & Walkie",   blurb: "Channels for every topic, plus voice clips." },
+  community: { name: "Meechie's Book",  css: "css/book.css",     load: () => import("./views/community.js") },
+  friends:   { name: "Friends",         css: "css/friends.css",  load: () => import("./views/friends.js") },
+  messages:  { name: "Messages",        css: "css/messages.css", load: () => import("./views/messages.js") },
+  clips:     { name: "Clips",           css: "css/clips.css",    load: () => import("./views/clips.js") },
+  chat:      { name: "Chat & Walkie",   css: "css/chat.css",     load: () => import("./views/chat.js") },
   dating:    { name: "Dating",          blurb: "Dating profiles, swiping, and matches. 18+ only." },
   radio:     { name: "Radio",           css: "css/radio.css", load: () => import("./views/radio.js") },
   dj:        { name: "DJ Station",      blurb: "The booth, the station card, and Watch the Setup." },

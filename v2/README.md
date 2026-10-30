@@ -113,10 +113,39 @@ v2/
   js/views/mwtv.js      MW TV: the fullscreen TV channel (engine surface)
   js/views/watch.js     Watch the Setup: the booth rendered read-only
                         from state (engine surface + the upsell)
+  js/social.js          the social data layer (Phase 3): the live
+                        platform ops over the shell gateway (docs store
+                        reads/writes, the dms table, uploads with the
+                        convert-first video rule), a changes-feed bus
+                        with rooms, the member directory, the follows /
+                        friends stores — plus every pure rule exported
+                        bare for the harness (feed ranking, the count
+                        rules, the DM tag protocol, story grouping,
+                        the clip filter)
+  js/views/community.js Meechie's Book: the Facebook-look feed (posts,
+                        reactions, replies, composer, stories, PYMK,
+                        filter bar, notifications, FB chrome + rails)
+  js/views/friends.js   Friends: mutual-friends tabs, find-by-email,
+                        friends' posts (live js/friends.js port)
+  js/views/messages.js  Messages: DM list + threads, groups, reactions,
+                        quotes, vanish, walkie-talkie voice (live
+                        js/messages.js port)
+  js/views/chat.js      Chat: the four rooms over chat/<ch>/msgs with
+                        lobby-room presence
+  js/views/clips.js     Clips: the snap feed over video posts + posting
+  css/book.css          the Book's live rules: css/app.css extraction +
+                        the fb-feed / fb-feed-plus / stories /
+                        book-plus injected blocks, verbatim
+  css/friends.css       the friends.js injected block + the .chip rule
+  css/messages.css      the messages.js injected block (minus the
+                        site-wide #mx-fab rules) + a thread addendum
+  css/chat.css          the chat rules from css/app.css
+  css/clips.css         the clips.js injected block, verbatim
   js/views/placeholder.js  brand-styled "under construction" for the
                         views that land in later phases
   harness/check.mjs     syntax + byte-budget + inventory checks + the
-                        Phase 2 engine fixtures (42 assertions)
+                        Phase 2 engine fixtures (42 assertions) + the
+                        Phase 3 social fixtures
 ```
 
 ## Phase checklist (MAP §5)
@@ -154,8 +183,28 @@ v2/
         control attempts open the upsell with the MAP Law 12 prices
   - [x] Harness fixtures: cushion values, sync-lock thresholds, mask
         cover + flap lift, blend follow, every mini gate
-- [ ] **Phase 3 — the Book + social core** (feed, friends, messages,
-      chat, clips)
+- [x] **Phase 3 — the Book + social core** (feed, friends, messages,
+      chat, clips) ← this PR
+  - [x] One shared social data layer (`js/social.js`) — every social
+        view reads/writes the SAME live backend the site runs today
+        (docs store, the `dms` table, KV uploads), so a post made in
+        v2 is visible on the live site and vice versa; zero new
+        backend, zero forked data
+  - [x] The Book with the owner's rules intact: like counts under 25
+        hidden, comment counts under 3 hidden (Law 11), feed rank
+        (announce > sponsored > following), trending, reactions,
+        stories (24h), PYMK, saved/hidden/search filters — all ports
+        of the live code paths
+  - [x] Friends (mutual lists, requests, find-by-email fingerprints,
+        friends' posts), Messages (the ⟦tag⟧ body protocol, groups,
+        reactions, quotes, vanish, hold-to-talk walkie), Chat (four
+        rooms + lobby presence), Clips (snap feed + convert-first
+        posting)
+  - [x] Harness: social payload byte report + isolation asserts
+        (Home and the viewer views never import the social layer) +
+        fixtures for feed ordering, the count rules at 24/25 and 2/3,
+        cleanRow, the DM protocol + thread grouping, story grouping,
+        the clip filter, socUrl
 - [ ] **Phase 4 — the booth** (the DJ station, Watch control side,
       battles, Go Live Studio) on the typed state layer
 - [ ] **Phase 5 — commerce & the rest** (shop, coin/games, jobs, ads,
@@ -272,3 +321,73 @@ Flagged, phase-shaped only:
 9. **Every seat in v2 is a viewer seat this phase** — there is no
    booth in v2 until the booth phase, so the owner browsing v2 gets
    the viewer surfaces. His live booth is untouched.
+
+## Phase 3 parity notes (vs live social surfaces at main `1be5b8fe`)
+
+**Evidence basis, stated honestly**: code-level comparison against the
+live sources (js/app-core.js, fb-feed.js, fb-feed-plus.js, stories.js,
+book-plus.js, friends.js, messages.js, clips.js, social.js,
+profile-setup.js, email-find.js, platform.js, cf-client.js) plus the
+harness fixtures in section 5. A page-load side-by-side is Gate T's
+job (Phase 6), not claimed here. Byte evidence: the shell's first
+load is unchanged (27.7 KB gzip total); the whole social payload is
+199.9 KB raw / 60.7 KB gzip and loads only on the first social view
+(Book entry: 33.7 KB gzip; Messages 25.2; Friends 16.2; Clips 15.1;
+Chat 14.1 — the shared layer is paid once per session).
+
+**LOOK differences** (defects unless owner-approved — each one is a
+consequence of the shell's shape, flagged for Gate T):
+
+1. **The Facebook chrome lives inside the Book view in v2.** On the
+   live site #fb-top / #fb-tabs / #fb-left / #fb-right are body-level
+   furniture the owner's rule puts on EVERY view. The v2 shell lets a
+   view own only its own section (core.js changes are registry-lines
+   only by program rule), so in v2 the chrome renders with the Book
+   and leaves with it. Same markup, same styles, same behavior —
+   different lifetime. Promoting it to shell furniture is a small
+   core increment whenever the owner wants it.
+2. **The Book's contacts rail reads the shell presence feed**
+   (/api/station's named users + counts) instead of the live rail's
+   friend list, and the fb-top radio button navigates to the Radio
+   view (live toggles play inline — the engine is not loaded on the
+   Book). The fb-top message/radio count badges and the floating
+   Messenger fab + chat heads are site-wide chrome from the same
+   live surfaces; they arrive with the shell-chrome work, not this
+   phase.
+3. **Messages thread furniture uses the live values under module
+   class names** (.dm-thead for the live .dm-head, .mx-row/.mx-msg
+   bubbles carrying the live .mx-bub colors) — the injected live
+   stylesheet keys its bubbles to a column wrapper the module does
+   not reproduce. Side-by-side at Gate T will judge it.
+
+**BEHAVIOR differences** (each an intent-restoration or a named gap):
+
+1. **INTENT-RESTORATION — DM photo/voice bubbles render today's
+   uploads.** The live bubble reader only matches the retired
+   Supabase storage URL inside `🎙️ Voice message ⟦…⟧` /
+   `📷 Photo ⟦…⟧` bodies, so a photo or voice note sent from the
+   CURRENT live site (which uploads to this site's own /m/media/)
+   displays as raw bracket text there. v2's reader accepts both
+   forms; the send format is byte-identical, so data interops both
+   ways and the live site is untouched.
+2. **Profile pages are not in this phase.** Avatar/name clicks
+   (data-profile on live) are inert in v2, the fb-top profile button
+   takes live's own fallback (Friends), and the Book's Edit profile
+   covers the app-core fields (name, bio, photo, store links) — the
+   full profile surface (profile pages, the profile-setup designer
+   with socials/phone/colors) is its own later module. The daily
+   coin check-in card (#daily-card) likewise waits for the coin
+   phase; the 🎁 Gift button is present and says so on tap.
+3. **Messages "Active now" comes from the shell presence feed**
+   (35-second /api/station window) instead of live's lobby-room
+   peers; typing indicators ride the same changes-feed room
+   protocol as live (1:1 only, as live). Chat presence uses the
+   room protocol exactly as live.
+4. **Smaller faithful-by-construction notes**: the `#post-<id>`
+   deep link the ⋯ menu copies points at the live site (the v2
+   router does not claim that hash yet; Clips' 💬 button hands the
+   post to the Book through sessionStorage instead); story replies
+   and reactions are DMs, exactly as live; group ids are minted in
+   live's `g…` shape; local prefs (mw_saved_posts, mw_hidden_posts,
+   mw_story_seen, mw_fb_seen, mw_mx_prefs) share the live keys, so
+   they carry over on the same device.
