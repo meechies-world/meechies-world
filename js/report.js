@@ -93,10 +93,32 @@
       if (!e) return;
       var target = e.target;
       if (target && target !== window && (target.src || target.href)) {
-        /* capture phase: a script, stylesheet or image failed to load */
+        /* capture phase: a script, stylesheet, image or media failed to load */
         var res = target.src || target.href || "";
         if (fromSelf(res)) return;
-        autoReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res));
+        var tag = target.tagName || "";
+        if (tag === "SCRIPT" || tag === "LINK") {
+          autoReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res));
+          return;
+        }
+        /* Media and image loads get a short grace period before they are
+         * believed. The page itself cancels these loads constantly: feed
+         * re-renders replace the element mid-preload, a multi-source video
+         * falls through to its next source, a view change discards the
+         * element. Those cancellations fire the same error event as a real
+         * 404, and they were most of what this reporter ever caught (whole
+         * bursts of healthy files in a single minute). A genuine failure is
+         * still there when the grace ends: element on the page, nothing
+         * loaded. A cancelled one is gone, aborted, or playing by then. */
+        setTimeout(function () {
+          try {
+            if (!target.isConnected) return;
+            var v = tag === "SOURCE" && target.parentElement ? target.parentElement : target;
+            if (v && v.error && v.error.code === 1) return; /* MEDIA_ERR_ABORTED: the page cancelled it */
+            if (v && typeof v.readyState === "number" && v.readyState >= 2) return; /* it recovered / it is playing */
+            autoReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res));
+          } catch (_) {}
+        }, 1600);
         return;
       }
       if (fromSelf(e.filename)) return;

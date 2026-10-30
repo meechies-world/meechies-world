@@ -3,7 +3,9 @@
  *  - Right after they log in and tap Enter: Meechie's welcome video, full screen with sound, then the welcome song.
  *  - Dating page: the dating video at the top.
  *  - Everything else (including "Join us") shows as a swipeable row on Home and Videos ([data-originals]).
- * Videos stream from Supabase storage (so iPhones can play them); the site's own copies are the backup. */
+ * Videos play from the site's own copies in /media/promo/. The old storage-relay copies
+ * are gone (every one 404s since the outside storage shut off), so they are no longer
+ * offered as sources: a dead second source only ever produced error noise. */
 (function () {
   const SB = "/m/media/9c4f7de6-bd82-46f9-88af-7fac069fe0e9/";
   const SIGNUP = { src: SB + "8e5b60225eca435aa5a4.mp4", local: "/media/promo/signup.mp4", poster: "/media/promo/signup.jpg" };
@@ -18,7 +20,7 @@
    * second as a backup. The relay's storage is over quota (402), and a dead first <source>
    * used to kill the welcome video outright — the browser treated the error page as a broken
    * video instead of falling through to the good copy. */
-  const vid = (v, attrs) => `<video ${attrs} poster="${v.poster}" playsinline preload="metadata"><source src="${v.local}" type="video/mp4"><source src="${v.src}" type="video/mp4"></video>`;
+  const vid = (v, attrs) => `<video ${attrs} poster="${v.poster}" playsinline preload="metadata"><source src="${v.local}" type="video/mp4"></video>`;
 
   const css = document.createElement("style");
   css.textContent = `
@@ -83,13 +85,9 @@
     b.innerHTML = `<video autoplay playsinline poster="${WELCOME.poster}"></video>` + '<button type="button" class="skip">Skip ›</button><div class="cap">WELCOME TO MEECHIE\'S WORLD</div>';
     document.body.appendChild(b);
     const v = b.querySelector("video");
-    // play the site's own copy first; if it ever fails, fall back to the relay copy once
-    let triedBackup = false;
+    // the site's own copy is the only copy (the relay copies are gone); on error, finish
     v.addEventListener("ended", fin);
-    v.addEventListener("error", () => {
-      if (!triedBackup) { triedBackup = true; v.src = WELCOME.src; v.load(); v.play().catch(() => {}); }
-      else setTimeout(fin, 400);
-    });
+    v.addEventListener("error", () => setTimeout(fin, 400));
     b.querySelector(".skip").addEventListener("click", fin);
     v.src = WELCOME.local; v.load();
     // the Enter tap counts as permission for sound; if the phone still blocks it, play muted with a "tap for sound" button
