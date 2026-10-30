@@ -451,7 +451,7 @@ html{scrollbar-gutter:stable}
 .talk.on{background:#e5484d;box-shadow:0 0 0 8px rgba(229,72,77,.25),0 0 30px #e5484d}
 .micmeter{width:100%;height:8px;background:#1c1710;border-radius:99px;overflow:hidden}
 .micmeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#45bd62,#f7b928,#e5484d);transition:width .08s}
-.dj-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px;margin-top:14px}
+.dj-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px;margin-top:14px;grid-auto-flow:dense;align-items:start}
 .dj-panel{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
 #dj-door .door-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #2a2418;font-size:14px;flex-wrap:wrap}
 #dj-door .door-row.new{animation:doornew 1.6s ease-in-out 2}
@@ -615,7 +615,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
    the right, make the song pick and mixer in the middle"): the deck bank unwraps so
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
    column stacks main mixer, SONG PICKER, C/D mixer. */
-@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
+@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2/span 3;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
 html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
 @media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
@@ -760,8 +760,8 @@ html.popdj .popdj-hint{display:block}
    width, cinema height — tall enough to star, capped so the decks stay in reach */
 #dj-screen{position:relative;margin:0 0 12px}
 #dj-screen>small{display:block;color:var(--muted);font-size:11px;letter-spacing:.12em;margin-bottom:6px}
-#dj-screen .vstage{aspect-ratio:21/9;max-height:46vh;min-height:170px;border-radius:14px}
-@media(max-width:760px){#dj-screen .vstage{min-height:150px;max-height:36vh}}
+#dj-screen .vstage{aspect-ratio:16/9;max-height:66vh;min-height:200px;border-radius:14px}
+@media(max-width:760px){#dj-screen .vstage{min-height:160px;max-height:52vh}}
 @media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner>#dj-edit{grid-column:1/-1;grid-row:4}#dj-owner .deck[data-deck="A"]{grid-row:5/span 3}#dj-owner .deck[data-deck="B"]{grid-row:5/span 3}#dj-owner .deck[data-deck="C"]{grid-row:5/span 3}#dj-owner .deck[data-deck="D"]{grid-row:5/span 3}#dj-owner #dj-browser{grid-row:5}#dj-owner #dj-xfbar{grid-column:3;grid-row:6}#dj-owner .mixer.m1{grid-row:7}#dj-owner .mixer.m2{grid-row:8}}
 /* MINI MASTER SCREEN (owner, 2026-10-26): the live video follows viewers to the
    top of every page in a little rectangle; it steps aside whenever a big screen
@@ -1065,7 +1065,49 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner #dj-screen .vstage{border:1px solid #3a3a41;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.55),0 0 0 1px rgba(240,207,120,.12)}
 #dj-booth-root #dj-owner button:focus-visible,#dj-booth-root #dj-owner input:focus-visible{outline:2px solid rgba(240,207,120,.75);outline-offset:1px}
 #dj-station{background:linear-gradient(180deg,#141518,#0b0b0d);border-color:#33333a;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 6px 18px rgba(0,0,0,.4)}
-}`;
+}
+/* mwBoothOrganize (owner, 2026-10-29: "move things lower up higher -
+   push everything up to fill in. Everything. I want you to organize
+   it."): the panel area below the decks PACKS instead of stacking in
+   grid rows. A row grid makes every row as tall as its tallest panel,
+   so short panels strand black space beneath them, the last row sits
+   mostly empty beside one tall panel, and on the wide grid the whole
+   panel block waits below the tall centre stack while the columns
+   under the decks stand empty. Two regimes, layout only - panel
+   order, contents, controls and Customize behaviour are untouched:
+   (1) below 1500px the panel area becomes balanced CSS columns:
+   panels stack tightly down each column, a Customize-hidden panel
+   leaves no hole, and the pack reflows on its own; (2) at 1500px+
+   the panels become items of the owner grid itself and pack upward
+   beside the centre stack, starting in the C/D mixer row (span 2 of
+   the 5 columns; span 1 once the columns are wide enough at 1900px),
+   so the dead space under the decks fills with panels instead of
+   black. The setups row above spans its grid area over rows 2-4 so
+   a hidden screen or editing block can never pull a panel up into
+   the top zone; the decks, fader and master screen keep their exact
+   places. */
+@media(min-width:761px){
+.dj-grid2{display:block;column-width:430px;column-gap:14px}
+.dj-grid2>.dj-panel{break-inside:avoid;margin:0 0 14px}
+}
+@media(min-width:1500px){
+#dj-owner>.dj-grid2{display:contents}
+#dj-owner>.dj-grid2>.dj-panel{grid-column:span 2;margin:0}
+}
+@media(min-width:1900px){
+#dj-owner>.dj-grid2>.dj-panel{grid-column:span 1}
+}
+
+/* booth organize (owner, 2026-10-29): buttons a little bigger on the shared booth and station button surfaces */
+#dj-owner .btn,#dj-station .btn{padding:13px 24px}
+#dj-owner .btn.sm,#dj-station .btn.sm{padding:8px 17px;font-size:15px}
+#dj-owner .btn{min-height:46px}
+/* organize: the drag grip lives in each below-decks panel header and only shows while the layout is unlocked */
+#dj-owner .org-grip{display:none;flex:none;cursor:grab;touch-action:none;color:var(--gold-hi);font-size:15px;line-height:1;padding:5px 8px;margin-left:8px;border:1px solid var(--gold-lo);border-radius:8px;background:#141109;user-select:none;-webkit-user-select:none}
+#dj-owner.org-open .org-grip{display:inline-grid;place-items:center}
+#dj-owner .dj-panel.org-drag{opacity:.55;outline:2px dashed var(--gold);outline-offset:2px;position:relative;z-index:5}
+#dj-orglock.on{border-color:var(--gold);color:#191104;background:var(--gold)}
+`;
   document.head.appendChild(css);
 
   // collapsible deck sections: one shared open/shut choice per section, remembered
@@ -1317,6 +1359,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the X fader rides right under the music browser / YouTube search (owner,
   // 2026-10-26: "put the cross fader at the top under the youtube search")
   const xfEl = document.getElementById("dj-xfbar"); if (xfEl && brEl) brEl.after(xfEl);
+  // the master screen rides directly above the deck row (owner, voice call
+  // 2026-10-29: a big widescreen TV above the decks) — the block moves as
+  // one, skip row and Customize unit included; every id inside it is
+  // untouched, so renderScreen and the vmix machinery never notice
+  const scrEl = document.getElementById("dj-screen"); if (scrEl && dkEl) dkEl.before(scrEl);
   // MASTER FX strip (owner ask, 2026-10-26): the FX slider stack leaves the
   // center mixer — it ran long with empty space beside it — and becomes a
   // full-width panel under the console, sliders lined up in even cells. Same
@@ -1560,8 +1607,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * browser reports in that same visual space. A transform scale was
    * rejected here: it would trap the booth's position:fixed children
    * inside a transformed ancestor and desync the offsetWidth readers.
-   * The zoom is the smaller of the width fit and the height fit, never
-   * above 1, and never below FIT_MIN — below the floor the console keeps
+   * The zoom is width-led since the organize pass (owner, 2026-10-29:
+   * no side voids): the width fit is answered first, the height fit
+   * bounds it, never above 1 and never below FIT_MIN — below the floor the console keeps
    * the floor size and the page scrolls the remainder, rather than
    * shrinking the tables into print too small to work. The fit measures
    * the booth as it stands: Customize-hidden and folded blocks take no
@@ -1573,7 +1621,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!o || !o.isConnected) return;
     const de = document.documentElement;
     if (root) { // (a) edge to edge — except the pop-out modes, already full-bleed
-      const full = innerWidth >= 1100 && !de.classList.contains("popdj") && !de.classList.contains("playdj");
+      const full = innerWidth >= 761 && !de.classList.contains("popdj") && !de.classList.contains("playdj");
       if (full && o.offsetParent) { const ml = parseFloat(getComputedStyle(root).marginLeft) || 0; root.style.width = de.clientWidth + "px"; const rr = root.getBoundingClientRect(); root.style.marginLeft = (ml - rr.left) + "px"; }
       else if (root.style.width) { root.style.width = ""; root.style.marginLeft = ""; }
     }
@@ -1584,7 +1632,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const top = o.getBoundingClientRect().top;
     const availW = root && root.clientWidth ? root.clientWidth : de.clientWidth;
     const availH = Math.max(240, innerHeight - Math.max(0, top));
-    let s = Math.min(availW / nw, availH / nh, 1);
+    const sW = availW / nw, sH = availH / nh;
+    let s = Math.min(sW, 1);
+    if (s > sH) s = Math.max(FIT_MIN, sH);
     if (s < FIT_MIN) s = FIT_MIN;
     o.style.zoom = s >= 0.999 ? "" : String(Math.round(s * 1000) / 1000);
   }
@@ -1595,6 +1645,124 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   if ("IntersectionObserver" in window && boothEl) new IntersectionObserver((es) => { if (es.some((x) => x.isIntersecting)) fitSoon(); }, { threshold: 0.05 }).observe(boothEl);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitSoon());
   boothFit(); setTimeout(boothFit, 500); setTimeout(boothFit, 1800);
+  /* ---------- booth organize (owner, voice call 2026-10-29) ----------
+   * The below-decks studio grid gets organized: panels pack upward in a
+   * shipped priority order (the daily tools first, the rare setup last),
+   * every panel folds to its header via foldPanels() above (collapse is
+   * not Customize-hide; both re-pack with no holes in the dense grid),
+   * and the panels can be dragged by a grip in their header to rearrange
+   * them — the arrangement is per device and saved. A master lock in the
+   * top bar starts LOCKED on every load, so nothing ever shifts by
+   * accident; unlocking is per visit. The top zone (decks, mixers, the
+   * X fader, the master screen) is never part of this: only .dj-grid2
+   * panels are touched, and only their visual order changes — no state,
+   * no audio, no panel logic. The Customize reset restores this shipped
+   * default order too (see the data-ckreset listener below).
+   * ORG-BEGIN */
+  const ORG_DEFAULT = ["door", "brain", "livereq", "autodj", "mic", "record", "fx", "vfx", "pads", "midi", "log", "reqdrops", "campro", "battles", "afterhours"];
+  const ORG_BY_ID = { "dj-door": "door", "dj-brain": "brain", "dj-fxpanel": "fx", "dj-vfxpanel": "vfx", "dj-campro": "campro", "dj-afterhours": "afterhours" };
+  const ORG_BY_H4 = [["LIVE DJ REQUESTS", "livereq"], ["AUTO-DJ", "autodj"], ["LIVE MIC", "mic"], ["RECORD THE SHOW", "record"], ["JINGLE", "pads"], ["MIDI CONTROLLER", "midi"], ["PROGRAM LOG", "log"], ["REQUESTS & DROPS", "reqdrops"], ["BATTLES", "battles"]];
+  function orgKeyOf(p) {
+    if (!p) return "";
+    if (p.dataset && p.dataset.org) return p.dataset.org;
+    let k = ORG_BY_ID[p.id] || "";
+    if (!k) { const h = p.querySelector ? p.querySelector(":scope > h4") : null; const t = h ? (h.textContent || "").toUpperCase() : ""; for (let i = 0; i < ORG_BY_H4.length; i++) { if (t.indexOf(ORG_BY_H4[i][0]) >= 0) { k = ORG_BY_H4[i][1]; break; } } }
+    if (!k) { const h = p.querySelector ? p.querySelector(":scope > h4") : null; k = "panel-" + ((h && h.textContent) || "panel").replace(/[^a-z0-9]+/gi, "-").toLowerCase().slice(0, 24); }
+    if (p.dataset) p.dataset.org = k;
+    return k;
+  }
+  /* The order to show: the saved per-device arrangement wins for the
+   * panels it names; panels it does not name (new since the save — the
+   * After Hours shelf is created lazily) slot in by the shipped default
+   * rank; anything unknown keeps its current relative order at the end. */
+  function orgResolve(present, saved) {
+    const rank = (k) => { const d = ORG_DEFAULT.indexOf(k); return d >= 0 ? d : 900; };
+    return present.slice().sort((a, b) => {
+      const sa = saved ? saved.indexOf(a) : -1, sb = saved ? saved.indexOf(b) : -1;
+      if (sa >= 0 && sb >= 0) return sa - sb;
+      if (sa >= 0) return -1;
+      if (sb >= 0) return 1;
+      return rank(a) - rank(b);
+    });
+  }
+  const orgGrid = () => boothEl ? boothEl.querySelector(".dj-grid2") : null;
+  let orgLocked = true, orgBusy = false, orgDrag = null;
+  function orgPanels() { const g = orgGrid(); if (!g) return []; return Array.prototype.slice.call(g.children).filter((p) => p.classList && p.classList.contains("dj-panel")); }
+  function orgDecorate(p) {
+    const h = p.querySelector(":scope > h4"); if (!h || h.querySelector(".org-grip")) return;
+    const grip = document.createElement("span"); grip.className = "org-grip"; grip.textContent = "⠿"; grip.title = "Drag to rearrange — unlock the layout in the top bar first"; grip.setAttribute("role", "button"); grip.setAttribute("aria-label", "Drag to rearrange this panel");
+    const fb = h.querySelector("button"); if (fb) h.insertBefore(grip, fb); else h.appendChild(grip);
+  }
+  function orgApply() {
+    const g = orgGrid(); if (!g || orgBusy) return;
+    const ps = orgPanels(); if (!ps.length) return;
+    let saved = null; try { saved = JSON.parse(localStorage.getItem("mw-booth-order") || "null"); if (!Array.isArray(saved)) saved = null; } catch (_) {}
+    const want = orgResolve(ps.map(orgKeyOf), saved);
+    const now = ps.map(orgKeyOf);
+    let same = want.length === now.length;
+    if (same) for (let i = 0; i < want.length; i++) { if (want[i] !== now[i]) { same = false; break; } }
+    ps.forEach((p) => orgDecorate(p));
+    if (!same) { orgBusy = true; const byKey = {}; ps.forEach((p) => { byKey[orgKeyOf(p)] = p; }); want.forEach((k) => { if (byKey[k]) g.appendChild(byKey[k]); }); orgBusy = false; }
+  }
+  /* Dragging: only from the grip, only while unlocked. The panel reorders
+   * live against its siblings' on-screen boxes — those boxes are read
+   * with getBoundingClientRect(), the same visual space as clientX/Y, so
+   * the math is exact at any booth zoom. Hidden (Customize) and folded
+   * panels keep their slots in the saved order; hidden ones are skipped
+   * as drop targets because they have no box. */
+  function orgGripDown(e) {
+    if (orgLocked || orgDrag) return;
+    const grip = e.target && e.target.closest ? e.target.closest(".org-grip") : null; if (!grip) return;
+    const p = grip.closest(".dj-panel"), g = orgGrid();
+    if (!p || !g || p.parentElement !== g) return;
+    e.preventDefault();
+    orgBusy = true;
+    orgDrag = { p: p, g: g, id: e.pointerId, grip: grip };
+    p.classList.add("org-drag");
+    try { grip.setPointerCapture(e.pointerId); } catch (_) {}
+    grip.addEventListener("pointermove", orgGripMove);
+    grip.addEventListener("pointerup", orgGripUp);
+    grip.addEventListener("pointercancel", orgGripUp);
+  }
+  function orgGripMove(e) {
+    if (!orgDrag || e.pointerId !== orgDrag.id) return;
+    const g = orgDrag.g, p = orgDrag.p, x = e.clientX, y = e.clientY;
+    const sibs = Array.prototype.slice.call(g.children).filter((c) => c !== p && c.classList && c.classList.contains("dj-panel") && !c.classList.contains("ck-off") && !c.hidden);
+    let before = null;
+    for (let i = 0; i < sibs.length; i++) {
+      const r = sibs[i].getBoundingClientRect(); if (!r.width && !r.height) continue;
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      if (cy > y + 6 || (Math.abs(cy - y) <= Math.max(30, r.height / 2) && cx > x)) { before = sibs[i]; break; }
+    }
+    if (before) { if (before !== p.nextSibling) g.insertBefore(p, before); }
+    else if (g.lastElementChild !== p) g.appendChild(p);
+  }
+  function orgGripUp(e) {
+    if (!orgDrag || (e && e.pointerId !== orgDrag.id)) return;
+    const d = orgDrag; orgDrag = null;
+    d.grip.removeEventListener("pointermove", orgGripMove);
+    d.grip.removeEventListener("pointerup", orgGripUp);
+    d.grip.removeEventListener("pointercancel", orgGripUp);
+    d.p.classList.remove("org-drag");
+    try { localStorage.setItem("mw-booth-order", JSON.stringify(orgPanels().map(orgKeyOf))); } catch (_) {}
+    orgBusy = false;
+    fitSoon();
+  }
+  document.addEventListener("pointerdown", orgGripDown, true);
+  /* The master lock: lives in the booth top bar next to Customize. */
+  const orgLockPaint = () => { const b = document.getElementById("dj-orglock"); if (boothEl) boothEl.classList.toggle("org-open", !orgLocked); if (!b) return; b.textContent = orgLocked ? "🔒 Layout" : "🔓 Layout open"; b.classList.toggle("on", !orgLocked); };
+  { const topBar = boothEl && boothEl.querySelector(".dj-top"); if (topBar && !document.getElementById("dj-orglock")) { const lb = document.createElement("button"); lb.type = "button"; lb.className = "btn ghost sm"; lb.id = "dj-orglock"; lb.title = "Lock or unlock the below-decks panel layout"; lb.addEventListener("click", () => { orgLocked = !orgLocked; orgLockPaint(); if (!orgLocked) say("Layout open: drag any panel below the decks by the grip in its header. Tap Layout again to lock it — it will never move on its own."); else say("Layout locked — the panels stay where you put them."); }); topBar.appendChild(lb); } }
+  orgLockPaint();
+  /* The Customize reset restores the shipped organized default too:
+   * clear the saved arrangement, re-apply the default order, and unfold
+   * the grid panels on the spot (their fold keys die with the same
+   * reset, in the Customize handler above). */
+  document.addEventListener("click", (e) => { const h = e.target && e.target.closest ? e.target.closest("[data-ckreset]") : null; if (!h || !e.target.closest("#dj-booth-root")) return; try { localStorage.removeItem("mw-booth-order"); } catch (_) {} orgApply(); const g = orgGrid(); if (g) g.querySelectorAll(".pfold.shut").forEach((b) => b.classList.remove("shut")); fitSoon(); });
+  /* Panels created after this block (the After Hours shelf) join the
+   * organization the moment they land in the grid. */
+  if (window.MutationObserver) { const g0 = orgGrid(); if (g0) new MutationObserver(() => { if (!orgBusy) orgApply(); }).observe(g0, { childList: true }); }
+  orgApply();
+  /* ORG-END */
   const $ = (s) => document.querySelector(s);
   const decks = { A: null, B: null, C: null, D: null };
   const DECKS = ["A", "B", "C", "D"]; const PAIR = { A: "B", B: "A", C: "D", D: "C" };
@@ -5428,7 +5596,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275400;
+  const MW_DJ_BUILD = 1793275500;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
