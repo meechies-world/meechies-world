@@ -2578,7 +2578,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* the room's own live playback (HLS) - the fallback picture for a
    * LIVESTREAM room, where an off-stage watcher is never given a WebRTC
    * consumer at all (see the studio3 note at vsWatchGrab). Native HLS
-   * where the browser has it (Safari/iOS), hls.js lazy-loaded elsewhere. */
+   * where the browser has it (Safari/iOS), hls.js lazy-loaded elsewhere.
+   * BUFFER PASS (owner, 2026-10-29: "it looks like its loading to much
+   * i think it needs more buffers"): the hls.js players run a real
+   * cushion now - a 4-segment live target with up to 30s buffered
+   * ahead - instead of the 2-segment / 10s low-latency diet the
+   * sync-lock build shipped. The sync lock aligns every copy to the
+   * SOUNDING element, so depth costs no lip sync; and the lock's
+   * live-edge trim (in vsAvSyncLock) is a stall rescue that only
+   * fires a full 30s behind the edge, never at the cushion itself. */
   let vsHlsP = null;
   function vsLoadHls() {
     if (window.Hls) return Promise.resolve(true);
@@ -2591,7 +2599,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     vsStageEls().forEach((st) => { const v = vsVid(st); try {
       if (v._vsHlsUrl !== url) { vsKillHls(v); try { v.srcObject = null; } catch (_) {} v._vsHlsUrl = url;
         if (v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl")) v.src = url;
-        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 10, lowLatencyMode: true, liveSyncDurationCount: 2, maxLiveSyncPlaybackRate: 1.5 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
+        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, backBufferLength: 30, lowLatencyMode: true, liveSyncDurationCount: 4, maxLiveSyncPlaybackRate: 1.5 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
         else { vsLoadHls().then((ok) => { if (ok && vsShown.hls === url) vsShowHls(url); }); }
       }
       const p = v.play(); if (p && p.catch) p.catch(() => {});
@@ -2647,7 +2655,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (vsShown.hls) {
         const ref = vsHlsSndEl;
         vsStageEls().forEach((st) => { const v = st.querySelector("video.vslive"); if (!v) return;
-          try { if (v.seekable && v.seekable.length) { const end = v.seekable.end(v.seekable.length - 1); if (isFinite(end) && end - (v.currentTime || 0) > 6 && now - (v._avEdge || 0) >= 10000) { v.currentTime = Math.max(0, end - 1.2); v._avEdge = now; } } } catch (_) {}
+          /* BUFFER PASS: the absolute live-edge trim is a STALL RESCUE
+           * for the sounding element only (muted copies are governed by
+           * the drift-vs-sound correction below, which already seeks a
+           * copy that falls behind the sound). Its threshold is 30s on
+           * purpose: the deepened cushion parks a healthy player
+           * liveSyncDurationCount (4) segments behind the edge - up to
+           * ~24s with 6s segments - so the old 6s rule ate the very
+           * cushion that stops rebuffering, yanking every copy, the
+           * sounding one included, to the edge every 10s and throwing
+           * its buffer away. Past 30s the copy is not cushioning, it
+           * is stalled (or the tab slept), and the rescue pulls it to
+           * 2s behind the edge so the cushion can rebuild ahead of it. */
+          try { if ((v === ref || !ref) && v.seekable && v.seekable.length) { const end = v.seekable.end(v.seekable.length - 1); if (isFinite(end) && end - (v.currentTime || 0) > 30 && now - (v._avEdge || 0) >= 10000) { v.currentTime = Math.max(0, end - 2); v._avEdge = now; } } } catch (_) {}
           if (!ref || v === ref) return;
           if (!isFinite(v.currentTime) || !isFinite(ref.currentTime)) return;
           const dec = syncLockCalc(v.currentTime - ref.currentTime, 1);
@@ -4006,7 +4026,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   /* one screen player for any video platform: the wrapper speaks the YT-ish
    * surface renderScreen already uses, whatever player is underneath */
-  function mkVidPlayer(mountEl, tok, muted, deckK) {
+  function mkVidPlayer(mountEl, tok, muted, deckK, warm) {
     const vp = vparseTok(tok);
     const w = { _raw: null, _st: -1, _cur: 0,
       playVideo() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.playVideo(); else if (vp.p === "dm") w._raw.play(); else { const r = w._raw.play(); if (r && r.catch) r.catch(() => {}); } } catch (_) {} },
@@ -4017,11 +4037,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       setVolume(v) { try { if (!w._raw) return; if (vp.p === "yt") w._raw.setVolume(v); else w._raw.setVolume(Math.max(0, Math.min(1, v / 100))); } catch (_) {} },
       setPlaybackRate(r) { try { if (!w._raw) return; if (vp.p === "yt") w._raw.setPlaybackRate(r); else if (vp.p === "dm") { if (w._raw.setPlaybackRate) w._raw.setPlaybackRate(r); } else { const q = w._raw.setPlaybackRate(r); if (q && q.catch) q.catch(() => {}); } } catch (_) {} },
       rateOk() { try { if (!w._raw) return false; if (vp.p === "yt") { const av = w._raw.getAvailablePlaybackRates ? (w._raw.getAvailablePlaybackRates() || []) : []; return av.some((x) => Math.abs(x - 0.95) < 0.03 || Math.abs(x - 1.05) < 0.03); } if (vp.p === "dm") return !!(w._raw && w._raw.setPlaybackRate); return true; } catch (_) { return false; } },
+      setQuality(q) { try { if (!w._raw || vp.p !== "yt") return; if (w._raw.setPlaybackQualityRange) w._raw.setPlaybackQualityRange(q, q); if (w._raw.setPlaybackQuality) w._raw.setPlaybackQuality(q); } catch (_) {} },
       mute() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.mute(); else w._raw.setVolume(0); } catch (_) {} },
       unMute() { try { if (vp.p === "yt" && w._raw) w._raw.unMute(); } catch (_) {} },
       loadVideoById(tok2, t) { const v2 = vparseTok(tok2); try { if (!w._raw) return; if (vp.p === "yt") w._raw.loadVideoById(v2.id, t); else if (vp.p === "dm") { if (w._raw.load) w._raw.load(v2.id); if (t) setTimeout(() => w.seekTo(t), 900); } else { const r = w._raw.loadVideo(v2.id); if (r && r.then) r.then(() => { if (t) w.seekTo(t); w.playVideo(); }); } } catch (_) {} },
       destroy() { try { if (w._raw && vp.p !== "dm") w._raw.destroy(); } catch (_) {} w._raw = null; } };
-    const ready = () => { try { if (muted) w.mute(); const ap = audPos(deckK); w.seekTo(Math.max(0, ap != null ? ap : bcastPos(deckK))); w.playVideo(); } catch (_) {} };
+    const ready = () => { try { if (muted || warm) w.mute(); try { const wd = mountEl && mountEl.clientWidth ? mountEl.clientWidth : 640; let q = wd >= 1100 ? "hd720" : wd >= 560 ? "large" : "medium"; if (!muted && q === "medium") q = "large"; w.setQuality(q); } catch (_) {} const ap = audPos(deckK); w.seekTo(Math.max(0, ap != null ? ap : bcastPos(deckK))); if (warm) w.pauseVideo(); else w.playVideo(); } catch (_) {} };
     try {
       if (vp.p === "yt") {
         w._raw = new YT.Player(mountEl, { videoId: vp.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: () => ready(), onStateChange: (e) => { w._st = e.data; }, onError: (e) => { w._err = (e && e.data) || 1; } } });
@@ -4070,11 +4091,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // is 100% that deck; park it in the middle and the two videos blend
     const srt = tg.slice().sort((a, b) => a.op - b.op), disp = {};
     if (srt.length === 2) { disp[srt[0].k] = 1; disp[srt[1].k] = srt[1].op; } else if (srt.length === 1) disp[srt[0].k] = 1;
-    scr.slots.forEach((sl, i) => { if (sl.deck && !tg.some((x) => x.k === sl.deck)) { sl.deck = ""; const el = $(scr.ids[i]); if (el) el.style.opacity = 0; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } } });
-    const stb = scr.standby ? $(scr.standby) : null; if (stb) stb.style.display = tg.length ? "none" : "grid";
-    const pst = scr.poster ? $(scr.poster) : null; if (pst) pst.style.display = tg.length ? "none" : "block";
+    scr.slots.forEach((sl, i) => { if (sl.deck && !tg.some((x) => x.k === sl.deck)) { sl.warmK = sl.deck; sl.deck = ""; const el = $(scr.ids[i]); if (el) el.style.opacity = 0; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } } });
+    const stb = scr.standby ? $(scr.standby) : null; if (stb && !tg.length) stb.style.display = "grid";
+    const pst = scr.poster ? $(scr.poster) : null; if (pst && !tg.length) pst.style.display = "block";
     const chip = $(scr.chip);
     if (!tg.length) { scr._vTop = ""; if (chip) chip.hidden = true; return; }
+    let picLive = false;
     const provs = new Set(tg.map((t) => vparseTok(S[t.k].yt).p));
     if (provs.has("yt")) await ytApi();
     if (provs.has("dm")) await dmApi();
@@ -4082,9 +4104,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     for (const t of tg) {
       let i = scr.slots.findIndex((sl) => sl.deck === t.k);
       if (i < 0) {
+        // BUFFER PASS: a free slot already holding this deck's video as a
+        // warm (paused, muted) player is promoted in place - the switch
+        // lands on a loaded player instead of a cold build.
+        const wi = scr.slots.findIndex((sl) => !sl.deck && sl.warmK === t.k && sl.p && sl.vid === S[t.k].yt);
+        if (wi >= 0) { i = wi; const sl = scr.slots[i], el = $(scr.ids[i]); sl.deck = t.k; sl.warmK = ""; if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; } }
+      }
+      if (i < 0) {
         i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
         const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
-        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; mount.innerHTML = "<div></div>";
+        if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
+        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; mount.innerHTML = "<div></div>";
         mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
         const prov = vparseTok(sl.vid).p;
         if ((prov === "yt" && (!window.YT || !YT.Player)) || (prov === "dm" && (!window.DM || !DM.player)) || (prov === "vm" && (!window.Vimeo || !Vimeo.Player))) { sl.deck = ""; continue; }
@@ -4092,11 +4122,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         continue;
       }
       const sl = scr.slots[i];
-      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
+      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
       const el = $(scr.ids[i]); if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
         const want = slotWant(scr, t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
+        if (stt === 1 || stt === 2 || stt === 5) sl._hadFrame = true;
+        if (sl._hadFrame) picLive = true;
         /* SYNC LOCK (see the block above mkVidPlayer): the slot is held
          * to the broadcast clock on the stage cadence. Inside the
          * deadband nothing moves; small drift nudges the rate; past
@@ -4150,6 +4182,34 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       scr._vAt = vmNow.at || 0; scr._vTop = vTop;
     } else if (vTop) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
     if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : ""); }
+    // BUFFER PASS (honest loading): with targets up, the standby slate
+    // and poster stay on screen until a target slot's player has really
+    // loaded its video (a playing, paused or cued frame - _hadFrame).
+    // Targets existing only means the mix WANTS a deck; hiding the
+    // slate on that alone left a silently black screen while a cold
+    // player spun up, which is the loading the owner called out.
+    if (tg.length) { if (stb) stb.style.display = picLive ? "none" : "grid"; if (pst) pst.style.display = picLive ? "none" : "block"; }
+    /* BUFFER PASS - warm the next picture: the handover always lands
+     * on the featured deck's pair, so while a deck is featured and
+     * playing, the FREE slot cues that pair deck's video early - a
+     * player from the same mkVidPlayer, built warm (muted, paused on
+     * ready), invisible at opacity 0, and never given volume here:
+     * only target slots ever receive unMute/setVolume in this
+     * renderer, and a warm slot has no deck. A Cut, a solo, a fader
+     * blend or the natural roll then promotes it in place (the target
+     * loop above) instead of building cold. A warm player whose deck
+     * has since loaded a different video is torn down, and the freed
+     * slot re-warms to the current pair on the same pass. */
+    try {
+      scr.slots.forEach((sl) => { if (!sl.deck && sl.warmK && (!S[sl.warmK] || S[sl.warmK].yt !== sl.vid)) { if (sl.p) { try { sl.p.destroy(); } catch (_) {} sl.p = null; } sl.warmK = ""; sl.vid = ""; sl._hadFrame = false; } });
+      if (top && S[top.k].playing) {
+        const cand = PAIR[top.k];
+        if (cand && cand !== top.k && S[cand] && S[cand].yt && !tg.some((x) => x.k === cand)) {
+          const fi = scr.slots.findIndex((sl) => !sl.deck);
+          if (fi >= 0) { const sl = scr.slots[fi]; if (!(sl.warmK === cand && sl.p && sl.vid === S[cand].yt)) { const mount = $(scr.ids[fi]); if (mount) { const provW = vparseTok(S[cand].yt).p; if (provW === "yt") await ytApi(); else if (provW === "dm") await dmApi(); else if (provW === "vm") await vmApi(); if ((provW === "yt" && window.YT && YT.Player) || (provW === "dm" && window.DM && DM.player) || (provW === "vm" && window.Vimeo && Vimeo.Player)) { if (sl.p) { try { sl.p.destroy(); } catch (_) {} sl.p = null; } mount.innerHTML = "<div></div>"; mount.style.opacity = 0; sl.vid = S[cand].yt; sl.warmK = cand; sl._hadFrame = false; sl.p = mkVidPlayer(mount.firstChild, sl.vid, true, cand, true); } } } }
+        }
+      }
+    } catch (_) {}
   }
   /* the member master screen never vanishes while Meechie is live (owner,
    * 2026-10-27): with no video playing yet it shows the table lineup — what is
@@ -5172,7 +5232,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793275100;
+  const MW_DJ_BUILD = 1793275200;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
