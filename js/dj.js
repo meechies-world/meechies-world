@@ -3095,7 +3095,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * sync-lock build shipped. The sync lock aligns every copy to the
    * SOUNDING element, so depth costs no lip sync; and the lock's
    * live-edge trim (in vsAvSyncLock) is a stall rescue that only
-   * fires a full 30s behind the edge, never at the cushion itself. */
+   * fires a full 30s behind the edge, never at the cushion itself.
+   * NO-SKIP PASS (owner, 2026-10-30: "Make it so it skips none at
+   * all no mater wat thats the law"): the cushion is raised hard -
+   * 90s of buffer, 120 max, 60 back, an 8-segment live target with
+   * latency allowed to 24, and fragment/level/manifest loads retry
+   * 6 times instead of giving up. A few seconds more latency is
+   * accepted; a skip is not. */
   let vsHlsP = null;
   function vsLoadHls() {
     if (window.Hls) return Promise.resolve(true);
@@ -3108,7 +3114,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     vsStageEls().forEach((st) => { const v = vsVid(st); try {
       if (v._vsHlsUrl !== url) { vsKillHls(v); try { v.srcObject = null; } catch (_) {} v._vsHlsUrl = url;
         if (v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl")) v.src = url;
-        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 30, maxMaxBufferLength: 60, backBufferLength: 30, lowLatencyMode: true, liveSyncDurationCount: 4, maxLiveSyncPlaybackRate: 1.5 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
+        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 90, maxMaxBufferLength: 120, backBufferLength: 60, liveSyncDurationCount: 8, liveMaxLatencyDurationCount: 24, maxLiveSyncPlaybackRate: 1.5, fragLoadingMaxRetry: 6, fragLoadingRetryDelay: 1000, levelLoadingMaxRetry: 6, levelLoadingRetryDelay: 1000, manifestLoadingMaxRetry: 6, manifestLoadingRetryDelay: 1000 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
         else { vsLoadHls().then((ok) => { if (ok && vsShown.hls === url) vsShowHls(url); }); }
       }
       const p = v.play(); if (p && p.catch) p.catch(() => {});
@@ -4518,6 +4524,40 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     return { act: "snap", rate: 1 };
   }
   try { window.MW_syncLockCalc = syncLockCalc; } catch (_) {}
+  /* quality cap per viewer surface (NO-SKIP WS5): the station stage
+   * and the mini never need more than 480 at their size; Watch and
+   * MW TV never more than 720 - fewer rendition switches, less data
+   * to stall on. vCapFor answers null for the booth screen, and the
+   * booth's own player builds pass no options object at all, so the
+   * booth's players are never capped by this pass. */
+  function vCapFor(scr) { if (scr === scrView || scr === scrMini) return "large"; if (scr === scrWatch || scr === scrTV) return "hd720"; return null; }
+  /* stall bookkeeping for one viewer slot (NO-SKIP WS3): fed the
+   * player state, its clock, the broadcast want and the deck's
+   * playing flag on every render pass. A YouTube BUFFERING state
+   * masks at once; any other stall masks once the clock has not
+   * advanced for over 1.2s; the mask lifts only after 0.8s of
+   * continuous playing WITH the clock advancing. While masked,
+   * exactly one invisible re-lock snap is allowed and only when
+   * the drift is over 2s: _maskSnap flags the one pass on which
+   * renderScreen may take it. The sync constants are untouched -
+   * this works around them, never retunes them. */
+  function bufStep(sl, stt, cur, want, playing, now) {
+    sl._maskSnap = false;
+    if (!playing) { sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bCleanAt = 0; sl._bLastCur = null; sl._bAdvAt = 0; sl._maskSnapAt = 0; return sl; }
+    if (sl._bLastCur == null) { sl._bLastCur = cur; sl._bAdvAt = now; }
+    const adv = Math.abs(cur - sl._bLastCur) > 0.02;
+    if (adv) { sl._bLastCur = cur; sl._bAdvAt = now; }
+    if (stt === 3) { if (!sl._bStateAt) sl._bStateAt = now; sl._bCleanAt = 0; }
+    else if (stt === 1 && adv) { if (!sl._bCleanAt) sl._bCleanAt = now; if (sl._bCleanAt && now - sl._bCleanAt >= 800) { sl._bMask = false; sl._bStateAt = 0; sl._bufSince = 0; sl._maskSnapAt = 0; } }
+    else { sl._bCleanAt = 0; if (stt !== 3) sl._bStateAt = 0; }
+    if (!sl._bMask) {
+      if (sl._bStateAt) { sl._bMask = true; sl._bufSince = sl._bStateAt; }
+      else if (sl._bAdvAt && now - sl._bAdvAt > 1200) { sl._bMask = true; sl._bufSince = sl._bAdvAt; }
+    }
+    if (sl._bMask && Math.abs(cur - want) > 2 && !sl._maskSnapAt) { sl._maskSnap = true; sl._maskSnapAt = now; }
+    return sl;
+  }
+  try { window.MW_bufStep = bufStep; } catch (_) {}
   function bcastPos(k) { const s = S[k]; if (!s) return 0; if (!s.playing) return s.pos || 0; const now = boothLead ? Date.now() : Date.now() + clockOff; return Math.max(0, (now - (s.start || now)) / 1000); }
   function audPos(k) { try { if (!OWNER()) return null; const d = decks[k]; if (!d || !d.el || !S[k] || !S[k].playing) return null; const ct = +d.el.currentTime; return isFinite(ct) && ct > 0 ? ct : null; } catch (_) { return null; } }
   function slotWant(scr, k) { if (OWNER()) { const ap = audPos(k); if (ap != null) return ap; } return bcastPos(k); }
@@ -4540,7 +4580,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   /* one screen player for any video platform: the wrapper speaks the YT-ish
    * surface renderScreen already uses, whatever player is underneath */
-  function mkVidPlayer(mountEl, tok, muted, deckK, warm) {
+  function mkVidPlayer(mountEl, tok, muted, deckK, warm, vopt) {
     const vp = vparseTok(tok);
     const w = { _raw: null, _st: -1, _cur: 0,
       playVideo() { try { if (!w._raw) return; if (vp.p === "yt") w._raw.playVideo(); else if (vp.p === "dm") w._raw.play(); else { const r = w._raw.play(); if (r && r.catch) r.catch(() => {}); } } catch (_) {} },
@@ -4556,7 +4596,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       unMute() { try { if (vp.p === "yt" && w._raw) w._raw.unMute(); } catch (_) {} },
       loadVideoById(tok2, t) { const v2 = vparseTok(tok2); try { if (!w._raw) return; if (vp.p === "yt") w._raw.loadVideoById(v2.id, t); else if (vp.p === "dm") { if (w._raw.load) w._raw.load(v2.id); if (t) setTimeout(() => w.seekTo(t), 900); } else { const r = w._raw.loadVideo(v2.id); if (r && r.then) r.then(() => { if (t) w.seekTo(t); w.playVideo(); }); } } catch (_) {} },
       destroy() { try { if (w._raw && vp.p !== "dm") w._raw.destroy(); } catch (_) {} w._raw = null; } };
-    const ready = () => { try { if (muted || warm) w.mute(); try { const wd = mountEl && mountEl.clientWidth ? mountEl.clientWidth : 640; let q = wd >= 1100 ? "hd720" : wd >= 560 ? "large" : "medium"; if (!muted && q === "medium") q = "large"; w.setQuality(q); } catch (_) {} const ap = audPos(deckK); w.seekTo(Math.max(0, ap != null ? ap : bcastPos(deckK))); if (warm) w.pauseVideo(); else w.playVideo(); } catch (_) {} };
+    const ready = () => { try { if (muted || warm) w.mute(); try { const wd = mountEl && mountEl.clientWidth ? mountEl.clientWidth : 640; let q = wd >= 1100 ? "hd720" : wd >= 560 ? "large" : "medium"; if (!muted && q === "medium") q = "large"; if (vopt && vopt.cap) { const qr = { small: 0, medium: 1, large: 2, hd720: 3, hd1080: 4 }; if ((qr[q] || 0) > (qr[vopt.cap] || 0)) q = vopt.cap; } w.setQuality(q); } catch (_) {} const ap = audPos(deckK); w.seekTo(Math.max(0, ap != null ? ap : bcastPos(deckK))); if (warm) { if (vopt && vopt.roll) { try { w.mute(); } catch (_) {} w.playVideo(); } else w.pauseVideo(); } else w.playVideo(); } catch (_) {} };
     try {
       if (vp.p === "yt") {
         w._raw = new YT.Player(mountEl, { videoId: vp.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: () => ready(), onStateChange: (e) => { w._st = e.data; }, onError: (e) => { w._err = (e && e.data) || 1; } } });
@@ -4628,21 +4668,22 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         i = scr.slots.findIndex((sl) => !sl.deck); if (i < 0) continue;
         const sl = scr.slots[i], mount = $(scr.ids[i]); if (!mount) continue;
         if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
-        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; mount.innerHTML = "<div></div>";
+        sl.deck = t.k; sl.vid = S[t.k].yt; sl.p = null; sl.warmK = ""; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; sl._lastHealAt = 0; mount.innerHTML = "<div></div>";
         mount.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); mount.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2;
         const prov = vparseTok(sl.vid).p;
         if ((prov === "yt" && (!window.YT || !YT.Player)) || (prov === "dm" && (!window.DM || !DM.player)) || (prov === "vm" && (!window.Vimeo || !Vimeo.Player))) { sl.deck = ""; continue; }
-        sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k);
+        sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k, false, scr !== scrBooth ? { cap: vCapFor(scr) } : null);
         continue;
       }
       const sl = scr.slots[i];
-      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
+      if (sl.vid !== S[t.k].yt) { sl.vid = S[t.k].yt; sl._hadFrame = false; sl._noFrameAt = 0; sl._healN = 0; sl._bMask = false; sl._bufSince = 0; sl._bStateAt = 0; sl._bLastCur = null; sl._maskSnapAt = 0; if (sl.p) { try { sl.p.loadVideoById(sl.vid, Math.max(0, slotWant(scr, t.k))); } catch (_) {} } }
       const el = $(scr.ids[i]); if (el) { el.style.opacity = (disp[t.k] != null ? disp[t.k] : t.op).toFixed(2); el.style.zIndex = srt.length === 2 && srt[0].k === t.k ? 1 : 2; }
       if (sl.p) { try {
         const want = slotWant(scr, t.k), cur = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0;
         const stt = sl.p.getPlayerState ? sl.p.getPlayerState() : -1;
         if (stt === 1 || stt === 2 || stt === 5) sl._hadFrame = true;
         if (sl._hadFrame) picLive = true;
+        if (scr !== scrBooth) bufStep(sl, stt, cur, want, !!S[t.k].playing, Date.now());
         /* SYNC LOCK (see the block above mkVidPlayer): the slot is held
          * to the broadcast clock on the stage cadence. Inside the
          * deadband nothing moves; small drift nudges the rate; past
@@ -4661,7 +4702,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
           const durL = +S[t.k].dur || 0, provL = vparseTok(sl.vid).p, mulL = (provL === "dm" || provL === "vm") ? 3 : 1;
           if (!(durL > 0 && durL - want <= 5)) {
             const dec = syncLockCalc(cur - want, mulL);
-            if (dec.act === "snap") { if (Date.now() - (sl.seekAt || 0) >= 3000) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); if (sl.rateCur && sl.rateCur !== 1 && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(1); sl.rateCur = 1; } } }
+            if (dec.act === "snap") { if (scr !== scrBooth && sl._bMask) { if (sl._maskSnap) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); if (sl.rateCur && sl.rateCur !== 1 && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(1); sl.rateCur = 1; } } } else if (Date.now() - (sl.seekAt || 0) >= 3000) { sl.p.seekTo(want, true); sl.seekAt = Date.now(); if (sl.rateCur && sl.rateCur !== 1 && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(1); sl.rateCur = 1; } } }
             else if (dec.act === "nudge") {
               if (sl.p.rateOk && sl.p.rateOk()) { if (sl.rateCur !== dec.rate && sl.p.setPlaybackRate) { sl.p.setPlaybackRate(dec.rate); sl.rateCur = dec.rate; } }
               else if (cur > want) { if (Date.now() - (sl.holdAt || 0) >= 4000) { sl.holdAt = Date.now(); const pHold = sl.p, kHold = t.k, msHold = Math.max(60, Math.min(340, Math.round((cur - want) * 1000))); sl.holdUntil = Date.now() + msHold; pHold.pauseVideo(); setTimeout(() => { try { if (S[kHold].playing) pHold.playVideo(); } catch (_) {} }, msHold); } }
@@ -4694,6 +4735,27 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       tg.forEach((t) => {
         const si = scr.slots.findIndex((x) => x.deck === t.k); if (si < 0) return;
         const sl = scr.slots[si];
+        /* NO-SKIP (WS4): a slot stuck in continuous buffering for
+         * over 6s is a failure on this same ladder - one rebuild
+         * (the slot stays masked, so the slate is up meanwhile), a
+         * second failure takes the ladder's own 24s backoff, then
+         * the surface rests on the slate. The bookkeeping is the
+         * ladder's own (_healN / _noFrameAt) plus _lastHealAt to
+         * time the backoff. This branch runs before the _hadFrame
+         * reset below on purpose: a slot that framed once and now
+         * buffers is exactly the case the old ladder never saw. */
+        if (sl._bufSince && S[t.k].playing && nowH - sl._bufSince > 6000) {
+          scr._healK = t.k;
+          if ((sl._healN || 0) >= 2) return;
+          if ((sl._healN || 0) === 1 && sl._lastHealAt && nowH - sl._lastHealAt < 24000) return;
+          const mountB = $(scr.ids[si]); if (!mountB) return;
+          if (sl.p) { try { sl.p.destroy(); } catch (_) {} }
+          sl.p = null; mountB.innerHTML = "<div></div>";
+          sl._healN = (sl._healN || 0) + 1; sl._lastHealAt = nowH; sl._noFrameAt = nowH; sl._hadFrame = false;
+          sl._bufSince = nowH; sl._bMask = true; sl._bStateAt = 0; sl._bLastCur = null; sl._bAdvAt = 0; sl._bCleanAt = 0; sl._maskSnapAt = 0;
+          sl.p = mkVidPlayer(mountB.firstChild, sl.vid, muted, t.k, false, { cap: vCapFor(scr) });
+          return;
+        }
         if (sl._hadFrame) { sl._noFrameAt = 0; sl._healN = 0; return; }
         if (!sl.p) return;
         if (!sl._noFrameAt) { sl._noFrameAt = nowH; scr._healK = t.k; return; }
@@ -4703,12 +4765,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         const mount = $(scr.ids[si]); if (!mount) return;
         try { sl.p.destroy(); } catch (_) {}
         sl.p = null; mount.innerHTML = "<div></div>";
-        sl._healN = (sl._healN || 0) + 1; sl._noFrameAt = nowH;
-        sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k);
+        sl._healN = (sl._healN || 0) + 1; sl._noFrameAt = nowH; sl._lastHealAt = nowH;
+        sl.p = mkVidPlayer(mount.firstChild, sl.vid, muted, t.k, false, { cap: vCapFor(scr) });
       });
     }
     /* mwScreenHeal end */
     const top = tg.slice().sort((a, b) => b.op - a.op)[0];
+    /* NO-SKIP (WS3): the screen-level mask. The featured slot is
+     * stalling and no other target is cleanly showing, so the
+     * viewer watches the slate/poster (the chip says "buffering")
+     * instead of the skip itself. A healthy outgoing picture in a
+     * blend is never hidden: any other target with a frame up and
+     * no mask of its own keeps the whole screen live. */
+    let bufScr = false;
+    if (scr !== scrBooth && top) { const fsl = scr.slots.find((x) => x.deck === top.k); const otherClean = tg.some((t) => { if (t.k === top.k) return false; const os = scr.slots.find((x) => x.deck === t.k); return !!(os && os._hadFrame && !os._bMask); }); bufScr = !!(fsl && fsl._bMask && S[top.k].playing && !otherClean); }
+    scr._bufK = bufScr && top ? top.k : "";
     // VIDEO TRANSITIONS (owner, 2026-10-28): a discrete switch of the
     // dominant deck - a stamped S.vmix.at action (Cut / Fade / solo / Auto
     // buttons) or a hard swap where the old deck leaves the mix entirely
@@ -4727,14 +4798,14 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (stamped || hardSwap) { const tr2 = vmNow.tr || "fade"; if (tr2 !== "cut") vtrSlot(scr, vTop, tr2, vmNow.trMs || 650); }
       scr._vAt = vmNow.at || 0; scr._vTop = vTop;
     } else if (vTop) { scr._vAt = vmNow.at || 0; scr._vTop = vTop; }
-    if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : "") + (scr._healK === top.k ? " · retrying…" : ""); }
+    if (chip && top) { chip.hidden = false; chip.textContent = "\u25B6 DECK " + top.k + (S[top.k].title ? " \u2014 " + S[top.k].title : "") + (scr._healK === top.k ? " · retrying…" : "") + (scr._bufK === top.k ? " · buffering…" : ""); }
     // BUFFER PASS (honest loading): with targets up, the standby slate
     // and poster stay on screen until a target slot's player has really
     // loaded its video (a playing, paused or cued frame - _hadFrame).
     // Targets existing only means the mix WANTS a deck; hiding the
     // slate on that alone left a silently black screen while a cold
     // player spun up, which is the loading the owner called out.
-    if (tg.length) { if (stb) stb.style.display = picLive ? "none" : "grid"; if (pst) pst.style.display = picLive ? "none" : "block"; }
+    if (tg.length) { if (stb) stb.style.display = (picLive && !bufScr) ? "none" : "grid"; if (pst) pst.style.display = (picLive && !bufScr) ? "none" : "block"; }
     /* BUFFER PASS - warm the next picture: the handover always lands
      * on the featured deck's pair, so while a deck is featured and
      * playing, the FREE slot cues that pair deck's video early - a
@@ -4745,14 +4816,38 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * blend or the natural roll then promotes it in place (the target
      * loop above) instead of building cold. A warm player whose deck
      * has since loaded a different video is torn down, and the freed
-     * slot re-warms to the current pair on the same pass. */
+     * slot re-warms to the current pair on the same pass.
+     * NO-SKIP (WS2) widened the guest list - the pair first, then
+     * any deck the shared vmix record names, warmed as soon as it
+     * is loaded - and set viewer warm players ROLLING muted so a
+     * real buffer accumulates ahead of the flip; the block below
+     * carries the current rules. */
     try {
       scr.slots.forEach((sl) => { if (!sl.deck && sl.warmK && (!S[sl.warmK] || S[sl.warmK].yt !== sl.vid)) { if (sl.p) { try { sl.p.destroy(); } catch (_) {} sl.p = null; } sl.warmK = ""; sl.vid = ""; sl._hadFrame = false; } });
-      if (top && S[top.k].playing) {
-        const cand = PAIR[top.k];
-        if (cand && cand !== top.k && S[cand] && S[cand].yt && !tg.some((x) => x.k === cand)) {
+      /* NO-SKIP (WS2): viewer warm slots ROLL muted, so a real
+       * buffer accumulates ahead of the broadcast position, and
+       * they are held near that position while they wait - a warm
+       * player left paused, or minutes adrift, is a cold player at
+       * the flip either way. Warm players are muted here and never
+       * given volume anywhere: only target slots ever receive
+       * unMute/setVolume in this renderer, so the one-sounding-
+       * screen entitlement (vmixSndScr) is untouched. */
+      if (scr !== scrBooth) scr.slots.forEach((sl) => { if (!sl.deck && sl.warmK && sl.p) { try { sl.p.mute(); const wk = sl.warmK, stw = sl.p.getPlayerState ? sl.p.getPlayerState() : -1, cw = sl.p.getCurrentTime ? sl.p.getCurrentTime() : 0, ww = slotWant(scr, wk); if (S[wk] && S[wk].playing) { if (stw !== 1) sl.p.playVideo(); if (cw > 0 && Math.abs(cw - ww) > 3) sl.p.seekTo(ww, true); } else if (stw === 1 && cw - ww > 3) sl.p.pauseVideo(); } catch (_) {} } });
+      /* who may feature next, in order: the featured deck's pair
+       * first (every handover lands there), then any deck the
+       * shared vmix record names. Viewer screens warm from that
+       * list whenever a next deck is loaded - even before it is
+       * playing; the booth keeps its shipped rule (warm the pair
+       * of a playing featured deck). A slot already holding a
+       * listed deck warm is kept warm in place. */
+      const isView = scr !== scrBooth;
+      let candList = [];
+      if (isView) { if (top) candList.push(PAIR[top.k]); const vm2 = S.vmix || {}; if (vm2.a) candList.push(vm2.a); if (vm2.b) candList.push(vm2.b); candList = candList.filter((c, ix) => c && candList.indexOf(c) === ix && c !== (top ? top.k : "") && S[c] && S[c].yt && !tg.some((x) => x.k === c)); }
+      if (isView ? candList.length : (top && S[top.k].playing)) {
+        const cand = isView ? (((scr.slots.find((sl) => !sl.deck && sl.warmK && candList.indexOf(sl.warmK) >= 0) || {}).warmK) || candList[0]) : PAIR[top.k];
+        if (cand && cand !== (top ? top.k : "") && S[cand] && S[cand].yt && !tg.some((x) => x.k === cand)) {
           const fi = scr.slots.findIndex((sl) => !sl.deck);
-          if (fi >= 0) { const sl = scr.slots[fi]; if (!(sl.warmK === cand && sl.p && sl.vid === S[cand].yt)) { const mount = $(scr.ids[fi]); if (mount) { const provW = vparseTok(S[cand].yt).p; if (provW === "yt") await ytApi(); else if (provW === "dm") await dmApi(); else if (provW === "vm") await vmApi(); if ((provW === "yt" && window.YT && YT.Player) || (provW === "dm" && window.DM && DM.player) || (provW === "vm" && window.Vimeo && Vimeo.Player)) { if (sl.p) { try { sl.p.destroy(); } catch (_) {} sl.p = null; } mount.innerHTML = "<div></div>"; mount.style.opacity = 0; sl.vid = S[cand].yt; sl.warmK = cand; sl._hadFrame = false; sl.p = mkVidPlayer(mount.firstChild, sl.vid, true, cand, true); } } } }
+          if (fi >= 0) { const sl = scr.slots[fi]; if (!(sl.warmK === cand && sl.p && sl.vid === S[cand].yt)) { const mount = $(scr.ids[fi]); if (mount) { const provW = vparseTok(S[cand].yt).p; if (provW === "yt") await ytApi(); else if (provW === "dm") await dmApi(); else if (provW === "vm") await vmApi(); if ((provW === "yt" && window.YT && YT.Player) || (provW === "dm" && window.DM && DM.player) || (provW === "vm" && window.Vimeo && Vimeo.Player)) { if (sl.p) { try { sl.p.destroy(); } catch (_) {} sl.p = null; } mount.innerHTML = "<div></div>"; mount.style.opacity = 0; sl.vid = S[cand].yt; sl.warmK = cand; sl._hadFrame = false; sl._bMask = false; sl._bufSince = 0; sl._bLastCur = null; sl.p = mkVidPlayer(mount.firstChild, sl.vid, true, cand, true, isView ? { cap: vCapFor(scr), roll: true } : null); } } } }
         }
       }
     } catch (_) {}
@@ -4893,6 +4988,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       else if (docked && document.body.dataset.view !== "community") { box.style.left = ""; box.style.right = ""; delete box.dataset.mnDock; }
     } catch (_) {}
     await renderScreen(scrMini, true, 1, 1);
+    if (scrMini._bufK) box.hidden = true; // NO-SKIP (WS3): the mini carries no slate/poster of its own, so a stalled featured picture steps the box away instead of showing the skip
     if (vid) { const act = scrMini.slots.filter((sl) => sl.deck && sl.p), topP = top ? act.find((sl) => sl.deck === top.k) : null; if (topP && topP.p._err) miniErrVid = vid; if (act.some((sl) => { try { return (sl.p.getPlayerState ? sl.p.getPlayerState() : sl.p._st) === 1; } catch (_) { return false; } })) { miniOkVid = vid; miniErrVid = ""; } }
   }
   /* ------- effects ride the broadcast: whatever the booth sets is what listeners hear ------- */
@@ -5811,7 +5907,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793334372;
+  const MW_DJ_BUILD = 1793335031;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };

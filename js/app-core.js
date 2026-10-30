@@ -16,7 +16,7 @@ const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"]};
    path: tab tap, deep-link hash, in-page button), in their original tag order.
    Everything with homepage or cross-page duties stays eager. */
 const LAZY_SRC={
-  live:["js/golive.js?v=1793185302","js/obs.js?v=1793185302"],
+  live:["js/golive.js?v=1793185302","js/obs.js?v=1793335031"],
   predict:["js/predict.js?v=1793185302"],
   jobs:["js/jobs.js?v=1793185302"],
   connect:["js/connect.js?v=1793185302"],
