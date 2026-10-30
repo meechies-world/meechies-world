@@ -986,7 +986,7 @@ $("#g-fire").addEventListener("click",()=>{ const m=GM.me; if(!m) return; const 
 window.addEventListener("keydown",e=>{ if($("#v-games").hidden||!GM.on) return; if(e.target.matches("input,textarea,select")) return; const k=e.key.toLowerCase(); if(["w","a","s","d"," ","arrowup","arrowdown","arrowleft","arrowright"].includes(k)){ GM.keys[k]=true; e.preventDefault(); } });
 window.addEventListener("keyup",e=>{ GM.keys[e.key.toLowerCase()]=false; });
 $("#g-play").addEventListener("click",startGame);
-(function idle(){ GM.me=newMe(); spawnBots(); drawArena(storm()); })();
+(function idle(){ try{ GM.me=newMe(); spawnBots(); drawArena(storm()); }catch(_){ } })();
 function subGames(){
   db.collection("scores").orderBy("elims","desc").limit(10).onSnapshot(s=>{ if(s.empty) return; $("#g-leaders").innerHTML=s.docs.map(d=>{ const v=d.data(); if(d.id===me) GM.total=Math.max(GM.total,(+v.elims)||0); return `<li>${esc(handleOf(d.id)!=="Member"?handleOf(d.id):(v.name||"Member"))} · <b>${(+v.elims)||0}</b></li>`; }).join(""); }, e=>console.warn(e));
   db.collection("squads").orderBy("createdAt","desc").limit(60).onSnapshot(s=>{ if(s.empty) return; $("#squads").innerHTML=s.docs.map(d=>{ const q=d.data();
@@ -1340,8 +1340,9 @@ async function loadShopify(){
     window.MW_shopGifts?.decorate();
   }catch(_){ $("#shopify-grid").innerHTML='<div class="empty">Tap the button below to see everything in the store.</div>'; }
 }
-new MutationObserver(()=>{ if(!$("#v-shop").hidden) loadShop(); }).observe($("#v-shop"),{attributes:true,attributeFilter:["hidden"]});
-if(!$("#v-shop").hidden) loadShop();
+try{ new MutationObserver(()=>{ if(!$("#v-shop").hidden) loadShop(); }).observe($("#v-shop"),{attributes:true,attributeFilter:["hidden"]}); }catch(_){ }
+try{ if(!$("#v-shop").hidden) loadShop(); }catch(_){ }
+window.addEventListener("load",()=>{ try{ if(!$("#v-shop").hidden) loadShop(); }catch(_){ } });
 
 /* Pause our radio when someone starts the ReverbNation player */
 window.addEventListener("blur",()=>{ setTimeout(()=>{ const a=document.activeElement; if(a && a.tagName==="IFRAME" && /reverbnation/.test(a.src) && !media.paused){ media.pause(); } },0); });
