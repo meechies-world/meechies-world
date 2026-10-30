@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meechie's World Kids — the App</title>
+<meta name="description" content="The Meechie's World Kids app for parents: build a YouTube playlist for your kids, tap Play, lock the screen with one button, and hand the phone over. Little hands can tap all they want — nothing pauses, skips or wanders off. Free — no app store needed.">
+<meta name="theme-color" content="#0b0a08">
+<link rel="icon" href="/img/icon-192.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MW Kids">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#0b0a08;color:#f3ead2;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0 16px 48px;-webkit-tap-highlight-color:transparent}
+  /* slim app bar, sibling to the other Meechie's World app pages */
+  .bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;padding:12px 2px;background:linear-gradient(180deg,#0b0a08 82%,transparent)}
+  .bar a{color:#8a8268;font-size:13.5px;text-decoration:none;flex:none}
+  .bar b{color:#f0cf78;letter-spacing:.12em;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .kid{margin-left:auto;flex:none;font-size:19px}
+  h1{margin:8px 0 2px;font-size:26px;letter-spacing:.1em;color:#f0cf78;text-align:center}
+  .sub{margin:0 0 16px;color:#cbb26a;letter-spacing:.24em;font-size:11.5px;text-align:center}
+  .pitch{max-width:560px;margin:0 auto 20px;color:#d8d2c0;font-size:15.5px;line-height:1.55;text-align:center}
+  .card{max-width:680px;margin:0 auto 16px;background:linear-gradient(180deg,#17130c,#0e0b07);border:1px solid #2c2413;border-radius:18px;padding:16px;box-shadow:0 10px 26px rgba(0,0,0,.45)}
+  .card h2{margin:0 0 10px;font-size:16px;color:#ffe08a;letter-spacing:.04em}
+  .card p{color:#cfc6ad;font-size:14.5px;line-height:1.55;margin:0 0 10px}
+  /* player */
+  #kids-player-wrap{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;box-shadow:0 0 0 1.5px #8a6d1f}
+  #kids-player{position:absolute;inset:0;width:100%;height:100%}
+  #kids-player iframe{width:100%;height:100%;display:block}
+  #kids-now{max-width:680px;margin:10px auto 0;color:#e9d9a6;font-size:15px;min-height:20px;text-align:center}
+  #kids-now small{display:block;color:#8a8268;font-size:12.5px;margin-top:2px}
+  /* transport */
+  .transport{display:flex;gap:10px;justify-content:center;align-items:center;margin:14px auto 4px;max-width:680px}
+  .tbtn{background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:16px;padding:12px 20px;border-radius:14px;cursor:pointer}
+  .tbtn:active{transform:scale(.98)}
+  .tbtn.main{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;border:0;font-size:18px;padding:13px 28px;box-shadow:0 6px 22px rgba(240,207,120,.3)}
+  .loopnote{max-width:680px;margin:6px auto 0;text-align:center;color:#a79c7e;font-size:13px}
+  /* the big lock button */
+  #kids-lock-btn{display:block;width:100%;max-width:680px;margin:16px auto 0;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.04em;font-size:20px;padding:17px 20px;border-radius:16px;border:0;cursor:pointer;box-shadow:0 8px 26px rgba(240,207,120,.35)}
+  #kids-lock-btn:active{transform:scale(.99)}
+  .locksub{max-width:680px;margin:8px auto 0;text-align:center;color:#a79c7e;font-size:13px}
+  /* add + search */
+  .row{display:flex;gap:8px}
+  .row input{flex:1;min-width:0;background:#0b0a08;border:1px solid #3a2f16;border-radius:12px;color:#f3ead2;font-size:15px;padding:12px 12px}
+  .row input::placeholder{color:#6f664c}
+  .abtn{flex:none;background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:15px;padding:12px 16px;border-radius:12px;cursor:pointer}
+  .msg{min-height:18px;font-size:13.5px;color:#cbb26a;margin:8px 0 0}
+  .sres{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #241d10}
+  .sres img{width:96px;height:54px;object-fit:cover;border-radius:8px;flex:none;background:#000}
+  .sres span{flex:1;min-width:0;font-size:14px;line-height:1.35;color:#e9e2cd}
+  .footnote{color:#8a8268;font-size:12.5px;line-height:1.5;margin:10px 0 0}
+  /* playlist */
+  #kids-count{color:#cbb26a;font-size:13.5px;margin:0 0 8px}
+  .item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #241d10}
+  .item img{width:96px;height:54px;object-fit:cover;border-radius:8px;flex:none;background:#000}
+  .item .t{flex:1;min-width:0;font-size:14.5px;line-height:1.35;color:#e9e2cd}
+  .item .t small{display:block;color:#8a8268;font-size:12px;margin-top:2px}
+  .item.playing .t{color:#ffe08a}
+  .ibtn{flex:none;background:#171307;color:#f0cf78;border:1px solid #8a6d1f;font-weight:700;font-size:14px;width:38px;height:38px;border-radius:10px;cursor:pointer}
+  .ibtn:active{transform:scale(.97)}
+  #kids-empty{color:#a79c7e;font-size:14.5px;line-height:1.5;margin:4px 0}
+  /* how to use */
+  #kids-how ol{margin:0;padding-left:20px;color:#d8d2c0;font-size:14.5px;line-height:1.6}
+  #kids-how ol b{color:#e9d9a6}
+  .kids-limits{margin-top:14px;background:#120f09;border:1px solid #3a2f16;border-radius:14px;padding:12px 14px}
+  .kids-limits h3{margin:0 0 6px;font-size:14px;color:#ffe08a}
+  .kids-limits p{font-size:13.5px;margin:0 0 8px;color:#cfc6ad}
+  .kids-limits p:last-child{margin-bottom:0}
+  .fine{max-width:680px;margin:14px auto 0;color:#8a8268;font-size:12.5px;line-height:1.55;text-align:center}
+  .back{display:block;text-align:center;margin-top:22px;color:#8a8268;font-size:13.5px}
+  /* ============ THE LOCK ============
+     #kids-lock is a FULL-SCREEN, FULLY TRANSPARENT overlay. It is a positioned
+     sibling AFTER the player in the DOM with a near-max z-index, so it paints
+     above the YouTube iframe and receives every pointer event first: the
+     cross-origin iframe below never sees a tap. background stays transparent
+     ("blank clear") — the video shows through untouched. touch-action:none +
+     preventDefault on touchmove stop scrolls, swipes and pinch gestures. */
+  #kids-lock{position:fixed;inset:0;z-index:99990;background:transparent;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
+  #kids-lock[hidden]{display:none}
+  #kids-lock-hint{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);background:rgba(11,10,8,.82);color:#f0cf78;border:1px solid #8a6d1f;border-radius:999px;padding:9px 16px;font-size:14px;white-space:nowrap;transition:opacity 1.2s ease;pointer-events:none}
+  #kids-lock-hint.fade{opacity:0}
+  /* grown-up corner: hold 3s to start unlocking. Invisible except its ring. */
+  #kids-corner{position:absolute;top:0;right:0;width:104px;height:104px;background:transparent;border:0;padding:0;cursor:pointer;touch-action:none}
+  #kids-ring{position:absolute;top:14px;right:14px;width:52px;height:52px;border-radius:50%;opacity:0;transition:opacity .25s;background:conic-gradient(#f0cf78 0%,rgba(240,207,120,.15) 0%)}
+  #kids-ring::after{content:"";position:absolute;inset:5px;border-radius:50%;background:rgba(11,10,8,.55)}
+  #kids-ring span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:19px;z-index:1}
+  /* ============ PIN PAD ============
+     One pad, two jobs: set a new PIN (from the Lock button) and enter the PIN
+     to unlock (from the corner hold). The wrap never blocks the screen by
+     itself (pointer-events:none); only the panel takes taps. In unlock mode
+     there is NO backdrop dim, so the video keeps playing fully visible
+     behind the small panel. In set mode the wrap gets .solid (dim + block)
+     because the parent is still holding the phone. */
+  #kids-pinpad-wrap{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  #kids-pinpad-wrap[hidden]{display:none}
+  #kids-pinpad-wrap.solid{background:rgba(0,0,0,.62);pointer-events:auto}
+  #kids-pinpad{pointer-events:auto;width:min(320px,92vw);background:#14100a;border:1.5px solid #8a6d1f;border-radius:20px;padding:20px 18px 16px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.65)}
+  #kids-pinpad.shake{animation:kshake .4s ease}
+  @keyframes kshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(9px)}60%{transform:translateX(-6px)}80%{transform:translateX(6px)}}
+  #kids-pin-title{margin:0 0 4px;font-size:17px;color:#ffe08a}
+  #kids-pin-sub{margin:0 0 12px;font-size:13.5px;color:#a79c7e;line-height:1.45}
+  #kids-pin-dots{display:flex;gap:12px;justify-content:center;margin:6px 0 14px}
+  #kids-pin-dots i{width:15px;height:15px;border-radius:50%;border:2px solid #8a6d1f;background:transparent}
+  #kids-pin-dots i.on{background:#f0cf78}
+  .kids-pin-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .kids-pin-key{background:#171307;color:#f3ead2;border:1px solid #3a2f16;font-size:21px;font-weight:700;padding:13px 0;border-radius:13px;cursor:pointer}
+  .kids-pin-key:active{background:#241c0d;transform:scale(.98)}
+  .kids-pin-key.fn{font-size:14px;color:#cbb26a}
+  #kids-pin-msg{min-height:19px;margin:10px 0 0;font-size:13.5px;color:#e8a0a0}
+  #kids-pin-links{display:flex;justify-content:space-between;margin-top:10px}
+  #kids-pin-links button{background:none;border:0;color:#8a8268;font-size:13.5px;cursor:pointer;padding:6px 2px;text-decoration:underline}
+  /* forgot-PIN reset panel (type-the-word confirm: a toddler cannot type) */
+  #kids-reset{pointer-events:auto;width:min(320px,92vw);background:#14100a;border:1.5px solid #8a6d1f;border-radius:20px;padding:20px 18px 16px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.65)}
+  #kids-reset[hidden]{display:none}
+  #kids-reset h3{margin:0 0 8px;color:#ffe08a;font-size:16px}
+  #kids-reset p{font-size:13.5px;color:#cfc6ad;line-height:1.5;margin:0 0 12px}
+  #kids-reset-input{width:100%;background:#0b0a08;border:1px solid #3a2f16;border-radius:12px;color:#f3ead2;font-size:16px;padding:11px;text-align:center;letter-spacing:.2em;text-transform:uppercase}
+  #kids-reset-btn{margin-top:12px;width:100%;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;font-size:15px;padding:12px;border-radius:12px;border:0;cursor:pointer}
+  #kids-reset-back{background:none;border:0;color:#8a8268;font-size:13.5px;cursor:pointer;padding:8px;text-decoration:underline}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <a href="/apps/">← Apps</a>
+    <b>MEECHIE'S WORLD KIDS</b>
+    <span class="kid">🧸</span>
+  </div>
+
+  <h1>MEECHIE'S WORLD KIDS</h1>
+  <p class="sub">P L A Y &nbsp;•&nbsp; L O C K &nbsp;•&nbsp; H A N D &nbsp; I T &nbsp; O V E R</p>
+  <p class="pitch">Build a playlist of YouTube videos for your kids, tap <b>Play</b>, tap <b>Lock the screen</b> — then hand the phone over. The videos keep playing, and little hands can tap all they want: nothing pauses, skips, or wanders off.</p>
+
+  <!-- PLAYER -->
+  <div class="card" style="padding:12px">
+    <div id="kids-player-wrap"><div id="kids-player"></div></div>
+    <p id="kids-now">Add some videos below, then tap Play.<small>Your list plays in order, then starts over from the top.</small></p>
+    <div class="transport">
+      <button class="tbtn" id="kids-prev" type="button" aria-label="Previous video">⏮</button>
+      <button class="tbtn main" id="kids-play" type="button">▶ Play</button>
+      <button class="tbtn" id="kids-next" type="button" aria-label="Next video">⏭</button>
+    </div>
+    <p class="loopnote">🔁 The list loops — it replays from the top until you pause it. Perfect for the car.</p>
+    <button id="kids-lock-btn" type="button">🔒 Lock the screen</button>
+    <p class="locksub">Locks every tap on this screen. Only a grown-up can unlock it (hold the top-right corner, then PIN).</p>
+  </div>
+
+  <!-- ADD BY LINK -->
+  <div class="card">
+    <h2>➕ Add a video</h2>
+    <p>Paste a YouTube link — from the YouTube app, tap Share → Copy link, then paste it here.</p>
+    <div class="row">
+      <input id="kids-add-input" type="url" inputmode="url" placeholder="Paste a YouTube link here" autocomplete="off">
+      <button class="abtn" id="kids-add-btn" type="button">Add</button>
+    </div>
+    <p class="msg" id="kids-add-msg"></p>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="card">
+    <h2>🔎 Or search by name</h2>
+    <div class="row">
+      <input id="kids-search-input" type="search" placeholder="Try: baby shark, cocomelon, counting songs" autocomplete="off">
+      <button class="abtn" id="kids-search-btn" type="button">Search</button>
+    </div>
+    <p class="msg" id="kids-search-msg"></p>
+    <div id="kids-search-results"></div>
+    <p class="footnote">Search runs through Meechie's World's own search, which already filters out age-locked videos and videos that cannot play inside a player. You still pick every video yourself — only add channels you trust.</p>
+  </div>
+
+  <!-- PLAYLIST -->
+  <div class="card">
+    <h2>🎵 Your playlist</h2>
+    <p id="kids-count">0 videos</p>
+    <p id="kids-empty">Nothing here yet. Add videos above and they will line up here, in the order they play.</p>
+    <div id="kids-list"></div>
+    <p class="footnote">Use ↑ ↓ to change the order, ✕ to take a video out. The list stays saved on this phone for next time.</p>
+  </div>
+
+  <!-- HOW TO USE -->
+  <div class="card" id="kids-how">
+    <h2>📖 How to use</h2>
+    <ol>
+      <li><b>Add videos</b> — paste a YouTube link, or search by name and tap Add.</li>
+      <li><b>Put them in order</b> — use the ↑ ↓ buttons so they play the way you want.</li>
+      <li><b>Tap Play.</b> The videos play one after another, then start over.</li>
+      <li><b>Tap “Lock the screen”</b> and set a 4-number PIN only you know.</li>
+      <li><b>Hand the phone over.</b> Little hands can tap all they want — nothing will pause, skip, or wander off.</li>
+      <li><b>To unlock:</b> press and <b>hold the top-right corner</b> of the screen for 3 seconds, then enter your PIN.</li>
+    </ol>
+    <div class="kids-limits">
+      <h3>Good to know (the honest part)</h3>
+      <p>The lock covers this app's screen. The phone's own buttons, a swipe down from the very top (the notification shade), and incoming calls can still interrupt — no web page can block those.</p>
+      <p>For a total lockdown, add the phone's built-in feature too: <b>iPhone</b> — Settings → Accessibility → Guided Access, turn it on, then triple-click the side button inside the app. <b>Android</b> — Settings → Security → App pinning, turn it on, then pin this app from the recent-apps screen.</p>
+      <p>Forgot your PIN? Hold the corner for 3 seconds, tap <b>Forgot PIN?</b>, and type the word we ask for — that clears the PIN (your playlist stays). Clearing this site's data in your browser settings also removes the PIN, but the playlist goes with it.</p>
+      <p>Pick videos together with your kids, and only add channels you trust — every video here is one you chose.</p>
+    </div>
+  </div>
+
+  <p class="fine">🔒 Nothing is uploaded. Your playlist and your PIN live only on this phone, in this browser — they are never sent anywhere.<br>Meechie's World Kids is a free player for videos you pick on YouTube.</p>
+  <a class="back" href="/apps/">← All Meechie's World apps</a>
+
+  <!-- THE LOCK OVERLAY: transparent, covers everything, swallows every touch.
+       It must stay AFTER the player in the DOM and keep its huge z-index. -->
+  <div id="kids-lock" hidden>
+    <div id="kids-lock-hint">🔒 Locked — grown-ups: hold the top-right corner to unlock</div>
+    <button id="kids-corner" type="button" aria-label="Grown-ups: hold to unlock"><span id="kids-ring"><span>🔓</span></span></button>
+  </div>
+
+  <!-- PIN PAD (shared by set-PIN and unlock flows) -->
+  <div id="kids-pinpad-wrap" hidden>
+    <div id="kids-pinpad">
+      <p id="kids-pin-title">Enter your PIN</p>
+      <p id="kids-pin-sub"></p>
+      <div id="kids-pin-dots"><i></i><i></i><i></i><i></i></div>
+      <div class="kids-pin-keys" id="kids-pin-keys"></div>
+      <p id="kids-pin-msg"></p>
+      <div id="kids-pin-links">
+        <button id="kids-pin-cancel" type="button">Cancel</button>
+        <button id="kids-pin-forgot" type="button">Forgot PIN?</button>
+      </div>
+    </div>
+    <div id="kids-reset" hidden>
+      <h3>Forgot your PIN?</h3>
+      <p>Type the word <b>UNLOCK</b> below to clear the PIN. Your playlist stays right where it is — you will just set a fresh PIN next time you lock.</p>
+      <input id="kids-reset-input" type="text" placeholder="Type UNLOCK" autocomplete="off">
+      <button id="kids-reset-btn" type="button">Clear my PIN</button>
+      <br>
+      <button id="kids-reset-back" type="button">← Back to the PIN pad</button>
+    </div>
+  </div>
+
+<script>
+"use strict";
+/* =====================================================================
+   Meechie's World Kids — playlist player + transparent screen lock.
+   Everything lives on this page: no sign-in, no uploads. The playlist
+   (mw-kids-list) and the grown-up PIN (mw-kids-pin) are stored ONLY in
+   this browser's localStorage and are never sent anywhere.
+   ===================================================================== */
+
+/* ==== KIDS-CORE-BEGIN: pure logic (no DOM) — exercised by the Node harness ====
+   Keep everything between these markers free of document/window/localStorage
+   so the exact shipped code can be unit-tested outside the browser. */
+function parseYouTubeId(input) {
+  if (typeof input !== "string") return null;
+  var s = input.trim();
+  if (!s) return null;
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s; // bare video id
+  var m;
+  m = s.match(/youtu\.be\/([A-Za-z0-9_-]{11})/); if (m) return m[1];           // youtu.be/ID
+  m = s.match(/[?&]v=([A-Za-z0-9_-]{11})/); if (m) return m[1];                 // watch?v=ID (any youtube host)
+  m = s.match(/youtube\.com\/(?:embed|shorts|live|v)\/([A-Za-z0-9_-]{11})/); if (m) return m[1];
+  return null;
+}
+function kidsHasId(list, id) {
+  for (var i = 0; i < list.length; i++) if (list[i].id === id) return true;
+  return false;
+}
+function kidsNextIndex(i, n) { return n <= 0 ? -1 : (i + 1) % n; }            // loops back to the top
+function kidsPrevIndex(i, n) { return n <= 0 ? -1 : (i - 1 + n) % n; }
+function kidsMove(list, i, dir) { // returns a NEW array with item i moved one step (clamped at the ends)
+  var out = list.slice();
+  var j = i + dir;
+  if (i < 0 || i >= out.length || j < 0 || j >= out.length) return out;
+  var t = out[i]; out[i] = out[j]; out[j] = t;
+  return out;
+}
+function kidsPinOk(entered, stored) { // PINs are exactly 4 digits; compare as strings
+  return typeof stored === "string" && /^\d{4}$/.test(stored) &&
+         typeof entered === "string" && entered === stored;
+}
+/* ==== KIDS-CORE-END ==== */
+
+/* ---------- storage ---------- */
+var LS_LIST = "mw-kids-list", LS_PIN = "mw-kids-pin";
+function loadList() {
+  try {
+    var v = JSON.parse(localStorage.getItem(LS_LIST) || "[]");
+    if (!Array.isArray(v)) return [];
+    return v.filter(function (x) { return x && typeof x.id === "string" && /^[A-Za-z0-9_-]{11}$/.test(x.id); })
+            .map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "YouTube video" }; });
+  } catch (e) { return []; }
+}
+function saveList() { try { localStorage.setItem(LS_LIST, JSON.stringify(list)); } catch (e) {} }
+function getPin() { try { var p = localStorage.getItem(LS_PIN); return /^\d{4}$/.test(p || "") ? p : null; } catch (e) { return null; } }
+function setPin(p) { try { localStorage.setItem(LS_PIN, p); } catch (e) {} }
+function clearPin() { try { localStorage.removeItem(LS_PIN); } catch (e) {} }
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function thumb(id) { return "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"; }
+
+/* ---------- state ---------- */
+var list = loadList();
+var cur = 0;              // index of the loaded / playing item
+var player = null;        // YT.Player
+var playerReady = false;
+var playing = false;
+
+/* ---------- playlist rendering ---------- */
+function paintList() {
+  var box = $("kids-list"); box.innerHTML = "";
+  $("kids-count").textContent = list.length === 0 ? "0 videos" : (list.length + (list.length === 1 ? " video" : " videos"));
+  $("kids-empty").style.display = list.length ? "none" : "block";
+  list.forEach(function (v, i) {
+    var row = document.createElement("div");
+    row.className = "item" + (i === cur && playing ? " playing" : "");
+    var img = document.createElement("img"); img.src = thumb(v.id); img.alt = ""; img.loading = "lazy";
+    var t = document.createElement("div"); t.className = "t";
+    t.textContent = v.title;
+    var sm = document.createElement("small"); sm.textContent = "Video " + (i + 1) + " of " + list.length;
+    t.appendChild(sm);
+    row.appendChild(img); row.appendChild(t);
+    [["↑", "up"], ["↓", "down"], ["✕", "del"]].forEach(function (spec) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "ibtn"; b.textContent = spec[0];
+      b.setAttribute("aria-label", spec[1] + " video " + (i + 1));
+      b.addEventListener("click", function () {
+        if (spec[1] === "del") {
+          var wasCur = (i === cur);
+          list.splice(i, 1);
+          if (cur >= list.length) cur = Math.max(0, list.length - 1);
+          if (wasCur && playing) stopPlayback();
+          saveList(); paintList();
+        } else {
+          var dir = spec[1] === "up" ? -1 : 1;
+          list = kidsMove(list, i, dir);
+          if (cur === i) cur = i + dir; else if (cur === i + dir) cur = i; // keep cur pointing at the same video
+          saveList(); paintList();
+        }
+      });
+      row.appendChild(b);
+    });
+    box.appendChild(row);
+  });
+  paintNow();
+}
+function paintNow() {
+  var el = $("kids-now");
+  if (!list.length) { el.innerHTML = "Add some videos below, then tap Play.<small>Your list plays in order, then starts over from the top.</small>"; return; }
+  if (playing) {
+    var v = list[Math.min(cur, list.length - 1)];
+    el.innerHTML = "▶ Now playing: " + esc(v.title) + "<small>Video " + (Math.min(cur, list.length - 1) + 1) + " of " + list.length + " — the list loops back to the top.</small>";
+  } else {
+    el.innerHTML = list.length + (list.length === 1 ? " video" : " videos") + " ready — tap Play.<small>They will play in order, then start over from the top.</small>";
+  }
+}
+
+/* ---------- add by link ---------- */
+function addVideo(id, title) {
+  if (kidsHasId(list, id)) { return "dup"; }
+  list.push({ id: id, title: title || "YouTube video" });
+  saveList(); paintList();
+  return "ok";
+}
+$("kids-add-btn").addEventListener("click", function () {
+  var inp = $("kids-add-input"), msg = $("kids-add-msg");
+  var id = parseYouTubeId(inp.value);
+  if (!id) { msg.textContent = "That does not look like a YouTube link yet — copy the full link from the YouTube app and paste it here."; return; }
+  var r = addVideo(id, "YouTube video");
+  msg.textContent = r === "dup" ? "That video is already in your playlist." : "Added! It is at the end of your playlist.";
+  if (r === "ok") inp.value = "";
+});
+
+/* ---------- search through the site's own relay ---------- */
+$("kids-search-btn").addEventListener("click", doSearch);
+$("kids-search-input").addEventListener("keydown", function (e) { if (e.key === "Enter") doSearch(); });
+function doSearch() {
+  var q = $("kids-search-input").value.trim(), msg = $("kids-search-msg"), box = $("kids-search-results");
+  if (!q) { msg.textContent = "Type what you are looking for first."; return; }
+  msg.textContent = "Searching…"; box.innerHTML = "";
+  fetch("/api/ytsearch?q=" + encodeURIComponent(q))
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      var res = (j && j.ok && Array.isArray(j.results)) ? j.results : [];
+      if (!res.length) { msg.textContent = "Nothing found for that — try different words."; return; }
+      msg.textContent = "Tap Add on the ones you want:";
+      res.forEach(function (v) {
+        if (!v || typeof v.id !== "string") return;
+        var row = document.createElement("div"); row.className = "sres";
+        var img = document.createElement("img"); img.src = thumb(v.id); img.alt = ""; img.loading = "lazy";
+        var t = document.createElement("span"); t.textContent = v.title || "YouTube video";
+        var b = document.createElement("button"); b.type = "button"; b.className = "abtn"; b.textContent = "Add";
+        b.addEventListener("click", function () {
+          var r2 = addVideo(v.id, v.title || "YouTube video");
+          b.textContent = r2 === "dup" ? "In list ✓" : "Added ✓";
+          b.disabled = true;
+        });
+        row.appendChild(img); row.appendChild(t); row.appendChild(b);
+        box.appendChild(row);
+      });
+    })
+    .catch(function () { msg.textContent = "Search could not be reached right now — you can still paste a link above."; });
+}
+
+/* ---------- player (YouTube iframe API) ----------
+   The API script is injected AFTER the ready callback exists (the
+   documented pattern) so the callback can never be missed. */
+window.onYouTubeIframeAPIReady = function () {
+  player = new YT.Player("kids-player", {
+    width: "100%", height: "100%",
+    playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+    events: {
+      onReady: function () { playerReady = true; paintList(); },
+      onStateChange: function (e) {
+        if (e.data === YT.PlayerState.PLAYING) {
+          playing = true; $("kids-play").textContent = "⏸ Pause";
+          backfillTitle(); acquireWake(); paintList();
+        } else if (e.data === YT.PlayerState.PAUSED) {
+          playing = false; $("kids-play").textContent = "▶ Play";
+          if (!locked) releaseWake();
+          paintNow();
+        } else if (e.data === YT.PlayerState.ENDED) {
+          advance(1); // next in the list — wraps to the top (kidsNextIndex)
+        }
+      }
+    }
+  });
+};
+(function loadYtApi() {
+  var t = document.createElement("script");
+  t.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(t);
+  setTimeout(function () { // offline / blocked: say so instead of sitting silent
+    if (!playerReady) $("kids-now").innerHTML = "The video player could not load — check your connection, then reopen this page.<small>Your playlist is saved and will be right here.</small>";
+  }, 9000);
+})();
+function backfillTitle() { // a pasted link has no title until it plays — learn it from the player
+  try {
+    var d = player.getVideoData && player.getVideoData();
+    if (d && d.title && list[cur] && list[cur].id === d.video_id && list[cur].title !== d.title) {
+      list[cur].title = d.title; saveList(); paintList();
+    }
+  } catch (e) {}
+}
+function playIndex(i) {
+  if (!list.length || !player || !playerReady) return;
+  cur = Math.max(0, Math.min(i, list.length - 1));
+  player.loadVideoById(list[cur].id);
+}
+function advance(dir) {
+  if (!list.length) return;
+  var n = dir > 0 ? kidsNextIndex(cur, list.length) : kidsPrevIndex(cur, list.length);
+  if (n >= 0) playIndex(n);
+}
+function stopPlayback() {
+  try { if (player && player.stopVideo) player.stopVideo(); } catch (e) {}
+  playing = false; $("kids-play").textContent = "▶ Play";
+}
+$("kids-play").addEventListener("click", function () {
+  if (!list.length) { $("kids-now").innerHTML = "Add some videos first — paste a link or search below.<small>Then this Play button starts the show.</small>"; return; }
+  if (!playerReady) { $("kids-now").textContent = "The player is still warming up — one moment…"; return; }
+  if (playing) { player.pauseVideo(); } else if (player.getPlayerState && player.getPlayerState() === YT.PlayerState.PAUSED) { player.playVideo(); }
+  else playIndex(cur);
+});
+$("kids-next").addEventListener("click", function () { advance(1); });
+$("kids-prev").addEventListener("click", function () { advance(-1); });
+
+/* ---------- wake lock (house pattern: hold the screen on while the show runs) ---------- */
+var wakeLock = null;
+async function acquireWake() {
+  try {
+    if ("wakeLock" in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", function () { wakeLock = null; });
+    }
+  } catch (e) {}
+}
+function releaseWake() { try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {} }
+document.addEventListener("visibilitychange", function () {
+  if (document.visibilityState === "visible" && (playing || locked)) acquireWake();
+});
+
+/* =====================================================================
+   THE LOCK — state machine:
+     unlocked --(Lock btn, PIN exists)--> locked
+     unlocked --(Lock btn, no PIN)------> set-PIN pad --(4 digits twice)--> locked
+     locked   --(corner hold 3s)--------> unlock PIN pad
+     unlock pad --(correct PIN)---------> unlocked
+     unlock pad --(wrong PIN)-----------> stays locked (shake, dots cleared)
+     unlock pad --(Forgot PIN?)---------> reset panel --(type UNLOCK)--> PIN cleared + unlocked
+   While #kids-lock is up it receives EVERY pointer event (see the CSS
+   note): the page and the YouTube iframe underneath cannot be tapped.
+   ===================================================================== */
+var locked = false;
+var HOLD_MS = 3000;
+var holdStart = 0, holdRaf = 0, holdPointer = null;
+
+function engageLock() {
+  locked = true;
+  var ov = $("kids-lock"), hint = $("kids-lock-hint");
+  ov.hidden = false;
+  hint.classList.remove("fade");
+  setTimeout(function () { hint.classList.add("fade"); }, 3000); // hint melts away, screen stays clear
+  acquireWake(); // screen stays on for the whole handover
+  if (playing) { /* the show keeps rolling under the clear lock */ }
+}
+function disengageLock() {
+  locked = false;
+  $("kids-lock").hidden = true;
+  hidePad();
+  if (!playing) releaseWake();
+  resetRing();
+}
+
+/* --- corner hold: 3 continuous seconds, release resets --- */
+var corner = $("kids-corner"), ring = $("kids-ring");
+function ringPct(p) { ring.style.background = "conic-gradient(#f0cf78 " + Math.round(p * 100) + "%, rgba(240,207,120,.15) " + Math.round(p * 100) + "%)"; }
+function resetRing() { ring.style.opacity = "0"; ringPct(0); }
+function holdTick() {
+  var p = (Date.now() - holdStart) / HOLD_MS;
+  if (p >= 1) { // held the full 3 seconds — a deliberate grown-up press
+    cancelHold();
+    openPad("unlock");
+    return;
+  }
+  ringPct(p);
+  holdRaf = requestAnimationFrame(holdTick);
+}
+function cancelHold() {
+  if (holdRaf) cancelAnimationFrame(holdRaf);
+  holdRaf = 0; holdPointer = null; resetRing();
+}
+corner.addEventListener("pointerdown", function (e) {
+  if (!locked || holdPointer !== null) return;
+  e.preventDefault();
+  holdPointer = e.pointerId; holdStart = Date.now();
+  ring.style.opacity = "1"; ringPct(0);
+  holdRaf = requestAnimationFrame(holdTick);
+});
+["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) {
+  corner.addEventListener(ev, function (e) { if (holdPointer !== null && e.pointerId === holdPointer) cancelHold(); });
+});
+
+/* --- the overlay swallows everything else: page + iframe get nothing --- */
+var lockEl = $("kids-lock");
+["touchstart", "touchmove", "touchend", "wheel"].forEach(function (ev) {
+  lockEl.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
+});
+lockEl.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); });
+lockEl.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+/* ---------- PIN pad ---------- */
+var padMode = "unlock";   // "unlock" | "set" | "set-confirm"
+var padEntry = "";
+var padFirst = "";        // first entry during set-confirm
+function openPad(mode) {
+  padMode = mode; padEntry = ""; padFirst = "";
+  var wrap = $("kids-pinpad-wrap");
+  wrap.hidden = false;
+  wrap.classList.toggle("solid", mode !== "unlock"); // dim only while setting up, never over the kids' video
+  $("kids-pinpad").hidden = false;
+  $("kids-reset").hidden = true;
+  $("kids-pin-forgot").style.visibility = mode === "unlock" ? "visible" : "hidden";
+  paintPad();
+}
+function hidePad() { $("kids-pinpad-wrap").hidden = true; padEntry = ""; }
+function paintPad() {
+  var titles = {
+    "unlock": ["Enter your PIN", "The 4-number PIN you set when you locked the screen."],
+    "set": ["Set a grown-up PIN", "Pick 4 numbers only you know. You will type them every time you unlock."],
+    "set-confirm": ["One more time", "Type the same 4 numbers again so we know there was no typo."]
+  };
+  var t = titles[padMode];
+  $("kids-pin-title").textContent = t[0];
+  $("kids-pin-sub").textContent = t[1];
+  if (!$("kids-pin-msg").dataset.keep) $("kids-pin-msg").textContent = "";
+  var dots = $("kids-pin-dots").children;
+  for (var i = 0; i < 4; i++) dots[i].className = i < padEntry.length ? "on" : "";
+}
+function padShake(msg) {
+  var pad = $("kids-pinpad");
+  $("kids-pin-msg").textContent = msg;
+  $("kids-pin-msg").dataset.keep = "1";
+  pad.classList.remove("shake"); void pad.offsetWidth; pad.classList.add("shake");
+  padEntry = ""; paintPad();
+  delete $("kids-pin-msg").dataset.keep;
+}
+function padComplete(pin) {
+  if (padMode === "set") { padMode = "set-confirm"; padFirst = pin; padEntry = ""; paintPad(); return; }
+  if (padMode === "set-confirm") {
+    if (pin === padFirst) { setPin(pin); hidePad(); engageLock(); }
+    else { padMode = "set"; padFirst = ""; padShake("Those two did not match — set your PIN again."); }
+    return;
+  }
+  // unlock mode
+  if (kidsPinOk(pin, getPin())) { disengageLock(); }
+  else padShake("That PIN is not right — try again."); // wrong PIN: the lock stays exactly as it was
+}
+(function buildKeys() {
+  var keys = $("kids-pin-keys");
+  ["1","2","3","4","5","6","7","8","9","⌫","0","✓"].forEach(function (k) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "kids-pin-key" + (k === "⌫" || k === "✓" ? " fn" : "");
+    b.textContent = k;
+    b.addEventListener("click", function () {
+      if (k === "⌫") { padEntry = padEntry.slice(0, -1); paintPad(); return; }
+      if (k === "✓") { if (padEntry.length === 4) padComplete(padEntry); return; }
+      if (padEntry.length < 4) { padEntry += k; paintPad(); if (padEntry.length === 4) padComplete(padEntry); }
+    });
+    keys.appendChild(b);
+  });
+})();
+$("kids-pin-cancel").addEventListener("click", function () {
+  hidePad(); // cancelling changes nothing: if we were locked, we stay locked
+});
+$("kids-pin-forgot").addEventListener("click", function () {
+  if (padMode !== "unlock") return;
+  $("kids-pinpad").hidden = true;
+  $("kids-reset").hidden = false;
+  $("kids-reset-input").value = "";
+});
+$("kids-reset-back").addEventListener("click", function () {
+  $("kids-reset").hidden = true;
+  $("kids-pinpad").hidden = false;
+});
+$("kids-reset-btn").addEventListener("click", function () {
+  if ($("kids-reset-input").value.trim().toUpperCase() === "UNLOCK") {
+    clearPin();          // PIN gone — playlist untouched
+    disengageLock();     // and the screen opens (this panel only exists post corner-hold)
+    $("kids-now").innerHTML = "PIN cleared.<small>Next time you tap Lock the screen, you will set a fresh one.</small>";
+  } else {
+    $("kids-reset-input").value = "";
+    $("kids-reset-input").placeholder = "Type the word UNLOCK";
+  }
+});
+
+/* ---------- the Lock button ---------- */
+$("kids-lock-btn").addEventListener("click", function () {
+  if (locked) return;
+  if (!$("kids-pinpad-wrap").hidden) return; // pad already open
+  if (getPin()) engageLock();
+  else openPad("set"); // first time: set a PIN, then the lock drops in
+});
+
+paintList();
+</script>
+</body>
+</html>
