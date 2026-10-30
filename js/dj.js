@@ -701,6 +701,11 @@ html.popdj .popdj-hint{display:block}
 .vslive{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5;display:none}
 .vstage.vs-on .vslive{display:block}
 .vstage.vs-on .vstandby{display:none!important}
+.msvlive{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:4;display:none}
+.vstage.msv-on .msvlive{display:block}
+.vstage.msv-on .vposter{display:none!important}
+.vstage.msv-on .vstandby{display:none!important}
+#st-ytbox .msvlive,#wb-stage .msvlive{object-fit:cover}
 .vstatus{position:absolute;top:8px;left:8px;z-index:7;background:rgba(0,0,0,.72);border:1px solid var(--gold-lo);color:#ffd766;border-radius:8px;padding:3px 9px;font:700 11.5px var(--body);letter-spacing:.02em;pointer-events:none}
 .vspause{position:absolute;right:8px;bottom:8px;z-index:8;background:rgba(0,0,0,.72);border:1px solid var(--gold-lo);color:#ffd766;border-radius:8px;padding:4px 10px;font:700 11.5px var(--body);cursor:pointer}
 .vspause[hidden]{display:none!important}
@@ -870,7 +875,7 @@ body[data-view="dj"] #dj-livealert{display:none}
 #dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
 #dj-mini .vstage{border:0;border-radius:0}
-html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
+html.popdj #dj-mini{display:none!important}
 #dj-owner [data-ckey]{position:relative}
 #dj-owner [data-ckey].ck-off{display:none!important}
 #dj-owner.ck-on [data-ckey]{outline:1.5px dashed rgba(212,168,67,.55);outline-offset:2px}
@@ -1324,6 +1329,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <div class="vmixrow" id="dj-vskiprow"><button class="btn ghost sm" type="button" id="dj-vskip" data-vskip disabled>⏭ Skip — end this song, roll the next</button></div>
     <div id="dj-studio" hidden><div class="studio-hd"><b>🎬 STUDIO — CROP YOUR SCREEN</b><span class="muted">what you frame here is exactly what everyone sees</span><span style="flex:1"></span><button class="btn ghost sm" type="button" data-studiofit>🖼 Frame: Fit</button><button class="btn ghost sm" type="button" data-studioreset>Reset crop</button></div><div class="studio-sl"><label>Left <input type="range" min="0" max="45" step="1" value="0" data-crop="l"><span data-cropv="l">0%</span></label><label>Right <input type="range" min="0" max="45" step="1" value="0" data-crop="r"><span data-cropv="r">0%</span></label><label>Top <input type="range" min="0" max="45" step="1" value="0" data-crop="t"><span data-cropv="t">0%</span></label><label>Bottom <input type="range" min="0" max="45" step="1" value="0" data-crop="b"><span data-cropv="b">0%</span></label></div></div>
     <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><button class="btn ghost sm" type="button" data-vlive id="dj-vlivebtn">📹 Live Video</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
+    <div class="vmixrow" id="dj-msvrow"><button class="btn ghost sm" type="button" id="dj-msvbtn" title="Play a video file on the master screen for everyone — it takes over the screen and pauses the tables, like a screen share. Starting a screen share replaces it.">📤 Video to screen</button><input type="file" id="dj-msvfile" accept="video/*" hidden><span id="dj-msvstat" style="font-size:12.5px;color:var(--muted)"></span><button class="btn ghost sm" type="button" id="dj-msvstop" hidden title="Stop the screen video — the master screen returns to the video mix and the tables come back">⏹ Stop screen video</button></div>
   </div>
   <div class="dj-panel" id="dj-edit">
     <h4>🎬 VIDEO &amp; AUDIO EDITING</h4>
@@ -1479,10 +1485,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the mini master screen: the IN-FLOW MASTER BAND (owner, 2026-10-30
   // 11:50) — a permanent strip built into the shell under the header
   // chrome, so the live music video is part of every page itself and
-  // the view content pushes down below it (never in the Playground)
-  if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
+  // the view content pushes down below it (never in the Playground).
+  // CEMENTED (owner, 2026-10-30 12:46: "permanently molded and cement
+  // right there on every tab — I want it to be the site"): the band
+  // markup itself now ships in the static shell (index.html #dj-band),
+  // present from first paint — this block only BINDS it (pop button,
+  // request flow). The createElement path survives solely as the
+  // fallback for a stale cached shell that predates the static
+  // markup; either way there is exactly one #dj-mini in the page.
+  if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; const sbMn = document.getElementById("dj-mini"); if (sbMn) sbMn.hidden = true; }
   if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go(vsBroadcast() && !(S.vstream || {}).hidden ? "mwtv" : "radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
-  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>⤢</button></div><div class='mn-row'><aside class='mn-chip mn-chip-l' id='mn-chip-l' hidden></aside><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><aside class='mn-chipcol'><button type='button' class='mn-rqbtn' data-rqopen='mn' aria-label='Request a song — Meechie AI finds the video'>🎤</button><div class='mn-chip mn-chip-p' id='mn-chip-p' hidden></div></aside></div><div class='mn-rqwrap'><span class='rq-mystat' id='mn-mystat'></span><div class='rq-form2' id='mn-rqform' hidden><div class='dj-search'><input type='text' id='mn-rq-song' maxlength='100' placeholder='Type a song — Meechie AI finds the video' aria-label='Song to request'><input type='text' id='mn-rq-shout' maxlength='140' placeholder='Shout-out (optional) — it shows when your song plays' aria-label='Shout-out'></div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='btn sm' type='button' data-rqgo='mn'>🎵 Request it</button><small class='muted'>One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class='rq-results' id='mn-rqres'></div></div></div>"; const mnBand = document.getElementById("dj-band"); (mnBand || document.body).appendChild(mn); mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
+  if (!SANDBOX) { let mn = document.getElementById("dj-mini"); if (!mn) { mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>⤢</button></div><div class='mn-row'><aside class='mn-chip mn-chip-l' id='mn-chip-l' hidden></aside><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><aside class='mn-chipcol'><button type='button' class='mn-rqbtn' data-rqopen='mn' aria-label='Request a song — Meechie AI finds the video'>🎤</button><div class='mn-chip mn-chip-p' id='mn-chip-p' hidden></div></aside></div><div class='mn-rqwrap'><span class='rq-mystat' id='mn-mystat'></span><div class='rq-form2' id='mn-rqform' hidden><div class='dj-search'><input type='text' id='mn-rq-song' maxlength='100' placeholder='Type a song — Meechie AI finds the video' aria-label='Song to request'><input type='text' id='mn-rq-shout' maxlength='140' placeholder='Shout-out (optional) — it shows when your song plays' aria-label='Shout-out'></div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='btn sm' type='button' data-rqgo='mn'>🎵 Request it</button><small class='muted'>One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class='rq-results' id='mn-rqres'></div></div></div>"; const mnBand = document.getElementById("dj-band"); (mnBand || document.body).appendChild(mn); } mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
     // MANDATORY SCREEN package: the mini lives in the shell's band
     // slot (#dj-band, above <main>), outside the <main> delegation (onMain only fires inside #dj-root /
     // #dj-booth-root), so its request controls wire directly here — into
@@ -3866,12 +3879,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         // is standing down anyway.) The decks that were playing are
         // remembered on the publish record and resumed by vsPubTeardown,
         // so every way the share ends brings exactly those decks back.
+        // SCREEN VIDEO yields (owner, 2026-10-30): starting a share
+        // CLEARS an uploaded screen video — the share owns the master
+        // now — and the share adopts the decks the screen video paused
+        // (they are already stopped, so the pause pass below finds
+        // nothing playing) so its own teardown resumes exactly those
+        // decks when the share ends.
+        let msvWas = false;
+        if ((S.msvideo || {}).on) { msvWas = true; S.msvideo = { on: false, src: "", title: "", at: Date.now(), by: vsUid() }; }
         const wasPlaying = DECKS.filter((k) => S[k] && S[k].playing);
         if (wasPlaying.length) {
           vsPub.pausedDecks = wasPlaying;
           for (const k of wasPlaying) { try { await togglePlay(k); } catch (_) {} }
           say("⏸ Tables paused while your screen is up — they pick back up the moment the share stops.");
         }
+        else if (msvPausedDecks && msvPausedDecks.length) { vsPub.pausedDecks = msvPausedDecks.slice(); msvPausedDecks = null; try { sessionStorage.removeItem("mw_msvpaused"); } catch (_) {} }
+        if (msvWas) save(true);
+      }
+      else if (kind === "cam" && (S.msvideo || {}).on) {
+        // a live camera takes the master too: the screen video
+        // clears, and the tables it paused come back — the camera
+        // never owned the tables pause
+        S.msvideo = { on: false, src: "", title: "", at: Date.now(), by: vsUid() }; save(true); msvResumeTables();
       }
     } catch (_) {
       await vsPubTeardown(); vsDetach();
@@ -4517,6 +4546,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (t.closest("[data-hidebtn]")) { vsToggleHide(); return; }
     if (t.closest("[data-capbtn]")) { vsToggle("screen"); return; }
     if (t.closest("[data-vlive]")) { vsToggle("cam"); return; }
+    if (t.closest("#dj-msvbtn")) { msvPick(); return; }
+    if (t.closest("#dj-msvstop")) { msvStop(true); return; }
     if (t.closest("[data-studiofit]")) { vsCrop.fill = !vsCrop.fill; vsCropSave(); vsStudioSig = ""; vsPaintStudio(); return; }
     if (t.closest("[data-studioreset]")) { vsCrop = { l: 0, r: 0, t: 0, b: 0, fill: vsCrop.fill }; vsCropSave(); vsStudioSig = ""; vsPaintStudio(); }
   });
@@ -4548,6 +4579,123 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * the share. vsSync is idempotent and sig-guarded, so a 1s tick of its
    * own costs nothing when nothing changed. */
   setInterval(() => { try { vsSync(); } catch (_) {} }, 1000);
+  setInterval(() => { try { msvSync(); } catch (_) {} }, 1000);
+
+  /* ---------- SCREEN VIDEO — an uploaded video on the master screen ----------
+   * (owner, 2026-10-30: "Make it so I can upload videos to play on
+   * the master screen.") The booth uploads a video file through the
+   * same MW.uploadVideo route every post and clip uses (media
+   * bucket, converted in the browser to a playable format, 25 MB
+   * cap on this backend) and the returned URL rides the station doc
+   * as S.msvideo {on, src, title, at, by}, written only through the
+   * booth's normal lead-gated save. Every master surface then plays
+   * the file in a plain <video> element (looping) laid into the
+   * same stage hosts the live share uses (vsStageEls) under a
+   * parallel .msv-on class — one picture path, no second screen.
+   * Surfaces whose view is not open run NO player (the lifecycle
+   * gate): their element is only ever created while their stage is
+   * actually laid out. Precedence is share > screen video > video
+   * mix: vmixSndScr returns null while the screen video holds (no
+   * mix screen sounds under it) and msvPickSnd hands the file sound
+   * to exactly one surface on the same ladder (MW TV, Watch, the
+   * band, the station stage; the booth screen monitors it in
+   * place). The tables pause exactly the way a screen share pauses
+   * them (togglePlay, the deliberate pause; msvStop resumes exactly
+   * the decks it paused, the vsPubTeardown rule). Starting a share
+   * clears it (see vsPubStart). A src that errors latches off for
+   * that src alone — the surfaces fall back to the mix and the
+   * poster, never a black box, never a retry loop. The keeper
+   * never touches S.msvideo, and the Playground never writes or
+   * honors it. */
+  let msvShownSrc = "", msvErrSrc = "", msvSndEl = null, msvPausedDecks = null, msvBusy = false, msvBtnSig = "";
+  try { const mp = JSON.parse(sessionStorage.getItem("mw_msvpaused") || "null"); if (Array.isArray(mp) && mp.length) msvPausedDecks = mp; } catch (_) {}
+  function msvActive() { const m = S.msvideo || {}; return !SANDBOX && !!m.on && !!m.src && m.src !== msvErrSrc; }
+  function msvHolds() { return msvActive() && !(vsBroadcast() && !(S.vstream || {}).hidden); }
+  function msvVid(stage) { let v = stage.querySelector("video.msvlive"); if (!v) { v = document.createElement("video"); v.className = "msvlive"; v.loop = true; v.muted = true; v.playsInline = true; v.preload = "auto"; v.onerror = () => { try { if (msvShownSrc && v.getAttribute("src") === msvShownSrc) { msvErrSrc = msvShownSrc; msvDetach(); } } catch (_) {} }; stage.appendChild(v); } return v; }
+  function msvDetach() { msvSndEl = null; vsStageEls().forEach((st) => { st.classList.remove("msv-on"); const v = st.querySelector("video.msvlive"); if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch (_) {} } }); msvShownSrc = ""; }
+  function msvPickSnd() {
+    try {
+      if (!msvHolds()) { if (msvSndEl) { try { msvSndEl.muted = true; } catch (_) {} msvSndEl = null; } return; }
+      const order = ["#tw-stage", "#wb-stage", "#dj-mini .vstage", "#st-ytbox .vstage", "#dj-vstage"];
+      let pick = null;
+      for (const sel of order) { const st = document.querySelector(sel); if (!st || !st.classList.contains("msv-on")) continue; const v = st.querySelector("video.msvlive"); if (v && st.getClientRects().length) { pick = v; break; } }
+      if (!pick) { const st0 = document.querySelector("#dj-mini .vstage"); if (st0) pick = st0.querySelector("video.msvlive"); }
+      vsStageEls().forEach((st) => { const v = st.querySelector("video.msvlive"); if (v && v !== pick) { try { v.muted = true; } catch (_) {} } });
+      msvSndEl = pick;
+      if (pick) { const canSnd = OWNER() || listening; try { pick.muted = !canSnd; const p = pick.play(); if (p && p.catch) p.catch(() => { try { pick.muted = true; } catch (_) {} }); } catch (_) {} }
+    } catch (_) {}
+  }
+  function msvSync() {
+    try { msvPaintBtns(); } catch (_) {}
+    if (!msvHolds()) { if (msvShownSrc) msvDetach(); return; }
+    const m = S.msvideo || {};
+    if (msvShownSrc !== m.src) { msvDetach(); msvShownSrc = m.src; }
+    const first = document.querySelector("video.msvlive");
+    if (first && first.networkState === 3) { msvErrSrc = m.src; msvDetach(); return; }
+    vsStageEls().forEach((st) => {
+      if (!st.getClientRects().length) { st.classList.remove("msv-on"); const v0 = st.querySelector("video.msvlive"); if (v0 && !v0.paused) { try { v0.pause(); } catch (_) {} } return; }
+      const v = msvVid(st);
+      try { if (v.getAttribute("src") !== m.src) v.src = m.src; st.classList.add("msv-on"); if (v.paused) { const p = v.play(); if (p && p.catch) p.catch(() => {}); } } catch (_) {}
+    });
+    if (msvErrSrc) return;
+    msvPickSnd();
+    // the muted copies ride the sounding copy's clock — a file can
+    // seek exactly, so the band and the stage never drift apart
+    if (msvSndEl && isFinite(msvSndEl.currentTime)) vsStageEls().forEach((st) => { const v = st.querySelector("video.msvlive"); if (v && v !== msvSndEl && v.readyState >= 2 && Math.abs(v.currentTime - msvSndEl.currentTime) > 0.35) { try { v.currentTime = msvSndEl.currentTime; } catch (_) {} } });
+  }
+  function msvPaintBtns() {
+    const btn = document.getElementById("dj-msvbtn"), stop = document.getElementById("dj-msvstop"), stat = document.getElementById("dj-msvstat");
+    if (!btn || !stop) return;
+    const m = S.msvideo || {}, on = !SANDBOX && !!m.on && !!m.src;
+    const sig = (on ? "1:" + (m.title || "") : "0") + "|" + (msvBusy ? "b" : "");
+    if (sig === msvBtnSig) return; msvBtnSig = sig;
+    stop.hidden = !on;
+    btn.disabled = !!msvBusy;
+    btn.textContent = on ? "📤 Replace screen video" : "📤 Video to screen";
+    if (stat && !msvBusy) stat.textContent = on ? "📺 On the master screen: " + (m.title || "Screen video") : "";
+  }
+  function msvResumeTables() {
+    if (msvPausedDecks && msvPausedDecks.length) { const ks = msvPausedDecks.slice(); msvPausedDecks = null; try { sessionStorage.removeItem("mw_msvpaused"); } catch (_) {} setTimeout(() => { ks.forEach((k) => { try { if (S[k] && (S[k].src || S[k].yt) && !S[k].playing) togglePlay(k); } catch (_) {} }); }, 400); }
+  }
+  function msvPick() {
+    if (SANDBOX) { say("Practice copy — screen videos run from the real booth."); return; }
+    if (!OWNER()) return;
+    if (serverMirror()) { takeControl(); say("This screen is driving now — tap Video to screen again."); return; }
+    const inp = document.getElementById("dj-msvfile"); if (inp) inp.click();
+  }
+  async function msvStart(file) {
+    if (SANDBOX || !OWNER() || msvBusy || !file) return;
+    if (!/^video\//.test(file.type || "")) { say("Pick a video file (MP4, MOV or WebM)."); return; }
+    if (!window.MW || !MW.uploadVideo) { say("Uploads are still warming up — try again in a few seconds."); return; }
+    msvBusy = true; msvBtnSig = ""; msvPaintBtns();
+    const stat = document.getElementById("dj-msvstat");
+    try {
+      const up = await MW.uploadVideo(file, (f) => { if (stat) stat.textContent = "📤 Uploading " + Math.round(f * 100) + "%"; });
+      if (!up || !up.url) throw new Error("the upload did not finish");
+      // TAKEOVER, mirroring the screen share (vsPubStart): the
+      // tables pause through togglePlay — the deliberate pause —
+      // and exactly the decks that were playing are remembered;
+      // msvStop resumes exactly those, no others.
+      const wasPlaying = DECKS.filter((k) => S[k] && S[k].playing);
+      msvPausedDecks = wasPlaying;
+      try { if (wasPlaying.length) sessionStorage.setItem("mw_msvpaused", JSON.stringify(wasPlaying)); else sessionStorage.removeItem("mw_msvpaused"); } catch (_) {}
+      for (const k of wasPlaying) { try { await togglePlay(k); } catch (_) {} }
+      S.msvideo = { on: true, src: up.url, title: (file.name || "Screen video").replace(/\.[^.]+$/, ""), at: Date.now(), by: vsUid() };
+      save(true);
+      say("📤 Your video is on the master screen — everyone sees it now, and it plays until you stop it.");
+    } catch (err) { say("📤 That upload did not go through — " + ((err && err.message) || "try again")); }
+    if (stat && !(S.msvideo || {}).on) stat.textContent = "";
+    msvBusy = false; msvBtnSig = ""; msvPaintBtns();
+  }
+  function msvStop(announce) {
+    if (SANDBOX || !OWNER()) return;
+    if ((S.msvideo || {}).on) { S.msvideo = { on: false, src: "", title: "", at: Date.now(), by: vsUid() }; save(true); }
+    msvResumeTables();
+    msvBtnSig = ""; msvPaintBtns();
+    if (announce) say("⏹ Screen video stopped — the master screen is back to the video mix.");
+  }
+  document.addEventListener("change", (e) => { const t = e.target; if (t && t.id === "dj-msvfile") { const f = t.files && t.files[0]; try { t.value = ""; } catch (_) {} if (f) msvStart(f); } });
+  if (SANDBOX) { const mr = document.getElementById("dj-msvrow"); if (mr) mr.hidden = true; }
 
   /* ---------- the MASTER music-video screen ----------
    * Two player slots dissolve into each other exactly like the audio
@@ -4561,7 +4709,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const mkScreen = (ids, standby, chip, poster) => ({ ids, standby, chip, poster: poster || null, slots: [{ deck: "", vid: "", p: null }, { deck: "", vid: "", p: null }] });
   const scrBooth = mkScreen(["#dj-vs1", "#dj-vs2"], "#dj-vstandby", "#dj-vchip");
   const scrView = mkScreen(["#st-vs1", "#st-vs2"], "#st-vstandby", "#st-vchip", "#st-vposter"); // station stage carries the radio poster in its standby slot (owner, 2026-10-29)
-  const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, null); // no title chip on the pop-out screen (owner, 2026-10-28: "take the title off the screen in my master video pop out")
+  const scrMini = mkScreen(["#mn-vs1", "#mn-vs2"], null, null, "#mn-vposter"); // no title chip on the pop-out screen (owner, 2026-10-28: "take the title off the screen in my master video pop out"); the poster is the TV poster slate the cemented static band shows from first paint whenever nothing is playing
   const scrTV = mkScreen(["#tw-vs1", "#tw-vs2"], "#tw-vstandby", "#tw-vchip"); // MW TV: the channel page's screen — same mix renderer, its own branded standby slate
   const scrWatch = mkScreen(["#wb-vs1", "#wb-vs2"], "#wb-vstandby", "#wb-vchip", "#wb-vposter"); // WATCH THE SETUP: the spectator booth master screen — same mix renderer, the radio poster in its standby slot like the station stage
   /* stateSeen: has a real radio/dj snapshot reached this tab yet? The
@@ -4725,6 +4873,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   function vmixSndScr() {
     if (OWNER() || !listening) return null;
     if (vsBroadcast() && !(S.vstream || {}).hidden) return null;
+    if (msvActive()) return null; // SCREEN VIDEO (owner, 2026-10-30): an uploaded video holding the master screen outranks the mix for sound as well as picture — no mix screen sounds under it; msvSync hands the file sound to exactly one surface on this same ladder (share > screen video > mix)
     if (SANDBOX) return scrView;
     const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return scrTV;
     const wa = document.getElementById("v-watch"); if (wa && !wa.hidden) return scrWatch;
@@ -5067,11 +5216,28 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const rows = DECKS.filter((k) => S[k] && (S[k].title || S[k].yt)).map((k) => "DECK " + k + " — " + (S[k].title || "Music video") + (S[k].playing ? " ▶ PLAYING" : ""));
     return "🔴 MEECHIE IS LIVE ON THE TABLES\n" + (rows.length ? rows.join("\n") : "Setting up the decks…") + "\nThe video mix appears right here the moment a music video plays.";
   }
+  /* SURFACE LIFECYCLE gates (viewer black-screen fix, 2026-10-30):
+   * a master surface renders (and warms its spare player) only while
+   * its view is the open one. The renderer itself is shared with the
+   * working rebuild; what differed was the lifecycle — live ran every
+   * surface at once, most inside display:none subtrees, and the
+   * starved visible player never framed. The band DOM stays cemented
+   * in the shell at all times (the cement law); only PLAYERS obey
+   * the gate, and a parked surface holds its poster slate. */
+  const elOpen = (id) => { const el = document.getElementById(id); return !!el && !el.hidden; };
   let stageBusy = false;
   async function stageApply(mix, duck) {
     if (stageBusy) return; stageBusy = true;
     try {
       if (OWNER()) { vmixPublish(); await renderScreen(scrBooth, true, 1, 1); camSync(); const box = $("#st-ytbox"); if (box) box.hidden = true; }
+      else if (!elOpen("v-radio")) {
+        // VIEW GATE (viewer black-screen fix, 2026-10-30): the
+        // station stage parks while the radio view is not the open
+        // one — the same gate tvApply and watchApply have always
+        // had. No render and no warm player inside the hidden
+        // subtree; its slate and poster wait in the markup.
+        if (scrView.slots.some((sl) => sl.deck)) scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
+      }
       else {
         const has = vmixTargets().length > 0 || !!((S.vstream || {}).on && (S.vstream || {}).meeting), box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
         if (has) { const sndV = vmixSndScr(); await renderScreen(scrView, sndV !== scrView, sndV === scrView ? mix : 1, duck); }
@@ -5082,6 +5248,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       try { await tvApply(mix, duck); } catch (_) {}
       try { await watchApply(mix, duck); } catch (_) {}
       try { vsSync(); } catch (_) {}
+      try { msvSync(); } catch (_) {}
     } catch (_) {}
     stageBusy = false;
   }
@@ -5097,6 +5264,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const vs = S.vstream || {};
     let mode = "", label = "";
     if (vs.on && vs.meeting && !vs.hidden) { mode = "live"; label = vs.kind === "cam" ? "Meechie — live camera" : "Meechie — live screen"; }
+    else if (msvHolds()) { mode = "mix"; label = "📤 Screen video" + ((S.msvideo || {}).title ? " — " + S.msvideo.title : ""); }
     else { const tg = vmixTargets(); if (tg.length) { mode = "mix"; label = "The video mix" + (S[tg[0].k] && S[tg[0].k].title ? " — " + S[tg[0].k].title : ""); } }
     const sig = mode + "|" + label + "|" + (listening ? 1 : 0);
     if (sig === tvSig) return; tvSig = sig;
@@ -5191,9 +5359,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * gone. What still hides the unit is structural only: the MW TV
      * page (it IS the screen), the booth on screen (its own master
      * screen), and the sign-in wall / Playground (CSS, as before). */
-    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !onTV && !document.body.classList.contains("dj-on") && !!((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) && vsPopReady();
-    const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && vid !== miniOffVid && !onTV && !document.body.classList.contains("dj-on")) || vsShareShow;
-    box.hidden = !show;
+    /* CEMENTED BAND (owner, 2026-10-30 12:46: "permanently molded
+     * and cement right there on every tab — I want it to be the
+     * site"): presence no longer follows content at all. The band
+     * is static shell furniture; with nothing on it, its screen
+     * holds the TV poster slate (#mn-vposter) — it never pops in,
+     * never loads in, never vanishes for a song change or a
+     * buffering spell. The only seats where it steps aside are the
+     * ones where the master screen is the page itself (MW TV) or
+     * in place (the booth view, dj-on — its #dj-screen is the same
+     * screen), plus the Playground (structural, as before). The
+     * sign-in wall does NOT hide it: the wall gates the content
+     * below the band, not the screen. */
+    box.hidden = onTV || document.body.classList.contains("dj-on");
     /* MANDATORY SCREEN: the proof gate is GONE. It was the floating
      * mini's rule (RADIO MINI FIX 3/4), and it is what kept vanishing
      * the screen on tab switches and song changes — an unproven
@@ -5220,6 +5398,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * skipped only when there is nothing to render (no targets and
      * no live share - the sandbox already returned at the top), and
      * the band's placement never enters into it. */
+    /* SURFACE LIFECYCLE (viewer black-screen fix, 2026-10-30):
+     * the band keeps its cemented DOM on every tab, but its PLAYERS
+     * exist only while the band is the surface being looked at.
+     * While MW TV or Watch is the open view, a full master screen
+     * owns the picture and the band player must not exist then —
+     * hidden-surface embeds are what starved the visible player
+     * into the black screen. Park the slots and skip the render;
+     * the poster slate holds the band screen meanwhile. */
+    if (onTV || elOpen("v-watch")) { if (scrMini.slots.some((sl) => sl.deck)) scrMini.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } }); return; }
     if (!tg.length && !(vsM.on && vsM.meeting)) return;
     /* IN-FLOW MASTER BAND: no box-lifting layout passes remain —
      * the band sits in the document flow under the shell chrome, so
@@ -5231,14 +5418,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     /* VIEWER-LEG FIX (5/6) begin */
     const actM = scrMini.slots.filter((sl) => sl.deck && sl.p), topPM = top ? actM.find((sl) => sl.deck === top.k) : null;
     if (scrMini._bufK) {
-      /* (6) bounded step-aside: the box hides for at most ~15s of
-       * one continuous mask episode on this video, then returns -
-       * with the featured slot opacity-covered by the renderScreen
-       * mask pass the poster shows through - instead of vanishing
-       * for a whole song the way the unbounded #404 rule let it. */
+      /* (6) the bounded step-aside hide is GONE with the cement
+       * law (owner, 2026-10-30 12:46): the box never hides for a
+       * buffering spell — during a mask episode the renderScreen
+       * mask pass covers the featured slot and the poster shows
+       * through, in place, exactly as on every other surface.
+       * Only the episode bookkeeping remains. */
       if (miniBufVid !== vid || !miniBufAt) { miniBufVid = vid; miniBufAt = Date.now(); }
-      if (Date.now() - miniBufAt <= 15000) box.hidden = true;
-      else if (show && (miniOkVid === vid || (topPM && topPM._sawPlay))) box.hidden = false; /* RADIO MINI FIX (1): the restore may only raise a box the show gates allowed up - never over a session close, the stage in view, the booth on screen, or the MW TV page */
     } else { miniBufVid = ""; miniBufAt = 0; }
     /* (5) the OK evidence no longer has to be a state-1 sample at
      * exactly this pass end: a featured slot that has really played
@@ -6243,7 +6429,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793374200;
+  const MW_DJ_BUILD = 1793379600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };

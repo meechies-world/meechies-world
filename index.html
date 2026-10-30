@@ -441,10 +441,25 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <div class="announce" id="announce" hidden><div class="wrap"><p><b>FROM MEECHIE</b><span id="announce-text"></span></p><a class="btn" href="#community" data-go="community">Open</a><button type="button" id="announce-x" aria-label="Dismiss announcement">×</button></div></div>
 
 <!-- IN-FLOW MASTER BAND (owner, 2026-10-30): the master screen's permanent
-     home in the shell — under the header chrome, above every view. dj.js
-     builds #dj-mini into this slot; everything above stays, and the view
-     content below pushes down. It is furniture, like the header. -->
-<div id="dj-band"></div>
+     home in the shell — under the header chrome, above every view.
+     CEMENTED (owner, 2026-10-30 12:46: "permanently molded and cement
+     right there on every tab — I want it to be the site"): the band
+     markup itself ships HERE, in the static page — present from first
+     paint on every tab, nothing behind it, no close control, no
+     load-in. dj.js only binds it; players mount only in the surface
+     whose view is open. With nothing playing, the screen holds the
+     TV poster slate. Everything master — the video mix, a screen
+     share, the camera, an uploaded screen video — goes through this
+     one screen, and the radio is the master sound. -->
+<div id="dj-band"><div id="dj-mini">
+  <div class="mn-bar"><span>📺 MASTER — LIVE VIDEO</span><button type="button" id="mn-pop" aria-label="Pop the master screen out big on MW TV">⤢</button></div>
+  <div class="mn-row">
+    <aside class="mn-chip mn-chip-l" id="mn-chip-l" hidden></aside>
+    <div class="vstage"><div class="vslot" id="mn-vs1"></div><div class="vslot" id="mn-vs2"></div><div class="vposter" id="mn-vposter"><img src="/img/tv-poster.jpg?v=1793372600" srcset="/img/tv-poster-640.webp?v=1793372600 640w, /img/tv-poster-1080.webp?v=1793372600 1080w" sizes="100vw" alt="Meechie's World TV" loading="eager" decoding="async"></div><div class="mw-camov" id="mw-camov" hidden><img id="mw-camov-img" alt="" draggable="false"><span class="mw-camov-tag">📷 MEECHIE</span><button type="button" id="mw-camov-x" aria-label="Hide the camera square">✕</button></div></div>
+    <aside class="mn-chipcol"><button type="button" class="mn-rqbtn" data-rqopen="mn" aria-label="Request a song — Meechie AI finds the video">🎤</button><div class="mn-chip mn-chip-p" id="mn-chip-p" hidden></div></aside>
+  </div>
+  <div class="mn-rqwrap"><span class="rq-mystat" id="mn-mystat"></span><div class="rq-form2" id="mn-rqform" hidden><div class="dj-search"><input type="text" id="mn-rq-song" maxlength="100" placeholder="Type a song — Meechie AI finds the video" aria-label="Song to request"><input type="text" id="mn-rq-shout" maxlength="140" placeholder="Shout-out (optional) — it shows when your song plays" aria-label="Shout-out"></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" data-rqgo="mn">🎵 Request it</button><small class="muted">One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class="rq-results" id="mn-rqres"></div></div></div>
+</div></div>
 
 <main>
 <!-- HOME -->
@@ -993,7 +1008,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   <style id="mwtv-styles">
 #v-mwtv{padding:0}
 body[data-view="mwtv"]{overflow:hidden}
-body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv"] .announce,body[data-view="mwtv"] #appbar,body[data-view="mwtv"] .apptab,body[data-view="mwtv"] #player-bar,body[data-view="mwtv"] #ai-fab,body[data-view="mwtv"] #ai-widget,body[data-view="mwtv"] #mw-show,body[data-view="mwtv"] #mw-show-pill,body[data-view="mwtv"] #mw-choices,body[data-view="mwtv"] #mw-appoffer,body[data-view="mwtv"] #dj-livealert{display:none!important}
+body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv"] .announce,body[data-view="mwtv"] #appbar,body[data-view="mwtv"] .apptab,body[data-view="mwtv"] #player-bar,body[data-view="mwtv"] #ai-fab,body[data-view="mwtv"] #ai-widget,body[data-view="mwtv"] #mw-show,body[data-view="mwtv"] #mw-show-pill,body[data-view="mwtv"] #mw-choices,body[data-view="mwtv"] #mw-appoffer,body[data-view="mwtv"] #dj-livealert,body[data-view="mwtv"] #dj-band{display:none!important}
 #tw-shell{position:fixed;inset:0;z-index:9000;background:#000}
 #tw-stagebox{position:absolute;inset:0;display:grid;place-items:center}
 #tw-stage{width:min(100vw,177.78vh);border:0;border-radius:0}
@@ -1733,7 +1748,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 <script src="js/site-coder-ui.js?v=1793357741"></script>
 <script src="js/messages.js?v=1793357741"></script>
 <script src="js/videos.js?v=1793357741"></script>
-<script src="js/dj.js?v=1793374200"></script>
+<script src="js/dj.js?v=1793379600"></script>
 <script src="js/live.js?v=1793357741"></script>
 <script src="js/friends.js?v=1793357741"></script>
 <script src="js/social.js?v=1793357741"></script>
