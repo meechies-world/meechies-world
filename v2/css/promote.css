@@ -1,0 +1,29 @@
+/* v2 promote view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.field{display:grid;gap:6px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:4px;font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:4px 7px;border-radius:999px;border:1px solid var(--gold-lo);color:var(--gold-hi)}
+.badge.ok{border-color:color-mix(in srgb,var(--ok) 60%,transparent);color:var(--ok)}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.tier.feature{border-color:var(--gold);background:linear-gradient(180deg,color-mix(in srgb,var(--gold) 10%,var(--panel)),var(--panel))}
+.tier h3{font-size:22px}
+.price{font:700 40px/1 var(--display);color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.price small{font:500 14px var(--body);color:var(--muted)}
+.tier ul{margin:0;padding-left:18px;color:var(--muted);font-size:15px}
+.req .full{grid-column:1/-1}
+.inbox{display:grid;gap:10px;margin-top:16px}
+.inbox .item{background:var(--panel-2);border-radius:10px;padding:12px 14px;font-size:14px;overflow-wrap:anywhere}
+.st-sec .field input {width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:var(--text);font:inherit}
+
+/* --- from the view's live JS style blocks --- */
+#mw-appoffer{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar,0px) + 12px + env(safe-area-inset-bottom,0px));z-index:9998;max-width:440px;margin:0 auto;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;padding:12px 14px;border-radius:18px;background:linear-gradient(180deg,rgba(28,22,12,.97),rgba(8,7,5,.98));box-shadow:inset 0 0 0 1.5px rgba(232,190,100,.7),0 16px 40px rgba(0,0,0,.6),0 0 24px rgba(255,190,70,.18);color:#f3ead2;font:500 14px/1.35 var(--body,system-ui);animation:mwAoIn .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes mwAoIn{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+#mw-appoffer img{grid-row:1 / span 2;width:54px;height:54px;border-radius:14px;object-fit:cover;box-shadow:0 0 0 1.5px #8a6d1f}
+#mw-appoffer b{color:#ffe08a;font-size:15px}
+#mw-appoffer small{color:#bfb497;font-size:12.5px}
+#mw-appoffer .row{grid-column:1 / -1;display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+#mw-appoffer .get{flex:1;text-align:center;text-decoration:none;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.04em;padding:10px 12px;border-radius:12px;min-width:140px}
+#mw-appoffer .no{background:none;border:1px solid rgba(214,170,74,.45);color:#e9d9a6;border-radius:12px;padding:9px 12px;font:600 13px var(--body,system-ui);cursor:pointer}
+#mw-appoffer .all{color:#d9b65c;font-size:12.5px;width:100%;text-align:center;margin-top:2px}

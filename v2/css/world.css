@@ -1,0 +1,37 @@
+/* v2 world view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.field{display:grid;gap:6px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+.prop{position:absolute;pointer-events:none}
+.builder .opt{gap:8px}
+#av-opts{display:grid;gap:14px}
+.world{display:grid;grid-template-columns:300px minmax(0,1fr);gap:22px;align-items:start}
+.builder{display:grid;gap:14px}
+.avatar-stage{background:radial-gradient(circle at 50% 70%,color-mix(in srgb,var(--gold) 22%,transparent),transparent 65%),var(--panel-2);border-radius:12px;display:grid;place-items:center;padding:10px}
+.avatar-stage svg{width:150px;height:210px}
+.rooms{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.scene{position:relative;aspect-ratio:16/9;max-width:100%;border-radius:16px;overflow:hidden;border:1px solid var(--gold-lo);cursor:pointer;user-select:none;background:#0b0a08;box-shadow:0 20px 50px rgba(0,0,0,.55)}
+.scene .label{z-index:3000;position:absolute;left:14px;top:12px;font:700 12px var(--display);letter-spacing:.16em;color:var(--gold-hi);text-shadow:0 1px 4px #000;background:rgba(0,0,0,.45);padding:5px 10px;border-radius:999px;border:1px solid rgba(212,168,67,.35)}
+.scene .count{z-index:3000;position:absolute;right:14px;top:12px;font:600 12px var(--body);color:#fff;background:rgba(0,0,0,.45);padding:5px 10px;border-radius:999px}
+.scene .count::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:1px}
+.scene.is3d{cursor:default;background:#000}
+.scene.is3d>.prop,.scene.is3d>.toon,.scene.is3d>.vig,.scene.is3d>.label,.scene.is3d>.count,.scene.is3d>.ripple{display:none!important}
+.scene .vig{position:absolute;inset:0;pointer-events:none;z-index:2500;background:radial-gradient(ellipse at 50% 55%,transparent 55%,rgba(0,0,0,.55))}
+.scene svg .flick{animation:flick 3.2s ease-in-out infinite}
+.scene svg .tw{animation:tw 2.6s ease-in-out infinite}
+.scene svg .beam{transform-box:fill-box;transform-origin:50% 0;animation:sweep 6s ease-in-out infinite alternate}
+.scene svg .led{animation:led 1.6s steps(1) infinite}
+.scene svg .pulse{animation:flick 1.4s ease-in-out infinite}
+.scene svg .spin{transform-box:fill-box;transform-origin:center;animation:spin 8s linear infinite}
+.emotes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.emotes .chip{display:inline-flex;gap:6px;align-items:center}
+.say{display:flex;gap:8px;margin-top:10px}
+.say input{flex:1;min-width:0}
+.roomlog{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:grid;gap:4px;max-height:150px;overflow-y:auto;font-size:14px}
+.roomlog b{color:var(--gold-hi);margin-right:6px}
+.roomlog .sys{color:var(--muted);font-size:13px;font-style:italic}
+.ai-me{display:grid;gap:8px;justify-items:center;text-align:center;padding:14px;border:1px dashed var(--gold-lo);border-radius:12px}
+.ai-me p{margin:0;font-size:13px}
+.st-sec .field input {width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:var(--text);font:inherit}

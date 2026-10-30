@@ -1,0 +1,27 @@
+/* v2 markets view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.act.on{color:var(--gold-hi)}
+.eq-chip.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.st-sw.on{border-color:var(--gold-hi);box-shadow:0 0 0 2px var(--gold-lo)}
+.st-l.on{border-color:var(--gold);background:rgba(212,168,67,.1)}
+.yt-card.on{border-color:var(--gold)}
+
+/* --- from the view's live JS style blocks --- */
+.mk-tape{min-height:46px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+.mk-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 14px}
+.mk-tabs button{font:700 14px var(--body);padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+.mk-tabs button.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.mk-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:14px}
+.mk-card h3{font-size:15px;margin:4px 6px 10px;letter-spacing:.5px}
+.mk-chart{height:520px}
+.mk-side{height:520px}
+.mk-wide{height:560px;margin-top:14px}
+.mk-sym{display:flex;gap:6px;flex-wrap:wrap;margin:0 6px 10px}
+.mk-sym button{font:600 13px var(--body);padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+.mk-sym button.on{border-color:var(--gold);color:var(--gold-hi)}
+.mk-note{display:block;margin-top:14px;color:var(--muted);font-size:13px}
+.mk-trade{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:14px;padding:16px;border:1px solid var(--gold-lo,#8c6d26);border-radius:14px;background:linear-gradient(135deg,rgba(212,168,67,.12),transparent)}
+.mk-trade b{display:block;font-size:17px}
+@media (max-width:820px){.mk-grid{grid-template-columns:1fr}.mk-chart{height:420px}.mk-side{height:460px}.mk-wide{height:520px}}

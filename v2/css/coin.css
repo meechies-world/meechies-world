@@ -1,0 +1,56 @@
+/* v2 coin view — the live site's own rules for this view's selectors,
+   extracted from css/app.css + the view's live JS style blocks (Phase 5). */
+
+/* --- from css/app.css --- */
+.price{font:700 40px/1 var(--display);color:var(--gold-hi);font-variant-numeric:tabular-nums}
+.price small{font:500 14px var(--body);color:var(--muted)}
+.req .full{grid-column:1/-1}
+
+/* --- from the view's live JS style blocks --- */
+#coin-bar{display:grid;gap:8px;border:1px solid var(--gold-lo,#8a6a2a);border-radius:14px;padding:10px 12px;background:linear-gradient(180deg,#1a150b,#0d0b07)}
+#coin-bar .row{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap}
+#coin-bar b{color:var(--gold-hi,#f0cf78)}
+.coin-packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.coin-packs button{display:grid;gap:2px;justify-items:center;padding:10px 6px;border-radius:12px;border:1px solid var(--gold,#d4a843);background:#120f09;color:#fff;font:700 13px var(--body,system-ui);cursor:pointer}
+.coin-packs button span{font-size:18px;color:var(--gold-hi,#f0cf78)}
+.coin-packs button small{color:var(--muted,#bbb);font-weight:600}
+#daily-card{border:1px solid var(--gold-lo,#8a6a2a);background:linear-gradient(180deg,#1a150b,#0d0b07);display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between}
+#daily-card .dc-t{font:700 16px var(--body,system-ui);color:var(--gold-hi,#f0cf78)}
+#daily-card .dc-s{color:var(--muted,#a99f8b);font-size:13px}
+#daily-card .dc-fire{color:#ff9d45;font-weight:700}
+.gift small.price{display:block;color:var(--gold-hi,#f0cf78);font:700 11px var(--body,system-ui)}
+#coin-dlg{border:1px solid var(--gold,#d4a843);border-radius:20px;background:linear-gradient(180deg,#17120a,#0b0a07);color:var(--text,#fff);width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 32px);overflow:auto;padding:0}
+#coin-dlg::backdrop{background:rgba(0,0,0,.75)}
+#coin-dlg .in{display:grid;gap:14px;padding:20px}
+#coin-dlg h3{margin:0;font-size:22px;color:var(--gold-hi,#f0cf78)}
+#coin-dlg .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+#coin-dlg .stats div{border:1px solid #3a3223;border-radius:12px;padding:10px;text-align:center}
+#coin-dlg .stats b{display:block;font-size:20px;color:var(--gold-hi,#f0cf78)}
+#coin-dlg .stats small{color:var(--muted,#bbb);font-size:12px}
+#coin-dlg .co{display:grid;gap:8px;border:1px solid #3a3223;border-radius:12px;padding:12px}
+#coin-dlg input,#coin-dlg select{width:100%;background:#0b0a08;border:1px solid #333;border-radius:10px;padding:10px;color:#fff;font:16px var(--body,system-ui)}
+#coin-dlg .hist{display:grid;gap:4px;font-size:13px;color:var(--muted,#bbb);max-height:180px;overflow:auto}
+#coin-dlg .pay{display:grid;gap:6px;border:1px solid #3a3223;border-radius:12px;padding:10px}
+#coin-dlg .pay .p{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid #2a2418;padding:6px 0}
+.cn-hero{display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:center;padding:26px;border:1px solid var(--gold-lo,#8c6d26);border-radius:18px;background:radial-gradient(ellipse at 20% 30%,rgba(212,168,67,.18),transparent 60%),var(--panel)}
+.cn-coin{width:190px;height:190px;filter:drop-shadow(0 10px 30px rgba(212,168,67,.35));animation:cnspin 5s ease-in-out infinite}
+@keyframes cnspin{0%,100%{transform:perspective(600px) rotateY(-22deg)}50%{transform:perspective(600px) rotateY(22deg)}}
+.cn-hero h2{margin:4px 0 8px}
+.cn-badge{display:inline-block;font:800 12px var(--body);letter-spacing:1.5px;padding:5px 11px;border-radius:999px;background:rgba(212,168,67,.15);color:var(--gold-hi);border:1px solid var(--gold-lo,#8c6d26)}
+.cn-badge.live{background:#1f7a3a;color:#fff;border-color:#2ea44f}
+.cn-acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.cn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:16px}
+.cn-card h3{margin:0 0 10px;font-size:16px}
+.cn-card ul{margin:0;padding-left:20px}
+.cn-card li{margin:6px 0}
+.cn-warn{border-color:#8a3b2a;background:rgba(138,59,42,.12)}
+.cn-addr{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cn-addr code{font:500 13px "IBM Plex Mono",monospace;word-break:break-all;background:#000;padding:8px 10px;border-radius:8px;border:1px solid var(--line);flex:1;min-width:0}
+.cn-chart{margin-top:16px;border:1px solid var(--line);border-radius:14px;overflow:hidden;height:560px;background:#000}
+.cn-chart iframe{width:100%;height:100%;border:0}
+.cn-own{margin-top:18px;border:1px dashed var(--gold);border-radius:14px;padding:18px}
+.cn-own form{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.cn-own label{display:grid;gap:5px;font-size:13px;color:var(--muted)}
+.cn-own input,.cn-own select,.cn-own textarea{font:15px var(--body);padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:#0b0a08;color:var(--text)}
+.cn-own .full{grid-column:1/-1}
+.cn-steps li{margin:8px 0}
