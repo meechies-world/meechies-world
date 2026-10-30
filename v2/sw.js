@@ -15,7 +15,7 @@
    Offline music keeps the live rule: songs a listener plays are
    stored under the stable "mw-music" name, which skeleton updates
    never wipe. */
-const BUILD = "p5-ai-2026-10-30";
+const BUILD = "p5-diet-2026-10-30";
 const SHELL = "mw2-shell-" + BUILD;
 const MUSIC = "mw-music";
 const PRECACHE = [
@@ -137,11 +137,18 @@ const PRECACHE = [
  "/v2/js/views/world-markup.js",
  "/v2/js/views/world.js",
  "/v2/js/world3d.js",
- "/img/radio-promo.jpg",
- "/img/tv-poster.jpg",
- "/img/book-cover.jpg",
- "/img/crest.png",
- "/img/og.jpg"
+ /* hero art precaches the diet WebPs (Gate T gap 5): the *-640.webp
+    files must be in the repo at these paths before this ships, and
+    the views that show this art (radio/watch -> radio-promo,
+    mwtv -> tv-poster, books -> book-cover) must point at the same
+    .webp paths, or the precache and the pages disagree. Removed:
+    /img/crest.png (no such file in the repo — the shell draws the
+    crest as inline SVG; the dead entry also failed cache.addAll)
+    and /img/og.jpg (nothing in v2 loads it; v2's og:image is
+    /img/og-5.jpg, which crawlers fetch, not the shell). */
+ "/img/radio-promo-640.webp",
+ "/img/tv-poster-640.webp",
+ "/img/book-cover-640.webp"
 ];
 
 self.addEventListener("install", (e) => {
