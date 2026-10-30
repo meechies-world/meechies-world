@@ -412,19 +412,19 @@
 #v-radio .wrap{max-width:1500px}
 #dj-booth-root{width:100%;min-width:0}
 .dj-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.dj-top h3{margin:0;font-size:26px}
+.dj-top h3{margin:0;font-size:32.5px}
 .dj-live{display:flex;align-items:center;gap:8px;font-weight:700}
 .dj-live input{width:20px;height:20px;accent-color:#e5484d}
 /* REPORTS button badge (owner fix, 2026-10-30): the count pill on
  * the top-cluster REPORTS button; hidden whenever the count is 0 */
-#dj-reports-btn .rp-badge{display:inline-block;min-width:20px;padding:1px 6px;margin-left:2px;border-radius:999px;background:#e5484d;color:#fff;font:800 12px var(--body);text-align:center}
+#dj-reports-btn .rp-badge{display:inline-block;min-width:20px;padding:1px 6px;margin-left:2px;border-radius:999px;background:#e5484d;color:#fff;font:800 15px var(--body);text-align:center}
 #dj-reports-btn .rp-badge[hidden]{display:none}
 .onair-lamp{display:inline-flex;align-items:center;gap:8px;font:800 13px var(--body);letter-spacing:.14em;padding:7px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
 .onair-lamp.on{color:#fff;background:#a3161c;border-color:#e5484d;box-shadow:0 0 18px rgba(229,72,77,.55)}
 .onair-lamp .dot{width:9px;height:9px;border-radius:50%;background:#666}
 .onair-lamp.on .dot{background:#ff5b60;animation:djpulse 1.2s infinite}
 @keyframes djpulse{50%{opacity:.35}}
-.dj-clock{font:700 13px ui-monospace,monospace;color:var(--gold-hi)}
+.dj-clock{font:700 16.5px ui-monospace,monospace;color:var(--gold-hi)}
 .dj-decks{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);gap:16px;align-items:stretch}
 /* DECK LOCK: every deck and mixer owns a fixed slot in the bank — content loading,
    sections folding or lists growing can never re-place them */
@@ -451,7 +451,7 @@ html{scrollbar-gutter:stable}
 .deck label.lab{width:100%;font-size:11px;color:var(--muted);text-align:left;display:grid;gap:2px}
 .deck input[type=range],.mixer input[type=range],.dj-panel input[type=range]{width:100%;accent-color:var(--gold)}
 .eqrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;width:100%}
-.eqrow label{font-size:10px;color:var(--muted);letter-spacing:.08em;display:grid;gap:2px}
+.eqrow label{font-size:12.5px;color:var(--muted);letter-spacing:.08em;display:grid;gap:2px}
 .cuebtn.on{background:var(--gold);color:#191104;border-color:var(--gold)}
 .gatebtn.on,.pktab.on{background:var(--gold);color:#191104;border-color:var(--gold)}
 .loopbtn.on{background:#a3161c;color:#fff;border-color:#e5484d}
@@ -460,23 +460,23 @@ html{scrollbar-gutter:stable}
 .mixer label{white-space:normal}
 .mixer small{overflow-wrap:break-word}
 .mixer small{color:var(--muted);font-size:11px;letter-spacing:.12em}
-.talk{width:120px;height:120px;border-radius:50%;border:3px solid #e5484d;background:#2a0f10;color:#fff;font:800 13px var(--body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
+.talk{width:120px;height:120px;border-radius:50%;border:3px solid #e5484d;background:#2a0f10;color:#fff;font:800 16.5px var(--body);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
 .talk.on{background:#e5484d;box-shadow:0 0 0 8px rgba(229,72,77,.25),0 0 30px #e5484d}
 .micmeter{width:100%;height:8px;background:#1c1710;border-radius:99px;overflow:hidden}
 .micmeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#45bd62,#f7b928,#e5484d);transition:width .08s}
 .dj-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px;margin-top:14px;grid-auto-flow:dense;align-items:start}
 .dj-panel{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
-#dj-door .door-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #2a2418;font-size:14px;flex-wrap:wrap}
+#dj-door .door-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #2a2418;font-size:17.5px;flex-wrap:wrap}
 #dj-door .door-row.new{animation:doornew 1.6s ease-in-out 2}
 @keyframes doornew{50%{background:rgba(240,207,120,.16)}}
 #dj-door .door-row small{color:var(--muted);white-space:nowrap}
 #dj-door .door-acts{display:flex;gap:6px;flex-wrap:wrap}
 .dj-panel h4{margin:0;font:800 12px var(--body);letter-spacing:.16em;color:var(--gold-hi)}
 .pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.pad{padding:20px 8px;border-radius:12px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font:700 12px var(--body);cursor:pointer}
+.pad{padding:20px 8px;border-radius:12px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font:700 15px var(--body);cursor:pointer}
 .pad:active{transform:scale(.96)}
 .pad.custom{border-style:dashed}
-.pad small{display:block;color:var(--muted);font-weight:600;font-size:10px;margin-top:3px}
+.pad small{display:block;color:var(--muted);font-weight:600;font-size:12.5px;margin-top:3px}
 .dj-list{display:grid;gap:6px;max-height:240px;overflow:auto;min-width:0}
 .dj-item{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-width:0}
 .dj-item>span{flex:1 1 130px;min-width:0}
@@ -542,7 +542,7 @@ body[data-view="dj"] .player-bar,body[data-view="dj"] .apptab{opacity:0!importan
 body.dj-on #dj-booth-root{padding-bottom:70px}
 .dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}
 #dj-owner .btn{min-height:42px}
-#dj-owner [data-play]{min-height:50px;font-size:16px}
+#dj-owner [data-play]{min-height:50px;font-size:20px}
 #dj-owner .pad{min-height:52px}
 #dj-owner input[type=range]{min-height:32px}
 #dj-owner .platter{width:118px}
@@ -576,7 +576,7 @@ html.playdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
   html.popdj #dj-owner[data-ptab="music"] .pg-studio{display:none}
   html.popdj #dj-owner .btn{min-height:44px}
   html.popdj #dj-owner .pad{min-height:58px}
-  html.popdj #dj-owner [data-play]{min-height:52px;font-size:16px}
+  html.popdj #dj-owner [data-play]{min-height:52px;font-size:20px}
 }
 html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none!important}
 .popdj-hint{display:none}
@@ -594,14 +594,14 @@ html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none
 .online-chip b{color:#45bd62}
 @media(max-width:640px){.online-chip{margin-left:6px;padding:3px 8px;font-size:11px}}
 #dj-browser .dj-search{position:sticky;top:0;z-index:3;background:#0d0b08;padding:6px 0}
-.ptab-on{align-self:center;font:800 12.5px var(--body);color:#45bd62;white-space:nowrap;padding:0 4px}
+.ptab-on{align-self:center;font:800 15.5px var(--body);color:#45bd62;white-space:nowrap;padding:0 4px}
 .xfpad{position:relative;width:150px;height:150px;border-radius:16px;border:2px solid var(--gold-lo);background-color:#100d08;background-image:linear-gradient(90deg,transparent calc(50% - 1px),rgba(232,197,102,.16) 50%,transparent calc(50% + 1px)),linear-gradient(180deg,transparent calc(50% - 1px),rgba(232,197,102,.16) 50%,transparent calc(50% + 1px));touch-action:none;cursor:grab;margin:2px auto;overflow:hidden}
 .xfpad::before{content:"";position:absolute;left:50%;top:50%;width:142%;height:2px;background:rgba(232,197,102,.45);transform:translate(-50%,-50%) rotate(45deg);pointer-events:none}
 .xfpad::after{content:"";position:absolute;left:50%;top:50%;width:142%;height:2px;background:rgba(232,197,102,.45);transform:translate(-50%,-50%) rotate(-45deg);pointer-events:none}
 .xfpad:active{cursor:grabbing}
 .dsec{margin-top:4px;border-top:1px solid #241d10}
-.dsec-h{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;color:var(--gold-lo);font:700 11px var(--body);letter-spacing:.14em;padding:8px 2px;cursor:pointer;min-height:38px;text-transform:uppercase}
-.dsec-a{font-size:13px;transition:transform .15s}
+.dsec-h{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;color:var(--gold-lo);font:700 14px var(--body);letter-spacing:.14em;padding:8px 2px;cursor:pointer;min-height:38px;text-transform:uppercase}
+.dsec-a{font-size:16.5px;transition:transform .15s}
 .dsec.shut .dsec-a{transform:rotate(-90deg)}
 .dsec.shut .dsec-b{display:none}
 .ytbox{width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;margin:8px 0}
@@ -623,7 +623,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
 @media(min-width:1100px){body[data-view="radio"] #fb-left,body[data-view="radio"] #fb-right{display:none!important}body[data-view="radio"] main{margin-left:0!important;margin-right:0!important}body[data-view="radio"] #v-radio .wrap{max-width:1740px}}
 /* compact decks on desktop: smaller platters, waves, buttons and gaps so a whole
    table fits the screen without a long scroll (Malik: "make these tabs smaller") */
-@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:12.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:13px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:148px;height:148px}}
+@media(min-width:761px){#dj-owner .deck{gap:6px;padding:10px}#dj-owner .deck .platter{width:172px}#dj-owner .deck .wave{height:58px}#dj-owner .deck .btn{padding:6px 9px;font-size:15.5px;min-height:34px}#dj-owner .deck .row{gap:5px}#dj-owner .deck .eqrow{gap:4px}#dj-owner .deck h4{margin:0;font-size:16.5px}#dj-owner .mixer{gap:6px;padding:10px}#dj-owner .xfpad.big{width:148px;height:148px}}
 /* three-zone console on wide screens (Malik: "A and B decks on the left, C and D on
    the right, make the song pick and mixer in the middle"): the deck bank unwraps so
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
@@ -631,7 +631,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
 @media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
 html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
-@media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 13.5px var(--body);margin-bottom:10px}}
+@media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 17px var(--body);margin-bottom:10px}}
 @media (max-width:760px){.dj-decks{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}#dj-browser .dj-item .btn{min-width:44px;min-height:44px;padding:0 6px}}
 /* song rows must be READABLE (owner, 2026-10-28: on the song search you cant
    scroll over to see what song youre choosing): on narrow screens the title
@@ -646,7 +646,7 @@ html.popdj .popdj-hint{display:block}
 .vstage .vslot iframe{filter:brightness(var(--vb,1)) contrast(var(--vc,1)) saturate(var(--vs,1));transform:scale(var(--vz,1))}
 #dj-edit .edgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
 @media(max-width:760px){#dj-edit .edgrid{grid-template-columns:1fr}}
-#dj-edit label{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:7px}
+#dj-edit label{display:flex;justify-content:space-between;gap:8px;font-size:15px;color:var(--muted);margin-top:7px}
 #dj-edit label span{color:#e9d9a6;font-weight:700}
 .vslot iframe{width:100%;height:100%;border:0}
 .vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
@@ -676,10 +676,10 @@ html.popdj .popdj-hint{display:block}
 /* OBS STUDIO strip (2026-10-29): the crop controls for a live screen share,
    one bar under the booth master stage, shown only while THIS tab is sharing */
 #dj-studio{margin-top:8px;border:1px solid var(--gold-lo);border-radius:10px;padding:8px 10px;background:rgba(0,0,0,.35)}
-#dj-studio .studio-hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:700 12px var(--body);letter-spacing:.05em;color:#f0cf78}
+#dj-studio .studio-hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:700 15px var(--body);letter-spacing:.05em;color:#f0cf78}
 #dj-studio .studio-hd .muted{color:var(--muted);font-weight:600;letter-spacing:0}
 #dj-studio .studio-sl{display:flex;gap:14px;flex-wrap:wrap;margin-top:7px}
-#dj-studio .studio-sl label{display:flex;gap:6px;align-items:center;font:600 12px var(--body);color:var(--text)}
+#dj-studio .studio-sl label{display:flex;gap:6px;align-items:center;font:600 15px var(--body);color:var(--text)}
 #dj-studio .studio-sl input[type=range]{width:110px;accent-color:#f0cf78}
 #dj-studio .studio-sl span{min-width:34px;color:#f0cf78;font-weight:700}
 /* CAMERA SQUARE (owner, 2026-10-29): his webcam sits in a square beside the
@@ -695,9 +695,9 @@ html.popdj .popdj-hint{display:block}
 #dj-vstage.cam-on #dj-camwrap{display:block}
 #dj-camvid{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);border:2px solid var(--gold,#f0cf78);box-sizing:border-box;display:block;background:#0a0a0c}
 #dj-camwrap.novid #dj-camvid{display:none}
-#dj-camph{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);font:600 12px var(--body);text-align:center;padding:10px;border:2px solid var(--gold,#f0cf78);box-sizing:border-box}
+#dj-camph{position:absolute;inset:0;display:none;place-items:center;color:var(--muted);font:600 15px var(--body);text-align:center;padding:10px;border:2px solid var(--gold,#f0cf78);box-sizing:border-box}
 #dj-camwrap.novid #dj-camph{display:grid}
-#dj-camtag{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo,#8a6d2f);color:#f0cf78;border-radius:999px;padding:2px 8px;font:800 10.5px var(--body);letter-spacing:.08em;z-index:5}
+#dj-camtag{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo,#8a6d2f);color:#f0cf78;border-radius:999px;padding:2px 8px;font:800 13px var(--body);letter-spacing:.08em;z-index:5}
 #dj-camwrap.novid #dj-camtag{display:none}
 /* CAMERA SUITE (owner, 2026-10-29): filters + background removal on his
    camera box, and the small live square of him on the viewers' pop-out
@@ -713,23 +713,23 @@ html.popdj .popdj-hint{display:block}
 #dj-camwrap.fxbg #dj-camvid{opacity:0}
 #dj-camwrap.novid #dj-camfx{display:none}
 #dj-cambar{position:absolute;top:6px;right:6px;z-index:6;display:flex;align-items:center;gap:6px;background:rgba(5,5,8,.72);border:1px solid var(--gold-lo,#8a6d2f);border-radius:999px;padding:3px 4px 3px 8px}
-#dj-camlook{font:800 10.5px var(--body);letter-spacing:.06em;color:var(--gold-hi,#f0cf78);white-space:nowrap}
-#dj-camedit{background:var(--gold,#f0cf78);color:#0b0a08;border:0;border-radius:999px;padding:5px 11px;font:800 11.5px var(--body);cursor:pointer;white-space:nowrap}
+#dj-camlook{font:800 13px var(--body);letter-spacing:.06em;color:var(--gold-hi,#f0cf78);white-space:nowrap}
+#dj-camedit{background:var(--gold,#f0cf78);color:#0b0a08;border:0;border-radius:999px;padding:5px 11px;font:800 14.5px var(--body);cursor:pointer;white-space:nowrap}
 #dj-cambanner{position:absolute;left:0;right:0;bottom:0;height:11.5%;z-index:5;display:flex;align-items:center;justify-content:center;background:var(--gold,#f0cf78);color:#0b0a08;font-weight:800;letter-spacing:.04em;white-space:nowrap;overflow:hidden;padding:0 8px;box-sizing:border-box}
 #dj-cambanner[hidden]{display:none}
 #dj-camwrap.novid #dj-cambanner{display:none}
 .cp-sec{margin-top:14px}
 .cp-sec:first-of-type{margin-top:2px}
-.cp-lab{display:block;font:800 11px var(--body);letter-spacing:.1em;color:var(--gold-hi,#f0cf78);margin-bottom:7px}
+.cp-lab{display:block;font:800 14px var(--body);letter-spacing:.1em;color:var(--gold-hi,#f0cf78);margin-bottom:7px}
 .cp-chips{display:flex;flex-wrap:wrap;gap:6px}
-.cp-chip{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);color:#e8e2d2;border-radius:999px;padding:9px 14px;min-height:38px;font:700 12.5px var(--body);cursor:pointer;white-space:nowrap}
+.cp-chip{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);color:#e8e2d2;border-radius:999px;padding:9px 14px;min-height:38px;font:700 15.5px var(--body);cursor:pointer;white-space:nowrap}
 #cp-bgs.warming .cp-chip{opacity:.55}
 #cp-bgs.dead .cp-chip{opacity:.55}
 .cp-chip.on{background:var(--gold,#f0cf78);color:#0b0a08;border-color:var(--gold,#f0cf78)}
-.cp-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted);margin-top:9px}
+.cp-row{display:flex;justify-content:space-between;gap:8px;font-size:15px;color:var(--muted);margin-top:9px}
 .cp-row span{color:#e9d9a6;font-weight:700}
 #dj-campro input[type=range]{width:100%;margin:2px 0 0}
-#dj-campro input[type=text]{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);border-radius:8px;color:#e8e2d2;padding:9px 10px;font:600 13.5px var(--body);box-sizing:border-box}
+#dj-campro input[type=text]{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);border-radius:8px;color:#e8e2d2;padding:9px 10px;font:600 17px var(--body);box-sizing:border-box}
 .mw-camov{position:absolute;width:30%;aspect-ratio:1/1;z-index:8;border:2px solid var(--gold,#f0cf78);border-radius:8px;overflow:hidden;background:#000;box-shadow:0 6px 18px rgba(0,0,0,.5);touch-action:none;cursor:grab}
 .mw-camov:active{cursor:grabbing}
 .mw-camov img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
@@ -772,7 +772,7 @@ html.popdj .popdj-hint{display:block}
 /* MASTER SCREEN above the table (Malik, 2026-10-26): out of the mixer, full booth
    width, cinema height — tall enough to star, capped so the decks stay in reach */
 #dj-screen{position:relative;margin:0 0 12px}
-#dj-screen>small{display:block;color:var(--muted);font-size:11px;letter-spacing:.12em;margin-bottom:6px}
+#dj-screen>small{display:block;color:var(--muted);font-size:14px;letter-spacing:.12em;margin-bottom:6px}
 #dj-screen .vstage{aspect-ratio:16/9;max-height:66vh;min-height:200px;border-radius:14px}
 @media(max-width:760px){#dj-screen .vstage{min-height:160px;max-height:52vh}}
 @media(min-width:1500px){#dj-owner>#dj-screen{grid-column:1/-1;grid-row:3}#dj-owner>#dj-edit{grid-column:1/-1;grid-row:4}#dj-owner .deck[data-deck="A"]{grid-row:6/span 3}#dj-owner .deck[data-deck="B"]{grid-row:6/span 3}#dj-owner .deck[data-deck="C"]{grid-row:6/span 3}#dj-owner .deck[data-deck="D"]{grid-row:6/span 3}#dj-owner #dj-browser{grid-row:5}#dj-owner #dj-xfbar{grid-column:3;grid-row:6}#dj-owner .mixer.m1{grid-row:7}#dj-owner .mixer.m2{grid-row:8}}
@@ -792,7 +792,7 @@ html.popdj .popdj-hint{display:block}
 #dj-blackout{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:9999;display:grid;place-items:center;cursor:none;overscroll-behavior:none;touch-action:none}
 #dj-blackout:fullscreen,#dj-blackout:-webkit-full-screen{width:100%;height:100%}
 #dj-blackout[hidden]{display:none}
-#dj-blackout span{color:#9a9a9a;font:600 13px var(--body);letter-spacing:.08em;opacity:.4;transition:opacity 1.4s ease 2.4s;pointer-events:none}
+#dj-blackout span{color:#9a9a9a;font:600 16.5px var(--body);letter-spacing:.08em;opacity:.4;transition:opacity 1.4s ease 2.4s;pointer-events:none}
 #dj-blackout.bo-dim span{opacity:0}
 /* the Blackout button, impossible to miss (owner, 2026-10-28: "I dont see the
    blackout mode — I want that very noticeable"): a full-width black-and-gold
@@ -837,7 +837,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner [data-ckey]{position:relative}
 #dj-owner [data-ckey].ck-off{display:none!important}
 #dj-owner.ck-on [data-ckey]{outline:1.5px dashed rgba(212,168,67,.55);outline-offset:2px}
-.ck-chip{position:absolute;top:6px;right:6px;z-index:6;display:none;background:#1d1a14;border:1px solid var(--gold);color:var(--gold-hi);border-radius:999px;padding:5px 11px;font:700 12px var(--body);cursor:pointer}
+.ck-chip{position:absolute;top:6px;right:6px;z-index:6;display:none;background:#1d1a14;border:1px solid var(--gold);color:var(--gold-hi);border-radius:999px;padding:5px 11px;font:700 15px var(--body);cursor:pointer}
 #dj-owner.ck-on .ck-chip{display:block}
 #dj-ckbar{display:none;flex-wrap:wrap;gap:6px;align-items:center;background:#12100c;border:1px dashed var(--gold-lo);border-radius:10px;padding:8px 10px;margin-bottom:10px;grid-column:1/-1}
 #dj-owner.ck-on #dj-ckbar{display:flex}
@@ -848,8 +848,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .deck{padding:8px;gap:5px}
 #dj-booth-root #dj-owner .deck .platter{width:76px;margin-inline:auto}
 #dj-booth-root #dj-owner .deck .wave{height:38px}
-#dj-booth-root #dj-owner .deck h4{font-size:12px}
-#dj-booth-root #dj-owner .btn{min-height:40px;font-size:12.5px;padding:5px 8px}
+#dj-booth-root #dj-owner .deck h4{font-size:15px}
+#dj-booth-root #dj-owner .btn{min-height:40px;font-size:15.5px;padding:5px 8px}
 #dj-booth-root #dj-owner .mixer{padding:8px;gap:6px}
 #dj-booth-root #dj-owner .xfpad.big{width:118px;height:118px}
 #dj-booth-root #dj-owner .dj-panel{padding:9px}
@@ -865,8 +865,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .deck{padding:7px;gap:4px}
 #dj-booth-root #dj-owner .deck .platter{width:80px;margin-inline:auto}
 #dj-booth-root #dj-owner .deck .wave{height:34px}
-#dj-booth-root #dj-owner .deck h4{font-size:12px}
-#dj-booth-root #dj-owner .btn{min-height:38px;font-size:12px;padding:4px 7px}
+#dj-booth-root #dj-owner .deck h4{font-size:15px}
+#dj-booth-root #dj-owner .btn{min-height:38px;font-size:15px;padding:4px 7px}
 #dj-booth-root #dj-owner .mixer{padding:8px;gap:6px}
 #dj-booth-root #dj-owner .xfpad.big{width:110px;height:110px}
 }
@@ -884,7 +884,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner .deck[data-deck="D"]{--dk:#f472b6}
 #dj-owner .deck,#dj-owner .mixer,#dj-owner .dj-panel{background:linear-gradient(180deg,#17181a,#0b0b0d);border:1px solid #26272b;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 10px 24px rgba(0,0,0,.45)}
 #dj-station{background:linear-gradient(180deg,#17181a,#0b0b0d);border-color:#26272b}
-#dj-owner .deck h4{letter-spacing:.22em;font-size:12px;color:#d8d4c9;border-left:4px solid var(--dk,#f0cf78);padding-left:8px;text-align:left}
+#dj-owner .deck h4{letter-spacing:.22em;font-size:15px;color:#d8d4c9;border-left:4px solid var(--dk,#f0cf78);padding-left:8px;text-align:left}
 #dj-owner .platter{border:3px solid #33343a;background:repeating-radial-gradient(circle,#1a1b1d 0 2px,#101012 2px 4px);box-shadow:inset 0 0 0 5px #0a0a0c,inset 0 0 26px #000,0 10px 22px rgba(0,0,0,.65)}
 #dj-owner .platter::before{content:"";position:absolute;inset:-3px;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(235,235,240,.55) 0deg 2deg,transparent 2deg 10deg);-webkit-mask:radial-gradient(circle,transparent 0 76%,#000 77%);mask:radial-gradient(circle,transparent 0 76%,#000 77%);pointer-events:none}
 #dj-owner .platter::after{box-shadow:0 0 0 3px #0c0a07,0 0 0 5px var(--dk,#f0cf78),inset 0 2px 6px rgba(255,255,255,.35)}
@@ -918,11 +918,11 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    chunky pads, a bezel you can see, and the X fader's missing dot (it never
    had a size or position rule anywhere — the JS set left/top on a static,
    zero-height div, so it painted as nothing). ===== */
-#dj-booth-root #dj-owner [data-play],#dj-booth-root #dj-owner [data-cue0],#dj-booth-root #dj-owner [data-brake]{width:62px;height:62px;min-height:62px;border-radius:50%;padding:0;flex:none;font-size:11px;line-height:1.15}
+#dj-booth-root #dj-owner [data-play],#dj-booth-root #dj-owner [data-cue0],#dj-booth-root #dj-owner [data-brake]{width:62px;height:62px;min-height:62px;border-radius:50%;padding:0;flex:none;font-size:14px;line-height:1.15}
 #dj-booth-root #dj-owner [data-play]{border:3px solid #4ade80!important;background:#0c1710;color:#dcffe6;box-shadow:0 0 0 3px #050d08,0 0 16px rgba(74,222,128,.4),0 4px 10px rgba(0,0,0,.55)}
 #dj-booth-root #dj-owner [data-cue0]{border:3px solid #f0cf78!important;background:#171106;color:#ffe9b0;box-shadow:0 0 0 3px #0d0a03,0 0 12px rgba(240,207,120,.3),0 4px 10px rgba(0,0,0,.55)}
 #dj-booth-root #dj-owner [data-brake]{border:2px solid #43434a!important;background:#141416;color:#e8e4da;box-shadow:0 4px 10px rgba(0,0,0,.5)}
-@media(max-width:760px){#dj-booth-root #dj-owner [data-play],#dj-booth-root #dj-owner [data-cue0],#dj-booth-root #dj-owner [data-brake]{width:52px;height:52px;min-height:52px;font-size:10px}}
+@media(max-width:760px){#dj-booth-root #dj-owner [data-play],#dj-booth-root #dj-owner [data-cue0],#dj-booth-root #dj-owner [data-brake]{width:52px;height:52px;min-height:52px;font-size:12.5px}}
 #dj-booth-root #dj-owner .cuebtn,#dj-booth-root #dj-owner .loopbtn{border-radius:10px;background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;font-weight:800;letter-spacing:.03em;min-height:48px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #000}
 #dj-booth-root #dj-owner .cuebtn:nth-of-type(1){border-color:#f0cf78}
 #dj-booth-root #dj-owner .cuebtn:nth-of-type(2){border-color:#4ade80}
@@ -937,9 +937,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 @keyframes mwpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,70,70,.55)}50%{box-shadow:0 0 0 8px rgba(255,70,70,0)}}
 .loglist{overflow-x:hidden}.loglist>div{white-space:normal;word-break:break-word}.loglist div span{min-width:0;overflow-wrap:anywhere}
 .midilist{display:grid;gap:3px;max-height:260px;overflow:auto;margin-top:8px}
-.midilist .mrow{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 4px;border-radius:6px}
+.midilist .mrow{display:flex;align-items:center;gap:6px;font-size:15px;padding:2px 4px;border-radius:6px}
 .midilist .mrow b{flex:1;min-width:0;font-weight:600}
-.midilist .mrow .mb{font-size:10.5px;color:var(--gold-hi,#f0cf78);white-space:nowrap}
+.midilist .mrow .mb{font-size:13px;color:var(--gold-hi,#f0cf78);white-space:nowrap}
 .midilist .mrow.learning{background:rgba(240,207,120,.14);outline:1px solid var(--gold-lo)}
 .xfrow{display:flex;align-items:center;justify-content:center;gap:18px}
 .xfvols{display:flex;gap:14px}
@@ -990,8 +990,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .deck{padding:9px;gap:6px}
 #dj-booth-root #dj-owner .deck .platter{width:150px;margin-inline:auto}
 #dj-booth-root #dj-owner .deck .wave{height:48px}
-#dj-booth-root #dj-owner .deck h4{font-size:12.5px}
-#dj-booth-root #dj-owner .btn{min-height:40px;font-size:12.5px;padding:5px 8px}
+#dj-booth-root #dj-owner .deck h4{font-size:15.5px}
+#dj-booth-root #dj-owner .btn{min-height:40px;font-size:15.5px;padding:5px 8px}
 #dj-booth-root #dj-owner .mixer{padding:9px;gap:6px}
 #dj-booth-root #dj-owner .xfpad.big{width:132px;height:132px}
 .dj-rotate{display:none!important}
@@ -1048,8 +1048,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    performance grid, taller deck waveforms, a gold seam under the booth
    masthead, and a steel nameplate on the listener station header. ===== */
 #dj-booth-root #dj-owner .xfcurve{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:7px}
-#dj-booth-root #dj-owner .xfcurve span{font:800 10px var(--body);letter-spacing:.12em;color:var(--muted)}
-#dj-booth-root #dj-owner .xfcurve button{background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;border-radius:8px;padding:5px 10px;font:700 11px var(--body);cursor:pointer;box-shadow:0 2px 0 #000}
+#dj-booth-root #dj-owner .xfcurve span{font:800 12.5px var(--body);letter-spacing:.12em;color:var(--muted)}
+#dj-booth-root #dj-owner .xfcurve button{background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;border-radius:8px;padding:5px 10px;font:700 14px var(--body);cursor:pointer;box-shadow:0 2px 0 #000}
 #dj-booth-root #dj-owner .xfcurve button.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.35)}
 #dj-booth-root #dj-owner .pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
 #dj-booth-root #dj-owner .pad{min-height:56px;border-radius:12px;background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #000;font-weight:800;cursor:pointer}
@@ -1117,7 +1117,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner .btn.sm,#dj-station .btn.sm{padding:8px 17px;font-size:15px}
 #dj-owner .btn{min-height:46px}
 /* organize: the drag grip lives in each below-decks panel header and only shows while the layout is unlocked */
-#dj-owner .org-grip{display:none;flex:none;cursor:grab;touch-action:none;color:var(--gold-hi);font-size:15px;line-height:1;padding:5px 8px;margin-left:8px;border:1px solid var(--gold-lo);border-radius:8px;background:#141109;user-select:none;-webkit-user-select:none}
+#dj-owner .org-grip{display:none;flex:none;cursor:grab;touch-action:none;color:var(--gold-hi);font-size:19px;line-height:1;padding:5px 8px;margin-left:8px;border:1px solid var(--gold-lo);border-radius:8px;background:#141109;user-select:none;-webkit-user-select:none}
 #dj-owner.org-open .org-grip{display:inline-grid;place-items:center}
 #dj-owner .dj-panel.org-drag{opacity:.55;outline:2px dashed var(--gold);outline-offset:2px;position:relative;z-index:5}
 #dj-orglock.on{border-color:var(--gold);color:#191104;background:var(--gold)}
@@ -1167,9 +1167,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    decktop row never grows taller and the deck bank never grows wider. */
 .decktop .dpads{flex:0 100 46px;min-width:0;min-height:0;align-self:stretch;contain:size;display:grid;grid-template-columns:1fr;grid-auto-rows:38px;gap:4px;overflow-y:auto;overflow-x:hidden;padding:3px;border:1px solid var(--line);border-radius:10px;background:rgba(240,207,120,.04);scrollbar-width:none}
 .decktop .dpads::-webkit-scrollbar{display:none}
-.dpad{display:flex;align-items:center;justify-content:center;width:100%;height:38px;padding:0;border-radius:8px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font-size:16px;line-height:1;white-space:nowrap;overflow:hidden;cursor:pointer;transition:filter .15s ease,transform .15s ease}
+.dpad{display:flex;align-items:center;justify-content:center;width:100%;height:38px;padding:0;border-radius:8px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font-size:20px;line-height:1;white-space:nowrap;overflow:hidden;cursor:pointer;transition:filter .15s ease,transform .15s ease}
 .dpad.custom{border-style:dashed}
-.dpad small{font-size:9px;font-weight:700;margin-left:2px}
+.dpad small{font-size:11.5px;font-weight:700;margin-left:2px}
 .dpad.hit{filter:brightness(1.9);transform:scale(.93)}
 /* WATCH THE SETUP: the spectator bank mirrors the booth as the placements
    leave it - one bank split A/B, center cluster, C/D, with the queue band
@@ -1238,7 +1238,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
     <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><label class="dj-live"><input type="checkbox" id="dj-horn-top"> 📯 HORNS</label><button class="btn sm" type="button" id="dj-reports-btn" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">📋 REPORTS <span class="rp-badge" id="dj-reports-badge" hidden></span></button><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button><button class="btn sm" type="button" data-capbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🖥 CAPTURE</button><button class="btn sm" type="button" data-hidebtn data-lab-off="🙈 HIDE" data-lab-on="👁 SHOW" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🙈 HIDE</button></div>
   <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
-  <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 11px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
+  <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 14px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
     <small>📺 MASTER SCREEN — MUSIC VIDEO · VIEWERS SEE THIS SCREEN LIVE</small>
     <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span><div id="dj-cambanner" hidden></div></div><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="mw-sharp" x="-10%" y="-10%" width="120%" height="120%"><feConvolveMatrix id="mw-sharp-k" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" preserveAlpha="true"/></filter><filter id="mw-duo" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 1 0"/><feComponentTransfer><feFuncR type="table" tableValues="0.043 0.941"/><feFuncG type="table" tableValues="0.035 0.812"/><feFuncB type="table" tableValues="0.027 0.471"/></feComponentTransfer></filter></defs></svg></div>
@@ -1288,9 +1288,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <small>BEAT ENGINE</small>
       
 
-      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-quant" checked style="width:auto"> Quantize — cues &amp; loops snap to the beat</label>
-      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left">Jog feel <select id="dj-jogf" aria-label="Jog wheel feel"><option value="0.05">Light</option><option value="0.09">Standard</option><option value="0.14">Heavy</option></select> — how far a scratch drag moves the song</label>
-      <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-fxsync" checked style="width:auto"> Effects follow the live tempo</label>
+      <label style="display:flex;gap:6px;align-items:center;font-size:15px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-quant" checked style="width:auto"> Quantize — cues &amp; loops snap to the beat</label>
+      <label style="display:flex;gap:6px;align-items:center;font-size:15px;color:var(--muted);text-align:left">Jog feel <select id="dj-jogf" aria-label="Jog wheel feel"><option value="0.05">Light</option><option value="0.09">Standard</option><option value="0.14">Heavy</option></select> — how far a scratch drag moves the song</label>
+      <label style="display:flex;gap:6px;align-items:center;font-size:15px;color:var(--muted);text-align:left"><input type="checkbox" id="dj-fxsync" checked style="width:auto"> Effects follow the live tempo</label>
       <canvas class="pairwave" id="pw-AB" width="480" height="72"></canvas>
       <small id="ph-AB" style="letter-spacing:0;text-transform:none">Phase meter: play both decks with a measured BPM and this shows how far apart the beats sit.</small>
       <small>MASTER</small><input type="range" min="0" max="1" step="0.01" value="0.95" id="dj-master" aria-label="Master volume">
@@ -1317,9 +1317,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 
 </div>
   <div class="dj-panel" id="dj-browser" style="margin-top:16px">
-    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">🎬 VIDEO SEARCH — MUSIC VIDEOS FROM EVERYWHERE</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the video panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Search YouTube or the Internet Archive, or paste a link (YouTube and Vimeo both work) — put the video on a deck and mix it: play, pause, seek and the X fader volume all work, and your listeners see it on the master screen. Video sites keep their audio locked in their own players, so EQ, effects and scratch stay on your own files. Archive videos load as real files — full deck control on those.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a video link — YouTube or Vimeo..." style="flex:1;min-width:220px;font-size:16px;padding:12px" aria-label="Video link"><span style="font-size:13px;color:var(--muted)">Load on:</span><button class="btn ghost" type="button" data-ytload="A">A</button><button class="btn ghost" type="button" data-ytload="B">B</button><button class="btn ghost" type="button" data-ytload="C">C</button><button class="btn ghost" type="button" data-ytload="D">D</button><button class="btn ghost" type="button" data-ytqueue="1">＋Q</button></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm vtab" type="button" data-vtab="yt">▶ YouTube</button><button class="btn ghost sm vtab" type="button" data-vtab="ia">🎞 Archive videos</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px;display:flex;gap:8px"><input type="search" id="dj-ytq" placeholder="Search — any artist, any song..." aria-label="Search videos" style="flex:1;font-size:17px;padding:13px"><button class="btn" type="submit" style="font-size:16px;padding:13px 22px">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:430px;margin-top:10px"></div></div></div>
-    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">🎶 UP NEXT — YOUR QUEUE</b><button class="btn ghost sm" type="button" data-fold="queue-body" aria-label="Fold the queue">▾</button></span><div id="queue-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Add songs and videos with ＋Q anywhere in the picker. When a deck finishes, the next one in line loads on the open deck and plays — straight through the list. Save the list as a playlist to run it again any time, or put a playlist on the schedule below.</small><div class="dj-list" id="dj-queue" style="max-height:260px"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" type="button" data-qact="play">▶ Play the queue</button><button class="btn ghost sm" type="button" data-qact="save">💾 Save as playlist</button><button class="btn ghost sm" type="button" data-qact="open">📂 Playlists</button><button class="btn ghost sm" type="button" data-qact="clear">🗑 Clear</button></div><div id="dj-playlists" style="margin-top:6px"></div></div></div>
-    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:16px;letter-spacing:.06em">📅 SCHEDULE — WHAT PLAYS WHEN</b><button class="btn ghost sm" type="button" data-fold="sched-body" aria-label="Fold the schedule">▾</button></span><div id="sched-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Pick a time and one of your playlists. Every day at that time the station switches to that list and plays it through in order — even while the booth is closed. Videos in a list play while the booth is open; with the booth closed the list runs its songs and files.</small><div id="dj-sched-list"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center"><input type="time" id="sched-time" style="padding:9px;font-size:15px" aria-label="Time of day"><select id="sched-sel" style="padding:9px;font-size:15px;flex:1;min-width:160px" aria-label="Playlist"></select><button class="btn sm" type="button" data-sched="add">＋ Add</button></div></div></div>
+    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:20px;letter-spacing:.06em">🎬 VIDEO SEARCH — MUSIC VIDEOS FROM EVERYWHERE</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the video panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Search YouTube or the Internet Archive, or paste a link (YouTube and Vimeo both work) — put the video on a deck and mix it: play, pause, seek and the X fader volume all work, and your listeners see it on the master screen. Video sites keep their audio locked in their own players, so EQ, effects and scratch stay on your own files. Archive videos load as real files — full deck control on those.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a video link — YouTube or Vimeo..." style="flex:1;min-width:220px;font-size:16px;padding:12px" aria-label="Video link"><span style="font-size:13px;color:var(--muted)">Load on:</span><button class="btn ghost" type="button" data-ytload="A">A</button><button class="btn ghost" type="button" data-ytload="B">B</button><button class="btn ghost" type="button" data-ytload="C">C</button><button class="btn ghost" type="button" data-ytload="D">D</button><button class="btn ghost" type="button" data-ytqueue="1">＋Q</button></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm vtab" type="button" data-vtab="yt">▶ YouTube</button><button class="btn ghost sm vtab" type="button" data-vtab="ia">🎞 Archive videos</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px;display:flex;gap:8px"><input type="search" id="dj-ytq" placeholder="Search — any artist, any song..." aria-label="Search videos" style="flex:1;font-size:17px;padding:13px"><button class="btn" type="submit" style="font-size:16px;padding:13px 22px">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:430px;margin-top:10px"></div></div></div>
+    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:20px;letter-spacing:.06em">🎶 UP NEXT — YOUR QUEUE</b><button class="btn ghost sm" type="button" data-fold="queue-body" aria-label="Fold the queue">▾</button></span><div id="queue-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Add songs and videos with ＋Q anywhere in the picker. When a deck finishes, the next one in line loads on the open deck and plays — straight through the list. Save the list as a playlist to run it again any time, or put a playlist on the schedule below.</small><div class="dj-list" id="dj-queue" style="max-height:260px"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" type="button" data-qact="play">▶ Play the queue</button><button class="btn ghost sm" type="button" data-qact="save">💾 Save as playlist</button><button class="btn ghost sm" type="button" data-qact="open">📂 Playlists</button><button class="btn ghost sm" type="button" data-qact="clear">🗑 Clear</button></div><div id="dj-playlists" style="margin-top:6px"></div></div></div>
+    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:20px;letter-spacing:.06em">📅 SCHEDULE — WHAT PLAYS WHEN</b><button class="btn ghost sm" type="button" data-fold="sched-body" aria-label="Fold the schedule">▾</button></span><div id="sched-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Pick a time and one of your playlists. Every day at that time the station switches to that list and plays it through in order — even while the booth is closed. Videos in a list play while the booth is open; with the booth closed the list runs its songs and files.</small><div id="dj-sched-list"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center"><input type="time" id="sched-time" style="padding:9px;font-size:15px" aria-label="Time of day"><select id="sched-sel" style="padding:9px;font-size:15px;flex:1;min-width:160px" aria-label="Playlist"></select><button class="btn sm" type="button" data-sched="add">＋ Add</button></div></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4><button class="btn ghost sm" type="button" data-fold="br-panes" aria-label="Fold the music lists">▾</button>
       <button class="btn sm browtab on" type="button" data-brow="lib">Your Library</button>
       <button class="btn ghost sm browtab" type="button" data-brow="net">Free Music Search</button>
@@ -1331,29 +1331,29 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     <div data-browpane="net" hidden><form class="dj-search" id="dj-sf"><input type="search" id="dj-q" placeholder="Search: hip hop, jazz, beats..." aria-label="Search free music"><button class="btn sm" type="submit">Search</button></form>
       <small class="muted">Creative Commons music from the Internet Archive, free to play on your station.</small><div class="dj-list" id="dj-net" style="max-height:260px"></div></div>
     <div data-browpane="cur" hidden><small class="muted">Hand-picked DJ sounds from the most-downloaded free packs on the Internet Archive, every one verified playable. ▶ hears it in the booth; a deck letter loads it on that table so it goes out over the radio.</small><div class="dj-list" id="dj-cur" style="max-height:300px"></div></div>
-    <div data-browpane="prep" hidden><small class="muted">Your prepare crate and the booth's memory: star songs in Your Library to line them up here; History is what the booth loaded lately — tap a deck letter to load it again.</small><b style="font-size:12px;letter-spacing:.1em;display:block;margin:6px 0 4px">⭐ PREPARE</b><div class="dj-list" id="dj-prep" style="max-height:220px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin:10px 0 4px">🕘 HISTORY</b><div class="dj-list" id="dj-hist" style="max-height:220px"></div></div>
-    <div data-browpane="free" hidden><small class="muted">Free music and music videos from the Internet Archive — public domain and Creative Commons, legal to play on the station, every file verified. Tap a deck letter to put it straight on that table. They load as real files, so EQ, FX and scratch all work on them.</small><b style="font-size:12px;letter-spacing:.1em;display:block;margin:6px 0 4px">🎵 FREE MUSIC</b><div class="dj-list" id="dj-freem" style="max-height:300px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin:10px 0 4px">🎬 FREE VIDEOS</b><div class="dj-list" id="dj-freev" style="max-height:300px"></div></div>
+    <div data-browpane="prep" hidden><small class="muted">Your prepare crate and the booth's memory: star songs in Your Library to line them up here; History is what the booth loaded lately — tap a deck letter to load it again.</small><b style="font-size:15px;letter-spacing:.1em;display:block;margin:6px 0 4px">⭐ PREPARE</b><div class="dj-list" id="dj-prep" style="max-height:220px"></div><b style="font-size:15px;letter-spacing:.1em;display:block;margin:10px 0 4px">🕘 HISTORY</b><div class="dj-list" id="dj-hist" style="max-height:220px"></div></div>
+    <div data-browpane="free" hidden><small class="muted">Free music and music videos from the Internet Archive — public domain and Creative Commons, legal to play on the station, every file verified. Tap a deck letter to put it straight on that table. They load as real files, so EQ, FX and scratch all work on them.</small><b style="font-size:15px;letter-spacing:.1em;display:block;margin:6px 0 4px">🎵 FREE MUSIC</b><div class="dj-list" id="dj-freem" style="max-height:300px"></div><b style="font-size:15px;letter-spacing:.1em;display:block;margin:10px 0 4px">🎬 FREE VIDEOS</b><div class="dj-list" id="dj-freev" style="max-height:300px"></div></div>
     </div>
   </div>
     <div class="dj-grid2">
     <div class="dj-panel"><h4>🎤 LIVE MIC</h4>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" type="button" id="mic-on">Open the mic</button><button class="btn ghost sm" type="button" id="mic-mon">🔇 Monitor off</button></div>
       <div class="micmeter"><i id="mic-lvl"></i></div>
-      <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="mic-duck" checked style="width:auto"> Auto-duck the music while I talk (radio style)</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:17.5px"><input type="checkbox" id="mic-duck" checked style="width:auto"> Auto-duck the music while I talk (radio style)</label>
       <small class="muted">Your live mic feeds the show recording. To talk TO the listeners, use the big HOLD TO TALK button — it sends your voice out over the mix.</small></div>
     <div class="dj-panel"><h4>🔊 JINGLE / SPOT BOARD</h4>
       <div class="pads" id="dj-pads"></div>
       <small class="muted">Built-in station sounds first, then your own drops — tap an empty pad to record up to 8 seconds. ▶ plays it in the booth, 📡 sends it out over the air.</small></div>
     <div class="dj-panel"><h4>⏺️ RECORD THE SHOW</h4>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" id="rec-btn">⏺ Start recording</button><span id="rec-st" class="muted" style="font-size:13px">Captures the full mix + your mic.</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" id="rec-btn">⏺ Start recording</button><span id="rec-st" class="muted" style="font-size:16.5px">Captures the full mix + your mic.</span></div>
       <div id="rec-out"></div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;border-top:1px solid var(--line);padding-top:10px"><button class="btn ghost sm" type="button" id="ses-btn">🎬 Record the session (video)</button><span id="ses-st" class="muted" style="font-size:13px">Films this tab — the music videos, the decks, everything — with the full mix sound. Pick this tab and tick “share tab audio”.</span></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;border-top:1px solid var(--line);padding-top:10px"><button class="btn ghost sm" type="button" id="ses-btn">🎬 Record the session (video)</button><span id="ses-st" class="muted" style="font-size:16.5px">Films this tab — the music videos, the decks, everything — with the full mix sound. Pick this tab and tick “share tab audio”.</span></div>
       <div id="ses-out"></div></div>
     <div class="dj-panel"><h4>🤖 AUTO-DJ</h4>
-      <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="ad-on" style="width:auto" checked> Auto-DJ runs the station: when a song ends, crossfade to the next one — your queue first, then the full library on rotation</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:17.5px"><input type="checkbox" id="ad-on" style="width:auto" checked> Auto-DJ runs the station: when a song ends, crossfade to the next one — your queue first, then the full library on rotation</label>
       <div class="dj-list" id="ad-queue" style="max-height:150px"></div>
       <small class="muted">Add songs with the ＋Q button in Your Library. Works while you're live — the station never goes quiet.</small>
-      <label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:10px"><input type="checkbox" id="ad-drops" style="width:auto" checked> 🎙 Station drops: every 3rd song change, the station speaks ONE line from the rotation below — in the server male voice, over the join, instead of the pad ID</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:17.5px;margin-top:10px"><input type="checkbox" id="ad-drops" style="width:auto" checked> 🎙 Station drops: every 3rd song change, the station speaks ONE line from the rotation below — in the server male voice, over the join, instead of the pad ID</label>
       <div class="dj-list" id="ad-drops-list" style="max-height:120px"></div></div>
     <div class="dj-panel"><h4>🎛️ LIVE DJ REQUESTS</h4><div id="djguest-now"><small class="muted">No guest DJ on the tables right now.</small></div><div class="dj-list" id="djreq-list" style="max-height:180px"></div></div>
     <div class="dj-panel"><h4>⚔️ BATTLES</h4><div id="battle-box"><small class="muted">Loading…</small></div><small class="muted" style="display:block;margin-top:6px">Battles run from your open booth — if the booth closes mid-battle, the battle state stays but the turns stop advancing.</small></div>
@@ -1377,7 +1377,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
         <input type="file" id="dj-cambg-file" accept="image/*" hidden>
       </div>
       <div class="cp-sec"><span class="cp-lab">BANNER — YOUR NAME ACROSS THE BOTTOM</span>
-        <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" id="cp-banner-on" style="width:auto"> Show the banner on my camera — viewers see it in their square too</label>
+        <label style="display:flex;gap:8px;align-items:center;font-size:17.5px"><input type="checkbox" id="cp-banner-on" style="width:auto"> Show the banner on my camera — viewers see it in their square too</label>
         <input type="text" id="cp-banner-text" maxlength="42" value="DJ MEECHIE — LIVE" aria-label="Banner text" style="width:100%;margin-top:8px">
       </div>
       <small class="muted" style="display:block;margin-top:12px">The background engine warms up the moment your camera turns on, so tapping a background never stalls the music. On a phone that cannot keep up, the picture analysis steps down a size on its own — the edge stays clean and the song never skips.</small>
@@ -1389,7 +1389,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       <div class="midilist" id="dj-midi-list"></div>
     </div>
     <div class="dj-panel"><h4>📜 PROGRAM LOG</h4><div class="loglist" id="dj-log"></div>
-      <label style="display:grid;gap:4px;font-size:12px;color:var(--muted)">Station ticker (shows on the station card for everyone)<input type="text" id="dj-ticker-in" maxlength="140" placeholder="e.g. Taking requests all night — drop yours below!"></label>
+      <label style="display:grid;gap:4px;font-size:15px;color:var(--muted)">Station ticker (shows on the station card for everyone)<input type="text" id="dj-ticker-in" maxlength="140" placeholder="e.g. Taking requests all night — drop yours below!"></label>
       <button class="btn ghost sm" type="button" id="dj-ticker-set" style="justify-self:start">Set ticker</button></div>
     <div class="dj-panel" id="dj-door"><h4>🚪 THE DOOR</h4><div class="dj-list" id="door-list" style="max-height:280px"><small class="muted">Watching the door — people who come on the site while your booth is open land here.</small></div><small class="muted" style="display:block;margin-top:6px">👋 Greet welcomes them on their own screen. 🎙 Shout calls their name out over the station for the whole room.</small><div class="door-row" style="margin-top:8px"><span>🔔 <b>Doorbell</b> <small id="door-bell-state">a push to your phone the second someone lands</small></span><span class="door-acts"><button class="btn sm" type="button" id="door-bell">🔔 Turn on</button></span></div></div>
   </div>
@@ -1456,9 +1456,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // like every other panel. Buttons carry data attributes only; the wiring
   // lives in the booth click delegation and the S.vfx watcher further down.
   { const g2v = document.querySelector("#dj-owner .dj-grid2"); if (g2v && !document.getElementById("dj-vfxpanel")) { const vp = document.createElement("div"); vp.className = "dj-panel"; vp.id = "dj-vfxpanel"; vp.innerHTML = "<h4>\uD83D\uDCFA VIDEO FX</h4>"
-    + "<div class='vtrrow'><span style='font-size:11px;letter-spacing:.1em;color:var(--muted)'>TRANSITION</span>"
+    + "<div class='vtrrow'><span style='font-size:14px;letter-spacing:.1em;color:var(--muted)'>TRANSITION</span>"
     + "<button class='btn ghost sm' type='button' data-vtr='cut'>\u2702\uFE0F Cut</button><button class='btn ghost sm' type='button' data-vtr='fade'>\uD83C\uDF2B\uFE0F Fade</button><button class='btn ghost sm' type='button' data-vtr='wipe'>\u25E7 Wipe</button><button class='btn ghost sm' type='button' data-vtr='slide'>\u27A1\uFE0F Slide</button><button class='btn ghost sm' type='button' data-vtr='zoom'>\uD83D\uDD0D Zoom</button><button class='btn ghost sm' type='button' data-vtr='blur'>\uD83C\uDF2B Blur</button><button class='btn ghost sm' type='button' data-vtr='flash'>\u26A1 Flash</button><button class='btn ghost sm' type='button' data-vtr='glitch'>\uD83D\uDCFA Glitch</button></div>"
-    + "<div class='vtrrow'><span style='font-size:11px;letter-spacing:.1em;color:var(--muted)'>SPEED</span>"
+    + "<div class='vtrrow'><span style='font-size:14px;letter-spacing:.1em;color:var(--muted)'>SPEED</span>"
     + "<button class='btn ghost sm' type='button' data-vspd='350'>Fast</button><button class='btn ghost sm' type='button' data-vspd='650'>Med</button><button class='btn ghost sm' type='button' data-vspd='1200'>Slow</button></div>"
     + "<div class='pads'>"
     + "<button class='pad' type='button' data-vfx='flash'>\u26A1 FLASH<small>white blast</small></button>"
@@ -1598,10 +1598,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const topA = Object.keys(artists).map((n) => [n, artists[n]]).filter((x) => (x[1].p || 0) + (x[1].e || 0) + (x[1].s || 0) > 0).sort((a, b) => brainScore(b[1]) - brainScore(a[1])).slice(0, 5);
     const topT = Object.keys(tracks).map((k2) => [k2, tracks[k2]]).sort((a, b) => brainScore(b[1]) - brainScore(a[1])).slice(0, 5);
     if (!topA.length && !topT.length && !taste.plays && !taste.ends && !taste.skips) { box.innerHTML = empty; return; }
-    let h = "<div style=\"font-size:14px;margin-bottom:6px\">▶ " + (+taste.plays || 0) + " plays · ⏹ " + (+taste.ends || 0) + " finishes · ⏭ " + (+taste.skips || 0) + " skips</div>";
-    if (topA.length) h += "<b style=\"font-size:12px;letter-spacing:.1em\">TOP ARTISTS</b>" + topA.map((x) => "<div class=\"dj-item\"><span>" + E(x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
-    if (topT.length) h += "<b style=\"font-size:12px;letter-spacing:.1em;display:block;margin-top:8px\">TOP TRACKS</b>" + topT.map((x) => "<div class=\"dj-item\"><span title=\"" + E(x[1].title || x[0]) + "\">" + E(x[1].title || x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
-    if (topA.length) h += "<div style=\"margin-top:8px;font-size:14px\">🎧 Auto-DJ is leaning on: <b>" + E(topA[0][0]) + "</b></div>";
+    let h = "<div style=\"font-size:17.5px;margin-bottom:6px\">▶ " + (+taste.plays || 0) + " plays · ⏹ " + (+taste.ends || 0) + " finishes · ⏭ " + (+taste.skips || 0) + " skips</div>";
+    if (topA.length) h += "<b style=\"font-size:15px;letter-spacing:.1em\">TOP ARTISTS</b>" + topA.map((x) => "<div class=\"dj-item\"><span>" + E(x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
+    if (topT.length) h += "<b style=\"font-size:15px;letter-spacing:.1em;display:block;margin-top:8px\">TOP TRACKS</b>" + topT.map((x) => "<div class=\"dj-item\"><span title=\"" + E(x[1].title || x[0]) + "\">" + E(x[1].title || x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
+    if (topA.length) h += "<div style=\"margin-top:8px;font-size:17.5px\">🎧 Auto-DJ is leaning on: <b>" + E(topA[0][0]) + "</b></div>";
     box.innerHTML = h;
   }
   function brainTasteRead() {
@@ -1730,7 +1730,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   boothEl.querySelectorAll(".dj-grid2 > .dj-panel").forEach((p) => { const h = p.querySelector("h4"); const label = h ? h.textContent.trim().slice(0, 26) : "Studio panel"; ckReg(p, "panel-" + label.replace(/[^a-z0-9]+/gi, "-").toLowerCase(), label); });
   let ckHidden = []; try { ckHidden = JSON.parse(localStorage.getItem("mw-booth-hide") || "[]"); if (!Array.isArray(ckHidden)) ckHidden = []; } catch (_) {}
   const ckBar = document.createElement("div"); ckBar.id = "dj-ckbar"; boothEl.querySelector(".dj-top").after(ckBar);
-  const ckPaint = () => { ckBlocks.forEach(({ el, key }) => el.classList.toggle("ck-off", ckHidden.includes(key))); ckBar.innerHTML = "<b style='font-size:13px'>🛠 Customize — tap ✕ Hide on any block you don't use. Hidden:</b> " + (ckHidden.length ? ckBlocks.filter((b) => ckHidden.includes(b.key)).map((b) => `<button class='btn ghost sm' type='button' data-ckshow='${b.key}'>👁 ${b.label}</button>`).join(" ") : "<span class='muted' style='font-size:13px'>nothing hidden</span>") + " <button class='btn ghost sm' type='button' data-ckreset='1'>↺ Reset layout</button>"; };
+  const ckPaint = () => { ckBlocks.forEach(({ el, key }) => el.classList.toggle("ck-off", ckHidden.includes(key))); ckBar.innerHTML = "<b style='font-size:16.5px'>🛠 Customize — tap ✕ Hide on any block you don't use. Hidden:</b> " + (ckHidden.length ? ckBlocks.filter((b) => ckHidden.includes(b.key)).map((b) => `<button class='btn ghost sm' type='button' data-ckshow='${b.key}'>👁 ${b.label}</button>`).join(" ") : "<span class='muted' style='font-size:13px'>nothing hidden</span>") + " <button class='btn ghost sm' type='button' data-ckreset='1'>↺ Reset layout</button>"; };
   const ckSave = () => { try { localStorage.setItem("mw-booth-hide", JSON.stringify(ckHidden)); } catch (_) {} ckPaint(); };
   const ckBtn = document.createElement("button"); ckBtn.type = "button"; ckBtn.className = "btn ghost sm"; ckBtn.id = "dj-ck"; ckBtn.textContent = "🛠 Customize";
   boothEl.querySelector(".dj-top").appendChild(ckBtn);
@@ -5922,7 +5922,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793335802;
+  const MW_DJ_BUILD = 1793336621;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7417,7 +7417,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const res = ahCache[s];
     if (res === null) { box.innerHTML = '<small class="muted">Search is being stubborn right now — tap Load to try again.</small>'; return; }
     if (!res) { box.innerHTML = '<small class="muted">Tap Load to pull the latest.</small>'; return; }
-    box.innerHTML = res.length ? res.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:15px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">YouTube${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-ahput="${dk}:${s}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-ahqueue="${s}:${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") : '<small class="muted">Nothing came back for this shelf right now — tap Load to try again.</small>';
+    box.innerHTML = res.length ? res.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:19px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">YouTube${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-ahput="${dk}:${s}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-ahqueue="${s}:${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") : '<small class="muted">Nothing came back for this shelf right now — tap Load to try again.</small>';
   }
   async function ahLoadShelf(s) {
     if (ahBusy[s]) return; const def = AH_SHELVES[s]; if (!def) return;
@@ -7434,7 +7434,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const p = document.createElement("div"); p.className = "dj-panel"; p.id = "dj-afterhours";
     p.innerHTML = "<h4>🌙 AFTER HOURS</h4>"
       + "<small class='muted' style='display:block;margin:2px 0 4px'>Your late-night shelf: the newest explicit versions, straight from YouTube search. A deck letter loads the video on that table, ＋Q lines it up. Booth only — nobody else ever sees this shelf. A video YouTube age-locks is skipped on its own, same as everywhere else here.</small>"
-      + AH_SHELVES.map((sh, s) => `<b style="font-size:12px;letter-spacing:.1em;display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 4px"><span>${sh.label}</span><button class="btn ghost sm" type="button" data-ahload="${s}">↻ Load</button></b><div class="dj-list" id="ah-list-${s}" style="max-height:300px"><small class="muted">Tap Load to pull the latest.</small></div>`).join("");
+      + AH_SHELVES.map((sh, s) => `<b style="font-size:15px;letter-spacing:.1em;display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 4px"><span>${sh.label}</span><button class="btn ghost sm" type="button" data-ahload="${s}">↻ Load</button></b><div class="dj-list" id="ah-list-${s}" style="max-height:300px"><small class="muted">Tap Load to pull the latest.</small></div>`).join("");
     g2.appendChild(p);
     try { foldPanels(); } catch (_) {}
     try { const h = p.querySelector("h4"); const label = h ? h.textContent.trim().slice(0, 26) : "Studio panel"; ckReg(p, "panel-" + label.replace(/[^a-z0-9]+/gi, "-").toLowerCase(), label); ckPaint(); } catch (_) {}
@@ -7515,7 +7515,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const box = $("#dj-ytres"); if (!box) return;
     if (msg) { box.innerHTML = `<small class="muted">${msg}</small>`; return; }
     const srcName = { yt: "YouTube", ia: "Archive" };
-    box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:15px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-vqueue="${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") + (vMoreOn ? `<button class="btn" type="button" data-vmore="1" style="width:100%;margin-top:10px">🔁 MORE RESULTS</button>` : "");
+    box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:19px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-vqueue="${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") + (vMoreOn ? `<button class="btn" type="button" data-vmore="1" style="width:100%;margin-top:10px">🔁 MORE RESULTS</button>` : "");
   }
   const vtf = $("#dj-ytform");
   if (vtf) vtf.addEventListener("submit", async (e) => {
