@@ -153,7 +153,7 @@
   }
   function attachHls(v, url) {
     if (v.canPlayType("application/vnd.apple.mpegurl")) { v.src = url; return; }
-    const go = () => { if (watchingUid && window.Hls && Hls.isSupported()) { hls = new Hls({ maxBufferLength: 12 }); hls.loadSource(url); hls.attachMedia(v); } else if (watchingUid) { v.src = url; } };
+    const go = () => { if (watchingUid && window.Hls && Hls.isSupported()) { hls = new Hls({ maxBufferLength: 90, maxMaxBufferLength: 120, backBufferLength: 60, liveSyncDurationCount: 8, liveMaxLatencyDurationCount: 24, fragLoadingMaxRetry: 6, fragLoadingRetryDelay: 1000, levelLoadingMaxRetry: 6, levelLoadingRetryDelay: 1000, manifestLoadingMaxRetry: 6, manifestLoadingRetryDelay: 1000 }); hls.loadSource(url); hls.attachMedia(v); } else if (watchingUid) { v.src = url; } };
     if (window.Hls) go();
     else { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"; s.onload = go; s.onerror = () => { if (watchingUid) v.src = url; }; document.head.appendChild(s); }
   }
