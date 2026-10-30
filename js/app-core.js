@@ -1358,3 +1358,139 @@ $("#rn-sync").addEventListener("click",async e=>{ const b=e.currentTarget, st=$(
   }catch(err){ st.textContent=err.message; }
   b.disabled=false; });
 boot();
+
+/* ---------- Background auto-refresh (owner directive, 2026-10-30:
+   "Make it so the page refreshes in the background automatically") ----------
+   Open tabs pick up new builds by themselves — nobody closes and reopens a
+   tab by hand again. This checker polls /version.json about once a minute
+   (and on every return to the tab) and compares the live build to
+   MW_SHELL_BUILD, the build this shell shipped with. A newer build becomes
+   a PENDING update, applied by location.reload() at the first SAFE moment:
+
+     SOUND GATE (top of the ladder, NO-SKIP LAW): a tab that is SOUNDING —
+     this device audibly playing the station/music — is NEVER reloaded.
+     The update holds until playback stops; if it never stops this session,
+     the skeleton activates the new build on the next natural visit anyway
+     (builds are backend-compatible; an update is never worth a skip).
+       sounding = MW_DJ.listening()  (dj.js's tuned-in flag — the exact
+                  value its keeper ping reports as l=1: the station mix
+                  sounding through a screen, YouTube decks included)
+               || the shell player element (#audio, `media`) playing
+               || the crossfade deck (xfPlayer) mid-blend.
+     Then, once silent:
+       - tab hidden -> fire (invisible; they return on the new build);
+       - booth / sandbox / kids tabs are hidden-only while visible;
+       - a modal / dialog / checkout / sign-in surface open -> defer;
+       - ~10 minutes without interaction -> fire;
+       - the next station song change -> fire (nothing sounding to clip).
+
+   Loop safety: one auto-refresh per target build per session
+   (mw-bgref-<build>); firing also stamps mw-guard-<build> so dj.js's
+   stale-tab guardian treats the build as handled, and a session whose
+   boot-heal reload already fired (mw-heal-tries) never stacks another.
+   The soft nag stays where it already lives — dj.js's guardian note —
+   as the fallback for a tab that never backgrounds and never idles. */
+const MW_SHELL_BUILD = 1793372600;
+(() => {
+  const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
+  let target = 0, targetSong = null, lastAct = Date.now();
+
+  const ssGet = (k) => { try { return sessionStorage.getItem(k); } catch (_) { return null; } };
+  const ssSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (_) {} };
+
+  const sounding = () => {
+    try { if (window.MW_DJ && typeof MW_DJ.listening === "function" && MW_DJ.listening()) return true; } catch (_) {}
+    try { if (typeof media !== "undefined" && media && !media.paused && !media.ended && media.readyState >= 2) return true; } catch (_) {}
+    try { if (typeof xfPlayer !== "undefined" && xfActive && xfPlayer && !xfPlayer.paused && !xfPlayer.ended) return true; } catch (_) {}
+    return false;
+  };
+
+  /* hidden-only classes: the booth console on screen in this tab, a
+   * SANDBOX / Playground session (?playdj=1 / ?popdj=1), the kids app */
+  const pinned = () => {
+    try {
+      if (/[?&](playdj|popdj)=1/.test(location.search)) return true;
+      const de = document.documentElement;
+      if (de.classList.contains("playdj") || de.classList.contains("popdj")) return true;
+      if (document.body && document.body.classList.contains("dj-on")) return true;
+      if (/^\/kids-app(\/|$)/.test(location.pathname)) return true;
+    } catch (_) {}
+    return false;
+  };
+
+  const modalOpen = () => {
+    try {
+      if (document.querySelector("dialog[open]")) return true;
+      const vis = (el) => !!el && el.getClientRects().length > 0;
+      if (vis(document.getElementById("gate"))) return true;
+      for (const el of document.querySelectorAll('[role="dialog"]')) if (vis(el)) return true;
+    } catch (_) {}
+    return false;
+  };
+
+  const songId = () => {
+    try { const a = window.MW_AIRNOW && MW_AIRNOW(); if (a && a.title) return "dj:" + a.title; } catch (_) {}
+    try { const a = airNow(); if (a && tracks[a.i]) return "air:" + (tracks[a.i].id || tracks[a.i].title || a.i); } catch (_) {}
+    return null;
+  };
+
+  /* The decision — pure, harness-tested. Facts in, verdict out:
+   * "fire" reloads now; "hold" never fires for this target this session;
+   * "wait" keeps the update pending for a later safe moment. */
+  const decide = (s) => {
+    if (!s.target) return "wait";
+    if (s.fired || s.guardFired || s.healSpent) return "hold";
+    if (s.sounding) return "hold";
+    if (s.hidden) return "fire";
+    if (s.pinned) return "wait";
+    if (s.modal) return "wait";
+    if (s.idleMs >= IDLE_MS) return "fire";
+    if (s.songChanged) return "fire";
+    return "wait";
+  };
+
+  const state = () => {
+    const sid = target ? songId() : null;
+    return {
+      target,
+      hidden: !!document.hidden,
+      sounding: sounding(),
+      pinned: pinned(),
+      modal: modalOpen(),
+      idleMs: Date.now() - lastAct,
+      songChanged: !!(target && targetSong !== null && sid !== null && sid !== targetSong),
+      fired: target ? ssGet("mw-bgref-" + target) === "1" : false,
+      guardFired: target ? ssGet("mw-guard-" + target) === "1" : false,
+      healSpent: (parseInt(ssGet("mw-heal-tries") || "0", 10) || 0) >= 1,
+    };
+  };
+
+  const fire = () => {
+    if (!target) return;
+    ssSet("mw-bgref-" + target, "1");
+    ssSet("mw-guard-" + target, "1");
+    location.reload();
+  };
+
+  const evaluate = () => { if (target && decide(state()) === "fire") fire(); };
+
+  const check = async () => {
+    try {
+      const j = await fetch("/version.json?t=" + Date.now(), { cache: "no-store" }).then((r) => r.json());
+      const b = +((j && (j.build || j.dj)) || 0);
+      if (b > MW_SHELL_BUILD && !target) { target = b; targetSong = songId(); }
+    } catch (_) {}
+    evaluate();
+  };
+
+  ["pointerdown", "keydown", "scroll", "touchstart"].forEach((ev) =>
+    addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true, capture: true }));
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) evaluate();
+    else { lastAct = Date.now(); check(); }
+  });
+  try { media.addEventListener("pause", evaluate); media.addEventListener("ended", evaluate); } catch (_) {}
+  setTimeout(check, 20000);
+  setInterval(check, POLL_MS);
+  setInterval(evaluate, EVAL_MS);
+})();
