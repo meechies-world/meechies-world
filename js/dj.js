@@ -6267,14 +6267,23 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * no-store) once a minute for the current dj build. Three stamps carry
    * that one number and move together on every dj.js ship: the "dj" field
    * in version.json, MW_DJ_BUILD below, and dj.js ?v= in index.html.
-   * A listener reloads once, right away. A booth is never yanked mid-set:
-   * it shows a notice, reloads itself the moment every deck is stopped,
-   * and in all cases within 10 minutes of the update first being seen.
-   * A sessionStorage stamp per build makes a reload loop impossible. */
+   * A listener reloads once, right away — UNLESS the tab is sounding
+   * (SOUND GATE, owner law 2026-10-30: an automatic refresh never cuts
+   * music): a tuned-in listener (MW_DJ.listening(), the l=1 flag) holds
+   * behind the notice and reloads the moment listening stops. A booth is
+   * never yanked mid-set: it shows a notice, reloads itself the moment
+   * every deck is stopped, and in all cases within 10 minutes of the
+   * update first being seen. A sessionStorage stamp per build makes a
+   * reload loop impossible, and that same stamp (mw-guard-<build>) is
+   * the handshake with the shell checker in app-core.js: whichever
+   * checker fires first stamps it, and the other stands down for that
+   * build — one reload per build, whoever gets the safe moment first. */
   const MW_DJ_BUILD = 1793373390;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
+    const isListening = () => { try { return !!(window.MW_DJ && typeof window.MW_DJ.listening === "function" && window.MW_DJ.listening()); } catch (_) { return false; } };
+    const guardDone = () => { try { return sessionStorage.getItem("mw-guard-" + updBuild) === "1"; } catch (_) { return false; } };
     const showUpdNote = (playing) => {
       let n = document.getElementById("dj-upd-note");
       if (!n) {
@@ -6293,11 +6302,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     };
     const evaluate = () => {
       if (!updBuild) return;
-      if (!OWNER()) { doReload(); return; }
+      if (guardDone()) return;
+      if (!OWNER()) {
+        if (isListening()) { showUpdNote(true); if (!updTimer) updTimer = setTimeout(() => { updTimer = null; evaluate(); }, 5000); return; }
+        doReload(); return;
+      }
       if (Date.now() - updSince > 10 * 60e3) { doReload(); return; }
-      if (anyPlaying()) { showUpdNote(true); return; }
+      if (anyPlaying() || isListening()) { showUpdNote(true); return; }
       showUpdNote(false);
-      if (!updTimer) updTimer = setTimeout(() => { updTimer = null; if (!anyPlaying()) doReload(); else evaluate(); }, 5000);
+      if (!updTimer) updTimer = setTimeout(() => { updTimer = null; if (!anyPlaying() && !isListening()) doReload(); else evaluate(); }, 5000);
     };
     const check = async () => {
       try {
