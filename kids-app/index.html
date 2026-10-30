@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Meechie's World Kids — the App</title>
-<meta name="description" content="The Meechie's World Kids app for parents: build a YouTube playlist for your kids, tap Play, lock the screen with one button, and hand the phone over. Little hands can tap all they want — nothing pauses, skips or wanders off. Free — no app store needed.">
+<title>Meechie's World for Kids — the App</title>
+<meta name="description" content="Meechie's World for Kids — the kids channel and a little school in an app: preloaded lessons (ABCs, first words, colors, numbers, languages, one God), classrooms by age, movies for after school, and a lock screen. Build the playlist, tap Lock, hand the phone over.">
 <meta name="theme-color" content="#0b0a08">
 <link rel="icon" href="/img/icon-192.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -127,18 +127,76 @@
   #kids-reset-input{width:100%;background:#0b0a08;border:1px solid #3a2f16;border-radius:12px;color:#f3ead2;font-size:16px;padding:11px;text-align:center;letter-spacing:.2em;text-transform:uppercase}
   #kids-reset-btn{margin-top:12px;width:100%;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;font-size:15px;padding:12px;border-radius:12px;border:0;cursor:pointer}
   #kids-reset-back{background:none;border:0;color:#8a8268;font-size:13.5px;cursor:pointer;padding:8px;text-decoration:underline}
+  .hint2{color:var(--mut);font-size:13px;margin:0}
+  .hostcard{border-color:#3a2f14}
+  .hostrow{display:flex;gap:12px;align-items:flex-start}
+  .hostface{width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex:none}
+  .hostmain{flex:1;min-width:0}
+  .hostwho{font-size:12.5px;color:var(--mut);letter-spacing:.6px;text-transform:uppercase}
+  .hostwho b{color:var(--gold)}
+  .bubble{margin-top:6px;background:#17130a;border:1px solid #3a2f14;border-radius:14px;padding:10px 12px;font-size:15px;line-height:1.45}
+  .daystart{width:100%;margin:12px 0 4px;background:linear-gradient(180deg,#ffd968,#e6b93d);color:#111;border:0;border-radius:12px;padding:14px;font:700 17px/1.1 inherit;cursor:pointer}
+  .room{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px}
+  .room.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+  .room h4{margin:0 0 4px;font-size:15px}
+  .subj{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed #26221a}
+  .subj span{flex:1;font-size:14px}
+  .plan{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .plan-main{flex:1;min-width:0}
+  .plan-main b{display:block;font-size:15px}
+  .plan-main span{color:var(--mut);font-size:12.5px}
+  .plan-price{font:800 20px/1 inherit;color:var(--gold);white-space:nowrap}
+  .plan-price small{font-size:12px;color:var(--mut);font-weight:600}
+  input[type="time"],select{background:#0c0b09;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+  .lbl{font-size:13px;color:var(--mut);align-self:center}
+  .hint{color:var(--mut);font-size:12.5px;align-self:center}
+  .abtn.go{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;border-color:#c39a2e}
+  .row{flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
   <div class="bar">
     <a href="/apps/">← Apps</a>
-    <b>MEECHIE'S WORLD KIDS</b>
+    <b>MEECHIE'S WORLD FOR KIDS</b>
     <span class="kid">🧸</span>
   </div>
 
-  <h1>MEECHIE'S WORLD KIDS</h1>
-  <p class="sub">P L A Y &nbsp;•&nbsp; L O C K &nbsp;•&nbsp; H A N D &nbsp; I T &nbsp; O V E R</p>
-  <p class="pitch">Build a playlist of YouTube videos for your kids, tap <b>Play</b>, tap <b>Lock the screen</b> — then hand the phone over. The videos keep playing, and little hands can tap all they want: nothing pauses, skips, or wanders off.</p>
+  <h1>MEECHIE'S WORLD FOR KIDS</h1>
+  <p class="sub">T H E &nbsp;K I D S &nbsp;C H A N N E L &nbsp;•&nbsp; A &nbsp;L I T T L E &nbsp;S C H O O L &nbsp;I N &nbsp;A N &nbsp;A P P</p>
+  <p class="pitch">This is the Meechie's World kids channel — a little school in an app, hosted by Meechie himself, preloaded with lessons for your child's age. Tap <b>Start School Day</b>, tap <b>Lock the screen</b> — then hand the phone over. The videos keep playing, and little hands can tap all they want: nothing pauses, skips, or wanders off. When school ends, it flips to After School — fun videos and movies.</p>
+
+  <!-- HOST: Meechie, the teacher -->
+  <div class="card hostcard">
+    <div class="hostrow">
+      <img class="hostface" src="/img/meechie-ai.jpg" alt="Meechie" width="64" height="64">
+      <div class="hostmain">
+        <div class="hostwho">Your teacher: <b>Meechie</b></div>
+        <div class="bubble" id="kids-says">Hey! Welcome to Meechie's World for Kids. Tell a parent your age and let's start learning!</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span class="lbl">Meechie's voice</span>
+      <button class="abtn" id="kids-voice-btn" type="button">Voice: on</button>
+      <span class="hint">Meechie greets your child by name, starts the lessons and cheers between subjects.</span>
+    </div>
+  </div>
+
+  <!-- MODE: school / after school -->
+  <div class="card" id="kids-modecard">
+    <div class="shelf-head"><h3 id="kids-mode-title">🏫 School time</h3></div>
+    <p class="hint2" id="kids-mode-line">Lessons lead the day.</p>
+    <div class="row" style="margin-top:8px">
+      <button class="abtn" id="kids-mode-school" type="button">🏫 School</button>
+      <button class="abtn" id="kids-mode-after" type="button">🎉 After School</button>
+      <button class="abtn" id="kids-mode-auto" type="button">🕒 Auto by the clock</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <label class="lbl" for="kids-endtime">School ends at</label>
+      <input id="kids-endtime" type="time" value="15:00">
+      <button class="abtn" id="kids-endtime-save" type="button">Save</button>
+      <span class="hint">The clock only changes what leads — a parent can flip it any time.</span>
+    </div>
+  </div>
 
   <!-- PLAYER -->
   <div class="card" style="padding:12px">
@@ -150,8 +208,30 @@
       <button class="tbtn" id="kids-next" type="button" aria-label="Next video">⏭</button>
     </div>
     <p class="loopnote">🔁 The list loops — it replays from the top until you pause it. Perfect for the car.</p>
+    <button class="daystart" id="kids-daystart" type="button">🏫 Start School Day</button>
     <button id="kids-lock-btn" type="button">🔒 Lock the screen</button>
     <p class="locksub">Locks every tap on this screen. Only a grown-up can unlock it (hold the top-right corner, then PIN).</p>
+  </div>
+
+  <!-- YOUR CHILD + CLASSROOMS -->
+  <div class="card" id="kids-childcard">
+    <h2>👧 Your child</h2>
+    <p class="hint2">Tell the school your child's age and it opens on their classroom, and the School Day only lines up lessons at their level. Older videos stay in the library for you to pick by hand. Change it any time.</p>
+    <div class="row" style="margin-top:8px">
+      <input id="kids-cname" type="text" placeholder="Child's name (optional)" autocomplete="off" style="flex:1;min-width:140px">
+      <label class="lbl" for="kids-cage">Age</label>
+      <select id="kids-cage"><option value="0">Under 1</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select>
+      <button class="abtn go" id="kids-csave" type="button">Save</button>
+      <button class="abtn" id="kids-cskip" type="button">Skip for now</button>
+    </div>
+    <p class="hint2" id="kids-cstatus" style="margin-top:8px"></p>
+  </div>
+
+  <div class="card" id="kids-schoolcard">
+    <h2>🏫 The school — classrooms</h2>
+    <p class="hint2">Classrooms group the channel into subjects by age. Add a whole subject with one tap, or pick video by video in the shelves below.</p>
+    <div id="kids-rooms"></div>
+    <p class="hint2" id="kids-report" style="margin-top:10px">📋 Today at school: no lessons finished yet today.</p>
   </div>
 
   <!-- ADD BY LINK -->
@@ -180,9 +260,17 @@
   <!-- STARTER LIBRARY: built-in channel shelves (Meechie's World for Kids) -->
   <div class="card">
     <h2>📺 Meechie's World for Kids — channel shelves</h2>
-    <p>Ready-made learning shelves, picked from well-known kids' channels: ABCs, first words, naming things, colors and numbers, a little Spanish and sign language, songs — and a shelf about one God. Tap <b>Add</b> on any video, or <b>Add all</b> to take a whole shelf. Everything you add lands in your playlist below, where you can reorder it or take it back out.</p>
+    <p>Ready-made learning shelves, picked from well-known kids' channels: ABCs, first words, naming things, mom and dad, colors and numbers, Spanish, French and sign language, songs — and a shelf about one God. Tap <b>Add</b> on any video, or <b>Add all</b> to take a whole shelf. Lessons are ordered for your child's age — their level first. Everything you add lands in your playlist below, where you can reorder it or take it back out.</p>
     <div id="kids-shelves"></div>
-    <p class="footnote">Movie Time is there for family watching on purpose — it is never added for you. Every other shelf is learning first.</p>
+    <p class="footnote">Movie Time lives in After School below — it is never added for you, and it never joins the School Day. Every shelf here is learning first.</p>
+  </div>
+
+  <!-- AFTER SCHOOL -->
+  <div class="card" id="kids-aftercard">
+    <h2>🎉 After School — fun time</h2>
+    <p class="hint2">When school ends, lessons rest. Fun Time and Movie Time lead — movies that teach, and fun movies. Movie Time never joins the School Day; it is here for after school and family time.</p>
+    <div id="kids-fun"></div>
+    <div id="kids-movies"></div>
   </div>
 
   <!-- PLAYLIST -->
@@ -192,6 +280,20 @@
     <p id="kids-empty">Nothing here yet. Add videos above and they will line up here, in the order they play.</p>
     <div id="kids-list"></div>
     <p class="footnote">Use ↑ ↓ to change the order, ✕ to take a video out. The list stays saved on this phone for next time.</p>
+  </div>
+
+  <!-- PLANS -->
+  <div class="card" id="kids-plans">
+    <h2>💛 Plans</h2>
+    <p class="hint2" id="kids-trial-line">Your 7 free days start the first time you open the app.</p>
+    <div class="plan"><div class="plan-main"><b>Basic</b><span>1 child profile • 1 playlist • Meechie's voice on</span></div><div class="plan-price">$5<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Plus</b><span>2 child profiles • 3 playlists • everything in Basic</span></div><div class="plan-price">$10<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Family</b><span>3 child profiles • unlimited playlists • 2 devices</span></div><div class="plan-price">$20<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Family Plus</b><span>4 child profiles • the Today at school report • everything in Family</span></div><div class="plan-price">$30<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Premium</b><span>5 child profiles • 3 devices • new shelves first</span></div><div class="plan-price">$50<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Ultimate</b><span>6 child profiles • 4 devices • everything unlocked first</span></div><div class="plan-price">$60<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>The Greatest</b><span>Unlimited profiles, playlists and devices • the whole channel, first forever</span></div><div class="plan-price">$100<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <p class="hint2" id="kids-plan-note" style="margin-top:10px">Every plan starts with 7 days free. Plans are coming online soon — nothing to pay today, and the app never locks you out when the free days end.</p>
   </div>
 
   <!-- HOW TO USE -->
@@ -215,7 +317,7 @@
     </div>
   </div>
 
-  <p class="fine">🔒 Nothing is uploaded. Your playlist and your PIN live only on this phone, in this browser — they are never sent anywhere.<br>Meechie's World Kids is a free player for videos you pick on YouTube.</p>
+  <p class="fine">🔒 Nothing is uploaded. Your playlist and your PIN live only on this phone, in this browser — they are never sent anywhere.<br>Meechie's World for Kids is a free player for videos you pick on YouTube.</p>
   <a class="back" href="/apps/">← All Meechie's World apps</a>
 
   <!-- THE LOCK OVERLAY: transparent, covers everything, swallows every touch.
@@ -251,7 +353,7 @@
 <script>
 "use strict";
 /* =====================================================================
-   Meechie's World Kids — playlist player + transparent screen lock.
+   Meechie's World for Kids — channel player, little school + transparent screen lock.
    Everything lives on this page: no sign-in, no uploads. The playlist
    (mw-kids-list) and the grown-up PIN (mw-kids-pin) are stored ONLY in
    this browser's localStorage and are never sent anywhere.
@@ -315,75 +417,116 @@ function thumb(id) { return "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"; }
    (GET /api/ytsearch) against a real search result for its topic, from
    established kids' learning channels (Super Simple Songs, CoComelon,
    PINKFONG, ChuChu TV, Ms Rachel, Calico Spanish...). Titles are display
-   strings copied from those results; the id is the identity. */
+   strings copied from those results; the id is the identity.
+   lvl = the lowest classroom band a video suits:
+   0 baby, 1 toddler, 2 preschool, 3 big kids. */
 var KIDS_LIBRARY = [
-  { shelf: "🔤 ABCs & Phonics", videos: [
-    { id: "Y88p4V_BCEU", title: "The ABC Song | Easy Alphabet Song | Super Simple ABCs" },
-    { id: "tKsIi1MH4lw", title: "ABC Phonics Song with Sounds for Children — Two Words for Each Letter" },
-    { id: "5XEN4vtH4Ic", title: "ABC Song | Kids Alphabet Review | Super Simple Songs" }
+  { key: "abcs", shelf: "🔤 ABCs & Phonics", subj: "Reading", videos: [
+    { id: "Y88p4V_BCEU", title: "The ABC Song | Easy Alphabet Song | Super Simple ABCs", lvl: 1 },
+    { id: "tKsIi1MH4lw", title: "ABC Phonics Song with Sounds for Children — Two Words for Each Letter", lvl: 2 },
+    { id: "5XEN4vtH4Ic", title: "ABC Song | Kids Alphabet Review | Super Simple Songs", lvl: 1 }
   ] },
-  { shelf: "🗣️ First Words — Learning to Talk", videos: [
-    { id: "hTqtGJwsJVE", title: "Baby Learning With Ms Rachel — First Words, Songs and Nursery Rhymes for Babies" },
-    { id: "LjBmZWPX3Bk", title: "First Words for Babies and Toddlers — Learn To Talk — Baby's First Words, Songs and Gestures" },
-    { id: "FiM-SMsPS-k", title: "Baby Learning First Words | Learn To Talk for Babies | Miss Katie" }
+  { key: "words", shelf: "🗣️ First Words — Learning to Talk", subj: "Talking", videos: [
+    { id: "hTqtGJwsJVE", title: "Baby Learning With Ms Rachel — First Words, Songs and Nursery Rhymes for Babies", lvl: 0 },
+    { id: "LjBmZWPX3Bk", title: "First Words for Babies and Toddlers — Learn To Talk — Baby's First Words, Songs and Gestures", lvl: 0 },
+    { id: "FiM-SMsPS-k", title: "Baby Learning First Words | Learn To Talk for Babies | Miss Katie", lvl: 0 }
   ] },
-  { shelf: "🐶 What Is It? — Names for Everything", videos: [
-    { id: "ZUEZSqZjJOc", title: "Learn Animal Names & Sounds | Farm and Jungle Animals for Children" },
-    { id: "okde2DTrSnw", title: "What's That Animal? Learn Pet & Backyard Animal Names and Sounds for Kids" },
-    { id: "UcGm_PM2IwY", title: "Fruits and Vegetables Names — Learn Fruits and Vegetables English Vocabulary" }
+  { key: "what", shelf: "🐶 What Is It? — Names for Everything", subj: "Naming Things", videos: [
+    { id: "ZUEZSqZjJOc", title: "Learn Animal Names & Sounds | Farm and Jungle Animals for Children", lvl: 0 },
+    { id: "okde2DTrSnw", title: "What's That Animal? Learn Pet & Backyard Animal Names and Sounds for Kids", lvl: 0 },
+    { id: "UcGm_PM2IwY", title: "Fruits and Vegetables Names — Learn Fruits and Vegetables English Vocabulary", lvl: 1 }
   ] },
-  { shelf: "👨‍👩‍👧 Mom, Dad & Family", videos: [
-    { id: "kCka94jeGTk", title: "Finger Family | CoComelon Nursery Rhymes & Kids Songs" },
-    { id: "r0IOEBUk-kQ", title: "Finger Family Song! Baby Finger, Where Are You? | CoComelon" },
-    { id: "uLUcKFL248M", title: "Finger Family Song — Extended Family! With Grandma and Grandpa" }
+  { key: "family", shelf: "👨‍👩‍👧 Mom, Dad & Family", subj: "Family", videos: [
+    { id: "kCka94jeGTk", title: "Finger Family | CoComelon Nursery Rhymes & Kids Songs", lvl: 0 },
+    { id: "r0IOEBUk-kQ", title: "Finger Family Song! Baby Finger, Where Are You? | CoComelon", lvl: 0 },
+    { id: "uLUcKFL248M", title: "Finger Family Song — Extended Family! With Grandma and Grandpa", lvl: 1 }
   ] },
-  { shelf: "🎨 Colors, Numbers & Shapes", videos: [
-    { id: "zxIpA5nF_LY", title: "What's Your Favorite Color? | Kids Songs | Super Simple Songs" },
-    { id: "qhOTU8_1Af4", title: "Learn Colors — Preschool Chant — Colors Song for Preschool | ELF Learning" },
-    { id: "JT0MmZcJ2Vw", title: "Numbers Song — Learn to Count from 1 to 10 | ChuChu TV Classics" },
-    { id: "OEbRDtCAFdU", title: "Shapes Song for Kids | The Singing Walrus" }
+  { key: "colors", shelf: "🎨 Colors, Numbers & Shapes", subj: "Math & Art", videos: [
+    { id: "zxIpA5nF_LY", title: "What's Your Favorite Color? | Kids Songs | Super Simple Songs", lvl: 1 },
+    { id: "qhOTU8_1Af4", title: "Learn Colors — Preschool Chant — Colors Song for Preschool | ELF Learning", lvl: 2 },
+    { id: "JT0MmZcJ2Vw", title: "Numbers Song — Learn to Count from 1 to 10 | ChuChu TV Classics", lvl: 1 },
+    { id: "OEbRDtCAFdU", title: "Shapes Song for Kids | The Singing Walrus", lvl: 1 }
   ] },
-  { shelf: "🌍 Languages — Spanish, Sign Language & More", videos: [
-    { id: "tK0vp8LlDiM", title: "Spanish Song For Children — Hola Hola" },
-    { id: "iE9oaAezOW4", title: "Learn Spanish for Kids | Beginner Spanish Lessons | Calico Spanish Stories" },
-    { id: "DsRKoZGaoEM", title: "Spanish for Kids — Colors, Colors (Colores, Colores) | Calico Spanish" },
-    { id: "v7Wd8U1HdDY", title: "Baby Sign Language | First 12 Baby Signs in ASL" }
+  { key: "lang", shelf: "🌍 Languages — Spanish, French, Sign Language & More", subj: "Languages", videos: [
+    { id: "tK0vp8LlDiM", title: "Spanish Song For Children — Hola Hola", lvl: 1 },
+    { id: "iE9oaAezOW4", title: "Learn Spanish for Kids | Beginner Spanish Lessons | Calico Spanish Stories", lvl: 2 },
+    { id: "DsRKoZGaoEM", title: "Spanish for Kids — Colors, Colors (Colores, Colores) | Calico Spanish", lvl: 2 },
+    { id: "NXkJ88ygPY0", title: "French Greetings Song for Children", lvl: 2 },
+    { id: "76qsPzD1PTk", title: "French 1 to 10 Children's Song | Learn French for Kids", lvl: 2 },
+    { id: "v7Wd8U1HdDY", title: "Baby Sign Language | First 12 Baby Signs in ASL", lvl: 0 }
   ] },
-  { shelf: "🎵 Sing & Learn", videos: [
-    { id: "yCjJyiqpAuU", title: "Twinkle Twinkle Little Star | Nursery Rhymes for Kids | Super Simple Songs" },
-    { id: "9UasekNr8KI", title: "The Wheels On The Bus | Super Simple Songs" },
-    { id: "XqZsoesa55w", title: "Baby Shark Dance | PINKFONG Songs for Children" }
+  { key: "sing", shelf: "🎵 Sing & Learn", subj: "Music", videos: [
+    { id: "yCjJyiqpAuU", title: "Twinkle Twinkle Little Star | Nursery Rhymes for Kids | Super Simple Songs", lvl: 0 },
+    { id: "9UasekNr8KI", title: "The Wheels On The Bus | Super Simple Songs", lvl: 1 },
+    { id: "XqZsoesa55w", title: "Baby Shark Dance | PINKFONG Songs for Children", lvl: 1 }
   ] },
-  { shelf: "☝️ One God — Love Him & Thank Him", videos: [
-    { id: "OrMStAvNeqc", title: "Thank You, God! | Song for Kids | Little Light Rhymes" },
-    { id: "P6XGxEaXeik", title: "Thank You God for the Beautiful World | Kids Songs" },
-    { id: "dMLE7KW_t7I", title: "My God Is So Big | Kids Song" }
-  ] },
-  { shelf: "🎬 Movie Time — Watch Together", videos: [
-    { id: "t0Q2otsqC4I", title: "Tom & Jerry in Full Screen | Classic Cartoon Compilation | WB Kids" },
-    { id: "--nT4ykK9Uw", title: "Looney Tunes | Classic Tweety Bird & Sylvester Compilation | Warner Classics" },
-    { id: "wk4KHNJjpjQ", title: "Twinkle Twinkle Little Star & More | Kids Songs Movie-Length Special | Super Simple Songs" }
+  { key: "god", shelf: "☝️ One God — Faith & Worship", subj: "Faith", videos: [
+    { id: "OrMStAvNeqc", title: "Thank You, God! | Song for Kids | Little Light Rhymes", lvl: 0 },
+    { id: "P6XGxEaXeik", title: "Thank You God for the Beautiful World | Kids Songs", lvl: 1 },
+    { id: "dMLE7KW_t7I", title: "My God Is So Big | Kids Song", lvl: 1 }
   ] }
 ];
+/* Fun Time (After School) + Movie Time — verified through the same
+   relay. Movies are never in the seed and never in the School Day. */
+var KIDS_FUN = [
+  { id: "A1vdKfXlB_g", title: "The Dance Freeze Song | Freeze Dance | Scratch Garden", lvl: 1 },
+  { id: "2UcZWXvgMZE", title: "Party Freeze Dance Song — THE KIBOOMERS Preschool Songs", lvl: 1 },
+  { id: "wbNAiN8FTfc", title: "Floor Is Lava Song — THE KIBOOMERS Preschool Songs", lvl: 2 }
+];
+var KIDS_MOVIES = {
+  teach: [
+    { id: "wk4KHNJjpjQ", title: "Twinkle Twinkle Little Star & More | Kids Songs Movie-Length Special | Super Simple Songs", lvl: 2 },
+    { id: "E6eyrmYRk1w", title: "Gulliver's Travels (1939) | Full Movie", lvl: 3 }
+  ],
+  fun: [
+    { id: "t0Q2otsqC4I", title: "Tom & Jerry in Full Screen | Classic Cartoon Compilation | WB Kids", lvl: 2 },
+    { id: "--nT4ykK9Uw", title: "Looney Tunes | Classic Tweety Bird & Sylvester Compilation | Warner Classics", lvl: 2 },
+    { id: "26ZopF_pHDY", title: "Popeye The Sailor | 1 Hour of Full Episodes | Free Cartoons", lvl: 2 }
+  ]
+};
+var KIDS_BY_ID = {}, KIDS_SUBJ = {};
+KIDS_LIBRARY.forEach(function (sh) { sh.videos.forEach(function (v) { KIDS_BY_ID[v.id] = v; KIDS_SUBJ[v.id] = sh.subj; }); });
+KIDS_FUN.forEach(function (v) { KIDS_BY_ID[v.id] = v; KIDS_SUBJ[v.id] = "Fun Time"; });
+KIDS_MOVIES.teach.concat(KIDS_MOVIES.fun).forEach(function (v) { KIDS_BY_ID[v.id] = v; KIDS_SUBJ[v.id] = "Movie Time"; });
+function shelfByKey(key) { for (var i = 0; i < KIDS_LIBRARY.length; i++) if (KIDS_LIBRARY[i].key === key) return KIDS_LIBRARY[i]; return null; }
+function groupVideos(key) {
+  if (key === "fun") return KIDS_FUN;
+  if (key === "moviesTeach") return KIDS_MOVIES.teach;
+  if (key === "moviesFun") return KIDS_MOVIES.fun;
+  var sh = shelfByKey(key); return sh ? sh.videos : [];
+}
+/* School Day lesson plans, one per age band — only library ids, every
+   one at or below the band's level, in school-day flow (greeting/first
+   words, ABCs, numbers & colors, language, faith, song). Fun Time and
+   movies are never in a School Day. */
+var SCHOOL_DAY = [
+  ["FiM-SMsPS-k", "kCka94jeGTk", "ZUEZSqZjJOc", "v7Wd8U1HdDY", "OrMStAvNeqc", "yCjJyiqpAuU"],
+  ["FiM-SMsPS-k", "Y88p4V_BCEU", "zxIpA5nF_LY", "JT0MmZcJ2Vw", "OEbRDtCAFdU", "tK0vp8LlDiM", "dMLE7KW_t7I", "9UasekNr8KI"],
+  ["tKsIi1MH4lw", "5XEN4vtH4Ic", "qhOTU8_1Af4", "JT0MmZcJ2Vw", "iE9oaAezOW4", "NXkJ88ygPY0", "P6XGxEaXeik", "XqZsoesa55w"],
+  ["tKsIi1MH4lw", "qhOTU8_1Af4", "DsRKoZGaoEM", "76qsPzD1PTk", "v7Wd8U1HdDY", "P6XGxEaXeik", "XqZsoesa55w"]
+];
+var CLASSROOMS = [
+  { name: "🍼 Baby Class", band: 0, subs: [["Talking", "words"], ["Family", "family"], ["Naming Things", "what"]] },
+  { name: "🧒 Toddler Class", band: 1, subs: [["Reading", "abcs"], ["Math & Art", "colors"], ["Music", "sing"]] },
+  { name: "🎒 Preschool", band: 2, subs: [["Reading & Phonics", "abcs"], ["Languages", "lang"], ["Faith", "god"]] },
+  { name: "📚 Big Kids", band: 3, subs: [["Reading & Phonics", "abcs"], ["Languages", "lang"], ["Math & Art", "colors"], ["Faith", "god"]] },
+  { name: "🎬 Movie Day — the whole school", band: -1, subs: [["Movies that teach", "moviesTeach"], ["Fun movies", "moviesFun"]] }
+];
 /* The default starter playlist, in first-run order: ABCs, first words,
-   family, what-is-it, colors/numbers/shapes, languages, one God, songs.
-   Movie Time is deliberately NOT in the seed — parents add it on purpose. */
+   family, the two One God staples, what-is-it, colors/numbers/shapes,
+   languages, songs. Movie Time is deliberately NOT in the seed —
+   parents add movies on purpose. */
 var KIDS_SEED = [
   "Y88p4V_BCEU", "tKsIi1MH4lw",
   "hTqtGJwsJVE", "FiM-SMsPS-k",
   "kCka94jeGTk",
+  "OrMStAvNeqc", "dMLE7KW_t7I",
   "ZUEZSqZjJOc", "UcGm_PM2IwY",
   "zxIpA5nF_LY", "JT0MmZcJ2Vw", "OEbRDtCAFdU",
   "tK0vp8LlDiM", "v7Wd8U1HdDY",
-  "OrMStAvNeqc", "dMLE7KW_t7I",
   "yCjJyiqpAuU", "9UasekNr8KI"
 ];
-function kidsLibraryVideo(id) {
-  for (var i = 0; i < KIDS_LIBRARY.length; i++)
-    for (var j = 0; j < KIDS_LIBRARY[i].videos.length; j++)
-      if (KIDS_LIBRARY[i].videos[j].id === id) return KIDS_LIBRARY[i].videos[j];
-  return null;
-}
+function kidsLibraryVideo(id) { return KIDS_BY_ID[id] || null; }
 /* First run ONLY: no saved playlist AND no seeded-once flag -> plant the
    starter set and remember that we did. After that the saved list rules:
    a parent who deletes everything gets an empty list, never a re-seed. */
@@ -403,37 +546,53 @@ function loadInitialList() {
 }
 
 /* ---------- starter shelves rendering ---------- */
+function shelfBlock(name, videos, sortForBand) {
+  var wrap = document.createElement("div"); wrap.className = "shelf";
+  var head = document.createElement("div"); head.className = "shelf-head";
+  var h = document.createElement("h3"); h.textContent = name;
+  var all = document.createElement("button");
+  all.type = "button"; all.className = "abtn"; all.textContent = "Add all";
+  all.addEventListener("click", function () {
+    var added = 0;
+    videos.forEach(function (v) { if (addVideo(v.id, v.title) === "ok") added++; });
+    all.textContent = added ? ("Added " + added + " ✓") : "In list ✓";
+    all.disabled = true;
+  });
+  head.appendChild(h); head.appendChild(all); wrap.appendChild(head);
+  var vs = videos;
+  if (sortForBand) {
+    var band = childBand();
+    vs = videos.slice().sort(function (a, b) { return Math.abs((a.lvl || 0) - band) - Math.abs((b.lvl || 0) - band); });
+  }
+  vs.forEach(function (v) {
+    var row = document.createElement("div"); row.className = "sres";
+    var img = document.createElement("img"); img.src = thumb(v.id); img.alt = ""; img.loading = "lazy";
+    var t = document.createElement("span"); t.textContent = v.title;
+    var b = document.createElement("button"); b.type = "button"; b.className = "abtn"; b.textContent = "Add";
+    b.addEventListener("click", function () {
+      var r = addVideo(v.id, v.title);
+      b.textContent = r === "dup" ? "In list ✓" : "Added ✓";
+      b.disabled = true;
+    });
+    row.appendChild(img); row.appendChild(t); row.appendChild(b);
+    wrap.appendChild(row);
+  });
+  return wrap;
+}
 function paintShelves() {
   var box = $("kids-shelves"); if (!box) return;
   box.innerHTML = "";
-  KIDS_LIBRARY.forEach(function (sh) {
-    var wrap = document.createElement("div"); wrap.className = "shelf";
-    var head = document.createElement("div"); head.className = "shelf-head";
-    var h = document.createElement("h3"); h.textContent = sh.shelf;
-    var all = document.createElement("button");
-    all.type = "button"; all.className = "abtn"; all.textContent = "Add all";
-    all.addEventListener("click", function () {
-      var added = 0;
-      sh.videos.forEach(function (v) { if (addVideo(v.id, v.title) === "ok") added++; });
-      all.textContent = added ? ("Added " + added + " ✓") : "In list ✓";
-      all.disabled = true;
-    });
-    head.appendChild(h); head.appendChild(all); wrap.appendChild(head);
-    sh.videos.forEach(function (v) {
-      var row = document.createElement("div"); row.className = "sres";
-      var img = document.createElement("img"); img.src = thumb(v.id); img.alt = ""; img.loading = "lazy";
-      var t = document.createElement("span"); t.textContent = v.title;
-      var b = document.createElement("button"); b.type = "button"; b.className = "abtn"; b.textContent = "Add";
-      b.addEventListener("click", function () {
-        var r = addVideo(v.id, v.title);
-        b.textContent = r === "dup" ? "In list ✓" : "Added ✓";
-        b.disabled = true;
-      });
-      row.appendChild(img); row.appendChild(t); row.appendChild(b);
-      wrap.appendChild(row);
-    });
-    box.appendChild(wrap);
-  });
+  KIDS_LIBRARY.forEach(function (sh) { box.appendChild(shelfBlock(sh.shelf, sh.videos, true)); });
+}
+function paintAfter() {
+  var f = $("kids-fun"), m = $("kids-movies"); if (!f || !m) return;
+  f.innerHTML = ""; f.appendChild(shelfBlock("🎈 Fun Time — dance, freeze & play-along", KIDS_FUN, true));
+  m.innerHTML = "";
+  var head = document.createElement("div"); head.className = "shelf-head";
+  var h = document.createElement("h3"); h.textContent = "🎬 Movie Time — free movies & specials";
+  head.appendChild(h); m.appendChild(head);
+  m.appendChild(shelfBlock("Movies that teach", KIDS_MOVIES.teach, false));
+  m.appendChild(shelfBlock("Fun movies", KIDS_MOVIES.fun, false));
 }
 
 /* ---------- state ---------- */
@@ -557,7 +716,12 @@ window.onYouTubeIframeAPIReady = function () {
           if (!locked) releaseWake();
           paintNow();
         } else if (e.data === YT.PlayerState.ENDED) {
+          var endedId = list[cur] ? list[cur].id : "";
+          var endedSubj = endedId ? (KIDS_SUBJ[endedId] || "") : "";
+          if (endedId) recordWatched(endedId);
           advance(1); // next in the list — wraps to the top (kidsNextIndex)
+          var newSubj = list[cur] ? (KIDS_SUBJ[list[cur].id] || "") : "";
+          if (newSubj && endedSubj && newSubj !== endedSubj) kidsTransition(newSubj);
         }
       }
     }
@@ -779,8 +943,238 @@ $("kids-lock-btn").addEventListener("click", function () {
   else openPad("set"); // first time: set a PIN, then the lock drops in
 });
 
+/* ---------- child profile & age bands ---------- */
+var LS_CHILD = "mw-kids-child";
+function loadChild() { try { var c = JSON.parse(localStorage.getItem(LS_CHILD) || "null"); if (c && typeof c.age === "number") return c; } catch (e) {} return null; }
+function childBand() { var c = loadChild(); if (!c) return 1; if (c.age < 2) return 0; if (c.age < 4) return 1; if (c.age < 6) return 2; return 3; }
+var BAND_NAMES = ["Baby Class", "Toddler Class", "Preschool", "Big Kids"];
+function paintChild() {
+  var c = loadChild(), st = $("kids-cstatus"); if (!st) return;
+  if (c) { $("kids-cname").value = c.name || ""; $("kids-cage").value = String(Math.min(8, Math.max(0, c.age))); }
+  st.textContent = c
+    ? ((c.name ? c.name + " • " : "") + "Age " + c.age + " → " + BAND_NAMES[childBand()] + ". The school opens on their classroom, and the School Day stays at their level.")
+    : "No age set yet — the school starts on Toddler Class. Set an age and it tunes itself to your child.";
+}
+$("kids-csave").addEventListener("click", function () {
+  var age = parseInt($("kids-cage").value, 10); if (isNaN(age)) age = 3;
+  try { localStorage.setItem(LS_CHILD, JSON.stringify({ name: $("kids-cname").value.trim(), age: age })); } catch (e) {}
+  paintChild(); paintShelves(); paintAfter(); paintClassrooms();
+  kidsSay(welcomeLine());
+});
+$("kids-cskip").addEventListener("click", function () {
+  try { localStorage.setItem(LS_CHILD, JSON.stringify({ name: "", age: 3, skipped: true })); } catch (e) {}
+  paintChild(); paintShelves(); paintAfter(); paintClassrooms();
+});
+
+/* ---------- classrooms ---------- */
+function addShelfVideos(videos, btn) {
+  var added = 0;
+  videos.forEach(function (v) { if (addVideo(v.id, v.title) === "ok") added++; });
+  if (btn) { btn.textContent = added ? ("Added " + added + " ✓") : "In list ✓"; btn.disabled = true; }
+}
+function paintClassrooms() {
+  var box = $("kids-rooms"); if (!box) return;
+  box.innerHTML = "";
+  var band = childBand(), c = loadChild();
+  CLASSROOMS.forEach(function (room) {
+    var div = document.createElement("div"); div.className = "room" + (room.band === band ? " on" : "");
+    var h = document.createElement("h4");
+    h.textContent = room.name + (room.band === band ? "  ★ " + (c && c.name ? c.name + "'s class" : "your child's class") : "");
+    div.appendChild(h);
+    room.subs.forEach(function (sub) {
+      var row = document.createElement("div"); row.className = "subj";
+      var nm = document.createElement("span");
+      var sh = shelfByKey(sub[1]);
+      nm.textContent = sub[0] + (sh ? " — " + sh.shelf : " — 🎬 Movie Time");
+      var b = document.createElement("button"); b.type = "button"; b.className = "abtn"; b.textContent = "Add all";
+      (function (key, btn) { btn.addEventListener("click", function () { addShelfVideos(groupVideos(key), btn); }); })(sub[1], b);
+      row.appendChild(nm); row.appendChild(b); div.appendChild(row);
+    });
+    box.appendChild(div);
+  });
+}
+
+/* ---------- watched-lessons report (local only) ---------- */
+var LS_WATCHED = "mw-kids-watched";
+function todayStr() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+function recordWatched(id) {
+  try {
+    var w = JSON.parse(localStorage.getItem(LS_WATCHED) || "[]"), t = todayStr(), dup = false;
+    w.forEach(function (x) { if (x.id === id && x.d === t) dup = true; });
+    if (!dup) { w.push({ id: id, d: t }); if (w.length > 200) w = w.slice(w.length - 200); localStorage.setItem(LS_WATCHED, JSON.stringify(w)); }
+  } catch (e) {}
+  paintReport();
+}
+function paintReport() {
+  var el = $("kids-report"); if (!el) return;
+  var w = []; try { w = JSON.parse(localStorage.getItem(LS_WATCHED) || "[]"); } catch (e) {}
+  var t = todayStr(), done = [];
+  w.forEach(function (x) { if (x.d === t) done.push(x); });
+  if (!done.length) { el.textContent = "📋 Today at school: no lessons finished yet today."; return; }
+  var names = done.slice(0, 5).map(function (x) { var v = KIDS_BY_ID[x.id]; return v ? v.title.split("|")[0].trim() : "a video"; });
+  el.textContent = "📋 Today at school: " + done.length + " lesson" + (done.length === 1 ? "" : "s") + " finished — " + names.join(" • ") + (done.length > 5 ? " • and more" : "") + ".";
+}
+
+/* ---------- school / after school modes ---------- */
+var LS_MODE = "mw-kids-mode", LS_ENDTIME = "mw-kids-endtime";
+function schoolEnd() { try { return localStorage.getItem(LS_ENDTIME) || "15:00"; } catch (e) { return "15:00"; } }
+function modeOverride() { try { return localStorage.getItem(LS_MODE) || ""; } catch (e) { return ""; } }
+function effectiveMode() {
+  var o = modeOverride(); if (o === "school" || o === "after") return o;
+  var p = schoolEnd().split(":"), end = new Date();
+  end.setHours(parseInt(p[0], 10) || 15, parseInt(p[1], 10) || 0, 0, 0);
+  return new Date() >= end ? "after" : "school";
+}
+function paintMode() {
+  var m = effectiveMode(), o = modeOverride();
+  $("kids-mode-title").textContent = m === "after" ? "🎉 After School — fun time" : "🏫 School time";
+  $("kids-mode-line").textContent = (m === "after" ? "School is out — fun videos and Movie Time lead. " : "Lessons lead the day. ")
+    + "School ends at " + schoolEnd() + "."
+    + (o ? " You flipped it by hand (" + (o === "after" ? "After School" : "School") + ") — Auto by the clock hands it back to the clock." : " The clock flips it on its own; you can flip it any time.");
+  $("kids-daystart").textContent = m === "after" ? "🎉 Start After School — fun time" : "🏫 Start School Day";
+  var et = $("kids-endtime"); if (document.activeElement !== et) et.value = schoolEnd();
+}
+function setMode(v) { try { if (v) localStorage.setItem(LS_MODE, v); else localStorage.removeItem(LS_MODE); } catch (e) {} paintMode(); }
+$("kids-mode-school").addEventListener("click", function () { setMode("school"); });
+$("kids-mode-after").addEventListener("click", function () { setMode("after"); kidsSay(afterLine()); });
+$("kids-mode-auto").addEventListener("click", function () { setMode(""); });
+$("kids-endtime-save").addEventListener("click", function () { var v = $("kids-endtime").value || "15:00"; try { localStorage.setItem(LS_ENDTIME, v); } catch (e) {} paintMode(); });
+
+/* ---------- start the day (school or after school) ---------- */
+function startPlaylist(ids, note) {
+  var nl = [];
+  ids.forEach(function (id) { var v = kidsLibraryVideo(id); if (v) nl.push({ id: v.id, title: v.title }); });
+  if (!nl.length) return;
+  list = nl; cur = 0; saveList(); paintList();
+  if (playerReady && player) playIndex(0);
+  $("kids-now").textContent = note;
+}
+$("kids-daystart").addEventListener("click", function () {
+  var band = childBand();
+  if (effectiveMode() === "after") {
+    var ids = [];
+    KIDS_FUN.forEach(function (v) { if (v.lvl <= band) ids.push(v.id); });
+    var mv = (band <= 1 ? KIDS_MOVIES.teach : KIDS_MOVIES.fun)[0]; if (mv) ids.push(mv.id);
+    startPlaylist(ids, "After School! Fun videos first, then a movie. Tap Lock the screen when you're ready.");
+    kidsSay(afterLine());
+  } else {
+    startPlaylist(SCHOOL_DAY[band].slice(), BAND_NAMES[band] + " School Day — lessons lined up in order. Tap Lock the screen when you're ready to hand it over.");
+    kidsSay(dayIntroLine());
+  }
+});
+
+/* ---------- trial stamp + plans (presentation only) ---------- */
+(function () {
+  var KEY = "mw-kids-trial", el = $("kids-trial-line"); if (!el) return;
+  try {
+    var t = parseInt(localStorage.getItem(KEY) || "0", 10);
+    if (!t) { t = Date.now(); localStorage.setItem(KEY, String(t)); }
+    var day = Math.floor((Date.now() - t) / 86400000) + 1;
+    el.textContent = day <= 7
+      ? ("Day " + day + " of your 7 free days — every plan starts free for a week.")
+      : "Your 7 free days are done — and the app keeps working. Plans are coming online soon; nothing to pay today.";
+  } catch (e) {}
+})();
+Array.prototype.forEach.call(document.querySelectorAll(".kids-choose"), function (b) {
+  b.addEventListener("click", function () { $("kids-plan-note").textContent = "Good pick — plans are coming online soon, and your 7 free days come first either way. Nothing to pay today."; });
+});
+
+/* ---------- Meechie talks ----------
+   Scripted line bank (no per-play cost). Speech goes through the
+   site's own voice path, the same one Meechie AI uses: POST /api/ai
+   { model: "@cf/deepgram/aura-1", text } with the site session token,
+   and the returned audio is played. Any failure is silent — the words
+   still show in Meechie's bubble. Speech never fires while the PIN
+   pad is up. (When Malik's own recorded/cloned voice lands on /api/ai,
+   this app inherits it automatically.) */
+var LS_VOICE = "mw-kids-voice", KIDS_TTS_MODEL = "@cf/deepgram/aura-1";
+var kidsAudio = null, kidsWarmed = false;
+function voiceOn() { try { return localStorage.getItem(LS_VOICE) !== "0"; } catch (e) { return true; } }
+function paintVoiceBtn() { var b = $("kids-voice-btn"); if (b) b.textContent = "Voice: " + (voiceOn() ? "on" : "off"); }
+$("kids-voice-btn").addEventListener("click", function () {
+  try { localStorage.setItem(LS_VOICE, voiceOn() ? "0" : "1"); } catch (e) {}
+  paintVoiceBtn();
+  if (voiceOn()) kidsSay("My voice is on. Let's learn something fun!");
+});
+function pinPadUp() { var w = $("kids-pinpad-wrap"); return !!(w && !w.hidden); }
+function kidsSession() { try { var sess = JSON.parse(localStorage.getItem("mw-cf-session") || "null"); return sess && sess.access_token ? sess.access_token : ""; } catch (e) { return ""; } }
+function warmKidsAudio() {
+  if (kidsWarmed) return; kidsWarmed = true;
+  try {
+    if (!kidsAudio) { kidsAudio = new Audio(); kidsAudio.preload = "auto"; kidsAudio.playsInline = true; }
+    kidsAudio.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+    var p = kidsAudio.play(); if (p && p.catch) p.catch(function () {});
+  } catch (e) {}
+}
+function kidsSpeakAudio(text) {
+  if (!voiceOn() || pinPadUp()) return;
+  var tok = kidsSession(); if (!tok) return;
+  fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ model: KIDS_TTS_MODEL, text: text }) })
+    .then(function (r) { if (!r.ok || !/^audio\//.test(r.headers.get("content-type") || "")) throw new Error("tts"); return r.blob(); })
+    .then(function (b) {
+      if (!kidsAudio) { kidsAudio = new Audio(); kidsAudio.playsInline = true; }
+      var url = URL.createObjectURL(b);
+      kidsAudio.src = url;
+      kidsAudio.onended = function () { URL.revokeObjectURL(url); };
+      var p = kidsAudio.play(); if (p && p.catch) p.catch(function () {});
+    })
+    .catch(function () {});
+}
+function kidsSay(text) { var b = $("kids-says"); if (b) b.textContent = text; kidsSpeakAudio(text); }
+var KIDS_LINES = {
+  welcome: [
+    "Hey{name}! Welcome to Meechie's World for Kids — I am Meechie, your teacher. Let's learn something fun today!",
+    "Well hello{name}! Meechie here. Ready to learn and play? Let's go!"
+  ],
+  dayIntro: [
+    "Let's start our school day{name}! Listen close, sing along, you got this.",
+    "School day{name}! Lessons are lined up — here we go!",
+    "Here we go{name} — a whole day of learning, one song at a time."
+  ],
+  after: [
+    "School's out{name}! Time for fun videos and a movie!",
+    "You did the learning — now it is movie time{name}!"
+  ],
+  transit: {
+    "Reading": ["Great job! Next up — reading time. ABCs, let's go!", "You are doing amazing. Now let's read and sing our ABCs!"],
+    "Talking": ["Wonderful! Now let's practice our words — say them with me!", "Great talking is next — repeat after the teacher!"],
+    "Naming Things": ["Nice work! Can you name what you see next? Let's find out!", "Next we name things — point and say what it is!"],
+    "Family": ["Family time! Mom, dad, and everybody we love — sing along!", "Here comes the family song — sing it loud!"],
+    "Math & Art": ["Counting time! Numbers, colors and shapes — you got this!", "Great job! Next up, colors and numbers!"],
+    "Languages": ["Let's say it in another language! Hola! Bonjour! Great job learning new words!", "New language time — listen and repeat with me!"],
+    "Faith": ["Time to say thank you to God. He is One, He made everything, and He loves you.", "Let's sing for God — one God, who loves us so much."],
+    "Music": ["Music time! Sing and dance along!", "You earned a song — sing with me!"],
+    "Fun Time": ["Fun time! Get up and dance with me!", "Let's move! Freeze dance — when the music stops, freeze!"],
+    "Movie Time": ["Movie time! Get comfy — this is a good one.", "Lights down, movie on. Enjoy the show!"]
+  }
+};
+var kidsLineIx = {};
+function pickLine(arr, key) { if (!arr || !arr.length) return ""; var i = kidsLineIx[key] || 0; kidsLineIx[key] = i + 1; return arr[i % arr.length]; }
+function nameBit() { var c = loadChild(); return c && c.name ? " " + c.name : ""; }
+function fillName(txt) { return txt.replace("{name}", nameBit()); }
+function welcomeLine() { return fillName(pickLine(KIDS_LINES.welcome, "welcome")); }
+function dayIntroLine() { return fillName(pickLine(KIDS_LINES.dayIntro, "day")); }
+function afterLine() { return fillName(pickLine(KIDS_LINES.after, "after")); }
+function kidsTransition(subj) { var arr = KIDS_LINES.transit[subj]; if (arr) kidsSay(fillName(pickLine(arr, "t-" + subj))); }
+/* first tap anywhere: warm the voice up (autoplay rules) + greet once */
+var kidsGreeted = false;
+document.addEventListener("pointerdown", function () {
+  warmKidsAudio();
+  if (!kidsGreeted) {
+    kidsGreeted = true;
+    setTimeout(function () { kidsSay(effectiveMode() === "after" ? afterLine() : welcomeLine()); }, 350);
+  }
+});
+
 paintList();
 paintShelves();
+paintAfter();
+paintChild();
+paintClassrooms();
+paintMode();
+paintReport();
+paintVoiceBtn();
+setInterval(paintMode, 60000);
 </script>
 </body>
 </html>
