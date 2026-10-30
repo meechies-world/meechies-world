@@ -494,7 +494,7 @@ export async function onRequestGet({ request, env }) {
          at the same moment. Only this crossfade branch stamps it — cold
          starts (dead air, silence-breaker rescues, schedule/pool starts
          with nothing playing) never do. */
-      S.fxHornAt = now;
+      if (S.hornOn === true) S.fxHornAt = now; // horns OFF unless the owner turns them on (S.hornOn, owner 2026-10-29)
       S.xf = xfToward(S.xf, 0.34); changed = true; // no more slamming the fader to the edge (owner, 2026-10-29: "keeps jumping") — one step toward center; the settle below finishes the walk
     }
     break;
