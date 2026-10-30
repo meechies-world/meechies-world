@@ -654,6 +654,46 @@ html.popdj .popdj-hint{display:block}
 .vposter img{width:100%;height:100%;object-fit:contain;display:block}
 .vstage.vs-on .vposter{display:none!important}
 .vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
+/* STAGE RAILS + SONG REQUEST SLOT (owner, 2026-10-30): the master stage
+   wears his shop and promos on both sides — the black side space is
+   cropped away and put to work. The poster and the live share FILL the
+   frame (cover: no pillarbox black) on the viewer stages. Under 1024px
+   the rails fold into one slim strip under the stage; on Watch the
+   strip is the big-stage ad bar and rides at every width. A request
+   made at the slot under the screen joins the DJ queue itself (the
+   listener-pick line at its head), and when the requested video plays
+   it takes the master screen like any booth video. */
+#st-ytbox .vposter img,#wb-stage .vposter img{object-fit:cover}
+#st-ytbox .vslive,#wb-stage .vslive{object-fit:cover}
+.stage-row{display:flex;gap:10px;align-items:flex-start}
+.stage-mid{flex:1;min-width:0}
+.srail{display:none}
+@media(min-width:1024px){.srail{display:flex;flex-direction:column;gap:10px;width:196px;flex:none}}
+.srail .srail-h{font:800 11px var(--body);letter-spacing:.12em;color:var(--gold-hi,#f0cf78)}
+.srcard{display:block;border:1px solid var(--gold-lo);border-radius:10px;overflow:hidden;background:#101010;text-decoration:none;color:var(--text)}
+.srcard img{width:100%;height:104px;object-fit:cover;display:block;background:#1c1c1c;border:0}
+.srcard .srcard-b{display:block;padding:7px 9px}
+.srcard .srcard-t{display:block;font-size:9.5px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.srcard .srcard-n{display:block;font-size:12.5px;line-height:1.25;font-weight:700}
+.srcard .srcard-p{display:block;color:var(--gold-hi,#f0cf78);font-weight:800;font-size:12.5px;margin-top:2px}
+.srpromo{display:block;border:1px solid var(--gold-lo);border-radius:10px;padding:9px;background:linear-gradient(160deg,rgba(240,207,120,.14),rgba(240,207,120,.03));color:var(--text);font-size:12.5px;line-height:1.4;text-decoration:none}
+.srpromo b{color:var(--gold-hi,#f0cf78)}
+.stage-strip{display:none;margin-top:8px}
+.stage-strip.on{display:block}
+.stage-strip a{display:flex;gap:8px;align-items:center;border:1px solid var(--gold-lo);border-radius:999px;padding:5px 12px;color:var(--text);text-decoration:none;font-size:12.5px;background:#101010;white-space:nowrap;overflow:hidden}
+.stage-strip a span{overflow:hidden;text-overflow:ellipsis}
+.stage-strip img{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:none;background:#1c1c1c}
+@media(min-width:1024px){#st-strip{display:none!important}}
+.stage-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.rq-mystat{font-size:13px;color:var(--gold-hi,#f0cf78);font-weight:700}
+.rq-form2{display:grid;gap:6px;margin-top:8px}
+.rq-form2[hidden]{display:none}
+.rq-form2 .dj-search{position:static;background:none;padding:0;flex-wrap:wrap}
+.rq-form2 input{flex:1;min-width:150px}
+.rq-results{display:grid;gap:4px}
+.rq-results:empty{display:none}
+.st-shout{margin-top:8px;border:1px solid var(--gold-lo);border-left:4px solid var(--gold,#f0cf78);border-radius:8px;padding:7px 10px;background:rgba(240,207,120,.08);font-size:13.5px;line-height:1.4}
+.st-shout[hidden]{display:none}
 /* GO LIVE STUDIO (owner, 2026-10-29): the WebRTC stream (his camera in full
    motion, or his captured screen) rides ABOVE the video mix on every master
    stage while S.vstream is on — the mix keeps rendering underneath, so the
@@ -1249,12 +1289,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   <button class="bubbig" type="button" data-bubbtn>🫧 BUBBLE MODE — the site shrinks into a bubble, music keeps playing</button>
   <button class="capbig" type="button" data-capbtn>🖥 CAPTURE MY SCREEN — Meechie shows you his screen, live on the master screen</button>
   <button class="capbig" type="button" data-hidebtn data-lab-off="🙈 HIDE SHARE — viewers see the video mix while Meechie sets up the next shot" data-lab-on="👁 SHOW SHARE — put the screen back on the master screen" hidden>🙈 HIDE SHARE — viewers see the video mix while Meechie sets up the next shot</button>
-  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="st-vposter"><img src="/img/radio-promo.jpg" srcset="/img/radio-promo-640.webp 640w, /img/radio-promo-1080.webp 1080w" sizes="100vw" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="st-vchip" hidden></div></div></div>
+  <div id="st-ytbox" hidden><b style="font-size:12px;letter-spacing:.1em">📺 ON AIR — MUSIC VIDEO</b><div class="stage-row"><aside class="srail" id="st-rail-l" aria-label="From the shop"></aside><div class="stage-mid"><div class="vstage"><div class="vslot" id="st-vs1"></div><div class="vslot" id="st-vs2"></div><div class="vstandby" id="st-vstandby" style="white-space:pre-line">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="st-vposter"><img src="/img/radio-promo.jpg" srcset="/img/radio-promo-640.webp 640w, /img/radio-promo-1080.webp 1080w" sizes="100vw" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="st-vchip" hidden></div></div><div class="st-shout" id="st-shout" hidden></div><div class="stage-bar"><button class="btn" type="button" data-rqopen="st">🎤 SONG REQUEST / SHOUT-OUT</button><span class="rq-mystat" id="st-mystat"></span></div><div class="rq-form2" id="st-rqform" hidden><div class="dj-search"><input type="text" id="st-rq-song" maxlength="100" placeholder="Type a song — Meechie AI finds the video" aria-label="Song to request"><input type="text" id="st-rq-shout" maxlength="140" placeholder="Shout-out (optional) — it shows when your song plays" aria-label="Shout-out"></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" data-rqgo="st">🎵 Request it</button><small class="muted">One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class="rq-results" id="st-rqres"></div></div></div><aside class="srail" id="st-rail-r" aria-label="Promotions"></aside></div><div class="stage-strip" id="st-strip"></div></div>
   <div><b style="font-size:13px;letter-spacing:.1em">RECENTLY PLAYED</b><div class="loglist" id="st-log" style="margin-top:6px"></div></div>
   <div class="dj-panel" style="margin:0"><h4>REQUEST A SONG / SEND A DROP</h4>
     <form class="dj-search" id="rq-form"><input type="text" id="rq-text" maxlength="120" placeholder="Song request or shout-out..." aria-label="Song request"><button class="btn sm" type="submit">Send</button></form>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn ghost sm" type="button" id="rq-rec">🎙️ Record a voice drop</button><small class="muted" id="rq-rec-st">Up to 20 seconds. Meechie can play it on air.</small></div>
-    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b style="font-size:13px;letter-spacing:.1em">🎵 PICK A SONG FOR THE RADIO</b><small class="muted" style="display:block;margin:4px 0 8px">Pick a song and it plays next on the live radio — Meechie's songs mixed with real artists, every genre. The list is long: browse the shelves, tap a genre, or search any artist.</small><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm pktab" type="button" id="pk-mine">🔥 Meechie's songs</button><button class="btn ghost sm pktab" type="button" id="pk-real">🎤 Real artists</button></div><form class="dj-search" id="pk-form" style="margin-bottom:8px"><input type="search" id="pk-q" placeholder="Search any artist or song..." aria-label="Search music to pick"><button class="btn sm" type="submit">Search</button></form><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn ghost sm" type="button" data-pkgenre="hiphop">🕶️ Hip-Hop</button><button class="btn ghost sm" type="button" data-pkgenre="jazz">🎷 Jazz</button><button class="btn ghost sm" type="button" data-pkgenre="rock">🎸 Rock</button><button class="btn ghost sm" type="button" data-pkgenre="soul">❤️ Soul &amp; R&amp;B</button><button class="btn ghost sm" type="button" data-pkgenre="reggae">🇯🇲 Reggae</button><button class="btn ghost sm" type="button" data-pkgenre="classics">🎺 Classics</button><button class="btn ghost sm" type="button" data-pkgenre="more">🌍 More artists</button></div><div class="dj-list" id="pk-list" style="max-height:300px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin-top:12px">📻 COMING UP — LISTENER PICKS</b><div class="dj-list" id="pk-queue" style="margin-top:6px;max-height:110px"><small class="muted">No picks yet — be the first.</small></div></div>
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b style="font-size:13px;letter-spacing:.1em">🎵 PICK A SONG FOR THE RADIO</b><small class="muted" style="display:block;margin:4px 0 8px">Pick a song and it plays next on the live radio — Meechie's songs mixed with real artists, every genre. The list is long: browse the shelves, tap a genre, or search any artist.</small><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn sm pktab" type="button" id="pk-mine">🔥 Meechie's songs</button><button class="btn ghost sm pktab" type="button" id="pk-real">🎤 Real artists</button></div><form class="dj-search" id="pk-form" style="margin-bottom:8px"><input type="search" id="pk-q" placeholder="Search any artist or song..." aria-label="Search music to pick"><button class="btn sm" type="submit">Search</button></form><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><button class="btn ghost sm" type="button" data-pkgenre="hiphop">🕶️ Hip-Hop</button><button class="btn ghost sm" type="button" data-pkgenre="jazz">🎷 Jazz</button><button class="btn ghost sm" type="button" data-pkgenre="rock">🎸 Rock</button><button class="btn ghost sm" type="button" data-pkgenre="soul">❤️ Soul &amp; R&amp;B</button><button class="btn ghost sm" type="button" data-pkgenre="reggae">🇯🇲 Reggae</button><button class="btn ghost sm" type="button" data-pkgenre="classics">🎺 Classics</button><button class="btn ghost sm" type="button" data-pkgenre="more">🌍 More artists</button></div><div class="dj-list" id="pk-list" style="max-height:300px"></div><b style="font-size:12px;letter-spacing:.1em;display:block;margin-top:12px">📻 SONG REQUESTS — IN THE DJ QUEUE</b><div class="dj-list" id="pk-queue" style="margin-top:6px;max-height:110px"><small class="muted">No picks yet — be the first.</small></div></div>
   </div>
   </div>
 </div>
@@ -6144,7 +6184,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793369767;
+  const MW_DJ_BUILD = 1793369843;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6556,7 +6596,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     body.innerHTML = `<div id="wb-root">
     <div class="wb-top"><span class="onair-lamp" id="wb-lamp"><span class="dot"></span>OFF AIR</span><span class="wb-now" id="wb-now"></span></div>
     <div class="dj-screen"><small>📺 MASTER SCREEN — MUSIC VIDEO · EVERYONE SEES THIS SCREEN LIVE</small>
-    <div class="vstage" id="wb-stage"><div class="vslot" id="wb-vs1"></div><div class="vslot" id="wb-vs2"></div><div class="vstandby" id="wb-vstandby">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="wb-vposter"><img src="/img/radio-promo.jpg" srcset="/img/radio-promo-640.webp 640w, /img/radio-promo-1080.webp 1080w" sizes="100vw" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="wb-vchip" hidden></div></div></div>
+    <div class="stage-row"><aside class="srail" id="wb-rail-l" aria-label="From the shop"></aside><div class="stage-mid"><div class="vstage" id="wb-stage"><div class="vslot" id="wb-vs1"></div><div class="vslot" id="wb-vs2"></div><div class="vstandby" id="wb-vstandby">Meechie is live on the tables — the video mix lands here the moment a music video plays.</div><div class="vposter" id="wb-vposter"><img src="/img/radio-promo.jpg" srcset="/img/radio-promo-640.webp 640w, /img/radio-promo-1080.webp 1080w" sizes="100vw" alt="Meechie's World Radio" loading="lazy" decoding="async"></div><div class="vchip" id="wb-vchip" hidden></div></div><div class="st-shout" id="wb-shout" hidden></div><div class="stage-bar"><button class="btn" type="button" data-rqopen="wb">🎤 SONG REQUEST / SHOUT-OUT</button><span class="rq-mystat" id="wb-mystat"></span></div><div class="rq-form2" id="wb-rqform" hidden><div class="dj-search"><input type="text" id="wb-rq-song" maxlength="100" placeholder="Type a song — Meechie AI finds the video" aria-label="Song to request"><input type="text" id="wb-rq-shout" maxlength="140" placeholder="Shout-out (optional) — it shows when your song plays" aria-label="Shout-out"></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn sm" type="button" data-rqgo="wb">🎵 Request it</button><small class="muted">One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class="rq-results" id="wb-rqres"></div></div></div><aside class="srail" id="wb-rail-r" aria-label="Promotions"></aside></div><div class="stage-strip" id="wb-strip"></div></div>
     <div class="dj-panel wb-band"><h4>🎶 UP NEXT — THE QUEUE</h4><div class="dj-list" id="wb-queue"></div></div>
     <div class="dj-decks wb-decks">${deckA}${deckB}
     <div class="mixer xfbar ws-ctl"><div class="xfrow"><div class="xfvols">${xv("A")}${xv("B")}</div><div class="xfpad big"><span class="xfpl tl">A</span><span class="xfpl tr">B</span><span class="xfpl bl">C</span><span class="xfpl br">D</span><div class="xfdot" id="wb-xfdot"></div></div><div class="xfvols">${xv("C")}${xv("D")}</div></div>
@@ -6652,9 +6692,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     fxSet("noise", fx.noise || 0, Math.round((fx.noise || 0) * 100) + "%");
     fxSet("crush", fx.crush || 0, String(fx.crush || 0));
     document.querySelectorAll(".wb-gate").forEach((x) => x.classList.toggle("on", +x.dataset.v === (+fx.gate || 0)));
-    const q = Array.isArray(S.queue) ? S.queue : [];
+    const q = pkLine.map((p) => ({ title: p.title || "", yt: p.yt || "", pick: true })).concat(Array.isArray(S.queue) ? S.queue : []); // the DJ queue line: listener requests at its head, then his queue
     const qsig = q.length + "|" + q.map((x) => ((x || {}).title || "")).join("~");
-    if (qsig !== wbQSsig) { wbQSsig = qsig; const qEl = document.getElementById("wb-queue"); if (qEl) qEl.innerHTML = q.length ? q.map((x, i) => `<div class="dj-item"><span>${i + 1}. ${(x || {}).yt ? "🎬 " : ""}${E((x || {}).title || "Untitled")}</span></div>`).join("") : `<small class="muted">The queue is empty — Auto-DJ pulls from the full rotation.</small>`; }
+    if (qsig !== wbQSsig) { wbQSsig = qsig; const qEl = document.getElementById("wb-queue"); if (qEl) qEl.innerHTML = q.length ? q.map((x, i) => `<div class="dj-item"><span>${(x || {}).pick ? "🎤 " : ""}${i + 1}. ${(x || {}).yt ? "🎬 " : ""}${E((x || {}).title || "Untitled")}</span>${(x || {}).pick ? '<small class="muted">song request</small>' : ""}</div>`).join("") : `<small class="muted">The queue is empty — Auto-DJ pulls from the full rotation.</small>`; }
   }
   setInterval(() => { try { paintWatch(); } catch (_) {} }, 1000);
   function onState(d) {
@@ -6876,7 +6916,8 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       else if (a === "play") { if (!queue.length) { say("The queue is empty — add songs with ＋Q first."); return; } if (!SANDBOX) { playQueueStock(); return; } if (DECKS.some((k) => S[k].playing)) { say("▶ The queue is rolling — the next one in line loads when this deck finishes."); return; } const it = queue.shift(); saveQueue(); paintQueue(); load("A", it).then(() => togglePlay("A")); say("▶ Playing the queue: " + (it.title || "")); }
       return; }
     if (b.dataset.plload != null || b.dataset.pladd != null || b.dataset.pldel != null) { const i = +(b.dataset.plload ?? b.dataset.pladd ?? b.dataset.pldel); const p = playlists[i]; if (!p) return; if (b.dataset.pldel != null) { playlists.splice(i, 1); savePlaylists(); paintPlaylists(); paintSched(); say("Playlist deleted: " + (p.name || "")); } else if (b.dataset.plload != null) { queue = (p.items || []).slice(); saveQueue(); paintQueue(); say("📂 In the queue: " + (p.name || "") + " — press ▶ Play the queue, or it rolls in as decks finish."); } else { queue = queue.concat(p.items || []); saveQueue(); paintQueue(); say("📂 Added to the queue: " + (p.name || "")); } return; }
-    if (b.dataset.sched) { const t = $("#sched-time"), sel = $("#sched-sel"); const p = sel ? playlists[+sel.value] : null; if (!t || !t.value) { say("Pick a time first."); return; } if (!p) { say("Save a playlist first — the schedule runs playlists."); return; } sched.push({ id: "s" + Date.now().toString(36), time: t.value, name: p.name || "", items: (p.items || []).slice() }); sched.sort((x, y) => (x.time < y.time ? -1 : 1)); saveSched(); paintSched(); say("📅 Scheduled: " + (p.name || "") + " every day at " + t.value + "."); return; }
+    if (b.dataset.rqplload != null || b.dataset.rqpladd != null) { const items = rqPlQueueItems(); if (!items.length) { say("Listener Requests is empty right now."); return; } if (b.dataset.rqplload != null) { queue = items.slice(); saveQueue(); paintQueue(); say("🎧 In the queue: Listener Requests — press ▶ Play the queue, or it rolls in as decks finish."); } else { queue = queue.concat(items); saveQueue(); paintQueue(); say("🎧 Added to the queue: Listener Requests"); } return; }
+    if (b.dataset.sched) { const t = $("#sched-time"), sel = $("#sched-sel"); const p = sel ? (sel.value === "rq" ? (rqPlItems && rqPlItems.length ? { name: "Listener Requests", items: rqPlQueueItems() } : null) : playlists[+sel.value]) : null; if (!t || !t.value) { say("Pick a time first."); return; } if (!p) { say("Save a playlist first — the schedule runs playlists."); return; } sched.push({ id: "s" + Date.now().toString(36), time: t.value, name: p.name || "", items: (p.items || []).slice() }); sched.sort((x, y) => (x.time < y.time ? -1 : 1)); saveSched(); paintSched(); say("📅 Scheduled: " + (p.name || "") + " every day at " + t.value + "."); return; }
     if (b.dataset.sdel != null) { const en = sched[+b.dataset.sdel]; sched.splice(+b.dataset.sdel, 1); saveSched(); paintSched(); if (en) say("Schedule removed: " + (en.name || "") + " at " + (en.time || "")); return; }
     if (b.dataset.play) return togglePlay(b.dataset.play);
     if (b.dataset.cue0) { const k = b.dataset.cue0, s = S[k], d = deck(k); s.pos = 0; if (s.playing) s.start = Date.now(); try { d.el.currentTime = 0; } catch (_) {} save(true); return; }
@@ -7101,15 +7142,25 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      a queue that differs from this window's — the keeper played some of it, or
      his other booth window changed it — adopt the server's truth. */
   function adoptQueue(d) { if (!d || !Array.isArray(d.queue)) return; if (JSON.stringify(d.queue) === JSON.stringify(queue)) return; queue = d.queue.slice(); try { localStorage.setItem("mw-dj-queue", JSON.stringify(queue)); } catch (_) {} paintQueue(); }
-  function paintQueue() { const rich = $("#dj-queue"); if (rich) rich.innerHTML = queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${q.yt ? "🎬 " : ""}${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qup="${i}" aria-label="Move up">▲</button><button class="btn ghost sm" type="button" data-qdn="${i}" aria-label="Move down">▼</button><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : '<small class="muted">Nothing queued — tap ＋Q on any song or video and it plays next, in order.</small>'; const box = $("#ad-queue"); if (box) box.innerHTML = queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : '<small class="muted">Queue is empty — Auto-DJ pulls from the full library rotation.</small>'; }
+  /* The listener requests waiting at the head of the DJ queue line (owner,
+   * 2026-10-30: requests live in the setup own queue, not a side list) —
+   * they play ahead of the queued songs, so every Up Next list shows them
+   * first, marked as requests, never editable as queue rows. reqCache is
+   * the booth own subscription; on a viewer tab it stays empty and the
+   * Watch list merges the same line from pkLine instead. */
+  function pendingPickRows() {
+    const rows = (Array.isArray(reqCache) ? reqCache : []).filter((r) => r.data && r.data.kind === "pick" && !usedPicks.has(r.id)).sort((a, b) => (a.data.at || 0) - (b.data.at || 0));
+    return rows.map((r, i) => `<div class="dj-item"><span title="${E(r.data.title || "")}">🎤 ${i + 1}. ${r.data.yt ? "🎬 " : ""}${E(r.data.title || "")}</span><small class="muted">song request${r.data.by ? " · " + E(r.data.by) : ""} — plays next</small></div>`).join("");
+  }
+  function paintQueue() { const pk = pendingPickRows(); const rich = $("#dj-queue"); if (rich) rich.innerHTML = pk + (queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${q.yt ? "🎬 " : ""}${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qup="${i}" aria-label="Move up">▲</button><button class="btn ghost sm" type="button" data-qdn="${i}" aria-label="Move down">▼</button><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : (pk ? "" : '<small class="muted">Nothing queued — tap ＋Q on any song or video and it plays next, in order.</small>')); const box = $("#ad-queue"); if (box) box.innerHTML = pk + (queue.length ? queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : (pk ? "" : '<small class="muted">Queue is empty — Auto-DJ pulls from the full library rotation.</small>')); }
   onMain("click", (e) => { const b = e.target.closest("[data-qdel],[data-qup],[data-qdn]"); if (!b) return; if (b.dataset.qdel != null) queue.splice(+b.dataset.qdel, 1); else if (b.dataset.qup != null) { const i = +b.dataset.qup; if (i > 0) { const t = queue[i - 1]; queue[i - 1] = queue[i]; queue[i] = t; } } else if (b.dataset.qdn != null) { const i = +b.dataset.qdn; if (i < queue.length - 1) { const t = queue[i + 1]; queue[i + 1] = queue[i]; queue[i] = t; } } saveQueue(); paintQueue(); });
   /* playlists: name a queue and keep it (owner ask, 2026-10-27 — "que that
      list or make a play list") */
   let playlists = []; try { playlists = JSON.parse(localStorage.getItem("mw-dj-playlists") || "[]"); } catch (_) {}
   const savePlaylists = () => { try { localStorage.setItem("mw-dj-playlists", JSON.stringify(playlists)); } catch (_) {} };
   let plOpen = false;
-  function paintPlaylists() { const box = $("#dj-playlists"); if (box) box.innerHTML = !plOpen ? "" : (playlists.length ? playlists.map((p, i) => `<div class="dj-item"><span title="${E(p.name || "")}">📂 ${E(p.name || "")} <small class="muted">${(p.items || []).length} in line</small></span><button class="btn ghost sm" type="button" data-plload="${i}">Load</button><button class="btn ghost sm" type="button" data-pladd="${i}">＋ Add</button><button class="btn ghost sm" type="button" data-pldel="${i}">✕</button></div>`).join("") : '<small class="muted">No playlists saved yet — build a queue and tap 💾 Save as playlist.</small>'); paintSchedSel(); }
-  function paintSchedSel() { const sel = $("#sched-sel"); if (!sel) return; const cur = sel.value; sel.innerHTML = playlists.length ? playlists.map((p, i) => `<option value="${i}">${E(p.name || "")} (${(p.items || []).length})</option>`).join("") : '<option value="">Save a playlist first</option>'; if (cur !== "" && playlists[+cur]) sel.value = cur; }
+  function paintPlaylists() { const box = $("#dj-playlists"); if (box) box.innerHTML = !plOpen ? "" : (playlists.length ? playlists.map((p, i) => `<div class="dj-item"><span title="${E(p.name || "")}">📂 ${E(p.name || "")} <small class="muted">${(p.items || []).length} in line</small></span><button class="btn ghost sm" type="button" data-plload="${i}">Load</button><button class="btn ghost sm" type="button" data-pladd="${i}">＋ Add</button><button class="btn ghost sm" type="button" data-pldel="${i}">✕</button></div>`).join("") : '<small class="muted">No playlists saved yet — build a queue and tap 💾 Save as playlist.</small>'); if (plOpen && box && rqPlItems && rqPlItems.length) box.innerHTML += `<div class="dj-item"><span title="Saved automatically from listener song requests">🎧 Listener Requests <small class="muted">${rqPlItems.length} saved · shuffles into the rotation on its own</small></span><button class="btn ghost sm" type="button" data-rqplload="1">Load</button><button class="btn ghost sm" type="button" data-rqpladd="1">＋ Add</button></div>`; paintSchedSel(); }
+  function paintSchedSel() { const sel = $("#sched-sel"); if (!sel) return; const cur = sel.value; sel.innerHTML = playlists.length ? playlists.map((p, i) => `<option value="${i}">${E(p.name || "")} (${(p.items || []).length})</option>`).join("") : '<option value="">Save a playlist first</option>'; if (rqPlItems && rqPlItems.length) sel.innerHTML += `<option value="rq">🎧 Listener Requests (${rqPlItems.length})</option>`; if (cur === "rq" && rqPlItems && rqPlItems.length) sel.value = "rq"; else if (cur !== "" && playlists[+cur]) sel.value = cur; }
   /* ---------- schedule: what plays when (owner ask, 2026-10-27) ----------
      Entries live in this browser AND in the station/schedule doc, which the
      station keeper reads — so a scheduled playlist runs even with the booth
@@ -7124,6 +7175,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   setInterval(() => { if (!OWNER() || !leadDrive() || !sched.length) return; const hm = etHM(), day = etDay(); if (!hm || !day) return; let fired = {}; try { fired = JSON.parse(localStorage.getItem("mw-dj-sched-fired") || "{}"); } catch (_) {} sched.forEach((en) => { const key = en.id + "@" + day; if (en.time === hm && fired[key] !== 1) { fired[key] = 1; try { localStorage.setItem("mw-dj-sched-fired", JSON.stringify(fired)); } catch (_) {} fireSched(en); } }); }, 20000);
   let schedDocTried = false;
   function loadSchedDoc() { if (schedDocTried || !OWNER()) return; schedDocTried = true; try { const d = DBF(); if (!d) { schedDocTried = false; return; } d.doc("station/schedule").get().then((doc) => { const e = doc && doc.exists && doc.data() && doc.data().entries; if (Array.isArray(e)) { sched = e; saveSchedLocal(); paintSched(); } }).catch(() => {}); } catch (_) {} }
+  /* Listener Requests playlist (server-kept at station/rqplaylist):
+     every accepted song request lands there on its own — the keeper
+     folds picks in as they arrive and as they play. Shown here like
+     any playlist: Load it, Add it, or put it on the schedule. The
+     keeper also shuffles it into the unattended rotation by itself,
+     so it plays even if he never opens this panel. */
+  let rqPlItems = null, rqPlTried = false;
+  function rqPlQueueItems() { return (rqPlItems || []).filter((r) => r && (r.yt || r.src)).map((r) => ({ src: r.src || "", yt: r.yt || "", title: r.title || "", cover: r.cover || "", dur: +r.dur || 0 })); }
+  function loadRqPlaylist() { if (rqPlTried || !OWNER()) return; rqPlTried = true; try { const d = DBF(); if (!d) { rqPlTried = false; return; } d.doc("station/rqplaylist").get().then((doc) => { const it = doc && doc.exists && doc.data() && doc.data().items; if (Array.isArray(it)) { rqPlItems = it; paintPlaylists(); paintSchedSel(); } }).catch(() => {}); } catch (_) {} }
   /* the library rotation: a shuffled bag of the whole library, refilled when it runs out —
      this is what the station plays on Auto-DJ when the hand-picked queue is empty */
   let bag = [], lastTitle = "";
@@ -7205,20 +7265,22 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * random and removed, no repeats until it empties), then, with Auto-DJ
    * on, the pool and the library rotation. Null when nothing is available. */
   async function pickNextItem() {
-    let item = null;
+    let item = null, pendingShout = null;
     const pick = reqCache.filter((r) => r.data && r.data.kind === "pick" && !usedPicks.has(r.id)).sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
     if (pick) {
       // a pick plays once, even if deleting its request fails (it used to come back on every handover)
       usedPicks.add(pick.id); try { localStorage.setItem("mw-dj-usedpicks", JSON.stringify([...usedPicks].slice(-200))); } catch (_) {}
-      if (pick.data.src && okUrl(pick.data.src)) item = { src: pick.data.src, title: pick.data.title || "", cover: pick.data.cover || "", dur: pick.data.dur || 0 };
+      if (pick.data.yt && /^[A-Za-z0-9_-]{11}$/.test(String(pick.data.yt))) item = { yt: String(pick.data.yt), title: pick.data.title || "", cover: pick.data.cover || ("https://i.ytimg.com/vi/" + pick.data.yt + "/hqdefault.jpg"), dur: +pick.data.dur || 0 };
+      else if (pick.data.src && okUrl(pick.data.src)) item = { src: pick.data.src, title: pick.data.title || "", cover: pick.data.cover || "", dur: pick.data.dur || 0 };
       else if (pick.data.iaId) { const src = await iaFile(pick.data.iaId); if (src) item = { src, title: pick.data.title || "", cover: "https://archive.org/services/img/" + encodeURIComponent(pick.data.iaId) }; }
       DBF()?.doc("requests/" + pick.id).delete().catch(() => {});
-      if (item) say("🎵 Listener pick up next: " + item.title);
+      if (item) { say("🎵 Listener pick up next: " + item.title); if (pick.data.shoutout) pendingShout = { text: String(pick.data.shoutout).slice(0, 140), by: String(pick.data.by || "A listener").slice(0, 40), title: item.title, at: Date.now() }; }
     }
     // The queue SHUFFLES through the decks (owner, 2026-10-28): draw at
     // random and remove the pick, so nothing repeats until the queue is empty.
     if (!item) item = drawQueueItem();
     if (item && item.yt && ageIsLocked(item.yt)) { ageNote(item); item = null; } // defense in depth: a locked video never leaves this picker, whatever path produced it
+    if (item && pendingShout) S.shout = pendingShout; // the shout-out rides the shared state, so every screen shows it while the requested song plays
     if (!item && !S.autodj) return null;
     if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
     return item;
@@ -7825,9 +7887,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     // not signed in (or the member write refused): the station itself takes song
     // picks and text requests from anyone — the booth sees them like any request
     const body = { kind: data.kind, title: data.title || "", cover: data.cover || "", dur: +data.dur || 0, text: data.text || "" };
-    if (data.kind === "pick") { let src = data.src || ""; if (!src && data.iaId) { try { src = await iaFile(data.iaId); } catch (_) {} } if (!src) throw new Error("no src"); body.src = src; }
+    if (data.yt) { body.yt = data.yt; body.shoutout = data.shoutout || ""; body.by = data.by || ""; body.rqid = data.rqid || ""; }
+    if (data.kind === "pick" && !data.yt) { let src = data.src || ""; if (!src && data.iaId) { try { src = await iaFile(data.iaId); } catch (_) {} } if (!src) throw new Error("no src"); body.src = src; }
     const r = await fetch("/api/station", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error("request refused");
+    if (!r.ok) { let code = ""; try { code = (await r.json()).error || ""; } catch (_) {} const err = new Error(code || "request refused"); err.code = code; throw err; }
   }
   $("#rq-form").addEventListener("submit", async (e) => {
     e.preventDefault(); const v = $("#rq-text").value.trim(); if (!v) return;
@@ -7868,7 +7931,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const rows = docs.map((x) => ({ id: x.id, data: x.data() || {} })).filter((r) => r.data.kind !== "djlive").sort((a, b) => (b.data.at || 0) - (a.data.at || 0)).slice(0, 30);
     box.innerHTML = rows.length ? rows.map((r) => r.data.kind === "voice"
       ? `<div class="req"><b>🎙️ Voice drop</b><small>${agoT(r.data.at || Date.now())}</small><span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost sm" type="button" data-rqplay="${E(r.data.url)}">▶ Hear it</button><button class="btn sm" type="button" data-rqair="${E(r.id)}|${E(r.data.url)}|${E(r.data.asset || "")}">📡 Play on air</button><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Done</button></span></div>`
-      : r.data.kind === "pick" ? `<div class="req"><span>🎵 Listener pick: ${E(r.data.title || "")}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`
+      : r.data.kind === "pick" ? `<div class="req"><span>🎵 Listener pick${r.data.yt ? " 📺" : ""}: ${E(r.data.title || "")}${r.data.by ? ` <small class="muted">by ${E(r.data.by)}</small>` : ""}${r.data.shoutout ? `<span style="display:block">📣 ${E(r.data.shoutout)}</span>` : ""}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`
       : `<div class="req"><span>${E(r.data.text || "")}</span><small>${agoT(r.data.at || Date.now())}</small><span><button class="btn ghost sm" type="button" data-rqdone="${E(r.id)}">✓ Played</button></span></div>`).join("") : '<small class="muted">Nothing yet. Listener requests land here.</small>';
     renderDjReqs();
   }
@@ -8180,7 +8243,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   }
   function subPicks() {
     if (pkSubbed || SANDBOX) return; const d = DBF(); if (!d) return; pkSubbed = true;
-    try { d.collection("requests").limit(100).onSnapshot((s) => { const box = $("#pk-queue"); if (!box) return; const picks = s.docs.map((x) => x.data() || {}).filter((r) => r.kind === "pick").sort((a, b) => (a.at || 0) - (b.at || 0)); box.innerHTML = picks.length ? picks.map((p, i) => `<div class="dj-item"><span title="${E(p.title || "")}">${i + 1}. ${E(p.title || "")}</span><small class="muted">listener pick</small></div>`).join("") : '<small class="muted">No picks yet — be the first.</small>'; }, () => { pkSubbed = false; }); } catch (_) { pkSubbed = false; }
+    try { d.collection("requests").limit(100).onSnapshot((s) => { const picks = s.docs.map((x) => x.data() || {}).filter((r) => r.kind === "pick" && !r.played).sort((a, b) => (a.at || 0) - (b.at || 0)); pkLine = picks; const box = $("#pk-queue"); if (box) box.innerHTML = picks.length ? picks.map((p, i) => `<div class="dj-item"><span title="${E(p.title || "")}">${i + 1}. ${p.yt ? "🎬 " : ""}${E(p.title || "")}</span><small class="muted">song request${p.by ? " · " + E(p.by) : ""}</small></div>`).join("") : '<small class="muted">No requests yet — be the first.</small>'; try { rqPaintMine(); } catch (_) {} }, () => { pkSubbed = false; }); } catch (_) { pkSubbed = false; }
   }
   onMain("click", async (e) => {
     if (e.target.closest("#pk-mine")) { pkTab = "mine"; paintPkList(); return; }
@@ -8200,6 +8263,157 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   });
   const pkFormEl = $("#pk-form");
   if (pkFormEl) pkFormEl.addEventListener("submit", (e) => { e.preventDefault(); const q = $("#pk-q").value.trim(); if (!q) return; pkTab = "search"; pkItems = null; pkLabel = "Search: " + q; paintPkList(); loadSearch(q); });
+
+  /* ---------- stage rails + the song request slot + shout-outs ----------
+   * (owner, 2026-10-30) The master stage wears his shop and promos on
+   * both sides, and the request slot sits under the screen on the Radio
+   * stage and the Watch stage. A request joins the DJ SETUP'S OWN QUEUE
+   * through the existing listener-pick path — no separate listener
+   * queue: the pick waits at the head of the queue line (every Up Next
+   * list shows it there) and plays right after the current song. What
+   * is new: Meechie AI finds the video. The type-a-song search rides
+   * ytSearch (the playability-filtered relay: no age-gated, no
+   * embed-blocked, no banned ids), the top playable result is enqueued
+   * as a YouTube pick, and a YouTube pick loads as a video deck — so
+   * when its turn comes its picture takes the master screen through
+   * the same vmix flow as a booth-loaded video. The shout-out rides
+   * the pick and displays on the stages while the song plays. */
+  let pkLine = []; // pending listener picks, FIFO — the head of the DJ queue line, shared by the queue painters
+  let rqMine = null; try { rqMine = JSON.parse(localStorage.getItem("mw-rq-mine") || "null"); } catch (_) { rqMine = null; }
+  let rqLastPos = -1, rqGoneAt = 0, rqSnapSeen = false; // position state machine: -1 = line not seen yet this visit
+  const rqNowTitles = () => DECKS.filter((k) => S[k] && S[k].playing).map((k) => S[k].title || "");
+  function rqMyPos() { if (!rqMine || !rqMine.rqid) return 0; const i = pkLine.findIndex((x) => x && x.rqid && x.rqid === rqMine.rqid); return i >= 0 ? i + 1 : 0; }
+  function rqPaintMine() {
+    rqSnapSeen = true;
+    const pos = rqMyPos();
+    let txt = "";
+    if (rqMine && pos > 0) txt = "🎵 Your request “" + rqMine.title + "” is #" + pos + " in the DJ queue line" + (pos === 1 ? " — up next, right after this song" : "");
+    else if (rqMine && rqGoneAt) txt = "🎵 Your request is starting…";
+    ["#st-mystat", "#wb-mystat"].forEach((sel) => { const el = $(sel); if (el && el.textContent !== txt) el.textContent = txt; });
+    if (!rqMine) { rqLastPos = 0; rqGoneAt = 0; return; }
+    if (rqLastPos === -1) { rqLastPos = pos; if (pos > 0) rqGoneAt = 0; return; } // first sight of the line this visit: paint only, no notices for an older request
+    if (pos > 0) {
+      if (rqLastPos === 0 && !rqGoneAt) say("🎵 You're in the DJ queue line — #" + pos + " for “" + rqMine.title + "”");
+      else if (pos === 1 && rqLastPos > 1) say("⏭ Your request is up next in the DJ queue: " + rqMine.title);
+      rqGoneAt = 0; rqLastPos = pos; return;
+    }
+    // the pick left the line: it is starting (the handover takes a few
+    // seconds, so a short grace runs before calling it dropped)
+    if (rqNowTitles().indexOf(rqMine.title) >= 0) {
+      say("▶ Your song is playing now — and its video is on the master screen 📺 " + rqMine.title);
+      rqMine = null; try { localStorage.removeItem("mw-rq-mine"); } catch (_) {} rqLastPos = 0; rqGoneAt = 0; return;
+    }
+    if (rqLastPos > 0 || rqGoneAt) {
+      if (!rqGoneAt) rqGoneAt = Date.now();
+      else if (Date.now() - rqGoneAt > 20000) { say("Your request left the DJ queue line — if it did not play, request it again."); rqMine = null; try { localStorage.removeItem("mw-rq-mine"); } catch (_) {} rqGoneAt = 0; }
+    }
+    rqLastPos = 0;
+  }
+  function rqPaintShouts() {
+    const sh = S.shout;
+    const on = !!(sh && sh.text && sh.title && rqNowTitles().indexOf(sh.title) >= 0 && (Date.now() - (sh.at || 0)) < 15 * 60000);
+    const html = on ? "📣 <b>" + E(sh.by || "A listener") + "</b> — " + E(sh.text) + " <small class=\"muted\">· with “" + E(sh.title) + "”</small>" : "";
+    ["#st-shout", "#wb-shout"].forEach((sel) => { const el = $(sel); if (!el) return; if (on) { if (el.innerHTML !== html) el.innerHTML = html; el.hidden = false; } else el.hidden = true; });
+  }
+  setInterval(() => { try { rqPaintShouts(); } catch (_) {} try { if (rqSnapSeen) rqPaintMine(); } catch (_) {} }, 3000);
+  const rqResCache = {};
+  let rqBusy = false;
+  async function rqEnqueue(it, shoutout) {
+    const rqid = "r" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const ses = (typeof mySess === "function") ? mySess() : null; const u = ses && ses.user;
+    const by = u ? String(u.name || u.email || "Member").slice(0, 40) : "Guest";
+    const data = { kind: "pick", yt: String(it.id), title: String(it.title || "YouTube video").slice(0, 120), cover: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg", dur: Math.max(0, Math.min(3600, +it.dur || 0)), shoutout: String(shoutout || "").slice(0, 140), by, rqid, at: Date.now() };
+    try { await sendRequest(data); }
+    catch (e) {
+      if (e && e.code === "one_at_a_time") { say("One request at a time — you already have one in the DJ queue line 🎵"); return; }
+      if (e && e.code === "slow_down") { say("Easy — too many requests at once. Give it a minute."); return; }
+      say("That request did not go through — wait a few seconds and try again."); return;
+    }
+    rqMine = { rqid, title: data.title, shoutout: data.shoutout }; try { localStorage.setItem("mw-rq-mine", JSON.stringify(rqMine)); } catch (_) {}
+    say("🎵 Requested: " + data.title + " — it is in the DJ queue line and plays right after the current song.");
+  }
+  async function rqSubmit(surface) {
+    if (rqBusy) return;
+    const songEl = $("#" + surface + "-rq-song"), shoutEl = $("#" + surface + "-rq-shout"), resEl = $("#" + surface + "-rqres");
+    const q = songEl ? songEl.value.trim() : ""; if (!q) { say("Type the song you want first 🎤"); return; }
+    if (rqMine) {
+      if (rqMyPos() > 0) { say("One request at a time — yours is #" + rqMyPos() + " in the DJ queue line 🎵"); return; }
+      if (!rqSnapSeen) { say("Still joining the station — give it a second and tap again."); return; }
+      rqMine = null; try { localStorage.removeItem("mw-rq-mine"); } catch (_) {} // a leftover record whose song already played or left
+    }
+    rqBusy = true;
+    if (resEl) resEl.innerHTML = '<small class="muted">🤖 Meechie AI is finding the video…</small>';
+    try {
+      const res = await ytSearch(q);
+      if (!res || !res.length) { if (resEl) resEl.innerHTML = '<small class="muted">Meechie AI could not find that song on YouTube. Try the artist and song name.</small>'; say("No playable video found for that — try the artist and song name."); return; }
+      const good = res.find((it) => +it.dur >= 45 && +it.dur <= 1200) || res.find((it) => +it.dur > 0);
+      if (good) { await rqEnqueue(good, shoutEl ? shoutEl.value : ""); if (songEl) songEl.value = ""; if (shoutEl) shoutEl.value = ""; if (resEl) resEl.innerHTML = ""; }
+      else { rqResCache[surface] = res.slice(0, 8); if (resEl) resEl.innerHTML = '<small class="muted" style="display:block;margin-bottom:4px">Meechie AI found these but could not confirm a playable length — pick yours and it joins the DJ queue line:</small>' + rqResCache[surface].map((it, i) => `<div class="dj-item"><span title="${E(it.title || "")}">${E(it.title || "")}</span><button class="btn sm" type="button" data-rqpick="${surface}:${i}">🎵 Request this</button></div>`).join(""); }
+    } catch (_) { if (resEl) resEl.innerHTML = '<small class="muted">Search is busy — try again in a moment.</small>'; }
+    finally { rqBusy = false; }
+  }
+  onMain("click", async (e) => {
+    const open = e.target.closest("[data-rqopen]");
+    if (open) { const f = $("#" + open.dataset.rqopen + "-rqform"); if (f) { f.hidden = !f.hidden; if (!f.hidden) { const inp = f.querySelector("input"); if (inp) inp.focus(); } } return; }
+    const go2 = e.target.closest("[data-rqgo]");
+    if (go2) { rqSubmit(go2.dataset.rqgo); return; }
+    const pk = e.target.closest("[data-rqpick]");
+    if (pk) { const parts = pk.dataset.rqpick.split(":"); const it = (rqResCache[parts[0]] || [])[+parts[1]]; if (!it) return; const shoutEl = $("#" + parts[0] + "-rq-shout"); await rqEnqueue(it, shoutEl ? shoutEl.value : ""); const resEl = $("#" + parts[0] + "-rqres"); if (resEl) resEl.innerHTML = ""; const songEl = $("#" + parts[0] + "-rq-song"); if (songEl) songEl.value = ""; if (shoutEl) shoutEl.value = ""; }
+  });
+  onMain("keydown", (e) => { if (e.key !== "Enter") return; const inp = e.target.closest && e.target.closest("#st-rq-song,#st-rq-shout,#wb-rq-song,#wb-rq-shout"); if (!inp) return; e.preventDefault(); rqSubmit(inp.id.indexOf("wb-") === 0 ? "wb" : "st"); });
+  /* rails: his shop — the same /api/store + /api/shopify union the shop
+   * page and the house ads use (Printify first; a title the first feed
+   * already showed suppresses its duplicate) — plus his promotions and
+   * the live announcement. Small thumbs, lazy-loaded, fetched only when
+   * a stage is actually on screen. */
+  const RAIL_PROMOS = [
+    { tag: "MEECHIE'S WORLD TV", html: "<b>MW TV</b> — the master screen, full-screen. Whatever Meechie puts on it takes over the station.", href: "#mwtv" },
+    { tag: "THE GAMES", html: "<b>Coin Jackpot</b> — play the games, win coins, cash out real money.", href: "#games" },
+    { tag: "FROM THE STORES", html: "<b>New drops land in the Shop first</b> — apparel, books and more, straight from Meechie's World.", href: "#shop" },
+    { tag: "THE RADIO", html: "<b>Requests are open</b> — tap the request button under the screen and Meechie AI lines your song up in the DJ queue.", href: "#radio" }
+  ];
+  let railData = null, railIx = 0, railBusy = false;
+  async function railLoad() {
+    if (railData || railBusy) return; railBusy = true;
+    try {
+      const rs = await Promise.allSettled([fetch("/api/store").then((r) => r.json()), fetch("/api/shopify").then((r) => r.json())]);
+      const pf = (rs[0].status === "fulfilled" && rs[0].value && Array.isArray(rs[0].value.products) ? rs[0].value.products : []).map((x) => ({ title: x.title, img: x.img, price: x.price, url: x.url, src: "Printify" }));
+      const sh = (rs[1].status === "fulfilled" && rs[1].value && Array.isArray(rs[1].value.products) ? rs[1].value.products : []).filter((x) => /^https:\/\//.test(x.url || "")).map((x) => ({ title: x.title, img: x.img, price: x.price, url: (x.digital && x.buy) ? x.buy : x.url, src: "Shopify" }));
+      const seen = new Set(), mix = [];
+      pf.concat(sh).forEach((x) => { const k = String(x.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); if (!x.title || !x.url || !k || seen.has(k)) return; seen.add(k); mix.push(x); });
+      for (let i = mix.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = mix[i]; mix[i] = mix[j]; mix[j] = t; }
+      railData = mix;
+    } catch (_) { if (!railData) railData = []; }
+    railBusy = false; railPaint();
+  }
+  function railCard(x) { return `<a class="srcard" href="${E(x.url)}" target="_blank" rel="noopener">${x.img ? `<img src="${E(x.img)}" alt="" loading="lazy" decoding="async">` : ""}<span class="srcard-b"><span class="srcard-t">🛍️ ${E(x.src || "SHOP")}</span><span class="srcard-n">${E(x.title)}</span>${x.price ? `<span class="srcard-p">${E(x.price)}</span>` : ""}</span></a>`; }
+  function railPromo(pr) { return `<a class="srpromo" href="${pr.href}"><span class="srcard-t">${E(pr.tag)}</span><br>${pr.html}</a>`; }
+  function railAnnounce() { try { const bar = document.getElementById("announce"), t = document.getElementById("announce-text"); if (bar && !bar.hidden && t && t.textContent.trim()) return { tag: "📣 FROM MEECHIE", html: E(t.textContent.trim().slice(0, 160)), href: "#home" }; } catch (_) {} return null; }
+  function railPaint() {
+    const prods = railData || [];
+    const take = (n, off) => { const out = []; for (let i = 0; i < n && prods.length; i++) out.push(prods[(off + i) % prods.length]); return out; };
+    const ann = railAnnounce();
+    [["#st-rail-l", "#st-rail-r"], ["#wb-rail-l", "#wb-rail-r"]].forEach(([ls, rs]) => {
+      const l = $(ls), r = $(rs); if (!l && !r) return;
+      if (l) l.innerHTML = '<span class="srail-h">🛍️ FROM THE SHOP</span>' + (ann ? railPromo(ann) : "") + take(2, railIx * 2).map(railCard).join("");
+      if (r) r.innerHTML = '<span class="srail-h">🔥 PROMOS</span>' + railPromo(RAIL_PROMOS[railIx % RAIL_PROMOS.length]) + take(2, railIx * 2 + 2).map(railCard).join("");
+    });
+    const item = prods.length ? prods[railIx % prods.length] : null;
+    const pr = RAIL_PROMOS[railIx % RAIL_PROMOS.length];
+    ["#st-strip", "#wb-strip"].forEach((sel) => {
+      const el = $(sel); if (!el) return;
+      if (item && railIx % 2 === 0) { el.innerHTML = `<a href="${E(item.url)}" target="_blank" rel="noopener">${item.img ? `<img src="${E(item.img)}" alt="" loading="lazy" decoding="async">` : ""}<span>🛍️ ${E(item.title)}${item.price ? " · " + E(item.price) : ""}</span></a>`; el.classList.add("on"); }
+      else { el.innerHTML = `<a href="${pr.href}"><span>${E(pr.tag)} — ${pr.html.replace(/<[^>]+>/g, "")}</span></a>`; el.classList.add("on"); }
+    });
+  }
+  setInterval(() => {
+    if (document.hidden) return;
+    const stb = document.getElementById("st-ytbox"), wbv = document.getElementById("v-watch");
+    const active = (stb && !stb.hidden) || (wbv && !wbv.hidden);
+    if (!active) return;
+    if (!railData) { railLoad(); return; }
+    railIx++; railPaint();
+  }, 12000);
 
   /* ---------- ticker ---------- */
   $("#dj-ticker-set").addEventListener("click", () => { S.ticker = $("#dj-ticker-in").value.trim().slice(0, 140); save(true); paintStation(); say(S.ticker ? "Ticker is on the station card." : "Ticker cleared."); });
@@ -8241,7 +8455,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
-    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; document.documentElement.classList.toggle("popdj-guest", document.documentElement.classList.contains("popdj") && !own); if (own) { libList(); paintOwner(); paintQueue(); paintPlaylists(); paintSched(); loadSchedDoc(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
+    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; document.documentElement.classList.toggle("popdj-guest", document.documentElement.classList.contains("popdj") && !own); if (own) { libList(); paintOwner(); paintQueue(); paintPlaylists(); paintSched(); loadSchedDoc(); loadRqPlaylist(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
     showOwnerUI = show; show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
     // scroll past the tables and the side buttons/floats fold away — nothing covers the decks

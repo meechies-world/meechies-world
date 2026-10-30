@@ -35,6 +35,51 @@ async function writeDoc(env, path, coll, data) {
   await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", path, coll, null, null, Date.now()).run();
 }
 
+/* LISTENER REQUESTS PLAYLIST (2026-10-30, owner: requests are SAVED
+ * into a playlist that shuffles itself back into the rotation — "Im
+ * building this to be automated on my side"). Every accepted song
+ * request is folded ONCE into the station/rqplaylist doc: dedupe by
+ * video id (or file src / archive id), requester + time kept, repeat
+ * requests bump the count. Caps: 200 records (newest kept), 400
+ * folded pick paths remembered. Three folders, one helper: the guest
+ * door at acceptance, the keeper at consumption (takePick), and a
+ * throttled harvest in the station tick that folds any pick still
+ * waiting in the line (member picks land in the same collection
+ * through the DB facade, so the harvest is what catches those the
+ * moment they are placed — no owner action anywhere). The booth
+ * reads the doc like the schedule doc and shows it in Playlists as
+ * "Listener Requests" with Load / Add / schedule, like any playlist. */
+const RQPL_PATH = "station/rqplaylist", RQPL_CAP = 200, RQPL_SEEN = 400;
+let rqHvAt = 0;
+const rqKeyOf = (d) => (d && d.yt ? "yt:" + d.yt : d && d.src ? "s:" + d.src : d && d.iaId ? "ia:" + d.iaId : "");
+async function rqRecOf(d) {
+  const rec = { k: rqKeyOf(d), yt: /^[A-Za-z0-9_-]{11}$/.test(String(d.yt || "")) ? String(d.yt) : "", src: String(d.src || ""), iaId: String(d.iaId || ""), title: String(d.title || "").slice(0, 120), cover: String(d.cover || "").slice(0, 300), dur: Math.max(0, Math.min(3600, +d.dur || 0)), by: String(d.by || (d.guest ? "Guest" : "")).slice(0, 40), at: +d.at || Date.now(), n: 1 };
+  if (rec.src.includes("supabase.co")) rec.src = "";
+  if (!rec.src && rec.iaId) { // resolve now so the record plays everywhere (booth playlists included), not just in the keeper lane
+    try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(rec.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { rec.src = "https://archive.org/download/" + encodeURIComponent(rec.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); if (!rec.dur) rec.dur = Math.round(+f.length || 0); } } catch (_) {}
+  }
+  if (rec.yt && !rec.cover) rec.cover = "https://i.ytimg.com/vi/" + rec.yt + "/hqdefault.jpg";
+  return (rec.yt || rec.src || rec.iaId) ? rec : null;
+}
+async function rqPlaylistAdd(env, entries) {
+  const fresh = [];
+  for (const e of entries || []) { if (e && e.d && e.d.kind === "pick" && rqKeyOf(e.d)) fresh.push(e); }
+  if (!fresh.length) return;
+  const doc = (await readDoc(env, RQPL_PATH)) || { name: "Listener Requests", items: [], seen: [] };
+  const list = Array.isArray(doc.items) ? doc.items : [];
+  const seen = Array.isArray(doc.seen) ? doc.seen : [];
+  const byK = new Map(list.map((r) => [r.k, r]));
+  let dirty = false;
+  for (const e of fresh) {
+    if (e.path && seen.includes(e.path)) continue;
+    if (e.path) { seen.push(e.path); dirty = true; }
+    const k = rqKeyOf(e.d), ex = byK.get(k);
+    if (ex) { ex.n = (ex.n || 1) + 1; if (e.d.by) ex.by = String(e.d.by).slice(0, 40); ex.at = +e.d.at || ex.at || Date.now(); }
+    else { const rec = await rqRecOf(e.d); if (rec) { list.unshift(rec); byK.set(k, rec); } }
+  }
+  if (dirty) { doc.name = "Listener Requests"; doc.items = list.slice(0, RQPL_CAP); doc.seen = seen.slice(-RQPL_SEEN); doc.updatedAt = Date.now(); await writeDoc(env, RQPL_PATH, "station", doc); }
+}
+
 /* AIDJ-BEGIN */
 /* AI DJ (PR-C1, 2026-10-30 — owner direction: "Make my ai robot auto pick
  * my youtube songs ive serched enough for it to know what i want"): when
@@ -463,6 +508,21 @@ export async function onRequestGet({ request, env }) {
     await writeDoc(env, "radio/dj", "radio", S);
   }
 
+  // REQUESTS PLAYLIST HARVEST: fold any listener pick still waiting in
+  // the line into station/rqplaylist (throttled per isolate; the fold
+  // itself is once-per-pick via the doc seen list). Runs BEFORE the
+  // booth-fresh stand-down below on purpose: requests must be saved
+  // even while his booth is live at the tables.
+  if (now - rqHvAt > 45000) {
+    rqHvAt = now;
+    try {
+      const rr = await env.DB.prepare("select path, data from docs where coll = 'requests'").all();
+      const picks = [];
+      for (const r of rr.results || []) { let d = null; try { d = JSON.parse(r.data || "null"); } catch (_) {} if (d && d.kind === "pick" && !d.played) picks.push({ d, path: r.path }); }
+      if (picks.length) await rqPlaylistAdd(env, picks);
+    } catch (_) {}
+  }
+
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
   // 2026-10-28): unless a deck is impossibly past its end — flagged playing
   // with a known duration, its timeline more than 60s beyond the end of the
@@ -566,6 +626,7 @@ export async function onRequestGet({ request, env }) {
   };
   const startDeckItem = (k, item, startMs) => {
     S[k] = { src: item.src || "", yt: item.yt || "", title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
+    if (item.shout) S.shout = item.shout; // a listener shout-out rides the station state while the requested song plays (painted by the stage shout lines)
     S.log = [{ t: item.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== item.title)).slice(0, 30);
     brainPlay(k, item); // DJ BRAIN: the unattended start is a play the brain learns from
   };
@@ -579,14 +640,28 @@ export async function onRequestGet({ request, env }) {
     const picks = [];
     for (const r of rows) { try { const d = JSON.parse(r.data); if (d && d.kind === "pick" && !d.played) picks.push({ path: r.path, d }); } catch (_) {} }
     picks.sort((a, b) => (a.d.at || 0) - (b.d.at || 0));
+    const shoutOf = (d, title) => d.shoutout ? { text: String(d.shoutout).slice(0, 140), by: String(d.by || "A listener").slice(0, 40), title, at: now } : null;
     for (const p of picks) {
-      let src = p.d.src || "", iaDur = 0;
+      let src = p.d.src || "", iaDur = 0, ytItem = null;
       if (src && src.includes("supabase.co")) src = "";
+      if (!src && !p.d.iaId && p.d.yt) {
+        // a YouTube song request (Meechie AI found the video at the
+        // request slot under the screen): it plays as a video deck,
+        // exactly like a queued video, so its picture takes the master
+        // screen. Only with a known length — an unknown-length video
+        // could stall the unattended station, so that pick is NOT
+        // deleted here; it waits in the line for the live booth, whose
+        // player learns the length as it loads.
+        const yid = String(p.d.yt);
+        if (/^[A-Za-z0-9_-]{11}$/.test(yid) && +p.d.dur > 0) ytItem = { src: "", yt: yid, title: p.d.title || "", cover: p.d.cover || ("https://i.ytimg.com/vi/" + yid + "/hqdefault.jpg"), dur: +p.d.dur };
+        else continue;
+      }
       if (!src && p.d.iaId) {
         try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); iaDur = +f.length || 0; } } catch (_) {}
       }
       try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); } catch (_) {}
-      if (src) { const ev = cleanBrainEvent({ type: "request", src, title: p.d.title || "", at: now, live: !!S.live }, "keeper"); if (ev) brainEvts.push(ev); return { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) }; }
+      if (ytItem) { const ev = cleanBrainEvent({ type: "request", yt: ytItem.yt, title: ytItem.title, at: now, live: !!S.live }, "keeper"); if (ev) brainEvts.push(ev); const sh = shoutOf(p.d, ytItem.title); if (sh) ytItem.shout = sh; try { await rqPlaylistAdd(env, [{ d: p.d, path: p.path }]); } catch (_) {} return ytItem; }
+      if (src) { const ev = cleanBrainEvent({ type: "request", src, title: p.d.title || "", at: now, live: !!S.live }, "keeper"); if (ev) brainEvts.push(ev); const item = { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) }; const sh = shoutOf(p.d, item.title); if (sh) item.shout = sh; try { await rqPlaylistAdd(env, [{ d: p.d, path: p.path }]); } catch (_) {} return item; }
     }
     return null;
   };
@@ -614,6 +689,29 @@ export async function onRequestGet({ request, env }) {
     }
     return null;
   }
+  // LISTENER REQUESTS LANE: draws from the saved requests playlist
+  // (station/rqplaylist) with a no-repeat bag — S.rqBag holds the keys
+  // not yet drawn this cycle and refills shuffled when it empties, the
+  // same bag discipline as the library rotation. Unattended rules
+  // match the rest of the tail: a video needs a known length, dead
+  // file hosts never play.
+  const rqLaneItem = async () => {
+    const doc = await readDoc(env, RQPL_PATH);
+    const items = doc && Array.isArray(doc.items) ? doc.items : [];
+    if (!items.length) return null;
+    const playable = (r) => !!r && ((r.yt && +r.dur > 0) || (r.src && !/supabase/i.test(r.src)) || !!r.iaId);
+    let bag = Array.isArray(S.rqBag) ? S.rqBag.filter((k) => items.some((r) => r.k === k)) : [];
+    if (!bag.length) { bag = items.filter(playable).map((r) => r.k); for (let i = bag.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = bag[i]; bag[i] = bag[j]; bag[j] = t; } }
+    while (bag.length) {
+      const k = bag.shift(); const r = items.find((x) => x.k === k);
+      if (!r || !playable(r)) continue;
+      if (r.yt) { S.rqBag = bag; return { src: "", yt: r.yt, title: r.title || "", cover: r.cover || ("https://i.ytimg.com/vi/" + r.yt + "/hqdefault.jpg"), dur: +r.dur || 0 }; }
+      if (r.src && !/supabase/i.test(r.src)) { S.rqBag = bag; return { src: r.src, title: r.title || "", cover: r.cover || "", dur: +r.dur || 0 }; }
+      if (r.iaId) { try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(r.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { S.rqBag = bag; return { src: "https://archive.org/download/" + encodeURIComponent(r.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"), title: r.title || "", cover: r.cover || "", dur: +r.dur || Math.round(+f.length || 0) }; } } catch (_) {} }
+    }
+    S.rqBag = bag; return null;
+  };
+
   const nextItem = async (avoidSrc) => {
     const pk = await takePick();
     if (pk) return pk;
@@ -653,6 +751,16 @@ export async function onRequestGet({ request, env }) {
         if (it.yt && +it.dur > 0) return { src: "", yt: String(it.yt), title: String(it.title || "").slice(0, 120), cover: String(it.cover || "").slice(0, 300), dur: +it.dur };
       }
     }
+    // REQUESTS PLAYLIST LANE (2026-10-30): the tail of the rotation is
+    // where nothing fresher is waiting, so the settled priority above
+    // (listener picks, schedule, his queue, AI picks) is untouched.
+    // Every third tail draw offers the saved Listener Requests
+    // playlist a turn alongside the pool/bag; when the playlist is
+    // empty or yields nothing playable the draw falls through to the
+    // pool/bag alternation exactly as before, and the pool/bag order
+    // between themselves never changes (mixAlt flips independently).
+    S.rqTail = (S.rqTail | 0) + 1;
+    if (S.rqTail % 3 === 0) { const rqItem = await rqLaneItem(); if (rqItem) return rqItem; }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
     if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
     const t = await bagPick(avoidSrc);
@@ -845,9 +953,18 @@ export async function onRequestPost({ request, env }) {
   if (b.kind === "pick") {
     const title = String(b.title || "").slice(0, 120).trim();
     const src = String(b.src || "");
+    const yt = /^[A-Za-z0-9_-]{11}$/.test(String(b.yt || "")) ? String(b.yt) : "";
     const okSrc = src.startsWith("https://archive.org/download/") || src.startsWith(new URL(request.url).origin + "/m/assets/");
-    if (!title || !okSrc) return json({ ok: false, error: "bad_pick" }, 422);
-    data = { kind: "pick", title, src, cover: String(b.cover || "").slice(0, 300), dur: Math.max(0, Math.min(3600, +b.dur || 0)), at: now, guest: true, ip };
+    if (!title || (!okSrc && !yt)) return json({ ok: false, error: "bad_pick" }, 422);
+    // one active request per visitor (owner rule, 2026-10-30): a pick
+    // from this same visitor already waiting in the DJ queue line
+    // blocks a second. Picks are deleted as they play, so any stored
+    // pick carrying this ip is still active.
+    const mine = await env.DB.prepare("select count(*) as n from docs where coll = 'requests' and data like ? and data like ?").bind('%"ip":"' + ip + '"%', '%"kind":"pick"%').first();
+    if (mine && mine.n >= 1) return json({ ok: false, error: "one_at_a_time" }, 409);
+    const extra = { shoutout: String(b.shoutout || "").slice(0, 140), by: String(b.by || "").slice(0, 40), rqid: /^[A-Za-z0-9-]{1,40}$/.test(String(b.rqid || "")) ? String(b.rqid) : "" };
+    if (yt) data = { kind: "pick", yt, title, cover: String(b.cover || "").slice(0, 300), dur: Math.max(0, Math.min(3600, +b.dur || 0)), at: now, guest: true, ip, ...extra };
+    else data = { kind: "pick", title, src, cover: String(b.cover || "").slice(0, 300), dur: Math.max(0, Math.min(3600, +b.dur || 0)), at: now, guest: true, ip, ...extra };
   } else if (b.kind === "text") {
     const text = String(b.text || "").slice(0, 120).trim();
     if (!text) return json({ ok: false, error: "bad_text" }, 422);
@@ -855,5 +972,6 @@ export async function onRequestPost({ request, env }) {
   } else return json({ ok: false, error: "bad_kind" }, 422);
   const path = "requests/g" + now.toString(36) + Math.random().toString(36).slice(2, 8);
   await writeDoc(env, path, "requests", data);
+  if (data && data.kind === "pick") { try { await rqPlaylistAdd(env, [{ d: data, path }]); } catch (_) {} }
   return json({ ok: true });
 }
