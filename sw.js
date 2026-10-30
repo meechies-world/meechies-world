@@ -2,7 +2,7 @@
 // powers offline music — songs a listener plays (or saves from the Offline
 // shelf) are stored on the device and keep playing with no internet — and keeps
 // the site frame on the device (the device-saved skeleton): the HTML shell and
-// every version-stamped script and stylesheet are served cache-first from a
+// every version-stamped script, stylesheet and shell-art image is served cache-first from a
 // skeleton cache named for the current build stamp, so a return visit downloads
 // only a tiny version check plus live data. Files without a version stamp still
 // come from the network first, and /api and media are never cached by the
@@ -95,7 +95,7 @@ async function shellStrategy(e) {
 }
 
 // --- device-saved skeleton: begin ---
-// The frame (HTML shell + version-stamped scripts and styles) lives on the
+// The frame (HTML shell + version-stamped scripts, styles and shell art) lives on the
 // device in a cache named mw-skeleton-<build>. The build stamp comes from
 // version.json, whose build field always equals the js/dj.js?v= stamp in
 // the shell (the invariant the site monitor enforces), so a cached frame
@@ -228,9 +228,12 @@ async function skelNavStrategy(e) {
 function skelStamped(url) {
   // only files the site versions with a ?v= stamp may be served cache-first;
   // a stamped URL never changes under its stamp (the site serves /js and
-  // /css as immutable), so the exact URL is the version key
+  // /css as immutable, and stamped shell art under /img joins them under
+  // the same invariant), so the exact URL is the version key. Unstamped
+  // /img still goes network-first in the fetch handler below: member
+  // photos and other changing images are never frozen by this rule
   if (url.origin !== self.location.origin) return false;
-  if (url.pathname.indexOf("/js/") !== 0 && url.pathname.indexOf("/css/") !== 0) return false;
+  if (url.pathname.indexOf("/js/") !== 0 && url.pathname.indexOf("/css/") !== 0 && url.pathname.indexOf("/img/") !== 0) return false;
   const v = url.searchParams.get("v");
   return !!v && /^\d+$/.test(v);
 }
