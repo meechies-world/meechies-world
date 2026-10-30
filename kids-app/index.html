@@ -718,10 +718,13 @@ window.onYouTubeIframeAPIReady = function () {
         } else if (e.data === YT.PlayerState.ENDED) {
           var endedId = list[cur] ? list[cur].id : "";
           var endedSubj = endedId ? (KIDS_SUBJ[endedId] || "") : "";
+          var wasLast = list.length > 0 && cur === list.length - 1;
           if (endedId) recordWatched(endedId);
           advance(1); // next in the list — wraps to the top (kidsNextIndex)
           var newSubj = list[cur] ? (KIDS_SUBJ[list[cur].id] || "") : "";
-          if (newSubj && endedSubj && newSubj !== endedSubj) kidsTransition(newSubj);
+          if (wasLast && kidsListKind) kidsGoodbye();
+          else if (newSubj && endedSubj && newSubj !== endedSubj) kidsTransition(newSubj);
+          else if (!newSubj && endedSubj) kidsPraise();
         }
       }
     }
@@ -959,7 +962,7 @@ $("kids-csave").addEventListener("click", function () {
   var age = parseInt($("kids-cage").value, 10); if (isNaN(age)) age = 3;
   try { localStorage.setItem(LS_CHILD, JSON.stringify({ name: $("kids-cname").value.trim(), age: age })); } catch (e) {}
   paintChild(); paintShelves(); paintAfter(); paintClassrooms();
-  kidsSay(welcomeLine());
+  welcomeSay();
 });
 $("kids-cskip").addEventListener("click", function () {
   try { localStorage.setItem(LS_CHILD, JSON.stringify({ name: "", age: 3, skipped: true })); } catch (e) {}
@@ -1036,15 +1039,17 @@ function paintMode() {
 }
 function setMode(v) { try { if (v) localStorage.setItem(LS_MODE, v); else localStorage.removeItem(LS_MODE); } catch (e) {} paintMode(); }
 $("kids-mode-school").addEventListener("click", function () { setMode("school"); });
-$("kids-mode-after").addEventListener("click", function () { setMode("after"); kidsSay(afterLine()); });
+$("kids-mode-after").addEventListener("click", function () { setMode("after"); sayKeyed(KIDS_LINES.after, "after", "afterschool"); });
 $("kids-mode-auto").addEventListener("click", function () { setMode(""); });
 $("kids-endtime-save").addEventListener("click", function () { var v = $("kids-endtime").value || "15:00"; try { localStorage.setItem(LS_ENDTIME, v); } catch (e) {} paintMode(); });
 
 /* ---------- start the day (school or after school) ---------- */
-function startPlaylist(ids, note) {
+var kidsListKind = ""; // "school" | "after" while a built day is playing
+function startPlaylist(ids, note, kind) {
   var nl = [];
   ids.forEach(function (id) { var v = kidsLibraryVideo(id); if (v) nl.push({ id: v.id, title: v.title }); });
   if (!nl.length) return;
+  kidsListKind = kind || "";
   list = nl; cur = 0; saveList(); paintList();
   if (playerReady && player) playIndex(0);
   $("kids-now").textContent = note;
@@ -1055,11 +1060,11 @@ $("kids-daystart").addEventListener("click", function () {
     var ids = [];
     KIDS_FUN.forEach(function (v) { if (v.lvl <= band) ids.push(v.id); });
     var mv = (band <= 1 ? KIDS_MOVIES.teach : KIDS_MOVIES.fun)[0]; if (mv) ids.push(mv.id);
-    startPlaylist(ids, "After School! Fun videos first, then a movie. Tap Lock the screen when you're ready.");
-    kidsSay(afterLine());
+    startPlaylist(ids, "After School! Fun videos first, then a movie. Tap Lock the screen when you're ready.", "after");
+    sayKeyed(KIDS_LINES.after, "after", "afterschool");
   } else {
-    startPlaylist(SCHOOL_DAY[band].slice(), BAND_NAMES[band] + " School Day — lessons lined up in order. Tap Lock the screen when you're ready to hand it over.");
-    kidsSay(dayIntroLine());
+    startPlaylist(SCHOOL_DAY[band].slice(), BAND_NAMES[band] + " School Day — lessons lined up in order. Tap Lock the screen when you're ready to hand it over.", "school");
+    sayKeyed(KIDS_LINES.dayIntro, "day", "school_start");
   }
 });
 
@@ -1080,21 +1085,46 @@ Array.prototype.forEach.call(document.querySelectorAll(".kids-choose"), function
 });
 
 /* ---------- Meechie talks ----------
-   Scripted line bank (no per-play cost). Speech goes through the
-   site's own voice path, the same one Meechie AI uses: POST /api/ai
-   { model: "@cf/deepgram/aura-1", text } with the site session token,
-   and the returned audio is played. Any failure is silent — the words
-   still show in Meechie's bubble. Speech never fires while the PIN
-   pad is up. (When Malik's own recorded/cloned voice lands on /api/ai,
-   this app inherits it automatically.) */
+   Scripted line bank (no per-play cost). Every line resolves through
+   ONE seam — meechieSpeak(text, key) — in this order:
+     1. Malik's OWN recorded clip for that line key, when one exists
+        (MEECHIE_CLIPS below, files under /media/meechie-voice/).
+        He records the lines, drops the mp3s in, and the app speaks
+        with his real voice — zero code changes.
+     2. The site's TTS (POST /api/ai, the same voice path Meechie AI
+        uses). A future cloned-voice provider swaps in at this one
+        function and every talk point follows.
+   Lines that carry the child's name always use TTS (names vary, a
+   recording cannot). Any failure anywhere is silent — the words still
+   show in Meechie's bubble. Speech never fires while the PIN pad is
+   up, and the parent toggle (mw-kids-voice, default on) rules all. */
+var MEECHIE_CLIPS = {
+  welcome: "/media/meechie-voice/welcome.mp3",
+  school_start: "/media/meechie-voice/school_start.mp3",
+  afterschool: "/media/meechie-voice/afterschool.mp3",
+  goodbye: "/media/meechie-voice/goodbye.mp3",
+  faith_line: "/media/meechie-voice/faith_line.mp3",
+  praise_1: "/media/meechie-voice/praise_1.mp3",
+  praise_2: "/media/meechie-voice/praise_2.mp3",
+  praise_3: "/media/meechie-voice/praise_3.mp3",
+  subject_reading: "/media/meechie-voice/subject_reading.mp3",
+  subject_talking: "/media/meechie-voice/subject_talking.mp3",
+  subject_naming: "/media/meechie-voice/subject_naming.mp3",
+  subject_family: "/media/meechie-voice/subject_family.mp3",
+  subject_math: "/media/meechie-voice/subject_math.mp3",
+  subject_languages: "/media/meechie-voice/subject_languages.mp3",
+  subject_music: "/media/meechie-voice/subject_music.mp3",
+  subject_funtime: "/media/meechie-voice/subject_funtime.mp3",
+  subject_movietime: "/media/meechie-voice/subject_movietime.mp3"
+};
 var LS_VOICE = "mw-kids-voice", KIDS_TTS_MODEL = "@cf/deepgram/aura-1";
-var kidsAudio = null, kidsWarmed = false;
+var kidsAudio = null, kidsWarmed = false, clipMiss = {};
 function voiceOn() { try { return localStorage.getItem(LS_VOICE) !== "0"; } catch (e) { return true; } }
 function paintVoiceBtn() { var b = $("kids-voice-btn"); if (b) b.textContent = "Voice: " + (voiceOn() ? "on" : "off"); }
 $("kids-voice-btn").addEventListener("click", function () {
   try { localStorage.setItem(LS_VOICE, voiceOn() ? "0" : "1"); } catch (e) {}
   paintVoiceBtn();
-  if (voiceOn()) kidsSay("My voice is on. Let's learn something fun!");
+  if (voiceOn()) kidsSay("My voice is on. Let's learn something fun!", null);
 });
 function pinPadUp() { var w = $("kids-pinpad-wrap"); return !!(w && !w.hidden); }
 function kidsSession() { try { var sess = JSON.parse(localStorage.getItem("mw-cf-session") || "null"); return sess && sess.access_token ? sess.access_token : ""; } catch (e) { return ""; } }
@@ -1106,8 +1136,7 @@ function warmKidsAudio() {
     var p = kidsAudio.play(); if (p && p.catch) p.catch(function () {});
   } catch (e) {}
 }
-function kidsSpeakAudio(text) {
-  if (!voiceOn() || pinPadUp()) return;
+function ttsSpeak(text) { // provider step 2: the site's TTS voice
   var tok = kidsSession(); if (!tok) return;
   fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ model: KIDS_TTS_MODEL, text: text }) })
     .then(function (r) { if (!r.ok || !/^audio\//.test(r.headers.get("content-type") || "")) throw new Error("tts"); return r.blob(); })
@@ -1120,7 +1149,24 @@ function kidsSpeakAudio(text) {
     })
     .catch(function () {});
 }
-function kidsSay(text) { var b = $("kids-says"); if (b) b.textContent = text; kidsSpeakAudio(text); }
+function clipSpeak(url, fallback) { // provider step 1: Malik's recording
+  if (clipMiss[url]) { fallback(); return; }
+  if (!kidsAudio) { kidsAudio = new Audio(); kidsAudio.playsInline = true; }
+  var done = false;
+  kidsAudio.onerror = function () { if (done) return; done = true; clipMiss[url] = true; fallback(); };
+  kidsAudio.src = url;
+  var p = kidsAudio.play();
+  if (p && p.then) p.then(function () { done = true; }).catch(function () { if (!done) { done = true; clipMiss[url] = true; fallback(); } });
+  else done = true;
+}
+/* THE VOICE SEAM — the only function that turns a line into sound. */
+function meechieSpeak(text, key) {
+  if (!voiceOn() || pinPadUp()) return;
+  var clip = key ? MEECHIE_CLIPS[key] : null;
+  if (clip) { clipSpeak(clip, function () { ttsSpeak(text); }); return; }
+  ttsSpeak(text);
+}
+function kidsSay(text, key) { var b = $("kids-says"); if (b) b.textContent = text; meechieSpeak(text, key); }
 var KIDS_LINES = {
   welcome: [
     "Hey{name}! Welcome to Meechie's World for Kids — I am Meechie, your teacher. Let's learn something fun today!",
@@ -1135,6 +1181,15 @@ var KIDS_LINES = {
     "School's out{name}! Time for fun videos and a movie!",
     "You did the learning — now it is movie time{name}!"
   ],
+  praise: [
+    "Great job! You are learning so much.",
+    "Wonderful work! Keep it up, superstar.",
+    "You did it! Meechie is proud of you."
+  ],
+  goodbye: [
+    "You did it — great job today! That is all for now. See you next time, superstar!",
+    "What a day of learning! Great job. See you next time!"
+  ],
   transit: {
     "Reading": ["Great job! Next up — reading time. ABCs, let's go!", "You are doing amazing. Now let's read and sing our ABCs!"],
     "Talking": ["Wonderful! Now let's practice our words — say them with me!", "Great talking is next — repeat after the teacher!"],
@@ -1148,21 +1203,37 @@ var KIDS_LINES = {
     "Movie Time": ["Movie time! Get comfy — this is a good one.", "Lights down, movie on. Enjoy the show!"]
   }
 };
-var kidsLineIx = {};
+var SUBJECT_KEYS = {
+  "Reading": "subject_reading", "Talking": "subject_talking", "Naming Things": "subject_naming",
+  "Family": "subject_family", "Math & Art": "subject_math", "Languages": "subject_languages",
+  "Faith": "faith_line", "Music": "subject_music", "Fun Time": "subject_funtime", "Movie Time": "subject_movietime"
+};
+var kidsLineIx = {}, kidsPraiseN = 0;
 function pickLine(arr, key) { if (!arr || !arr.length) return ""; var i = kidsLineIx[key] || 0; kidsLineIx[key] = i + 1; return arr[i % arr.length]; }
 function nameBit() { var c = loadChild(); return c && c.name ? " " + c.name : ""; }
 function fillName(txt) { return txt.replace("{name}", nameBit()); }
-function welcomeLine() { return fillName(pickLine(KIDS_LINES.welcome, "welcome")); }
-function dayIntroLine() { return fillName(pickLine(KIDS_LINES.dayIntro, "day")); }
-function afterLine() { return fillName(pickLine(KIDS_LINES.after, "after")); }
-function kidsTransition(subj) { var arr = KIDS_LINES.transit[subj]; if (arr) kidsSay(fillName(pickLine(arr, "t-" + subj))); }
+/* Keyed lines: with a child name set, the named text goes to TTS (a
+   recording cannot say names); with no name, the plain line is used
+   and the recorded clip for the key gets first shot. */
+function sayKeyed(lines, ixKey, clipKey) {
+  var raw = pickLine(lines, ixKey);
+  if (nameBit()) kidsSay(fillName(raw), null);
+  else kidsSay(raw.replace("{name}", "").replace(/\s+/g, " ").trim(), clipKey);
+}
+function welcomeSay() { sayKeyed(KIDS_LINES.welcome, "welcome", "welcome"); }
+function kidsTransition(subj) { var arr = KIDS_LINES.transit[subj]; if (arr) kidsSay(pickLine(arr, "t-" + subj), SUBJECT_KEYS[subj] || null); }
+function kidsPraise() { kidsPraiseN = (kidsPraiseN % 3) + 1; kidsSay(pickLine(KIDS_LINES.praise, "praise"), "praise_" + kidsPraiseN); }
+function kidsGoodbye() { sayKeyed(KIDS_LINES.goodbye, "goodbye", "goodbye"); }
 /* first tap anywhere: warm the voice up (autoplay rules) + greet once */
 var kidsGreeted = false;
 document.addEventListener("pointerdown", function () {
   warmKidsAudio();
   if (!kidsGreeted) {
     kidsGreeted = true;
-    setTimeout(function () { kidsSay(effectiveMode() === "after" ? afterLine() : welcomeLine()); }, 350);
+    setTimeout(function () {
+      if (effectiveMode() === "after") sayKeyed(KIDS_LINES.after, "after", "afterschool");
+      else welcomeSay();
+    }, 350);
   }
 });
 
