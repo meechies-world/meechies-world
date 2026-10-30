@@ -865,15 +865,11 @@ body.dj-on #dj-livealert,html.popdj #dj-livealert,html.gated #dj-livealert{displ
 .wpl-nm span{color:#9a917c;font-size:12.5px}
 .wpl-pr{color:#f0cf78;white-space:nowrap}
 body[data-view="dj"] #dj-livealert{display:none}
-#dj-mini{position:fixed;top:64px;right:10px;width:208px;height:max-content;max-width:calc(100vw - 20px);z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+#dj-mini{position:static;width:auto;height:max-content;max-width:none;background:#000;border-top:1px solid var(--gold-lo);border-bottom:1px solid var(--gold-lo);overflow:hidden}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
 #dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
-#dj-mini #mn-pop{display:none}
-#dj-mini .mn-bar{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
-#dj-mini.mn-drag .mn-bar{cursor:grabbing}
 #dj-mini .vstage{border:0;border-radius:0}
-@media(max-width:760px){#dj-mini{top:calc(env(safe-area-inset-top,0px) + 56px)!important;bottom:auto!important;left:0!important;right:0!important;width:auto!important;max-width:none!important;border-left:0;border-right:0;border-radius:0}#dj-mini .mn-grip{display:none}#dj-mini .mn-bar{cursor:default}#dj-mini #mn-pop{display:block}}
 html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-owner [data-ckey]{position:relative}
 #dj-owner [data-ckey].ck-off{display:none!important}
@@ -1104,11 +1100,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-station h3{background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #2b2b30;border-radius:8px;padding:6px 9px}
 #dj-booth-root #dj-owner [data-slip].on,#dj-booth-root #dj-owner [data-roll].on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.4)}
 #dj-booth-root #dj-owner .edivb.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.4)}
-#dj-mini{border:3px solid #0a0a0c;outline:1px solid #2c2c30}
-#dj-mini .mn-grip{position:absolute;right:0;bottom:0;width:24px;height:24px;z-index:5;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 52%,rgba(240,207,120,.65) 52%,rgba(240,207,120,.65) 64%,transparent 64%,transparent 76%,rgba(240,207,120,.65) 76%,rgba(240,207,120,.65) 88%,transparent 88%)}
-#dj-mini .mn-row{display:flex;align-items:stretch}
-#dj-mini .mn-row .vstage{flex:1 1 auto;width:auto;min-width:0}
-#dj-mini .mn-chip-l{display:none}
+#dj-mini .mn-row{display:flex;align-items:stretch;justify-content:center;max-width:780px;margin:0 auto;padding:0 6px}
+#dj-mini .mn-row .vstage{flex:0 1 640px;width:100%;min-width:0}
+#dj-mini .mn-chip-l{display:block;width:54px;flex:none;margin:4px 4px 4px 0}
 #dj-mini .mn-chipcol{display:flex;flex-direction:column;gap:4px;width:54px;flex:none;padding:4px 4px 4px 0}
 #dj-mini .mn-rqbtn{background:linear-gradient(180deg,#2a2110,#171106);border:1px solid var(--gold-lo);color:var(--gold-hi,#f0cf78);border-radius:8px;font-size:17px;line-height:1;padding:7px 0;cursor:pointer}
 #dj-mini .mn-chip{overflow:hidden;border-radius:6px;background:#100d07}
@@ -1119,12 +1113,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 #dj-mini .mn-chip-t{display:block;font:700 7.5px var(--body);letter-spacing:.08em;color:var(--muted);padding:3px 4px 0}
 #dj-mini .mn-chip-p{flex:1 1 auto}
 #dj-mini .mn-chip-p .mn-chip-n{max-height:64px}
-#dj-mini .mn-rqwrap{padding:0 6px}
+#dj-mini .mn-rqwrap{padding:0 6px;max-width:780px;margin:0 auto}
 #dj-mini .rq-mystat{display:block;font-size:10px;color:var(--gold-hi,#f0cf78);padding:2px 0}
 #dj-mini .rq-mystat:empty{display:none}
 #dj-mini .rq-form2{padding:2px 0 6px}
 #dj-mini .mn-chip[hidden]{display:none!important}
-@media(max-width:760px){#dj-mini #mn-close{display:none}#dj-mini .mn-chip-l{display:block;width:15%;min-width:44px;max-width:64px;flex:none;margin:4px 0 4px 4px}#dj-mini .mn-chipcol{width:52px}}
+@media(max-width:760px){#dj-mini .mn-row{max-width:none;margin:0;padding:0}#dj-mini .mn-row .vstage{flex:1 1 auto}#dj-mini .mn-chip-l{width:15%;min-width:44px;max-width:64px;margin:4px 0 4px 4px}#dj-mini .mn-chipcol{width:52px}#dj-mini .mn-rqwrap{max-width:none;margin:0}}
 #dj-owner .xfpad{background:linear-gradient(135deg,#17181a,#0b0b0d);border:1px solid #2e2e33;box-shadow:inset 0 1px 0 rgba(255,255,255,.05),inset 0 0 18px #000}
 #dj-owner .xfdot{background:linear-gradient(180deg,#f2f2f5,#9a9aa2 50%,#55555c);border:1px solid #000;box-shadow:0 3px 8px rgba(0,0,0,.6)}
 #dj-owner .dj-top{border-bottom:2px solid #26272b;box-shadow:0 1px 0 rgba(240,207,120,.25)}
@@ -1482,13 +1476,15 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // the booth moves into its own DJ view — its own section, nothing but DJing
   const boothEl = document.getElementById("dj-owner"), boothHome = document.getElementById("dj-booth-root");
   if (boothEl && boothHome) boothHome.appendChild(boothEl);
-  // the mini master screen: one floating rectangle on every page, so the live
-  // music video follows viewers around the whole site (never in the Playground)
+  // the mini master screen: the IN-FLOW MASTER BAND (owner, 2026-10-30
+  // 11:50) — a permanent strip built into the shell under the header
+  // chrome, so the live music video is part of every page itself and
+  // the view content pushes down below it (never in the Playground)
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; }
   if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go(vsBroadcast() && !(S.vstream || {}).hidden ? "mwtv" : "radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
-  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>⤢</button><button type='button' id='mn-close' aria-label='Hide the mini screen'>✕</button></div><div class='mn-row'><aside class='mn-chip mn-chip-l' id='mn-chip-l' hidden></aside><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><aside class='mn-chipcol'><button type='button' class='mn-rqbtn' data-rqopen='mn' aria-label='Request a song — Meechie AI finds the video'>🎤</button><div class='mn-chip mn-chip-p' id='mn-chip-p' hidden></div></aside></div><div class='mn-rqwrap'><span class='rq-mystat' id='mn-mystat'></span><div class='rq-form2' id='mn-rqform' hidden><div class='dj-search'><input type='text' id='mn-rq-song' maxlength='100' placeholder='Type a song — Meechie AI finds the video' aria-label='Song to request'><input type='text' id='mn-rq-shout' maxlength='140' placeholder='Shout-out (optional) — it shows when your song plays' aria-label='Shout-out'></div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='btn sm' type='button' data-rqgo='mn'>🎵 Request it</button><small class='muted'>One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class='rq-results' id='mn-rqres'></div></div></div><div class='mn-grip' id='mn-grip' title='Drag to resize the screen'></div>"; document.body.appendChild(mn); mn.querySelector("#mn-close").addEventListener("click", () => { try { sessionStorage.setItem("mw_mini_off", "1"); } catch (_) {} mn.hidden = true; try { if (window.MW_vsDismiss) window.MW_vsDismiss(); } catch (_) {} }); mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
-    // MANDATORY SCREEN package: the mini lives on document.body, outside
-    // the <main> delegation (onMain only fires inside #dj-root /
+  if (!SANDBOX && !document.getElementById("dj-mini")) { const mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>⤢</button></div><div class='mn-row'><aside class='mn-chip mn-chip-l' id='mn-chip-l' hidden></aside><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><aside class='mn-chipcol'><button type='button' class='mn-rqbtn' data-rqopen='mn' aria-label='Request a song — Meechie AI finds the video'>🎤</button><div class='mn-chip mn-chip-p' id='mn-chip-p' hidden></div></aside></div><div class='mn-rqwrap'><span class='rq-mystat' id='mn-mystat'></span><div class='rq-form2' id='mn-rqform' hidden><div class='dj-search'><input type='text' id='mn-rq-song' maxlength='100' placeholder='Type a song — Meechie AI finds the video' aria-label='Song to request'><input type='text' id='mn-rq-shout' maxlength='140' placeholder='Shout-out (optional) — it shows when your song plays' aria-label='Shout-out'></div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='btn sm' type='button' data-rqgo='mn'>🎵 Request it</button><small class='muted'>One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class='rq-results' id='mn-rqres'></div></div></div>"; const mnBand = document.getElementById("dj-band"); (mnBand || document.body).appendChild(mn); mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
+    // MANDATORY SCREEN package: the mini lives in the shell's band
+    // slot (#dj-band, above <main>), outside the <main> delegation (onMain only fires inside #dj-root /
     // #dj-booth-root), so its request controls wire directly here — into
     // the SAME flow the stage buttons use: the data-rqopen form toggle,
     // rqSubmit("mn"), and the result-pick branch, surface "mn". Nothing
@@ -1502,33 +1498,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
       if (pk && pk.dataset.rqpick.indexOf("mn:") === 0) { const parts = pk.dataset.rqpick.split(":"); const it = (rqResCache[parts[0]] || [])[+parts[1]]; if (!it) return; const shoutEl = document.getElementById("mn-rq-shout"); await rqEnqueue(it, shoutEl ? shoutEl.value : ""); const resEl = document.getElementById("mn-rqres"); if (resEl) resEl.innerHTML = ""; const songEl = document.getElementById("mn-rq-song"); if (songEl) songEl.value = ""; if (shoutEl) shoutEl.value = ""; }
     });
     mn.addEventListener("keydown", (e) => { if (e.key !== "Enter") return; const inp = e.target.closest && e.target.closest("#mn-rq-song,#mn-rq-shout"); if (!inp) return; e.preventDefault(); rqSubmit("mn"); });
-    // the mini screen is DRAGGABLE by its title bar (owner directive 2026-10-26:
-    // "make the music video screen moveable") — drag it anywhere; the spot is
-    // remembered per device and restored on every page
-    const mnBar = mn.querySelector(".mn-bar");
-    // PHONE DOCKED SCREEN (owner, 2026-10-30): on phone widths the mini is
-    // not a floating pop-up at all — the CSS docks the same one box full
-    // width under the site header, in the same spot on every tab, and the
-    // drag / resize / re-place machinery below simply never engages there
-    const mnPhone = () => { try { return matchMedia("(max-width:760px)").matches; } catch (_) { return false; } };
-    const mnPlace = (x, y) => { const w = mn.offsetWidth || 208, h = mn.offsetHeight || 140; x = Math.max(2, Math.min(Math.round(x), Math.max(2, innerWidth - w - 2))); y = Math.max(2, Math.min(Math.round(y), Math.max(2, innerHeight - h - 2))); mn.style.left = x + "px"; mn.style.top = y + "px"; mn.style.right = "auto"; };
-    try { const p = JSON.parse(localStorage.getItem("mw-mini-pos") || "null"); if (p && typeof p.x === "number" && typeof p.y === "number") mnPlace(p.x, p.y); } catch (_) {}
-    // and RESIZEABLE by its corner grip (owner, 2026-10-27): drag the corner
-    // to make the little screen bigger or smaller; the size is remembered
-    // per device, and the stage keeps its 16:9 shape on its own
-    const mnGrip = mn.querySelector(".mn-grip");
-    // As big as it wants (owner, 2026-10-28): no artificial cap — the
-    // mini can grow to the full viewport width. Where the screen is wider
-    // than it is tall, the height caps it instead: the 16:9 stage plus its
-    // title bar must fit the viewport height, so the whole box (grip
-    // included) always stays reachable on screen. The saved width routes
-    // through mnSize too, so a huge desktop size is re-clamped to a small
-    // phone viewport on load instead of stranding off-screen.
-    const mnMaxW = () => Math.max(140, Math.min(innerWidth, (innerHeight - 30) * 16 / 9));
-    const mnSize = (w) => { w = Math.max(140, Math.min(Math.round(w), mnMaxW())); mn.style.width = w + "px"; return w; };
-    try { localStorage.removeItem("mw-mini-w"); } catch (_) {} // owner (2026-10-29): the pop-out opens at its regular size on every visit — a size dragged in an earlier session never carries over; the saved POSITION still restores (mnPlace above) and resizing still works freely within the visit
-    if (mnGrip) mnGrip.addEventListener("pointerdown", (e) => { if (mnPhone()) return; e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sw = mn.getBoundingClientRect().width; try { mnGrip.setPointerCapture(e.pointerId); } catch (_) {} const mv = (ev) => mnSize(sw + (ev.clientX - sx)); const up = () => { mnGrip.removeEventListener("pointermove", mv); mnGrip.removeEventListener("pointerup", up); mnGrip.removeEventListener("pointercancel", up); const r2 = mn.getBoundingClientRect(); mnPlace(r2.left, r2.top); }; mnGrip.addEventListener("pointermove", mv); mnGrip.addEventListener("pointerup", up); mnGrip.addEventListener("pointercancel", up); });
-    mnBar.addEventListener("pointerdown", (e) => { if (e.target.closest("#mn-close") || e.target.closest("#mn-pop")) return; if (mnPhone()) return; e.preventDefault(); const r = mn.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; try { mnBar.setPointerCapture(e.pointerId); } catch (_) {} mn.classList.add("mn-drag"); const mv = (ev) => mnPlace(ev.clientX - dx, ev.clientY - dy); const up = () => { mnBar.removeEventListener("pointermove", mv); mnBar.removeEventListener("pointerup", up); mnBar.removeEventListener("pointercancel", up); mn.classList.remove("mn-drag"); delete mn.dataset.mnDock; try { const r2 = mn.getBoundingClientRect(); localStorage.setItem("mw-mini-pos", JSON.stringify({ x: Math.round(r2.left), y: Math.round(r2.top) })); } catch (_) {} }; mnBar.addEventListener("pointermove", mv); mnBar.addEventListener("pointerup", up); mnBar.addEventListener("pointercancel", up); }); addEventListener("resize", () => { if (mnPhone()) return; const r = mn.getBoundingClientRect(); if (!r.width) return; mnSize(r.width); mnPlace(r.left, r.top); }); }
+    // IN-FLOW MASTER BAND (owner, 2026-10-30 11:50): the band is
+    // furniture, like the header — it is not dragged, resized, placed
+    // or dismissed at any width. The drag / grip / saved-position
+    // machinery that floated this box is gone; the shell slot is its
+    // only home, and presence (miniApply) is its only show/hide.
+  }
   // Malik's rule: the pick-a-song browser sits at the TOP of the booth, above the
   // decks — on wide screens the console grid still parks it at the top of the
   // middle column; everywhere else it now leads the booth instead of hiding
@@ -3126,11 +3101,10 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   const vsUid = () => { const s = mySess(); return (s && s.user && s.user.id) || ""; };
   const vsBroadcast = () => { const v = S.vstream || {}; return !SANDBOX && !!v.on && !!v.meeting; }; // SHARING = LIVE (owner, 2026-10-29: "if im sharing im still live"): a live stream switch lights every LIVE surface, radio switch or not
   const vsArrivedAt = Date.now();   // this page's arrival — the live-share pop-out sequences itself a few seconds after it, and never over the welcome video
-  /* the mini's close button lives in the build region (it runs before this
-   * block), so the dismissal hook travels on window: closing the mini WHILE
-   * the share is what it shows dismisses the pop for THIS share only
-   * (keyed by meeting id) and lifts the session mini-off the close set, so
-   * a later, different share can pop again */
+  /* share-dismissal hook: it travels on window so a surface showing
+   * the share can dismiss the pop for THIS share only (keyed by
+   * meeting id). The band itself has no dismiss (IN-FLOW MASTER BAND,
+   * 2026-10-30); the hook remains for the surfaces that carry one. */
   try { window.MW_vsDismiss = () => { try { const st = document.querySelector("#dj-mini .vstage"); if (st && st.classList.contains("vs-on")) { sessionStorage.setItem("mw_vs_dismissed", (S.vstream || {}).meeting || ""); sessionStorage.removeItem("mw_mini_off"); } } catch (_) {} }; } catch (_) {}
   function vsPopReady() {
     if (SANDBOX || OWNER() || vsPub) return false;
@@ -4742,11 +4716,9 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   /* ONE SOUNDING SCREEN (the mix half of the one-audio-clock rule):
    * exactly one mix screen may carry sound - MW TV when the channel
    * is open, else the Watch screen when it is open, else the station
-   * stage (which is also what keeps the radio audible while a
-   * listener browses the rest of the site on a desktop). The booth
-   * never sounds - the decks own the sound there - and the mini
-   * sounds only in its phone-dock form (MANDATORY SCREEN, in the
-   * ladder below) -
+   * stage. The booth never sounds - the decks own the sound there -
+   * and the mini sounds whenever it is shown as the MASTER BAND
+   * (IN-FLOW MASTER BAND, 2026-10-30, in the ladder below) -
    * an owner's screens never sound (his decks do), and while a live
    * share holds the master NO mix screen sounds at all: the capture
    * carries its own audio, and that is the only sound (takeover). */
@@ -4756,13 +4728,17 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (SANDBOX) return scrView;
     const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return scrTV;
     const wa = document.getElementById("v-watch"); if (wa && !wa.hidden) return scrWatch;
-    /* MANDATORY SCREEN (owner, 2026-10-30: the dock goes "on all tabs
-     * with sound there"): on a phone, while the docked master screen
-     * is up it is the sounding surface — the screen the viewer is
-     * looking at carries the mix, and the hidden station stage mutes.
-     * On desktop the floater stays a silent mirror and the stage
-     * keeps the sound, exactly as before. */
-    try { const mb = document.getElementById("dj-mini"); if (mb && !mb.hidden && matchMedia("(max-width:760px)").matches) return scrMini; } catch (_) {}
+    /* IN-FLOW MASTER BAND (owner, 2026-10-30 11:50: "every tab has
+     * the master screen and plays the sound on the live radio"): the
+     * band is built into the shell on every tab at every width, so
+     * whenever it is shown it is the sounding master surface — the
+     * screen riding above the view carries the mix, and the in-view
+     * station stage (the same mix, further down the radio page)
+     * renders muted. MW TV and Watch keep their places above the
+     * band in this ladder, so exactly one screen ever sounds; the
+     * station stage stays the fallback for the moments the band is
+     * absent, and the gated wall (CSS-hidden furniture) never sounds. */
+    try { const mb = document.getElementById("dj-mini"); if (mb && !mb.hidden && !document.documentElement.classList.contains("gated")) return scrMini; } catch (_) {}
     return scrView;
   }
   /* one screen player for any video platform: the wrapper speaks the YT-ish
@@ -5176,12 +5152,12 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const lv = document.querySelector("#wb-stage video.vslive");
     if (lv && lv.paused && (lv.srcObject || lv.currentSrc)) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
   }
-  /* the mini screen is the MANDATORY SCREEN unit (owner, 2026-10-30):
-   * the same mix in a small rectangle at the top of every page, with
-   * the shop/promo chips and the song-request slot riding its sides.
-   * Presence follows content on every tab (see miniApply); on the
-   * phone dock it also carries the sound, on the desktop floater it
-   * stays a silent mirror and the station screen sounds. */
+  /* the mini screen is the MANDATORY SCREEN unit (owner, 2026-10-30),
+   * placed as the IN-FLOW MASTER BAND (owner, 2026-10-30 11:50): the
+   * same mix in a strip built into the shell under the header chrome,
+   * with the shop/promo chips and the song-request slot riding its
+   * sides. Presence follows content on every tab (see miniApply), and
+   * the band carries the sound at every width (see vmixSndScr). */
   let miniOffVid = "", stInView = false, miniOkVid = "", miniErrVid = "", miniLastVid = "", miniBufVid = "", miniBufAt = 0, miniGateVid = "", miniGateAt = 0, miniGraceVid = "", miniGraceAt = 0;
   /* RADIO MINI FIX (2): durable play evidence for the mini. renderScreen
    * calls this the moment the mini screen featured slot is sampled in
@@ -5195,7 +5171,6 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     const box = $("#dj-mini"); if (!box || SANDBOX) return;
     const tg = vmixTargets(), top = tg.slice().sort((a, b) => b.op - a.op)[0], vid = top ? (S[top.k] && S[top.k].yt) || "" : "";
     if (vid !== miniLastVid) { const prevErr = !!miniLastVid && miniErrVid === miniLastVid; miniErrVid = ""; if (vid && !prevErr) { miniGraceVid = vid; miniGraceAt = Date.now(); } else { miniGraceVid = ""; miniGraceAt = 0; } miniGateVid = ""; miniGateAt = 0; miniLastVid = vid; } // VIEWER-LEG FIX (5): an error latched against a previous video must not hide the new one. RADIO MINI FIX (4): a clean change also opens a proof grace for the new video (only when the outgoing video was not error-latched), and the bounded-gate clock restarts
-    let sessOff = false; try { sessOff = !!sessionStorage.getItem("mw_mini_off"); } catch (_) {}
     const vsM = S.vstream || {};
     const onTV = !!(document.body && document.body.dataset && document.body.dataset.view === "mwtv"); // the MW TV page IS the screen: the mini and its pop-out never double up there
     /* the LIVE-SHARE POP-OUT (owner, 2026-10-29: "I want this screen to
@@ -5205,22 +5180,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * greeting sequence has passed (vsPopReady) and the feed is actually
      * flowing. It bypasses only the per-video close memory (vid vs
      * miniOffVid — with no deck video up, vid is "" and that check alone
-     * would keep the mini down forever); the session close, the stage-in-
-     * view step-aside and the booth-on-screen rule all still apply, and a
-     * hidden share never pops. */
-    /* MANDATORY SCREEN (owner, 2026-10-30 10:54: "we're removing that
-     * part and putting in the mandatory one on all tabs"): presence
-     * follows content, on every tab. The stage-in-view step-aside is
-     * gone on both form factors, and the session close no longer
-     * applies to the phone dock at all — it is the one step-aside
-     * the desktop floater keeps.
-     * What still hides the unit is structural only: the MW TV page
-     * (it IS the screen), the booth on screen (its own master
+     * would keep the mini down forever); the booth-on-screen rule
+     * still applies, and a hidden share never pops. */
+    /* MANDATORY SCREEN (owner, 2026-10-30 10:54) + IN-FLOW MASTER
+     * BAND (owner, 2026-10-30 11:50): presence follows content, on
+     * every tab, and the band is furniture — there is no dismiss at
+     * any width anymore (the ✕ and its session close are gone; a
+     * mw_mini_off flag left in an old session is inert and is never
+     * read). The stage-in-view step-aside and the proof gate stay
+     * gone. What still hides the unit is structural only: the MW TV
+     * page (it IS the screen), the booth on screen (its own master
      * screen), and the sign-in wall / Playground (CSS, as before). */
-    const mnPh = (() => { try { return matchMedia("(max-width:760px)").matches; } catch (_) { return false; } })();
-    const sessGate = sessOff && !mnPh;
-    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !sessGate && !onTV && !document.body.classList.contains("dj-on") && !!((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) && vsPopReady();
-    const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && !sessGate && vid !== miniOffVid && !onTV && !document.body.classList.contains("dj-on")) || vsShareShow;
+    const vsShareShow = !!(vsM.on && vsM.meeting) && !vsM.hidden && !onTV && !document.body.classList.contains("dj-on") && !!((vsShown.track && vsShown.track.readyState === "live") || vsShown.hls) && vsPopReady();
+    const show = ((!!tg.length || !!(vsM.on && vsM.meeting)) && vid !== miniOffVid && !onTV && !document.body.classList.contains("dj-on")) || vsShareShow;
     box.hidden = !show;
     /* MANDATORY SCREEN: the proof gate is GONE. It was the floating
      * mini's rule (RADIO MINI FIX 3/4), and it is what kept vanishing
@@ -5247,20 +5219,13 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
      * step-asides and gates only ever set box.hidden. Rendering is
      * skipped only when there is nothing to render (no targets and
      * no live share - the sandbox already returned at the top), and
-     * the box-lifting layout passes below still run only for a box
-     * that is actually showing. */
+     * the band's placement never enters into it. */
     if (!tg.length && !(vsM.on && vsM.meeting)) return;
-    if (show) {
-    // keep the mini clear of the bottom player bar: if a saved spot leaves it
-    // under the bar, lift it above the bar while the bar is up (the saved spot
-    // itself is untouched — the lift is re-applied on the next pass)
-    try { const pb = document.querySelector(".player-bar"); if (pb && document.body.classList.contains("has-player")) { const pr = pb.getBoundingClientRect(), mr = box.getBoundingClientRect(); if (pr.height > 0 && mr.bottom > pr.top - 4 && mr.left < pr.right && mr.right > pr.left) { box.style.top = Math.max(2, Math.round(pr.top - mr.height - 8)) + "px"; box.style.left = Math.round(mr.left) + "px"; box.style.right = "auto"; } } } catch (_) {}
-    try {
-      const docked = box.dataset.mnDock === "1";
-      if (!box.style.left && innerWidth >= 1100 && document.body.dataset.view === "community") { const side = document.querySelector("#v-community .side"); if (side) { const sr = side.getBoundingClientRect(), mr2 = box.getBoundingClientRect(); if (sr.width > 0 && mr2.right > sr.left - 8 && mr2.top < sr.bottom && mr2.bottom > sr.top) { box.style.left = Math.max(2, Math.round(sr.left - mr2.width - 12)) + "px"; box.style.right = "auto"; box.dataset.mnDock = "1"; } } }
-      else if (docked && document.body.dataset.view !== "community") { box.style.left = ""; box.style.right = ""; delete box.dataset.mnDock; }
-    } catch (_) {}
-    }
+    /* IN-FLOW MASTER BAND: no box-lifting layout passes remain —
+     * the band sits in the document flow under the shell chrome, so
+     * nothing can overlap it and it never has to dodge the player
+     * bar or a sidebar. Placement is the slot's business, not this
+     * pass's; showing is box.hidden and nothing else. */
     const sndM = vmixSndScr();
     await renderScreen(scrMini, sndM !== scrMini, sndM === scrMini ? mix : 1, sndM === scrMini ? duck : 1);
     /* VIEWER-LEG FIX (5/6) begin */
@@ -6278,7 +6243,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793373390;
+  const MW_DJ_BUILD = 1793374200;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
