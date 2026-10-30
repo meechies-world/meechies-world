@@ -1156,6 +1156,21 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
 .decktop{display:flex;gap:10px;align-items:center;justify-content:center;width:100%}
 .drail{display:grid;gap:6px}
 .drail .btn{white-space:nowrap}
+/* PER-DECK SOUND PADS (owner, 2026-10-30): a compact rail of the jingle board
+   pads inside every deck, left of the platter, painted by paintPadRails from
+   the same SYNTH + S.pads data as the board below the decks. The rail is the
+   flex crumple zone of the decktop row: flex-basis 46px with an outsized
+   shrink factor and min-width 0, so when a deck runs tight the RAIL gives up
+   width first and the platter and the drail keep the sizes they have always
+   had. contain:size with align-self stretch means the rail fills exactly the
+   row height the platter sets and its pads scroll inside that height: the
+   decktop row never grows taller and the deck bank never grows wider. */
+.decktop .dpads{flex:0 100 46px;min-width:0;min-height:0;align-self:stretch;contain:size;display:grid;grid-template-columns:1fr;grid-auto-rows:38px;gap:4px;overflow-y:auto;overflow-x:hidden;padding:3px;border:1px solid var(--line);border-radius:10px;background:rgba(240,207,120,.04);scrollbar-width:none}
+.decktop .dpads::-webkit-scrollbar{display:none}
+.dpad{display:flex;align-items:center;justify-content:center;width:100%;height:38px;padding:0;border-radius:8px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font-size:16px;line-height:1;white-space:nowrap;overflow:hidden;cursor:pointer;transition:filter .15s ease,transform .15s ease}
+.dpad.custom{border-style:dashed}
+.dpad small{font-size:9px;font-weight:700;margin-left:2px}
+.dpad.hit{filter:brightness(1.9);transform:scale(.93)}
 /* WATCH THE SETUP: the spectator bank mirrors the booth as the placements
    leave it - one bank split A/B, center cluster, C/D, with the queue band
    directly under the master screen */
@@ -1174,7 +1189,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
   // on this device — fold a deck down to just its platter, wave and Play row
   const secState = (() => { try { return Object.assign({ tempo: 1, cues: 0, sound: 1 }, JSON.parse(localStorage.getItem("mw-dsec-v1") || "{}")); } catch (_) { return { tempo: 1, cues: 0, sound: 1 }; } })();
   const secShut = (n) => (secState[n] ? "" : " shut");
-  const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="decktop"><div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div><div class="drail"><button class="btn sm" type="button" data-play="${k}">▶ Play</button><button class="btn ghost sm" type="button" data-cue0="${k}">⏮ Cue</button><button class="btn ghost sm" type="button" data-brake="${k}">🛑 Brake</button></div></div>
+  const deckHTML = (k) => `<div class="deck" data-deck="${k}"><h4>DECK ${k}</h4><div class="decktop">${SANDBOX ? "" : `<div class="dpads" id="dpads-${k}" data-dpads="${k}" role="group" aria-label="Deck ${k} sound pads"></div>`}<div class="platter" id="pl-${k}" title="Drag to scratch / scrub"></div><div class="drail"><button class="btn sm" type="button" data-play="${k}">▶ Play</button><button class="btn ghost sm" type="button" data-cue0="${k}">⏮ Cue</button><button class="btn ghost sm" type="button" data-brake="${k}">🛑 Brake</button></div></div>
     <canvas class="wave" id="wv-${k}" width="520" height="84"></canvas>
     <div class="ytbox" id="ytw-${k}" hidden><div id="yt-${k}"></div></div>
     <div class="ttl" id="ttl-${k}">Load a song</div><div class="tm" id="tm-${k}">0:00</div>
@@ -5907,7 +5922,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793335031;
+  const MW_DJ_BUILD = 1793335802;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7248,9 +7263,19 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (!padEl) { padEl = new Audio(); padEl.crossOrigin = "anonymous"; padEl.playsInline = true; try { padSrc = ctx.createMediaElementSource(padEl); padSrc.connect(masterIn); } catch (_) { padSrc = null; } }
     padEl.src = url; padEl.play().catch(() => {});
   }
+  function paintPadRails(sig) {
+    const custom = [0, 1, 2, 3].map((i) => (S.pads || [])[i] || null);
+    ["A", "B", "C", "D"].forEach((k) => {
+      const rail = $("#dpads-" + k); if (!rail || rail._padsSig === sig) return;
+      rail._padsSig = sig;
+      rail.innerHTML = SYNTH.map((p, i) => `<button class="dpad" type="button" data-synth="${i}" title="${p.name}">${p.name.split(" ")[0]}</button>`).join("") +
+        custom.map((p, i) => p ? `<button class="dpad custom" type="button" data-pad="${i}" title="Drop ${i + 1}: tap plays it in the booth, long-press sends it on air">🎙️<small>${i + 1}</small></button>` : `<button class="dpad custom" type="button" data-padrec="${i}" title="Drop ${i + 1}: tap to record 8 seconds">➕<small>${i + 1}</small></button>`).join("");
+    });
+  }
   function paintPads() {
     const box = $("#dj-pads"); if (!box || !OWNER()) return;
-    const sig = JSON.stringify((S.pads || []).map((p) => p ? (p.id || p.url || 1) : 0)); // the pads only change when S.pads does — skip the full innerHTML rebuild on every state echo (same changed-key guard pattern as djLiveSig / battleCardSig)
+    const sig = JSON.stringify((S.pads || []).map((p) => p ? (p.id || p.url || 1) : 0));
+    paintPadRails(sig); // the pads only change when S.pads does — skip the full innerHTML rebuild on every state echo (same changed-key guard pattern as djLiveSig / battleCardSig)
     if (box._padsSig === sig) return;
     box._padsSig = sig;
     const custom = [0, 1, 2, 3].map((i) => (S.pads || [])[i] || null);
