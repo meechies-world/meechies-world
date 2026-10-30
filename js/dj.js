@@ -5807,6 +5807,80 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
     if (micAn && micStreamLive) { const a = new Uint8Array(micAn.fftSize); micAn.getByteTimeDomainData(a); let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i] - 128) / 128); micHot = $("#mic-duck")?.checked ? m : 0; const bar = $("#mic-lvl"); if (bar) bar.style.width = Math.min(100, m * 160) + "%"; if (OWNER()) levels(); }
   }, 500);
 
+  /* ---------- DEAD-AIR RESCUE (mwDeadAirRescue) begin ----------
+   * The booth-side rescue for the hole the 2026-10-30 01:00 sampling
+   * caught live: a FRESH lead booth, station live, Auto-DJ on, queue
+   * stocked - and every deck idle for over two minutes while listeners
+   * heard nothing. The server keeper never rescues while a booth is
+   * open (it stands down for a fresh booth heartbeat), and the older
+   * 2026-10-28 dead-air backstop inside the big 500ms tick shares that
+   * tick with every other booth job, treats ANY S.pausedAt stamp as a
+   * forever pause, and retries its advance unboundedly. This rescue is
+   * a sibling, not a replacement: its own 1s interval, its own memory-
+   * only state, wrapped so nothing it does can throw into the booth.
+   * It runs on the LEAD booth only - leadDrive(), the same gate as
+   * the stall watchdog - never on a mirror, and never in the
+   * ?playdj=1 sandbox (leadDrive() returns true there, so the sandbox
+   * is gated out explicitly, first). It also never runs while the
+   * master screen is carrying a share: during a screen share the
+   * tables are paused BY DESIGN (the share has taken over the radio),
+   * so that silence is the show, not dead air.
+   * DEAD AIR, here, means all of: station live, Auto-DJ on, no deck
+   * playing (the booth's own playing flags, or a local player actually
+   * rolling - never a bare snapshot position), no load in flight (an
+   * advance holding the handover latch, or deck content that changed
+   * seconds ago and may still be building its player), and no
+   * deliberate pause - S.pausedAt counts as deliberate only inside
+   * the same 30 minutes the station keeper allows it (station.js:
+   * a stamp younger than 30 * 60e3 is his choice; an older stamp is
+   * stale and no longer holds the station silent). When that silence
+   * has held continuously for ~10s the rescue restarts the music
+   * through the NORMAL advance - the same autoNext(lastEndedK, true)
+   * a deck end calls, so queue and stock items come first exactly
+   * like an ordinary roll. It never presses play on a hand load: a
+   * pick he loaded stopped stays stopped (a fresh load restarts the
+   * hold and the episode instead of being fired over).
+   * EPISODES: one attempt, then a 30s backoff, at most 3 attempts per
+   * episode - a genuinely broken deck cannot be hammered. Anything
+   * playing, a fresh deliberate pause, a fresh load, or a gate
+   * closing (live off, Auto-DJ off, lead lost) ends the episode and
+   * resets the count. Side effects of the rescue's own attempt (the
+   * advance loading its pick) are absorbed for 20s so the attempt is
+   * judged by whether music resulted, not by its own loading noise. */
+  const daR = { since: 0, tries: 0, lastTry: 0, sig: null, loadAt: 0, absorbUntil: 0 };
+  const daSig = () => DECKS.map((k) => { const s = S[k] || {}; return (s.yt || "") + "|" + (s.src || "") + "|" + (s.title || ""); }).join("~");
+  const daReset = () => { daR.since = 0; daR.tries = 0; daR.lastTry = 0; daR.absorbUntil = 0; };
+  function daRescueTick(now) {
+    now = now || Date.now();
+    try {
+      if (SANDBOX) return;
+      if (!OWNER() || !leadDrive() || serverMirror()) { daReset(); return; }
+      if (!S.live || !S.autodj) { daReset(); return; }
+      if (S.vstream && S.vstream.on) { daReset(); daR.sig = daSig(); return; } // a live share has taken over the radio - the tables are paused for it by design
+      const sounding = DECKS.some((k) => { const s = S[k]; if (s && s.playing) return true; const d = decks[k]; return !!(d && d.el && !d.el.paused && !d.el.ended); });
+      if (sounding) { daReset(); daR.sig = daSig(); return; }
+      if (S.pausedAt && now - S.pausedAt < 30 * 60e3) { daReset(); daR.sig = daSig(); return; }
+      const sig = daSig();
+      if (daR.sig === null) daR.sig = sig;
+      else if (sig !== daR.sig) {
+        daR.sig = sig; daR.loadAt = now;
+        if (now >= daR.absorbUntil) { daR.since = now; daR.tries = 0; daR.lastTry = 0; return; }
+      }
+      if (handoverBusy && now - handoverAt < 20000) return; // an advance is already in flight - never stack a second one on it
+      if (!daR.since) { daR.since = now; return; }
+      if (now - daR.since < 10000) return; // the silence must hold ~10s - a breath between songs is not dead air
+      if (now - daR.loadAt < 12000) return; // a load landed seconds ago and may still be building its player - not dead air either
+      if (daR.tries >= 3) return; // episode cap: three honest tries, then stand down until the world changes
+      if (daR.lastTry && now - daR.lastTry < 30000) return; // backoff between tries
+      daR.tries++; daR.lastTry = now; daR.absorbUntil = now + 20000;
+      console.log("[dead-air] lead booth silent " + Math.round((now - daR.since) / 1000) + "s with Auto-DJ on - rescue attempt " + daR.tries + " of 3 via the normal advance");
+      try { say("🛟 Dead air — Auto-DJ is restarting the music."); } catch (_) {}
+      try { const p = autoNext(lastEndedK, true); if (p && p.catch) p.catch(() => {}); } catch (_) {}
+    } catch (_) {}
+  }
+  setInterval(() => daRescueTick(Date.now()), 1000);
+  /* DEAD-AIR RESCUE (mwDeadAirRescue) end */
+
   /* ---------- listeners ---------- */
   function isLive() { return S.live && Date.now() - (S.updatedAt || 0) < 3 * 60e3; }
   // booth heartbeat: while the booth is on screen (or a set is live) the booth owns the
@@ -6019,7 +6093,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793337833;
+  const MW_DJ_BUILD = 1793338955;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
