@@ -252,7 +252,7 @@ const VIEWS = {
   chat:      { name: "Chat & Walkie",   css: "css/chat.css",     load: () => import("./views/chat.js") },
   dating:    { name: "Dating",          blurb: "Dating profiles, swiping, and matches. 18+ only." },
   radio:     { name: "Radio",           css: "css/radio.css", load: () => import("./views/radio.js") },
-  dj:        { name: "DJ Station",      blurb: "The booth, the station card, and Watch the Setup." },
+  dj:        { name: "DJ Station",      css: "css/dj.css", load: () => import("./views/dj.js") },
   tv:        { name: "Cinema & TV",     blurb: "16,000+ free public-domain films, most-watched first." },
   mwtv:      { name: "MW TV",           css: "css/mwtv.css", load: () => import("./views/mwtv.js") },
   watch:     { name: "Watch the Setup", css: "css/watch.css", load: () => import("./views/watch.js") },

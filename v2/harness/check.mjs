@@ -382,6 +382,177 @@ eq("socUrl link-only app needs a real link", frn.socUrl("spotify", "someartist")
 eq("socUrl bandcamp subdomain", frn.socUrl("bandcamp", "meechie"), "https://meechie.bandcamp.com");
 eq("socUrl whatsapp number", frn.socUrl("whatsapp", "3019881469"), "https://wa.me/13019881469");
 
+
+/* ---- 6. Phase 4 booth payload + fixtures ----------------------
+   THE BOOTH (the heart of the rebuild) loads ONLY when the DJ view
+   is first entered: djstate.js (the typed write layer), djdecks.js
+   (the audio half), djshare.js (share publishing), djfree.js (the
+   free shelf), views/dj.js and css/dj.css. Home, the viewer views
+   and the social views must never import any of it — the byte proof
+   below, then fixtures for the pure logic in djstate.js pinned
+   against the live booth's constants (live dj.js @ main ebc7da70):
+   the lead-lock claim rules, the FX broadcast caps, the queue draw,
+   the stall-watchdog ladder, the dead-air gate, the blend/preload
+   windows, the drop cadence, the stock-record rule. */
+const p4Files = [
+  "js/djstate.js", "js/djdecks.js", "js/djshare.js", "js/djfree.js",
+  "js/views/dj.js", "css/dj.css",
+];
+console.log("\nPhase 4 booth payload (lazy — first DJ view only, never on Home, viewer or social views):");
+let p4Gz = 0, p4Raw = 0;
+for (const f of p4Files) {
+  try {
+    const s = size(f);
+    p4Gz += s.gz; p4Raw += s.raw;
+    console.log(`  ${f.padEnd(24)} raw ${kb(s.raw).padStart(9)}   gzip ${kb(s.gz).padStart(9)}`);
+  } catch (_) { failed++; console.log("FAIL  missing", f); }
+}
+console.log(`  ${"TOTAL".padEnd(24)} raw ${kb(p4Raw).padStart(9)}   gzip ${kb(p4Gz).padStart(9)}`);
+for (const f of ["js/views/home.js", "js/views/radio.js", "js/views/mwtv.js", "js/views/watch.js", "js/views/community.js", "js/views/friends.js", "js/views/messages.js", "js/views/chat.js", "js/views/clips.js", "js/engine.js", "js/station.js", "js/mini.js", "js/social.js"]) {
+  const s = readFileSync(join(V2, f), "utf8");
+  const pays = /djstate\.js|djdecks\.js|djshare\.js|djfree\.js|views\/dj\.js/.test(s);
+  console.log(`${f} imports the booth layer: ${pays ? "YES — FAIL" : "no — PASS"}`);
+  if (pays) failed++;
+}
+{
+  const line = coreSrc.split("\n").find((l) => l.trim().startsWith("dj:"));
+  const reg = !!line && /css:/.test(line) && /import\("\.\/views\//.test(line);
+  console.log(`registry dj: ${reg ? "css + lazy load — PASS" : "MISSING — FAIL"}`);
+  if (!reg) failed++;
+}
+
+console.log("\n--- Phase 4 booth fixtures ---");
+const djs = await import("../js/djstate.js");
+const djv = await import("../js/views/dj.js");
+
+/* layout-as-data (Law 6): deck order never changes; the below-decks
+   panels render in exactly the shipped priority */
+eq("layout deck order A B | X | C D", djv.LAYOUT.decks, ["A", "B", "X", "C", "D"]);
+eq("layout panel priority (shipped order)", djv.LAYOUT.panels.map((p) => p[0]),
+  ["door", "brain", "reports", "livereq", "autodj", "mic", "record", "fx", "vfx", "pads", "midi", "log", "reqdrops", "campro", "battles", "afterhours"]);
+
+/* lead lock: fresh for 20 s; a mirror is a fresh lead held by another tab */
+const LT = 1000000;
+ok("lead fresh at 19.9s", djs.leadFreshAt(LT, LT + 19900) === true);
+ok("lead stale at 20s", djs.leadFreshAt(LT, LT + 20000) === false);
+ok("no lead stamp is never fresh", djs.leadFreshAt(0, LT) === false);
+ok("mirror: fresh lead, other tab", djs.isMirror({ leadTab: "tabB", leadAt: LT }, "tabA", LT + 5000) === true);
+ok("not mirror: my own lead", djs.isMirror({ leadTab: "tabA", leadAt: LT }, "tabA", LT + 5000) === false);
+ok("not mirror: stale lead", djs.isMirror({ leadTab: "tabB", leadAt: LT }, "tabA", LT + 25000) === false);
+ok("take stamp honored inside 15s", djs.takeFresh(LT, LT + 14900) === true);
+ok("take stamp dead at 15s", djs.takeFresh(LT, LT + 15000) === false);
+
+/* FX broadcast caps (live applyFx): verb ≤ 0.30, fla ≤ 0.25 (×0.8 wet),
+   pha ≤ 0.3 (×0.9), noise ≤ 0.5 (×0.5), crush curve ≤ 12, filter sweep */
+eq("fx caps clamp the broadcast wets", djs.fxCaps({ verb: 0.9, fla: 0.9, pha: 0.9, noise: 0.9, crush: 86, mf: 100, fb: 0.58 }),
+  { verbWet: 0.3, flaWet: 0.2, phaWet: 0.27, noiseWet: 0.25, noiseFreq: 400 + 0.5 * 5200, crushCurve: 12, filterFreq: 18000, echoFb: 0.58, gate: 0 });
+eq("fx caps pass honest values through", djs.fxCaps({ verb: 0.1, fla: 0.1, pha: 0.1, noise: 0.2, crush: 6, mf: 50, fb: 0.34 }).verbWet, 0.1);
+ok("crush steps shrink as crush rises", djs.crushSteps(12) < djs.crushSteps(2));
+
+/* the queue draw: random splice — every item drawn exactly once
+   before any repeat (no repeats until the queue empties) */
+{
+  let seed = 42;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const q = [{ t: 1 }, { t: 2 }, { t: 3 }, { t: 4 }, { t: 5 }, { t: 6 }];
+  const drawn = [];
+  while (q.length) drawn.push(djs.drawFromQueue(q, rnd()).t);
+  eq("queue draw empties with no repeats", drawn.slice().sort(), [1, 2, 3, 4, 5, 6]);
+  eq("draw from an empty queue is null", djs.drawFromQueue([], 0.5), null);
+  eq("drawIndex clamps the top edge", djs.drawIndex(4, 0.999), 3);
+  eq("drawIndex bottom edge", djs.drawIndex(4, 0), 0);
+}
+
+/* stock records: valid only for a non-playing deck holding the same key */
+eq("qKeyOf file", djs.qKeyOf({ src: "https://x/a.mp3" }), "s:https://x/a.mp3");
+eq("qKeyOf yt", djs.qKeyOf({ yt: "abc123" }), "y:abc123");
+eq("qKeyOf dm", djs.qKeyOf({ yt: "dm:x9" }), "dm:x9");
+ok("stock valid: same key, deck idle", djs.stockValid({ yt: "abc" }, { yt: "abc", playing: false }) === true);
+ok("stock invalid: deck playing", djs.stockValid({ yt: "abc" }, { yt: "abc", playing: true }) === false);
+ok("stock invalid: different song", djs.stockValid({ yt: "abc" }, { yt: "zzz", playing: false }) === false);
+ok("stock invalid: blank record", djs.stockValid({ yt: "" }, { yt: "", playing: false }) === false);
+
+/* automation windows: preload in (5,15], blend in (0.3,5] */
+ok("preload at 15s", djs.preloadDue(15) === true);
+ok("no preload at 5s (that is blend)", djs.preloadDue(5) === false);
+ok("blend at 5s", djs.blendDue(5) === true);
+ok("blend at 0.4s", djs.blendDue(0.4) === true);
+ok("no blend at 0.3s", djs.blendDue(0.3) === false);
+ok("no blend at 6s", djs.blendDue(6) === false);
+
+/* voice drops: every 3rd automated transition */
+ok("drop due on the 3rd", djs.dropDue(3) === true);
+ok("drop not due on the 2nd", djs.dropDue(2) === false);
+ok("drop due on the 6th", djs.dropDue(6) === true);
+eq("drop rotation is the owner's five lines", djs.DROP_TEXTS.length, 5);
+
+/* the stall watchdog ladder: kick at 5 s frozen, reload at the next
+   5 s, handover after that; real movement resets; a stall after one
+   reload in the same play skips the reload rung */
+{
+  const T0 = 5000000;
+  const obs = (over) => Object.assign({ now: T0, playing: true, pausedAt: 0, pos: 10, key: "yt:a|Song", excluded: false }, over || {});
+  let r = djs.stallStep(null, obs());
+  eq("watchdog arms on first sample", r.action, "none");
+  r = djs.stallStep(r.mem, obs({ now: T0 + 4999 }));
+  eq("no kick before 5s frozen", r.action, "none");
+  r = djs.stallStep(r.mem, obs({ now: T0 + 5000 }));
+  eq("kick at 5s frozen", r.action, "kick");
+  r = djs.stallStep(r.mem, obs({ now: T0 + 10000 }));
+  eq("reload at the next 5s", r.action, "reload");
+  r = djs.stallStep(r.mem, obs({ now: T0 + 15000 }));
+  eq("handover after the reload rung", r.action, "handover");
+  let m2 = djs.stallStep(null, obs()).mem;
+  m2 = djs.stallStep(m2, obs({ now: T0 + 5000 })).mem; // kick
+  const moved = djs.stallStep(m2, obs({ now: T0 + 6000, pos: 12 }));
+  eq("movement resets the ladder", moved.action, "none");
+  eq("movement resets the step", moved.mem.step, 0);
+  const paused = djs.stallStep(moved.mem, obs({ now: T0 + 9000, pausedAt: T0 + 8000 }));
+  eq("a deliberate pause stands the watchdog down", paused.action, "none");
+  const excl = djs.stallStep(moved.mem, obs({ now: T0 + 60000, excluded: true }));
+  eq("excluded samples (seeking/runout) never fire", excl.action, "none");
+  let m3 = djs.stallStep(null, obs()).mem;
+  m3 = djs.stallStep(m3, obs({ now: T0 + 5000 })).mem; // kick, step 1
+  m3.reloads = 1; // a reload already spent in an earlier play of this key
+  const skip = djs.stallStep(m3, obs({ now: T0 + 10000 }));
+  eq("a stall with the reload spent goes straight to handover", skip.action, "handover");
+}
+
+/* the dead-air gate: 10 s of true silence fires; a live share, a
+   deliberate pause, sounding decks, the load grace, the backoff and
+   the 3-try cap all hold it */
+{
+  const T0 = 9000000;
+  const obs = (over) => Object.assign({ now: T0, sandbox: false, owner: true, lead: true, mirror: false, live: true, autodj: true, shareOn: false, sounding: false, pausedAt: 0, sig: "sig1", handoverAge: null }, over || {});
+  let g = djs.daGate(null, obs());
+  eq("first silent sample only arms", g.fire, false);
+  g = djs.daGate(g.st, obs({ now: T0 + 9999 }));
+  eq("no fire before 10s of silence", g.fire, false);
+  g = djs.daGate(g.st, obs({ now: T0 + 10000 }));
+  eq("fires at 10s of silence", g.fire, true);
+  eq("a live share is never dead air", djs.daGate(null, obs({ shareOn: true })).reason, "share-live");
+  eq("a deliberate pause is respected", djs.daGate(null, obs({ pausedAt: T0 - 60000 })).reason, "deliberate-pause");
+  eq("sounding decks reset the rescue", djs.daGate(null, obs({ sounding: true })).reason, "sounding");
+  eq("a mirror never rescues", djs.daGate(null, obs({ mirror: true })).reason, "not-driver");
+  eq("Auto-DJ off never rescues", djs.daGate(null, obs({ autodj: false })).reason, "not-armed");
+  let g2 = djs.daGate(null, obs({ sig: "a" })).st;
+  g2 = djs.daGate(g2, obs({ sig: "b", now: T0 + 30000 })).st; // a load landed
+  const grace = djs.daGate(g2, obs({ sig: "b", now: T0 + 41000 }));
+  eq("a landed load gets its grace", grace.fire, false);
+  let g3 = { silenceAt: T0 - 60000, loadAt: 0, tries: 3, absorbUntil: 0, lastTry: T0 - 60000, sig: "sig1" };
+  eq("three tries spent stands down", djs.daGate(g3, obs({ now: T0 + 60000 })).reason, "tries-spent");
+}
+
+/* booth mergeState: the battle default + the AI-DJ switch default ON */
+{
+  const S4 = djs.mergeBooth(null);
+  ok("battle default shape", S4.battle && S4.battle.on === false && S4.battle.rounds === 3 && S4.battle.phase === "off");
+  ok("aiDj defaults ON (the keeper kill switch)", S4.aiDj === true);
+  ok("dropsOn defaults ON", S4.dropsOn === true);
+  ok("hornOn defaults OFF (2026-10-29)", S4.hornOn === false);
+  ok("autodj defaults ON", S4.autodj === true);
+}
+
 console.log(`fixtures: ${fixPass} passed, ${fixFail} failed`);
 if (fixFail) failed += fixFail;
 
