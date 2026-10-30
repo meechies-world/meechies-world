@@ -112,7 +112,38 @@
 // deadline from request start — the booth client gives the relay ~8s
 // before falling back to its direct path, so the relay must answer
 // inside that window instead of grinding through every dead host.
+import { userFrom } from "../../lib/cf.js";
 const json = (o, age = 60) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json", "access-control-allow-origin": "*", "cache-control": "public, max-age=" + age } });
+// --- Setup-plan gate (owner directive 2026-10-30, the DJ setup ladder:
+// 7 days free, then Tables $10/mo, +YouTube search $15, +Save sessions
+// $20, DJ Video Package $35) ---
+// Unmarked requests are untouched: Malik's booth, the kids app and the
+// listener request path all search exactly as before. A request marked
+// setup=1 is a signed-in member searching on their OWN tables (the
+// Playground client sends the marker + their session bearer), and for
+// them YouTube search is an entitlement, checked here against the
+// member doc (members/<uid>: trial_started_at + setup_tier) — the same
+// docs read bannedIds below already makes. Malik himself is never
+// gated. No session, an expired trial and a tier under $15 all read
+// the same verdict: { tier: true } and the client shows the plans card
+// (it treats the flag as a hard stop, never a fallback trigger).
+const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9"; // same constant station.js carries
+const SETUP_TRIAL_MS = 7 * 24 * 3600 * 1000;
+async function setupSearchEntitled(request, env) {
+  const user = await userFrom(request, env).catch(() => null);
+  if (!user) return false;
+  if (user.id === OWNER_ID) return true;
+  try {
+    const row = await env.DB.prepare("select data from docs where path = ?").bind("members/" + user.id).first();
+    if (!row) return false;
+    const d = JSON.parse(row.data);
+    const tier = +(d && d.setup_tier) || 0;
+    if (tier >= 15) return true;
+    const trialAt = +(d && d.trial_started_at) || 0;
+    if (trialAt && Date.now() - trialAt < SETUP_TRIAL_MS) return true;
+  } catch (_) {}
+  return false;
+}
 const SEED = "https://yt.chocolatemoo53.com"; // last-known-good mirror, tried first
 // Well-known Invidious hosts kept as a static tail beyond the live registry:
 // the registry is volatile and sometimes thin (2026-10-29: 10 listed, 1 with
@@ -312,6 +343,7 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim().slice(0, 100);
   if (!q) return json({ ok: false, results: [] }, 0);
+  if (url.searchParams.get("setup") === "1" && !(await setupSearchEntitled(request, env))) return json({ ok: false, tier: true, need: 15, results: [] }, 0);
   const page = Math.min(10, Math.max(1, parseInt(url.searchParams.get("page") || "1", 10) || 1));
   const t0 = Date.now();
   const left = () => DEADLINE_MS - (Date.now() - t0);
