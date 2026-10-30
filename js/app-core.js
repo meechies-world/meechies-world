@@ -101,6 +101,7 @@ const avatarOf = id => { const m=members[id]||{}, ph=safeImg(m.photo), pp=/^\d{1
 document.addEventListener("error", (e) => { const t = e.target; if (t && t.classList && t.classList.contains("avimg")) t.remove(); }, true); // a dead photo link falls back to the member's initial instead of an empty circle
 
 async function boot(){
+  window.__MW_BOOTED=true; try{ sessionStorage.removeItem("mw-heal-tries"); }catch(_){ }
   [db,user] = await Promise.all([claude.use("db"), claude.use("user")]);
   isOwner = user?.isOwner?.() ?? false;
   if(!db || !user){ $("#signed-out").hidden=false; return; }
