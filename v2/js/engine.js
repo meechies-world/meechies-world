@@ -170,8 +170,14 @@ export function createEngine(ctx) {
   const CAPS = { stage: "large", mini: "large", tv: "hd720", watch: "hd720" };
   const screens = new Set();
   const shareStages = new Set();   // stage elements the share leg paints onto
-  let stageScr = null, tvScr = null, watchScr = null;
-  const flags = { tv: false, watch: false };
+  let stageScr = null, tvScr = null, watchScr = null, miniScr = null;
+  const flags = { tv: false, watch: false, mini: false };
+  /* the mini's PHONE DOCK presentation (owner, 2026-10-30): docked,
+     the mini is the phone's sounding master surface. The mini module
+     owns the presentation and reports both facts every tick. */
+  let miniDock = false, miniShown = false;
+  function setMiniDock(on) { miniDock = !!on; if (!miniDock) miniShown = false; }
+  function setMiniShown(on) { miniShown = !!on; }
 
   function createScreen(cfg) {
     ensureCss();
@@ -186,6 +192,7 @@ export function createEngine(ctx) {
     screens.add(scr);
     if (cfg.stageEl) { shareStages.add(cfg.stageEl); stageKind.set(cfg.stageEl, cfg.kind); }
     if (cfg.kind === "stage") stageScr = scr;
+    if (cfg.kind === "mini") { miniScr = scr; flags.mini = true; }
     if (cfg.kind === "tv") { tvScr = scr; flags.tv = true; }
     if (cfg.kind === "watch") { watchScr = scr; flags.watch = true; }
     return scr;
@@ -198,16 +205,22 @@ export function createEngine(ctx) {
     if (scr === stageScr) stageScr = null;
     if (scr === tvScr) { tvScr = null; flags.tv = false; }
     if (scr === watchScr) { watchScr = null; flags.watch = false; }
+    if (scr === miniScr) { miniScr = null; flags.mini = false; miniShown = false; }
   }
   /* ONE SOUNDING SCREEN (live vmixSndScr): MW TV when the channel is
      open, else Watch when it is open, else the station stage. While a
      live share holds the master, NO mix screen sounds — the capture
-     carries its own audio (takeover). The mini never sounds. */
+     carries its own audio (takeover). The FLOATING mini never sounds.
+     The phone DOCK is the one exception (owner, 2026-10-30): docked,
+     the mini is the phone's master screen, so a shown dock sounds in
+     place of the station stage — still exactly one sounding screen:
+     TV > Watch > dock > stage. */
   function soundingScreen() {
     if (!listening) return null;
     if (vsBroadcast(S()) && !(S().vstream || {}).hidden) return null;
     if (flags.tv && tvScr) return tvScr;
     if (flags.watch && watchScr) return watchScr;
+    if (miniDock && miniShown && miniScr) return miniScr;
     return stageScr;
   }
 
@@ -819,6 +832,7 @@ export function createEngine(ctx) {
     registerStageKind(el, kind) { stageKind.set(el, kind); },
     shareSync, popReady, shareFlowing, dismissSharePop,
     shareDown: vsShareDown,
+    setMiniDock, setMiniShown,
     get localPause() { return vsLocalPause; },
     toggleLocalPause: vsToggleLocalPause,
   };
