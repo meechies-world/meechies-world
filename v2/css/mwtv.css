@@ -1,0 +1,28 @@
+/* ============================================================================
+   v2 MW TV CSS — the live #mwtv-styles block, with the chrome-hiding
+   rules pointed at the v2 shell's own chrome (header.bar, footer,
+   the announce bars, the phone app bar / bottom bar / More sheet).
+   On MW TV the TV screen is the ONLY thing on the page (Law 1).
+   ============================================================================ */
+
+.view-mwtv{padding:0}
+body[data-view="mwtv"]{overflow:hidden}
+body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv"] .announce,body[data-view="mwtv"] #appbar,body[data-view="mwtv"] .apptab,body[data-view="mwtv"] .appmore,body[data-view="mwtv"] .pavement{display:none!important}
+#tw-shell{position:fixed;inset:0;z-index:9000;background:#000}
+#tw-stagebox{position:absolute;inset:0;display:grid;place-items:center}
+#tw-stage{width:min(100vw,177.78vh);border:0;border-radius:0}
+.tw-sb{text-align:center;padding:20px}
+.tw-sb-logo{font:800 clamp(34px,7vw,64px) Georgia,serif;letter-spacing:.05em;color:#f0cf78}
+.tw-sb p{margin:12px 0 0;color:#b9ac8d;font-size:clamp(14px,2.4vw,19px);font-weight:600;letter-spacing:.03em}
+#tw-vstandby{padding:0;background:radial-gradient(ellipse 90% 60% at 50% 0,rgba(240,207,120,.14),transparent 65%),radial-gradient(rgba(240,207,120,.06) 1.2px,transparent 1.6px) 0 0/26px 26px,linear-gradient(160deg,#17130b 0%,#000 55%,#100d07 100%)}
+.tw-sb-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#tw-vstandby .tw-sb-logo{text-shadow:0 2px 18px rgba(0,0,0,.9)}
+#tw-vstandby .tw-sb{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:38px 20px 16px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.86))}
+#tw-bar{position:absolute;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,0));color:#f3ead2}
+.tw-mark{font:800 17px Georgia,serif;letter-spacing:.05em;color:#f0cf78;white-space:nowrap}
+.tw-live{background:#e5484d;color:#fff;border-radius:999px;padding:3px 10px;font:800 11.5px var(--body,system-ui);letter-spacing:.08em;white-space:nowrap}
+.tw-live.mix{background:#241d10;color:#f0cf78;border:1px solid #8a6a2a}
+.tw-what{color:#e9e2cf;font:600 13px var(--body,system-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tw-sp{flex:1}
+#tw-bar .btn{white-space:nowrap;text-decoration:none}
+@media(max-width:640px){#tw-bar{flex-wrap:wrap;gap:6px;padding:10px}#tw-bar .tw-sp{display:none}.tw-what{display:none}.tw-mark{font-size:15px}}
