@@ -297,6 +297,23 @@ const VIEWS = {
    lifecycle. A kept view exports optional suspend()/resume(). */
 const KEEPALIVE = new Set(["radio", "mwtv", "watch"]);
 
+/* PLACEHOLDER (MAP §4.2) — the fallback module the router below already
+   calls when a view has no loader or its module fails to load: it
+   renders the view's name in brand style (ctx.view carries the VIEWS
+   entry) instead of leaving the root blank. This function was called
+   in route() but never defined — any view-module load failure (e.g.
+   #tv, Gate T gap 2) threw a ReferenceError inside the catch and the
+   visitor got nav + footer only. */
+function PLACEHOLDER() {
+  return Promise.resolve({
+    render(root, ctx) {
+      const name = (ctx && ctx.view && ctx.view.name) || "Coming soon";
+      root.innerHTML = `<div class="wrap"><div class="section-head"><div><p class="eyebrow">Meechie's World</p><h2>${name}</h2></div><p class="muted">This section is on its way — check back soon.</p></div></div>`;
+    },
+    destroy() {},
+  });
+}
+
 const Router = {
   current: null,
   _mod: null,

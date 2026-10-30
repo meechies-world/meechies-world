@@ -175,7 +175,7 @@ export function initAI(ctx) {
   const NAVLBL = { home: "Home", community: "Meechie's Book", services: "Services", shop: "the Shop", radio: "Radio", dj: "the DJ Station", clips: "Clips", videos: "Videos", live: "Live", livetv: "Live TV", liveradio: "Live Radio", friends: "Friends", dating: "Dating", coin: "Meechie's Coin", world: "the Virtual World", games: "Games", creators: "Creators", legal: "Legal Help", chat: "Chat & Walkie", messages: "Messages", connect: "Connect", books: "Books", studio: "Studio", markets: "Markets", predict: "Predictions", promote: "Promote", contact: "Contact" };
   const navRow = panel.querySelector("#ai-nav");
   navRow.innerHTML = '<span class="ai-navlead" aria-hidden="true">🧭</span>' + NAVS.map(([em, v, t]) => `<button type="button" data-navgo="${v}">${em} ${t}</button>`).join("");
-  function goTo(v) { location.hash = "#" + v; panel.hidden = true; syncFab(); }
+  function goTo(v) { location.hash = "#" + v; closePanel(); }
   navRow.addEventListener("click", (e) => { const b = e.target.closest("[data-navgo]"); if (b) goTo(b.dataset.navgo); });
 
   const signedIn = () => !!Session.user();
@@ -241,10 +241,16 @@ export function initAI(ctx) {
     const v = maleVoice(); if (v) u.voice = v;
     u.pitch = 1; u.rate = 1; speechSynthesis.speak(u);
   }
-  async function speakServer(clean, seq) {
+  /* one sentence-chunker for both spoken paths (was copy-pasted in
+     speakServer and playReply): split on sentence ends, ~850 chars each */
+  const chunkText = (clean) => {
     const chunks = []; let cur = "";
     for (const s of clean.split(/(?<=[.!?])\s+/)) { if ((cur + " " + s).length > 850 && cur) { chunks.push(cur); cur = s; } else cur = cur ? cur + " " + s : s; }
     if (cur) chunks.push(cur);
+    return chunks;
+  };
+  async function speakServer(clean, seq) {
+    const chunks = chunkText(clean);
     primeSpeakAudio();
     for (const part of chunks.slice(0, 4)) {
       if (seq !== speakSeq || !talkBack) return;
@@ -297,9 +303,14 @@ export function initAI(ctx) {
     } else draw(false);
     setTimeout(() => inp.focus(), 50);
   }
-  function closePanel() { stopTalk(); panel.hidden = true; syncFab(); }
+  /* Hide FIRST, talk teardown second: closePanel used to run stopTalk()
+     before panel.hidden was set, so any throw in the recorder / stream /
+     speech teardown (real-browser Talk Mode state) aborted the close and
+     the panel stayed open no matter how often × was tapped (Gate T gap 3). */
+  function closePanel() { panel.hidden = true; syncFab(); stopTalk(); }
   fab.addEventListener("click", openPanel);
   panel.querySelector("#ai-close").addEventListener("click", closePanel);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) closePanel(); });
   panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem(AI_HIST_KEY); sessionStorage.removeItem("mw_ai"); } catch (_) {} haltSpeak(); draw(false); inp.focus(); });
   chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/take me to the radio/.test(b.textContent)) { goTo("radio"); return; } if (/court case/.test(b.textContent)) { goTo("legal"); return; } ask(b.textContent); });
   log.addEventListener("click", (e) => {
@@ -423,10 +434,7 @@ export function initAI(ctx) {
     const clean = String(reply || "").split("\n\nSources:")[0].replace(/\[\d+\]/g, "").replace(/https?:\/\/\S+/g, "").replace(/[*#_`>]/g, "").trim();
     if (!clean) { listen(); return; }
     setState("speaking", "Meechie is talking…");
-    const chunks = []; let cur = "";
-    for (const s of clean.split(/(?<=[.!?])\s+/)) { if ((cur + " " + s).length > 850 && cur) { chunks.push(cur); cur = s; } else cur = cur ? cur + " " + s : s; }
-    if (cur) chunks.push(cur);
-    speakChunks(chunks.slice(0, 4)).then(() => { if (talk.on) listen(); });
+    speakChunks(chunkText(clean).slice(0, 4)).then(() => { if (talk.on) listen(); });
   }
   async function listen() {
     if (!talk.on) return;
