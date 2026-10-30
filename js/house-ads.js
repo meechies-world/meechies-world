@@ -43,12 +43,20 @@
   var slots = [];
   var shelves = [];
 
+  /* "Advertise here" (owner, 2026-10-29: "monetise it"): about one rotation in
+     five, an ad spot sells itself — it sends businesses to the Promote packages
+     (Spotlight / Featured / Takeover, from $50) instead of showing merch. Never
+     on the Promote page itself. Same box, same size, so nothing jumps. */
+  var SELF = { title: "Your business here — reach Meechie's World listeners", price: "from $50", url: "#promote", src: "Advertise with us", self: true };
   function fill(slot) {
     if (!products.length) return;
-    var p = products[Math.floor(Math.random() * products.length)];
+    var inPromote = !!(slot.closest && slot.closest("#v-promote"));
+    var p = (!inPromote && Math.random() < 0.2) ? SELF : products[Math.floor(Math.random() * products.length)];
     slot.innerHTML = "";
     var a = document.createElement("a");
-    a.href = p.url; a.target = "_blank"; a.rel = "noopener";
+    a.href = p.url;
+    if (p.self) a.addEventListener("click", function (e) { if (typeof window.go === "function") { e.preventDefault(); window.go("promote"); window.scrollTo(0, 0); } });
+    else { a.target = "_blank"; a.rel = "noopener"; }
     if (p.img) {
       var img = document.createElement("img");
       img.src = p.img; img.alt = ""; img.loading = "lazy";
@@ -57,7 +65,7 @@
     var mid = document.createElement("span");
     mid.className = "mw-ad-mid";
     var tag = document.createElement("span");
-    tag.className = "mw-ad-tag"; tag.textContent = "Meechie's World Merch · " + (p.src || "Ad");
+    tag.className = "mw-ad-tag"; tag.textContent = p.self ? "Advertise with Meechie's World" : "Meechie's World Merch · " + (p.src || "Ad");
     var ttl = document.createElement("span");
     ttl.className = "mw-ad-title"; ttl.textContent = p.title;
     mid.appendChild(tag); mid.appendChild(ttl);
@@ -68,7 +76,7 @@
       a.appendChild(pr);
     }
     var cta = document.createElement("span");
-    cta.className = "mw-ad-cta"; cta.textContent = "Shop now →";
+    cta.className = "mw-ad-cta"; cta.textContent = p.self ? "See packages →" : "Shop now →";
     a.appendChild(cta);
     var x = document.createElement("button");
     x.className = "mw-ad-x"; x.type = "button";
