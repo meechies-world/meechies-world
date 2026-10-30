@@ -5,8 +5,8 @@
    cartoons, and the holiday shelves built from the same sets),
    the same in-set search, playing on the page. Nothing here
    touches the radio or the decks, as live. */
-import { videoSound } from "../platform.js";
-import { getEngine } from "../engine.js";
+import { videoSound } from "./platform.js";
+import { getEngine } from "./engine.js";
 
 export function mountMovies(viewRoot, ctx) {
   const vs = videoSound(getEngine(ctx));
@@ -114,14 +114,14 @@ export function mountMovies(viewRoot, ctx) {
     }
   }
 
-  // the cinema is its own TV view: load the first shelf the first time the
-  // view is opened (the router unhides the section when you tap the TV tab)
+  // the cinema is its own TV view: in v2 the router renders this view
+  // only when it is entered (the section is never a pre-hidden node), so
+  // the first shelf loads right here — the live site's hidden-section
+  // MutationObserver kick is dead weight in this shell and is dropped.
   let kicked = false;
   const kick = () => { if (kicked) return; kicked = true; load(false); };
-  const tvSec = viewRoot;
-  if (tvSec && window.MutationObserver) new MutationObserver(kick).observe(tvSec, { attributes: true, attributeFilter: ["hidden"] });
 
-  document.addEventListener("click", (e) => {
+  const onClick = (e) => {
     if (e.target.closest('[data-go="tv"]')) setTimeout(kick, 80);
     const sh = e.target.closest(".mv-shelf");
     if (sh) {
@@ -134,7 +134,8 @@ export function mountMovies(viewRoot, ctx) {
     if (e.target.closest("[data-mv-retry]")) { load(false); return; }
     if (e.target.closest("#mv-more")) { cur.page++; load(true); return; }
     if (e.target.closest("#mv-close")) { $("#mv-frame").innerHTML = ""; $("#mv-stage").hidden = true; }
-  });
+  };
+  document.addEventListener("click", onClick);
   const form = $("#mv-form");
   if (form) form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -146,5 +147,5 @@ export function mountMovies(viewRoot, ctx) {
   });
   kick();
 
-  return () => { try { vs.end(); } catch (_) {} };
+  return () => { document.removeEventListener("click", onClick); try { vs.end(); } catch (_) {} };
 }
