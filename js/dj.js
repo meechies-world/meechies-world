@@ -825,7 +825,7 @@ body.dj-on #dj-livealert,html.popdj #dj-livealert,html.gated #dj-livealert{displ
 .wpl-nm span{color:#9a917c;font-size:12.5px}
 .wpl-pr{color:#f0cf78;white-space:nowrap}
 body[data-view="dj"] #dj-livealert{display:none}
-#dj-mini{position:fixed;top:64px;right:10px;width:208px;max-width:calc(100vw - 20px);z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+#dj-mini{position:fixed;top:64px;right:10px;width:208px;height:max-content;max-width:calc(100vw - 20px);z-index:65;background:#000;border:1px solid var(--gold-lo);border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
 #dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
@@ -6134,7 +6134,7 @@ html.popdj #dj-mini,html.gated #dj-mini{display:none!important}
    * it shows a notice, reloads itself the moment every deck is stopped,
    * and in all cases within 10 minutes of the update first being seen.
    * A sessionStorage stamp per build makes a reload loop impossible. */
-  const MW_DJ_BUILD = 1793339511;
+  const MW_DJ_BUILD = 1793366456;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
