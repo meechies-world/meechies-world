@@ -52,6 +52,13 @@
   .sres img{width:96px;height:54px;object-fit:cover;border-radius:8px;flex:none;background:#000}
   .sres span{flex:1;min-width:0;font-size:14px;line-height:1.35;color:#e9e2cd}
   .footnote{color:#8a8268;font-size:12.5px;line-height:1.5;margin:10px 0 0}
+  /* starter library shelves (channel rows) */
+  .shelf{padding:12px 0 4px;border-bottom:1px solid #241d10}
+  .shelf:last-child{border-bottom:0;padding-bottom:0}
+  .shelf-head{display:flex;gap:8px;align-items:center;margin:0 0 4px}
+  .shelf-head h3{flex:1;min-width:0;margin:0;font-size:15.5px;color:#ffe08a}
+  .shelf-head .abtn{padding:9px 13px;font-size:14px}
+  .shelf .sres:last-child{border-bottom:0}
   /* playlist */
   #kids-count{color:#cbb26a;font-size:13.5px;margin:0 0 8px}
   .item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #241d10}
@@ -170,6 +177,14 @@
     <p class="footnote">Search runs through Meechie's World's own search, which already filters out age-locked videos and videos that cannot play inside a player. You still pick every video yourself — only add channels you trust.</p>
   </div>
 
+  <!-- STARTER LIBRARY: built-in channel shelves (Meechie's World for Kids) -->
+  <div class="card">
+    <h2>📺 Meechie's World for Kids — channel shelves</h2>
+    <p>Ready-made learning shelves, picked from well-known kids' channels: ABCs, first words, naming things, colors and numbers, a little Spanish and sign language, songs — and a shelf about one God. Tap <b>Add</b> on any video, or <b>Add all</b> to take a whole shelf. Everything you add lands in your playlist below, where you can reorder it or take it back out.</p>
+    <div id="kids-shelves"></div>
+    <p class="footnote">Movie Time is there for family watching on purpose — it is never added for you. Every other shelf is learning first.</p>
+  </div>
+
   <!-- PLAYLIST -->
   <div class="card">
     <h2>🎵 Your playlist</h2>
@@ -183,6 +198,7 @@
   <div class="card" id="kids-how">
     <h2>📖 How to use</h2>
     <ol>
+      <li><b>It starts loaded:</b> the app comes preloaded with a starter set of learning videos — ABCs, first words, colors, numbers, a little Spanish, and songs. You can take any of them out, or clear them all and build your own list.</li>
       <li><b>Add videos</b> — paste a YouTube link, or search by name and tap Add.</li>
       <li><b>Put them in order</b> — use the ↑ ↓ buttons so they play the way you want.</li>
       <li><b>Tap Play.</b> The videos play one after another, then start over.</li>
@@ -276,6 +292,7 @@ function kidsPinOk(entered, stored) { // PINs are exactly 4 digits; compare as s
 
 /* ---------- storage ---------- */
 var LS_LIST = "mw-kids-list", LS_PIN = "mw-kids-pin";
+var LS_SEEDED = "mw-kids-seeded"; // set once the starter playlist has been planted (never re-seed)
 function loadList() {
   try {
     var v = JSON.parse(localStorage.getItem(LS_LIST) || "[]");
@@ -293,8 +310,134 @@ function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
 function thumb(id) { return "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg"; }
 
+/* ---------- starter library (built-in educational shelves) ----------
+   Every id below was verified through the site's own search relay
+   (GET /api/ytsearch) against a real search result for its topic, from
+   established kids' learning channels (Super Simple Songs, CoComelon,
+   PINKFONG, ChuChu TV, Ms Rachel, Calico Spanish...). Titles are display
+   strings copied from those results; the id is the identity. */
+var KIDS_LIBRARY = [
+  { shelf: "🔤 ABCs & Phonics", videos: [
+    { id: "Y88p4V_BCEU", title: "The ABC Song | Easy Alphabet Song | Super Simple ABCs" },
+    { id: "tKsIi1MH4lw", title: "ABC Phonics Song with Sounds for Children — Two Words for Each Letter" },
+    { id: "5XEN4vtH4Ic", title: "ABC Song | Kids Alphabet Review | Super Simple Songs" }
+  ] },
+  { shelf: "🗣️ First Words — Learning to Talk", videos: [
+    { id: "hTqtGJwsJVE", title: "Baby Learning With Ms Rachel — First Words, Songs and Nursery Rhymes for Babies" },
+    { id: "LjBmZWPX3Bk", title: "First Words for Babies and Toddlers — Learn To Talk — Baby's First Words, Songs and Gestures" },
+    { id: "FiM-SMsPS-k", title: "Baby Learning First Words | Learn To Talk for Babies | Miss Katie" }
+  ] },
+  { shelf: "🐶 What Is It? — Names for Everything", videos: [
+    { id: "ZUEZSqZjJOc", title: "Learn Animal Names & Sounds | Farm and Jungle Animals for Children" },
+    { id: "okde2DTrSnw", title: "What's That Animal? Learn Pet & Backyard Animal Names and Sounds for Kids" },
+    { id: "UcGm_PM2IwY", title: "Fruits and Vegetables Names — Learn Fruits and Vegetables English Vocabulary" }
+  ] },
+  { shelf: "👨‍👩‍👧 Mom, Dad & Family", videos: [
+    { id: "kCka94jeGTk", title: "Finger Family | CoComelon Nursery Rhymes & Kids Songs" },
+    { id: "r0IOEBUk-kQ", title: "Finger Family Song! Baby Finger, Where Are You? | CoComelon" },
+    { id: "uLUcKFL248M", title: "Finger Family Song — Extended Family! With Grandma and Grandpa" }
+  ] },
+  { shelf: "🎨 Colors, Numbers & Shapes", videos: [
+    { id: "zxIpA5nF_LY", title: "What's Your Favorite Color? | Kids Songs | Super Simple Songs" },
+    { id: "qhOTU8_1Af4", title: "Learn Colors — Preschool Chant — Colors Song for Preschool | ELF Learning" },
+    { id: "JT0MmZcJ2Vw", title: "Numbers Song — Learn to Count from 1 to 10 | ChuChu TV Classics" },
+    { id: "OEbRDtCAFdU", title: "Shapes Song for Kids | The Singing Walrus" }
+  ] },
+  { shelf: "🌍 Languages — Spanish, Sign Language & More", videos: [
+    { id: "tK0vp8LlDiM", title: "Spanish Song For Children — Hola Hola" },
+    { id: "iE9oaAezOW4", title: "Learn Spanish for Kids | Beginner Spanish Lessons | Calico Spanish Stories" },
+    { id: "DsRKoZGaoEM", title: "Spanish for Kids — Colors, Colors (Colores, Colores) | Calico Spanish" },
+    { id: "v7Wd8U1HdDY", title: "Baby Sign Language | First 12 Baby Signs in ASL" }
+  ] },
+  { shelf: "🎵 Sing & Learn", videos: [
+    { id: "yCjJyiqpAuU", title: "Twinkle Twinkle Little Star | Nursery Rhymes for Kids | Super Simple Songs" },
+    { id: "9UasekNr8KI", title: "The Wheels On The Bus | Super Simple Songs" },
+    { id: "XqZsoesa55w", title: "Baby Shark Dance | PINKFONG Songs for Children" }
+  ] },
+  { shelf: "☝️ One God — Love Him & Thank Him", videos: [
+    { id: "OrMStAvNeqc", title: "Thank You, God! | Song for Kids | Little Light Rhymes" },
+    { id: "P6XGxEaXeik", title: "Thank You God for the Beautiful World | Kids Songs" },
+    { id: "dMLE7KW_t7I", title: "My God Is So Big | Kids Song" }
+  ] },
+  { shelf: "🎬 Movie Time — Watch Together", videos: [
+    { id: "t0Q2otsqC4I", title: "Tom & Jerry in Full Screen | Classic Cartoon Compilation | WB Kids" },
+    { id: "--nT4ykK9Uw", title: "Looney Tunes | Classic Tweety Bird & Sylvester Compilation | Warner Classics" },
+    { id: "wk4KHNJjpjQ", title: "Twinkle Twinkle Little Star & More | Kids Songs Movie-Length Special | Super Simple Songs" }
+  ] }
+];
+/* The default starter playlist, in first-run order: ABCs, first words,
+   family, what-is-it, colors/numbers/shapes, languages, one God, songs.
+   Movie Time is deliberately NOT in the seed — parents add it on purpose. */
+var KIDS_SEED = [
+  "Y88p4V_BCEU", "tKsIi1MH4lw",
+  "hTqtGJwsJVE", "FiM-SMsPS-k",
+  "kCka94jeGTk",
+  "ZUEZSqZjJOc", "UcGm_PM2IwY",
+  "zxIpA5nF_LY", "JT0MmZcJ2Vw", "OEbRDtCAFdU",
+  "tK0vp8LlDiM", "v7Wd8U1HdDY",
+  "OrMStAvNeqc", "dMLE7KW_t7I",
+  "yCjJyiqpAuU", "9UasekNr8KI"
+];
+function kidsLibraryVideo(id) {
+  for (var i = 0; i < KIDS_LIBRARY.length; i++)
+    for (var j = 0; j < KIDS_LIBRARY[i].videos.length; j++)
+      if (KIDS_LIBRARY[i].videos[j].id === id) return KIDS_LIBRARY[i].videos[j];
+  return null;
+}
+/* First run ONLY: no saved playlist AND no seeded-once flag -> plant the
+   starter set and remember that we did. After that the saved list rules:
+   a parent who deletes everything gets an empty list, never a re-seed. */
+function loadInitialList() {
+  var saved = null, seeded = null;
+  try { saved = localStorage.getItem(LS_LIST); seeded = localStorage.getItem(LS_SEEDED); } catch (e) {}
+  if (saved === null && seeded === null) {
+    var seed = [];
+    KIDS_SEED.forEach(function (id) { var v = kidsLibraryVideo(id); if (v) seed.push({ id: v.id, title: v.title }); });
+    try {
+      localStorage.setItem(LS_LIST, JSON.stringify(seed));
+      localStorage.setItem(LS_SEEDED, "1");
+    } catch (e) {}
+    return seed;
+  }
+  return loadList();
+}
+
+/* ---------- starter shelves rendering ---------- */
+function paintShelves() {
+  var box = $("kids-shelves"); if (!box) return;
+  box.innerHTML = "";
+  KIDS_LIBRARY.forEach(function (sh) {
+    var wrap = document.createElement("div"); wrap.className = "shelf";
+    var head = document.createElement("div"); head.className = "shelf-head";
+    var h = document.createElement("h3"); h.textContent = sh.shelf;
+    var all = document.createElement("button");
+    all.type = "button"; all.className = "abtn"; all.textContent = "Add all";
+    all.addEventListener("click", function () {
+      var added = 0;
+      sh.videos.forEach(function (v) { if (addVideo(v.id, v.title) === "ok") added++; });
+      all.textContent = added ? ("Added " + added + " ✓") : "In list ✓";
+      all.disabled = true;
+    });
+    head.appendChild(h); head.appendChild(all); wrap.appendChild(head);
+    sh.videos.forEach(function (v) {
+      var row = document.createElement("div"); row.className = "sres";
+      var img = document.createElement("img"); img.src = thumb(v.id); img.alt = ""; img.loading = "lazy";
+      var t = document.createElement("span"); t.textContent = v.title;
+      var b = document.createElement("button"); b.type = "button"; b.className = "abtn"; b.textContent = "Add";
+      b.addEventListener("click", function () {
+        var r = addVideo(v.id, v.title);
+        b.textContent = r === "dup" ? "In list ✓" : "Added ✓";
+        b.disabled = true;
+      });
+      row.appendChild(img); row.appendChild(t); row.appendChild(b);
+      wrap.appendChild(row);
+    });
+    box.appendChild(wrap);
+  });
+}
+
 /* ---------- state ---------- */
-var list = loadList();
+var list = loadInitialList();
 var cur = 0;              // index of the loaded / playing item
 var player = null;        // YT.Player
 var playerReady = false;
@@ -637,6 +780,7 @@ $("kids-lock-btn").addEventListener("click", function () {
 });
 
 paintList();
+paintShelves();
 </script>
 </body>
 </html>
