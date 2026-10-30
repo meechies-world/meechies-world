@@ -72,7 +72,7 @@
 
 /* the MASTER mini — a small rectangle at the top of every page,
    draggable by its bar, resizable by its corner grip */
-#dj-mini{position:fixed;top:64px;right:10px;width:208px;max-width:calc(100vw - 20px);z-index:65;background:#000;border:3px solid #0a0a0c;outline:1px solid #2c2c30;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+#dj-mini{position:fixed;top:64px;right:10px;width:208px;height:max-content;max-width:calc(100vw - 20px);z-index:65;background:#000;border:3px solid #0a0a0c;outline:1px solid #2c2c30;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
 #dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
 #dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
