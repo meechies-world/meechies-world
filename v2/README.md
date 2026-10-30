@@ -97,6 +97,14 @@ v2/
                         heal ladder, warm pre-buffering, quality caps,
                         the share watcher (RealtimeKit/HLS), one
                         sounding screen, the 700ms surface cadence
+  js/ai.js              Meechie AI (Law 17): the shell-wide assistant —
+                        the live js/ai-widget.js ported as a lazy
+                        module: the portrait bubble on every view, the
+                        panel + Talk Mode, the 4.5 s greeting bubble
+                        (once per session), spoken answers default ON
+                        with a per-device toggle, mic dictation; runs
+                        on the existing /api/ai door, and it is a
+                        permanent fixture of the skeleton precache
   js/mini.js            the MASTER mini: pure gate math (miniStep /
                         miniPost) + the box controller (drag, resize,
                         camera overlay)
@@ -523,6 +531,39 @@ live booth coexist on one station under the one-leader rule.
    live, and never writes radio/dj or the brain — the same walls as
    live, enforced inside djstate.save/brainEmit rather than by
    checks scattered through the view.
+
+## Parity closure — Meechie AI panel (post–Phase 5 — read at Gate T)
+
+* **BEHAVIOR — the shell-wide assistant EXISTS now (intent
+  restoration).** Phases 1–5 shipped the assistant only as the AI
+  app mode's "Meechie AI — soon" button; the live site has had the
+  assistant on every page since long before the rebuild (bubble,
+  greeting, spoken answers, Talk Mode). v2/js/ai.js ports the live
+  js/ai-widget.js into a lazy module: the portrait bubble on every
+  view (hidden on the Contact + Messages views, as live), the
+  panel (history, chips, copy, New chat, the nav row + [[nav:]]
+  answer buttons), the 4.5 s greeting bubble once per session
+  (deferring while the enter/gate overlays are up, suppression keyed
+  on body[data-view] exactly like live), spoken answers default ON
+  with the per-device toggle riding the live /api/ai TTS path
+  (guest: device voices with the male picker; a member helper gets
+  the server male voice), mic dictation, and Talk Mode — Whisper
+  ears + Aura voice + the face on stage, with the live document-
+  level fallback that joins the loop when the panel head misses a
+  tap. The shell loads it via requestIdleCallback after boot (the
+  module is lazy payload, never in the shell's first-load files;
+  core JS stays 9.5 KB gzip) and it is a permanent fixture of the
+  skeleton precache (the heart + brain audit's rule). The AI app
+  mode opens the panel on arrival, like live /ai-app/.
+* **Named simplifications (weigh at Gate T):** the model picker
+  (member-picked Workers AI model, mw_ai_model) is not ported —
+  the brain's default chain answers, as it does for every guest on
+  the live site. Sending a photo to the chat and the panel's image
+  makers are not ported. The live ✦ Double-check (verify) action
+  is not ported; the Sources chip is. A guest's Join button now
+  hands sign-in to the main site ("/") instead of the live
+  in-panel gate — the v2 shell has no gate of its own, the same
+  pattern Phase 5's business views use.
 
 ## Phase 5 parity notes (vs live at main PR #427/#428 state)
 

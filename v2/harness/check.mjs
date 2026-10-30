@@ -755,6 +755,53 @@ eq("usd formats cents", com.usd(12345), "$123.45");
   ok("sw: the shell never reloads for an update", !/serviceWorker[\s\S]{0,200}location\.reload/.test(coreSrc));
 }
 
+/* ---- 8. Meechie AI panel fixtures -------------------------------
+   The shell-wide assistant (Law 17) is a lazy module, js/ai.js:
+   the shell loads it dynamically after boot (never a static
+   import, never in the shell's first-load files), the app-bar
+   button opens the real panel (the phase-era "soon" placeholder
+   is gone), the module is a permanent fixture of the skeleton
+   precache, and its pure rules pin the live widget's behavior —
+   the 4.5 s greeting, once per session; pop-ups never in app
+   mode except the AI app itself; spoken answers default ON with
+   the toggle persisted per device. */
+console.log("\n--- Meechie AI fixtures ---");
+{
+  const s = size("js/ai.js");
+  console.log(`  js/ai.js (lazy — first boot never pays) raw ${kb(s.raw).padStart(9)}   gzip ${kb(s.gz).padStart(9)}`);
+  ok("ai: the shell lazy-loads the module dynamically", /import\("\.\/ai\.js"\)/.test(coreSrc));
+  ok("ai: no static import of ai.js in the shell", !/from\s+["']\.\/ai\.js["']/.test(coreSrc));
+  ok("ai: the 'soon' placeholder is gone from the shell", !/Meechie AI — soon/.test(coreSrc));
+  ok("ai: the app-bar Meechie AI button opens the panel", /appbar-ai[\s\S]{0,300}openAI\(\)/.test(coreSrc));
+  const swSrc = readFileSync(join(V2, "sw.js"), "utf8");
+  ok("ai: the module is precached in the skeleton", swSrc.includes('"/v2/js/ai.js"'));
+  ok("ai: core JS still under the 60 KB gzip budget (module is lazy)", coreJsGz <= BUDGET);
+  const ai = await import("../js/ai.js");
+  const aiSrc = readFileSync(join(V2, "js/ai.js"), "utf8");
+  eq("ai: greeting delay is the live 4.5 s", ai.AI_GREET_DELAY_MS, 4500);
+  eq("ai: pop-ups allowed on the plain site", ai.popupsAllowedFor(null, false), true);
+  eq("ai: pop-ups barred in the book app", ai.popupsAllowedFor("book", false), false);
+  eq("ai: pop-ups barred in the radio app", ai.popupsAllowedFor("radio", false), false);
+  eq("ai: pop-ups allowed in the AI app (he is the point)", ai.popupsAllowedFor("ai", false), true);
+  eq("ai: pop-ups barred in a standalone install", ai.popupsAllowedFor(null, true), false);
+  eq("ai: the AI app still greets when standalone", ai.popupsAllowedFor("ai", true), true);
+  const mkStore = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) }; };
+  const vs = mkStore();
+  eq("ai: spoken answers default ON", ai.readVoicePref(vs), true);
+  ai.writeVoicePref(vs, false);
+  eq("ai: the voice toggle persists OFF", ai.readVoicePref(vs), false);
+  ai.writeVoicePref(vs, true);
+  eq("ai: the voice toggle persists ON", ai.readVoicePref(vs), true);
+  const ss = mkStore();
+  eq("ai: the greeting claim wins once", ai.claimGreeting(ss), true);
+  eq("ai: the greeting claim refuses a second time", ai.claimGreeting(ss), false);
+  eq("ai: TTS rides the live Aura path", ai.AI_TTS_MODEL, "@cf/deepgram/aura-1");
+  eq("ai: Talk Mode ears ride the live Whisper path", ai.AI_STT_MODEL, "@cf/openai/whisper-large-v3-turbo");
+  ok("ai: chat posts the running history to /api/ai", /fetch\("\/api\/ai"/.test(aiSrc) && /messages: hist\.slice\(-20\)/.test(aiSrc));
+  ok("ai: no ai_questions access anywhere in the module", !/ai_questions/.test(aiSrc));
+  ok("ai: his portrait is the face", aiSrc.includes("/img/meechie-ai.jpg"));
+}
+
 console.log(`fixtures: ${fixPass} passed, ${fixFail} failed`);
 if (fixFail) failed += fixFail;
 

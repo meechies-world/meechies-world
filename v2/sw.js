@@ -9,10 +9,13 @@
    visitor's NEXT natural load — nothing here forces a reload,
    swaps mid-session, or interrupts playback. The one recurring
    cost is the browser's own tiny update check per visit.
+   js/ai.js (Meechie AI, the shell-wide assistant) is precached
+   with the rest of the skeleton — the brain rides in the frame,
+   per the heart + brain audit (owner, 2026-10-30).
    Offline music keeps the live rule: songs a listener plays are
    stored under the stable "mw-music" name, which skeleton updates
    never wipe. */
-const BUILD = "p5-2026-10-30";
+const BUILD = "p5-ai-2026-10-30";
 const SHELL = "mw2-shell-" + BUILD;
 const MUSIC = "mw-music";
 const PRECACHE = [
@@ -58,6 +61,7 @@ const PRECACHE = [
  "/v2/css/videos.css",
  "/v2/css/watch.css",
  "/v2/css/world.css",
+ "/v2/js/ai.js",
  "/v2/js/beatlab.js",
  "/v2/js/beatmaker.js",
  "/v2/js/commerce.js",
