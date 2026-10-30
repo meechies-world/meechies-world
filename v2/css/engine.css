@@ -1,0 +1,92 @@
+/* ============================================================================
+   v2 PLAYER ENGINE — shared screen CSS (MAP §4.3).
+   The master-screen system every viewer surface wears: the stage, its
+   two dissolving slots, the standby slate, the poster, the chip, the
+   live-share overlay, the status line, the local-pause button, the
+   video transitions and FX pulses, the ON AIR lamp, and the MASTER
+   mini. Ported from the live dj.js style block (main 1be5b8fe) —
+   effective cascade values, in live order. Loaded once by the engine
+   the first time any screen is created; never part of the shell's
+   first load.
+   ============================================================================ */
+
+.vstage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.vslot{position:absolute;inset:0;opacity:0;transition:opacity .12s linear;pointer-events:none}
+.vstage .vslot{overflow:hidden}
+.vstage .vslot iframe{filter:brightness(var(--vb,1)) contrast(var(--vc,1)) saturate(var(--vs,1));transform:scale(var(--vz,1))}
+.vslot iframe{width:100%;height:100%;border:0}
+.vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
+.vposter{position:absolute;inset:0;z-index:2;pointer-events:none;background:#000}
+.vposter img{width:100%;height:100%;object-fit:contain;display:block}
+.vstage.vs-on .vposter{display:none!important}
+.vchip{position:absolute;left:8px;bottom:8px;max-width:calc(100% - 16px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo);color:var(--text);border-radius:999px;padding:3px 10px;font:700 11.5px var(--body);z-index:3}
+/* the WebRTC/HLS share rides ABOVE the video mix on every master stage
+   while S.vstream is on — the mix keeps rendering underneath */
+.vslive{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:5;display:none}
+.vstage.vs-on .vslive{display:block}
+.vstage.vs-on .vstandby{display:none!important}
+.vstatus{position:absolute;top:8px;left:8px;z-index:7;background:rgba(0,0,0,.72);border:1px solid var(--gold-lo);color:#ffd766;border-radius:8px;padding:3px 9px;font:700 11.5px var(--body);letter-spacing:.02em;pointer-events:none}
+.vspause{position:absolute;right:8px;bottom:8px;z-index:8;background:rgba(0,0,0,.72);border:1px solid var(--gold-lo);color:#ffd766;border-radius:8px;padding:4px 10px;font:700 11.5px var(--body);cursor:pointer}
+.vspause[hidden]{display:none!important}
+.vshidden{position:absolute;inset:0;z-index:7;display:grid;place-items:center;background:#050505;color:#f0cf78;font:800 14px var(--body);letter-spacing:.1em;text-align:center;padding:14px}
+.vshidden[hidden]{display:none}
+
+/* video transitions: discrete master-screen switches animate the
+   incoming slot (wrapper only — the player inside is never reloaded) */
+.vslot.vtr-wipe{animation:vtrWipe var(--vtrd,.65s) ease both}
+@keyframes vtrWipe{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.vslot.vtr-slide{animation:vtrSlide var(--vtrd,.65s) cubic-bezier(.2,.8,.25,1) both}
+@keyframes vtrSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.vslot.vtr-zoom{animation:vtrZoom var(--vtrd,.65s) ease both}
+@keyframes vtrZoom{from{transform:scale(.55)}to{transform:scale(1)}}
+.vslot.vtr-blur{animation:vtrBlur var(--vtrd,.65s) ease both}
+@keyframes vtrBlur{from{filter:blur(16px)}to{filter:blur(0)}}
+.vslot.vtr-glitch{animation:vtrGlitch .38s steps(2,end) both}
+.vslot.vtr-fade::after,.vslot.vtr-flash::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5}
+.vslot.vtr-fade::after{background:#000;animation:vfxOut var(--vtrd,.65s) ease both}
+.vslot.vtr-flash::after{background:#fff;animation:vfxOut calc(var(--vtrd,.65s)*.7) ease both}
+@keyframes vfxOut{from{opacity:1}to{opacity:0}}
+@keyframes vtrGlitch{0%{transform:translate(0);clip-path:inset(12% 0 62% 0)}20%{transform:translate(-6px,2px);clip-path:inset(58% 0 8% 0)}40%{transform:translate(5px,-2px);clip-path:inset(28% 0 40% 0)}60%{transform:translate(-4px,1px);clip-path:inset(70% 0 4% 0)}80%{transform:translate(3px,0);clip-path:inset(6% 0 78% 0)}100%{transform:translate(0);clip-path:inset(0 0 0 0)}}
+/* one-shot video FX ride S.vfx stamps on every stage at once */
+.vstage.vfx-flash::after,.vstage.vfx-strobe::after{content:"";position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:6}
+.vstage.vfx-flash::after{animation:vfxFlashA .3s ease-out both}
+@keyframes vfxFlashA{0%{opacity:1}100%{opacity:0}}
+.vstage.vfx-strobe::after{animation:vfxStrobeA .66s steps(1,end) both}
+@keyframes vfxStrobeA{0%{opacity:1}12%{opacity:0}25%{opacity:1}37%{opacity:0}50%{opacity:1}62%{opacity:0}100%{opacity:0}}
+.vstage.vfx-glitch{animation:vtrGlitch .4s steps(2,end) both}
+.vstage.vfx-blurp .vslot{animation:vfxBlurP .7s ease both}
+@keyframes vfxBlurP{0%{filter:blur(0)}35%{filter:blur(14px)}100%{filter:blur(0)}}
+.vstage.vfx-zoomp .vslot{animation:vfxZoomP .55s ease both}
+@keyframes vfxZoomP{0%{transform:scale(1)}40%{transform:scale(1.14)}100%{transform:scale(1)}}
+.vstage.vfx-mono .vslot iframe{filter:grayscale(1) brightness(var(--vb,1)) contrast(var(--vc,1))}
+.vstage.vfx-invert .vslot iframe{filter:invert(1)}
+.vstage.vfx-hue .vslot iframe{animation:vfxHueA 1.2s linear both}
+@keyframes vfxHueA{from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
+
+/* the ON AIR lamp, shared by the station card and the Watch booth */
+.onair-lamp{display:inline-flex;align-items:center;gap:8px;font:800 13px var(--body);letter-spacing:.14em;padding:7px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.onair-lamp.on{color:#fff;background:#a3161c;border-color:#e5484d;box-shadow:0 0 18px rgba(229,72,77,.55)}
+.onair-lamp .dot{width:9px;height:9px;border-radius:50%;background:#666}
+.onair-lamp.on .dot{background:#ff5b60;animation:djpulse 1.2s infinite}
+@keyframes djpulse{50%{opacity:.35}}
+
+/* the MASTER mini — a small rectangle at the top of every page,
+   draggable by its bar, resizable by its corner grip */
+#dj-mini{position:fixed;top:64px;right:10px;width:208px;max-width:calc(100vw - 20px);z-index:65;background:#000;border:3px solid #0a0a0c;outline:1px solid #2c2c30;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+#dj-mini .mn-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#141109;color:var(--gold-hi,#f0cf78);font:700 10px var(--body);letter-spacing:.1em;padding:4px 8px}
+#dj-mini .mn-bar span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
+#dj-mini .mn-bar{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+#dj-mini.mn-drag .mn-bar{cursor:grabbing}
+#dj-mini .vstage{border:6px solid #0c0c0e;outline:2px solid #77777f;box-shadow:inset 0 0 0 2px rgba(240,207,120,.28);border-radius:0}
+#dj-mini .mn-grip{position:absolute;right:0;bottom:0;width:24px;height:24px;z-index:5;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 52%,rgba(240,207,120,.65) 52%,rgba(240,207,120,.65) 64%,transparent 64%,transparent 76%,rgba(240,207,120,.65) 76%,rgba(240,207,120,.65) 88%,transparent 88%)}
+@media(max-width:760px){#dj-mini{top:auto;bottom:76px;width:168px}}
+html.gated #dj-mini{display:none!important}
+
+/* his camera square inside the mini's stage: bottom-right by default,
+   draggable anywhere over the screen */
+.mw-camov{position:absolute;width:30%;aspect-ratio:1/1;z-index:8;border:2px solid var(--gold,#f0cf78);border-radius:8px;overflow:hidden;background:#000;box-shadow:0 6px 18px rgba(0,0,0,.5);touch-action:none;cursor:grab}
+.mw-camov:active{cursor:grabbing}
+.mw-camov img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+.mw-camov-tag{position:absolute;left:4px;bottom:3px;font:800 8.5px var(--body);letter-spacing:.08em;color:#f0cf78;text-shadow:0 1px 3px #000;pointer-events:none}
+#mw-camov-x{position:absolute;right:2px;top:2px;width:16px;height:16px;line-height:1;background:rgba(0,0,0,.65);border:1px solid rgba(240,207,120,.5);color:#f0cf78;border-radius:50%;font-size:10px;cursor:pointer;padding:0;z-index:2}
