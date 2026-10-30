@@ -12,6 +12,8 @@
  * gap where nobody was listening. Writes are rare: only on an advance, or a light
  * updatedAt touch so clients keep reading the station as live. */
 import { userFrom } from "../../lib/cf.js";
+import { encrypt, vapid } from "./push.js";
+import { cleanBrainEvent, recordBrainEvents, readTaste, weightedBagOrder } from "../../lib/brain-taste.js";
 
 const XF = 5; // crossfade lead in seconds: the next song starts this long before the current one ends, so the two are audibly playing together with no pause (Malik, 2026-10-28: widened from 3.5; the booth lead in dj.js matches)
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
@@ -33,13 +35,143 @@ async function writeDoc(env, path, coll, data) {
   await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", path, coll, null, null, Date.now()).run();
 }
 
+const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
+const BELL_WINDOW = 120000; // at most one doorbell push per two minutes
+/* The DOORBELL (owner, 2026-10-29): when the presence block below spots a
+ * genuine new arrival, ring the owner's phones with a Web Push. The
+ * subscriptions live in docs (coll "pushsubs"), written only by
+ * /api/push/subscribe after it checks the owner session. The VAPID private
+ * half never leaves the Pages secrets: VAPID_PRIVATE_KEY if it is ever set,
+ * otherwise the VAPID_PRIVATE the message notifications already use — one
+ * keypair serves the whole site (its public half is in js/push.js), because
+ * a browser registration holds ONE push subscription and two keypairs
+ * would make the doorbell and the message notifications fight over it.
+ * The two-minute window is claimed in the site/doorbell doc BEFORE
+ * sending, so a burst of arrivals lands as one ring; arrivals inside the
+ * window are covered by the in-site cards and the 10-minute phone alert.
+ * A subscription the push service reports gone (404/410) is pruned with
+ * its changes row. Everything here is best-effort: the caller wraps the
+ * call, and no failure in this function may ever break the station ping. */
+async function doorbell(env, name, online, now) {
+  const d = env.VAPID_PRIVATE_KEY || env.VAPID_PRIVATE;
+  if (!d) return;
+  const rows = await env.DB.prepare("select path, data from docs where coll = 'pushsubs'").all();
+  const subs = [];
+  for (const r of (rows.results || [])) { try { const s = JSON.parse(r.data); if (s && /^https:\/\//.test(s.endpoint || "") && s.keys && s.keys.p256dh && s.keys.auth) subs.push({ path: r.path, endpoint: s.endpoint, keys: s.keys }); } catch (_) {} }
+  if (!subs.length) return; // nobody to ring yet: leave the window unstamped
+  const state = await readDoc(env, "site/doorbell");
+  if (state && now - (+state.last || 0) < BELL_WINDOW) return;
+  await writeDoc(env, "site/doorbell", "site", { last: now });
+  const data = { title: "🚪 Meechie's World", body: name + " just came in — " + Math.max(1, online || 1) + " on now", url: "/", tag: "doorbell" };
+  await Promise.all(subs.map(async (s) => {
+    try {
+      const body = await encrypt(JSON.stringify(data), s.keys.p256dh, s.keys.auth);
+      const r = await fetch(s.endpoint, { method: "POST", headers: { authorization: await vapid(s.endpoint, d), "content-encoding": "aes128gcm", "content-type": "application/octet-stream", ttl: "86400", urgency: "high" }, body, signal: AbortSignal.timeout(6000) });
+      if (r.status === 404 || r.status === 410) {
+        await env.DB.prepare("delete from docs where path = ?").bind(s.path).run();
+        await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", s.path, "pushsubs", null, null, Date.now()).run();
+      }
+    } catch (_) {}
+  }));
+}
+
+/* MWVMIXRESCUE-BEGIN */
+/* VMIX RESCUE (mwVmixRescue, 2026-10-29): the second deliberate keeper
+ * exception, sibling to the ghost-share switch below. The keeper already
+ * rescues the AUDIO when the booth goes stale (it drives A/B itself), but
+ * it never touched vmix, and it does not drive C/D — so when a booth tab
+ * wedged mid-set with the master screen featuring a C/D deck it had left
+ * flagged playing at pos 0, MW TV sat on that corpse forever: every viewer
+ * surface follows vmix, and the honest screen slate rightly refuses to
+ * fake a picture for a deck that is not producing one. This pass runs
+ * only inside the stale-booth authority: booth fresh, a deliberate pause
+ * stamped, or the station off, and it never acts. A featured deck counts
+ * DEAD when it is not playing at all, when its timeline has run past the
+ * end of the track without parking, when its published position has sat
+ * at 0 with a known duration for the full zero grace, or when its
+ * published position has not moved across observations. Published
+ * position is posOf — the start anchor while playing, the pos snapshot
+ * otherwise, the same math every client uses — never the raw pos field
+ * alone: a keeper-driven deck legitimately sits at snapshot 0 for its
+ * whole song while its anchored position advances, and only the
+ * anchored reading separates it from a corpse whose position froze at 0.
+ * Another deck counts HEALTHY only when its effective position is
+ * genuinely advancing across observations and still inside its track.
+ * Dead featured plus healthy deck: vmix re-points at the healthy deck
+ * (b cleared, t reset, rescueAt stamped) through the normal writeDoc
+ * path, so the booth mirrors, Watch, MW TV and the station stage all
+ * follow the living deck at once. No healthy deck: hands off — the
+ * rotation below creates one, and a later tick rescues. Mode is not a
+ * gate: in auto or any owner-set mode the same stale + dead + healthy
+ * test applies, because while the booth is stale there is no owner
+ * present whose screen choice a dead picture could be honoring.
+ * Observations live in an in-isolate map: a first sight (fresh isolate
+ * included) is only ever unknown, never a verdict, so an isolate restart
+ * can delay a rescue by one grace window but can never cause one. */
+const MW_VMIX_OBS = new Map();
+const VMIX_ZERO_GRACE = 45000; // a featured deck whose published position sits at 0 this long while the booth is stale is a corpse, not a slow start
+const VMIX_FREEZE_GAP = 10000; // the effective position must fail to move across at least this long an observation gap before frozen counts
+function mwVmixRescue(S, now, obs) {
+  if (!S || !S.live) return "";
+  if (S.pausedAt) { obs.clear(); return ""; } // a deliberate pause is his choice: the TV slate is correct then
+  if (!S.vmix || typeof S.vmix !== "object") return "";
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH) return ""; // booth present: his screen choices are law
+  const vm = S.vmix;
+  const eff = (k) => { const dk = S[k]; if (!dk) return 0; return dk.playing ? (+dk.start > 0 ? Math.max(0, (now - +dk.start) / 1000) : (+dk.pos || 0)) : (+dk.pos || 0); };
+  // observe every deck first: dead and healthy are both judged across
+  // ticks, and a first sight is only ever unknown, never a verdict
+  const seen = {};
+  for (const k of ["A", "B", "C", "D"]) {
+    const dk = S[k] || {};
+    const prev = obs.get(k);
+    const cur = { eff: eff(k), at: now, playing: !!dk.playing, zeroSince: 0 };
+    if (dk.playing && cur.eff <= 0.05 && +dk.dur > 0) cur.zeroSince = (prev && prev.playing && prev.eff <= 0.05 && prev.zeroSince) ? prev.zeroSince : now;
+    seen[k] = { cur, prev };
+    obs.set(k, cur);
+  }
+  const healthy = (k) => {
+    const dk = S[k]; if (!dk || !dk.playing) return false;
+    const s = seen[k];
+    if (!s.prev || !s.prev.playing) return false;
+    if (s.cur.eff - s.prev.eff < 1) return false; // genuinely advancing, not jitter
+    if (+dk.dur > 0 && s.cur.eff > +dk.dur + 5) return false; // past its end is a corpse, not a healthy deck
+    return true;
+  };
+  const dead = (k) => {
+    const dk = S[k]; if (!dk) return true;
+    if (!dk.playing) return true; // a stopped deck on the master screen while the station plays elsewhere
+    const s = seen[k];
+    const dur = +dk.dur || 0;
+    if (dur > 0 && s.cur.eff > dur + 30) return true; // timeline ran past the end and never parked
+    if (dur > 0 && s.cur.eff <= 0.05 && s.cur.zeroSince && now - s.cur.zeroSince >= VMIX_ZERO_GRACE) return true; // published position sat at zero past the grace window
+    // frozen across observations — mid-track, or at zero with no known
+    // duration (the grace rule above needs a duration, so a zero-frozen
+    // deck without one is judged here instead; zero with a duration is
+    // governed by the grace alone, so a slow start is never rushed)
+    if (s.prev && s.prev.playing && now - s.prev.at >= VMIX_FREEZE_GAP && s.cur.eff - s.prev.eff < 0.5 && (s.cur.eff > 0.05 || !(dur > 0))) return true;
+    return false;
+  };
+  const a = String(vm.a || ""), b = String(vm.b || "");
+  const t = +vm.t || 0;
+  if (b && t > 0 && t < 1) return ""; // mid-transition: never yank the screen mid-fade
+  const featured = [];
+  if (a) featured.push(a);
+  if (b && t >= 1 && b !== a) featured.push(b);
+  if (featured.some((k) => !dead(k))) return ""; // a living deck is on the screen: hands off
+  const target = ["A", "B", "C", "D"].find((k) => !featured.includes(k) && healthy(k));
+  if (!target) return "";
+  vm.a = target; vm.b = ""; vm.t = 0; vm.at = now; vm.rescueAt = now;
+  return target;
+}
+/* MWVMIXRESCUE-END */
+
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const now = Date.now();
   const origin = new URL(request.url).origin;
   // presence: every client pings this endpoint every ~12s, so a small ping table
   // doubles as the site's online count — counts only, no identities are stored
-  const counts = { online: 0, listening: 0 };
+  const counts = { online: 0, listening: 0, guestSince: 0 };
   try {
     const u = new URL(request.url);
     const cid = (u.searchParams.get("cid") || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
@@ -49,21 +181,63 @@ export async function onRequestGet({ request, env }) {
     await env.DB.prepare("create table if not exists pings (cid text primary key, at integer, listening integer)").run();
     try { await env.DB.prepare("alter table pings add column uid text").run(); } catch (_) {}
     try { await env.DB.prepare("alter table pings add column name text").run(); } catch (_) {}
-    if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name) values (?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name)").bind(cid, now, lis, pu || null, pn || null).run();
+    try { await env.DB.prepare("alter table pings add column first integer").run(); } catch (_) {}
+    // DOORBELL arrival spotting, checked BEFORE the upsert below lands:
+    // a cid with no fresh ping row is someone landing right now. A member
+    // counts only when no other fresh ping already carries their uid (a
+    // second tab is not a second arrival); the owner never counts, signed
+    // in as himself or not — his own uid is the one thing the ping carries
+    // that he cannot be rung about.
+    let bellName = null;
+    if (cid) {
+      try {
+        const prev = await env.DB.prepare("select cid from pings where cid = ? and at > ?").bind(cid, now - 45000).first();
+        if (!prev) {
+          if (pu && pu !== OWNER_ID) {
+            const elsewhere = await env.DB.prepare("select cid from pings where uid = ? and at > ? limit 1").bind(pu, now - 35000).first();
+            if (!elsewhere) bellName = (pn || "A member").slice(0, 40);
+          } else if (!pu) bellName = "A guest";
+        }
+      } catch (_) {}
+    }
+    if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
     await env.DB.prepare("delete from pings where at < ?").bind(now - 45000).run();
     const row = await env.DB.prepare("select count(*) as n, coalesce(sum(listening), 0) as l from pings where at > ?").bind(now - 35000).first();
     if (row) { counts.online = row.n || 0; counts.listening = row.l || 0; }
     // who's online: signed-in members identify themselves on the ping, so every
     // counter on the site (header chip, Book strip, booth) reads this ONE list
     counts.users = [];
-    try { const ur = await env.DB.prepare("select uid, name, max(at) as at from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); counts.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "" })); } catch (_) {}
+    try { const ur = await env.DB.prepare("select uid, name, max(at) as at, min(first) as since from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); counts.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "", since: r.since || 0 })); } catch (_) {}
+    try { const gr = await env.DB.prepare("select min(first) as f from pings where at > ? and (uid is null or uid = '')").bind(now - 35000).first(); counts.guestSince = (gr && gr.f) || 0; } catch (_) {}
+    // ring the doorbell for the arrival spotted above — counts.online now
+    // includes the person who just landed, which is the number the push
+    // quotes. Fully wrapped: the ping answers the same whether or not the
+    // ring goes through.
+    if (bellName) { try { await doorbell(env, bellName, counts.online, now); } catch (_) {} }
   } catch (_) {}
   let S = await readDoc(env, "radio/dj");
-  if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users });
+  if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   S.A = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.A || {});
   S.B = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.B || {});
   S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
   S.D = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.D || {});
+
+  // GHOST-SHARE SWITCH (mwGhostShare, 2026-10-29): the one deliberate
+  // exception to this keeper never touching vstream. A share flag left on
+  // by a dead publisher (a ghost from before the booth publisher
+  // supervisor) makes every viewer treat a dead meeting as the live TV,
+  // and nothing else ever clears it. A live share heartbeats vstream.at
+  // continuously through the supervisor, and viewers already read proof
+  // older than 75s as not-live — so a flag whose heartbeat is more than
+  // 15 minutes old can only be a ghost, and this can never trip a real
+  // share. Clear just the on flag and stamp the stop; kind, meeting and
+  // diag stay as history. The write rides writeDoc like every other
+  // keeper mutation (changes row included), stamped by the keeper so the
+  // booth adopts it, and once on is false the rule can never fire again.
+  if (S.vstream && S.vstream.on === true && now - (Number(S.vstream.at) || 0) > 900000) {
+    S.vstream.on = false; S.vstream.stopAt = now; S.updatedAt = now; S.by = "keeper";
+    await writeDoc(env, "radio/dj", "radio", S);
+  }
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
   // 2026-10-28): unless a deck is impossibly past its end — flagged playing
@@ -111,25 +285,56 @@ export async function onRequestGet({ request, env }) {
   // double-started. Same gates as the silence backstop: station live,
   // Auto-DJ on, no deliberate pause stamped.
   const handBreak = !!(S.live && S.autodj && !S.pausedAt && ["A", "B"].some((k) => { const dk = S[k]; const pk = S[k === "A" ? "B" : "A"]; return dk && dk.playing && +dk.dur > 0 && +dk.start > 0 && now >= +dk.start + (+dk.dur) * 1000 - XF * 1000 && !(pk && pk.playing); }));
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users });
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+  // VMIX RESCUE (mwVmixRescue, 2026-10-29): past this line the booth is
+  // stale or a breaker fell through; the helper re-tests staleness itself
+  // (a breaker fall-through with a fresh booth must never move the
+  // screen) and re-points a dead featured deck at a genuinely advancing
+  // one. The write rides writeDoc like the ghost-share switch above,
+  // stamped by the keeper; the rotation below then runs as normal, and
+  // on the tick where no deck is advancing yet the helper simply waits
+  // for a later one.
+  if (mwVmixRescue(S, now, MW_VMIX_OBS)) { S.updatedAt = now; S.by = "keeper"; await writeDoc(env, "radio/dj", "radio", S); }
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users });
+    return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   }
 
   const { results } = await env.DB.prepare("select data from docs where coll = 'tracks'").all();
   const lib = (results || []).map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
     .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
-  if (!lib.length) return json({ ok: true, mode: "empty-lib", now, online: counts.online, listening: counts.listening, users: counts.users });
+  if (!lib.length) return json({ ok: true, mode: "empty-lib", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   const byAsset = new Map(lib.map((t) => [t.assetId, t]));
   const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
 
-  const bagPick = (avoidSrc) => {
+  // DJ BRAIN (PR-B1): the keeper teaches the brain what it plays while the
+  // booth is away. Starts and consumed picks collect here and flush once at
+  // the end of the tick through the shared writer (lib/brain-taste.js:
+  // brain_events rows + the brain/taste fold). Best-effort like the
+  // doorbell — a brain failure may never break the station ping.
+  const brainEvts = [];
+  const brainPlay = (k, item) => {
+    let artist = "";
+    if (!item.yt && item.src) { const t = lib.find((x) => String(item.src).includes(x.assetId)); if (t && t.artist) artist = String(t.artist).slice(0, 80); }
+    // pool and pick titles carry the artist after the middle dot ("Song · Johnny Cash")
+    if (!artist && !item.yt) { const parts = String(item.title || "").split("·"); if (parts.length > 1) artist = parts[parts.length - 1].trim().slice(0, 80); }
+    const ev = cleanBrainEvent({ type: "play", yt: item.yt || "", src: item.src || "", title: item.title || "", artist, deck: k, at: now, live: !!S.live }, "keeper");
+    if (ev) brainEvts.push(ev);
+  };
+  const bagPick = async (avoidSrc) => {
     if (!Array.isArray(S.bag) || !S.bag.length) {
-      S.bag = lib.map((t) => t.assetId);
-      for (let i = S.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [S.bag[i], S.bag[j]] = [S.bag[j], S.bag[i]]; }
+      // DJ BRAIN (PR-B1): the refill is a weighted shuffle over the taste
+      // profile — favorites land where they are drawn sooner, but the bag
+      // stays a permutation of the whole library drawn without replacement
+      // (no-repeat-until-empty holds by construction), and with no profile
+      // every weight is 1 and the order is the plain uniform shuffle this
+      // replaces. Only this refill is weighted: listener picks, schedQ and
+      // Malik's own queue draws are his word, never the brain's.
+      let taste = null;
+      try { taste = await readTaste(env); } catch (_) {}
+      S.bag = weightedBagOrder(lib, taste);
     }
     let id = S.bag.pop();
     if (avoidSrc && id && avoidSrc.includes(id) && S.bag.length) { const other = S.bag.pop(); S.bag.push(id); id = other; }
@@ -138,6 +343,7 @@ export async function onRequestGet({ request, env }) {
   const startDeckItem = (k, item, startMs) => {
     S[k] = { src: item.src || "", yt: item.yt || "", title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
     S.log = [{ t: item.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== item.title)).slice(0, 30);
+    brainPlay(k, item); // DJ BRAIN: the unattended start is a play the brain learns from
   };
   const startDeck = (k, t, startMs) => startDeckItem(k, { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 }, startMs);
   /* listener picks (docs in the requests collection, kind:"pick") jump the queue:
@@ -156,7 +362,7 @@ export async function onRequestGet({ request, env }) {
         try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); iaDur = +f.length || 0; } } catch (_) {}
       }
       try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); } catch (_) {}
-      if (src) return { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) };
+      if (src) { const ev = cleanBrainEvent({ type: "request", src, title: p.d.title || "", at: now, live: !!S.live }, "keeper"); if (ev) brainEvts.push(ev); return { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) }; }
     }
     return null;
   };
@@ -210,7 +416,7 @@ export async function onRequestGet({ request, env }) {
     }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
     if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
-    const t = bagPick(avoidSrc);
+    const t = await bagPick(avoidSrc);
     return { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 };
   };
 
@@ -224,9 +430,17 @@ export async function onRequestGet({ request, env }) {
   // past the end of the video forever, which sounds like skipping. Park it.
   let parked = false;
   for (const k of ["C", "D"]) { const dk = S[k]; if (dk && dk.playing) { const dur = +dk.dur || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
+  // Park an orphaned A/B deck (2026-10-29): the rotation loop below picks A
+  // first as cur, so a B->A crossfade leaves B flagged playing past its end
+  // forever — once A starts, cur is A, A's own end is far off, and B is never
+  // visited again, so clients chase B's ended video (skipping) under the live
+  // deck. An A->B handoff self-cleans because A stays cur until its end, but
+  // park either side symmetrically: a deck past its timeline cannot still be
+  // playing, and the 30s grace keeps the 5s blend itself untouched.
+  for (const k of ["A", "B"]) { const dk = S[k]; if (dk && dk.playing) { const dur = durOf(dk) || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
     if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users });
+    return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
   if (S.silentSince && anyPlayingSB) delete S.silentSince; // mwSilentBreak: a playing deck ends any silence episode
@@ -258,9 +472,10 @@ export async function onRequestGet({ request, env }) {
       }
     }
   } catch (_) {}
+  const xfToward = (x, amt) => { const v = (x ?? 0.5) + Math.max(-amt, Math.min(amt, 0.5 - (x ?? 0.5))); return Math.round(v * 1000) / 1000; };
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
-  if (!cur) { // dead air — start the rotation on deck A right now
-    startDeckItem("A", await nextItem(""), now); S.xf = 0; changed = true; cur = "A";
+  if (!cur) { // dead air — start the rotation on deck A right now (fader home is CENTER, owner 2026-10-29)
+    startDeckItem("A", await nextItem(""), now); S.xf = 0.5; changed = true; cur = "A";
   }
   for (let i = 0; i < 60; i++) {
     const other = cur === "A" ? "B" : "A";
@@ -269,7 +484,7 @@ export async function onRequestGet({ request, env }) {
     if (now >= endAt) { // song fully over: stop it; the other deck (already started at the fade) takes the wheel
       if (S[cur].playing) { S[cur].playing = false; S[cur].pos = 0; changed = true; }
       if (S[other].playing) { cur = other; continue; }
-      startDeckItem(other, await nextItem(S[cur].src), endAt); S.xf = other === "A" ? 0 : 1; changed = true; cur = other; continue;
+      startDeckItem(other, await nextItem(S[cur].src), endAt); S.xf = 0.5; changed = true; cur = other; continue;
     }
     if (now >= endAt - XF * 1000 && !S[other].playing) { // crossfade point: bring the next song in under this one
       startDeckItem(other, await nextItem(S[cur].src), endAt - XF * 1000);
@@ -279,10 +494,26 @@ export async function onRequestGet({ request, env }) {
          at the same moment. Only this crossfade branch stamps it — cold
          starts (dead air, silence-breaker rescues, schedule/pool starts
          with nothing playing) never do. */
-      S.fxHornAt = now;
-      S.xf = other === "A" ? 0 : 1; changed = true;
+      if (S.hornOn === true) S.fxHornAt = now; // horns OFF unless the owner turns them on (S.hornOn, owner 2026-10-29)
+      S.xf = xfToward(S.xf, 0.34); changed = true; // no more slamming the fader to the edge (owner, 2026-10-29: "keeps jumping") — one step toward center; the settle below finishes the walk
     }
     break;
+  }
+  /* Crossfader home (owner, 2026-10-29): the fader rests at CENTER and
+     follows what is playing. Each keeper pass walks it toward 0.5 — gently
+     when the playing deck is audible, in one step when a playing deck is
+     faded out (gain under 0.2: the station reads as off while a song
+     plays). Booth away only; his hand on the pad outranks this entirely. */
+  if (!boothFreshSB) {
+    const gAB = (x, side) => Math.cos((side === "A" ? x : 1 - x) * Math.PI / 2);
+    [["xf", "A", "B"], ["xf2", "C", "D"]].forEach(([key, a, b]) => {
+      const pa = !!(S[a] && S[a].playing), pb = !!(S[b] && S[b].playing);
+      if (pa === pb) return;
+      const k = pa ? a : b, x = S[key] ?? 0.5;
+      const step = gAB(x, k === "B" || k === "D" ? "B" : "A") < 0.2 ? 0.5 : 0.12;
+      const nx = xfToward(x, step);
+      if (nx !== x) { S[key] = nx; changed = true; }
+    });
   }
   // station clock: about once an hour the unattended station IDs itself with
   // the first sound-board pad, the way a real station does at the top of the hour
@@ -306,8 +537,12 @@ export async function onRequestGet({ request, env }) {
     if ((+fx.boost || 1) > 1.3) { fx.boost = 1.3; changed = true; }
   }
   if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
+  // DJ BRAIN flush: one shared write for everything this tick started or
+  // consumed (brain_events rows + the brain/taste fold). Best-effort — the
+  // station answers the same whether or not the brain remembers.
+  if (brainEvts.length) { try { await recordBrainEvents(env, brainEvts); } catch (_) {} }
   if (changed) { S.by = "keeper"; /* mwFlapFix: keeper writes carry their own stamp, so a booth tab never mistakes a rescue for its own save echo */ await writeDoc(env, "radio/dj", "radio", S); }
-  return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users });
+  return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
 }
 
 /* Guest song requests: the picker in js/dj.js first tries the member write; when
