@@ -6621,7 +6621,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793419893;
+  const MW_DJ_BUILD = 1793420711;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7266,6 +7266,7 @@ html.popdj #dj-mini{display:none!important}
     const wasSounding = !!(S[k] && S[k].playing); // GENTLE LOAD: was this deck the sounding one before this pick replaced it
     if (serverMirror()) leadTakeAt = Date.now();
     const d = deck(k); actx();
+    d._ageSwapUsed = false; // every fresh load re-arms the deck's one age-gate swap attempt (see ageSwapTry)
     // a pick from his own hand loads STOPPED (owner, 2026-10-27): the deck
     // cues up and waits for his Play. The station's own flows (Auto-DJ, the
     // queue, schedule, listener picks) call load without the cue flag and
@@ -7296,7 +7297,7 @@ html.popdj #dj-mini{display:none!important}
      * calls load WITHOUT the cue flag, so it builds right here exactly
      * as before. File picks are cheap and keep the path below as is. */
     if ((item.yt || item.scUrl) && cueDeck && !wasSounding) { try { d.clearYt(); } catch (_) {} paintOwner(); levels(); save(); return; }
-    if (item.yt) { const okY = await d.setYt(item.yt); if (!okY) { if (ageIsLocked(item.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
+    if (item.yt) { let okY = await d.setYt(item.yt); if (!okY) { const sw = await ageSwapTry(k, item); if (sw) okY = true; } if (!okY) { if (ageIsLocked(item.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
     if (item.scUrl) { const okS = await d.setSc(item.scUrl); if (!okS) { say("That SoundCloud track would not play here — some tracks are private or blocked from playing off SoundCloud. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
     const ok = await d.set(item.src);
     if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
@@ -7320,7 +7321,7 @@ html.popdj #dj-mini{display:none!important}
     }
     if (s.playing) { s.pos = d.el.currentTime; s.playing = false; d.el.pause(); }
     else {
-      if (s.yt) { const okY = await d.setYt(s.yt); if (!okY) { if (ageIsLocked(s.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else if (s.kind === "sc" && s.scUrl) { const okS = await d.setSc(s.scUrl); if (!okS) { say("That SoundCloud track would not play here — it may be private or blocked from playing off SoundCloud."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
+      if (s.yt) { let okY = await d.setYt(s.yt); if (!okY) { const sw = await ageSwapTry(k, { yt: s.yt, title: s.title, dur: s.dur }); if (sw) okY = true; } if (!okY) { if (ageIsLocked(s.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else if (s.kind === "sc" && s.scUrl) { const okS = await d.setSc(s.scUrl); if (!okS) { say("That SoundCloud track would not play here — it may be private or blocked from playing off SoundCloud."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title); brainPlay(k); // PR-B2: the playing flip is the brain's play event — every start path (hand, Auto-DJ, queue) funnels through here
@@ -7750,6 +7751,63 @@ html.popdj #dj-mini{display:none!important}
   function ytUnblocked(list) { try { const s = ageSkipSet(); if (!s.size || !Array.isArray(list)) return list; return list.filter((it) => !it || !it.id || !s.has(it.id)); } catch (_) { return list; } }
   const ageSaid = new Set();
   function ageNote(it) { const id = (it && it.yt) || ""; if (!id || ageSaid.has(id)) return; ageSaid.add(id); say("That video is age-locked by YouTube — it cannot play inside the site, so it is out of the picks for next time."); }
+  /* Age-gate auto-swap (owner, 2026-10-31 — "they wont let me play
+   * 18 plus videos"): the wall is YouTube's own and no site player
+   * can climb it, so when a video dies on that wall (errors 101/150,
+   * marked locked by the shim before the load ever saw the failure)
+   * the booth does not sit on a dead deck — it searches for a
+   * playable version of the same song (official audio first, then
+   * the lyric video, then the clean title as-is) and loads the best
+   * alternate onto the SAME deck. The ban itself lands exactly as
+   * before; the swap only decides what the deck holds next. What
+   * happens after is NOT the swap's business: the caller keeps its
+   * own intent — a station flow rolls on and plays it, a cued hand
+   * pick stays stopped (gentle-load law), a Play press plays it
+   * (his explicit play). ONE attempt per load: ageSwapTry spends
+   * the deck's swap token before mounting the alternate, load()
+   * re-arms it on every fresh load, and an alternate that also
+   * errors falls through to the caller's existing failure path —
+   * it can never loop. */
+  function ageSwapCleanTitle(t) { return String(t || "").replace(/\[[^\]]*\]/g, " ").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim(); }
+  function ageSwapQueries(title) { const c = ageSwapCleanTitle(title); if (!c) return []; return [c + " official audio", c + " lyric video", c]; }
+  function ageSwapPick(results, deadId, deadDur) {
+    if (!Array.isArray(results)) return null;
+    const banned = ageSkipSet();
+    const ok = results.filter((r) => r && r.id && r.id !== deadId && !banned.has(r.id));
+    if (!ok.length) return null;
+    const dd = +deadDur || 0;
+    if (dd > 0) { const inBand = ok.filter((r) => { const d = +r.dur || 0; return d > 0 && d >= dd * 0.5 && d <= dd * 2; }); if (inBand.length) return inBand[0]; }
+    return ok[0];
+  }
+  async function ageSwapFind(item) {
+    try {
+      const vp = vparseTok((item && item.yt) || "");
+      if (vp.p !== "yt" || !vp.id) return null;
+      for (const q of ageSwapQueries(item.title)) {
+        const res = await ytPage(q, 1);
+        if (res === "TIER") return null;
+        const alt = ageSwapPick(res, vp.id, item.dur);
+        if (alt) return { yt: alt.id, title: alt.title || item.title || "YouTube video", cover: "https://i.ytimg.com/vi/" + alt.id + "/hqdefault.jpg", dur: +alt.dur || 0 };
+      }
+    } catch (_) {}
+    return null;
+  }
+  async function ageSwapTry(k, item) {
+    try {
+      const d = deck(k); if (!d || d._ageSwapUsed) return null;
+      if (!item || !item.yt || !ageIsLocked(item.yt)) return null;
+      const alt = await ageSwapFind(item);
+      if (!alt) return null;
+      if (!S[k] || S[k].yt !== item.yt) return null; // the deck changed hands while the search ran — this load no longer owns it
+      d._ageSwapUsed = true; // spent before the mount: an alternate that errors is the end of this load's one attempt
+      const okA = await d.setYt(alt.yt);
+      if (!okA) return null;
+      item.yt = alt.yt; item.title = alt.title; item.cover = alt.cover; item.dur = alt.dur;
+      S[k].yt = alt.yt; S[k].title = alt.title; S[k].cover = alt.cover; S[k].dur = alt.dur; S[k].pos = 0;
+      say("That video is age-locked by YouTube — swapped in a playable version.");
+      return alt;
+    } catch (_) { return null; }
+  }
   /* drawQueueItem: ONLY the queue draw out of pickNextItem — the
    * owner's shuffle rule (2026-10-28): pick at random and remove it, so
    * nothing repeats until the queue empties. No listener picks, no
