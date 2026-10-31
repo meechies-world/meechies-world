@@ -58,6 +58,7 @@ header.bar{backdrop-filter:blur(16px)}
   header.bar .brand b{font-size:14px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
   header.bar .brand svg{flex:none}
 }
+@media (max-width:480px){header.bar .brand b{font-size:12.5px!important;letter-spacing:.02em!important}}
 nav.tabs a{letter-spacing:.02em}
 .apptab{display:none;position:fixed;left:0;right:0;bottom:0;z-index:9990;height:var(--tabbar);padding-bottom:env(safe-area-inset-bottom,0px);grid-template-columns:repeat(6,1fr);background:color-mix(in srgb,#0b0a08 94%,transparent);backdrop-filter:blur(14px);border-top:1px solid var(--gold-lo,#8c6d26)}
 .apptab a,.apptab button{display:grid;justify-items:center;align-content:center;gap:3px;white-space:nowrap;letter-spacing:-.01em;color:var(--muted,#a99f8b);text-decoration:none;font:700 10.5px var(--body,system-ui);background:none;border:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
