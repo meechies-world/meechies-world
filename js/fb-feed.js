@@ -240,7 +240,7 @@ body.dj-on .announce .wrap,body.dj-past .announce .wrap{margin-left:0!important;
 #fb-tabs button i{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;background:#e41e3f;color:#fff;font:700 11px/18px system-ui;font-style:normal;padding:0 5px}
 #fb-tabs button small{position:absolute;bottom:3px;left:0;right:0;font:600 10px system-ui;color:inherit}
 @media(min-width:761px){#fb-tabs{justify-content:center}#fb-tabs button small{display:none}}
-@media(max-width:760px){#fb-tabs{margin:0 0 8px;padding:0}#fb-tabs button small{display:none}}
+@media(max-width:760px){#fb-tabs{margin:0 0 8px;padding:0;overflow-x:auto;scrollbar-width:none}#fb-tabs::-webkit-scrollbar{display:none}#fb-tabs button{flex:none}#fb-tabs button small{display:none}}
 #fb-notes{position:fixed;top:114px;right:12px;width:min(380px,calc(100vw - 24px));max-height:70vh;overflow:auto;z-index:30;background:var(--fb-card);border:1px solid var(--fb-line);border-radius:10px;padding:10px 8px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
 #fb-notes[hidden]{display:none}
 #fb-notes h3{margin:4px 8px 8px;color:var(--fb-text);font:700 22px system-ui}
