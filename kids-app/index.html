@@ -66,15 +66,29 @@
   .shelf-head h3{flex:1;min-width:0;margin:0;font-size:15.5px;color:#ffe08a}
   .shelf-head .abtn{padding:9px 13px;font-size:14px}
   .shelf .sres:last-child{border-bottom:0}
-  /* playlist */
+  /* playlist — compact rows: sane thumbnail, the title gets the room
+     (clamped to 2 lines, full title on the row's title attribute), and
+     the up/down/remove controls sit in one tight cluster at the right
+     so they never starve the title again */
   #kids-count{color:#cbb26a;font-size:13.5px;margin:0 0 8px}
-  .item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #241d10}
-  .item img{width:96px;height:54px;object-fit:cover;border-radius:8px;flex:none;background:#000}
-  .item .t{flex:1;min-width:0;font-size:14.5px;line-height:1.35;color:#e9e2cd}
-  .item .t small{display:block;color:#8a8268;font-size:12px;margin-top:2px}
-  .item.playing .t{color:#ffe08a}
-  .ibtn{flex:none;background:#171307;color:#f0cf78;border:1px solid #8a6d1f;font-weight:700;font-size:14px;width:38px;height:38px;border-radius:10px;cursor:pointer}
+  .item{display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid #241d10}
+  .item img{width:84px;height:47px;object-fit:cover;border-radius:8px;flex:none;background:#000}
+  .item .t{flex:1;min-width:0;color:#e9e2cd}
+  .item .t .ttl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;line-height:1.3}
+  .item .t small{display:block;color:#8a8268;font-size:11.5px;margin-top:2px}
+  .item.playing .t .ttl{color:#ffe08a}
+  .item .ctl{flex:none;display:grid;grid-template-columns:30px 30px;gap:4px}
+  .ibtn{background:#171307;color:#f0cf78;border:1px solid #8a6d1f;font-weight:700;font-size:13px;width:30px;height:26px;border-radius:8px;cursor:pointer;padding:0}
+  .ibtn.wide{grid-column:1 / -1;width:auto}
   .ibtn:active{transform:scale(.97)}
+  /* trending shelf rows: the same compact shape as the playlist */
+  .trow{display:flex;gap:9px;align-items:center;padding:7px 0;border-bottom:1px solid #241d10;cursor:pointer}
+  .trow:last-child{border-bottom:0}
+  .trow img{width:84px;height:47px;object-fit:cover;border-radius:8px;flex:none;background:#000}
+  .trow .tt{flex:1;min-width:0}
+  .trow .tt .ttl{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:14px;line-height:1.3;color:#e9e2cd}
+  .trow .tt small{display:block;color:#8a8268;font-size:11.5px;margin-top:2px}
+  .trow .abtn{padding:9px 12px;font-size:13.5px}
   #kids-empty{color:#a79c7e;font-size:14.5px;line-height:1.5;margin:4px 0}
   /* how to use */
   #kids-how ol{margin:0;padding-left:20px;color:#d8d2c0;font-size:14.5px;line-height:1.6}
@@ -281,6 +295,15 @@
     <p class="hint2">When school ends, lessons rest. Fun Time and Movie Time lead — movies that teach, and fun movies. Movie Time never joins the School Day; it is here for after school and family time.</p>
     <div id="kids-fun"></div>
     <div id="kids-movies"></div>
+  </div>
+
+  <!-- TRENDING: a built-in shelf of 30, shipped with the app -->
+  <div class="card" id="kids-trendcard">
+    <h2>🔥 Trending for Kids</h2>
+    <p>Thirty of the most-loved learning videos on YouTube, from the biggest kids' channels — already loaded, no setup. Tap a picture to play it right away, tap <b>Add</b> to keep it in your playlist, or take the whole shelf at once.</p>
+    <div class="shelf-head"><h3>The full list — 30 videos</h3><button class="abtn" id="kids-trend-all" type="button">Add all 30 to my playlist</button></div>
+    <div id="kids-trending"></div>
+    <p class="footnote">📴 This list and its pictures are saved on this phone, so you can browse them with no signal. The videos themselves play when you have signal.</p>
   </div>
 
   <!-- PLAYLIST -->
@@ -505,6 +528,48 @@ function groupVideos(key) {
   if (key === "moviesFun") return KIDS_MOVIES.fun;
   var sh = shelfByKey(key); return sh ? sh.videos : [];
 }
+/* 🔥 Trending for Kids — a built-in shelf of 30, shipped with the app
+   (this data lives in the page, so the list is on the phone from the
+   first open; the pictures join it through the mw-kidsthumbs-v1 cache
+   in sw.js — the videos themselves still stream from YouTube).
+   Every pick was verified before it shipped: YouTube oEmbed answers
+   200 for it (embeddable), no Invidious host reports YouTube's
+   age-gate error for it (the same check /api/ytsearch runs), it is
+   not on the learned ban list, and no id repeats the starter library.
+   chan = the channel name YouTube itself reports for the video. */
+var KIDS_TRENDING = [
+  { id: "zwL2o4jZxbc", title: "Baby’s First Words with Ms Rachel - Videos for Babies", chan: "Ms Rachel - Toddler Learning Videos", lvl: 0 },
+  { id: "w264Mn-2MnQ", title: "Learn to Talk for Babies and Toddlers - Ms Rachel visits the Play Street Museum in Manhattan!", chan: "Ms Rachel - Toddler Learning Videos", lvl: 0 },
+  { id: "VvoO9-L1KA4", title: "Learn To Talk with Ms Rachel - Toddler Learning Video - Learn Colors, Numbers, Emotions & Feelings", chan: "Ms Rachel - Toddler Learning Videos", lvl: 1 },
+  { id: "kDdg2M1_EuE", title: "The Alphabet Is So Much Fun | Kids Songs | Super Simple Songs", chan: "Super Simple Songs - Kids Songs", lvl: 1 },
+  { id: "I_3mbra4dHU", title: "ABC Quack | Super Simple ABCs | Kids Alphabet Songs", chan: "Super Simple ABCs", lvl: 1 },
+  { id: "783EsrHchXA", title: "Sesame Street: Sing the Alphabet Song! | Sesame Street Alphabet", chan: "Sesame Street", lvl: 1 },
+  { id: "tkZftOhbzkk", title: "Sing The Animal Alphabet | Learn an animal for each letter! | Super Simple ABCs", chan: "Super Simple ABCs", lvl: 1 },
+  { id: "bNg-ZQligKQ", title: "ABC Phonics Song | The Singing Walrus | Language Development", chan: "The Singing Walrus - English Songs For Kids", lvl: 2 },
+  { id: "2n4enj6YMnw", title: "ChuChu TV Classics - Phonics Song with Two Words | Nursery Rhymes and Kids Songs", chan: "ChuChu TV Nursery Rhymes & Kids Songs", lvl: 2 },
+  { id: "bVeP6JISfyw", title: "Animals ABC Phonics Song for Kids | Two Animals for Each Letter of the Alphabet | Rock ’N Learn", chan: "Rock 'N Learn", lvl: 2 },
+  { id: "kuA-NCM5xL4", title: "Numbers Song with Little Chicks | CoComelon Nursery Rhymes & Kids Songs", chan: "Cocomelon - Nursery Rhymes", lvl: 1 },
+  { id: "fHqjNHxmB7c", title: "ChuChu TV Numbers Song - NEW Short Version - Number Rhymes For Children", chan: "ChuChu TV Nursery Rhymes & Kids Songs", lvl: 1 },
+  { id: "jxtlT5_RmOM", title: "Blippi Teaches Numbers 1 to 10 for Children | Surprise Boxes!", chan: "Blippi - Educational Videos for Kids", lvl: 1 },
+  { id: "eAZ7UJweYZ8", title: "Count by 1's to 20 NOW! | Jack Hartmann", chan: "Jack Hartmann Kids Music Channel", lvl: 2 },
+  { id: "0TgLtF3PMOc", title: "Let's Get Fit | Count to 100 by 1's | 100 Days of School Song | Counting to 100 | Jack Hartmann", chan: "Jack Hartmann Kids Music Channel", lvl: 2 },
+  { id: "7XKfnXRcU0c", title: "@Numberblocks- Learn from the Beginning! | Learn to Count", chan: "Numberblocks", lvl: 2 },
+  { id: "SLZcWGQQsmg", title: "Rainbow Colors Song | Colors Song for Kids | The Singing Walrus", chan: "The Singing Walrus - English Songs For Kids", lvl: 1 },
+  { id: "tkpfg-1FJLU", title: "Let's Learn The Colors! - Cartoon Animation Color Songs for Children by ChuChuTV", chan: "ChuChu TV Nursery Rhymes & Kids Songs", lvl: 1 },
+  { id: "0ElfdZfW8xc", title: "Learn Colors with Blippi | Educational Videos for Toddlers | Color Boxes!", chan: "Blippi Playtime", lvl: 1 },
+  { id: "lH2C2R57_Yo", title: "The Colors Song By ELF Learning -  Color Songs for Kindergarten - ELF Kids Videos", chan: "ELF Kids Videos", lvl: 2 },
+  { id: "lcl8uB2AWM0", title: "Shapes Are All Around | Shape Songs | PINKFONG Songs", chan: "Baby Shark - Pinkfong Kids’ Songs & Stories", lvl: 1 },
+  { id: "0B6Ge0FzHG0", title: "Dance with Shapes | Shape Song | Dance Along | Pinkfong Songs for Children", chan: "Baby Shark - Pinkfong Kids’ Songs & Stories", lvl: 1 },
+  { id: "FKI-P-7lopM", title: "Learn Shapes | Learn English for Kids | Songs for Kids | Nursery Rhymes | Little Baby Bum", chan: "Little Baby Bum Classics - Baby Nursery Rhymes", lvl: 1 },
+  { id: "d8pqPa7D8Ps", title: "Baby Shark Dance With Kids Wearing Shark Costumes! | Animal Songs | PINKFONG Songs for Children", chan: "Baby Shark - Pinkfong Kids’ Songs & Stories", lvl: 1 },
+  { id: "C3c8fzbsfOE", title: "Clap Your Hands - THE KIBOOMERS Preschool Songs for Circle Time", chan: "The Kiboomers - Kids Music Channel", lvl: 1 },
+  { id: "t9WAGkQUUL0", title: "Stand Up, Sit Down Children's song by Patty Shukla | Popular Nursery rhymes for Kids and Toddlers", chan: "Patty Shukla Kids TV - Children's songs", lvl: 1 },
+  { id: "b9KmuXCEBdc", title: "Rainbow, Rainbow | Mother Goose Club Phonics Songs", chan: "Mother Goose Club", lvl: 1 },
+  { id: "4Agt-hNvbcQ", title: "Jump Like A Frog - The Kiboomers Movement Songs for Preschoolers", chan: "The Kiboomers - Kids Music Channel", lvl: 2 },
+  { id: "fGG88PxtOqY", title: "Get Kids Moving With THE KIBOOMERS Simon Says Body Parts Song", chan: "The Kiboomers - Kids Music Channel", lvl: 2 },
+  { id: "QkHQ0CYwjaI", title: "Body Parts Song for Kids - This is ME! by ELF Learning - ELF Kids Videos", chan: "ELF Kids Videos", lvl: 2 }
+];
+
 /* School Day lesson plans, one per age band — only library ids, every
    one at or below the band's level, in school-day flow (greeting/first
    words, ABCs, numbers & colors, language, faith, song). Fun Time and
@@ -605,6 +670,43 @@ function paintAfter() {
   m.appendChild(shelfBlock("Fun movies", KIDS_MOVIES.fun, false));
 }
 
+/* ---------- trending shelf rendering ---------- */
+function paintTrending() {
+  var box = $("kids-trending"); if (!box) return;
+  box.innerHTML = "";
+  KIDS_TRENDING.forEach(function (v) {
+    var row = document.createElement("div"); row.className = "trow"; row.title = v.title;
+    var img = document.createElement("img"); img.src = thumb(v.id); img.alt = ""; img.loading = "lazy";
+    var tt = document.createElement("div"); tt.className = "tt";
+    var ttl = document.createElement("span"); ttl.className = "ttl"; ttl.textContent = v.title;
+    var sm = document.createElement("small"); sm.textContent = v.chan;
+    tt.appendChild(ttl); tt.appendChild(sm);
+    var b = document.createElement("button"); b.type = "button"; b.className = "abtn"; b.textContent = "Add";
+    b.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var r = addVideo(v.id, v.title);
+      b.textContent = r === "dup" ? "In list ✓" : "Added ✓";
+      b.disabled = true;
+    });
+    row.addEventListener("click", function () { playPreview(v); });
+    row.appendChild(img); row.appendChild(tt); row.appendChild(b);
+    box.appendChild(row);
+  });
+  var all = $("kids-trend-all");
+  if (all && !all.dataset.wired) {
+    all.dataset.wired = "1";
+    all.addEventListener("click", function () {
+      var added = 0;
+      KIDS_TRENDING.forEach(function (v) { if (addVideo(v.id, v.title) === "ok") added++; });
+      all.textContent = added ? ("Added " + added + " ✓ — find them in your playlist") : "All 30 already in your playlist ✓";
+      all.disabled = true;
+    });
+  }
+  // warm the on-device thumbnail cache, so the whole shelf — pictures
+  // included — still browses with no signal (the videos need signal)
+  setTimeout(function () { KIDS_TRENDING.forEach(function (v) { var im = new Image(); im.src = thumb(v.id); }); }, 1500);
+}
+
 /* ---------- state ---------- */
 var list = loadInitialList();
 var cur = 0;              // index of the loaded / playing item
@@ -621,14 +723,15 @@ function paintList() {
     var row = document.createElement("div");
     row.className = "item" + (i === cur && playing ? " playing" : "");
     var img = document.createElement("img"); img.src = thumb(v.id); img.alt = ""; img.loading = "lazy";
-    var t = document.createElement("div"); t.className = "t";
-    t.textContent = v.title;
+    var t = document.createElement("div"); t.className = "t"; t.title = v.title;
+    var ttl = document.createElement("span"); ttl.className = "ttl"; ttl.textContent = v.title;
     var sm = document.createElement("small"); sm.textContent = "Video " + (i + 1) + " of " + list.length;
-    t.appendChild(sm);
-    row.appendChild(img); row.appendChild(t);
+    t.appendChild(ttl); t.appendChild(sm);
+    var ctl = document.createElement("div"); ctl.className = "ctl";
+    row.appendChild(img); row.appendChild(t); row.appendChild(ctl);
     [["↑", "up"], ["↓", "down"], ["✕", "del"]].forEach(function (spec) {
       var b = document.createElement("button");
-      b.type = "button"; b.className = "ibtn"; b.textContent = spec[0];
+      b.type = "button"; b.className = "ibtn" + (spec[1] === "del" ? " wide" : ""); b.textContent = spec[0];
       b.setAttribute("aria-label", spec[1] + " video " + (i + 1));
       b.addEventListener("click", function () {
         if (spec[1] === "del") {
@@ -644,7 +747,7 @@ function paintList() {
           saveList(); paintList();
         }
       });
-      row.appendChild(b);
+      ctl.appendChild(b);
     });
     box.appendChild(row);
   });
@@ -726,6 +829,12 @@ window.onYouTubeIframeAPIReady = function () {
           if (!locked) releaseWake();
           paintNow();
         } else if (e.data === YT.PlayerState.ENDED) {
+          if (oneOff) { // a Trending preview ended: stop here, never roll into the playlist
+            oneOff = null; playing = false; $("kids-play").textContent = "▶ Play";
+            if (!locked) releaseWake();
+            $("kids-now").innerHTML = "That was a 🔥 Trending preview.<small>Tap Play to play your playlist, or tap another picture to preview it.</small>";
+            return;
+          }
           var endedId = list[cur] ? list[cur].id : "";
           var endedSubj = endedId ? (KIDS_SUBJ[endedId] || "") : "";
           var wasLast = list.length > 0 && cur === list.length - 1;
@@ -758,6 +867,7 @@ function backfillTitle() { // a pasted link has no title until it plays — lear
 }
 function playIndex(i) {
   if (!list.length || !player || !playerReady) return;
+  oneOff = null;
   cur = Math.max(0, Math.min(i, list.length - 1));
   player.loadVideoById(list[cur].id);
 }
@@ -766,7 +876,22 @@ function advance(dir) {
   var n = dir > 0 ? kidsNextIndex(cur, list.length) : kidsPrevIndex(cur, list.length);
   if (n >= 0) playIndex(n);
 }
+
+/* One-off previews (Trending shelf): a tap plays the video in the app
+   player WITHOUT touching the playlist — nothing is added, cur does
+   not move, and when the preview ends the player stops instead of
+   rolling into the list (see the ENDED guard in onStateChange). */
+var oneOff = null;
+function playPreview(v) {
+  if (!player || !playerReady) { $("kids-now").textContent = "The player is still warming up — one moment…"; return; }
+  oneOff = { id: v.id, title: v.title };
+  try { player.loadVideoById(v.id); } catch (e) { oneOff = null; return; }
+  $("kids-now").innerHTML = "▶ Playing now: " + esc(v.title) + "<small>From 🔥 Trending for Kids — tap Add on it to keep it in your playlist.</small>";
+  var wrap = $("kids-player-wrap");
+  if (wrap && wrap.scrollIntoView) wrap.scrollIntoView({ block: "center", behavior: "smooth" });
+}
 function stopPlayback() {
+  oneOff = null;
   try { if (player && player.stopVideo) player.stopVideo(); } catch (e) {}
   playing = false; $("kids-play").textContent = "▶ Play";
 }
@@ -1249,6 +1374,7 @@ document.addEventListener("pointerdown", function () {
 
 paintList();
 paintShelves();
+paintTrending();
 paintAfter();
 paintChild();
 paintClassrooms();

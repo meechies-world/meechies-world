@@ -21,6 +21,9 @@ const SHELL = "mw-shell-v3";
 const IMAGES = "mw-images-v1"; // bounded runtime cache for unstamped same-origin images
 const IMG_MAX_ENTRIES = 150; // oldest entries are evicted past this count
 const IMG_MAX_ITEM = 6 * 1024 * 1024; // a single image larger than this is never stored
+const KIDSTHUMBS = "mw-kidsthumbs-v1"; // bounded runtime cache for the kids app's YouTube thumbnails (cross-origin i.ytimg.com)
+const KTHUMB_MAX_ENTRIES = 40; // the trending shelf ships 30 pictures; a little slack, oldest evicted past the cap
+const KTHUMB_MAX_ITEM = 512 * 1024; // a video thumbnail is tens of KB; anything bigger is never stored
 // --- device-saved skeleton (2026-10-30): see the skeleton section below ---
 const SKEL_PREFIX = "mw-skeleton-"; // + build stamp = one generation of the frame
 const SKEL_META = "mw-frame-meta"; // one JSON record naming the live generations (named outside the mw-skeleton- prefix on purpose: generation pruning must never match it)
@@ -52,7 +55,7 @@ async function precacheShell() {
 }
 self.addEventListener("install", (e) => e.waitUntil((async () => { await precacheShell(); await self.skipWaiting(); })()));
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
-  const keep = new Set([MUSIC, SHELL, SKEL_META, IMAGES]);
+  const keep = new Set([MUSIC, SHELL, SKEL_META, IMAGES, KIDSTHUMBS]);
   const meta = await skelMetaRead();
   const metaKnown = !!(meta && meta.build);
   if (metaKnown) { keep.add(SKEL_PREFIX + meta.build); if (meta.prev) keep.add(SKEL_PREFIX + meta.prev); }
@@ -188,6 +191,42 @@ async function imageStrategy(e) {
   throw new Error("offline image");
 }
 // --- bounded runtime image cache: end ---
+
+// --- kids thumbnails: begin ---
+// The kids app's pictures live on i.ytimg.com (cross-origin), so the
+// same-origin image cache above can never hold them. This cache-first
+// store keeps the trending shelf's 30 thumbnails (and any other kids
+// video picture the app shows) on the device, so the shelf still
+// browses with no signal. Strictly bounded: hard entry cap with
+// oldest-first eviction and a per-item size cap. ONLY i.ytimg.com
+// image requests are ever routed here — no other cross-origin traffic
+// is intercepted, and /api stays untouched as everywhere in this file.
+async function trimKthumbs(cache) {
+  try {
+    const keys = await cache.keys();
+    if (keys.length > KTHUMB_MAX_ENTRIES) for (const k of keys.slice(0, keys.length - KTHUMB_MAX_ENTRIES)) await cache.delete(k);
+  } catch (_) {}
+}
+
+async function kthumbStrategy(e) {
+  const cache = await caches.open(KIDSTHUMBS);
+  const hit = await cache.match(e.request.url);
+  const refresh = (async () => {
+    try {
+      const net = await fetch(e.request);
+      if (net.ok || net.type === "opaque") {
+        const len = +net.headers.get("content-length") || 0;
+        if (!len || len <= KTHUMB_MAX_ITEM) e.waitUntil(cache.put(e.request.url, net.clone()).then(() => trimKthumbs(cache)));
+      }
+      return net;
+    } catch (_) { return null; }
+  })();
+  if (hit) { e.waitUntil(refresh); return hit; }
+  const net = await refresh;
+  if (net) return net;
+  throw new Error("offline thumbnail");
+}
+// --- kids thumbnails: end ---
 
 // --- device-saved skeleton: begin ---
 // The frame (HTML shell + version-stamped scripts, styles and shell art) lives on the
@@ -374,6 +413,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (skelStamped(url)) { e.respondWith(skelAssetStrategy(e)); return; }
+  if (e.request.destination === "image" && url.hostname === "i.ytimg.com") { e.respondWith(kthumbStrategy(e)); return; }
   if (e.request.destination === "image" && url.origin === self.location.origin && !e.request.headers.get("range") &&
       (url.pathname.indexOf("/img/") === 0 || url.pathname.indexOf("/media/") === 0) && !isKeyArt(url.pathname)) { e.respondWith(imageStrategy(e)); return; }
   if (url.origin === self.location.origin && (url.pathname.indexOf("/js/") === 0 || url.pathname.indexOf("/img/") === 0 || /\.(css|webmanifest)$/.test(url.pathname))) e.respondWith(shellStrategy(e));
