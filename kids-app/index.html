@@ -174,6 +174,15 @@
   .hint{color:var(--mut);font-size:12.5px;align-self:center}
   .abtn.go{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;border-color:#c39a2e}
   .row{flex-wrap:wrap;align-items:center}
+  /* sleep slate: calm full-screen rest screen. z-index 9000 keeps it
+     UNDER the lock overlay (99990) and the PIN pad (99999); it takes no
+     touches itself, so a locked phone's lock keeps swallowing every tap
+     and an unlocked parent taps straight through to the page. */
+  #kids-sleep-slate{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse 85% 62% at 50% 36%,#181308,#0b0a08 78%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;pointer-events:none}
+  #kids-sleep-slate[hidden]{display:none}
+  .sleep-moon{font-size:62px;line-height:1}
+  .sleep-title{margin:12px 0 6px;font-size:30px;font-weight:800;letter-spacing:.05em;color:#f0cf78}
+  .sleep-sub{margin:0;max-width:430px;color:#a79c7e;font-size:15px;line-height:1.55}
 </style>
 </head>
 <body>
@@ -232,6 +241,16 @@
       <button class="tbtn" id="kids-next" type="button" aria-label="Next video">⏭</button>
     </div>
     <p class="loopnote">🔁 The list loops — it replays from the top until you pause it. Perfect for the car.</p>
+    <div class="row" style="margin-top:10px">
+      <span class="lbl">💤 Sleep timer</span>
+      <button class="abtn kids-sleep-opt" data-min="0" type="button">Off</button>
+      <button class="abtn kids-sleep-opt" data-min="10" type="button">10 min</button>
+      <button class="abtn kids-sleep-opt" data-min="20" type="button">20 min</button>
+      <button class="abtn kids-sleep-opt" data-min="30" type="button">30 min</button>
+      <button class="abtn kids-sleep-opt" data-min="60" type="button">60 min</button>
+      <span class="hint" id="kids-sleep-left"></span>
+    </div>
+    <p class="hint2" style="margin-top:6px">Counts down only while a video is playing. When it runs out, the video pauses, Meechie says goodnight, and a calm sleep screen comes up — if the screen is locked, the lock still covers it.</p>
     <button class="daystart" id="kids-daystart" type="button">🏫 Start School Day</button>
     <button id="kids-lock-btn" type="button">🔒 Lock the screen</button>
     <p class="locksub">Locks every tap on this screen. Only a grown-up can unlock it (hold the top-right corner, then PIN).</p>
@@ -241,6 +260,12 @@
   <div class="card" id="kids-childcard">
     <h2>👧 Your child</h2>
     <p class="hint2">Tell the school your child's age and it opens on their classroom, and the School Day only lines up lessons at their level. Older videos stay in the library for you to pick by hand. Change it any time.</p>
+    <div class="row" style="margin-top:8px">
+      <span class="lbl">Child profile</span>
+      <span id="kids-profile-btns" style="display:flex;gap:8px;flex-wrap:wrap"></span>
+      <button class="abtn" id="kids-profile-add" type="button">＋ Add child</button>
+    </div>
+    <p class="hint2" id="kids-profile-note" style="margin-top:6px">Each child gets their own playlist, age level and school report. The grown-up PIN stays the same for everyone.</p>
     <div class="row" style="margin-top:8px">
       <input id="kids-cname" type="text" placeholder="Child's name (optional)" autocomplete="off" style="flex:1;min-width:140px">
       <label class="lbl" for="kids-cage">Age</label>
@@ -308,7 +333,7 @@
 
   <!-- PLAYLIST -->
   <div class="card">
-    <h2>🎵 Your playlist</h2>
+    <h2 id="kids-playlist-title">🎵 Your playlist</h2>
     <p id="kids-count">0 videos</p>
     <p id="kids-empty">Nothing here yet. Add videos above and they will line up here, in the order they play.</p>
     <div id="kids-list"></div>
@@ -353,6 +378,16 @@
   <p class="fine">🔒 Nothing is uploaded. Your playlist and your PIN live only on this phone, in this browser — they are never sent anywhere.<br>Meechie's World for Kids is a free player for videos you pick on YouTube.</p>
   <a class="back" href="/apps/">← All Meechie's World apps</a>
 
+  <!-- SLEEP SLATE: shown when the sleep timer runs out. It renders UNDER
+       the lock overlay (z-index 9000 vs the lock's 99990) and takes no
+       touches (pointer-events:none), so on a locked phone the kids see
+       it while the lock keeps swallowing every tap. -->
+  <div id="kids-sleep-slate" hidden>
+    <div class="sleep-moon">💤</div>
+    <p class="sleep-title">Sleep time</p>
+    <p class="sleep-sub">Sweet dreams — the videos are resting too. A grown-up can bring them back any time.</p>
+  </div>
+
   <!-- THE LOCK OVERLAY: transparent, covers everything, swallows every touch.
        It must stay AFTER the player in the DOM and keep its huge z-index. -->
   <div id="kids-lock" hidden>
@@ -387,14 +422,19 @@
 "use strict";
 /* =====================================================================
    Meechie's World for Kids — channel player, little school + transparent screen lock.
-   Everything lives on this page: no sign-in, no uploads. The playlist
-   (mw-kids-list) and the grown-up PIN (mw-kids-pin) are stored ONLY in
-   this browser's localStorage and are never sent anywhere.
+   Everything lives on this page: no sign-in, no uploads. Child profiles,
+   their playlists and the grown-up PIN (mw-kids-pin) are stored ONLY in
+   this browser's localStorage and are never sent anywhere. Up to 3 child
+   profiles live in mw-kids-profiles, each with its own playlist
+   (mw-kids-list-p1..p3) and school report (mw-kids-watched-p1..p3); the
+   PIN stays one global grown-up PIN for the whole family.
    ===================================================================== */
 
 /* ==== KIDS-CORE-BEGIN: pure logic (no DOM) — exercised by the Node harness ====
    Keep everything between these markers free of document/window/localStorage
-   so the exact shipped code can be unit-tested outside the browser. */
+   so the exact shipped code can be unit-tested outside the browser. Storage
+   functions take a store ({getItem,setItem,removeItem}) as an argument —
+   the page passes a localStorage wrapper, the harness passes a fake. */
 function parseYouTubeId(input) {
   if (typeof input !== "string") return null;
   var s = input.trim();
@@ -423,20 +463,109 @@ function kidsPinOk(entered, stored) { // PINs are exactly 4 digits; compare as s
   return typeof stored === "string" && /^\d{4}$/.test(stored) &&
          typeof entered === "string" && entered === stored;
 }
+/* ---------- profiles storage core ----------
+   Layout: mw-kids-profiles = { active, profiles: [{name, age, skipped}] };
+   each profile's playlist sits at mw-kids-list-p<N> and its watched-lessons
+   log at mw-kids-watched-p<N> (N = profile index + 1). */
+var KIDS_MAX_PROFILES = 3;
+function kidsListKey(ix) { return "mw-kids-list-p" + (ix + 1); }
+function kidsWatchedKey(ix) { return "mw-kids-watched-p" + (ix + 1); }
+function kidsCleanList(v) { // the one list shape the app trusts (was inline in loadList)
+  if (!Array.isArray(v)) return [];
+  return v.filter(function (x) { return x && typeof x.id === "string" && /^[A-Za-z0-9_-]{11}$/.test(x.id); })
+          .map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "YouTube video" }; });
+}
+function kidsNormalizeProfile(p) {
+  if (!p || typeof p !== "object") return { name: "", age: null, skipped: false };
+  return {
+    name: typeof p.name === "string" ? p.name : "",
+    age: (typeof p.age === "number" && isFinite(p.age)) ? Math.min(8, Math.max(0, Math.round(p.age))) : null,
+    skipped: !!p.skipped
+  };
+}
+function kidsSaveProfiles(store, doc) {
+  try { store.setItem("mw-kids-profiles", JSON.stringify({ active: doc.active, profiles: doc.profiles })); } catch (e) {}
+}
+function kidsLoadProfiles(store) {
+  var doc = null;
+  try { doc = JSON.parse(store.getItem("mw-kids-profiles") || "null"); } catch (e) { doc = null; }
+  if (doc && Array.isArray(doc.profiles) && doc.profiles.length) {
+    var ps = doc.profiles.slice(0, KIDS_MAX_PROFILES).map(kidsNormalizeProfile);
+    var act = (typeof doc.active === "number" && isFinite(doc.active)) ? Math.floor(doc.active) : 0;
+    if (act < 0 || act >= ps.length) act = 0;
+    return { active: act, profiles: ps };
+  }
+  /* First run of the profiles build: fold the legacy single-child data
+     into Profile 1. Everything is COPIED, never moved or deleted — the
+     legacy keys stay exactly as they were, so nothing can be lost. */
+  var first = { name: "", age: null, skipped: false };
+  try {
+    var c = JSON.parse(store.getItem("mw-kids-child") || "null");
+    if (c && typeof c.age === "number") first = kidsNormalizeProfile(c);
+    else if (c && typeof c.name === "string" && c.name) first.name = c.name;
+  } catch (e) {}
+  var nd = { active: 0, profiles: [first] };
+  kidsSaveProfiles(store, nd);
+  if (store.getItem(kidsListKey(0)) === null) {
+    var legacyList = store.getItem("mw-kids-list");
+    if (legacyList !== null) store.setItem(kidsListKey(0), legacyList); // verbatim copy: lossless
+    else if (store.getItem("mw-kids-seeded") !== null) store.setItem(kidsListKey(0), "[]"); // seeded then emptied: stays empty, never re-seeds
+  }
+  if (store.getItem(kidsWatchedKey(0)) === null) {
+    var legacyWatched = store.getItem("mw-kids-watched");
+    if (legacyWatched !== null) store.setItem(kidsWatchedKey(0), legacyWatched);
+  }
+  return nd;
+}
+function kidsAddProfile(doc) { // null when the phone already holds the max
+  if (!doc || !Array.isArray(doc.profiles) || doc.profiles.length >= KIDS_MAX_PROFILES) return null;
+  return { active: doc.profiles.length, profiles: doc.profiles.concat([{ name: "", age: null, skipped: false }]) };
+}
+function kidsSwitchProfile(store, doc, ix) { // persists the swap; null when out of range
+  if (!doc || !Array.isArray(doc.profiles)) return null;
+  if (typeof ix !== "number" || ix < 0 || ix >= doc.profiles.length) return null;
+  var nd = { active: ix, profiles: doc.profiles };
+  kidsSaveProfiles(store, nd);
+  return nd;
+}
 /* ==== KIDS-CORE-END ==== */
 
 /* ---------- storage ---------- */
-var LS_LIST = "mw-kids-list", LS_PIN = "mw-kids-pin";
+var LS_PIN = "mw-kids-pin";
 var LS_SEEDED = "mw-kids-seeded"; // set once the starter playlist has been planted (never re-seed)
+/* localStorage behind the tiny store interface the KIDS-CORE storage
+   functions take, so the harness exercises the exact shipped code. */
+var pageStore = {
+  getItem: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  setItem: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  removeItem: function (k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+/* The profiles doc for this phone. Loading it runs the one-time legacy
+   migration (see kidsLoadProfiles): an existing family's child, playlist
+   and school report land in Profile 1 untouched. */
+var profDoc = kidsLoadProfiles(pageStore);
+function activeIx() { return profDoc.active; }
+function listKey() { return kidsListKey(activeIx()); }
+function watchedKey() { return kidsWatchedKey(activeIx()); }
 function loadList() {
-  try {
-    var v = JSON.parse(localStorage.getItem(LS_LIST) || "[]");
-    if (!Array.isArray(v)) return [];
-    return v.filter(function (x) { return x && typeof x.id === "string" && /^[A-Za-z0-9_-]{11}$/.test(x.id); })
-            .map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "YouTube video" }; });
-  } catch (e) { return []; }
+  var raw = null;
+  try { raw = localStorage.getItem(listKey()); } catch (e) {}
+  if (raw === null) return seedList(); // this profile has never had a list: plant the starter set
+  try { return kidsCleanList(JSON.parse(raw || "[]")); } catch (e) { return []; }
 }
-function saveList() { try { localStorage.setItem(LS_LIST, JSON.stringify(list)); } catch (e) {} }
+/* The starter set, planted the first time a profile's playlist is
+   touched. After that the saved list rules: a parent who deletes
+   everything gets an empty list, never a re-seed (the key exists). */
+function seedList() {
+  var seed = [];
+  KIDS_SEED.forEach(function (id) { var v = kidsLibraryVideo(id); if (v) seed.push({ id: v.id, title: v.title }); });
+  try {
+    localStorage.setItem(listKey(), JSON.stringify(seed));
+    localStorage.setItem(LS_SEEDED, "1");
+  } catch (e) {}
+  return seed;
+}
+function saveList() { try { localStorage.setItem(listKey(), JSON.stringify(list)); } catch (e) {} }
 function getPin() { try { var p = localStorage.getItem(LS_PIN); return /^\d{4}$/.test(p || "") ? p : null; } catch (e) { return null; } }
 function setPin(p) { try { localStorage.setItem(LS_PIN, p); } catch (e) {} }
 function clearPin() { try { localStorage.removeItem(LS_PIN); } catch (e) {} }
@@ -602,23 +731,6 @@ var KIDS_SEED = [
   "yCjJyiqpAuU", "9UasekNr8KI"
 ];
 function kidsLibraryVideo(id) { return KIDS_BY_ID[id] || null; }
-/* First run ONLY: no saved playlist AND no seeded-once flag -> plant the
-   starter set and remember that we did. After that the saved list rules:
-   a parent who deletes everything gets an empty list, never a re-seed. */
-function loadInitialList() {
-  var saved = null, seeded = null;
-  try { saved = localStorage.getItem(LS_LIST); seeded = localStorage.getItem(LS_SEEDED); } catch (e) {}
-  if (saved === null && seeded === null) {
-    var seed = [];
-    KIDS_SEED.forEach(function (id) { var v = kidsLibraryVideo(id); if (v) seed.push({ id: v.id, title: v.title }); });
-    try {
-      localStorage.setItem(LS_LIST, JSON.stringify(seed));
-      localStorage.setItem(LS_SEEDED, "1");
-    } catch (e) {}
-    return seed;
-  }
-  return loadList();
-}
 
 /* ---------- starter shelves rendering ---------- */
 function shelfBlock(name, videos, sortForBand) {
@@ -708,7 +820,7 @@ function paintTrending() {
 }
 
 /* ---------- state ---------- */
-var list = loadInitialList();
+var list = loadList();
 var cur = 0;              // index of the loaded / playing item
 var player = null;        // YT.Player
 var playerReady = false;
@@ -823,7 +935,7 @@ window.onYouTubeIframeAPIReady = function () {
       onStateChange: function (e) {
         if (e.data === YT.PlayerState.PLAYING) {
           playing = true; $("kids-play").textContent = "⏸ Pause";
-          backfillTitle(); acquireWake(); paintList();
+          backfillTitle(); acquireWake(); paintList(); sleepResumed();
         } else if (e.data === YT.PlayerState.PAUSED) {
           playing = false; $("kids-play").textContent = "▶ Play";
           if (!locked) releaseWake();
@@ -919,6 +1031,63 @@ document.addEventListener("visibilitychange", function () {
   if (document.visibilityState === "visible" && (playing || locked)) acquireWake();
 });
 
+/* ---------- sleep timer ----------
+   Parent-set, IN-MEMORY ONLY: nothing is stored, so a fresh page load
+   always starts with the timer off. The countdown runs only while a
+   video is actually playing (pausing the show pauses the timer), and
+   it rides across video-to-video changes inside the playlist because
+   nothing here is tied to a single video. On zero: pause the video,
+   Meechie says the goodbye line through the voice seam, and the calm
+   slate comes up UNDER the lock overlay (see the CSS note). The slate
+   clears when the parent next runs the unlock flow (openPad /
+   disengageLock) or when a video starts playing again — and a video
+   playing again also resets a fired timer back to Off. */
+var sleep = { min: 0, leftMs: 0, lastTick: 0, timerId: 0, fired: false };
+function paintSleep() {
+  Array.prototype.forEach.call(document.querySelectorAll(".kids-sleep-opt"), function (b) {
+    b.classList.toggle("go", !sleep.fired && parseInt(b.getAttribute("data-min"), 10) === sleep.min);
+  });
+  paintSleepLeft();
+}
+function paintSleepLeft() {
+  var el = $("kids-sleep-left"); if (!el) return;
+  if (sleep.fired) { el.textContent = "💤 Sleep time — the timer ran out."; return; }
+  if (!sleep.min) { el.textContent = ""; return; }
+  var s = Math.max(0, Math.ceil(sleep.leftMs / 1000));
+  el.textContent = "💤 Sleep in " + Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2);
+}
+function setSleepTimer(min) {
+  sleep.min = min; sleep.fired = false; sleep.leftMs = min * 60000; sleep.lastTick = Date.now();
+  if (sleep.timerId) { clearInterval(sleep.timerId); sleep.timerId = 0; }
+  if (min > 0) sleep.timerId = setInterval(sleepTick, 500);
+  paintSleep();
+}
+function sleepTick() {
+  var now = Date.now();
+  if (playing && !sleep.fired) sleep.leftMs -= (now - sleep.lastTick); // wall-clock deltas: honest even when the tab throttles timers
+  sleep.lastTick = now;
+  if (!sleep.fired && sleep.leftMs <= 0) { fireSleep(); return; }
+  paintSleepLeft();
+}
+function showSleepSlate() { var s = $("kids-sleep-slate"); if (s) s.hidden = false; }
+function hideSleepSlate() { var s = $("kids-sleep-slate"); if (s) s.hidden = true; }
+function fireSleep() {
+  sleep.fired = true;
+  if (sleep.timerId) { clearInterval(sleep.timerId); sleep.timerId = 0; }
+  try { if (player && player.pauseVideo) player.pauseVideo(); } catch (e) {}
+  kidsGoodbye(); // through the voice seam, same as the end of a School Day
+  showSleepSlate();
+  if (!locked) releaseWake(); // let the phone rest too — under the lock, the lock itself holds the screen on
+  paintSleep();
+}
+function sleepResumed() { // any video playing again: slate away; a fired timer resets to Off
+  hideSleepSlate();
+  if (sleep.fired) { sleep.fired = false; sleep.min = 0; sleep.leftMs = 0; paintSleep(); }
+}
+Array.prototype.forEach.call(document.querySelectorAll(".kids-sleep-opt"), function (b) {
+  b.addEventListener("click", function () { setSleepTimer(parseInt(b.getAttribute("data-min"), 10) || 0); });
+});
+
 /* =====================================================================
    THE LOCK — state machine:
      unlocked --(Lock btn, PIN exists)--> locked
@@ -947,6 +1116,7 @@ function disengageLock() {
   locked = false;
   $("kids-lock").hidden = true;
   hidePad();
+  hideSleepSlate();
   if (!playing) releaseWake();
   resetRing();
 }
@@ -994,6 +1164,7 @@ var padEntry = "";
 var padFirst = "";        // first entry during set-confirm
 function openPad(mode) {
   padMode = mode; padEntry = ""; padFirst = "";
+  hideSleepSlate(); // the grown-up unlock flow (corner hold -> pad) dismisses the sleep slate
   var wrap = $("kids-pinpad-wrap");
   wrap.hidden = false;
   wrap.classList.toggle("solid", mode !== "unlock"); // dim only while setting up, never over the kids' video
@@ -1081,27 +1252,92 @@ $("kids-lock-btn").addEventListener("click", function () {
   else openPad("set"); // first time: set a PIN, then the lock drops in
 });
 
-/* ---------- child profile & age bands ---------- */
-var LS_CHILD = "mw-kids-child";
-function loadChild() { try { var c = JSON.parse(localStorage.getItem(LS_CHILD) || "null"); if (c && typeof c.age === "number") return c; } catch (e) {} return null; }
+/* ---------- child profiles & age bands ----------
+   Up to 3 profiles in profDoc (storage section). The ACTIVE profile
+   drives everything child-shaped: greetings (nameBit reads loadChild),
+   the age gate (childBand), the School Day list, and the parent
+   report — and its playlist is the one on screen, because loadList /
+   saveList resolve through listKey(). The grown-up PIN never moves:
+   one global PIN for the whole family. */
+function loadChild() {
+  var p = profDoc.profiles[profDoc.active];
+  if (p && typeof p.age === "number") return { name: p.name || "", age: p.age, skipped: !!p.skipped };
+  return null;
+}
+function saveActiveChild(name, age, skipped) {
+  profDoc.profiles[profDoc.active] = kidsNormalizeProfile({ name: name, age: age, skipped: skipped });
+  kidsSaveProfiles(pageStore, profDoc);
+}
 function childBand() { var c = loadChild(); if (!c) return 1; if (c.age < 2) return 0; if (c.age < 4) return 1; if (c.age < 6) return 2; return 3; }
 var BAND_NAMES = ["Baby Class", "Toddler Class", "Preschool", "Big Kids"];
+function paintProfiles() {
+  var box = $("kids-profile-btns"); if (!box) return;
+  box.innerHTML = "";
+  profDoc.profiles.forEach(function (p, ix) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "abtn" + (ix === profDoc.active ? " go" : "");
+    b.textContent = (ix + 1) + (p && p.name ? " · " + p.name : "");
+    b.addEventListener("click", function () { activateProfile(ix); });
+    box.appendChild(b);
+  });
+  var add = $("kids-profile-add");
+  if (add) add.style.display = profDoc.profiles.length >= KIDS_MAX_PROFILES ? "none" : "";
+  var note = $("kids-profile-note");
+  if (note && profDoc.profiles.length >= KIDS_MAX_PROFILES)
+    note.textContent = "That is 3 child profiles — the most this phone holds. Each child keeps their own playlist, age level and school report; the grown-up PIN stays the same for everyone.";
+}
+/* The swap: flush the outgoing playlist under ITS key first, then move
+   the active pointer (persisted by kidsSwitchProfile), then load the
+   incoming profile's playlist. Name, age and playlist change together —
+   nothing of one child can bleed into another. Playback stops: the
+   loaded video belongs to the outgoing child's list. */
+function activateProfile(ix) {
+  if (ix === profDoc.active) return;
+  saveList();
+  var nd = kidsSwitchProfile(pageStore, profDoc, ix);
+  if (!nd) return;
+  profDoc = nd;
+  stopPlayback(); kidsListKind = ""; cur = 0;
+  list = loadList();
+  paintProfiles(); paintChild(); paintList(); paintShelves(); paintAfter(); paintClassrooms(); paintReport();
+  welcomeSay();
+}
+$("kids-profile-add").addEventListener("click", function () {
+  var nd = kidsAddProfile(profDoc);
+  if (!nd) { paintProfiles(); return; }
+  saveList(); // flush the outgoing profile's playlist before the pointer moves
+  kidsSaveProfiles(pageStore, nd);
+  profDoc = nd; // kidsAddProfile already points active at the new profile
+  stopPlayback(); kidsListKind = ""; cur = 0;
+  list = loadList();
+  paintProfiles(); paintChild(); paintList(); paintShelves(); paintAfter(); paintClassrooms(); paintReport();
+  welcomeSay();
+});
 function paintChild() {
   var c = loadChild(), st = $("kids-cstatus"); if (!st) return;
+  var p = profDoc.profiles[profDoc.active] || { name: "", age: null };
   if (c) { $("kids-cname").value = c.name || ""; $("kids-cage").value = String(Math.min(8, Math.max(0, c.age))); }
+  else {
+    $("kids-cname").value = p.name || ""; // never leave a sibling's name sitting in the box
+    if (profDoc.profiles.length > 1) $("kids-cage").value = "3";
+  }
   st.textContent = c
     ? ((c.name ? c.name + " • " : "") + "Age " + c.age + " → " + BAND_NAMES[childBand()] + ". The school opens on their classroom, and the School Day stays at their level.")
-    : "No age set yet — the school starts on Toddler Class. Set an age and it tunes itself to your child.";
+    : (profDoc.profiles.length > 1
+        ? "No age set on this profile yet — the school starts it on Toddler Class. Set an age above and it tunes to this child."
+        : "No age set yet — the school starts on Toddler Class. Set an age and it tunes itself to your child.");
+  var pt = $("kids-playlist-title");
+  if (pt) pt.textContent = p.name ? ("🎵 " + p.name + "'s playlist") : "🎵 Your playlist";
 }
 $("kids-csave").addEventListener("click", function () {
   var age = parseInt($("kids-cage").value, 10); if (isNaN(age)) age = 3;
-  try { localStorage.setItem(LS_CHILD, JSON.stringify({ name: $("kids-cname").value.trim(), age: age })); } catch (e) {}
-  paintChild(); paintShelves(); paintAfter(); paintClassrooms();
+  saveActiveChild($("kids-cname").value.trim(), age, false);
+  paintProfiles(); paintChild(); paintShelves(); paintAfter(); paintClassrooms();
   welcomeSay();
 });
 $("kids-cskip").addEventListener("click", function () {
-  try { localStorage.setItem(LS_CHILD, JSON.stringify({ name: "", age: 3, skipped: true })); } catch (e) {}
-  paintChild(); paintShelves(); paintAfter(); paintClassrooms();
+  saveActiveChild("", 3, true);
+  paintProfiles(); paintChild(); paintShelves(); paintAfter(); paintClassrooms();
 });
 
 /* ---------- classrooms ---------- */
@@ -1132,20 +1368,19 @@ function paintClassrooms() {
   });
 }
 
-/* ---------- watched-lessons report (local only) ---------- */
-var LS_WATCHED = "mw-kids-watched";
+/* ---------- watched-lessons report (local only, per active profile) ---------- */
 function todayStr() { var d = new Date(); return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
 function recordWatched(id) {
   try {
-    var w = JSON.parse(localStorage.getItem(LS_WATCHED) || "[]"), t = todayStr(), dup = false;
+    var w = JSON.parse(localStorage.getItem(watchedKey()) || "[]"), t = todayStr(), dup = false;
     w.forEach(function (x) { if (x.id === id && x.d === t) dup = true; });
-    if (!dup) { w.push({ id: id, d: t }); if (w.length > 200) w = w.slice(w.length - 200); localStorage.setItem(LS_WATCHED, JSON.stringify(w)); }
+    if (!dup) { w.push({ id: id, d: t }); if (w.length > 200) w = w.slice(w.length - 200); localStorage.setItem(watchedKey(), JSON.stringify(w)); }
   } catch (e) {}
   paintReport();
 }
 function paintReport() {
   var el = $("kids-report"); if (!el) return;
-  var w = []; try { w = JSON.parse(localStorage.getItem(LS_WATCHED) || "[]"); } catch (e) {}
+  var w = []; try { w = JSON.parse(localStorage.getItem(watchedKey()) || "[]"); } catch (e) {}
   var t = todayStr(), done = [];
   w.forEach(function (x) { if (x.d === t) done.push(x); });
   if (!done.length) { el.textContent = "📋 Today at school: no lessons finished yet today."; return; }
@@ -1376,11 +1611,13 @@ paintList();
 paintShelves();
 paintTrending();
 paintAfter();
+paintProfiles();
 paintChild();
 paintClassrooms();
 paintMode();
 paintReport();
 paintVoiceBtn();
+paintSleep();
 setInterval(paintMode, 60000);
 </script>
 </body>
