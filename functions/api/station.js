@@ -625,7 +625,7 @@ export async function onRequestGet({ request, env }) {
     return byAsset.get(id) || lib[0];
   };
   const startDeckItem = (k, item, startMs) => {
-    S[k] = { src: item.src || "", yt: item.yt || "", title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
+    S[k] = { src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
     if (item.shout) S.shout = item.shout; // a listener shout-out rides the station state while the requested song plays (painted by the stage shout lines)
     S.log = [{ t: item.title || "", at: now, live: true }].concat((S.log || []).filter((x) => x.t !== item.title)).slice(0, 30);
     brainPlay(k, item); // DJ BRAIN: the unattended start is a play the brain learns from
@@ -732,6 +732,8 @@ export async function onRequestGet({ request, env }) {
         if (!it) continue;
         const title = String(it.title || "").slice(0, 120), cover = String(it.cover || "").slice(0, 300);
         if (it.yt) { if (+it.dur > 0) return { src: "", yt: String(it.yt), title, cover, dur: +it.dur }; continue; }
+        /* SoundCloud queue items (2026-10-31): the same known-length rule as video — an unknown-length track must never stall the unattended station; the booth widget fills the length in when it loads. */
+        if (it.kind === "sc" && it.scUrl) { if (+it.dur > 0) return { src: "", yt: "", kind: "sc", scUrl: String(it.scUrl), scId: +it.scId || 0, title, cover, dur: +it.dur }; continue; }
         const src = String(it.src || "");
         if (src && !src.includes("supabase.co")) return { src, title, cover, dur: +it.dur || 0 };
       }
