@@ -620,6 +620,7 @@ $("#tune-in").addEventListener("click",()=>{ if(window.MW_DJ_LIVE && window.MW_D
 $("#pb-play").addEventListener("click",()=>{ if(mode==="live"&&window.MW_LIVE){ MW_LIVE.paused?MW_LIVE.play().catch(()=>{}):MW_LIVE.pause(); return; } if(mode==="dj"){ document.getElementById("dj-listen")?.click(); return; } if(mode==="radio"&&media.paused){ tuneIn(); return; } media.paused?media.play():media.pause(); });
 $("#pb-next").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="intro"){ tuneIn(); return; } if(mode==="radio"){toast("The radio is live for everyone. Pick a track in the Library to skip around.");return;} playLib(curIdx+1); });
 $("#pb-prev").addEventListener("click",()=>{ if(mode==="live"||mode==="dj") return; if(mode==="radio"){toast("The radio is live for everyone.");return;} if(media.currentTime>3) media.currentTime=0; else playLib(curIdx-1); });
+$("#pb-bubble")?.addEventListener("click",()=>{ if(window.MW_DJ && MW_DJ.bubble) MW_DJ.bubble(); });
 $("#pb-progress").addEventListener("click",e=>{ if(mode!=="library"||!media.duration) return; const r=e.currentTarget.getBoundingClientRect(); media.currentTime=(e.clientX-r.left)/r.width*media.duration; });
 /* ---------- Volume + crossfade between songs ----------
    About 20 seconds before a song ends, the next song loads in a second player. For the last XF seconds the

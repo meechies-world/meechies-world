@@ -919,17 +919,29 @@ html.popdj .popdj-hint{display:block}
    bar next to Go live */
 .bobig{display:block;width:100%;min-height:56px;margin:10px 0;padding:12px 14px;background:#000;color:#f0cf78;border:2px solid #f0cf78;border-radius:12px;font:800 16px var(--body);letter-spacing:.04em;cursor:pointer;animation:bopulse 2s ease-in-out infinite}
 @keyframes bopulse{0%,100%{box-shadow:0 0 0 0 rgba(240,207,120,0)}50%{box-shadow:0 0 18px 2px rgba(240,207,120,.45)}}
-/* BUBBLE MODE fallback backdrop (owner, 2026-10-28 night): where no
-   Picture-in-Picture exists, the page itself collapses under pure black to
-   one small gold MW bubble, so a listener can pocket the phone or wander
-   into other apps while the radio keeps playing. No wake lock, no
-   fullscreen — the screen may sleep. Tap the bubble to come back (music
-   untouched); the little ✕ on the bubble stops the music and comes back. */
+/* BUBBLE MODE fallback backdrop (owner, 2026-10-28 night; face and
+   semantics reworked 2026-10-31): where no Picture-in-Picture exists, the
+   page itself collapses under pure black to one small round bubble wearing
+   the radio poster, so a listener can pocket the phone or wander into
+   other apps while the radio keeps playing. No wake lock, no fullscreen
+   — the screen may sleep. Tap the bubble to come back; nothing about the
+   bubble ever stops the music (stopping lives in the app's own controls).
+   While the station plays, the bubble breathes: a slow pulse ring and
+   three tiny EQ bars over the poster's lower edge. */
 #dj-bubbg{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:10060;overscroll-behavior:none}
 #dj-bubbg[hidden]{display:none}
-#mw-bubble{position:fixed;right:16px;bottom:96px;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#ffe9b0,#d4a843 58%,#9a7b24);color:#141109;font:800 17px var(--body);letter-spacing:.02em;display:grid;place-items:center;z-index:10061;border:2px solid #f0cf78;box-shadow:0 10px 26px rgba(0,0,0,.6);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;padding:0}
+#mw-bubble{position:fixed;right:16px;bottom:96px;width:68px;height:68px;border-radius:50%;background:#141109;z-index:10061;border:2px solid #f0cf78;box-shadow:0 10px 26px rgba(0,0,0,.6);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;padding:0;overflow:hidden}
 #mw-bubble[hidden]{display:none}
-#mw-bubble .mw-x{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:#141109;color:#f0cf78;border:1.5px solid #f0cf78;font:700 12px var(--body);display:grid;place-items:center;line-height:1;pointer-events:none}
+#mw-bubble img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+#mw-bubble .mw-eq{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);display:none;align-items:flex-end;gap:2.5px;height:12px;padding:2.5px 5px;border-radius:999px;background:rgba(10,8,4,.72);pointer-events:none}
+#mw-bubble .mw-eq i{display:block;width:3px;border-radius:2px;background:#f0cf78;height:5px}
+#mw-bubble.mw-playing{animation:mwbubpulse 1.6s ease-in-out infinite}
+#mw-bubble.mw-playing .mw-eq{display:flex}
+#mw-bubble.mw-playing .mw-eq i{animation:mwbeq .9s ease-in-out infinite}
+#mw-bubble.mw-playing .mw-eq i:nth-child(2){animation-delay:.3s}
+#mw-bubble.mw-playing .mw-eq i:nth-child(3){animation-delay:.6s}
+@keyframes mwbubpulse{0%,100%{box-shadow:0 10px 26px rgba(0,0,0,.6),0 0 0 0 rgba(240,207,120,.5)}50%{box-shadow:0 10px 26px rgba(0,0,0,.6),0 0 0 9px rgba(240,207,120,0)}}
+@keyframes mwbeq{0%,100%{height:4px}50%{height:11px}}
 .bubbig{display:block;width:100%;min-height:56px;margin:10px 0;padding:12px 14px;background:#f0cf78;color:#141109;border:2px solid #f0cf78;border-radius:12px;font:800 16px var(--body);letter-spacing:.04em;cursor:pointer;animation:bopulse 2s ease-in-out infinite}
 #dj-livealert .la-txt{font:700 12.5px var(--body);color:#ffe9b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #dj-livealert .btn{white-space:nowrap}
@@ -2257,9 +2269,11 @@ html.popdj #dj-mini{display:none!important}
    * Picture-in-Picture on a real playing video element, when the current
    * master source has one; leaving that PiP counts as closing the bubble.
    * (c) Fallback — the page itself collapses to the small draggable gold MW
-   * bubble (tap: back, music untouched; its little ✕: stop and come back).
-   * A PiP window closed from its own chrome counts as the bubble closing:
-   * the music stops, unless the Back to site flag path closed it. Bubble
+   * bubble wearing the radio poster (tap: back, music untouched).
+   * A PiP window closed from its own chrome, or leaving video PiP, just
+   * restores the app (2026-10-31 rework: the bubble NEVER stops the
+   * radio — the only deliberate stops are the DocPiP window's own
+   * Stop button and the app's normal stop controls). Bubble
    * mode holds NO wake lock (the guard in wakeForListening) and takes no
    * fullscreen, so the screen may sleep; while it is on, the Media Session
    * carries the station (metadata + lock-screen play/pause wired to the
@@ -2267,12 +2281,12 @@ html.popdj #dj-mini{display:none!important}
    * playback. Separate from blackout and never touching it. Per-tab and
    * in-memory only — closing the tab or the site ends everything, nothing
    * is remembered across sessions. */
-  let bubEl = null, bubBubble = null, pipWin = null, pipBox = null, bubBackFlag = false, bubVidEl = null;
+  let bubEl = null, bubBubble = null, pipWin = null, pipBox = null, bubBackFlag = false, bubVidEl = null, bubTick = null;
   const bubMedia = (on) => {
     try {
       if (!("mediaSession" in navigator)) return;
       if (on) {
-        navigator.mediaSession.metadata = new MediaMetadata({ title: "Meechie's World — Live Radio", artist: "Meechie's World Inc", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] });
+        navigator.mediaSession.metadata = new MediaMetadata({ title: "Meechie's World — Live Radio", artist: "Meechie's World Inc", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/bubble-poster.jpg", sizes: "640x640", type: "image/jpeg" }, { src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] });
         navigator.mediaSession.playbackState = "playing";
         if (navigator.mediaSession.setActionHandler) {
           navigator.mediaSession.setActionHandler("play", () => { if (!listening && (isLive() || OWNER())) startListening(); });
@@ -2283,7 +2297,8 @@ html.popdj #dj-mini{display:none!important}
   };
   const bubOff = () => {
     bubOn = false;
-    if (bubEl) bubEl.hidden = true; if (bubBubble) bubBubble.hidden = true;
+    if (bubTick) { clearInterval(bubTick); bubTick = null; }
+    if (bubEl) bubEl.hidden = true; if (bubBubble) { bubBubble.hidden = true; bubBubble.classList.remove("mw-playing"); }
     bubMedia(false);
     if (listening) wakeForListening(true); // normal listening holds the screen again
   };
@@ -2291,14 +2306,17 @@ html.popdj #dj-mini{display:none!important}
   const bubPage = () => {
     if (!bubEl) {
       bubEl = document.createElement("div"); bubEl.id = "dj-bubbg"; document.body.appendChild(bubEl);
-      bubBubble = document.createElement("button"); bubBubble.type = "button"; bubBubble.id = "mw-bubble"; bubBubble.setAttribute("aria-label", "Back to the site — the music keeps playing"); bubBubble.innerHTML = "MW<span class='mw-x'>✕</span>"; document.body.appendChild(bubBubble);
+      bubBubble = document.createElement("button"); bubBubble.type = "button"; bubBubble.id = "mw-bubble"; bubBubble.setAttribute("aria-label", "Back to the site — the music keeps playing"); bubBubble.innerHTML = "<img src='/img/bubble-poster.jpg' alt='' onerror='this.onerror=null;this.src=\"/img/radio-promo.jpg\"'><span class='mw-eq'><i></i><i></i><i></i></span>"; document.body.appendChild(bubBubble);
       let drag = null;
       bubBubble.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, l: bubBubble.offsetLeft, t: bubBubble.offsetTop, moved: false }; try { bubBubble.setPointerCapture(e.pointerId); } catch (_) {} });
-      bubBubble.addEventListener("pointermove", (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true; if (drag.moved) { bubBubble.style.left = Math.max(0, Math.min(innerWidth - 56, drag.l + dx)) + "px"; bubBubble.style.top = Math.max(0, Math.min(innerHeight - 56, drag.t + dy)) + "px"; bubBubble.style.right = "auto"; bubBubble.style.bottom = "auto"; } });
-      bubBubble.addEventListener("pointerup", (e) => { if (!drag) return; const wasDrag = drag.moved; drag = null; if (wasDrag) return; const xr = bubBubble.querySelector(".mw-x").getBoundingClientRect(); if (e.clientX >= xr.left - 6 && e.clientX <= xr.right + 6 && e.clientY >= xr.top - 6 && e.clientY <= xr.bottom + 6) { stopListening(); bubOff(); } else bubOff(); });
+      bubBubble.addEventListener("pointermove", (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true; if (drag.moved) { bubBubble.style.left = Math.max(0, Math.min(innerWidth - 68, drag.l + dx)) + "px"; bubBubble.style.top = Math.max(0, Math.min(innerHeight - 68, drag.t + dy)) + "px"; bubBubble.style.right = "auto"; bubBubble.style.bottom = "auto"; } });
+      bubBubble.addEventListener("pointerup", () => { if (!drag) return; const wasDrag = drag.moved; drag = null; if (wasDrag) return; bubOff(); }); // tap = back to the site; the music is never touched
       bubBubble.addEventListener("pointercancel", () => { drag = null; });
     }
     bubEl.hidden = false; bubBubble.hidden = false;
+    if (bubTick) clearInterval(bubTick);
+    const bubPaint = () => { if (!bubBubble) return; const on = !!(listening && DECKS.some((k) => S[k] && S[k].playing)); bubBubble.classList.toggle("mw-playing", on); };
+    bubPaint(); bubTick = setInterval(bubPaint, 1000);
   };
   /* path (a): keep the PiP window's title and muted video mirror live */
   const pipSync = () => {
@@ -2329,7 +2347,7 @@ html.popdj #dj-mini{display:none!important}
     const st = d.createElement("style");
     st.textContent = "html,body{margin:0;padding:0;background:#000;color:#f3e5c0;font-family:system-ui,sans-serif}body{padding:10px;box-sizing:border-box}.pb-brand{display:flex;align-items:center;gap:8px;font:800 11px system-ui,sans-serif;letter-spacing:.12em;color:#f0cf78;margin-bottom:8px}.pb-mw{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#ffe9b0,#d4a843 58%,#9a7b24);color:#141109;font:800 10px system-ui,sans-serif;border:1.5px solid #f0cf78}.pb-vid{width:100%;aspect-ratio:16/9;background:#0a0a0c;border:1px solid #3a3520;border-radius:10px;overflow:hidden}.pb-vid iframe{width:100%;height:100%;border:0}.pb-title{margin:9px 0;font:700 13.5px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pb-row{display:flex;gap:8px}.pb-row button{flex:1;padding:9px 6px;border-radius:999px;border:1.5px solid #f0cf78;background:#141109;color:#f0cf78;font:800 12.5px system-ui,sans-serif;cursor:pointer}#pb-stop{background:#f0cf78;color:#141109}";
     d.head.appendChild(st);
-    d.body.innerHTML = "<div class='pb-brand'><span class='pb-mw'>MW</span><span>MEECHIE'S WORLD RADIO</span></div><div class='pb-vid' id='pb-vid'></div><div class='pb-title' id='pb-title'>Meechie's World — Live Radio</div><div class='pb-row'><button type='button' id='pb-back'>⤢ Back to site</button><button type='button' id='pb-stop'>✕ Stop</button></div>";
+    d.body.innerHTML = "<div class='pb-brand'><span class='pb-mw'><img src='/img/bubble-poster.jpg' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:50%;display:block' onerror='this.onerror=null;this.src=\"/img/radio-promo.jpg\"'></span><span>MEECHIE'S WORLD RADIO</span></div><div class='pb-vid' id='pb-vid'></div><div class='pb-title' id='pb-title'>Meechie's World — Live Radio</div><div class='pb-row'><button type='button' id='pb-back'>⤢ Back to site</button><button type='button' id='pb-stop'>✕ Stop</button></div>";
     pipBox = { vidEl: d.getElementById("pb-vid"), titleEl: d.getElementById("pb-title"), player: null, vid: null, deck: "", timer: 0 };
     d.getElementById("pb-back").addEventListener("click", () => { bubBackFlag = true; try { window.focus(); } catch (_) {} try { w.close(); } catch (_) {} });
     d.getElementById("pb-stop").addEventListener("click", () => { bubBackFlag = true; stopListening(); try { w.close(); } catch (_) {} });
@@ -2337,7 +2355,7 @@ html.popdj #dj-mini{display:none!important}
       const wasBack = bubBackFlag; bubBackFlag = false;
       if (pipBox) { if (pipBox.timer) clearInterval(pipBox.timer); if (pipBox.player) { try { pipBox.player.destroy(); } catch (_) {} } pipBox = null; }
       pipWin = null;
-      if (!wasBack) stopListening(); // closed from its own chrome = the bubble closed
+      void wasBack; // closed from its own chrome = back to the site, music untouched (2026-10-31)
       bubOff();
     });
     pipBox.timer = setInterval(pipSync, 1000);
@@ -2347,7 +2365,7 @@ html.popdj #dj-mini{display:none!important}
   const bubVidLeft = () => {
     if (bubVidEl) { try { bubVidEl.removeEventListener("leavepictureinpicture", bubVidLeft); } catch (_) {} bubVidEl = null; }
     if (!bubOn) return;
-    stopListening(); bubOff();
+    bubOff(); // leaving PiP restores the app — the music never stops (2026-10-31)
   };
   const bubbleOpen = async () => {
     bubMedia(true);
@@ -6668,7 +6686,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793458210;
+  const MW_DJ_BUILD = 1793459467;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6842,7 +6860,7 @@ html.popdj #dj-mini{display:none!important}
   } catch (_) {}
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
-  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
+  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, bubble: () => { if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
   window.MW_DJ_LIVE = () => isLive();
   // the top MWR card reads the tables: whatever is on the decks is what the station says is on air
   window.MW_AIRNOW = () => {
