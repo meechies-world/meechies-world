@@ -90,7 +90,7 @@ nav.tabs a{letter-spacing:.02em}
 
   function fillMore() {
     const links = [...document.querySelectorAll("header nav.tabs a[data-go]")];
-    more.innerHTML = `<div class="sheet" role="dialog" aria-label="All sections"><div class="grab"></div><div class="grid">${links.map((a) => `<a href="#${a.dataset.go}" data-go="${a.dataset.go}"${a.getAttribute("aria-current") ? ' aria-current="page"' : ""}><span>${ICON[a.dataset.go] || "•"}</span>${[...a.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim()}</a>`).join("")}</div></div>`;
+    more.innerHTML = `<div class="sheet" role="dialog" aria-label="All sections"><div class="grab"></div><div class="grid">${links.map((a) => `<a href="#${a.dataset.go}" data-go="${a.dataset.go}"${a.getAttribute("aria-current") ? ' aria-current="page"' : ""}><span>${ICON[a.dataset.go] || "•"}</span>${[...a.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim()}</a>`).join("")}<a href="/kids-app/"><span>🧒</span>Kids</a></div></div>`;
   }
   document.getElementById("app-more").addEventListener("click", () => { fillMore(); more.hidden = false; });
   // a Menu button in the header too, so every section is always one tap away
