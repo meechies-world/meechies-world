@@ -3,7 +3,10 @@
  * sending posts one report to /api/report. Auto: uncaught errors, rejected
  * promises and failed script/style loads report themselves, deduped by a
  * signature and capped at 5 per page session, so a broken page phones home
- * instead of just sitting there. This file must never throw: every block is
+ * instead of just sitting there. Auto resource reports are verified first:
+ * the failed URL is re-probed once from the same device and only a dead
+ * probe files (media decode errors file directly, unprobed — a byte probe
+ * cannot see those). This file must never throw: every block is
  * wrapped, and errors from this file itself are never reported. */
 (function () {
   "use strict";
@@ -14,7 +17,9 @@
   try { sessionStorage.setItem("mw-boot-ok", "1"); } catch (_) {}
 
   var MAX_AUTO = 5;
+  var MAX_PROBES = 10;
   var autoSent = 0;
+  var probes = 0;
   var seen = {};
 
   function hash(s) {
@@ -88,6 +93,53 @@
 
   function fromSelf(src) { return typeof src === "string" && src.indexOf("report.js") !== -1; }
 
+  function sameOrigin(url) {
+    try {
+      if (url.charAt(0) === "/") return true;
+      var o = location.origin || (location.protocol + "//" + location.host);
+      return url === o || url.indexOf(o + "/") === 0 || url.indexOf(o + "?") === 0 || url.indexOf(o + "#") === 0;
+    } catch (_) { return false; }
+  }
+
+  /* Prove it is broken before filing. Most "failed" resource loads in the
+   * report pile were one-off network blips or page-cancelled fetches on
+   * files that are perfectly alive — a same-device retry disproves them.
+   * So before an auto resource report is sent, the URL is re-probed once:
+   * a single ranged GET. Same-origin, an ok or 206 answer means ALIVE;
+   * cross-origin the probe runs no-cors and any answer at all (an opaque
+   * response) means the host is reachable, which is all a blip check can
+   * ask. ALIVE files nothing and marks the sig seen, so the resource is
+   * not re-probed or re-reported this session, and it costs none of the
+   * MAX_AUTO send budget. DEAD — a real 4xx/5xx same-origin answer, or
+   * the probe fetch itself rejecting — files exactly as before. Probes
+   * are capped per session; past the cap (or with no fetch at all) the
+   * report files unverified, as it always did. */
+  function probeReport(category, text, sig, url) {
+    try {
+      if (!sig || seen[sig]) return;
+      if (autoSent >= MAX_AUTO) return;
+      if (!url || probes >= MAX_PROBES || typeof fetch !== "function") {
+        autoReport(category, text, sig);
+        return;
+      }
+      probes++;
+      var same = sameOrigin(url);
+      var opts = { method: "GET", headers: { Range: "bytes=0-0" } };
+      if (!same) opts.mode = "no-cors";
+      var p;
+      try { p = fetch(url, opts); } catch (_) { autoReport(category, text, sig); return; }
+      p.then(function (resp) {
+        try {
+          if (!same) { seen[sig] = 1; return; }
+          if (resp && (resp.ok || resp.status === 206)) { seen[sig] = 1; return; }
+          autoReport(category, text, sig);
+        } catch (_) {}
+      }, function () {
+        try { autoReport(category, text, sig); } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   window.addEventListener("error", function (e) {
     try {
       if (!e) return;
@@ -98,7 +150,10 @@
         if (fromSelf(res)) return;
         var tag = target.tagName || "";
         if (tag === "SCRIPT" || tag === "LINK") {
-          autoReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res));
+          /* No grace for scripts and styles, but no instant filing either:
+           * the probe decides (third-party API files failing once on a
+           * test or transient network were pure noise in the pile). */
+          probeReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res), res);
           return;
         }
         /* Media and image loads get a short grace period before they are
@@ -114,9 +169,19 @@
           try {
             if (!target.isConnected) return;
             var v = tag === "SOURCE" && target.parentElement ? target.parentElement : target;
-            if (v && v.error && v.error.code === 1) return; /* MEDIA_ERR_ABORTED: the page cancelled it */
+            var code = v && v.error ? v.error.code : 0;
+            if (code === 1) return; /* MEDIA_ERR_ABORTED: the page cancelled it */
             if (v && typeof v.readyState === "number" && v.readyState >= 2) return; /* it recovered / it is playing */
-            autoReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res));
+            if (code === 3 || code === 4) {
+              /* MEDIA_ERR_DECODE / MEDIA_ERR_SRC_NOT_SUPPORTED: the file
+               * arrived but cannot be played. That is real, and a byte
+               * probe cannot see it — file directly, no probe. */
+              autoReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res));
+              return;
+            }
+            /* Everything else here is network-class (code 2, or an image
+             * with no error object at all): probe before believing it. */
+            probeReport("broken", "Resource failed to load: " + cap(res.split("/").pop(), 120), "res:" + hash(res), res);
           } catch (_) {}
         }, 1600);
         return;
