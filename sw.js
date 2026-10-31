@@ -8,16 +8,51 @@
 // come from the network first, and /api and media are never cached by the
 // skeleton. A new build is picked up on the visitor's next natural load — the
 // skeleton never forces a reload and never swaps code under an open page.
+// Offline strengthening (2026-10-31): the key station art and the standalone
+// app pages are precached into the shell cache at install, so they open with
+// no connection even before an online visit pulls them in; unstamped
+// same-origin images outside the skeleton live in a bounded
+// stale-while-revalidate cache; and an offline navigation that hits nothing
+// cached lands on the device frame or a branded offline page instead of a
+// browser error. /api is still never intercepted, and saved songs are
+// untouched.
 const MUSIC = "mw-music"; // stable name on purpose: updates must never wipe saved songs
-const SHELL = "mw-shell-v2";
+const SHELL = "mw-shell-v3";
+const IMAGES = "mw-images-v1"; // bounded runtime cache for unstamped same-origin images
+const IMG_MAX_ENTRIES = 150; // oldest entries are evicted past this count
+const IMG_MAX_ITEM = 6 * 1024 * 1024; // a single image larger than this is never stored
 // --- device-saved skeleton (2026-10-30): see the skeleton section below ---
 const SKEL_PREFIX = "mw-skeleton-"; // + build stamp = one generation of the frame
 const SKEL_META = "mw-frame-meta"; // one JSON record naming the live generations (named outside the mw-skeleton- prefix on purpose: generation pruning must never match it)
 const SKEL_HTML_KEY = "/"; // canonical key the shell HTML is stored under
 const SKEL_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // backstop: re-baseline the shell weekly
-self.addEventListener("install", () => self.skipWaiting());
+// Precache the frame essentials a first visit has not pulled in yet: the
+// standalone app pages and the key station art (the radio posters are
+// referenced unstamped by the booth and the kids art unstamped by the kids
+// app, so the skeleton rule alone cannot guarantee them on the device).
+// Best-effort per file: one bad URL never fails the install, and anything
+// already stored is left exactly as it is.
+const PRECACHE = ["/", "/kids-app/", "/radio-app/", "/ai-app/", "/apps/",
+  "/img/radio-promo.jpg", "/img/radio-promo-640.webp", "/img/radio-promo-1080.webp",
+  "/img/kids-art.jpg",
+  "/img/tv-poster.jpg?v=1793372600", "/img/tv-poster-640.webp?v=1793372600", "/img/tv-poster-1080.webp?v=1793372600",
+  "/img/icon-192.png", "/img/apple-touch-icon.png"];
+async function precacheShell() {
+  try {
+    const cache = await caches.open(SHELL);
+    await Promise.all(PRECACHE.map(async (p) => {
+      const u = new URL(p, self.location.origin).href;
+      try { if (await cache.match(u)) return; } catch (_) {}
+      try {
+        const r = await fetch(u, { cache: "no-cache" });
+        if (r.ok) await cache.put(u, r);
+      } catch (_) {}
+    }));
+  } catch (_) {}
+}
+self.addEventListener("install", (e) => e.waitUntil((async () => { await precacheShell(); await self.skipWaiting(); })()));
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
-  const keep = new Set([MUSIC, SHELL, SKEL_META]);
+  const keep = new Set([MUSIC, SHELL, SKEL_META, IMAGES]);
   const meta = await skelMetaRead();
   const metaKnown = !!(meta && meta.build);
   if (metaKnown) { keep.add(SKEL_PREFIX + meta.build); if (meta.prev) keep.add(SKEL_PREFIX + meta.prev); }
@@ -70,6 +105,18 @@ async function mediaStrategy(e) {
   }
 }
 
+function offlinePage() {
+  const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+    "<title>Meechie's World — Offline</title>" +
+    "<style>body{margin:0;background:#0b0b0d;color:#e9e2d0;font-family:Georgia,'Times New Roman',serif;display:flex;min-height:100vh;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}" +
+    ".c{max-width:420px}h1{color:#d4af37;letter-spacing:.14em;font-size:22px;margin:0 0 6px}p{line-height:1.55;color:#bdb49c}a{display:inline-block;margin-top:16px;padding:11px 22px;border:1px solid #d4af37;border-radius:999px;color:#d4af37;text-decoration:none;letter-spacing:.08em}</style></head>" +
+    "<body><div class=\"c\"><div style=\"font-size:44px\">👑</div><h1>MEECHIE'S WORLD</h1>" +
+    "<p>You are offline right now. The site lives on this device — your saved songs still play — and everything live comes back the moment you reconnect.</p>" +
+    "<a href=\"/\">TRY AGAIN</a></div></body></html>";
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
 async function navStrategy(e) {
   const cache = await caches.open(SHELL);
   try {
@@ -77,7 +124,15 @@ async function navStrategy(e) {
     if (net.ok) e.waitUntil(cache.put(e.request.url, net.clone()));
     return net;
   } catch (_) {
-    return (await cache.match(e.request.url)) || (await cache.match(self.location.origin + "/")) || new Response("You are offline.", { status: 503, headers: { "Content-Type": "text/plain" } });
+    const hit = await cache.match(e.request.url);
+    if (hit) return hit;
+    // a navigation away to another site is not ours to answer for
+    if (new URL(e.request.url).origin !== self.location.origin) throw new Error("offline");
+    const skel = await skelHtmlLookup(await skelMetaRead());
+    if (skel) return skel;
+    const root = await cache.match(self.location.origin + "/");
+    if (root) return root;
+    return offlinePage();
   }
 }
 
@@ -93,6 +148,46 @@ async function shellStrategy(e) {
     throw new Error("offline");
   }
 }
+
+// --- bounded runtime image cache: begin ---
+// Unstamped same-origin images outside the skeleton (book and shop art,
+// promo stills) are served stale-while-revalidate from a bounded cache:
+// instant repeat views and an offline copy, with a hard entry cap, a
+// per-item size cap and oldest-first eviction, so this cache can never
+// grow without limit. The key station art is NOT served from here: it
+// stays network-first (shellStrategy) and precached, so a new poster is
+// never held back by a stale copy.
+function isKeyArt(pathname) {
+  const b = pathname.slice(pathname.lastIndexOf("/") + 1);
+  return b.indexOf("radio-promo") === 0 || b.indexOf("tv-poster") === 0 || b === "kids-art.jpg";
+}
+
+async function trimImages(cache) {
+  try {
+    const keys = await cache.keys();
+    if (keys.length > IMG_MAX_ENTRIES) for (const k of keys.slice(0, keys.length - IMG_MAX_ENTRIES)) await cache.delete(k);
+  } catch (_) {}
+}
+
+async function imageStrategy(e) {
+  const cache = await caches.open(IMAGES);
+  const hit = await cache.match(e.request.url);
+  const refresh = (async () => {
+    try {
+      const net = await fetch(e.request);
+      if (net.ok) {
+        const len = +net.headers.get("content-length") || 0;
+        if (!len || len <= IMG_MAX_ITEM) e.waitUntil(cache.put(e.request.url, net.clone()).then(() => trimImages(cache)));
+      }
+      return net;
+    } catch (_) { return null; }
+  })();
+  if (hit) { e.waitUntil(refresh); return hit; }
+  const net = await refresh;
+  if (net) return net;
+  throw new Error("offline image");
+}
+// --- bounded runtime image cache: end ---
 
 // --- device-saved skeleton: begin ---
 // The frame (HTML shell + version-stamped scripts, styles and shell art) lives on the
@@ -178,7 +273,7 @@ async function skelStoreHtml(build, response, prevMeta) {
 
 async function skelOfflineNav(e) {
   const cache = await caches.open(SHELL);
-  return (await cache.match(e.request.url)) || (await cache.match(self.location.origin + "/")) || new Response("You are offline.", { status: 503, headers: { "Content-Type": "text/plain" } });
+  return (await cache.match(e.request.url)) || (await cache.match(self.location.origin + "/")) || offlinePage();
 }
 
 async function skelNavStrategy(e) {
@@ -279,6 +374,8 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   if (skelStamped(url)) { e.respondWith(skelAssetStrategy(e)); return; }
+  if (e.request.destination === "image" && url.origin === self.location.origin && !e.request.headers.get("range") &&
+      (url.pathname.indexOf("/img/") === 0 || url.pathname.indexOf("/media/") === 0) && !isKeyArt(url.pathname)) { e.respondWith(imageStrategy(e)); return; }
   if (url.origin === self.location.origin && (url.pathname.indexOf("/js/") === 0 || url.pathname.indexOf("/img/") === 0 || /\.(css|webmanifest)$/.test(url.pathname))) e.respondWith(shellStrategy(e));
 });
 // phone notifications (see js/push.js and functions/api/push.js)
