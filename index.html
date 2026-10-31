@@ -494,7 +494,16 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 #v-home .mw-path{border-color:rgba(216,180,90,.45);box-shadow:0 10px 30px rgba(0,0,0,.35)}
 #v-home .mw-path:hover{border-color:rgba(244,217,138,.8)}
 #v-home .mw-path-art span{color:#f4d98a;text-shadow:0 0 22px rgba(255,190,70,.45)}
-@media(prefers-reduced-motion:reduce){#v-home .home-card{transition:none}}
+#v-home .kids-hero{display:flex;gap:14px;align-items:center;margin:0 0 18px;padding:12px;border:1px solid rgba(216,180,90,.55);border-radius:20px;background:linear-gradient(135deg,#1c1608,#0c0a06 65%);color:inherit;text-decoration:none;box-shadow:0 14px 34px rgba(0,0,0,.35);transition:border-color .2s,transform .2s}
+#v-home .kids-hero:hover,#v-home .kids-hero:focus-visible{border-color:rgba(244,217,138,.9);transform:translateY(-2px)}
+#v-home .kids-hero img{width:92px;height:92px;flex:0 0 auto;object-fit:cover;border-radius:14px;border:1px solid rgba(216,180,90,.4);background:#000}
+#v-home .kids-hero .kh-copy{display:flex;flex-direction:column;gap:3px;align-items:flex-start;min-width:0}
+#v-home .kids-hero .kh-pill{border:1px solid rgba(216,180,90,.6);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#f4d98a;text-transform:uppercase}
+#v-home .kids-hero b{font-size:19px;line-height:1.2}
+#v-home .kids-hero .kh-line{font-size:13px;line-height:1.45;color:#b9ac8d}
+#v-home .kids-hero .kh-go{font-size:13.5px;font-weight:800;color:#f4d98a}
+@media(min-width:820px){#v-home .kids-hero{padding:16px;gap:18px}#v-home .kids-hero img{width:128px;height:128px}#v-home .kids-hero b{font-size:23px}#v-home .kids-hero .kh-line{font-size:14.5px}}
+@media(prefers-reduced-motion:reduce){#v-home .home-card,#v-home .kids-hero{transition:none}}
   </style>
   <div class="wrap">
     <div class="lux-hero">
@@ -508,6 +517,10 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <div class="ctas"><a class="btn" href="#community" data-go="community">Join Meechie's Book free</a><a class="btn ghost" href="#shop" data-go="shop">Shop the movement</a><a class="btn ghost" href="#services" data-go="services">Our services</a></div>
       </div>
     </div>
+    <a class="kids-hero" href="/kids-app/">
+      <img src="/img/kids-art.jpg" alt="Meechie's World for Kids — cartoon Meechie with a crown, a golden book and ABC blocks" loading="lazy" decoding="async">
+      <span class="kh-copy"><span class="kh-pill">7 days free</span><b>🧒 Meechie's World for Kids</b><span class="kh-line">A little school in an app — lessons, movies &amp; Meechie Talks for babies, toddlers &amp; preschoolers.</span><span class="kh-go">Open the Kids app →</span></span>
+    </a>
     <div class="home-live" id="home-live" hidden></div>
     <div class="section-head home-jump-head">
       <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
@@ -1740,7 +1753,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 <script src="js/cf-client.js?v=1793444216"></script>
 <script src="js/platform.js?v=1793444216"></script>
 <script src="js/app-core.js?v=1793444216"></script>
-<script src="js/appnav.js?v=1793453316"></script>
+<script src="js/appnav.js?v=1793456555"></script>
 <script src="js/fb-feed.js?v=1793444216"></script>
 <script src="js/fb-feed-plus.js?v=1793444216"></script>
 <script src="js/stories.js?v=1793444216"></script>
