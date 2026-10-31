@@ -85,7 +85,36 @@ html.appmode #appbar{display:flex}
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Meechie's World">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"Meechie's World Inc","url":"https://meechiesworldinc.com/","logo":"https://meechiesworldinc.com/img/icon-512.png","email":"meechiesworldinc@aol.com","sameAs":["https://www.tiktok.com/@meechiesworldinc","https://www.snapchat.com/add/elpesidentay","https://meechiesworld-inc.printify.me"]}</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://meechiesworldinc.com/#organization",
+      "name": "Meechie's World Inc",
+      "url": "https://meechiesworldinc.com/",
+      "logo": "https://meechiesworldinc.com/img/icon-512.png",
+      "slogan": "Global, not local.",
+      "email": "meechiesworldinc@gmail.com",
+      "telephone": "+1-301-988-1469",
+      "areaServed": ["United States", "Worldwide"],
+      "sameAs": [
+        "https://www.tiktok.com/@meechiesworldinc",
+        "https://www.instagram.com/meechiesworldinc",
+        "https://x.com/MEECHIESWORLDIN"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://meechiesworldinc.com/#website",
+      "url": "https://meechiesworldinc.com/",
+      "name": "Meechie's World Inc",
+      "publisher": {"@id": "https://meechiesworldinc.com/#organization"}
+    }
+  ]
+}
+</script>
 <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
