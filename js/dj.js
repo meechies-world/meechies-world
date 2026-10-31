@@ -5349,8 +5349,9 @@ html.popdj #dj-mini{display:none!important}
    * its own sound and silences this), it never double-sounds (listener
    * deck elements never play SC locally), and a viewer pausing their own
    * screen pauses it here alone. While an SC deck is the on-air PICTURE —
-   * no video mix, no share, no screen video — the master screen shows the
-   * track artwork slate: no fake video, the sound is the show. */
+   * no video mix, no share, no screen video — the master screen keeps its
+   * poster face for audio (SCREEN POSTER RULE, owner, 2026-10-31):
+   * videos or the poster, never audio artwork. The sound is the show. */
   const scTopDeck = () => { let bk = "", bg = 0.02; DECKS.forEach((k) => { const s = S[k]; if (s && s.kind === "sc" && s.scUrl && s.playing) { const g = stageGain(k); if (g > bg) { bg = g; bk = k; } } }); return bk; };
   const scPictureK = () => { if (vmixTargets().length) return ""; const vs = S.vstream || {}; if (vs.on && !vs.hidden) return ""; if (msvActive()) return ""; return scTopDeck(); };
   const scDrift = (mine, target) => Math.abs(mine - target) > 2.5;
@@ -5366,10 +5367,9 @@ html.popdj #dj-mini{display:none!important}
    * (2) the bottom player bar clock runs off bcastPos for an on-air
    * SC deck instead of sitting at 0:00 (scBarTick - the bar time and
    * fill are otherwise only ever written by the library element);
-   * (3) the artwork slate is latched (scArtResolve): a one-pass blip
-   * in scPictureK must not flash the poster over the SC artwork - the
-   * poster returns only when a video surface takes the screen or the
-   * artwork has been gone for a sustained 3.5s;
+   * (3) the screen picture follows the SCREEN POSTER RULE (owner,
+   * 2026-10-31): videos or the poster, never audio artwork - the
+   * #449 artwork slate and its latch were removed from scStageSync;
    * (4) a tune-in tap primes the shared SC widget play() inside the
    * tap itself (scPrimeTap), because Android Chrome refuses plays
    * that arrive later from async state application. */
@@ -5396,15 +5396,6 @@ html.popdj #dj-mini{display:none!important}
     const pos = Math.max(0, bcastPos(k)), dur = +S[k].dur || 0;
     if (tEl) tEl.textContent = dur > 0 ? fmt(pos) + " / " + fmt(dur) : fmt(pos);
     if (fEl) fEl.style.width = dur > 0 ? Math.max(0, Math.min(100, pos / dur * 100)) + "%" : "0%";
-  }
-  let scArtHold = "", scArtGoneAt = 0;
-  function scArtResolve(art, videoHolds, now) {
-    if (art) { scArtHold = art; scArtGoneAt = 0; return art; }
-    if (!scArtHold) return "";
-    if (videoHolds) { scArtHold = ""; scArtGoneAt = 0; return ""; }
-    if (!scArtGoneAt) scArtGoneAt = now;
-    if (now - scArtGoneAt > 3500) { scArtHold = ""; scArtGoneAt = 0; return ""; }
-    return scArtHold;
   }
   function scPrimeTap() {
     if (OWNER()) return;
@@ -5435,11 +5426,6 @@ html.popdj #dj-mini{display:none!important}
   function scStageSync(mix, duck) {
     try { bandLabelSync(); } catch (_) {}
     try { scBarTick(); } catch (_) {}
-    try {
-      const pk = scPictureK(), art = pk ? (S[pk].cover || "") : "";
-      const showArt = scArtResolve(art, !!(vmixTargets().length || ((S.vstream || {}).on && !(S.vstream || {}).hidden) || msvActive()), Date.now());
-      ["#st-vposter img", "#wb-vposter img", "#mn-vposter img", "#tw-vstandby .tw-sb-art"].forEach((sel) => { const im = document.querySelector(sel); if (!im) return; if (showArt) { if (!im.dataset.scOrig) { im.dataset.scOrig = im.getAttribute("src") || ""; im.dataset.scOrigSet = im.getAttribute("srcset") || ""; } if (im.getAttribute("src") !== showArt) { im.removeAttribute("srcset"); im.setAttribute("src", showArt); } im.dataset.scOn = "1"; } else if (im.dataset.scOn) { delete im.dataset.scOn; if (im.dataset.scOrig) im.setAttribute("src", im.dataset.scOrig); if (im.dataset.scOrigSet) im.setAttribute("srcset", im.dataset.scOrigSet); else im.removeAttribute("srcset"); } });
-    } catch (_) {}
     if (OWNER()) return;
     const k = scTopDeck(), scr = k ? vmixSndScr() : null;
     const want = (k && scr && !scr.paused) ? Math.max(0, Math.min(1, stageGain(k) * (duck == null ? 1 : duck) * (mix == null ? 1 : mix) * boostMk())) : 0;
@@ -6682,7 +6668,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793421685;
+  const MW_DJ_BUILD = 1793422117;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
