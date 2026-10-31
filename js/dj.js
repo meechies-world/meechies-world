@@ -123,7 +123,7 @@
 
   /* ---------- a deck: one audio element with its own EQ + gain ---------- */
   function Deck() {
-    const d = { el: new Audio(), gain: null, eq: null, flt: null, stem: null, src: "", level: 1, cors: true, peaks: null, rate: 1, vinyl: false, cues: [null, null, null], loop: null, loopBeats: 0, ytId: "", shim: null, _audioEl: null, letter: "" };
+    const d = { el: new Audio(), gain: null, eq: null, flt: null, stem: null, src: "", level: 1, cors: true, peaks: null, rate: 1, vinyl: false, cues: [null, null, null], loop: null, loopBeats: 0, ytId: "", scUrl: "", shim: null, _audioEl: null, letter: "" };
     d.el.preload = "auto"; d.el.playsInline = true; d.el.crossOrigin = "anonymous";
     // The end-of-song hook lives on the DECK, not on one element: a deck's sound
     // element gets replaced over its life (video shim in, shim out, CORS fallback
@@ -189,7 +189,29 @@
       try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing) sh.play(); } catch (_) {}
       return okP;
     };
-    d.clearYt = () => { if (d.shim) { try { d.shim._p && d.shim._p.destroy(); } catch (_) {} d.shim = null; if (d._audioEl) { d.el = d._audioEl; d._hookEnd(d.el); } } if (d.ytId) d.ytId = ""; const wrap = document.getElementById("ytw-" + d.letter); if (wrap) { wrap.hidden = true; wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; } };
+    // a SoundCloud deck: the track plays in the deck's own widget frame and
+    // a shim stands in for the audio element, exactly like a YouTube deck —
+    // play / pause / seek / position / volume all ride the widget. What
+    // cannot work: EQ, effects, stems, scratch and playback rate —
+    // SoundCloud keeps its audio locked inside its player, no site can
+    // touch it. The widget reports the real title, artist, duration,
+    // artwork and track id back into the shared state once it is ready.
+    d.setSc = async (url) => {
+      if (d.scUrl === url && d.shim) return true;
+      d.clearYt(); d.scUrl = url; d.src = "sc:" + url; d.peaks = null;
+      const wrap = document.getElementById("ytw-" + d.letter); if (!wrap) return false;
+      wrap.hidden = false;
+      let mount = document.getElementById("yt-" + d.letter);
+      if (!mount) { wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; mount = document.getElementById("yt-" + d.letter); }
+      if (!d._audioEl) d._audioEl = d.el;
+      const onM = (title, dur, art, id, artist) => { if (OWNER() && S[d.letter] && S[d.letter].kind === "sc" && S[d.letter].scUrl === url) { let dirty = false; const full = title ? (artist ? artist + " - " + title : title) : ""; if (full && (!S[d.letter].title || S[d.letter].title === "SoundCloud track")) { S[d.letter].title = full; dirty = true; } if (dur && !S[d.letter].dur) { S[d.letter].dur = Math.round(dur); dirty = true; } if (art && !S[d.letter].cover) { S[d.letter].cover = art; dirty = true; } if (id && !S[d.letter].scId) { S[d.letter].scId = id; dirty = true; } if (dirty) { paintOwner(); save(); } } };
+      const sh = scShim(url, onM);
+      d.shim = sh; d.el = sh; d._hookEnd(sh);
+      const okP = await sh._mount(mount); if (d.shim !== sh) return false;
+      try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing) sh.play(); } catch (_) {}
+      return okP;
+    };
+    d.clearYt = () => { if (d.shim) { try { d.shim._p && d.shim._p.destroy(); } catch (_) {} d.shim = null; if (d._audioEl) { d.el = d._audioEl; d._hookEnd(d.el); } } if (d.ytId) d.ytId = ""; if (d.scUrl) d.scUrl = ""; const wrap = document.getElementById("ytw-" + d.letter); if (wrap) { wrap.hidden = true; wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; } };
     return d;
   }
   /* ---------- YouTube decks: the official iframe player, driven like a deck ---------- */
@@ -202,6 +224,7 @@
     const y = ytParse(v); if (y) return { yt: y, src: "", title: "YouTube video", cover: "https://i.ytimg.com/vi/" + y + "/hqdefault.jpg", dur: 0 };
     let m = v.match(/vimeo\.com\/(?:video\/)?(\d{6,})/); if (m) return { yt: "vm:" + m[1], src: "", title: "Vimeo video", cover: "https://vumbnail.com/" + m[1] + ".jpg", dur: 0 };
     m = v.match(/archive\.org\/details\/([A-Za-z0-9_.-]+)/); if (m) return { iaId: m[1], title: "Archive video" };
+    m = v.match(/soundcloud\.com\/([A-Za-z0-9_-]+)\/([A-Za-z0-9_-]+)/i); if (m && m[2] !== "sets" && !/^(discover|stream|upload|search|settings|you|messages|notifications|pages)$/i.test(m[1])) return { kind: "sc", scUrl: "https://soundcloud.com/" + m[1] + "/" + m[2], scId: 0, yt: "", src: "", title: "SoundCloud track", cover: "", dur: 0 };
     return null;
   };
   /* Honest seeking on all three video shims (2026-10-28): a seek marks
@@ -351,6 +374,57 @@
     return sh;
   }
 
+  /* ---------- SoundCloud decks: the official Widget API, driven like a deck ----------
+   * Keyless playback: the widget iframe plays any public track by its
+   * permalink. The shim keeps the same shape as the Vimeo shim — an
+   * event-fed cached clock (PLAY_PROGRESS), FINISH feeding the deck's own
+   * "ended" so automation advances, and a seek that marks itself seeking
+   * until progress lands near the target (4s backstop, like the others).
+   * The position getter interpolates between progress events so the
+   * booth clock and the listener sync math stay smooth. */
+  let scApiP = null;
+  function scApi() { if (window.SC && window.SC.Widget) return Promise.resolve(true); if (scApiP) return scApiP; scApiP = new Promise((res) => { const tag = document.createElement("script"); tag.src = "https://w.soundcloud.com/player/api.js"; tag.onload = () => res(!!(window.SC && window.SC.Widget)); tag.onerror = () => res(false); setTimeout(() => res(!!(window.SC && window.SC.Widget)), 7000); document.head.appendChild(tag); }); return scApiP; }
+  function scShim(url, onMeta) {
+    const sh = { _url: url, _p: null, _w: null, _ifr: null, _dur: 0, _rate: 1, _h: {}, _cur: 0, _curAt: 0, _state: 2, seeking: false, readyState: 0, _skTo: -1, _skT: 0 };
+    const wrap = { setVolume(v) { try { if (sh._w) sh._w.setVolume(Math.max(0, Math.min(100, Math.round(v)))); } catch (_) {} }, destroy() { try { if (sh._w) sh._w.pause(); } catch (_) {} try { const f = sh._ifr; if (f && f.parentNode) f.parentNode.removeChild(f); } catch (_) {} sh._w = null; } };
+    sh._p = wrap;
+    const stamp = () => { sh._curAt = Date.now(); };
+    Object.defineProperties(sh, {
+      currentTime: { get() { let c = sh._cur; if (sh._state === 1 && sh._curAt) c += (Date.now() - sh._curAt) / 1000; if (sh._dur > 0) c = Math.min(c, sh._dur); return Math.max(0, c); }, set(t) { t = Math.max(0, +t || 0); sh._cur = t; stamp(); sh.seeking = true; sh._skTo = t; try { if (sh._w) sh._w.seekTo(Math.round(t * 1000)); } catch (_) {} clearTimeout(sh._skT); sh._skT = setTimeout(() => { sh.seeking = false; }, 4000); } },
+      duration: { get() { return sh._dur || 0; } },
+      paused: { get() { return sh._state !== 1; } },
+      playbackRate: { get() { return sh._rate; }, set(v) { sh._rate = +v || 1; } },
+      volume: { get() { return 1; }, set(_) {} },
+      src: { get() { return "sc:" + sh._url; } }
+    });
+    sh.play = () => { try { if (sh._w) sh._w.play(); } catch (_) {} return Promise.resolve(); };
+    sh.pause = () => { try { if (sh._w) sh._w.pause(); } catch (_) {} };
+    sh.addEventListener = (n, f) => { (sh._h[n] = sh._h[n] || []).push(f); };
+    sh.removeEventListener = (n, f) => { const a = sh._h[n]; if (a) { const i = a.indexOf(f); if (i >= 0) a.splice(i, 1); } };
+    sh._fire = (n) => { (sh._h[n] || []).slice().forEach((f) => { try { f(); } catch (_) {} }); };
+    sh._mount = (mountEl) => new Promise(async (fin) => {
+      let done = false; const end = (ok) => { if (!done) { done = true; fin(ok); } };
+      setTimeout(() => end(!!sh._w), 8000);
+      if (!(await scApi())) return end(false);
+      try {
+        mountEl.innerHTML = "";
+        const ifr = document.createElement("iframe");
+        ifr.width = "100%"; ifr.height = "166"; ifr.scrolling = "no"; ifr.frameBorder = "no"; ifr.allow = "autoplay";
+        ifr.src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(url) + "&auto_play=false&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=false";
+        mountEl.appendChild(ifr); sh._ifr = ifr;
+        const w = window.SC.Widget(ifr); sh._w = w; const EV = window.SC.Widget.Events;
+        w.bind(EV.READY, () => { sh.readyState = 4; try { w.getDuration((ms) => { if (ms > 0) sh._dur = ms / 1000; try { w.getCurrentSound((snd) => { if (snd && onMeta) onMeta(String(snd.title || ""), Math.round((+snd.duration || ms || 0) / 1000), String(snd.artwork_url || "").replace("-large", "-t500x500"), +snd.id || 0, String((snd.user && snd.user.username) || "")); }); } catch (_) {} }); } catch (_) {} end(true); });
+        w.bind(EV.PLAY, () => { sh._state = 1; stamp(); });
+        w.bind(EV.PAUSE, () => { sh._state = 2; try { w.getPosition((ms) => { sh._cur = ms / 1000; stamp(); }); } catch (_) {} stamp(); });
+        w.bind(EV.PLAY_PROGRESS, (e) => { if (e && isFinite(e.currentPosition)) { sh._cur = e.currentPosition / 1000; stamp(); if (sh.seeking && Math.abs(sh._cur - sh._skTo) < 2) sh.seeking = false; } });
+        w.bind(EV.SEEK, (e) => { if (e && isFinite(e.currentPosition)) { sh._cur = e.currentPosition / 1000; stamp(); sh.seeking = false; } });
+        w.bind(EV.FINISH, () => { sh._state = 0; if (sh._dur > 0) sh._cur = sh._dur; stamp(); sh._fire("ended"); });
+        w.bind(EV.ERROR, () => { end(false); });
+      } catch (_) { end(false); }
+    });
+    return sh;
+  }
+
   let XFCURVE = "smooth"; // crossfader curve, synced from S.xfCurve by paintXfPads
   // YouTube decks never enter the Web Audio graph, so the master BOOST knob used
   // to do nothing for them (owner: "boost the sound its too low", 2026-10-26 —
@@ -368,7 +442,7 @@
   const pairXGain = (px, cd) => { const p = Math.min(1, Math.max(0, px == null ? 0.5 : px)); return cd ? (p >= 0.5 ? 1 : Math.cos((0.5 - p) * Math.PI)) : (p <= 0.5 ? 1 : Math.cos((p - 0.5) * Math.PI)); };
 
   /* ---------- shared station state (doc radio/dj) ---------- */
-  const blank = () => ({ src: "", yt: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
+  const blank = () => ({ src: "", yt: "", kind: "", scUrl: "", scId: 0, title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
   let S = { live: false, xf: 0.5, xf2: 0.5, panX: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, hornOn: false, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
@@ -1402,7 +1476,7 @@ html.popdj #dj-mini{display:none!important}
 
 </div>
   <div class="dj-panel" id="dj-browser" style="margin-top:16px">
-    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:20px;letter-spacing:.06em">🎬 VIDEO SEARCH — MUSIC VIDEOS FROM EVERYWHERE</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the video panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Search YouTube or the Internet Archive, or paste a link (YouTube and Vimeo both work) — put the video on a deck and mix it: play, pause, seek and the X fader volume all work, and your listeners see it on the master screen. Video sites keep their audio locked in their own players, so EQ, effects and scratch stay on your own files. Archive videos load as real files — full deck control on those.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a video link — YouTube or Vimeo..." style="flex:1;min-width:220px;font-size:16px;padding:12px" aria-label="Video link"><span style="font-size:13px;color:var(--muted)">Load on:</span><button class="btn ghost" type="button" data-ytload="A">A</button><button class="btn ghost" type="button" data-ytload="B">B</button><button class="btn ghost" type="button" data-ytload="C">C</button><button class="btn ghost" type="button" data-ytload="D">D</button><button class="btn ghost" type="button" data-ytqueue="1">＋Q</button></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm vtab" type="button" data-vtab="yt">▶ YouTube</button><button class="btn ghost sm vtab" type="button" data-vtab="ia">🎞 Archive videos</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px;display:flex;gap:8px"><input type="search" id="dj-ytq" placeholder="Search — any artist, any song..." aria-label="Search videos" style="flex:1;font-size:17px;padding:13px"><button class="btn" type="submit" style="font-size:16px;padding:13px 22px">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:430px;margin-top:10px"></div></div></div>
+    <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:20px;letter-spacing:.06em">🎬 VIDEO SEARCH — MUSIC VIDEOS FROM EVERYWHERE</b><button class="btn ghost sm" type="button" data-fold="yt-body" aria-label="Fold the video panel">▾</button></span><div id="yt-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Search YouTube, the Internet Archive or SoundCloud, or paste a link (YouTube, Vimeo and SoundCloud all work) — put the song or video on a deck and mix it: play, pause, seek and the X fader volume all work, and your listeners hear it on the radio and see it on the master screen. Video sites keep their audio locked in their own players, so EQ, effects and scratch stay on your own files. Archive videos load as real files — full deck control on those.</small><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="text" id="dj-yt" placeholder="Paste a link — YouTube, Vimeo or SoundCloud..." style="flex:1;min-width:220px;font-size:16px;padding:12px" aria-label="Video link"><span style="font-size:13px;color:var(--muted)">Load on:</span><button class="btn ghost" type="button" data-ytload="A">A</button><button class="btn ghost" type="button" data-ytload="B">B</button><button class="btn ghost" type="button" data-ytload="C">C</button><button class="btn ghost" type="button" data-ytload="D">D</button><button class="btn ghost" type="button" data-ytqueue="1">＋Q</button></div><div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn sm vtab" type="button" data-vtab="yt">▶ YouTube</button><button class="btn ghost sm vtab" type="button" data-vtab="ia">🎞 Archive videos</button><button class="btn ghost sm vtab" type="button" data-vtab="sc">🎧 SoundCloud</button></div><form class="dj-search" id="dj-ytform" style="margin-top:8px;display:flex;gap:8px"><input type="search" id="dj-ytq" placeholder="Search — any artist, any song..." aria-label="Search videos" style="flex:1;font-size:17px;padding:13px"><button class="btn" type="submit" style="font-size:16px;padding:13px 22px">Search</button></form><div class="dj-list" id="dj-ytres" style="max-height:430px;margin-top:10px"></div></div></div>
     <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:20px;letter-spacing:.06em">🎶 UP NEXT — YOUR QUEUE</b><button class="btn ghost sm" type="button" data-fold="queue-body" aria-label="Fold the queue">▾</button></span><div id="queue-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Add songs and videos with ＋Q anywhere in the picker. When a deck finishes, the next one in line loads on the open deck and plays — straight through the list. Save the list as a playlist to run it again any time, or put a playlist on the schedule below.</small><div class="dj-list" id="dj-queue" style="max-height:260px"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"><button class="btn sm" type="button" data-qact="play">▶ Play the queue</button><button class="btn ghost sm" type="button" data-qact="save">💾 Save as playlist</button><button class="btn ghost sm" type="button" data-qact="open">📂 Playlists</button><button class="btn ghost sm" type="button" data-qact="clear">🗑 Clear</button></div><div id="dj-playlists" style="margin-top:6px"></div></div></div>
     <div style="border:1.5px solid var(--gold-lo);border-radius:14px;padding:14px;margin-bottom:12px;background:rgba(240,207,120,.04)"><span style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:20px;letter-spacing:.06em">📅 SCHEDULE — WHAT PLAYS WHEN</b><button class="btn ghost sm" type="button" data-fold="sched-body" aria-label="Fold the schedule">▾</button></span><div id="sched-body"><small class="muted" style="display:block;margin:6px 0 10px;font-size:13px">Pick a time and one of your playlists. Every day at that time the station switches to that list and plays it through in order — even while the booth is closed. Videos in a list play while the booth is open; with the booth closed the list runs its songs and files.</small><div id="dj-sched-list"></div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center"><input type="time" id="sched-time" style="padding:9px;font-size:15px" aria-label="Time of day"><select id="sched-sel" style="padding:9px;font-size:15px;flex:1;min-width:160px" aria-label="Playlist"></select><button class="btn sm" type="button" data-sched="add">＋ Add</button></div></div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><h4 style="margin:0 6px 0 0">🎵 MUSIC — PICK &amp; LOAD, NO SCROLLING</h4><button class="btn ghost sm" type="button" data-fold="br-panes" aria-label="Fold the music lists">▾</button>
@@ -2077,7 +2151,7 @@ html.popdj #dj-mini{display:none!important}
    * record for the deck it loads onto. */
   let qStock = { A: null, B: null, C: null, D: null };
   function qSyncFromS() { const q = (typeof S !== "undefined" && S && S.qStock) || {}; qStock = { A: q.A || null, B: q.B || null, C: q.C || null, D: q.D || null }; }
-  function qSet(k, item) { const rec = { src: (item && item.src) || "", yt: (item && item.yt) || "", at: Date.now() }; qStock[k] = rec; if (typeof S !== "undefined" && S) { if (!S.qStock) S.qStock = { A: null, B: null, C: null, D: null }; S.qStock[k] = rec; } }
+  function qSet(k, item) { const rec = { src: (item && item.src) || "", yt: (item && item.yt) || "", kind: (item && item.kind) || "", scUrl: (item && item.scUrl) || "", scId: (item && item.scId) || 0, at: Date.now() }; qStock[k] = rec; if (typeof S !== "undefined" && S) { if (!S.qStock) S.qStock = { A: null, B: null, C: null, D: null }; S.qStock[k] = rec; } }
   function qClear(k) { qStock[k] = null; if (typeof S !== "undefined" && S && S.qStock) S.qStock[k] = null; }
   const deck = (k) => { if (!decks[k]) { decks[k] = Deck(); decks[k].letter = k; } return decks[k]; };
   const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
@@ -3460,7 +3534,7 @@ html.popdj #dj-mini{display:none!important}
     // track end, replaced from another screen), because they all land here.
     if (p.pausedDecks && p.pausedDecks.length) {
       const ks = p.pausedDecks.slice();
-      setTimeout(() => { ks.forEach((k) => { try { if (S[k] && (S[k].src || S[k].yt) && !S[k].playing) togglePlay(k); } catch (_) {} }); }, 400);
+      setTimeout(() => { ks.forEach((k) => { try { if (S[k] && (S[k].src || S[k].yt || S[k].scUrl) && !S[k].playing) togglePlay(k); } catch (_) {} }); }, 400);
     }
     vsPaintStudio();
   }
@@ -4655,7 +4729,7 @@ html.popdj #dj-mini{display:none!important}
     if (stat && !msvBusy) stat.textContent = on ? "📺 On the master screen: " + (m.title || "Screen video") : "";
   }
   function msvResumeTables() {
-    if (msvPausedDecks && msvPausedDecks.length) { const ks = msvPausedDecks.slice(); msvPausedDecks = null; try { sessionStorage.removeItem("mw_msvpaused"); } catch (_) {} setTimeout(() => { ks.forEach((k) => { try { if (S[k] && (S[k].src || S[k].yt) && !S[k].playing) togglePlay(k); } catch (_) {} }); }, 400); }
+    if (msvPausedDecks && msvPausedDecks.length) { const ks = msvPausedDecks.slice(); msvPausedDecks = null; try { sessionStorage.removeItem("mw_msvpaused"); } catch (_) {} setTimeout(() => { ks.forEach((k) => { try { if (S[k] && (S[k].src || S[k].yt || S[k].scUrl) && !S[k].playing) togglePlay(k); } catch (_) {} }); }, 400); }
   }
   function msvPick() {
     if (SANDBOX) { say("Practice copy — screen videos run from the real booth."); return; }
@@ -5266,9 +5340,65 @@ html.popdj #dj-mini{display:none!important}
    * 2026-10-27): with no video playing yet it shows the table lineup — what is
    * loaded on each deck — so members always see his setup. View only: this
    * screen takes no input and cannot touch the radio. */
+  /* SOUNDCLOUD ON THE LISTENER SIDE (owner, 2026-10-31): a SoundCloud deck
+   * makes its sound inside the booth tab's own deck widget, which exists
+   * only there — so listener tabs carry ONE shared widget of their own and
+   * play the on-air SC deck off the same broadcast clock the video mix
+   * runs on. It sounds only while this tab holds a sounding screen (the
+   * vmixSndScr ladder — a live share or the uploaded screen video holds
+   * its own sound and silences this), it never double-sounds (listener
+   * deck elements never play SC locally), and a viewer pausing their own
+   * screen pauses it here alone. While an SC deck is the on-air PICTURE —
+   * no video mix, no share, no screen video — the master screen shows the
+   * track artwork slate: no fake video, the sound is the show. */
+  const scTopDeck = () => { let bk = "", bg = 0.02; DECKS.forEach((k) => { const s = S[k]; if (s && s.kind === "sc" && s.scUrl && s.playing) { const g = stageGain(k); if (g > bg) { bg = g; bk = k; } } }); return bk; };
+  const scPictureK = () => { if (vmixTargets().length) return ""; const vs = S.vstream || {}; if (vs.on && !vs.hidden) return ""; if (msvActive()) return ""; return scTopDeck(); };
+  const scDrift = (mine, target) => Math.abs(mine - target) > 2.5;
+  let scStageW = null, scStageUrl = "", scStageK = "", scStagePos = 0, scStagePosAt = 0, scStageWant = 0, scStageBusy = false;
+  async function scStageBuild(url, k) {
+    if (scStageBusy) return; scStageBusy = true;
+    try {
+      if (!(await scApi())) return;
+      let box = document.getElementById("mw-sc-stage");
+      if (!box) { box = document.createElement("div"); box.id = "mw-sc-stage"; box.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:320px;height:100px;overflow:hidden"; document.body.appendChild(box); }
+      box.innerHTML = "";
+      const ifr = document.createElement("iframe"); ifr.width = "300"; ifr.height = "100"; ifr.scrolling = "no"; ifr.frameBorder = "no"; ifr.allow = "autoplay";
+      ifr.src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(url) + "&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false";
+      box.appendChild(ifr);
+      const w = window.SC.Widget(ifr), EV = window.SC.Widget.Events;
+      scStageW = w; scStageUrl = url; scStageK = k; scStagePos = Math.max(0, bcastPos(k)); scStagePosAt = Date.now();
+      w.bind(EV.READY, () => { try { const p0 = Math.max(0, bcastPos(scStageK)); w.seekTo(Math.round(p0 * 1000)); w.setVolume(Math.round(Math.max(0, Math.min(1, scStageWant)) * 100)); w.play(); } catch (_) {} });
+      w.bind(EV.PLAY, () => { try { w.setVolume(Math.round(Math.max(0, Math.min(1, scStageWant)) * 100)); } catch (_) {} });
+      w.bind(EV.PLAY_PROGRESS, (e) => { if (e && isFinite(e.currentPosition)) { scStagePos = e.currentPosition / 1000; scStagePosAt = Date.now(); } });
+      w.bind(EV.FINISH, () => { scStagePos = 0; scStagePosAt = Date.now(); });
+    } catch (_) {}
+    scStageBusy = false;
+  }
+  function scStageSync(mix, duck) {
+    try {
+      const pk = scPictureK(), art = pk ? (S[pk].cover || "") : "";
+      ["#st-vposter img", "#wb-vposter img", "#mn-vposter img", "#tw-vstandby .tw-sb-art"].forEach((sel) => { const im = document.querySelector(sel); if (!im) return; if (art) { if (!im.dataset.scOrig) { im.dataset.scOrig = im.getAttribute("src") || ""; im.dataset.scOrigSet = im.getAttribute("srcset") || ""; } if (im.getAttribute("src") !== art) { im.removeAttribute("srcset"); im.setAttribute("src", art); } im.dataset.scOn = "1"; } else if (im.dataset.scOn) { delete im.dataset.scOn; if (im.dataset.scOrig) im.setAttribute("src", im.dataset.scOrig); if (im.dataset.scOrigSet) im.setAttribute("srcset", im.dataset.scOrigSet); else im.removeAttribute("srcset"); } });
+    } catch (_) {}
+    if (OWNER()) return;
+    const k = scTopDeck(), scr = k ? vmixSndScr() : null;
+    const want = (k && scr && !scr.paused) ? Math.max(0, Math.min(1, stageGain(k) * (duck == null ? 1 : duck) * (mix == null ? 1 : mix) * boostMk())) : 0;
+    scStageWant = want;
+    if (!k || want <= 0.003) { if (scStageW) { try { scStageW.pause(); } catch (_) {} } return; }
+    const url = S[k].scUrl;
+    if (!scStageW || scStageUrl !== url) { scStageBuild(url, k); return; }
+    scStageK = k;
+    try {
+      scStageW.setVolume(Math.round(want * 100));
+      const pos = Math.max(0, bcastPos(k)), mine = scStagePos + (Date.now() - scStagePosAt) / 1000;
+      if ((+S[k].dur || 0) > 0 && pos >= (+S[k].dur) - 0.25) { scStageW.pause(); return; }
+      if (scDrift(mine, pos)) { scStageW.seekTo(Math.round(pos * 1000)); scStagePos = pos; scStagePosAt = Date.now(); }
+      scStageW.play();
+    } catch (_) {}
+  }
   function stSlate() {
     const rows = DECKS.filter((k) => S[k] && (S[k].title || S[k].yt)).map((k) => "DECK " + k + " — " + (S[k].title || "Music video") + (S[k].playing ? " ▶ PLAYING" : ""));
-    return "🔴 MEECHIE IS LIVE ON THE TABLES\n" + (rows.length ? rows.join("\n") : "Setting up the decks…") + "\nThe video mix appears right here the moment a music video plays.";
+    const scPk = scPictureK();
+    return "🔴 MEECHIE IS LIVE ON THE TABLES\n" + (rows.length ? rows.join("\n") : "Setting up the decks…") + (scPk ? "\n🎧 On air from SoundCloud: " + (S[scPk].title || "SoundCloud track") + " — the sound is the show." : "\nThe video mix appears right here the moment a music video plays.");
   }
   /* SURFACE LIFECYCLE gates (viewer black-screen fix, 2026-10-30):
    * a master surface renders (and warms its spare player) only while
@@ -5303,6 +5433,7 @@ html.popdj #dj-mini{display:none!important}
       try { await watchApply(mix, duck); } catch (_) {}
       try { vsSync(); } catch (_) {}
       try { msvSync(); } catch (_) {}
+      try { scStageSync(mix, duck); } catch (_) {}
     } catch (_) {}
     stageBusy = false;
   }
@@ -5319,7 +5450,7 @@ html.popdj #dj-mini{display:none!important}
     let mode = "", label = "";
     if (vs.on && vs.meeting && !vs.hidden) { mode = "live"; label = vs.kind === "cam" ? "Meechie — live camera" : "Meechie — live screen"; }
     else if (msvHolds()) { mode = "mix"; label = "📤 Screen video" + ((S.msvideo || {}).title ? " — " + S.msvideo.title : ""); }
-    else { const tg = vmixTargets(); if (tg.length) { mode = "mix"; label = "The video mix" + (S[tg[0].k] && S[tg[0].k].title ? " — " + S[tg[0].k].title : ""); } }
+    else { const tg = vmixTargets(); if (tg.length) { mode = "mix"; label = "The video mix" + (S[tg[0].k] && S[tg[0].k].title ? " — " + S[tg[0].k].title : ""); } else { const scPk = scPictureK(); if (scPk) { mode = "mix"; label = "🎧 SoundCloud" + (S[scPk].title ? " — " + S[scPk].title : ""); } } }
     const sig = mode + "|" + label + "|" + (listening ? 1 : 0);
     if (sig === tvSig) return; tvSig = sig;
     const bd = $("#tw-live"), wt = $("#tw-what"), sb = $("#tw-sound");
@@ -5550,6 +5681,12 @@ html.popdj #dj-mini{display:none!important}
       // the booth (and its mirrors) run a real player in the deck itself
       if (!OWNER()) { d.stop(); stageApply(listening ? mixVol : 1, (S.duck || micHot > 0.04) ? 0.28 : 1); return; }
       const okY = await d.setYt(s.yt); if (!okY) return;
+    } else if (s.kind === "sc" && s.scUrl) {
+      // a SoundCloud deck: listeners hear it from the one shared stage
+      // widget (scStageSync, on the broadcast clock) — the booth and its
+      // mirrors run a real widget player in the deck itself
+      if (!OWNER()) { d.stop(); if (d.shim) d.clearYt(); stageApply(listening ? mixVol : 1, (S.duck || micHot > 0.04) ? 0.28 : 1); return; }
+      const okS = await d.setSc(s.scUrl); if (!okS) return;
     } else {
       if (d.shim) d.clearYt();
       if (!okUrl(s.src) || DEAD(s.src)) { d.stop(); return; }
@@ -5595,7 +5732,7 @@ html.popdj #dj-mini{display:none!important}
     }
     else { d.el.pause(); if (Math.abs(d.el.currentTime - want) > 0.5) { try { d.el.currentTime = want; } catch (_) {} } }
     applyFx(); levels();
-    if (OWNER() && !(S[k].bpm > 0) && !s.yt) anaLater(k);
+    if (OWNER() && !(S[k].bpm > 0) && !s.yt && s.kind !== "sc") anaLater(k);
   }
   /* adoptDeck (2026-10-28): the smooth booth takeover. When this window
    * becomes the sound — lease gain, booth open, visibility return — a deck
@@ -6068,11 +6205,12 @@ html.popdj #dj-mini{display:none!important}
    * stops anything itself: recovery or handover only. Memory-only
    * state, per deck. */
   const wdPos = {};
-  const wdKeyOf = (k) => { const s = S[k]; return (s.yt ? "yt:" + s.yt : "f:" + (s.src || "")) + "|" + (s.title || ""); };
+  const wdKeyOf = (k) => { const s = S[k]; return ((s.kind === "sc" && s.scUrl) ? "sc:" + s.scUrl : (s.yt ? "yt:" + s.yt : "f:" + (s.src || ""))) + "|" + (s.title || ""); };
   const wdKick = (k) => { const d = decks[k]; if (!d || !d.el) return; try { const pp = d.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} };
   const wdReload = (k, at) => {
     const s = S[k], d = decks[k]; if (!s || !d) return;
     if (s.yt) { const tok = s.yt; try { d.clearYt(); } catch (_) {} d.setYt(tok).then((okY) => { if (!okY || !S[k].playing || S[k].yt !== tok) return; try { d.el.currentTime = at; } catch (_) {} wdKick(k); S[k].start = Date.now() - at * 1000; }).catch(() => {}); return; }
+    if (s.kind === "sc" && s.scUrl) { const u2 = s.scUrl; try { d.clearYt(); } catch (_) {} d.setSc(u2).then((okS) => { if (!okS || !S[k].playing || S[k].scUrl !== u2) return; try { d.el.currentTime = at; } catch (_) {} wdKick(k); S[k].start = Date.now() - at * 1000; }).catch(() => {}); return; }
     if (!okUrl(s.src)) return;
     const el = d.el; if (!el) return;
     try { el.pause(); } catch (_) {}
@@ -6156,7 +6294,7 @@ html.popdj #dj-mini{display:none!important}
       // their player (setYt only presses play when the deck is flagged
       // playing, so a preload mount sits cued and silent) — and the
       // handover at 5 seconds becomes just play + fade.
-      if (OWNER() && leadDrive() && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !S[PAIR[k]].playing && !(handoverBusy && Date.now() - handoverAt < 20000) && !(preLoad && preLoad.forStart === S[k].start) && (SANDBOX || !qStockValid(ROT[k]))) { const elP = decks[k].el, remP = elP && elP.duration && isFinite(elP.duration) ? elP.duration - elP.currentTime : 99; if (remP > 5 && remP <= 15) { const tgtP = PAIR[k]; preLoad = { target: tgtP, forStart: S[k].start, item: null }; pickNextItem().then(async (it) => { if (!it || !preLoad || preLoad.forStart !== S[k].start || preLoad.target !== tgtP) return; preLoad.item = it; saveQueue(); paintQueue(); try { await load(tgtP, it); if (it.yt) { const dp = decks[tgtP]; if (dp) { await dp.setYt(it.yt); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {} }).catch(() => {}); } }
+      if (OWNER() && leadDrive() && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !S[PAIR[k]].playing && !(handoverBusy && Date.now() - handoverAt < 20000) && !(preLoad && preLoad.forStart === S[k].start) && (SANDBOX || !qStockValid(ROT[k]))) { const elP = decks[k].el, remP = elP && elP.duration && isFinite(elP.duration) ? elP.duration - elP.currentTime : 99; if (remP > 5 && remP <= 15) { const tgtP = PAIR[k]; preLoad = { target: tgtP, forStart: S[k].start, item: null }; pickNextItem().then(async (it) => { if (!it || !preLoad || preLoad.forStart !== S[k].start || preLoad.target !== tgtP) return; preLoad.item = it; saveQueue(); paintQueue(); try { await load(tgtP, it); if (it.yt) { const dp = decks[tgtP]; if (dp) { await dp.setYt(it.yt); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } else if (it.scUrl) { const dp = decks[tgtP]; if (dp) { await dp.setSc(it.scUrl); if (!S[tgtP].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {} }).catch(() => {}); } }
       // seamless handover (owner, 2026-10-26): the only deck on air is about to
       // run out — start its pair partner NOW and crossfade into it, no hole
       if (OWNER() && leadDrive() && S.live && (S.autodj || queue.length) && S[k].playing && decks[k] && !decks[k].loop && !(handoverBusy && Date.now() - handoverAt < 20000) && DECKS.every((x) => x === k || !S[x].playing)) { const el2 = decks[k].el, rem = el2.duration && isFinite(el2.duration) ? el2.duration - el2.currentTime : 99; if (rem > 0.3 && rem <= 5) autoNext(k, true, Math.max(1200, rem * 1000)); /* blend lead 5s (owner, 2026-10-28): the next song is audibly IN before this one ends — never a pause between songs */ }
@@ -6483,7 +6621,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793385275;
+  const MW_DJ_BUILD = 1793419893;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6797,7 +6935,7 @@ html.popdj #dj-mini{display:none!important}
     m.vstream.diag = { stage: (vdg && ["publishing", "repairing", "source-gone", "stopped"].indexOf(vdg.stage) >= 0) ? vdg.stage : (m.vstream.on ? "publishing" : "stopped"), at: vdg ? (+vdg.at || 0) : 0, repairs: vdg ? Math.max(0, Math.min(9999, +vdg.repairs || 0)) : 0 };
     if (!m.vstream.on) m.vstream.kind = "";
     m.A = Object.assign(blank(), m.A || {}); m.B = Object.assign(blank(), m.B || {}); m.C = Object.assign(blank(), m.C || {}); m.D = Object.assign(blank(), m.D || {});
-    const qn = (r) => (r && (r.src || r.yt)) ? { src: String(r.src || ""), yt: String(r.yt || ""), at: +r.at || 0 } : null;
+    const qn = (r) => (r && (r.src || r.yt || r.scUrl)) ? { src: String(r.src || ""), yt: String(r.yt || ""), kind: String(r.kind || ""), scUrl: String(r.scUrl || ""), scId: +r.scId || 0, at: +r.at || 0 } : null;
     m.qStock = { A: qn((m.qStock || {}).A), B: qn((m.qStock || {}).B), C: qn((m.qStock || {}).C), D: qn((m.qStock || {}).D) };
     m.dropsOn = m.dropsOn !== false; m.dropN = +m.dropN || 0; m.dropIx = +m.dropIx || 0;
     // DJ BATTLES state (2026-10-29): normalized here like vcam — scores are
@@ -7133,15 +7271,15 @@ html.popdj #dj-mini{display:none!important}
     // queue, schedule, listener picks) call load without the cue flag and
     // start playing through togglePlay as before.
     const cueDeck = !!(opts && opts.cue);
-    if (item && (item.src || item.yt)) { try { const key = item.src || ("yt:" + item.yt); const h = histList().filter((x) => (x.src || ("yt:" + x.yt)) !== key); h.unshift({ src: item.src || "", yt: item.yt || "", title: item.title || "", cover: item.cover || "", dur: item.dur || 0, at: Date.now() }); localStorage.setItem("mw-dj-hist", JSON.stringify(h.slice(0, 30))); } catch (_) {} }
+    if (item && (item.src || item.yt || item.scUrl)) { try { const key = item.src || (item.scUrl ? "sc:" + item.scUrl : ("yt:" + item.yt)); const h = histList().filter((x) => (x.src || (x.scUrl ? "sc:" + x.scUrl : ("yt:" + x.yt))) !== key); h.unshift({ src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title || "", cover: item.cover || "", dur: item.dur || 0, at: Date.now() }); localStorage.setItem("mw-dj-hist", JSON.stringify(h.slice(0, 30))); } catch (_) {} }
     if (!boothLead) {
       // mirror window: put the song on the shared deck — the window playing the sound loads it for real
-      S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
+      S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
       d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k); paintOwner(); save();
       say("Loaded on deck " + k + " — the window playing the sound picked it up.");
       return;
     }
-    S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
+    S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
     d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k);
     paintOwner(); $("#ttl-" + k).textContent = "Loading " + item.title + "...";
     /* GENTLE LOAD (owner, 2026-10-29: "when I clicked to choose a song it
@@ -7157,8 +7295,9 @@ html.popdj #dj-mini{display:none!important}
      * every automation path - queue draw, stockDeck, preload, Auto-DJ -
      * calls load WITHOUT the cue flag, so it builds right here exactly
      * as before. File picks are cheap and keep the path below as is. */
-    if (item.yt && cueDeck && !wasSounding) { try { d.clearYt(); } catch (_) {} paintOwner(); levels(); save(); return; }
+    if ((item.yt || item.scUrl) && cueDeck && !wasSounding) { try { d.clearYt(); } catch (_) {} paintOwner(); levels(); save(); return; }
     if (item.yt) { const okY = await d.setYt(item.yt); if (!okY) { if (ageIsLocked(item.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
+    if (item.scUrl) { const okS = await d.setSc(item.scUrl); if (!okS) { say("That SoundCloud track would not play here — some tracks are private or blocked from playing off SoundCloud. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
     const ok = await d.set(item.src);
     if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
     d.el.currentTime = 0; d.el.playbackRate = S[k].rate || 1; if (cueDeck) { try { d.el.pause(); } catch (_) {} } paintOwner(); levels(); save(); anaLater(k);
@@ -7169,7 +7308,7 @@ html.popdj #dj-mini{display:none!important}
   function endRoll(k) { const d = deck(k); if (!d.roll) return; const sh = d.roll.pos + (performance.now() - d.roll.at) / 1000 * (S[k].rate || 1); d.roll = null; d.loop = null; d.loopBeats = 0; S[k].loop = null; S[k].loopBeats = 0; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; paintCues(k); save(true); }
   async function togglePlay(k) {
     if (serverMirror()) leadTakeAt = Date.now();
-    const s = S[k], d = deck(k); if (!s.yt && !okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
+    const s = S[k], d = deck(k); if (!s.yt && !s.scUrl && !okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
     actx(); try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
     if (!boothLead) {
       // mirror window: flip the shared state only — the window holding the sound plays it
@@ -7181,7 +7320,7 @@ html.popdj #dj-mini{display:none!important}
     }
     if (s.playing) { s.pos = d.el.currentTime; s.playing = false; d.el.pause(); }
     else {
-      if (s.yt) { const okY = await d.setYt(s.yt); if (!okY) { if (ageIsLocked(s.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
+      if (s.yt) { const okY = await d.setYt(s.yt); if (!okY) { if (ageIsLocked(s.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else if (s.kind === "sc" && s.scUrl) { const okS = await d.setSc(s.scUrl); if (!okS) { say("That SoundCloud track would not play here — it may be private or blocked from playing off SoundCloud."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
       d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title); brainPlay(k); // PR-B2: the playing flip is the brain's play event — every start path (hand, Auto-DJ, queue) funnels through here
@@ -7255,7 +7394,7 @@ html.popdj #dj-mini{display:none!important}
     if (b.dataset.curplay != null) { const ci = CURATED[+b.dataset.curplay]; if (ci) { b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (src) { if (boothLead) playPadUrl(src); stampPad({ kind: "url", i: -1, url: src }); } else say("That sound wouldn't load. Try another."); } return; }
     if (b.dataset.fsave) { const [kind, ix] = b.dataset.fsave.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (!it) return; const u = it.src; let om = {}; try { om = JSON.parse(localStorage.getItem("mw-offline-meta") || "{}"); } catch (_) {} if (om[u]) { say("Already saved for offline — it is in the 📥 Offline shelf on the Radio page."); return; } b.disabled = true; const oldT = b.textContent; b.textContent = "Saving…"; try { const r = await fetch(u, { headers: { "x-mw-save": "1" } }); if (!r.ok) throw new Error("fetch"); const len = +r.headers.get("content-length") || 0; if (len && len < 100000) throw new Error("tiny"); if (len > 200 * 1024 * 1024) { try { r.body && r.body.cancel(); } catch (_) {} say("That one is too big to save on a phone (" + Math.round(len / 1048576) + " MB)."); b.disabled = false; b.textContent = oldT; return; } if ("caches" in window) { const c = await caches.open("mw-music"); await c.put(u, r); } else await r.arrayBuffer(); om[u] = { title: it.t, artist: it.a, cover: it.cover || "", kind: kind === "v" ? "video" : "audio" }; try { localStorage.setItem("mw-offline-meta", JSON.stringify(om)); } catch (_) {} b.textContent = "✓ Saved"; say("⬇ Saved offline: " + it.t + " — find it in the 📥 Offline shelf on the Radio page. It plays with no internet now."); } catch (_) { b.disabled = false; b.textContent = oldT; say("That save didn't go through — check your signal (or the phone's storage) and try again."); } return; }
     if (b.dataset.freeload) { const [dk, kind, ix] = b.dataset.freeload.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (it) load(dk, { src: it.src, yt: "", title: it.t, cover: it.cover, dur: it.dur || 0 }, { cue: true }); return; }
-    if (b.dataset.vput) { const [dk, ix] = b.dataset.vput.split(":"), it = vRes[+ix]; if (!it) return; if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } load(dk, { src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }, { cue: true }); return; } const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; load(dk, { yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; }
+    if (b.dataset.vput) { const [dk, ix] = b.dataset.vput.split(":"), it = vRes[+ix]; if (!it) return; if (it.kind === "sc") { load(dk, { kind: "sc", scUrl: it.url, scId: it.id, yt: "", src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; } if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } load(dk, { src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }, { cue: true }); return; } const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; load(dk, { yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; }
     if (b.dataset.ytload) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a YouTube or Vimeo link first — then pick the deck."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } load(b.dataset.ytload, { src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }, { cue: true }); return; } load(b.dataset.ytload, item, { cue: true }); return; }
     if (b.dataset.load) {
       if (b.dataset.cur != null) { const ci = CURATED[+b.dataset.cur]; if (!ci) return; b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (!src) { say("That sound wouldn't load. Try another."); return; } load(b.dataset.load, { src, title: ci.name, cover: "" }, { cue: true }); }
@@ -7265,8 +7404,8 @@ html.popdj #dj-mini{display:none!important}
     }
     if (b.dataset.queue != null) { const t = TRACKS()[+b.dataset.queue]; if (t) { queue.push({ src: URLOF(t), title: t.title, cover: t.cover || "", dur: +t.duration || 0 }); saveQueue(); paintQueue(); say("Queued: " + t.title); } return; }
     if (b.dataset.nqueue != null) { const n = net[+b.dataset.nqueue]; if (!n) return; b.disabled = true; const src = await iaFile(n.id); b.disabled = false; if (!src) { say("No playable file in that one. Pick another."); return; } queue.push({ src, title: n.title, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), dur: 0 }); saveQueue(); paintQueue(); say("Queued: " + n.title); return; }
-    if (b.dataset.ytqueue != null) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a video link first — then tap ＋Q."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } queue.push({ src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }); } else queue.push({ yt: item.yt, src: "", title: item.title || "Video", cover: item.cover || "", dur: 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + (item.title || "video")); return; }
-    if (b.dataset.vqueue != null) { const it = vRes[+b.dataset.vqueue]; if (!it) return; if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } queue.push({ src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }); } else { const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; queue.push({ yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); } saveQueue(); paintQueue(); say("🎶 Queued: " + it.title); return; }
+    if (b.dataset.ytqueue != null) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a video link first — then tap ＋Q."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } queue.push({ src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }); } else if (item.kind === "sc") { queue.push({ kind: "sc", scUrl: item.scUrl, scId: 0, yt: "", src: "", title: item.title || "SoundCloud track", cover: "", dur: 0 }); } else queue.push({ yt: item.yt, src: "", title: item.title || "Video", cover: item.cover || "", dur: 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + (item.title || "video")); return; }
+    if (b.dataset.vqueue != null) { const it = vRes[+b.dataset.vqueue]; if (!it) return; if (it.kind === "sc") { queue.push({ kind: "sc", scUrl: it.url, scId: it.id, yt: "", src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); } else if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } queue.push({ src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }); } else { const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; queue.push({ yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); } saveQueue(); paintQueue(); say("🎶 Queued: " + it.title); return; }
     if (b.dataset.freequeue != null) { const [kind, ix] = b.dataset.freequeue.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (it) { queue.push({ src: it.src, yt: "", title: it.t, cover: it.cover, dur: it.dur || 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + it.t); } return; }
     if (b.dataset.ahload != null) { ahLoadShelf(+b.dataset.ahload); return; }
     if (b.dataset.ahput) { const [dk, si, ix] = b.dataset.ahput.split(":"), it = (ahCache[+si] || [])[+ix]; if (!it) return; load(dk, { yt: it.id, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; }
@@ -7290,7 +7429,7 @@ html.popdj #dj-mini{display:none!important}
     if (b.dataset.slip) { const k = b.dataset.slip, d = deck(k); d.slip = !d.slip; paintCues(k); say(d.slip ? "🌀 Slip ON for deck " + k + " — scratch, brake or backspin, and it lands where the song would have been." : "Slip off for deck " + k + "."); return; }
     if (b.dataset.spin) { const k = b.dataset.spin, d = deck(k); if (d.el.paused) return; d.noSync = Date.now() + 950; const t0 = performance.now(); scratchBed(); const iv = setInterval(() => { const p = (performance.now() - t0) / 750; if (p >= 1) { clearInterval(iv); scratchStop(); if (d.slip) { try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, (d.el.currentTime || 0) + 0.75 * (S[k].rate || 1))); } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; save(true); say("🌀 Slip backspin — deck " + k + " never lost its place."); } else { d.el.pause(); if (S[k].playing) { S[k].playing = false; S[k].pos = d.el.currentTime; paintOwner(); save(true); } } return; } try { d.el.currentTime = Math.max(0, (d.el.currentTime || 0) - (0.04 + p * 0.3)); } catch (_) {} scratchSound(0.4 + p); }, 50); return; }
     if (b.dataset.prep != null) { const t = TRACKS()[+b.dataset.prep]; if (t) { const set = prepSet(), u = URLOF(t); if (set.has(u)) set.delete(u); else set.add(u); try { localStorage.setItem("mw-dj-prep", JSON.stringify([...set])); } catch (_) {} libList(); paintPrep(); say(set.has(u) ? "⭐ Prepared: " + t.title : "Removed from Prepare: " + t.title); } return; }
-    if (b.dataset.hload) { const x = histList()[+b.dataset.hist]; if (x) load(b.dataset.hload, { src: x.src || "", yt: x.yt || "", title: x.title || "", cover: x.cover || "", dur: x.dur || 0 }, { cue: true }); return; }
+    if (b.dataset.hload) { const x = histList()[+b.dataset.hist]; if (x) load(b.dataset.hload, { src: x.src || "", yt: x.yt || "", kind: x.kind || "", scUrl: x.scUrl || "", scId: x.scId || 0, title: x.title || "", cover: x.cover || "", dur: x.dur || 0 }, { cue: true }); return; }
     if (b.dataset.ediv) { S.fx.ediv = +b.dataset.ediv; applyFx(); document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", x === b)); save(true); say("Echo locked to " + b.textContent + " of a beat."); return; }
     if (b.dataset.sync) { const k = b.dataset.sync, o = DECKS.find((x) => x !== k && S[x].playing) || PAIR[k];
       if (S[k].bpm > 0 && S[o].bpm > 0) {
@@ -7706,18 +7845,18 @@ html.popdj #dj-mini{display:none!important}
    * key on the bare video ID for YouTube (a queue token, a pasted
    * watch URL and the stored state all land on the same key) or on
    * their prefixed token (dm: / vm:) for the other providers. */
-  const qKeyOf = (src, yt) => { if (src) return "s:" + src; const vp = vparseTok(yt || ""); if (!vp.id) return ""; return vp.p === "yt" ? "y:" + (ytParse(vp.id) || vp.id) : vp.p + ":" + vp.id; };
+  const qKeyOf = (src, yt, scUrl) => { if (scUrl) return "sc:" + scUrl; if (src) return "s:" + src; const vp = vparseTok(yt || ""); if (!vp.id) return ""; return vp.p === "yt" ? "y:" + (ytParse(vp.id) || vp.id) : vp.p + ":" + vp.id; };
   /* qStockValid: a stocked record counts only while the deck still
    * holds exactly that item (same content key) and is not playing —
    * anything else means the deck changed hands and the record is void. */
-  function qStockValid(k) { const r = qStock[k]; if (!r || S[k].playing) return false; const a = qKeyOf(S[k].src || "", S[k].yt || ""), b = qKeyOf(r.src || "", r.yt || ""); return !!a && a === b; }
+  function qStockValid(k) { const r = qStock[k]; if (!r || S[k].playing) return false; const a = qKeyOf(S[k].src || "", S[k].yt || "", S[k].scUrl || ""), b = qKeyOf(r.src || "", r.yt || "", r.scUrl || ""); return !!a && a === b; }
   /* stockDeck: the cued load — the exact pattern the booth tick's
    * preload uses (load, then for a video mount the player and pause it
    * while the deck is not flagged playing), then record the deck as
    * stocked with this item. */
   async function stockDeck(k, item) {
     if (item && item.yt && ageIsLocked(item.yt)) { qClear(k); ageNote(item); return; } // a locked video is never stocked
-    try { await load(k, item); if (item.yt) { const dp = decks[k]; if (dp) { await dp.setYt(item.yt); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {}
+    try { await load(k, item); if (item.yt) { const dp = decks[k]; if (dp) { await dp.setYt(item.yt); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } else if (item.scUrl) { const dp = decks[k]; if (dp) { await dp.setSc(item.scUrl); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {}
     if (item && item.yt && decks[k] && decks[k].shim && decks[k].shim._locked) { qClear(k); return; } // it locked while loading cued — do not stock a dead deck
     qSet(k, item);
   }
@@ -7873,7 +8012,7 @@ html.popdj #dj-mini{display:none!important}
     // content changed since the transition, it is his, not the queue's.
     if (!SANDBOX && started && queue.length) {
       const endedKey = qKeyOf(S[endedK].src || "", S[endedK].yt || "");
-      const refill = async () => { if (S[endedK].playing || qStockValid(endedK) || !queue.length) return; const ck = qKeyOf(S[endedK].src || "", S[endedK].yt || ""); if (ck && ck !== endedKey) return; const itR = drawQueueItem(); if (itR) { await stockDeck(endedK, itR); saveQueue(); paintQueue(); } };
+      const refill = async () => { if (S[endedK].playing || qStockValid(endedK) || !queue.length) return; const ck = qKeyOf(S[endedK].src || "", S[endedK].yt || "", S[endedK].scUrl || ""); if (ck && ck !== endedKey) return; const itR = drawQueueItem(); if (itR) { await stockDeck(endedK, itR); saveQueue(); paintQueue(); } };
       if (!S[endedK].playing) await refill();
       else [6500, 14000, 24000].forEach((ms) => setTimeout(() => { refill().catch(() => {}); }, ms));
     }
@@ -8117,7 +8256,7 @@ html.popdj #dj-mini{display:none!important}
    * YouTube decks carry a plain id in S[k].yt; Vimeo (paste-a-link) rides
    * as "vm:<id>" — setYt and the screens dispatch on the prefix. Archive
    * videos resolve to a real file and load as file decks. */
-  let vRes = [], vSrc = "yt", vQuery = "", vMoreOn = false, vNextPage = 3;
+  let vRes = [], vSrc = "yt", vQuery = "", vMoreOn = false, vNextPage = 3, scPage = 1;
   async function ytHosts() {
     const out = ["https://yt.chocolatemoo53.com"];
     try {
@@ -8189,20 +8328,31 @@ html.popdj #dj-mini{display:none!important}
       return f ? "https://archive.org/download/" + encodeURIComponent(id) + "/" + f.name.split("/").map(encodeURIComponent).join("/") : "";
     } catch (_) { return ""; }
   }
+  /* SoundCloud search rides the site's own proxy (/api/scsearch) — the
+   * web-player client_id never reaches a browser. Results land in the
+   * same vRes shape the YouTube and Archive tabs use, plus the artist. */
+  async function scSearch(q, page) {
+    try {
+      const r = await (await fetch("/api/scsearch?q=" + encodeURIComponent(q) + "&page=" + (page || 1))).json();
+      if (!r || !r.ok || !Array.isArray(r.results)) return null;
+      return r.results.map((x) => ({ kind: "sc", id: x.id, title: x.title || "SoundCloud track", artist: x.artist || "", dur: x.dur || 0, thumb: x.art || "", url: x.url || "" }));
+    } catch (_) { return null; }
+  }
   function paintTabs() { document.querySelectorAll("[data-vtab]").forEach((b) => { b.className = b.dataset.vtab === vSrc ? "btn sm vtab" : "btn ghost sm vtab"; }); }
   function paintVRes(msg) {
     const box = $("#dj-ytres"); if (!box) return;
     if (msg) { box.innerHTML = `<small class="muted">${msg}</small>`; return; }
-    const srcName = { yt: "YouTube", ia: "Archive" };
-    box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:19px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-vqueue="${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") + (vMoreOn ? `<button class="btn" type="button" data-vmore="1" style="width:100%;margin-top:10px">🔁 MORE RESULTS</button>` : "");
+    const srcName = { yt: "YouTube", ia: "Archive", sc: "SoundCloud" };
+    box.innerHTML = vRes.map((it, i) => `<div class="dj-item" style="padding:10px"><span style="display:flex;gap:12px;align-items:center;min-width:0"><img src="${E(it.thumb || "")}" alt="" style="width:152px;height:85px;object-fit:cover;border-radius:8px;flex:none;background:#000"><span style="min-width:0"><span style="display:block;font-size:19px" title="${E(it.title)}">${E(it.title)}</span><small class="muted">${srcName[it.kind] || ""}${it.artist ? " · " + E(it.artist) : ""}${it.dur ? " · " + fmt(it.dur) : ""}</small></span></span>${["A", "B", "C", "D"].map((dk) => `<button class="btn ghost" type="button" data-vput="${dk}:${i}" style="min-width:42px;padding:10px 0">${dk}</button>`).join("")}<button class="btn ghost" type="button" data-vqueue="${i}" style="min-width:42px;padding:10px 0">＋Q</button></div>`).join("") + (vMoreOn ? `<button class="btn" type="button" data-vmore="1" style="width:100%;margin-top:10px">🔁 MORE RESULTS</button>` : "");
   }
   const vtf = $("#dj-ytform");
   if (vtf) vtf.addEventListener("submit", async (e) => {
     e.preventDefault(); const q = $("#dj-ytq").value.trim(); if (!q) return;
-    vQuery = q; iaPage = 1; vNextPage = 3; vMoreOn = false;
-    paintVRes("Searching " + ({ yt: "YouTube", ia: "the Archive" })[vSrc] + "...");
+    vQuery = q; iaPage = 1; vNextPage = 3; scPage = 1; vMoreOn = false;
+    paintVRes("Searching " + ({ yt: "YouTube", ia: "the Archive", sc: "SoundCloud" })[vSrc] + "...");
     let res = null;
     if (vSrc === "yt") { const r = await ytSearch(q); if (r === "TIER") { vRes = []; vMoreOn = false; paintVRes("🔒 YouTube search rides the $15/month plan — your 7-day free trial covers it. The plans are open for you."); wsModal("ws-plans", true); return; } res = r ? r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: it.thumb || ("https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg") })) : null; if (res) vMoreOn = res.length >= 20; }
+    else if (vSrc === "sc") { res = await scSearch(q, 1); if (res) vMoreOn = res.length >= 20; }
     else { res = await iaVidSearch(q); if (res) vMoreOn = res.length >= 24; }
     if (!res) { vRes = []; vMoreOn = false; paintVRes("Search is being stubborn right now — paste the video's link in the box above instead, that always works."); return; }
     vRes = res; paintVRes(res.length ? "" : "Nothing found for that — try another name.");
@@ -8213,6 +8363,7 @@ html.popdj #dj-mini{display:none!important}
     m.disabled = true; m.textContent = "Loading more...";
     let add = null;
     if (vSrc === "yt") { const r = await ytPage(vQuery, vNextPage); if (r === "TIER") { vMoreOn = false; paintVRes("🔒 YouTube search rides the $15/month plan — your 7-day free trial covers it. The plans are open for you."); wsModal("ws-plans", true); return; } if (r) { add = r.map((it) => ({ kind: "yt", id: it.id, title: it.title, dur: it.dur, thumb: "https://i.ytimg.com/vi/" + it.id + "/hqdefault.jpg" })); vNextPage++; vMoreOn = r.length >= 15; } }
+    else if (vSrc === "sc") { scPage++; const r = await scSearch(vQuery, scPage); if (r) { add = r; vMoreOn = r.length >= 20; } else scPage--; }
     else { iaPage++; const r = await iaVidSearch(vQuery); if (r) { add = r; vMoreOn = r.length >= 24; } else iaPage--; }
     if (add && add.length) { const seen = new Set(vRes.map((x) => x.kind + ":" + x.id)); vRes = vRes.concat(add.filter((x) => !seen.has(x.kind + ":" + x.id))); }
     else vMoreOn = false;
@@ -8853,7 +9004,7 @@ html.popdj #dj-mini{display:none!important}
     const d = await claude.use("db"); if (!d) { if (initTries++ < 40) setTimeout(init, 750); return; }
     if (!SANDBOX) d.doc("radio/camframe").onSnapshot((snap) => { camFrameDoc = snap.exists ? snap.data() : null; camOvSync(); }, () => {}); // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
-    else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt)) follow(k); }); }, 600); }
+    else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt || S[k].scUrl)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
     const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; document.documentElement.classList.toggle("popdj-guest", document.documentElement.classList.contains("popdj") && !own); if (own) { libList(); paintOwner(); paintQueue(); paintPlaylists(); paintSched(); loadSchedDoc(); loadRqPlaylist(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
     showOwnerUI = show; show(); setTimeout(show, 1500); setTimeout(show, 5000);
