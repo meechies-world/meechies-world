@@ -1,8 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://meechiesworldinc.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://meechiesworldinc.com/apps/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://meechiesworldinc.com/kids-app/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://meechiesworldinc.com/radio-app/</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
   <url><loc>https://meechiesworldinc.com/websites</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://meechiesworldinc.com/ai-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/book-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/books-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/dating-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/fans-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/games-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/jobs-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/legal-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/live-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/shop-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/studio-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/tv-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://meechiesworldinc.com/world-app/</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://meechiesworldinc.com/paper-trail</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://meechiesworldinc.com/books/pyramids-of-egypt</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://meechiesworldinc.com/upload</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://meechiesworldinc.com/post-video</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://meechiesworldinc.com/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
