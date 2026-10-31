@@ -5355,6 +5355,64 @@ html.popdj #dj-mini{display:none!important}
   const scPictureK = () => { if (vmixTargets().length) return ""; const vs = S.vstream || {}; if (vs.on && !vs.hidden) return ""; if (msvActive()) return ""; return scTopDeck(); };
   const scDrift = (mine, target) => Math.abs(mine - target) > 2.5;
   let scStageW = null, scStageUrl = "", scStageK = "", scStagePos = 0, scStagePosAt = 0, scStageWant = 0, scStageBusy = false;
+  /* SC SCREEN TRUTH (owner report, 2026-10-31): the listener surfaces
+   * must SAY what is actually on the screen and keep the clock honest
+   * while a SoundCloud deck is the show. Four small pieces ride the
+   * existing stageApply / scStageSync passes - no new polling:
+   * (1) the band header names LIVE AUDIO when an audio-only deck holds
+   * the screen, LIVE VIDEO when a real video surface does, decided by
+   * the same precedence that picks the slate (bandKind mirrors
+   * scPictureK: video mix, visible share, screen video, then audio);
+   * (2) the bottom player bar clock runs off bcastPos for an on-air
+   * SC deck instead of sitting at 0:00 (scBarTick - the bar time and
+   * fill are otherwise only ever written by the library element);
+   * (3) the artwork slate is latched (scArtResolve): a one-pass blip
+   * in scPictureK must not flash the poster over the SC artwork - the
+   * poster returns only when a video surface takes the screen or the
+   * artwork has been gone for a sustained 3.5s;
+   * (4) a tune-in tap primes the shared SC widget play() inside the
+   * tap itself (scPrimeTap), because Android Chrome refuses plays
+   * that arrive later from async state application. */
+  const bandVideoLabel = "📺 MASTER — LIVE VIDEO", bandAudioLabel = "🎧 MASTER — LIVE AUDIO";
+  let bandLabelCur = "";
+  function bandKind() {
+    if (vmixTargets().length) return "video";
+    const vs = S.vstream || {}; if (vs.on && !vs.hidden) return "video";
+    if (msvActive()) return "video";
+    if (scPictureK()) return "audio";
+    let bk = "", bg = 0.02; DECKS.forEach((k) => { const s = S[k]; if (s && s.playing && !s.yt && (s.src || (s.kind === "sc" && s.scUrl))) { const g = stageGain(k); if (g > bg) { bg = g; bk = k; } } });
+    return bk ? "audio" : "video";
+  }
+  function bandLabelSync() {
+    const txt = bandKind() === "audio" ? bandAudioLabel : bandVideoLabel;
+    if (txt === bandLabelCur) return; bandLabelCur = txt;
+    const sp = document.querySelector("#dj-mini .mn-bar span"); if (sp) sp.textContent = txt;
+  }
+  function scBarTick() {
+    if (OWNER() || !listening) return;
+    const k = scTopDeck(); if (!k) return;
+    const tEl = document.getElementById("pb-time"), fEl = document.getElementById("pb-fill");
+    if (!tEl && !fEl) return;
+    const pos = Math.max(0, bcastPos(k)), dur = +S[k].dur || 0;
+    if (tEl) tEl.textContent = dur > 0 ? fmt(pos) + " / " + fmt(dur) : fmt(pos);
+    if (fEl) fEl.style.width = dur > 0 ? Math.max(0, Math.min(100, pos / dur * 100)) + "%" : "0%";
+  }
+  let scArtHold = "", scArtGoneAt = 0;
+  function scArtResolve(art, videoHolds, now) {
+    if (art) { scArtHold = art; scArtGoneAt = 0; return art; }
+    if (!scArtHold) return "";
+    if (videoHolds) { scArtHold = ""; scArtGoneAt = 0; return ""; }
+    if (!scArtGoneAt) scArtGoneAt = now;
+    if (now - scArtGoneAt > 3500) { scArtHold = ""; scArtGoneAt = 0; return ""; }
+    return scArtHold;
+  }
+  function scPrimeTap() {
+    if (OWNER()) return;
+    const k = scTopDeck(); if (!k) return;
+    const url = S[k].scUrl; if (!url) return;
+    if (scStageW && scStageUrl === url) { try { scStageW.play(); } catch (_) {} }
+    else if (!scStageBusy) { scStageBuild(url, k); }
+  }
   async function scStageBuild(url, k) {
     if (scStageBusy) return; scStageBusy = true;
     try {
@@ -5375,9 +5433,12 @@ html.popdj #dj-mini{display:none!important}
     scStageBusy = false;
   }
   function scStageSync(mix, duck) {
+    try { bandLabelSync(); } catch (_) {}
+    try { scBarTick(); } catch (_) {}
     try {
       const pk = scPictureK(), art = pk ? (S[pk].cover || "") : "";
-      ["#st-vposter img", "#wb-vposter img", "#mn-vposter img", "#tw-vstandby .tw-sb-art"].forEach((sel) => { const im = document.querySelector(sel); if (!im) return; if (art) { if (!im.dataset.scOrig) { im.dataset.scOrig = im.getAttribute("src") || ""; im.dataset.scOrigSet = im.getAttribute("srcset") || ""; } if (im.getAttribute("src") !== art) { im.removeAttribute("srcset"); im.setAttribute("src", art); } im.dataset.scOn = "1"; } else if (im.dataset.scOn) { delete im.dataset.scOn; if (im.dataset.scOrig) im.setAttribute("src", im.dataset.scOrig); if (im.dataset.scOrigSet) im.setAttribute("srcset", im.dataset.scOrigSet); else im.removeAttribute("srcset"); } });
+      const showArt = scArtResolve(art, !!(vmixTargets().length || ((S.vstream || {}).on && !(S.vstream || {}).hidden) || msvActive()), Date.now());
+      ["#st-vposter img", "#wb-vposter img", "#mn-vposter img", "#tw-vstandby .tw-sb-art"].forEach((sel) => { const im = document.querySelector(sel); if (!im) return; if (showArt) { if (!im.dataset.scOrig) { im.dataset.scOrig = im.getAttribute("src") || ""; im.dataset.scOrigSet = im.getAttribute("srcset") || ""; } if (im.getAttribute("src") !== showArt) { im.removeAttribute("srcset"); im.setAttribute("src", showArt); } im.dataset.scOn = "1"; } else if (im.dataset.scOn) { delete im.dataset.scOn; if (im.dataset.scOrig) im.setAttribute("src", im.dataset.scOrig); if (im.dataset.scOrigSet) im.setAttribute("srcset", im.dataset.scOrigSet); else im.removeAttribute("srcset"); } });
     } catch (_) {}
     if (OWNER()) return;
     const k = scTopDeck(), scr = k ? vmixSndScr() : null;
@@ -6621,7 +6682,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793420711;
+  const MW_DJ_BUILD = 1793421685;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6779,7 +6840,7 @@ html.popdj #dj-mini{display:none!important}
     listening = true; djKeepSet(true); actx(); wakeForListening(true);
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
     $("#dj-listen").textContent = "⏹ Stop listening"; DECKS.forEach((k) => follow(k));
-    pokeScreens(); document.removeEventListener("pointerdown", tapStart, true); document.addEventListener("pointerdown", tapStart, true); setTimeout(checkStuck, 2200);
+    pokeScreens(); try { scPrimeTap(); } catch (_) {} document.removeEventListener("pointerdown", tapStart, true); document.addEventListener("pointerdown", tapStart, true); setTimeout(checkStuck, 2200);
     try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
     try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
