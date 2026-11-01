@@ -21,7 +21,7 @@ const LAZY_SRC={
   jobs:["js/jobs.js?v=1793185302"],
   connect:["js/connect.js?v=1793185302"],
   fans:["js/fans.js?v=1793185302"],
-  home:["js/home.js?v=1793272700"],
+  home:["js/home.js?v=1793549576"],
   tv:["js/movies.js?v=1793275800"],
   clips:["js/clips.js?v=1793185302"],
   studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],
@@ -50,6 +50,32 @@ function lazyKick(v){
   };
   step();
 }
+/* ---------- Idle prefetch of lazy view modules (device-max B5, round-2) ----------
+   The lazy modules are skeleton-cached only AFTER their first fetch, so the
+   first tap into a view still waits on the network. During idle time on a
+   connection that can afford it, fetch (never execute) each module once so
+   the worker lands it in the skeleton generation; the tap then opens
+   instantly. Freshness is unchanged: the fetch goes through the worker
+   under the same per-file stamps lazyKick uses. */
+let mwPrefetchDone = false;
+function mwPrefetchLazy(){
+  if(mwPrefetchDone) return; mwPrefetchDone = true;
+  try{ const c = navigator.connection; if(c && (c.saveData || /2g/.test(c.effectiveType || ""))) return; }catch(_){}
+  const order = ["tv","clips","games","live","books","fans","studio","world","legal","dating","jobs","connect","predict","markets","preach","creators"];
+  const urls = [];
+  order.forEach(v => { (LAZY_SRC[v] || []).forEach(u => { if(!urls.includes(u)) urls.push(u); }); });
+  Object.keys(LAZY_SRC).forEach(v => { (LAZY_SRC[v] || []).forEach(u => { if(!urls.includes(u)) urls.push(u); }); });
+  let i = 0;
+  const step = () => {
+    if(i >= urls.length) return;
+    const u = urls[i++];
+    try{ fetch(u).catch(() => {}); }catch(_){}
+    if("requestIdleCallback" in window) requestIdleCallback(step, { timeout: 1500 }); else setTimeout(step, 300);
+  };
+  step();
+}
+window.addEventListener("load", () => { if("requestIdleCallback" in window) requestIdleCallback(mwPrefetchLazy, { timeout: 4000 }); else setTimeout(mwPrefetchLazy, 2500); });
+
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
     let n=0; const t=setInterval(()=>{ const e=document.getElementById(el); if(e||++n>30){ clearInterval(t); e&&e.scrollIntoView({behavior:"smooth",block:"start"}); } },100); return; }
@@ -1430,7 +1456,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793549359;
+const MW_SHELL_BUILD = 1793549576;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
