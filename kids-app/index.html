@@ -178,8 +178,20 @@
      UNDER the lock overlay (99990) and the PIN pad (99999); it takes no
      touches itself, so a locked phone's lock keeps swallowing every tap
      and an unlocked parent taps straight through to the page. */
-  #kids-sleep-slate{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse 85% 62% at 50% 36%,#181308,#0b0a08 78%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;pointer-events:none}
-  #kids-sleep-slate[hidden]{display:none}
+  #kids-sleep-slate,#kids-end-slate{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse 85% 62% at 50% 36%,#181308,#0b0a08 78%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;pointer-events:none}
+  #kids-sleep-slate[hidden],#kids-end-slate[hidden]{display:none}
+  /* round 2: wind-down dimmer inside the player wrap — dims only the
+     video area, never the page, and takes no touches */
+  #kids-dim{position:absolute;inset:0;background:#050403;opacity:0;pointer-events:none;transition:opacity .8s ease;z-index:2}
+  /* round 2: sideways auto-fullscreen — #kids-stage holds the player
+     AND the fixed overlays, so in fullscreen the lock, PIN pad and
+     slates still cover the video exactly as they do out of it */
+  #kids-stage:fullscreen{background:#000;display:flex;align-items:center;justify-content:center}
+  #kids-stage:fullscreen #kids-player-wrap{width:100%;height:100%;aspect-ratio:auto;border-radius:0;box-shadow:none}
+  #kids-stage:-webkit-full-screen{background:#000;display:flex;align-items:center;justify-content:center}
+  #kids-stage:-webkit-full-screen #kids-player-wrap{width:100%;height:100%;aspect-ratio:auto;border-radius:0;box-shadow:none}
+  .walk{margin-top:10px}
+  .walk summary{cursor:pointer;color:#cbb26a;font-size:13.5px}
   .sleep-moon{font-size:62px;line-height:1}
   .sleep-title{margin:12px 0 6px;font-size:30px;font-weight:800;letter-spacing:.05em;color:#f0cf78}
   .sleep-sub{margin:0;max-width:430px;color:#a79c7e;font-size:15px;line-height:1.55}
@@ -196,7 +208,7 @@
 
   <h1>MEECHIE'S WORLD FOR KIDS</h1>
   <p class="sub">T H E &nbsp;K I D S &nbsp;C H A N N E L &nbsp;•&nbsp; A &nbsp;L I T T L E &nbsp;S C H O O L &nbsp;I N &nbsp;A N &nbsp;A P P</p>
-  <p class="pitch">This is the Meechie's World kids channel — a little school in an app, hosted by Meechie himself, preloaded with lessons for your child's age. Tap <b>Start School Day</b>, tap <b>Lock the screen</b> — then hand the phone over. The videos keep playing, and little hands can tap all they want: nothing pauses, skips, or wanders off. When school ends, it flips to After School — fun videos and movies.</p>
+  <p class="pitch">This is the Meechie's World kids channel — a little school in an app, hosted by Meechie himself, preloaded with lessons for your child's age. Tap <b>Start School Day</b>, tap <b>Lock the screen</b> — then hand the phone over. Only the videos you approved can play: no search, no recommendations, no comments — and when the list ends, Meechie says goodbye instead of playing forever. When school ends, it flips to After School — fun videos and movies.</p>
 
   <!-- HOST: Meechie, the teacher -->
   <div class="card hostcard">
@@ -211,6 +223,11 @@
       <span class="lbl">Meechie's voice</span>
       <button class="abtn" id="kids-voice-btn" type="button">Voice: on</button>
       <span class="hint">Meechie greets your child by name, starts the lessons and cheers between subjects.</span>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <span class="lbl">Meechie asks questions</span>
+      <button class="abtn" id="kids-prompts-btn" type="button">Questions: on</button>
+      <span class="hint">Between videos, Meechie asks one short question about what just played. Talking about it together is where the learning sticks.</span>
     </div>
   </div>
 
@@ -233,16 +250,75 @@
 
   <!-- PLAYER -->
   <div class="card" style="padding:12px">
-    <div id="kids-player-wrap"><div id="kids-player"></div></div>
-    <p id="kids-now">Add some videos below, then tap Play.<small>Your list plays in order, then starts over from the top.</small></p>
+    <div id="kids-stage">
+    <div id="kids-player-wrap"><div id="kids-player"></div><div id="kids-dim"></div></div>
+    <!-- The fixed overlays (sleep slate, end slate, lock, PIN pad) live
+         INSIDE #kids-stage since round 2. They are position:fixed, so
+         they render exactly as before — and when the stage goes
+         fullscreen on a sideways turn they still cover the video. -->
+  <!-- END SLATE: the designed ending (round 2). Same contract as the
+       sleep slate — under the lock, takes no touches; it shows the
+       goodbye and one off-screen next thing to do. -->
+  <div id="kids-end-slate" hidden>
+    <div class="sleep-moon">🌟</div>
+    <p class="sleep-title">All done!</p>
+    <p class="sleep-sub">That was the whole list — great watching.</p>
+    <p class="sleep-sub" id="kids-end-action" style="margin-top:10px;color:#e9d9a6"></p>
+  </div>
+
+  <!-- SLEEP SLATE: shown when the sleep timer runs out. It renders UNDER
+       the lock overlay (z-index 9000 vs the lock's 99990) and takes no
+       touches (pointer-events:none), so on a locked phone the kids see
+       it while the lock keeps swallowing every tap. -->
+  <div id="kids-sleep-slate" hidden>
+    <div class="sleep-moon">💤</div>
+    <p class="sleep-title">Sleep time</p>
+    <p class="sleep-sub">Sweet dreams — the videos are resting too. A grown-up can bring them back any time.</p>
+  </div>
+  <!-- THE LOCK OVERLAY: transparent, covers everything, swallows every touch.
+       It must stay AFTER the player in the DOM and keep its huge z-index. -->
+  <div id="kids-lock" hidden>
+    <div id="kids-lock-hint">🔒 Locked — grown-ups: hold the top-right corner to unlock</div>
+    <button id="kids-corner" type="button" aria-label="Grown-ups: hold to unlock"><span id="kids-ring"><span>🔓</span></span></button>
+  </div>
+  <!-- PIN PAD (shared by set-PIN and unlock flows) -->
+  <div id="kids-pinpad-wrap" hidden>
+    <div id="kids-pinpad">
+      <p id="kids-pin-title">Enter your PIN</p>
+      <p id="kids-pin-sub"></p>
+      <div id="kids-pin-dots"><i></i><i></i><i></i><i></i></div>
+      <div class="kids-pin-keys" id="kids-pin-keys"></div>
+      <p id="kids-pin-msg"></p>
+      <div id="kids-pin-links">
+        <button id="kids-pin-cancel" type="button">Cancel</button>
+        <button id="kids-pin-forgot" type="button">Forgot PIN?</button>
+      </div>
+    </div>
+    <div id="kids-reset" hidden>
+      <h3>Forgot your PIN?</h3>
+      <p>Type the word <b>UNLOCK</b> below to clear the PIN. Your playlist stays right where it is — you will just set a fresh PIN next time you lock.</p>
+      <input id="kids-reset-input" type="text" placeholder="Type UNLOCK" autocomplete="off">
+      <button id="kids-reset-btn" type="button">Clear my PIN</button>
+      <br>
+      <button id="kids-reset-back" type="button">← Back to the PIN pad</button>
+    </div>
+  </div>
+    </div><!-- /kids-stage -->
+    <p id="kids-now">Add some videos below, then tap Play.<small>Your list plays in order, then ends with a goodbye.</small></p>
+    <p class="hint2" id="kids-skip-note" hidden></p>
     <div class="transport">
       <button class="tbtn" id="kids-prev" type="button" aria-label="Previous video">⏮</button>
       <button class="tbtn main" id="kids-play" type="button">▶ Play</button>
       <button class="tbtn" id="kids-next" type="button" aria-label="Next video">⏭</button>
     </div>
-    <p class="loopnote">🔁 The list loops — it replays from the top until you pause it. Perfect for the car.</p>
+    <p class="loopnote" id="kids-loopnote">🏁 Loop is off — the list plays once, then Meechie says goodbye and the show ends.</p>
+    <div class="row" style="margin-top:8px">
+      <span class="lbl">🔁 Loop the list</span>
+      <button class="abtn" id="kids-loop-btn" type="button">Loop: off</button>
+      <span class="hint">A grown-up choice. Off is the calm default — sessions end by design. On replays the list from the top, like before.</span>
+    </div>
     <div class="row" style="margin-top:10px">
-      <span class="lbl">💤 Sleep timer</span>
+      <span class="lbl">🌙 Wind-Down timer</span>
       <button class="abtn kids-sleep-opt" data-min="0" type="button">Off</button>
       <button class="abtn kids-sleep-opt" data-min="10" type="button">10 min</button>
       <button class="abtn kids-sleep-opt" data-min="20" type="button">20 min</button>
@@ -250,10 +326,15 @@
       <button class="abtn kids-sleep-opt" data-min="60" type="button">60 min</button>
       <span class="hint" id="kids-sleep-left"></span>
     </div>
-    <p class="hint2" style="margin-top:6px">Counts down only while a video is playing. When it runs out, the video pauses, Meechie says goodnight, and a calm sleep screen comes up — if the screen is locked, the lock still covers it.</p>
+    <p class="hint2" style="margin-top:6px">Counts down only while a video is playing. In the last few minutes the picture slowly dims and calms — that is the Wind-Down — and when it runs out, the video pauses, Meechie says goodnight, and a calm sleep screen comes up. If the screen is locked, the lock still covers it. Sleep experts say screens off before bed helps little ones sleep, so the Wind-Down ends the show gently instead of playing right up to sleep.</p>
     <button class="daystart" id="kids-daystart" type="button">🏫 Start School Day</button>
     <button id="kids-lock-btn" type="button">🔒 Lock the screen</button>
-    <p class="locksub">Locks every tap on this screen. Only a grown-up can unlock it (hold the top-right corner, then PIN).</p>
+    <p class="locksub">Locks every tap on this screen. Only a grown-up can unlock it (hold the top-right corner, then PIN). On some devices you can also press volume up, then down, to open the PIN pad — the PIN is still needed.</p>
+    <p class="hint2" id="kids-lock-warn" hidden></p>
+    <details class="walk">
+      <summary>📱 A stronger handover: pin the app with the phone's own lock</summary>
+      <p class="hint2" style="margin-top:6px">The lock above covers this app's screen. Your phone also has a built-in way to hold the whole phone on just this app — together they make the handover stronger. <b>iPhone:</b> Settings → Accessibility → Guided Access — turn it on, then triple-click the side button while this app is open. <b>Android:</b> Settings → Security → App pinning — turn it on, open this app, then pin it from the recent-apps screen.</p>
+    </details>
   </div>
 
   <!-- YOUR CHILD + CLASSROOMS -->
@@ -325,7 +406,7 @@
   <!-- TRENDING: a built-in shelf of 30, shipped with the app -->
   <div class="card" id="kids-trendcard">
     <h2>🔥 Trending for Kids</h2>
-    <p>Thirty of the most-loved learning videos on YouTube, from the biggest kids' channels — already loaded, no setup. Tap a picture to play it right away, tap <b>Add</b> to keep it in your playlist, or take the whole shelf at once.</p>
+    <p>Thirty learning videos from well-known kids' channels — already loaded, no setup. Tap a picture to play it right away, tap <b>Add</b> to keep it in your playlist, or take the whole shelf at once.</p>
     <div class="shelf-head"><h3>The full list — 30 videos</h3><button class="abtn" id="kids-trend-all" type="button">Add all 30 to my playlist</button></div>
     <div id="kids-trending"></div>
     <p class="footnote">📴 This list and its pictures are saved on this phone, so you can browse them with no signal. The videos themselves play when you have signal.</p>
@@ -343,15 +424,12 @@
   <!-- PLANS -->
   <div class="card" id="kids-plans">
     <h2>💛 Plans</h2>
-    <p class="hint2" id="kids-trial-line">Your 7 free days start the first time you open the app.</p>
-    <div class="plan"><div class="plan-main"><b>Basic</b><span>1 child profile • 1 playlist • Meechie's voice on</span></div><div class="plan-price">$5<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
-    <div class="plan"><div class="plan-main"><b>Plus</b><span>2 child profiles • 3 playlists • everything in Basic</span></div><div class="plan-price">$10<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
-    <div class="plan"><div class="plan-main"><b>Family</b><span>3 child profiles • unlimited playlists • 2 devices</span></div><div class="plan-price">$20<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
-    <div class="plan"><div class="plan-main"><b>Family Plus</b><span>4 child profiles • the Today at school report • everything in Family</span></div><div class="plan-price">$30<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
-    <div class="plan"><div class="plan-main"><b>Premium</b><span>5 child profiles • 3 devices • new shelves first</span></div><div class="plan-price">$50<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
-    <div class="plan"><div class="plan-main"><b>Ultimate</b><span>6 child profiles • 4 devices • everything unlocked first</span></div><div class="plan-price">$60<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
-    <div class="plan"><div class="plan-main"><b>The Greatest</b><span>Unlimited profiles, playlists and devices • the whole channel, first forever</span></div><div class="plan-price">$100<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
-    <p class="hint2" id="kids-plan-note" style="margin-top:10px">Every plan starts with 7 days free. Plans are coming online soon — nothing to pay today, and the app never locks you out when the free days end.</p>
+    <p class="hint2" id="kids-trial-line">Your 14 free days start the first time you open the app.</p>
+    <div class="plan"><div class="plan-main"><b>Free</b><span>1 child profile • 1 playlist • the lock, Wind-Down and Meechie's voice</span></div><div class="plan-price">$0</div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Plus</b><span>3 child profiles • School Day, After School and Wind-Down routines • every shelf • the Today at school report</span></div><div class="plan-price">$7.99<small>/mo</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Plus — a whole year</b><span>Everything in Plus, one payment a year — that is $5.00 a month</span></div><div class="plan-price">$59.99<small>/yr</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <div class="plan"><div class="plan-main"><b>Lifetime</b><span>Everything in Plus, one payment, yours for good</span></div><div class="plan-price">$99<small> once</small></div><button class="abtn kids-choose" type="button">Choose</button></div>
+    <p class="hint2" id="kids-plan-note" style="margin-top:10px">Every plan starts with 14 days free. Plans are coming online soon — nothing to pay today, and the app never locks you out when the free days end.</p>
   </div>
 
   <!-- HOW TO USE -->
@@ -361,7 +439,7 @@
       <li><b>It starts loaded:</b> the app comes preloaded with a starter set of learning videos — ABCs, first words, colors, numbers, a little Spanish, and songs. You can take any of them out, or clear them all and build your own list.</li>
       <li><b>Add videos</b> — paste a YouTube link, or search by name and tap Add.</li>
       <li><b>Put them in order</b> — use the ↑ ↓ buttons so they play the way you want.</li>
-      <li><b>Tap Play.</b> The videos play one after another, then start over.</li>
+      <li><b>Tap Play.</b> The videos play one after another. When the last one ends, Meechie says goodbye and the show ends — a grown-up can turn looping on in the player if you want it to start over. Turn the phone sideways while a video plays and it fills the screen on its own; turn it back to shrink it down.</li>
       <li><b>Tap “Lock the screen”</b> and set a 4-number PIN only you know.</li>
       <li><b>Hand the phone over.</b> Little hands can tap all they want — nothing will pause, skip, or wander off.</li>
       <li><b>To unlock:</b> press and <b>hold the top-right corner</b> of the screen for 3 seconds, then enter your PIN.</li>
@@ -375,48 +453,11 @@
     </div>
   </div>
 
-  <p class="fine">🔒 Nothing is uploaded. Your playlist and your PIN live only on this phone, in this browser — they are never sent anywhere.<br>Meechie's World for Kids is a free player for videos you pick on YouTube.</p>
+  <p class="fine">🔒 Nothing is uploaded. Your playlist and your PIN live only on this phone, in this browser — they are never sent anywhere.<br>Meechie's World for Kids is a free player for videos you pick on YouTube. We add no ads of our own and we sell nothing to your child — the videos play from YouTube, which may show its own ads.</p>
   <a class="back" href="/apps/">← All Meechie's World apps</a>
 
-  <!-- SLEEP SLATE: shown when the sleep timer runs out. It renders UNDER
-       the lock overlay (z-index 9000 vs the lock's 99990) and takes no
-       touches (pointer-events:none), so on a locked phone the kids see
-       it while the lock keeps swallowing every tap. -->
-  <div id="kids-sleep-slate" hidden>
-    <div class="sleep-moon">💤</div>
-    <p class="sleep-title">Sleep time</p>
-    <p class="sleep-sub">Sweet dreams — the videos are resting too. A grown-up can bring them back any time.</p>
-  </div>
 
-  <!-- THE LOCK OVERLAY: transparent, covers everything, swallows every touch.
-       It must stay AFTER the player in the DOM and keep its huge z-index. -->
-  <div id="kids-lock" hidden>
-    <div id="kids-lock-hint">🔒 Locked — grown-ups: hold the top-right corner to unlock</div>
-    <button id="kids-corner" type="button" aria-label="Grown-ups: hold to unlock"><span id="kids-ring"><span>🔓</span></span></button>
-  </div>
 
-  <!-- PIN PAD (shared by set-PIN and unlock flows) -->
-  <div id="kids-pinpad-wrap" hidden>
-    <div id="kids-pinpad">
-      <p id="kids-pin-title">Enter your PIN</p>
-      <p id="kids-pin-sub"></p>
-      <div id="kids-pin-dots"><i></i><i></i><i></i><i></i></div>
-      <div class="kids-pin-keys" id="kids-pin-keys"></div>
-      <p id="kids-pin-msg"></p>
-      <div id="kids-pin-links">
-        <button id="kids-pin-cancel" type="button">Cancel</button>
-        <button id="kids-pin-forgot" type="button">Forgot PIN?</button>
-      </div>
-    </div>
-    <div id="kids-reset" hidden>
-      <h3>Forgot your PIN?</h3>
-      <p>Type the word <b>UNLOCK</b> below to clear the PIN. Your playlist stays right where it is — you will just set a fresh PIN next time you lock.</p>
-      <input id="kids-reset-input" type="text" placeholder="Type UNLOCK" autocomplete="off">
-      <button id="kids-reset-btn" type="button">Clear my PIN</button>
-      <br>
-      <button id="kids-reset-back" type="button">← Back to the PIN pad</button>
-    </div>
-  </div>
 
 <script>
 "use strict";
@@ -528,6 +569,104 @@ function kidsSwitchProfile(store, doc, ix) { // persists the swap; null when out
   kidsSaveProfiles(store, nd);
   return nd;
 }
+/* ---------- round 2 core (2026-11-01): designed ending, wind-down,
+   prompts, trial, dead-video skip, volume sequence, auto-fullscreen —
+   pure logic, same rules as the rest of this block. ---------- */
+var KIDS_TRIAL_DAYS = 14;
+function kidsTrialState(startTs, nowTs) {
+  if (typeof startTs !== "number" || !isFinite(startTs) || startTs <= 0) return { day: 1, active: true, days: KIDS_TRIAL_DAYS };
+  var day = Math.floor((nowTs - startTs) / 86400000) + 1;
+  if (day < 1) day = 1;
+  return { day: day, active: day <= KIDS_TRIAL_DAYS, days: KIDS_TRIAL_DAYS };
+}
+/* The designed ending: mid-list always advances; at the last video the
+   parent loop choice decides — wrap (the old behaviour) or end. */
+function kidsEndDecision(curIx, count, loopOn) {
+  if (typeof count !== "number" || count <= 0 || typeof curIx !== "number" || curIx < 0 || curIx >= count) return { action: "stop" };
+  if (curIx < count - 1) return { action: "advance", next: curIx + 1 };
+  return loopOn ? { action: "advance", next: 0 } : { action: "end" };
+}
+var KIDS_NEXT_ACTIONS = [
+  "play outside",
+  "read a book together",
+  "draw a picture",
+  "have a snack and some water",
+  "build something with blocks",
+  "help a grown-up with one small job",
+  "put your shoes by the door",
+  "look out of the window and name what you see"
+];
+function kidsPickRotating(bank, ix) {
+  if (!Array.isArray(bank) || !bank.length) return { text: "", next: 0 };
+  var i = (typeof ix === "number" && isFinite(ix)) ? Math.floor(ix) : 0;
+  i = ((i % bank.length) + bank.length) % bank.length;
+  return { text: bank[i], next: i + 1 };
+}
+/* Wind-Down dim: 0 until the final stretch (the last quarter of the
+   timer, capped at 3 minutes), then a smooth ramp up to 0.55. */
+function kidsDimLevel(leftMs, totalMs) {
+  if (typeof totalMs !== "number" || totalMs <= 0 || typeof leftMs !== "number" || leftMs <= 0) return 0;
+  var win = Math.min(180000, totalMs * 0.25);
+  if (leftMs >= win) return 0;
+  return 0.55 * (1 - leftMs / win);
+}
+var KIDS_PROMPTS = {
+  generic: [
+    "What was your favourite part of that one?",
+    "Can you tell a grown-up one thing you saw?",
+    "What colour did you see the most?",
+    "Who was in that video — can you name them?",
+    "Can you make a sound from that song?"
+  ],
+  bySubject: {
+    "Reading": ["Can you say a letter you saw?", "What sound does that letter make? You tell your grown-up!"],
+    "Talking": ["Can you say that new word one more time?", "What word did you just learn? Say it out loud!"],
+    "Naming Things": ["Can you point to one of those in our house?", "What was that called? You say it!"],
+    "Math & Art": ["Can you count on your fingers — how many did you see?", "What colour was that? Can you find that colour near you?"],
+    "Languages": ["Can you say that word in the other language?"],
+    "Family": ["Who do you love in our family? Tell them!"],
+    "Music": ["Can you sing your favourite part?", "Can you clap along to that song?"],
+    "Fun Time": ["Can you do that dance move?"],
+    "Movie Time": ["What happened in that part of the movie?"]
+  }
+};
+function kidsPromptFor(subj, ix) {
+  var bank = (typeof subj === "string" && KIDS_PROMPTS.bySubject[subj]) || KIDS_PROMPTS.generic;
+  return kidsPickRotating(bank, ix);
+}
+/* Dead videos: skip while untried videos remain; a full pass of
+   failures means stop (the signal is gone, not just one video). */
+function kidsSkipDecision(consecErrors, count) {
+  return (typeof count === "number" && count > 0 && typeof consecErrors === "number" && consecErrors < count) ? "skip" : "stop";
+}
+function kidsConnectionDown(onLine) { return onLine === false; }
+/* Volume up-then-down unlock path: pure key + sequence logic. */
+var KIDS_VOL_WINDOW_MS = 1500;
+function kidsVolKey(e) {
+  if (!e) return "";
+  var k = typeof e.key === "string" ? e.key : "";
+  if (k === "AudioVolumeUp" || k === "VolumeUp") return "up";
+  if (k === "AudioVolumeDown" || k === "VolumeDown") return "down";
+  var c = e.keyCode || e.which || 0;
+  if (c === 175) return "up";
+  if (c === 174) return "down";
+  return "";
+}
+function kidsVolSeq(st, dir, now) {
+  if (dir === "up") return { st: { step: 1, t: now }, open: false };
+  if (dir === "down" && st && st.step === 1 && (now - st.t) <= KIDS_VOL_WINDOW_MS) return { st: { step: 0, t: 0 }, open: true };
+  return { st: { step: 0, t: 0 }, open: false }; // down-first, a late down, or any other key: reset, nothing opens
+}
+/* Auto-fullscreen state machine: rotate facts in, one action out.
+   Portrait always re-arms; a manual exit while sideways disarms until
+   the phone has been upright again (kidsFsManualExit). */
+function kidsFsRotate(st, landscape, playing, inFs) {
+  var armed = !!(st && st.armed);
+  if (!landscape) return { armed: true, action: inFs ? "exit" : "none" };
+  if (playing && !inFs && armed) return { armed: armed, action: "enter" };
+  return { armed: armed, action: "none" };
+}
+function kidsFsManualExit(st) { return { armed: false }; }
 /* ==== KIDS-CORE-END ==== */
 
 /* ---------- storage ---------- */
@@ -623,9 +762,9 @@ var KIDS_LIBRARY = [
     { id: "XqZsoesa55w", title: "Baby Shark Dance | PINKFONG Songs for Children", lvl: 1 }
   ] },
   { key: "god", shelf: "☝️ One God — Faith & Worship", subj: "Faith", videos: [
-    { id: "OrMStAvNeqc", title: "Thank You, God! | Song for Kids | Little Light Rhymes", lvl: 0 },
-    { id: "P6XGxEaXeik", title: "Thank You God for the Beautiful World | Kids Songs", lvl: 1 },
-    { id: "dMLE7KW_t7I", title: "My God Is So Big | Kids Song", lvl: 1 }
+    { id: "OrMStAvNeqc", title: "Thank You, God! | Song for Kids | Little Light Rhymes", lvl: 0, fam: "Family moment: what is one thing we can thank God for today?" },
+    { id: "P6XGxEaXeik", title: "Thank You God for the Beautiful World | Kids Songs", lvl: 1, fam: "Family moment: name one beautiful thing God made that you saw today." },
+    { id: "dMLE7KW_t7I", title: "My God Is So Big | Kids Song", lvl: 1, fam: "Family moment: sing the chorus together — God is big, and He loves us." }
   ] }
 ];
 /* Fun Time (After School) + Movie Time — verified through the same
@@ -867,12 +1006,12 @@ function paintList() {
 }
 function paintNow() {
   var el = $("kids-now");
-  if (!list.length) { el.innerHTML = "Add some videos below, then tap Play.<small>Your list plays in order, then starts over from the top.</small>"; return; }
+  if (!list.length) { el.innerHTML = "Add some videos below, then tap Play.<small>Your list plays in order, " + (loopOn() ? "then starts over from the top." : "then ends with a goodbye.") + "</small>"; return; }
   if (playing) {
     var v = list[Math.min(cur, list.length - 1)];
-    el.innerHTML = "▶ Now playing: " + esc(v.title) + "<small>Video " + (Math.min(cur, list.length - 1) + 1) + " of " + list.length + " — the list loops back to the top.</small>";
+    el.innerHTML = "▶ Now playing: " + esc(v.title) + "<small>Video " + (Math.min(cur, list.length - 1) + 1) + " of " + list.length + (loopOn() ? " — the list loops back to the top." : " — at the end, Meechie says goodbye.") + "</small>";
   } else {
-    el.innerHTML = list.length + (list.length === 1 ? " video" : " videos") + " ready — tap Play.<small>They will play in order, then start over from the top.</small>";
+    el.innerHTML = list.length + (list.length === 1 ? " video" : " videos") + " ready — tap Play.<small>They will play in order, " + (loopOn() ? "then start over from the top." : "then the show ends with a goodbye.") + "</small>";
   }
 }
 
@@ -932,10 +1071,11 @@ window.onYouTubeIframeAPIReady = function () {
     playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
     events: {
       onReady: function () { playerReady = true; paintList(); },
+      onError: function () { handleVideoError(); },
       onStateChange: function (e) {
         if (e.data === YT.PlayerState.PLAYING) {
-          playing = true; $("kids-play").textContent = "⏸ Pause";
-          backfillTitle(); acquireWake(); paintList(); sleepResumed();
+          playing = true; errStreak = 0; $("kids-play").textContent = "⏸ Pause";
+          backfillTitle(); acquireWake(); paintList(); sleepResumed(); hideEndSlate(); fsMaybe();
         } else if (e.data === YT.PlayerState.PAUSED) {
           playing = false; $("kids-play").textContent = "▶ Play";
           if (!locked) releaseWake();
@@ -951,10 +1091,15 @@ window.onYouTubeIframeAPIReady = function () {
           var endedSubj = endedId ? (KIDS_SUBJ[endedId] || "") : "";
           var wasLast = list.length > 0 && cur === list.length - 1;
           if (endedId) recordWatched(endedId);
+          /* DESIGNED ENDING (round 2): with looping off (the default),
+             the last video ends the show — goodbye + end slate, no
+             wrap. With looping on, the flow below is exactly the old one. */
+          if (kidsEndDecision(cur, list.length, loopOn()).action === "end") { finishPlaylist(); return; }
           advance(1); // next in the list — wraps to the top (kidsNextIndex)
           var newSubj = list[cur] ? (KIDS_SUBJ[list[cur].id] || "") : "";
           if (wasLast && kidsListKind) kidsGoodbye();
           else if (newSubj && endedSubj && newSubj !== endedSubj) kidsTransition(newSubj);
+          else if (promptsOn()) kidsPromptAfter(endedId, endedSubj);
           else if (!newSubj && endedSubj) kidsPraise();
         }
       }
@@ -979,7 +1124,7 @@ function backfillTitle() { // a pasted link has no title until it plays — lear
 }
 function playIndex(i) {
   if (!list.length || !player || !playerReady) return;
-  oneOff = null;
+  oneOff = null; loadAttempted = true;
   cur = Math.max(0, Math.min(i, list.length - 1));
   player.loadVideoById(list[cur].id);
 }
@@ -996,16 +1141,47 @@ function advance(dir) {
 var oneOff = null;
 function playPreview(v) {
   if (!player || !playerReady) { $("kids-now").textContent = "The player is still warming up — one moment…"; return; }
-  oneOff = { id: v.id, title: v.title };
+  oneOff = { id: v.id, title: v.title }; loadAttempted = true;
   try { player.loadVideoById(v.id); } catch (e) { oneOff = null; return; }
   $("kids-now").innerHTML = "▶ Playing now: " + esc(v.title) + "<small>From 🔥 Trending for Kids — tap Add on it to keep it in your playlist.</small>";
   var wrap = $("kids-player-wrap");
   if (wrap && wrap.scrollIntoView) wrap.scrollIntoView({ block: "center", behavior: "smooth" });
 }
 function stopPlayback() {
-  oneOff = null;
+  oneOff = null; loadAttempted = false;
   try { if (player && player.stopVideo) player.stopVideo(); } catch (e) {}
   playing = false; $("kids-play").textContent = "▶ Play";
+}
+/* ---------- dead-video graceful skip (round 2) ----------
+   A playlist video that errors at play time (deleted, made private,
+   embed-blocked) is skipped automatically and noted for the parent —
+   the session never stalls on a dead video. A full pass of errors
+   (every video failing, e.g. the signal dropped) stops cleanly with
+   a plain message instead of cycling forever. Errors with no play
+   attempt in flight are ignored. */
+var errStreak = 0, loadAttempted = false;
+function handleVideoError() {
+  if (!loadAttempted) return;
+  if (oneOff) {
+    loadAttempted = false;
+    oneOff = null; playing = false; $("kids-play").textContent = "▶ Play";
+    if (!locked) releaseWake();
+    $("kids-now").innerHTML = "That preview could not play — it may have been taken down on YouTube.<small>Tap another picture, or press Play for your playlist.</small>";
+    return;
+  }
+  if (!list.length || !list[cur]) { loadAttempted = false; return; }
+  var v = list[cur];
+  errStreak++;
+  if (kidsSkipDecision(errStreak, list.length) === "skip") {
+    var el = $("kids-skip-note");
+    if (el) { el.hidden = false; el.textContent = "⚠️ “" + (v.title || "A video") + "” could not play — it may have been taken down on YouTube — so the show skipped it. A grown-up can take it out of the list below."; }
+    advance(1);
+  } else {
+    loadAttempted = false; errStreak = 0;
+    playing = false; $("kids-play").textContent = "▶ Play";
+    if (!locked) releaseWake();
+    $("kids-now").innerHTML = "The videos could not play just now — the connection may be down.<small>Check the signal, then tap Play to try again. Your playlist is saved.</small>";
+  }
 }
 $("kids-play").addEventListener("click", function () {
   if (!list.length) { $("kids-now").innerHTML = "Add some videos first — paste a link or search below.<small>Then this Play button starts the show.</small>"; return; }
@@ -1054,19 +1230,23 @@ function paintSleepLeft() {
   if (sleep.fired) { el.textContent = "💤 Sleep time — the timer ran out."; return; }
   if (!sleep.min) { el.textContent = ""; return; }
   var s = Math.max(0, Math.ceil(sleep.leftMs / 1000));
-  el.textContent = "💤 Sleep in " + Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2);
+  var win = Math.min(180000, sleep.min * 60000 * 0.25);
+  var calm = sleep.leftMs <= win ? "🌙 Wind-Down — getting dark and calm · " : "";
+  el.textContent = calm + "💤 Sleep in " + Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2);
 }
 function setSleepTimer(min) {
   sleep.min = min; sleep.fired = false; sleep.leftMs = min * 60000; sleep.lastTick = Date.now();
   if (sleep.timerId) { clearInterval(sleep.timerId); sleep.timerId = 0; }
   if (min > 0) sleep.timerId = setInterval(sleepTick, 500);
   paintSleep();
+  paintDim();
 }
 function sleepTick() {
   var now = Date.now();
   if (playing && !sleep.fired) sleep.leftMs -= (now - sleep.lastTick); // wall-clock deltas: honest even when the tab throttles timers
   sleep.lastTick = now;
   if (!sleep.fired && sleep.leftMs <= 0) { fireSleep(); return; }
+  paintDim();
   paintSleepLeft();
 }
 function showSleepSlate() { var s = $("kids-sleep-slate"); if (s) s.hidden = false; }
@@ -1079,13 +1259,139 @@ function fireSleep() {
   showSleepSlate();
   if (!locked) releaseWake(); // let the phone rest too — under the lock, the lock itself holds the screen on
   paintSleep();
+  paintDim();
 }
 function sleepResumed() { // any video playing again: slate away; a fired timer resets to Off
   hideSleepSlate();
   if (sleep.fired) { sleep.fired = false; sleep.min = 0; sleep.leftMs = 0; paintSleep(); }
+  paintDim();
 }
 Array.prototype.forEach.call(document.querySelectorAll(".kids-sleep-opt"), function (b) {
   b.addEventListener("click", function () { setSleepTimer(parseInt(b.getAttribute("data-min"), 10) || 0); });
+});
+
+/* =====================================================================
+   ROUND 2 (2026-11-01) — loop + prompt settings, the designed ending,
+   the wind-down dim driver, the volume-key PIN path, and sideways
+   auto-fullscreen. Decisions live in the pure core above; this block
+   only reads state and performs.
+   ===================================================================== */
+
+/* ---------- loop + prompts: parent choices, device-local ---------- */
+var LS_LOOP = "mw-kids-loop", LS_PROMPTS = "mw-kids-prompts";
+function loopOn() { try { return localStorage.getItem(LS_LOOP) === "1"; } catch (e) { return false; } }
+function promptsOn() { try { return localStorage.getItem(LS_PROMPTS) !== "0"; } catch (e) { return true; } }
+function paintLoopBtn() {
+  var b = $("kids-loop-btn"); if (b) b.textContent = "Loop: " + (loopOn() ? "on" : "off");
+  var n = $("kids-loopnote");
+  if (n) n.textContent = loopOn()
+    ? "🔁 Loop is ON — the list replays from the top until a grown-up pauses it."
+    : "🏁 Loop is off — the list plays once, then Meechie says goodbye and the show ends.";
+}
+function paintPromptsBtn() { var b = $("kids-prompts-btn"); if (b) b.textContent = "Questions: " + (promptsOn() ? "on" : "off"); }
+
+/* ---------- the designed ending ---------- */
+var endActionIx = 0;
+function showEndSlate() {
+  var s = $("kids-end-slate"); if (!s) return;
+  var r = kidsPickRotating(KIDS_NEXT_ACTIONS, endActionIx); endActionIx = r.next;
+  var a = $("kids-end-action"); if (a) a.textContent = r.text ? ("Next up, off-screen: " + r.text) : "";
+  s.hidden = false;
+}
+function hideEndSlate() { var s = $("kids-end-slate"); if (s) s.hidden = true; }
+function finishPlaylist() {
+  loadAttempted = false;
+  playing = false; $("kids-play").textContent = "▶ Play";
+  try { if (player && player.stopVideo) player.stopVideo(); } catch (e) {}
+  if (!locked) releaseWake();
+  kidsGoodbye(); // the goodbye line, through the same voice seam as always
+  showEndSlate();
+  paintNow();
+}
+
+/* ---------- Meechie prompts: one question between videos ---------- */
+var promptIx = {};
+function kidsPromptAfter(endedId, endedSubj) {
+  var v = endedId ? KIDS_BY_ID[endedId] : null;
+  if (v && v.fam) { kidsSay(v.fam, null); return; } // a faith family moment beats a question
+  var key = endedSubj || "generic";
+  var r = kidsPromptFor(endedSubj, promptIx[key] || 0);
+  promptIx[key] = r.next;
+  if (r.text) kidsSay(r.text, null);
+}
+
+/* ---------- wind-down dim driver ---------- */
+function paintDim() {
+  var d = $("kids-dim"); if (!d) return;
+  var lv = (sleep.min && !sleep.fired) ? kidsDimLevel(sleep.leftMs, sleep.min * 60000) : 0;
+  d.style.opacity = String(lv);
+}
+
+/* ---------- volume up-then-down: one more way to reach the PIN pad ----
+   Best effort only. Most phone browsers never deliver hardware volume
+   keys to a web page at all, so on phones this usually does nothing —
+   the hold-corner + PIN path above is the guaranteed unlock everywhere.
+   Where the keys do reach the page (desktop keyboards, browsers that
+   pass media keys), Up then Down inside 1.5 seconds opens the SAME PIN
+   pad the corner hold opens; the PIN is still required. The listener
+   never calls preventDefault — volume keys keep their real job — and
+   it does nothing at all while the screen is unlocked. */
+var volSt = { step: 0, t: 0 };
+document.addEventListener("keydown", function (e) {
+  if (!locked) { volSt = { step: 0, t: 0 }; return; }
+  if (pinPadUp()) return;
+  var r = kidsVolSeq(volSt, kidsVolKey(e), Date.now());
+  volSt = r.st;
+  if (r.open) openPad("unlock");
+});
+
+/* ---------- auto-fullscreen on a sideways turn ----------
+   While a video is playing, turning the phone sideways asks the browser
+   to fullscreen #kids-stage — the wrapper that holds the player AND the
+   fixed overlays (lock, PIN pad, slates), so the lock keeps covering
+   the video in fullscreen exactly as it does out of it. Turning back
+   upright exits. A manual exit while still sideways is respected until
+   the next upright-then-sideways turn (the core machine decides; this
+   block only performs). Where the Fullscreen API is missing or refuses
+   (iPhone Safari allows element fullscreen only on some devices), it
+   fails silently and playback carries on — never an error, never a
+   block. */
+var fsSt = { armed: true };
+function fsLandscape() {
+  if (window.matchMedia) { try { return window.matchMedia("(orientation: landscape)").matches; } catch (e) {} }
+  return window.innerWidth > window.innerHeight;
+}
+function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function fsAct() {
+  var stage = $("kids-stage"); if (!stage) return;
+  var r = kidsFsRotate(fsSt, fsLandscape(), playing, !!fsElement());
+  fsSt = { armed: r.armed };
+  if (r.action === "enter") {
+    var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
+    if (req) { try { var p = req.call(stage); if (p && p.catch) p.catch(function () {}); } catch (e) {} }
+  } else if (r.action === "exit" && document.exitFullscreen) {
+    try { document.exitFullscreen(); } catch (e) {}
+  }
+}
+var fsTimer = 0;
+function fsMaybe() { if (fsTimer) clearTimeout(fsTimer); fsTimer = setTimeout(fsAct, 180); }
+window.addEventListener("resize", fsMaybe);
+window.addEventListener("orientationchange", fsMaybe);
+if (window.screen && screen.orientation && screen.orientation.addEventListener) { try { screen.orientation.addEventListener("change", fsMaybe); } catch (e) {} }
+document.addEventListener("fullscreenchange", function () {
+  // a manual exit while still sideways disarms auto-entry until the
+  // phone has been upright again (the core machine re-arms on portrait)
+  if (!fsElement() && fsLandscape()) fsSt = kidsFsManualExit(fsSt);
+});
+
+/* ---------- settings button wiring ---------- */
+$("kids-loop-btn").addEventListener("click", function () {
+  try { localStorage.setItem(LS_LOOP, loopOn() ? "0" : "1"); } catch (e) {}
+  paintLoopBtn(); paintNow();
+});
+$("kids-prompts-btn").addEventListener("click", function () {
+  try { localStorage.setItem(LS_PROMPTS, promptsOn() ? "0" : "1"); } catch (e) {}
+  paintPromptsBtn();
 });
 
 /* =====================================================================
@@ -1245,9 +1551,22 @@ $("kids-reset-btn").addEventListener("click", function () {
 });
 
 /* ---------- the Lock button ---------- */
+var lockWarned = false;
 $("kids-lock-btn").addEventListener("click", function () {
   if (locked) return;
   if (!$("kids-pinpad-wrap").hidden) return; // pad already open
+  /* Handover check (round 2): the list and its pictures live on this
+     phone, but the videos themselves need signal. If the connection
+     looks down, say so plainly BEFORE the handover — one more tap on
+     the same button locks anyway. */
+  if (kidsConnectionDown(navigator.onLine) && !lockWarned) {
+    lockWarned = true;
+    var w = $("kids-lock-warn");
+    if (w) { w.hidden = false; w.innerHTML = "⚠️ <b>No connection right now.</b> Your playlist and its pictures are on this phone, but the videos themselves need signal to play — locked with no signal, the show may not run. Tap <b>Lock the screen</b> again to lock anyway."; }
+    return;
+  }
+  lockWarned = false;
+  var w2 = $("kids-lock-warn"); if (w2) w2.hidden = true;
   if (getPin()) engageLock();
   else openPad("set"); // first time: set a PIN, then the lock drops in
 });
@@ -1322,7 +1641,7 @@ function paintChild() {
     if (profDoc.profiles.length > 1) $("kids-cage").value = "3";
   }
   st.textContent = c
-    ? ((c.name ? c.name + " • " : "") + "Age " + c.age + " → " + BAND_NAMES[childBand()] + ". The school opens on their classroom, and the School Day stays at their level.")
+    ? ((c.name ? c.name + " • " : "") + "Age " + c.age + " → " + BAND_NAMES[childBand()] + ". The school opens on their classroom, and the School Day stays at their level." + (childBand() === 0 ? " For the Baby Class, watch together — under-2s learn from you, not the screen." : ""))
     : (profDoc.profiles.length > 1
         ? "No age set on this profile yet — the school starts it on Toddler Class. Set an age above and it tunes to this child."
         : "No age set yet — the school starts on Toddler Class. Set an age and it tunes itself to your child.");
@@ -1364,6 +1683,7 @@ function paintClassrooms() {
       (function (key, btn) { btn.addEventListener("click", function () { addShelfVideos(groupVideos(key), btn); }); })(sub[1], b);
       row.appendChild(nm); row.appendChild(b); div.appendChild(row);
     });
+    if (room.band === 0) { var nt = document.createElement("p"); nt.className = "hint2"; nt.style.marginTop = "6px"; nt.textContent = "🍼 Watch together — a grown-up leads: sing along, name what you see, cuddle. Under-2s learn from you, not the screen."; div.appendChild(nt); }
     box.appendChild(div);
   });
 }
@@ -1444,14 +1764,14 @@ $("kids-daystart").addEventListener("click", function () {
   try {
     var t = parseInt(localStorage.getItem(KEY) || "0", 10);
     if (!t) { t = Date.now(); localStorage.setItem(KEY, String(t)); }
-    var day = Math.floor((Date.now() - t) / 86400000) + 1;
-    el.textContent = day <= 7
-      ? ("Day " + day + " of your 7 free days — every plan starts free for a week.")
-      : "Your 7 free days are done — and the app keeps working. Plans are coming online soon; nothing to pay today.";
+    var st = kidsTrialState(t, Date.now()); // same stamp, 14 days now — a device already mid-trial keeps every remaining day
+    el.textContent = st.active
+      ? ("Day " + st.day + " of your " + st.days + " free days — every plan starts free for two weeks.")
+      : "Your free days are done — and the app keeps working. Plans are coming online soon; nothing to pay today.";
   } catch (e) {}
 })();
 Array.prototype.forEach.call(document.querySelectorAll(".kids-choose"), function (b) {
-  b.addEventListener("click", function () { $("kids-plan-note").textContent = "Good pick — plans are coming online soon, and your 7 free days come first either way. Nothing to pay today."; });
+  b.addEventListener("click", function () { $("kids-plan-note").textContent = "Good pick — plans are coming online soon, and your 14 free days come first either way. Nothing to pay today."; });
 });
 
 /* ---------- Meechie talks ----------
@@ -1618,6 +1938,8 @@ paintMode();
 paintReport();
 paintVoiceBtn();
 paintSleep();
+paintLoopBtn();
+paintPromptsBtn();
 setInterval(paintMode, 60000);
 </script>
 </body>
