@@ -491,21 +491,34 @@ export async function onRequestGet({ request, env }) {
   S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
   S.D = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.D || {});
 
-  // GHOST-SHARE SWITCH (mwGhostShare, 2026-10-29): the one deliberate
-  // exception to this keeper never touching vstream. A share flag left on
-  // by a dead publisher (a ghost from before the booth publisher
-  // supervisor) makes every viewer treat a dead meeting as the live TV,
-  // and nothing else ever clears it. A live share heartbeats vstream.at
-  // continuously through the supervisor, and viewers already read proof
-  // older than 75s as not-live — so a flag whose heartbeat is more than
-  // 15 minutes old can only be a ghost, and this can never trip a real
-  // share. Clear just the on flag and stamp the stop; kind, meeting and
-  // diag stay as history. The write rides writeDoc like every other
-  // keeper mutation (changes row included), stamped by the keeper so the
-  // booth adopts it, and once on is false the rule can never fire again.
+  // GHOST-SHARE HOLD (mwGhostShare, reworked by the SHARE-STOP FIX,
+  // 2026-11-01): this keeper NEVER ends a share. The old switch cleared
+  // on + stopAt here once vstream.at was 15 minutes stale — but the
+  // stamp only advances on the booth supervisor's proof, and a proof
+  // can stall while the capture is alive (the booth tab frozen or
+  // discarded, leadership moved to his other screen so the publisher's
+  // saves were mirrored away, a repair ladder still climbing). The
+  // keeper's stopAt then read on the booth EXACTLY like an owner Stop
+  // from another screen, and the healthy share was torn all the way
+  // down — capture tracks stopped, room left — roughly 15 minutes in.
+  // A share ends ONLY by the owner's four lawful endings, all of them
+  // client-side: his booth Stop tap, the browser stop bar (the raw
+  // track's ended event), a fresher same-account claim, or an explicit
+  // stopAt an owner screen wrote. What the keeper may still do with a
+  // stale heartbeat is HOLD: stamp the diag source-gone once, so
+  // viewers hold the mix/poster slate instead of a corpse frame, while
+  // on, meeting and stopAt stay exactly as the owner left them. When
+  // the publisher wakes (or he taps Bring it back) the supervisor
+  // proves the chain, re-stamps, and the same meeting carries on. A
+  // truly abandoned share is closed down by the owner, never by this
+  // clock. The write rides writeDoc like every other keeper mutation.
   if (S.vstream && S.vstream.on === true && now - (Number(S.vstream.at) || 0) > 900000) {
-    S.vstream.on = false; S.vstream.stopAt = now; S.updatedAt = now; S.by = "keeper";
-    await writeDoc(env, "radio/dj", "radio", S);
+    const dg = (S.vstream.diag && typeof S.vstream.diag === "object" && !Array.isArray(S.vstream.diag)) ? S.vstream.diag : {};
+    if (dg.stage !== "source-gone") {
+      S.vstream.diag = { stage: "source-gone", at: +dg.at || 0, repairs: Math.max(0, Math.min(9999, +dg.repairs || 0)) };
+      S.updatedAt = now; S.by = "keeper";
+      await writeDoc(env, "radio/dj", "radio", S);
+    }
   }
 
   // REQUESTS PLAYLIST HARVEST: fold any listener pick still waiting in

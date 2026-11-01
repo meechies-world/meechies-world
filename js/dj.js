@@ -476,7 +476,7 @@
    * exactly as before, and the drivers next save records the claim, so a
    * single booth never notices the lock at all. */
   const leadDrive = () => { if (!OWNER()) return false; if (SANDBOX) return true; if (leadFresh()) return S.leadTab === tabId; return boothLead; };
-  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; /* GO LIVE STUDIO liveness is proof-based now (fix-studio5): saves never re-stamp vstream.at — only the publisher supervisor does, after verifying the capture chain end to end (see vsPubProof) */ const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking) { if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
+  function save(now) { if (!OWNER()) return; /* mwFlapFix: never serialize a deck this tab already knows is past its end; end or park it first so a save can never re-assert a corpse over a keeper rescue */ DECKS.forEach((k2) => { const sk = S[k2]; if (sk && sk.playing && +sk.dur > 0 && posOf(k2) > +sk.dur + 15) { if (!listening) deckEnded(k2); if (S[k2].playing) S[k2].playing = false; } }); if (SANDBOX) { S.updatedAt = Date.now(); S.boothAt = Date.now(); try { sessionStorage.setItem("mw-playdj", JSON.stringify(S)); } catch (_) {} guestRelay(); return; } clearTimeout(saveT); const run = () => { S.updatedAt = Date.now(); S.boothAt = Date.now(); S.by = tabId; /* GO LIVE STUDIO liveness is proof-based now (fix-studio5): saves never re-stamp vstream.at — only the publisher supervisor does, after verifying the capture chain end to end (see vsPubProof) */ const payload = JSON.parse(JSON.stringify(S)); const taking = leadTakeAt && Date.now() - leadTakeAt < 15000; if (serverMirror() && !taking && !vsPub) { /* SHARE-STOP FIX (2026-11-01): the live publisher's saves must always land — mirrored away, its supervisor proofs never reached the server and the keeper killed the share at a 15-minute-stale stamp. vstream is not a lead-protected field, so this write passes it through while the claim holder keeps the decks */ if (S.padHit && (S.padHit.at || 0) > padSentAt) { padSentAt = S.padHit.at; lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch(() => {}); } return; } payload._lead = { tab: tabId, base: lastBaseAt || 0 }; if (taking) { payload._lead.take = true; leadTakeAt = 0; } lastBaseAt = S.updatedAt; DB()?.doc("radio/dj").set(payload).catch((e) => say(e.message || e.code)); }; if (now) run(); else saveT = setTimeout(run, 250); }
   function logPlay(title) { if (!title) return; S.log = [{ t: title, at: Date.now(), live: !!S.live }].concat((S.log || []).filter((x) => x.t !== title)).slice(0, 30); }
 
   /* ---------- styles ---------- */
@@ -3793,6 +3793,8 @@ html.popdj #dj-mini{display:none!important}
             // was somehow missed, this poll is the backstop: end the
             // share cleanly, exactly as his booth Stop does. Never a
             // repair, never a restore bar — the share is over
+            if (!p.rawDeadAt) { p.rawDeadAt = Date.now(); if (p.dStage !== "repairing") vsPubDiagSet("repairing", p); return; } // SHARE-STOP FIX (2026-11-01): this poll is only the backstop for a somehow-missed ended event — a single tick's misread never ends a share; the dead reading must persist across ticks (~6s) first. The track's own ended event (vsShareTrackEnded) stays the instant sanctioned path
+            if (Date.now() - p.rawDeadAt < 6000) return;
             try { await vsPubStop("🖥 Screen share stopped — the master screen is back to the video mix."); } catch (_) {}
             return;
           }
@@ -3805,7 +3807,7 @@ html.popdj #dj-mini{display:none!important}
           if (!vsBarSrc) { vsBarSrc = true; vsBarPaint(); }
           return;
         }
-        p.srcGone = false;
+        p.srcGone = false; p.rawDeadAt = 0;
         // LEG 2 — the published track; LEG 3 — the room still holds a
         // live slot for us; LEG 4 — the capture's audio, while the
         // pick actually provides one
@@ -6686,10 +6688,11 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793550206;
+  const MW_DJ_BUILD = 1793550707;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
+    const shareLive = () => { try { return !!vsPub || vsBroadcast(); } catch (_) { return false; } }; // SHARE GATE (2026-11-01): this tab is publishing a share, or a share is live on the station
     const isListening = () => { try { return !!((window.MW_DJ && typeof window.MW_DJ.listening === "function" && window.MW_DJ.listening()) || (typeof window.MW_recentSound === "function" && window.MW_recentSound())); } catch (_) { return false; } };
     const guardDone = () => { try { return sessionStorage.getItem("mw-guard-" + updBuild) === "1"; } catch (_) { return false; } };
     const showUpdNote = (playing) => {
@@ -6711,6 +6714,7 @@ html.popdj #dj-mini{display:none!important}
     const evaluate = () => {
       if (!updBuild) return;
       if (guardDone()) return;
+      if (shareLive()) { showUpdNote(true); if (!updTimer) updTimer = setTimeout(() => { updTimer = null; evaluate(); }, 5000); return; } // SHARE GATE: an automatic refresh never cuts a live share — the update holds until the share ends, exactly like sounding music (NO-SKIP law, master-screen side)
       if (!OWNER()) {
         if (isListening()) { showUpdNote(true); if (!updTimer) updTimer = setTimeout(() => { updTimer = null; evaluate(); }, 5000); return; }
         doReload(); return;
@@ -6718,7 +6722,7 @@ html.popdj #dj-mini{display:none!important}
       if (Date.now() - updSince > 10 * 60e3) { doReload(); return; }
       if (anyPlaying() || isListening()) { showUpdNote(true); return; }
       showUpdNote(false);
-      if (!updTimer) updTimer = setTimeout(() => { updTimer = null; if (!anyPlaying() && !isListening()) doReload(); else evaluate(); }, 5000);
+      if (!updTimer) updTimer = setTimeout(() => { updTimer = null; if (!anyPlaying() && !isListening() && !shareLive()) doReload(); else evaluate(); }, 5000);
     };
     const check = async () => {
       try {
@@ -6860,7 +6864,7 @@ html.popdj #dj-mini{display:none!important}
   } catch (_) {}
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
-  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, bubble: () => { if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
+  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, sharing: () => { try { return !!vsPub || vsBroadcast(); } catch (_) { return false; } }, bubble: () => { if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
   window.MW_DJ_LIVE = () => isLive();
   // the top MWR card reads the tables: whatever is on the decks is what the station says is on air
   window.MW_AIRNOW = () => {
