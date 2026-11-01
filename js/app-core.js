@@ -1322,25 +1322,63 @@ window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
   const err=q.get("error_description")||h.get("error_description");
   if(err){ setTimeout(()=>toast("Login didn't finish: "+err.replace(/\+/g," ")),500); history.replaceState(null,"",location.pathname+"#home"); go("home"); } })();
 
+/* ---------- Shop catalog: ONE device-held copy (device-max B2, 2026-11-01) ----------
+   The shop page and the house ads read the same /api/store + /api/shopify
+   union; each used to fetch it fresh, so a visit paid ~110 KB two or three
+   times. Now the first surface fetches once, the union is held on the device
+   (localStorage "mw-catalog-v1") and every surface paints from that copy.
+   A copy younger than 15 minutes is used as-is, with no network at all. An
+   older copy paints instantly AND revalidates in the background; the stored
+   copy is swapped only when a payload's own `updated` stamp moved, and
+   surfaces already open repaint on the "mw-catalog" event. Display only:
+   price + stock are re-verified live at checkout, exactly as before. */
+const MW_CATALOG_KEY = "mw-catalog-v1", MW_CATALOG_TTL = 15 * 60 * 1000;
+let mwCatalogMem = null, mwCatalogFlight = null;
+function mwCatalogRead(){ if(mwCatalogMem) return mwCatalogMem;
+  try{ const j = JSON.parse(localStorage.getItem(MW_CATALOG_KEY) || "null");
+    if(j && Array.isArray(j.store) && Array.isArray(j.shopify)){ mwCatalogMem = j; return j; } }catch(_){}
+  return null; }
+function mwCatalogSave(c){ mwCatalogMem = c;
+  try{ localStorage.setItem(MW_CATALOG_KEY, JSON.stringify(c)); }catch(_){} }
+async function mwCatalogFetch(){ const rs = await Promise.allSettled([
+    fetch("/api/store").then(r => r.json()), fetch("/api/shopify").then(r => r.json())]);
+  const s = rs[0].status === "fulfilled" ? rs[0].value : null, h = rs[1].status === "fulfilled" ? rs[1].value : null;
+  const prev = mwCatalogRead();
+  const c = { at: Date.now(),
+    store: s && Array.isArray(s.products) ? s.products : (prev ? prev.store : []),
+    shopify: h && Array.isArray(h.products) ? h.products : (prev ? prev.shopify : []),
+    sUp: s && s.updated ? s.updated : (prev ? prev.sUp : 0),
+    hUp: h && h.updated ? h.updated : (prev ? prev.hUp : 0) };
+  const changed = !prev || prev.sUp !== c.sUp || prev.hUp !== c.hUp;
+  mwCatalogSave(c);
+  if(changed) try{ window.dispatchEvent(new Event("mw-catalog")); }catch(_){}
+  return c; }
+function MW_shopCatalog(){ const c = mwCatalogRead();
+  if(c && Date.now() - c.at < MW_CATALOG_TTL) return Promise.resolve(c);
+  if(!mwCatalogFlight) mwCatalogFlight = mwCatalogFetch().finally(() => { mwCatalogFlight = null; });
+  return c ? Promise.resolve(c) : mwCatalogFlight; }
+window.MW_shopCatalog = MW_shopCatalog;
+
 /* ---------- Shop (Printify) ---------- */
-let shopLoaded=false;
-async function loadShop(){ if(shopLoaded) return; shopLoaded=true;
-  try{ const r=await fetch("/api/store"); const j=await r.json(); const ps=j.products||[];
-    if(!ps.length) throw new Error("empty");
-    $("#shop-grid").innerHTML=ps.map(p=>`<div class="prod"><a class="prod-a" href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy"><b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">Shop now →</span></a><button type="button" class="prod-share" data-pshare data-title="${esc(p.title)}" data-price="${esc(p.price||"")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
-  }catch(_){ $("#shop-grid").innerHTML='<div class="empty">Our latest drop is in the store. Tap the button below to shop.</div>'; }
-  loadShopify();
+let shopLoaded = false;
+function paintShop(c){ if(!c) return;
+  const ps = c.store || [];
+  if(ps.length) $("#shop-grid").innerHTML = ps.map(p => `<div class="prod"><a class="prod-a" href="${esc(p.url)}" target="_blank" rel="noopener"><img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy"><b>${esc(p.title)}</b>${p.price ? `<span class="pr">${esc(p.price)}</span>` : ""}<span class="buy">Shop now →</span></a><button type="button" class="prod-share" data-pshare data-title="${esc(p.title)}" data-price="${esc(p.price || "")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
+  else $("#shop-grid").innerHTML = '<div class="empty">Our latest drop is in the store. Tap the button below to shop.</div>';
+  paintShopify(c);
 }
 /* ---------- Store (Shopify): books, fashion and more. New Shopify products appear here automatically. ---------- */
-async function loadShopify(){
-  try{ const r=await fetch("/api/shopify"); const j=await r.json(); const ps=(j.products||[]).filter(p=>/^https:\/\//.test(p.url));
-    if(!ps.length) throw new Error("empty");
-    ps.sort((a,b)=>(b.digital?1:0)-(a.digital?1:0)); // eBooks first
-    window.MW_SHOPIFY=ps;
-    $("#shopify-grid").innerHTML=ps.map(p=>`<div class="prod"><a class="prod-a" href="${esc(p.digital&&p.buy?p.buy:p.url)}" target="_blank" rel="noopener">${p.img?`<img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy">`:`<div class="prod-ph">${esc(p.title)}</div>`}<b>${esc(p.title)}</b>${p.price?`<span class="pr">${esc(p.price)}</span>`:""}<span class="buy">${p.digital?"Buy &amp; download →":"Shop now →"}</span></a><button type="button" class="prod-share" data-pshare data-title="${esc(p.title)}" data-price="${esc(p.price||"")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
+function paintShopify(c){ if(!c) return;
+  const ps = (c.shopify || []).filter(p => /^https:\/\//.test(p.url));
+  if(ps.length){ ps.sort((a, b) => (b.digital ? 1 : 0) - (a.digital ? 1 : 0)); // eBooks first
+    window.MW_SHOPIFY = ps;
+    $("#shopify-grid").innerHTML = ps.map(p => `<div class="prod"><a class="prod-a" href="${esc(p.digital && p.buy ? p.buy : p.url)}" target="_blank" rel="noopener">${p.img ? `<img src="${esc(p.img)}" alt="${esc(p.title)}" loading="lazy">` : `<div class="prod-ph">${esc(p.title)}</div>`}<b>${esc(p.title)}</b>${p.price ? `<span class="pr">${esc(p.price)}</span>` : ""}<span class="buy">${p.digital ? "Buy &amp; download →" : "Shop now →"}</span></a><button type="button" class="prod-share" data-pshare data-title="${esc(p.title)}" data-price="${esc(p.price || "")}" data-url="${esc(p.url)}">↗ Share this</button></div>`).join("");
     window.MW_shopGifts?.decorate();
-  }catch(_){ $("#shopify-grid").innerHTML='<div class="empty">Tap the button below to see everything in the store.</div>'; }
+  } else $("#shopify-grid").innerHTML = '<div class="empty">Tap the button below to see everything in the store.</div>';
 }
+async function loadShop(){ if(shopLoaded) return; shopLoaded = true; paintShop(await MW_shopCatalog()); }
+async function loadShopify(){ paintShop(await MW_shopCatalog()); }
+window.addEventListener("mw-catalog", () => { if(shopLoaded) paintShop(mwCatalogRead()); });
 try{ new MutationObserver(()=>{ if(!$("#v-shop").hidden) loadShop(); }).observe($("#v-shop"),{attributes:true,attributeFilter:["hidden"]}); }catch(_){ }
 try{ if(!$("#v-shop").hidden) loadShop(); }catch(_){ }
 window.addEventListener("load",()=>{ try{ if(!$("#v-shop").hidden) loadShop(); }catch(_){ } });
@@ -1392,7 +1430,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793534464;
+const MW_SHELL_BUILD = 1793545387;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
