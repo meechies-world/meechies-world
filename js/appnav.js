@@ -105,34 +105,14 @@ nav.tabs a{letter-spacing:.02em}
   if (nav) new MutationObserver(sync).observe(nav, { attributes: true, subtree: true, attributeFilter: ["aria-current"] });
   addEventListener("hashchange", sync); sync();
 
-  /* Auto-update: when a new version of the site is published, refresh to it (without cutting off music or a recording). */
-  const mine = (document.querySelector('meta[name="mw-build"]') || {}).content || "";
-  let pending = false;
-  const busy = () => { try { if (typeof media !== "undefined" && !media.paused) return true; if (window.MW_LIVE && !MW_LIVE.paused) return true; } catch (_) {}
-    const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return true;
-    return !!document.querySelector("#bl-rec.on, .dm-walkie.on, .talk.on, dialog[open]"); };
-  function showUpdate() {
-    if (document.getElementById("mw-upd")) return;
-    const b = document.createElement("button"); b.id = "mw-upd"; b.type = "button"; b.textContent = "✨ New version ready · tap to update";
-    b.style.cssText = "position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:10050;border:1px solid #f0cf78;background:#d4a843;color:#0b0a08;font:800 14px system-ui,sans-serif;padding:10px 16px;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.5);cursor:pointer";
-    b.onclick = () => location.reload(); document.body.appendChild(b);
-  }
-  async function check() {
-    if (!mine) return;
-    try {
-      const j = await fetch("/version.json?t=" + Date.now(), { cache: "no-store" }).then((r) => r.json());
-      if (j && j.build && j.build !== mine) {
-        /* Reload at most once per new build. If the page still says the old build after that reload,
-           the two version stamps are out of step: stop, so the site never reloads itself in a loop (owner bug report, 2026-10-27). */
-        let tried = ""; try { tried = sessionStorage.getItem("mw_upd_tried") || ""; } catch (_) {}
-        if (tried === j.build) return;
-        try { sessionStorage.setItem("mw_upd_tried", j.build); } catch (_) {}
-        pending = true; if (!busy() && document.visibilityState === "visible") location.reload(); else showUpdate();
-      }
-    } catch (_) {}
-  }
-  setTimeout(check, 4000); setInterval(check, 5 * 60e3);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { if (pending && !busy()) location.reload(); else check(); } });
+  /* Auto-update consolidation (P3, 2026-11-01): this file used to run its own
+   * /version.json checker (every 5 min plus a 4 s first check) whose busy test
+   * knew about media, inputs and dialogs but NOT about a live share or the
+   * sound gate — right after a deploy it could reload a tab the gated
+   * checkers would have held. That checker is retired. The shell checker in
+   * app-core.js (sound gate + share gate + per-build loop guard) is now the
+   * one shell update path; the dj.js guardian keeps its booth update note
+   * and booth rules and stands down via the shared mw-guard stamp. */
 })();
 
 /* Featured music video on Home: plays muted when you scroll to it (like TikTok/Instagram); tap for sound. */
