@@ -103,9 +103,8 @@
     if (!bShop) return;
     if (shopDone && Date.now() - shopAt < 600000) return;
     try {
-      const r = await fetch("/api/store");
-      const j = await r.json();
-      const ps = ((j && j.products) || []).filter((p) => p && p.img && p.title).slice(0, 4);
+      const c = window.MW_shopCatalog ? await window.MW_shopCatalog() : null;
+      const ps = ((c && c.store) || []).filter((p) => p && p.img && p.title).slice(0, 4);
       if (!ps.length) return;
       bShop.innerHTML = `<h4>FRESH IN THE SHOP</h4><div class="home-now-prods">${ps.map((p) => `<a class="home-prod" href="#shop" data-go="shop"><img src="${E(p.img)}" alt="" loading="lazy"><b>${E(p.title)}</b>${p.price ? `<span>${E(p.price)}</span>` : ""}</a>`).join("")}</div>`;
       bShop.hidden = false;
