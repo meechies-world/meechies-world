@@ -261,15 +261,43 @@ body.mw-editing #ai-fab{display:none!important}`;
     } catch (_) { pending = ""; }
   });
   const GREET = "Hey, I'm Meechie — Meechie's AI assistant. I look after his people here, and I talk out loud: tap Talk to Meechie up top for a full voice chat, tap the mic and speak, or just type below. I can take you anywhere here: the live radio and DJ tables, the shop, the videos and movies, your messages — or help you book and buy. What are you looking for today?";
-  fab.addEventListener("click", () => { panel.hidden = false; fab.hidden = true; if (!hist.length) { hist.push({ role: "assistant", content: GREET }); try { localStorage.setItem("mw_ai2", JSON.stringify(hist)); } catch (_) {} draw(false); speak(GREET); } else draw(false); setTimeout(() => inp.focus(), 50); });
+  /* Host brain (PR-B3): a signed-in member with memory gets a welcome-back
+     greeting — their name, the artist who was on the decks last time — in
+     the panel, in the arrival bubble, and spoken out loud. The memory is
+     theirs alone (GET /api/brain/me answers only the caller's own session),
+     the visit is reported once per session through the same door the booth
+     uses, and ANY failure or absence of memory leaves every greeting below
+     exactly as it has always been, word for word. Guests never trigger any
+     of this: there is no session, so there is nothing to look up. */
+  const memGreet = { greet: null, hello: null };
+  try {
+    const mg = sessionStorage.getItem("mw_mem_greet");
+    if (mg) { const j = JSON.parse(mg); if (j && j.greet) { memGreet.greet = j.greet; memGreet.hello = j.hello || null; } }
+  } catch (_) {}
+  (async () => {
+    try {
+      const s = window.MW && MW.session && MW.session();
+      if (!s || !s.access_token || !s.user) return;
+      try {
+        const r = await fetch("/api/brain/me", { headers: { authorization: "Bearer " + s.access_token } });
+        const j = await r.json().catch(() => ({}));
+        if (j && j.ok && j.has && j.greet) { memGreet.greet = j.greet; memGreet.hello = j.hello || null; try { sessionStorage.setItem("mw_mem_greet", JSON.stringify({ greet: memGreet.greet, hello: memGreet.hello })); } catch (_) {} }
+      } catch (_) {}
+      try {
+        if (!sessionStorage.getItem("mw_mem_visit")) { sessionStorage.setItem("mw_mem_visit", "1"); await fetch("/api/brain/event", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + s.access_token }, body: JSON.stringify({ events: [{ type: "visit", at: Date.now() }] }) }); }
+      } catch (_) {}
+    } catch (_) {}
+  })();
+  const greetNow = () => memGreet.greet || GREET;
+  fab.addEventListener("click", () => { panel.hidden = false; fab.hidden = true; if (!hist.length) { const g = greetNow(); hist.push({ role: "assistant", content: g }); try { localStorage.setItem("mw_ai2", JSON.stringify(hist)); } catch (_) {} draw(false); speak(g); } else draw(false); setTimeout(() => inp.focus(), 50); });
   /* says hello when people arrive: one small bubble by the button, once per visit */
   const aiAppMode = (() => { try { const h = document.documentElement.classList; if (h.contains("appmode-ai")) return false; return h.contains("appmode") || (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!window.navigator.standalone; } catch (_) { return false; } })(); /* no pop-up greetings inside his apps (owner, 2026-10-28), except the AI app itself where Meechie is the point */
-  try { if (!aiAppMode && !sessionStorage.getItem("mw_ai_hi")) { setTimeout(function hiTry(n) { if (!panel.hidden || fab.hidden || document.getElementById("ai-hi") || (window.MW_screenClear && !MW_screenClear("ai-hi"))) { if ((n|0) < 20) setTimeout(() => hiTry((n|0) + 1), 8000); return; } try { sessionStorage.setItem("mw_ai_hi", "1"); } catch (_) {} /* one card at a time (owner rule) */ const bub = document.createElement("div"); bub.id = "ai-hi"; bub.setAttribute("role", "button"); bub.innerHTML = "<b>Meechie AI</b> is here. Tap me and I will show you around, and we can talk out loud. <button type=\"button\" aria-label=\"Dismiss\">×</button>"; bub.addEventListener("click", (e) => { bub.remove(); if (!e.target.closest("button")) fab.click(); }); document.body.appendChild(bub); setTimeout(() => { bub.remove(); }, 16000); }, 4500); } } catch (_) {}
+  try { if (!aiAppMode && !sessionStorage.getItem("mw_ai_hi")) { setTimeout(function hiTry(n) { if (!panel.hidden || fab.hidden || document.getElementById("ai-hi") || (window.MW_screenClear && !MW_screenClear("ai-hi"))) { if ((n|0) < 20) setTimeout(() => hiTry((n|0) + 1), 8000); return; } try { sessionStorage.setItem("mw_ai_hi", "1"); } catch (_) {} /* one card at a time (owner rule) */ const bub = document.createElement("div"); bub.id = "ai-hi"; bub.setAttribute("role", "button"); bub.innerHTML = memGreet.hello ? "<b>Meechie AI</b> " + E(memGreet.hello) + " <button type=\"button\" aria-label=\"Dismiss\">×</button>" : "<b>Meechie AI</b> is here. Tap me and I will show you around, and we can talk out loud. <button type=\"button\" aria-label=\"Dismiss\">×</button>"; bub.addEventListener("click", (e) => { bub.remove(); if (!e.target.closest("button")) fab.click(); }); document.body.appendChild(bub); setTimeout(() => { bub.remove(); }, 16000); }, 4500); } } catch (_) {}
   /* and he actually talks to people (owner, 2026-10-27): browsers only allow
      sound after a person touches the page, so on a visitor's very first tap or
      keypress — if they have not opened him yet — he says one short hello out
      loud, once per visit. His voice toggle (🔊) still rules. */
-  try { if (!aiAppMode && !sessionStorage.getItem("mw_ai_spoke")) { const hello = () => { window.removeEventListener("pointerdown", hello); window.removeEventListener("keydown", hello); if (!panel.hidden || hist.length) return; try { sessionStorage.setItem("mw_ai_spoke", "1"); } catch (_) {} speak("Hey, I'm Meechie, Meechie's assistant. I look after everybody here — tap my gold button and I'll show you around."); }; window.addEventListener("pointerdown", hello); window.addEventListener("keydown", hello); } } catch (_) {}
+  try { if (!aiAppMode && !sessionStorage.getItem("mw_ai_spoke")) { const hello = () => { window.removeEventListener("pointerdown", hello); window.removeEventListener("keydown", hello); if (!panel.hidden || hist.length) return; try { sessionStorage.setItem("mw_ai_spoke", "1"); } catch (_) {} speak(memGreet.hello || "Hey, I'm Meechie, Meechie's assistant. I look after everybody here — tap my gold button and I'll show you around."); }; window.addEventListener("pointerdown", hello); window.addEventListener("keydown", hello); } } catch (_) {}
   panel.querySelector("#ai-close").addEventListener("click", () => { stopTalk(); panel.hidden = true; sync(); });
   chips.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; if (/take me to the radio/.test(b.textContent)) { goTo("radio"); return; } if (/court case/.test(b.textContent)) { if (typeof go === "function") go("legal"); panel.hidden = true; sync(); return; } ask(b.textContent); });
   panel.querySelector("#ai-new").addEventListener("click", () => { hist = []; try { localStorage.removeItem("mw_ai2"); sessionStorage.removeItem("mw_ai"); } catch (_) {} haltSpeak(); draw(false); inp.focus(); });
