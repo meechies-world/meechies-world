@@ -6110,7 +6110,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793554210;
+  const MW_DJ_BUILD = 1793555395;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6270,11 +6270,11 @@ html.popdj #dj-mini{display:none!important}
     listening = true; djKeepSet(true); actx(); wakeForListening(true);
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
     $("#dj-listen").textContent = "⏹ Stop listening"; DECKS.forEach((k) => follow(k));
-    pokeScreens(); try { scPrimeTap(); } catch (_) {} document.removeEventListener("pointerdown", tapStart, true); document.addEventListener("pointerdown", tapStart, true); setTimeout(checkStuck, 2200);
+    pokeScreens(); try { scPrimeTap(); } catch (_) {} try { bgsArm(); } catch (_) {} document.removeEventListener("pointerdown", tapStart, true); document.addEventListener("pointerdown", tapStart, true); setTimeout(checkStuck, 2200);
     try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
     try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
-  function stopListening() { listening = false; document.removeEventListener("pointerdown", tapStart, true); djKeepSet(false); wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  function stopListening() { listening = false; document.removeEventListener("pointerdown", tapStart, true); djKeepSet(false); try { bgsOff(); } catch (_) {} wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   try {
     if (!SANDBOX && djKeepWanted()) document.addEventListener("pointerdown", function djResumeTap(e) {
       if (listening || !djKeepWanted()) { document.removeEventListener("pointerdown", djResumeTap); return; }
@@ -6299,6 +6299,148 @@ html.popdj #dj-mini{display:none!important}
     const left = d.dur && d.start ? Math.max(0, Math.round(d.dur - (Date.now() - d.start) / 1000)) : 0;
     return { title: playing.length > 1 ? d.title + " × " + S[playing[1]].title : d.title, sub: (gOn ? "🎧 " + gName(g) + " live" : fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : ""), cover: d.cover || "" };
   };
+  /* ---------- BACKGROUND SOUND (owner, 2026-11-01: "make it so the sound
+     can play in the background when the app closes — people will hate that
+     [if it stops]") ----------
+     The listener path above plays the station through YouTube iframes, web
+     audio and screen players, and mobile browsers suspend all of that the
+     moment the page hides: lock the phone or switch apps and the station
+     stops, even though nothing on the site paused it. The one thing a phone
+     treats as real media playback is a plain audio element, and the station
+     has one — the direct stream the VM feeder pushes, served over HTTPS by
+     the host proxy. So when a listener who is tuned in leaves the page,
+     this block hands the sound to a single stream element with Media
+     Session metadata and lock-screen controls; when they come back it
+     stops the element first and the normal resume above restores the
+     picture experience. Nothing changes while the page is visible.
+     THE GATE FAILS CLOSED. The stream carries the station only while the
+     feeder is pushing; with no source connected the host falls back to an
+     AutoDJ placeholder that is NOT the station and must never be handed to
+     a listener as if it were. /api/bgsgate reads the host status and
+     answers live only while that status names the feeder as the source.
+     Any doubt — no answer, a timeout, the placeholder, or a share / an
+     uploaded screen video holding the master sound (their sound is not
+     the decks; v1 excludes those states) — and there is no handoff: the
+     sound simply pauses the way it always did. The element is ARMED inside
+     startListening (the sound-on gesture every surface funnels into) so
+     mobile autoplay rules allow the later programmatic play where the
+     platform permits; a refused play while hidden (some iOS versions) is
+     a silent no-op, never an error state or a prompt. A tab holding the
+     booth lead never hands off — the booth is fenced off — and bubble
+     mode keeps its own keep-playing path. */
+  const BGS_STREAM = "https://eu4.fastcast4u.com/proxy/meechiesworldinc/stream";
+  const BGS_GATE = "/api/bgsgate";
+  let bgsEl = null, bgsOn = false, bgsTimer = null, bgsTickN = 0, bgsMetaT = "";
+  function bgsMake() {
+    if (bgsEl) return bgsEl;
+    const el = document.createElement("audio");
+    el.id = "mw-bgs"; el.preload = "none"; el.src = BGS_STREAM;
+    el.addEventListener("error", () => { if (bgsOn) bgsStopEl(); });
+    document.body.appendChild(el);
+    bgsEl = el; return el;
+  }
+  function bgsEnsureSrc(el) { try { if (!el.getAttribute("src")) el.src = BGS_STREAM; } catch (_) {} }
+  /* Gate read: resolves true (the status names the feeder as the source),
+     false (the status positively says it does not), or null (no usable
+     answer — doubt). Starting a handoff requires true; stopping a playing
+     one requires false, twice in a row. */
+  function bgsGateLive() {
+    return new Promise((resolve) => {
+      let done = false; const fin = (v) => { if (!done) { done = true; resolve(v); } };
+      let ctl = null; try { ctl = new AbortController(); } catch (_) {}
+      const to = setTimeout(() => { try { if (ctl) ctl.abort(); } catch (_) {} fin(null); }, 5000);
+      try {
+        fetch(BGS_GATE, { cache: "no-store", signal: ctl ? ctl.signal : undefined })
+          .then((r) => r.json())
+          .then((j) => { clearTimeout(to); fin(j && typeof j.live === "boolean" ? j.live : null); })
+          .catch(() => { clearTimeout(to); fin(null); });
+      } catch (_) { clearTimeout(to); fin(null); }
+    });
+  }
+  function bgsExcluded() { try { return vsBroadcast() || msvHolds(); } catch (_) { return true; } }
+  function bgsSounding() { try { return !!(listening && isLive() && DECKS.some((k) => S[k] && S[k].playing)); } catch (_) { return false; } }
+  function bgsMedia() {
+    try {
+      if (!("mediaSession" in navigator)) return;
+      let t = "Meechie's World — Live Radio";
+      try { const a = MW_AIRNOW(); if (a && a.title) t = a.title; } catch (_) {}
+      if (t !== bgsMetaT) {
+        bgsMetaT = t;
+        navigator.mediaSession.metadata = new MediaMetadata({ title: t, artist: "Meechie's World Radio", album: "Meechie's World Inc", artwork: [{ src: location.origin + "/img/radio-promo.jpg", sizes: "1080x1080", type: "image/jpeg" }, { src: location.origin + "/img/radio-promo-640.webp", sizes: "640x640", type: "image/webp" }, { src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] });
+      }
+      navigator.mediaSession.playbackState = bgsOn ? "playing" : "paused";
+    } catch (_) {}
+  }
+  function bgsHandlers() {
+    try {
+      if (!("mediaSession" in navigator) || !navigator.mediaSession.setActionHandler) return;
+      navigator.mediaSession.setActionHandler("play", () => {
+        if (!listening) { startListening(); if (document.hidden) bgsTryStart(); }
+        else if (document.hidden && !bgsOn) bgsTryStart();
+      });
+      navigator.mediaSession.setActionHandler("pause", () => { bgsOff(); if (listening) stopListening(); });
+    } catch (_) {}
+  }
+  /* Arm: called from startListening, synchronously inside the sound-on
+     gesture. A volume-0 play-pause cycle marks the element as
+     user-activated, so the hidden handoff play is allowed where the
+     platform permits it. The pause is skipped if a handoff already owns
+     the element or the page has gone hidden in the meantime. */
+  function bgsArm() {
+    if (SANDBOX || bgsOn) return;
+    const el = bgsMake(); bgsEnsureSrc(el);
+    try {
+      el.volume = 0;
+      const p = el.play();
+      const settle = () => { try { if (!bgsOn && !document.hidden) el.pause(); el.volume = mixVol; } catch (_) {} };
+      if (p && p.then) p.then(settle).catch(settle); else settle();
+    } catch (_) { try { el.volume = mixVol; } catch (_) {} }
+  }
+  async function bgsTryStart() {
+    if (SANDBOX || bgsOn) return;
+    if (!bgsSounding() || bgsExcluded()) return;
+    if (OWNER() && boothLead) return; // the booth tab never hands off
+    const live = await bgsGateLive();
+    if (live !== true) return; // doubt or the placeholder: no handoff
+    if (!document.hidden || !bgsSounding() || bgsExcluded()) return; // the world changed while the gate answered
+    const el = bgsMake(); bgsEnsureSrc(el);
+    try { el.volume = mixVol; } catch (_) {}
+    bgsOn = true; bgsMedia(); bgsHandlers();
+    try { const p = el.play(); if (p && p.catch) p.catch(() => { bgsOn = false; bgsMedia(); }); }
+    catch (_) { bgsOn = false; bgsMedia(); }
+    if (bgsTimer) clearInterval(bgsTimer);
+    bgsTickN = 0;
+    bgsTimer = setInterval(bgsTick, 30000);
+  }
+  function bgsStopEl() {
+    bgsOn = false;
+    if (bgsTimer) { clearInterval(bgsTimer); bgsTimer = null; }
+    if (bgsEl) {
+      try { bgsEl.pause(); } catch (_) {}
+      try { bgsEl.removeAttribute("src"); bgsEl.load(); } catch (_) {}
+    }
+    bgsMedia();
+  }
+  /* The listener turned the sound off (stopListening calls this): the
+     background element stops with everything else. The element itself
+     stays, primed for the next sound-on. */
+  function bgsOff() { bgsStopEl(); }
+  async function bgsTick() {
+    if (!bgsOn || !document.hidden) return;
+    if (!bgsSounding() || bgsExcluded()) { bgsStopEl(); return; }
+    try { if (bgsEl) bgsEl.volume = mixVol; } catch (_) {}
+    bgsMedia();
+    bgsTickN++;
+    if (bgsTickN % 2 === 0) {
+      const live = await bgsGateLive();
+      if (live === false && bgsOn) { const again = await bgsGateLive(); if (again === false && bgsOn) bgsStopEl(); }
+    }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { if (!SANDBOX && !bubOn) bgsTryStart(); }
+    else if (bgsOn) bgsStopEl(); // stop the stream element FIRST; the decks resume on the existing 350 ms path, so nothing ever double-plays
+  });
+  window.MW_BGS = { on: () => bgsOn, state: () => ({ on: bgsOn, el: !!bgsEl }) };
   /* pop the decks out onto their own screen: a clean window with only the DJ view */
   function popOut() {
     const url = location.pathname + "?popdj=1#radio";
