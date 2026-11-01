@@ -40,7 +40,7 @@
 
   /* ================= audio engine: decks -> EQ -> mixer -> FX -> master ================= */
   let ctx = null, masterIn = null, masterGain = null, analyser = null, recDest = null, limiter = null;
-  let fxFilter = null, echoWet = null, verbWet = null, micGain = null, micMon = null, micAn = null;
+  let fxFilter = null, echoWet = null, verbWet = null, micGain = null, micMon = null, micAn = null, micStreamLive = false; // shared with dj-booth.js live-mic toggle (eval scope must NOT redeclare it)
   let echoFb = null, flaWet = null, gateOsc = null, gateDepth = null, gateGain = null, crushNode = null, crushBuilt = -1;
   let echoDly = null, flaLfo = null, phaWet = null, phaLfo = null, noiseWet = null, noiseBp = null;
   function actx() {
@@ -6110,7 +6110,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793553518;
+  const MW_DJ_BUILD = 1793554210;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
