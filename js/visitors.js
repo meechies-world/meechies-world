@@ -69,6 +69,7 @@
   css.textContent = `
 #vz-pill{position:fixed;left:16px;bottom:calc(var(--tabbar,0px) + 64px + env(safe-area-inset-bottom,0px));z-index:9995;border:1px solid var(--gold);background:#0b0a08e6;color:var(--gold-hi);font:700 13px var(--body);padding:8px 13px;border-radius:999px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5)}
 body.has-player #vz-pill{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-inset-bottom,0px))}
+@media (max-width:640px){body[data-view="mwtv"]:not(.has-player) #vz-pill{bottom:calc(var(--tabbar,0px) + 112px + env(safe-area-inset-bottom,0px))}}
 #vz-pill.new{animation:vzp 1s ease-in-out 3}@keyframes vzp{50%{background:var(--gold);color:#0b0a08}}
 #vz-sheet{position:fixed;inset:0;z-index:10010;background:rgba(0,0,0,.6);display:grid;place-items:end center}
 #vz-sheet .in{width:min(560px,100%);max-height:86vh;overflow:auto;background:#12100c;border:1px solid var(--gold-lo,#8c6d26);border-radius:18px 18px 0 0;padding:18px 18px 28px}
