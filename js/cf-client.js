@@ -70,9 +70,14 @@
         else if (typeof j.seq === "number" && j.seq > seq) seq = j.seq;
       } catch (_) {}
     }
-    // every 6 s normally; every 1.5 s while you're in a Live/battle/game room (so video connects fast); slow when hidden
+    // every 6 s normally; every 1.5 s while you're in a Live/battle/game room (so video connects fast); slow when hidden.
+    // P2 diet (2026-11-01): the watch surfaces (radio, dj, watch, MW TV, live studio) keep the 6 s
+    // cadence; every other visible view polls at 15 s and hidden tabs at 60 s. Posts and likes on
+    // quiet pages echo a few seconds later; station freshness and sound ride the separate 12 s
+    // station ping, which is not touched. Hot rooms still force 1.5 s on any view.
     const fast = [...roomsOpen.values()].some((c) => c.hot());
-    pollTimer = setTimeout(poll, fast ? 1500 : document.hidden ? 30000 : 6000);
+    const watchView = ["radio", "dj", "watch", "mwtv", "live"].includes((document.body && document.body.dataset && document.body.dataset.view) || "");
+    pollTimer = setTimeout(poll, fast ? 1500 : document.hidden ? 60000 : watchView ? 6000 : 15000);
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && polling && pollTimer) { clearTimeout(pollTimer); poll(); } });
   function startPolling() { if (polling) return; polling = true; poll(); }
