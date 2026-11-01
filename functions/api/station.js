@@ -35,6 +35,27 @@ async function writeDoc(env, path, coll, data) {
   await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", path, coll, null, null, Date.now()).run();
 }
 
+/* Pings-table schema, run ONCE per isolate (P1, 2026-11-01): the schema
+ * statements used to run on every station ping from every tab — pure D1
+ * overhead multiplied by the whole audience, forever. The table and its
+ * columns exist in production; the first request a cold isolate serves
+ * still creates them if missing, exactly as before. A failed pass is not
+ * cached, so the next request retries — matching the old per-request
+ * behaviour on the error path too. Zero behaviour change. */
+let pingsSchemaP = null;
+function ensurePingsSchema(env) {
+  if (!pingsSchemaP) {
+    pingsSchemaP = (async () => {
+      await env.DB.prepare("create table if not exists pings (cid text primary key, at integer, listening integer)").run();
+      try { await env.DB.prepare("alter table pings add column uid text").run(); } catch (_) {}
+      try { await env.DB.prepare("alter table pings add column name text").run(); } catch (_) {}
+      try { await env.DB.prepare("alter table pings add column first integer").run(); } catch (_) {}
+    })();
+    pingsSchemaP.catch(() => { pingsSchemaP = null; });
+  }
+  return pingsSchemaP;
+}
+
 /* LISTENER REQUESTS PLAYLIST (2026-10-30, owner: requests are SAVED
  * into a playlist that shuffles itself back into the rotation — "Im
  * building this to be automated on my side"). Every accepted song
@@ -447,10 +468,7 @@ export async function onRequestGet({ request, env }) {
     const lis = u.searchParams.get("l") === "1" ? 1 : 0;
     const pu = (u.searchParams.get("u") || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
     const pn = (u.searchParams.get("n") || "").slice(0, 40);
-    await env.DB.prepare("create table if not exists pings (cid text primary key, at integer, listening integer)").run();
-    try { await env.DB.prepare("alter table pings add column uid text").run(); } catch (_) {}
-    try { await env.DB.prepare("alter table pings add column name text").run(); } catch (_) {}
-    try { await env.DB.prepare("alter table pings add column first integer").run(); } catch (_) {}
+    await ensurePingsSchema(env);
     // DOORBELL arrival spotting, checked BEFORE the upsert below lands:
     // a cid with no fresh ping row is someone landing right now. A member
     // counts only when no other fresh ping already carries their uid (a
