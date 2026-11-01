@@ -46,7 +46,7 @@
   .tbtn.main{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;border:0;font-size:18px;padding:13px 28px;box-shadow:0 6px 22px rgba(240,207,120,.3)}
   .loopnote{max-width:680px;margin:6px auto 0;text-align:center;color:#a79c7e;font-size:13px}
   /* the big lock button */
-  #kids-lock-btn{display:block;width:100%;max-width:680px;margin:16px auto 0;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.04em;font-size:20px;padding:17px 20px;border-radius:16px;border:0;cursor:pointer;box-shadow:0 8px 26px rgba(240,207,120,.35)}
+  #kids-lock-btn{display:block;width:100%;max-width:680px;margin:0 auto 10px;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.04em;font-size:20px;padding:17px 20px;border-radius:16px;border:0;cursor:pointer;box-shadow:0 8px 26px rgba(240,207,120,.35)}
   #kids-lock-btn:active{transform:scale(.99)}
   .locksub{max-width:680px;margin:8px auto 0;text-align:center;color:#a79c7e;font-size:13px}
   /* add + search */
@@ -108,7 +108,14 @@
      preventDefault on touchmove stop scrolls, swipes and pinch gestures. */
   #kids-lock{position:fixed;inset:0;z-index:99990;background:transparent;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
   #kids-lock[hidden]{display:none}
-  #kids-lock-hint{position:absolute;left:50%;bottom:9%;transform:translateX(-50%);background:rgba(11,10,8,.82);color:#f0cf78;border:1px solid #8a6d1f;border-radius:999px;padding:9px 16px;font-size:14px;white-space:nowrap;transition:opacity 1.2s ease;pointer-events:none}
+  #kids-lock-hint{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);background:rgba(11,10,8,.82);color:#f0cf78;border:1px solid #8a6d1f;border-radius:999px;padding:9px 16px;font-size:14px;white-space:nowrap;transition:opacity 1.2s ease;pointer-events:none}
+  /* round 3: the kids own buttons — the ONLY taps that work through the
+     lock. Big Back / Skip pills at the bottom of the locked screen, so a
+     child who does not like a video can skip it, and one who wants to
+     watch again can go back, without ever unlocking anything else. */
+  #kids-kidnav{position:absolute;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:16px;z-index:3}
+  .kidbtn{background:rgba(11,10,8,.85);color:#f0cf78;border:2px solid #c39a2e;font-weight:800;font-size:19px;padding:16px 24px;border-radius:999px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.55);touch-action:manipulation;white-space:nowrap}
+  .kidbtn:active{transform:scale(.96);background:#241c0d}
   #kids-lock-hint.fade{opacity:0}
   /* grown-up corner: hold 3s to start unlocking. Invisible except its ring. */
   #kids-corner{position:absolute;top:0;right:0;width:104px;height:104px;background:transparent;border:0;padding:0;cursor:pointer;touch-action:none}
@@ -250,6 +257,9 @@
 
   <!-- PLAYER -->
   <div class="card" style="padding:12px">
+    <button id="kids-lock-btn" type="button">🔒 Lock the screen</button>
+    <p class="locksub">Tap to lock: the show goes full screen. Kids get two big buttons at the bottom — <b>⏮ Back</b> to watch again and <b>Skip ⏭</b> if they do not like a video — and nothing else works. Only a grown-up can unlock it (hold the top-right corner, then PIN). On some devices you can also press volume up, then down, to open the PIN pad — the PIN is still needed.</p>
+    <p class="hint2" id="kids-lock-warn" hidden></p>
     <div id="kids-stage">
     <div id="kids-player-wrap"><div id="kids-player"></div><div id="kids-dim"></div></div>
     <!-- The fixed overlays (sleep slate, end slate, lock, PIN pad) live
@@ -280,6 +290,10 @@
   <div id="kids-lock" hidden>
     <div id="kids-lock-hint">🔒 Locked — grown-ups: hold the top-right corner to unlock</div>
     <button id="kids-corner" type="button" aria-label="Grown-ups: hold to unlock"><span id="kids-ring"><span>🔓</span></span></button>
+    <div id="kids-kidnav">
+      <button id="kids-kid-prev" class="kidbtn" type="button" aria-label="Back — watch this video again, or go to the one before it">⏮ Back</button>
+      <button id="kids-kid-next" class="kidbtn" type="button" aria-label="Skip — go to the next video">Skip ⏭</button>
+    </div>
   </div>
   <!-- PIN PAD (shared by set-PIN and unlock flows) -->
   <div id="kids-pinpad-wrap" hidden>
@@ -328,9 +342,6 @@
     </div>
     <p class="hint2" style="margin-top:6px">Counts down only while a video is playing. In the last few minutes the picture slowly dims and calms — that is the Wind-Down — and when it runs out, the video pauses, Meechie says goodnight, and a calm sleep screen comes up. If the screen is locked, the lock still covers it. Sleep experts say screens off before bed helps little ones sleep, so the Wind-Down ends the show gently instead of playing right up to sleep.</p>
     <button class="daystart" id="kids-daystart" type="button">🏫 Start School Day</button>
-    <button id="kids-lock-btn" type="button">🔒 Lock the screen</button>
-    <p class="locksub">Locks every tap on this screen. Only a grown-up can unlock it (hold the top-right corner, then PIN). On some devices you can also press volume up, then down, to open the PIN pad — the PIN is still needed.</p>
-    <p class="hint2" id="kids-lock-warn" hidden></p>
     <details class="walk">
       <summary>📱 A stronger handover: pin the app with the phone's own lock</summary>
       <p class="hint2" style="margin-top:6px">The lock above covers this app's screen. Your phone also has a built-in way to hold the whole phone on just this app — together they make the handover stronger. <b>iPhone:</b> Settings → Accessibility → Guided Access — turn it on, then triple-click the side button while this app is open. <b>Android:</b> Settings → Security → App pinning — turn it on, open this app, then pin it from the recent-apps screen.</p>
@@ -440,8 +451,8 @@
       <li><b>Add videos</b> — paste a YouTube link, or search by name and tap Add.</li>
       <li><b>Put them in order</b> — use the ↑ ↓ buttons so they play the way you want.</li>
       <li><b>Tap Play.</b> The videos play one after another. When the last one ends, Meechie says goodbye and the show ends — a grown-up can turn looping on in the player if you want it to start over. Turn the phone sideways while a video plays and it fills the screen on its own; turn it back to shrink it down.</li>
-      <li><b>Tap “Lock the screen”</b> and set a 4-number PIN only you know.</li>
-      <li><b>Hand the phone over.</b> Little hands can tap all they want — nothing will pause, skip, or wander off.</li>
+      <li><b>Tap “Lock the screen”</b> (the big gold button right above the picture) and set a 4-number PIN only you know. Locking puts the show full screen.</li>
+      <li><b>Hand the phone over.</b> Little hands get two big buttons at the bottom of the locked screen — <b>⏮ Back</b> to watch a video again and <b>Skip ⏭</b> to move on from one they do not like. Nothing else works: no pausing the grown-up way, no wandering off, no unlocking.</li>
       <li><b>To unlock:</b> press and <b>hold the top-right corner</b> of the screen for 3 seconds, then enter your PIN.</li>
     </ol>
     <div class="kids-limits">
@@ -667,6 +678,14 @@ function kidsFsRotate(st, landscape, playing, inFs) {
   return { armed: armed, action: "none" };
 }
 function kidsFsManualExit(st) { return { armed: false }; }
+/* Kid Back button (round 3): well into a video, Back means watch this
+   one again from the start; right at the start, Back means the video
+   before it. Pure decision; the page performs it. */
+function kidsKidBack(timeSec, curIx, count) {
+  if (typeof count !== "number" || count <= 0 || typeof curIx !== "number" || curIx < 0 || curIx >= count) return { action: "stop" };
+  if (typeof timeSec === "number" && isFinite(timeSec) && timeSec > 5) return { action: "restart" };
+  return { action: "prev", next: kidsPrevIndex(curIx, count) };
+}
 /* ==== KIDS-CORE-END ==== */
 
 /* ---------- storage ---------- */
@@ -1364,6 +1383,7 @@ function fsLandscape() {
 function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
 function fsAct() {
   var stage = $("kids-stage"); if (!stage) return;
+  if (locked) return; // round 3: while locked, the lock itself holds fullscreen — the sideways/portrait rule must never pull a locked show out of fullscreen (a portrait lock is still fullscreen)
   var r = kidsFsRotate(fsSt, fsLandscape(), playing, !!fsElement());
   fsSt = { armed: r.armed };
   if (r.action === "enter") {
@@ -1409,6 +1429,22 @@ var locked = false;
 var HOLD_MS = 3000;
 var holdStart = 0, holdRaf = 0, holdPointer = null;
 
+/* Round 3: locking puts the show FULL SCREEN, and unlocking brings it
+   back. Fullscreen is requested on #kids-stage — the same wrapper that
+   holds the player AND the lock overlay — so the lock (and the kids
+   Back / Skip buttons inside it) cover the video in fullscreen exactly
+   as they do out of it. A missing or refused Fullscreen API (some
+   iPhones) fails silently: the lock still drops in either way. */
+function lockFsEnter() {
+  var stage = $("kids-stage"); if (!stage || fsElement()) return;
+  var req = stage.requestFullscreen || stage.webkitRequestFullscreen;
+  if (!req) return;
+  try { var p = req.call(stage); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+}
+function lockFsExit() {
+  if (!fsElement()) return;
+  if (document.exitFullscreen) { try { document.exitFullscreen(); } catch (e) {} }
+}
 function engageLock() {
   locked = true;
   var ov = $("kids-lock"), hint = $("kids-lock-hint");
@@ -1416,6 +1452,7 @@ function engageLock() {
   hint.classList.remove("fade");
   setTimeout(function () { hint.classList.add("fade"); }, 3000); // hint melts away, screen stays clear
   acquireWake(); // screen stays on for the whole handover
+  lockFsEnter(); // the locked show fills the whole screen
   if (playing) { /* the show keeps rolling under the clear lock */ }
 }
 function disengageLock() {
@@ -1423,6 +1460,7 @@ function disengageLock() {
   $("kids-lock").hidden = true;
   hidePad();
   hideSleepSlate();
+  lockFsExit(); // grown-up has the phone back: out of fullscreen
   if (!playing) releaseWake();
   resetRing();
 }
@@ -1463,6 +1501,50 @@ var lockEl = $("kids-lock");
 });
 lockEl.addEventListener("click", function (e) { e.preventDefault(); e.stopPropagation(); });
 lockEl.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+/* --- the kids own buttons: Back + Skip (round 3) ---
+   These two buttons live INSIDE the lock overlay, and they are the only
+   controls a child can use while locked. Their touch handlers stop
+   propagation, so the overlay swallow above never eats their taps, and
+   their clicks drive the same playlist advance the grown-up transport
+   uses. They do nothing at all while unlocked, while the PIN pad is up,
+   or once the end / sleep slate is showing — a finished show stays
+   finished until a grown-up restarts it. */
+function kidNavOpen() {
+  if (!locked) return false;
+  if (!player || !playerReady) return false;
+  if (pinPadUp()) return false;
+  var es = $("kids-end-slate"), ss = $("kids-sleep-slate");
+  if (es && !es.hidden) return false;
+  if (ss && !ss.hidden) return false;
+  return true;
+}
+function kidSkipNext() {
+  if (!kidNavOpen() || !list.length) return;
+  advance(1); // the next video — same path as the grown-up Skip button
+}
+function kidGoBack() {
+  if (!kidNavOpen() || !list.length) return;
+  var t = 0;
+  try { if (player && player.getCurrentTime) t = player.getCurrentTime() || 0; } catch (e) {}
+  var d = kidsKidBack(t, cur, list.length);
+  if (d.action === "restart") { // watch this one again, from the top
+    try { player.seekTo(0, true); player.playVideo(); } catch (e) { playIndex(cur); }
+  } else if (d.action === "prev") {
+    advance(-1); // the video before this one
+  }
+}
+(function wireKidNav() {
+  var prev = $("kids-kid-prev"), next = $("kids-kid-next");
+  if (!prev || !next) return;
+  [prev, next].forEach(function (btn) {
+    ["touchstart", "touchmove", "touchend", "wheel", "contextmenu"].forEach(function (ev) {
+      btn.addEventListener(ev, function (e) { e.stopPropagation(); }, { passive: true });
+    });
+  });
+  prev.addEventListener("click", function (e) { e.stopPropagation(); kidGoBack(); });
+  next.addEventListener("click", function (e) { e.stopPropagation(); kidSkipNext(); });
+})();
 
 /* ---------- PIN pad ---------- */
 var padMode = "unlock";   // "unlock" | "set" | "set-confirm"
