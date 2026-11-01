@@ -2809,7 +2809,15 @@ html.popdj #dj-mini{display:none!important}
   let vsHlsP = null;
   function vsLoadHls() {
     if (window.Hls) return Promise.resolve(true);
-    if (!vsHlsP) vsHlsP = new Promise((res) => { const s = document.createElement("script"); let done = false; const fin = (ok) => { if (done) return; done = true; if (!ok) vsHlsP = null; res(ok); }; s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"; s.onload = () => fin(!!window.Hls); s.onerror = () => fin(false); document.head.appendChild(s); setTimeout(() => fin(!!window.Hls), 12000); });
+    /* P4 (2026-11-01): hls.js is self-hosted now — the pinned 1.5.13 build
+     * ships in the repo at js/vendor/hls.min.js and rides the build stamp,
+     * so the service-worker skeleton caches it cache-first like every other
+     * shell script and a jsdelivr outage can no longer kill the stream
+     * screens. The CDN copy remains as a one-shot fallback if the local
+     * file ever fails to load; the retry semantics are unchanged. */
+    if (!vsHlsP) vsHlsP = new Promise((res) => { let done = false; const fin = (ok) => { if (done) return; done = true; if (!ok) vsHlsP = null; res(ok); };
+      const attempt = (src, next) => { const s = document.createElement("script"); let settled = false; const settle = () => { if (settled) return; settled = true; if (window.Hls) fin(true); else if (next) next(); else fin(false); }; s.src = src; s.onload = settle; s.onerror = settle; document.head.appendChild(s); setTimeout(settle, 12000); };
+      attempt("js/vendor/hls.min.js?v=" + MW_DJ_BUILD, () => attempt("https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js", null)); });
     return vsHlsP;
   }
   function vsShowHls(url) {
@@ -6124,7 +6132,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793574575;
+  const MW_DJ_BUILD = 1793576709;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
