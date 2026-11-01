@@ -265,8 +265,23 @@
       if (slots.length || barSlots.length) setInterval(function () { if (!document.hidden) { slots.forEach(fill); barSlots.forEach(fillBar); } }, 12000);
     };
     var n = 0, step = function () { if (++n === 2) done(); };
-    fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) { got.printify = (j && j.products) || []; }).catch(function () {}).then(step);
-    fetch("/api/shopify").then(function (r) { return r.json(); }).then(function (j) { got.shopify = (j && j.products) || []; }).catch(function () {}).then(step);
+    if (window.MW_shopCatalog) {
+      // device-max B2: read the one device-held catalog app-core maintains
+      // instead of fetching the union a second time; if the background
+      // revalidation swaps in a fresher catalog, refresh the rotation pool
+      // (the 12s rotation picks the new products up on its next pass).
+      window.MW_shopCatalog().then(function (c) { got.printify = (c && c.store) || []; got.shopify = (c && c.shopify) || []; }).catch(function () {}).then(function () { step(); step(); });
+      window.addEventListener("mw-catalog", function () {
+        window.MW_shopCatalog().then(function (c) { if (!c) return;
+          var pf = (c.store || []).map(function (p) { return { title: p.title, img: p.img, price: p.price, url: p.url, src: "Printify" }; });
+          var sh = (c.shopify || []).filter(function (p) { return /^https:\/\//.test(p.url || ""); }).map(function (p) { return { title: p.title, img: p.img, price: p.price, url: (p.digital && p.buy) ? p.buy : p.url, src: "Shopify" }; });
+          if (pf.length || sh.length) products = shuffle(pf.concat(sh));
+        }).catch(function () {});
+      });
+    } else {
+      fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) { got.printify = (j && j.products) || []; }).catch(function () {}).then(step);
+      fetch("/api/shopify").then(function (r) { return r.json(); }).then(function (j) { got.shopify = (j && j.products) || []; }).catch(function () {}).then(step);
+    }
   }
 
   function boot() { mount(); start(); }
