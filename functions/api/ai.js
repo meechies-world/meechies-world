@@ -3,6 +3,7 @@
 // chat box (members can pick their brain), image makers return a picture, and the ears / voice /
 // language-plumbing models answer their own JSON shapes for the site's features to use.
 import { answer, verifyAnswer, take, logQuestion, recentQuestions, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { foldChat } from "../../lib/brain-member.js";
 import { userFrom, isAdmin, take as cfTake } from "../../lib/cf.js";
 import { MODELS, MODEL_BY_ID } from "../../lib/ai-catalog.js";
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -123,13 +124,17 @@ export async function onRequestPost({ request, env, waitUntil }) {
   // fair-use limit: 60 questions an hour, 300 a day per member (the reply explains it, so every chat box shows it)
   if (!(await lim("ai", 3600, 60)) || !(await lim("ai-day", 86400, 300)))
     return json({ reply: "You've used Meechie's AI a lot this hour. Take a short break and try again later.", limited: true });
-  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true });
+  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true, uid: me.id });
   // the brain remembers what members ask (private table, never in the public
   // docs): it feeds the "lately members have been asking" facts on the next
   // answers, and the owner can read the log at GET /api/ai?log.
   if (!out.error && !out.limited && typeof waitUntil === "function") {
     const lastUser = turns[turns.length - 1].content;
     waitUntil((async () => { try { await logQuestion(env, me.id, lastUser); } catch (_) {} })());
+    // host brain (PR-B3): fold THIS member's own signals into their own
+    // memory doc — topics by cheap string matching, never the transcript,
+    // never visible to any other member (lib/brain-member.js throttles it).
+    waitUntil((async () => { try { await foldChat(env, me, lastUser); } catch (_) {} })());
   }
   return json(out, out.error ? 503 : 200);
 }
