@@ -687,7 +687,7 @@
   }
 
   /* ---------- live mic (feeds the show recording + auto-duck) ---------- */
-  let liveMic = null, micStreamLive = false;
+  let liveMic = null; // micStreamLive lives in dj.js scope (shared with the 500ms mic-meter tick); redeclaring here would shadow it inside this eval pack
   $("#mic-on").addEventListener("click", async () => {
     if (liveMic) { liveMic.getTracks().forEach((t) => t.stop()); liveMic = null; micStreamLive = false; $("#mic-on").textContent = "Open the mic"; $("#mic-lvl").style.width = "0"; micHot = 0; levels(); return; }
     try {
