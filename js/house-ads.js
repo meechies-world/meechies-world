@@ -53,7 +53,7 @@
     ".mw-adbar .mw-adbar-price{flex:0 0 auto;color:#d4af37;font-weight:800;font-size:13.5px;white-space:nowrap}" +
     ".mw-adbar .mw-adbar-cta{flex:0 0 auto;white-space:nowrap;font-weight:700;font-size:12.5px;color:#d4af37}" +
     ".mw-adbar .mw-adbar-x{flex:0 0 auto;background:none;border:0;color:#f3ead2;opacity:.55;font-size:17px;cursor:pointer;line-height:1;padding:0 10px}" +
-    "@media (max-width:640px){.mw-adbar{height:38px}.mw-adbar .mw-adbar-tag{display:none}.mw-adbar .mw-adbar-title{font-size:12.5px}}";
+    "@media (max-width:640px){.mw-adbar{height:38px;bottom:66px}.mw-adbar .mw-adbar-tag{display:none}.mw-adbar .mw-adbar-title{font-size:12.5px}}";
   document.head.appendChild(css);
 
   var products = [];

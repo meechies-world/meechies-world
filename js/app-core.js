@@ -1456,7 +1456,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793550206;
+const MW_SHELL_BUILD = 1793550707;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
@@ -1479,6 +1479,7 @@ const MW_SHELL_BUILD = 1793550206;
   let soundAt = 0;
   const recentSound = () => { if (sounding()) { soundAt = Date.now(); return true; } return !!soundAt && Date.now() - soundAt < 10 * 60e3; };
   window.MW_recentSound = recentSound;
+  const sharingNow = () => { try { return !!(window.MW_DJ && typeof MW_DJ.sharing === "function" && MW_DJ.sharing()); } catch (_) { return false; } }; // dj.js reports: this tab is publishing a share, or a share is live on the station
   try { media.addEventListener("playing", () => { soundAt = Date.now(); }); } catch (_) {}
 
   /* hidden-only classes: the booth console on screen in this tab, a
@@ -1519,6 +1520,7 @@ const MW_SHELL_BUILD = 1793550206;
     if (!s.target) return "wait";
     if (s.fired || s.guardFired || s.healSpent) return "hold";
     if (s.sounding) return "hold";
+    if (s.sharing) return "hold"; // SHARE GATE (2026-11-01): a live master-screen share is never cut by an automatic refresh — on the publisher tab a reload kills the capture outright; on a viewer tab it is a skip
     if (s.hidden) return "fire";
     if (s.pinned) return "wait";
     if (s.modal) return "wait";
@@ -1533,6 +1535,7 @@ const MW_SHELL_BUILD = 1793550206;
       target,
       hidden: !!document.hidden,
       sounding: recentSound(),
+      sharing: sharingNow(),
       pinned: pinned(),
       modal: modalOpen(),
       idleMs: Date.now() - lastAct,
