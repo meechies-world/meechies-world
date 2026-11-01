@@ -458,8 +458,14 @@ body.has-player{padding-bottom:150px}
   .track{grid-template-columns:40px 44px minmax(0,1fr) auto;gap:8px;padding:10px}
   .track .t b,.track .t small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .track .n,.track .d{display:none}
-  .player-bar .wrap{grid-template-columns:minmax(0,1fr) auto}
+  .player-bar .wrap{grid-template-columns:minmax(0,1fr) auto;gap:8px}
   .pb-right{display:none}
+  /* six controls since the bubble button (2026-11-01): slimmer on phones so the song title keeps room */
+  .pb-ctrl{gap:4px}
+  .pb-ctrl .ibtn:not(.big){width:32px;height:32px}
+  .pb-eqbtn{min-width:34px}
+  .pb-now{gap:8px}
+  .pb-now .cover{width:38px;height:38px}
 }
 
 /* ===== Masonic edition: centered layout, gold leaf, pillars, ornaments ===== */

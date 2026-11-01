@@ -6442,7 +6442,7 @@ html.popdj #dj-mini{display:none!important}
       if (SANDBOX) return;
       if (!OWNER() || !leadDrive() || serverMirror()) { daReset(); return; }
       if (!S.live || !S.autodj) { daReset(); return; }
-      if (S.vstream && S.vstream.on) { daReset(); daR.sig = daSig(); return; } // a live share has taken over the radio - the tables are paused for it by design
+      if ((S.vstream && S.vstream.on) || (S.msvideo && S.msvideo.on)) { daReset(); daR.sig = daSig(); return; } // a live share has taken over the radio - the tables are paused for it by design
       const sounding = DECKS.some((k) => { const s = S[k]; if (s && s.playing) return true; const d = decks[k]; return !!(d && d.el && !d.el.paused && !d.el.ended); });
       if (sounding) { daReset(); daR.sig = daSig(); return; }
       if (S.pausedAt && now - S.pausedAt < 30 * 60e3) { daReset(); daR.sig = daSig(); return; }
@@ -6686,11 +6686,11 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793463823;
+  const MW_DJ_BUILD = 1793534464;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
-    const isListening = () => { try { return !!(window.MW_DJ && typeof window.MW_DJ.listening === "function" && window.MW_DJ.listening()); } catch (_) { return false; } };
+    const isListening = () => { try { return !!((window.MW_DJ && typeof window.MW_DJ.listening === "function" && window.MW_DJ.listening()) || (typeof window.MW_recentSound === "function" && window.MW_recentSound())); } catch (_) { return false; } };
     const guardDone = () => { try { return sessionStorage.getItem("mw-guard-" + updBuild) === "1"; } catch (_) { return false; } };
     const showUpdNote = (playing) => {
       let n = document.getElementById("dj-upd-note");

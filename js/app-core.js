@@ -1392,7 +1392,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793444216;
+const MW_SHELL_BUILD = 1793534464;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
@@ -1404,8 +1404,18 @@ const MW_SHELL_BUILD = 1793444216;
     try { if (window.MW_DJ && typeof MW_DJ.listening === "function" && MW_DJ.listening()) return true; } catch (_) {}
     try { if (typeof media !== "undefined" && media && !media.paused && !media.ended && media.readyState >= 2) return true; } catch (_) {}
     try { if (typeof xfPlayer !== "undefined" && xfActive && xfPlayer && !xfPlayer.paused && !xfPlayer.ended) return true; } catch (_) {}
+    try { for (const v of document.querySelectorAll("video")) if (!v.paused && !v.ended && !v.muted) return true; } catch (_) {}
     return false;
   };
+  /* SOUND GATE between songs (2026-11-01): on a locked phone the shell
+   * radio is briefly ended/loading while tuneIn() fetches the next song.
+   * That gap is not silence — hold any reload for 10 minutes after this
+   * tab last made sound, so a locked phone never reloads (and dies)
+   * between songs. dj.js's guardian reads the same gate. */
+  let soundAt = 0;
+  const recentSound = () => { if (sounding()) { soundAt = Date.now(); return true; } return !!soundAt && Date.now() - soundAt < 10 * 60e3; };
+  window.MW_recentSound = recentSound;
+  try { media.addEventListener("playing", () => { soundAt = Date.now(); }); } catch (_) {}
 
   /* hidden-only classes: the booth console on screen in this tab, a
    * SANDBOX / Playground session (?playdj=1 / ?popdj=1), the kids app */
@@ -1423,6 +1433,8 @@ const MW_SHELL_BUILD = 1793444216;
   const modalOpen = () => {
     try {
       if (document.querySelector("dialog[open]")) return true;
+      const ae = document.activeElement;
+      if (ae && ae.matches && ae.matches("input,textarea,[contenteditable],[contenteditable=true]") && (ae.value || ae.textContent || "").trim()) return true;
       const vis = (el) => !!el && el.getClientRects().length > 0;
       if (vis(document.getElementById("gate"))) return true;
       for (const el of document.querySelectorAll('[role="dialog"]')) if (vis(el)) return true;
@@ -1456,7 +1468,7 @@ const MW_SHELL_BUILD = 1793444216;
     return {
       target,
       hidden: !!document.hidden,
-      sounding: sounding(),
+      sounding: recentSound(),
       pinned: pinned(),
       modal: modalOpen(),
       idleMs: Date.now() - lastAct,

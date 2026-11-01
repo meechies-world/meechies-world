@@ -962,7 +962,10 @@ export async function onRequestPost({ request, env }) {
     // from this same visitor already waiting in the DJ queue line
     // blocks a second. Picks are deleted as they play, so any stored
     // pick carrying this ip is still active.
-    const mine = await env.DB.prepare("select count(*) as n from docs where coll = 'requests' and data like ? and data like ?").bind('%"ip":"' + ip + '"%', '%"kind":"pick"%').first();
+    // (2026-11-01) only picks from the last 2 hours count: an unknown-length
+    // video pick waits for the live booth and would otherwise lock this
+    // visitor out of requesting for as long as the owner is away.
+    const mine = await env.DB.prepare("select count(*) as n from docs where coll = 'requests' and data like ? and data like ? and coalesce(json_extract(data, '$.at'), 0) > ?").bind('%"ip":"' + ip + '"%', '%"kind":"pick"%', now - 2 * 3600e3).first();
     if (mine && mine.n >= 1) return json({ ok: false, error: "one_at_a_time" }, 409);
     const extra = { shoutout: String(b.shoutout || "").slice(0, 140), by: String(b.by || "").slice(0, 40), rqid: /^[A-Za-z0-9-]{1,40}$/.test(String(b.rqid || "")) ? String(b.rqid) : "" };
     if (yt) data = { kind: "pick", yt, title, cover: String(b.cover || "").slice(0, 300), dur: Math.max(0, Math.min(3600, +b.dur || 0)), at: now, guest: true, ip, ...extra };
