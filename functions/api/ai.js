@@ -124,7 +124,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
   // fair-use limit: 60 questions an hour, 300 a day per member (the reply explains it, so every chat box shows it)
   if (!(await lim("ai", 3600, 60)) || !(await lim("ai-day", 86400, 300)))
     return json({ reply: "You've used Meechie's AI a lot this hour. Take a short break and try again later.", limited: true });
-  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true, uid: me.id });
+  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true, uid: me.id, tier: body.tier === "quick" || body.tier === "deep" || body.tier === "auto" ? body.tier : undefined });
   // the brain remembers what members ask (private table, never in the public
   // docs): it feeds the "lately members have been asking" facts on the next
   // answers, and the owner can read the log at GET /api/ai?log.
