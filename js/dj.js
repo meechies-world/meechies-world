@@ -6686,7 +6686,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793549991;
+  const MW_DJ_BUILD = 1793550206;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -9021,7 +9021,8 @@ html.popdj #dj-mini{display:none!important}
   async function railLoad() {
     if (railData || railBusy) return; railBusy = true;
     try {
-      const rs = await Promise.allSettled([fetch("/api/store").then((r) => r.json()), fetch("/api/shopify").then((r) => r.json())]);
+      const cat = window.MW_shopCatalog ? await window.MW_shopCatalog().catch(() => null) : null;
+      const rs = cat ? [{ status: "fulfilled", value: { products: cat.store || [] } }, { status: "fulfilled", value: { products: cat.shopify || [] } }] : await Promise.allSettled([fetch("/api/store").then((r) => r.json()), fetch("/api/shopify").then((r) => r.json())]);
       const pf = (rs[0].status === "fulfilled" && rs[0].value && Array.isArray(rs[0].value.products) ? rs[0].value.products : []).map((x) => ({ title: x.title, img: x.img, price: x.price, url: x.url, src: "Printify" }));
       const sh = (rs[1].status === "fulfilled" && rs[1].value && Array.isArray(rs[1].value.products) ? rs[1].value.products : []).filter((x) => /^https:\/\//.test(x.url || "")).map((x) => ({ title: x.title, img: x.img, price: x.price, url: (x.digital && x.buy) ? x.buy : x.url, src: "Shopify" }));
       const seen = new Set(), mix = [];
