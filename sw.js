@@ -36,9 +36,12 @@ const SKEL_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // backstop: re-baseline the shell
 // Best-effort per file: one bad URL never fails the install, and anything
 // already stored is left exactly as it is.
 const PRECACHE = ["/", "/kids-app/", "/radio-app/", "/ai-app/", "/apps/",
+  "/book-app/", "/books-app/", "/dating-app/", "/fans-app/", "/games-app/",
+  "/jobs-app/", "/legal-app/", "/live-app/", "/shop-app/", "/studio-app/",
+  "/tv-app/", "/world-app/",
   "/img/radio-promo.jpg", "/img/radio-promo-640.webp", "/img/radio-promo-1080.webp",
-  "/img/kids-art.jpg",
-  "/img/tv-poster.jpg?v=1793548588", "/img/tv-poster-640.webp?v=1793548588", "/img/tv-poster-1080.webp?v=1793548588",
+  "/img/kids-art-640.webp",
+  "/img/tv-poster.jpg?v=1793549359", "/img/tv-poster-640.webp?v=1793549359", "/img/tv-poster-1080.webp?v=1793549359",
   "/img/icon-192.png", "/img/apple-touch-icon.png"];
 async function precacheShell() {
   try {
