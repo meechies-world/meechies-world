@@ -16,7 +16,7 @@ const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"]};
    path: tab tap, deep-link hash, in-page button), in their original tag order.
    Everything with homepage or cross-page duties stays eager. */
 const LAZY_SRC={
-  live:["js/golive.js?v=1793185302","js/obs.js?v=1793576709"],
+  live:["js/golive.js?v=1793185302","js/obs.js?v=1793577075"],
   predict:["js/predict.js?v=1793185302"],
   jobs:["js/jobs.js?v=1793185302"],
   connect:["js/connect.js?v=1793185302"],
@@ -1461,7 +1461,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793576840;
+const MW_SHELL_BUILD = 1793577075;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();

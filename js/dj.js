@@ -2806,6 +2806,25 @@ html.popdj #dj-mini{display:none!important}
    * latency allowed to 24, and fragment/level/manifest loads retry
    * 6 times instead of giving up. A few seconds more latency is
    * accepted; a skip is not. */
+  /* P9 (2026-11-01): ONE HLS config for every stream screen. The values
+   * live here and are published on window.MW_HLS_CFG; obs.js (the Live
+   * page) builds its player from the same object, so the two players can
+   * never drift apart again. Tuning, per the 2026-11-01 research with the
+   * NO-SKIP LAW outranking it: the 90s buffer cushion, the 120s ceiling,
+   * the 60s back buffer, the 8-segment live target and the 24-segment
+   * latency allowance all STAY (the research suggested 30/60 and a
+   * 3-segment target — a smaller cushion is a weaker promise, so those
+   * numbers were rejected and the latency stands). What the research did
+   * add without touching the cushion: slower, more conservative ABR —
+   * the bandwidth estimate is discounted (0.85) and quality steps UP only
+   * on strong evidence (up factor 0.5 instead of the 0.7 default), so a
+   * viewer parks on a rendition their connection can actually hold.
+   * startLevel is deliberately NOT forced low: for live playback hls.js
+   * picks the opening rendition from the bandwidth estimate, and it is
+   * the buffer cushion, not the opening rendition, that carries stalls.
+   * Fragment, level and manifest loads keep their 6 retries at 1s. */
+  const MW_HLS_CFG = { maxBufferLength: 90, maxMaxBufferLength: 120, backBufferLength: 60, liveSyncDurationCount: 8, liveMaxLatencyDurationCount: 24, maxLiveSyncPlaybackRate: 1.5, abrBandWidthFactor: 0.85, abrBandWidthUpFactor: 0.5, fragLoadingMaxRetry: 6, fragLoadingRetryDelay: 1000, levelLoadingMaxRetry: 6, levelLoadingRetryDelay: 1000, manifestLoadingMaxRetry: 6, manifestLoadingRetryDelay: 1000 };
+  try { window.MW_HLS_CFG = MW_HLS_CFG; } catch (_) {}
   let vsHlsP = null;
   function vsLoadHls() {
     if (window.Hls) return Promise.resolve(true);
@@ -2826,7 +2845,7 @@ html.popdj #dj-mini{display:none!important}
     vsStageEls().forEach((st) => { const v = vsVid(st); try {
       if (v._vsHlsUrl !== url) { vsKillHls(v); try { v.srcObject = null; } catch (_) {} v._vsHlsUrl = url;
         if (v.canPlayType && v.canPlayType("application/vnd.apple.mpegurl")) v.src = url;
-        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls({ maxBufferLength: 90, maxMaxBufferLength: 120, backBufferLength: 60, liveSyncDurationCount: 8, liveMaxLatencyDurationCount: 24, maxLiveSyncPlaybackRate: 1.5, fragLoadingMaxRetry: 6, fragLoadingRetryDelay: 1000, levelLoadingMaxRetry: 6, levelLoadingRetryDelay: 1000, manifestLoadingMaxRetry: 6, manifestLoadingRetryDelay: 1000 }); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
+        else if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()) { const h = new window.Hls(Object.assign({}, MW_HLS_CFG)); h.loadSource(url); h.attachMedia(v); v._vsHls = h; }
         else { vsLoadHls().then((ok) => { if (ok && vsShown.hls === url) vsShowHls(url); }); }
       }
       const p = v.play(); if (p && p.catch) p.catch(() => {});
@@ -4424,7 +4443,7 @@ html.popdj #dj-mini{display:none!important}
     return sl;
   }
   try { window.MW_bufStep = bufStep; } catch (_) {}
-  function bcastPos(k) { const s = S[k]; if (!s) return 0; if (!s.playing) return s.pos || 0; const now = boothLead ? Date.now() : Date.now() + clockOff; return Math.max(0, (now - (s.start || now)) / 1000); }
+  function bcastPos(k) { const s = S[k]; if (!s) return 0; if (!s.playing) return s.pos || 0; const now = boothLead ? Date.now() : serverNow(); return Math.max(0, (now - (s.start || now)) / 1000); }
   function audPos(k) { try { if (!OWNER()) return null; const d = decks[k]; if (!d || !d.el || !S[k] || !S[k].playing) return null; const ct = +d.el.currentTime; return isFinite(ct) && ct > 0 ? ct : null; } catch (_) { return null; } }
   function slotWant(scr, k) { if (OWNER()) { const ap = audPos(k); if (ap != null) return ap; } return bcastPos(k); }
   /* ONE SOUNDING SCREEN (the mix half of the one-audio-clock rule):
@@ -5304,7 +5323,7 @@ html.popdj #dj-mini{display:none!important}
   // drift seeks clean. Loops, paused elements (a scratch in progress), and
   // brake/spin moves (noSync stamp) are left alone. Video decks can only be
   // re-seeked, and coarsely (their player lands on keyframes).
-  function syncDecks() { if (document.hidden) return; const now = Date.now() + clockOff; const nowT = boothLead ? Date.now() : now; /* mwFlapFix: the booth lead authored start on its own clock, so its sync target is plain local time with no clockOff; listeners keep the corrected basis */ DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; /* end zone (fix, 2026-10-28): with <=5s left on the element itself, no drift correction at all — it plays out into the crossfade */ const elDurZ = (d.el && isFinite(d.el.duration) && d.el.duration > 0) ? d.el.duration : 0; if (elDurZ > 0 && elDurZ - (d.el.currentTime || 0) <= 5) return; const target = Math.max(0, (nowT - (s.start || nowT)) / 1000); const durT = +s.dur || 0; if (durT > 0 && target > durT + 2) { try { d.el.pause(); } catch (_) {} return; } if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 5) { follow(k); d.noSync = Date.now() + 3000; /* mwFlapFix: rest 3s after a sync seek so shim clock jitter cannot retrigger it */ } return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
+  function syncDecks() { if (document.hidden) return; const now = serverNow(); const nowT = boothLead ? Date.now() : now; /* mwFlapFix: the booth lead authored start on its own clock, so its sync target is plain local time with no clockOff; listeners keep the corrected basis */ DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; /* end zone (fix, 2026-10-28): with <=5s left on the element itself, no drift correction at all — it plays out into the crossfade */ const elDurZ = (d.el && isFinite(d.el.duration) && d.el.duration > 0) ? d.el.duration : 0; if (elDurZ > 0 && elDurZ - (d.el.currentTime || 0) <= 5) return; const target = Math.max(0, (nowT - (s.start || nowT)) / 1000); const durT = +s.dur || 0; if (durT > 0 && target > durT + 2) { try { d.el.pause(); } catch (_) {} return; } if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 5) { follow(k); d.noSync = Date.now() + 3000; /* mwFlapFix: rest 3s after a sync seek so shim clock jitter cannot retrigger it */ } return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
   setInterval(syncDecks, 500);
   // the screens follow the shared state on their own clock: a booth window that
   // is not the one driving the sound, and a visitor who has not tuned in yet,
@@ -5944,7 +5963,7 @@ html.popdj #dj-mini{display:none!important}
   /* how long a present visitor has been on, from the keeper first-seen stamp
      (users[].since / guestSince in the /api/station answer), read against the
      server clock via clockOff so a wrong device clock cannot bend it */
-  const doorDur = (since) => { if (!since) return ""; const s = Math.max(0, Math.round(((Date.now() + clockOff) - since) / 1000)); if (s < 60) return "under a minute"; const m = Math.floor(s / 60); if (m < 60) return m + "m"; return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"; };
+  const doorDur = (since) => { if (!since) return ""; const s = Math.max(0, Math.round((serverNow() - since) / 1000)); if (s < 60) return "under a minute"; const m = Math.floor(s / 60); if (m < 60) return m + "m"; return Math.floor(m / 60) + "h " + String(m % 60).padStart(2, "0") + "m"; };
   let doorHereHTML = "";
   function doorBlip() { try { const c = new (window.AudioContext || window.webkitAudioContext)(); const o = c.createOscillator(), g = c.createGain(); o.type = "sine"; o.frequency.setValueAtTime(880, c.currentTime); o.frequency.setValueAtTime(1320, c.currentTime + 0.12); g.gain.setValueAtTime(0.0001, c.currentTime); g.gain.exponentialRampToValueAtTime(0.15, c.currentTime + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.5); o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + 0.55); setTimeout(() => c.close(), 800); } catch (_) {} }
   function doorPaint() {
@@ -6111,8 +6130,26 @@ html.popdj #dj-mini{display:none!important}
     try { arriveWatch(users); } catch (_) {} // and every owner screen gets the arrival notice
   }
   const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
-    fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) clockOff = clockOff * 0.7 + (j.now - Date.now()) * 0.3; if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); }).catch(() => {}); };
+    const t0 = Date.now(); fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) { const t2 = Date.now(); clockSamples.push(j.now - (t0 + t2) / 2); if (clockSamples.length > 5) clockSamples.shift(); const srt = clockSamples.slice().sort((a, b) => a - b); clockOff = srt[Math.floor(srt.length / 2)]; clockAnchor = { wall: t2, mono: performance.now() }; } if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); }).catch(() => {}); };
   let clockOff = 0; // this device's clock error vs the server, learned from keeper pings — the sync math below trusts it over the local clock
+  /* Clock estimation, NTP-style (2026-11-01): each keeper ping now stamps
+   * its send and receive instants, so a sample estimates the offset at the
+   * ping's MIDPOINT (j.now - (t0 + t2) / 2) instead of at receipt — the old
+   * rule folded the whole round trip into the "error". clockOff is the
+   * rolling MEDIAN of the last 5 samples, so one slow ping cannot bend it.
+   * Samples ride the existing 12s ping (fresher than the 30s re-sync the
+   * research asked for; the protected ping itself is unchanged). Between
+   * samples, serverNow() advances on the MONOTONIC clock (performance.now)
+   * from the last anchor, so a device wall-clock jump (an NTP correction
+   * on the phone) cannot bend a position mid-song. The drift ladders that
+   * consume this clock are unchanged: syncDecks keeps its 0.08 deadband /
+   * 0.35 snap with rate nudges on the native deck elements (real rates),
+   * and the screen sync lock keeps SYNC_DEAD 0.12 / SYNC_SNAP 0.35 with
+   * rate nudges only where a player reports real near-1x rates
+   * (rateOk), holds and seeks everywhere else. */
+  let clockSamples = [];
+  let clockAnchor = null;
+  function serverNow() { if (clockAnchor) return clockAnchor.wall + clockOff + (performance.now() - clockAnchor.mono); return Date.now() + clockOff; }
   if (!SANDBOX) { pingKeeper(); setInterval(pingKeeper, 12000); }
   /* ---------- stale-tab guardian (mwGuardian, 2026-10-28) ----------
    * The flap war: a booth tab left open since morning kept running code from
@@ -6132,7 +6169,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793576840;
+  const MW_DJ_BUILD = 1793577075;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6178,6 +6215,93 @@ html.popdj #dj-mini{display:none!important}
     setTimeout(check, 20000);
     setInterval(() => { check(); if (updBuild && OWNER()) evaluate(); }, 60000);
   })();
+
+  /* ---------- QUEUE PRELOAD (owner, 2026-11-01: "load my queue into
+   * their phone so it has what its about to get already") ----------
+   * While a song plays for a tuned-in listener, the head of the up-next
+   * line (the shared queue, S.queue — the order every client sees) is
+   * prepared on THIS device:
+   *   - file songs (his library, Internet Archive): the whole file is
+   *     fetched in the background into the mw-music cache — the cache the
+   *     service worker serves deck audio from, keyed by the exact src
+   *     string the deck will request — so the changeover plays from the
+   *     device with no network wait;
+   *   - YouTube songs: never downloaded (YouTube rules) — the next one
+   *     or two are pre-cued in hidden warm players built by the same
+   *     mkVidPlayer the viewer screens use, so the embed, its API and
+   *     its poster are warm when the turn comes;
+   *   - SoundCloud songs: a hidden widget iframe in the stage's own URL
+   *     form warms the player the stage sync will use.
+   * Manners (NO-SKIP law): fetches are low-priority and idle-scheduled,
+   * so a preload can never starve the song that is playing; data-saver
+   * and 2g connections get warm players only, never a forced download;
+   * the booth-lead tab (it has the real decks) and Bubble mode (the
+   * listener asked for minimal) never preload. Caps: the first 3 items
+   * of the line, at most 2 file downloads and 2 warm YouTube players. */
+  const preState = { files: new Set(), yt: new Map(), sc: new Map() };
+  const preDataLight = () => { try { const c = navigator.connection; return !!(c && (c.saveData || /^(slow-)?2g$/.test(c.effectiveType || ""))); } catch (_) { return false; } };
+  const preWarmMount = () => { let m = document.getElementById("mw-prewarm"); if (!m) { m = document.createElement("div"); m.id = "mw-prewarm"; m.setAttribute("aria-hidden", "true"); m.style.cssText = "position:fixed;left:-9999px;top:0;width:320px;height:180px;overflow:hidden;pointer-events:none"; document.body.appendChild(m); } return m; };
+  const preFile = (item) => {
+    const url = item && item.src;
+    if (!okUrl(url) || preState.files.has(url)) return;
+    if (DECKS.some((k) => S[k] && S[k].src === url)) return; // a deck already holds it
+    preState.files.add(url);
+    const run = async () => {
+      try {
+        if (!("caches" in window)) return;
+        const cache = await caches.open("mw-music");
+        if (await cache.match(url)) return;
+        const r = await fetch(url, { priority: "low" });
+        if (!r || !r.ok) return;
+        const len = +(r.headers.get("content-length") || 0);
+        if (len && len >= 12 * 1024 * 1024) return; // the worker would not store it either
+        await cache.put(url, r);
+      } catch (_) {}
+    };
+    if (window.requestIdleCallback) requestIdleCallback(() => { run(); }, { timeout: 8000 }); else setTimeout(run, 1500);
+  };
+  const preYt = (item) => {
+    const tok = item && item.yt;
+    if (!tok || preState.yt.has(tok)) return;
+    if (DECKS.some((k) => S[k] && S[k].yt === tok)) return; // the screens warm deck videos themselves
+    const mount = document.createElement("div"); mount.style.cssText = "width:320px;height:180px"; preWarmMount().appendChild(mount);
+    const rec = { p: null, mount: mount };
+    preState.yt.set(tok, rec);
+    // mkVidPlayer constructs synchronously and needs the provider API
+    // already loaded (the screens await it the same way, in pipSync and
+    // the vmix builder) — build when the API lands, unless pruned by then
+    const build = () => { if (preState.yt.get(tok) !== rec) return; try { rec.p = mkVidPlayer(mount, tok, true, "", true, null); } catch (_) {} };
+    const prov = vparseTok(tok).p;
+    if (prov === "yt") ytApi().then(build); else if (prov === "dm") dmApi().then(build); else vmApi().then(build);
+  };
+  const preSc = (item) => {
+    const url = item && item.scUrl;
+    if (!url || preState.sc.has(url)) return;
+    if (DECKS.some((k) => S[k] && S[k].kind === "sc" && S[k].scUrl === url)) return;
+    const ifr = document.createElement("iframe"); ifr.src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(url) + "&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"; ifr.style.cssText = "width:300px;height:80px;border:0"; ifr.setAttribute("aria-hidden", "true"); preWarmMount().appendChild(ifr);
+    preState.sc.set(url, ifr);
+  };
+  const prePrune = (head) => {
+    const ytToks = new Set(head.map((x) => x && x.yt).filter(Boolean)), scUrls = new Set(head.map((x) => x && x.scUrl).filter(Boolean));
+    preState.yt.forEach((v, tok) => { if (!ytToks.has(tok)) { try { if (v.p && v.p.destroy) v.p.destroy(); } catch (_) {} try { v.mount.remove(); } catch (_) {} preState.yt.delete(tok); } });
+    preState.sc.forEach((el, url) => { if (!scUrls.has(url)) { try { el.remove(); } catch (_) {} preState.sc.delete(url); } });
+  };
+  function preloadLine(line) {
+    if (!Array.isArray(line)) return;
+    const head = line.slice(0, 3);
+    prePrune(head);
+    const light = preDataLight();
+    let files = 0, yts = 0;
+    for (const item of head) {
+      if (!item) continue;
+      if (item.yt) { if (yts < 2) { preYt(item); yts++; } }
+      else if (item.kind === "sc" && item.scUrl) preSc(item);
+      else if (item.src) { if (!light && files < 2) { preFile(item); files++; } }
+    }
+  }
+  const preloadTick = () => { try { if (SANDBOX || boothLead || bubOn || !listening) return; preloadLine(Array.isArray(S.queue) ? S.queue : []); } catch (_) {} };
+  if (!SANDBOX) setInterval(preloadTick, 10000);
+  try { window.MW_preloadLine = preloadLine; } catch (_) {}
 
   /* one booth plays the sound; the other is its remote. The main tab and the pop-out
    * are two full booths sharing one station — without a leader they would each play
