@@ -155,7 +155,7 @@
     if (v.canPlayType("application/vnd.apple.mpegurl")) { v.src = url; return; }
     const go = () => { if (watchingUid && window.Hls && Hls.isSupported()) { hls = new Hls({ maxBufferLength: 90, maxMaxBufferLength: 120, backBufferLength: 60, liveSyncDurationCount: 8, liveMaxLatencyDurationCount: 24, fragLoadingMaxRetry: 6, fragLoadingRetryDelay: 1000, levelLoadingMaxRetry: 6, levelLoadingRetryDelay: 1000, manifestLoadingMaxRetry: 6, manifestLoadingRetryDelay: 1000 }); hls.loadSource(url); hls.attachMedia(v); } else if (watchingUid) { v.src = url; } };
     if (window.Hls) go();
-    else { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"; s.onload = go; s.onerror = () => { if (watchingUid) v.src = url; }; document.head.appendChild(s); }
+    else { const stamp = (document.querySelector('meta[name="mw-build"]') || {}).content || ""; const s = document.createElement("script"); s.src = "js/vendor/hls.min.js" + (stamp ? "?v=" + stamp : ""); s.onload = go; s.onerror = () => { const s2 = document.createElement("script"); s2.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"; s2.onload = go; s2.onerror = () => { if (watchingUid) v.src = url; }; document.head.appendChild(s2); }; document.head.appendChild(s); } // P4: self-hosted hls.js (stamped, skeleton-cached), CDN as fallback
   }
   function watchObs(uid) {
     const doc = docs[uid]; if (!doc || !doc.url) return;
