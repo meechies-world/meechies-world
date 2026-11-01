@@ -34,6 +34,11 @@ const LAZY_SRC={
   world:["js/world3d.js?v=1793185302"],
   games:["js/games.js?v=1793194200"],
   creators:["js/studio.js?v=1793185302"],
+  /* C1 split: dj.js's booth continuation pack. The B5 idle prefetcher warms
+   * these bytes for everyone (fetch only, never executed); dj.js fetches the
+   * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
+   * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
+  djbooth:["js/dj-booth.js?v=1793552166"],
 };
 const lazyAt={}, lazyBusy={};
 function lazyKick(v){
@@ -1456,7 +1461,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793551627;
+const MW_SHELL_BUILD = 1793552166;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
