@@ -79,7 +79,7 @@ body.mw-editing #ai-fab{display:none!important}`;
   fab.id = "ai-fab"; fab.type = "button"; fab.innerHTML = '<img class="ai-av" src="/img/meechie-ai.jpg" alt=""><span class="dot"></span>Ask Meechie (AI)';
   const panel = document.createElement("section");
   panel.id = "ai-panel"; panel.hidden = true; panel.setAttribute("aria-label", "Chat with Meechie, the AI assistant");
-  panel.innerHTML = `<header><img class="ai-av lg" src="/img/meechie-ai.jpg" alt="Meechie"><div><b>Meechie · AI</b><small>Answers 24/7 · talk, type, send a photo, or draft legal papers</small></div><select id="ai-model" aria-label="Choose Meechie's brain or an image maker" title="Pick a brain — every AI model on Cloudflare, wired in"><option value="">✨ Auto brain</option></select><button type="button" id="ai-new" title="Start a new chat" aria-label="Start a new chat" style="font-size:14px;border:1px solid var(--line,#3a3223);border-radius:999px;padding:4px 10px;margin-left:auto">＋ New</button><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
+  panel.innerHTML = `<header><img class="ai-av lg" src="/img/meechie-ai.jpg" alt="Meechie"><div><b>Meechie · AI</b><small>Answers 24/7 · talk, type, send a photo, or draft legal papers</small></div><select id="ai-model" aria-label="Choose Meechie's brain or an image maker" title="Pick a brain — every AI model on Cloudflare, wired in"><option value="auto">✨ Auto</option><option value="quick">⚡ Quick</option><option value="deep">🧠 Deep</option></select><button type="button" id="ai-new" title="Start a new chat" aria-label="Start a new chat" style="font-size:14px;border:1px solid var(--line,#3a3223);border-radius:999px;padding:4px 10px;margin-left:auto">＋ New</button><button type="button" class="ai-spk" id="ai-spk" aria-label="Read answers out loud" title="Read answers out loud">🔈</button><button type="button" id="ai-close" aria-label="Close">×</button></header>
 <button type="button" id="ai-talkbtn">🎙️ Talk to Meechie — tap for a voice chat</button>
 <div id="ai-stage" data-state="idle" hidden>
 <div class="ai-face"><img src="/img/meechie-ai.jpg" alt="Meechie"><span class="rg a"></span><span class="rg b"></span></div>
@@ -105,13 +105,18 @@ body.mw-editing #ai-fab{display:none!important}`;
   const sel = panel.querySelector("#ai-model");
   const kindOf = {};
   let picked = ""; try { picked = localStorage.getItem("mw_ai_model") || ""; } catch (_) {}
+  /* PR-B4: the top three picker entries are routing modes, not models —
+   * Auto lets the server router choose per job, Quick pins the fast tier,
+   * Deep pins the deep tier. Everything below them is a real model id. */
+  const AI_TIERS = new Set(["auto", "quick", "deep"]);
+  if (!picked) picked = "auto";
   fetch("/api/ai").then((r) => r.json()).then((j) => {
     const brains = (j.models || []).filter((m) => ["chat", "reasoning", "code", "vision"].includes(m.kind));
     const makers = (j.models || []).filter((m) => m.kind === "image");
     brains.forEach((m) => { kindOf[m.id] = m.kind; }); makers.forEach((m) => { kindOf[m.id] = m.kind; });
     const grp = (label, list) => list.length ? `<optgroup label="${label}">` + list.map((m) => `<option value="${E(m.id)}">${E(m.name)}</option>`).join("") + "</optgroup>" : "";
-    sel.innerHTML = `<option value="">✨ Auto brain</option>` + grp("🧠 Brains", brains) + grp("🎨 Image makers", makers);
-    if (picked && kindOf[picked]) sel.value = picked; else picked = "";
+    sel.innerHTML = `<option value="auto">✨ Auto</option><option value="quick">⚡ Quick</option><option value="deep">🧠 Deep</option>` + grp("🧠 Brains", brains) + grp("🎨 Image makers", makers);
+    if ((picked && kindOf[picked]) || AI_TIERS.has(picked)) sel.value = picked; else { picked = "auto"; sel.value = "auto"; }
     if (kindOf[picked] === "image") inp.placeholder = "Describe a picture to draw…";
   }).catch(() => {});
   sel.addEventListener("change", () => { picked = sel.value; try { localStorage.setItem("mw_ai_model", picked); } catch (_) {} inp.placeholder = kindOf[picked] === "image" ? "Describe a picture to draw…" : "Ask me anything"; });
@@ -142,7 +147,7 @@ body.mw-editing #ai-fab{display:none!important}`;
     let reply;
     try {
       const tok = MW.session().access_token;
-      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ messages: hist.slice(-20).map((m) => ({ role: m.role, content: m.content })), image: img || undefined, ...(picked && !viaTalk ? { model: picked } : {}), ...(viaTalk ? { voice: true } : {}) }) });
+      const r = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ messages: hist.slice(-20).map((m) => ({ role: m.role, content: m.content })), image: img || undefined, ...(picked && !viaTalk ? (AI_TIERS.has(picked) ? { tier: picked } : { model: picked }) : {}), ...(viaTalk ? { voice: true } : {}) }) });
       const j = await r.json().catch(() => ({}));
       reply = r.ok && j.reply ? j.reply + (j.sources && j.sources.length ? "\n\nSources: " + j.sources.map((x, i) => "[" + (i + 1) + "] " + x.title + " (" + x.url + ")").join("  ") : "") : (j.error === "busy" ? "I'm getting a lot of questions right now. Try again in a minute, or DM @meechiesworldinc on TikTok." : "I can't answer right now. DM @meechiesworldinc on TikTok or email meechiesworldinc@aol.com.");
     } catch (_) { reply = "I can't connect right now. Check your internet and try again."; }
