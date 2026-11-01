@@ -38,7 +38,7 @@ const SKEL_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // backstop: re-baseline the shell
 const PRECACHE = ["/", "/kids-app/", "/radio-app/", "/ai-app/", "/apps/",
   "/img/radio-promo.jpg", "/img/radio-promo-640.webp", "/img/radio-promo-1080.webp",
   "/img/kids-art.jpg",
-  "/img/tv-poster.jpg?v=1793372600", "/img/tv-poster-640.webp?v=1793372600", "/img/tv-poster-1080.webp?v=1793372600",
+  "/img/tv-poster.jpg?v=1793546302", "/img/tv-poster-640.webp?v=1793546302", "/img/tv-poster-1080.webp?v=1793546302",
   "/img/icon-192.png", "/img/apple-touch-icon.png"];
 async function precacheShell() {
   try {
@@ -367,7 +367,7 @@ function skelStamped(url) {
   // /img still goes network-first in the fetch handler below: member
   // photos and other changing images are never frozen by this rule
   if (url.origin !== self.location.origin) return false;
-  if (url.pathname.indexOf("/js/") !== 0 && url.pathname.indexOf("/css/") !== 0 && url.pathname.indexOf("/img/") !== 0) return false;
+  if (url.pathname.indexOf("/js/") !== 0 && url.pathname.indexOf("/css/") !== 0 && url.pathname.indexOf("/img/") !== 0 && url.pathname.indexOf("/fonts/") !== 0) return false;
   const v = url.searchParams.get("v");
   return !!v && /^\d+$/.test(v);
 }
