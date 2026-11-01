@@ -972,7 +972,7 @@ html.popdj .popdj-hint{display:block}
    bubble ever stops the music (stopping lives in the app's own controls).
    While the station plays, the bubble breathes: a slow pulse ring and
    three tiny EQ bars over the poster's lower edge. */
-#dj-bubbg{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:10060;overscroll-behavior:none}
+#dj-bubbg{position:fixed;inset:0;width:100vw;width:100dvw;height:100vh;height:100dvh;background:#000;z-index:10060;overscroll-behavior:none;touch-action:none}
 #dj-bubbg[hidden]{display:none}
 #mw-bubble{position:fixed;right:16px;bottom:96px;width:68px;height:68px;border-radius:50%;background:#141109;z-index:10061;border:2px solid #f0cf78;box-shadow:0 10px 26px rgba(0,0,0,.6);cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none;padding:0;overflow:hidden}
 #mw-bubble[hidden]{display:none}
@@ -2330,7 +2330,7 @@ html.popdj #dj-mini{display:none!important}
     try {
       if (!("mediaSession" in navigator)) return;
       if (on) {
-        navigator.mediaSession.metadata = new MediaMetadata({ title: "Meechie's World — Live Radio", artist: "Meechie's World Inc", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/bubble-poster.jpg", sizes: "640x640", type: "image/jpeg" }, { src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] });
+        navigator.mediaSession.metadata = new MediaMetadata({ title: "Meechie's World — Live Radio", artist: "Meechie's World Inc", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/bubble-poster-256.webp", sizes: "256x256", type: "image/webp" }, { src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] });
         navigator.mediaSession.playbackState = "playing";
         if (navigator.mediaSession.setActionHandler) {
           navigator.mediaSession.setActionHandler("play", () => { if (!listening && (isLive() || OWNER())) startListening(); });
@@ -2350,12 +2350,26 @@ html.popdj #dj-mini{display:none!important}
   const bubPage = () => {
     if (!bubEl) {
       bubEl = document.createElement("div"); bubEl.id = "dj-bubbg"; document.body.appendChild(bubEl);
-      bubBubble = document.createElement("button"); bubBubble.type = "button"; bubBubble.id = "mw-bubble"; bubBubble.setAttribute("aria-label", "Back to the site — the music keeps playing"); bubBubble.innerHTML = "<img src='/img/bubble-poster.jpg' alt='' onerror='this.onerror=null;this.src=\"/img/radio-promo-640.webp\"'><span class='mw-eq'><i></i><i></i><i></i></span>"; document.body.appendChild(bubBubble);
-      let drag = null;
-      bubBubble.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, l: bubBubble.offsetLeft, t: bubBubble.offsetTop, moved: false }; try { bubBubble.setPointerCapture(e.pointerId); } catch (_) {} });
-      bubBubble.addEventListener("pointermove", (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true; if (drag.moved) { bubBubble.style.left = Math.max(0, Math.min(innerWidth - 68, drag.l + dx)) + "px"; bubBubble.style.top = Math.max(0, Math.min(innerHeight - 68, drag.t + dy)) + "px"; bubBubble.style.right = "auto"; bubBubble.style.bottom = "auto"; } });
-      bubBubble.addEventListener("pointerup", () => { if (!drag) return; const wasDrag = drag.moved; drag = null; if (wasDrag) return; bubOff(); }); // tap = back to the site; the music is never touched
-      bubBubble.addEventListener("pointercancel", () => { drag = null; });
+      bubBubble = document.createElement("button"); bubBubble.type = "button"; bubBubble.id = "mw-bubble"; bubBubble.setAttribute("aria-label", "Back to the site — the music keeps playing"); bubBubble.innerHTML = "<img src='/img/bubble-poster-256.webp' alt='' onerror='this.onerror=null;this.src=\"/img/radio-promo-640.webp\"'><span class='mw-eq'><i></i><i></i><i></i></span>"; document.body.appendChild(bubBubble);
+      /* Tap-to-restore, hardened (owner bug report, 2026-11-01: on his
+       * phone the tap did nothing and the site stayed shrunk). The old chain
+       * rode on pointerup alone behind a 6px Manhattan drag threshold: a
+       * real thumb tap jitters further than that, so taps were classified
+       * as drags, and a browser pointercancel (gesture takeover) ended the
+       * press with no restore at all. Now a drag must travel 16px AND keep
+       * travelling (sustained movement, or 48px outright), a plain click is
+       * a fallback restore, a short non-drag pointercancel still counts as
+       * a tap, and tapping the black backdrop restores too. A genuine drag
+       * still only repositions the bubble. No path touches the music. */
+      let drag = null, dragEndAt = 0;
+      bubBubble.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, l: bubBubble.offsetLeft, t: bubBubble.offsetTop, t0: Date.now(), crossT: 0, moved: false }; try { bubBubble.setPointerCapture(e.pointerId); } catch (_) {} });
+      bubBubble.addEventListener("pointermove", (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y, dist = Math.abs(dx) + Math.abs(dy), now = Date.now();
+        if (!drag.moved) { if (dist > 48) drag.moved = true; else if (dist > 16) { if (!drag.crossT) drag.crossT = now; else if (now - drag.crossT >= 80) drag.moved = true; } else drag.crossT = 0; }
+        if (drag.moved) { bubBubble.style.left = Math.max(0, Math.min(innerWidth - 68, drag.l + dx)) + "px"; bubBubble.style.top = Math.max(0, Math.min(innerHeight - 68, drag.t + dy)) + "px"; bubBubble.style.right = "auto"; bubBubble.style.bottom = "auto"; } });
+      bubBubble.addEventListener("pointerup", () => { if (!drag) return; const wasDrag = drag.moved; drag = null; if (wasDrag) { dragEndAt = Date.now(); return; } bubOff(); }); // tap = back to the site; the music is never touched
+      bubBubble.addEventListener("pointercancel", () => { if (!drag) return; const wasTap = !drag.moved && Date.now() - drag.t0 < 600; drag = null; if (wasTap) bubOff(); }); // the browser took the gesture over mid-tap: it was still a tap
+      bubBubble.addEventListener("click", () => { if (!bubOn) return; if (Date.now() - dragEndAt < 500) return; bubOff(); }); // fallback: a click that is not the tail of a genuine drag restores
+      bubEl.addEventListener("click", () => { if (bubOn) bubOff(); }); // the black backdrop is a full-screen restore target too
     }
     bubEl.hidden = false; bubBubble.hidden = false;
     if (bubTick) clearInterval(bubTick);
@@ -2391,7 +2405,7 @@ html.popdj #dj-mini{display:none!important}
     const st = d.createElement("style");
     st.textContent = "html,body{margin:0;padding:0;background:#000;color:#f3e5c0;font-family:system-ui,sans-serif}body{padding:10px;box-sizing:border-box}.pb-brand{display:flex;align-items:center;gap:8px;font:800 11px system-ui,sans-serif;letter-spacing:.12em;color:#f0cf78;margin-bottom:8px}.pb-mw{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#ffe9b0,#d4a843 58%,#9a7b24);color:#141109;font:800 10px system-ui,sans-serif;border:1.5px solid #f0cf78}.pb-vid{width:100%;aspect-ratio:16/9;background:#0a0a0c;border:1px solid #3a3520;border-radius:10px;overflow:hidden}.pb-vid iframe{width:100%;height:100%;border:0}.pb-title{margin:9px 0;font:700 13.5px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pb-row{display:flex;gap:8px}.pb-row button{flex:1;padding:9px 6px;border-radius:999px;border:1.5px solid #f0cf78;background:#141109;color:#f0cf78;font:800 12.5px system-ui,sans-serif;cursor:pointer}#pb-stop{background:#f0cf78;color:#141109}";
     d.head.appendChild(st);
-    d.body.innerHTML = "<div class='pb-brand'><span class='pb-mw'><img src='/img/bubble-poster.jpg' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:50%;display:block' onerror='this.onerror=null;this.src=\"/img/radio-promo-640.webp\"'></span><span>MEECHIE'S WORLD RADIO</span></div><div class='pb-vid' id='pb-vid'></div><div class='pb-title' id='pb-title'>Meechie's World — Live Radio</div><div class='pb-row'><button type='button' id='pb-back'>⤢ Back to site</button><button type='button' id='pb-stop'>✕ Stop</button></div>";
+    d.body.innerHTML = "<div class='pb-brand'><span class='pb-mw'><img src='/img/bubble-poster-256.webp' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:50%;display:block' onerror='this.onerror=null;this.src=\"/img/radio-promo-640.webp\"'></span><span>MEECHIE'S WORLD RADIO</span></div><div class='pb-vid' id='pb-vid'></div><div class='pb-title' id='pb-title'>Meechie's World — Live Radio</div><div class='pb-row'><button type='button' id='pb-back'>⤢ Back to site</button><button type='button' id='pb-stop'>✕ Stop</button></div>";
     pipBox = { vidEl: d.getElementById("pb-vid"), titleEl: d.getElementById("pb-title"), player: null, vid: null, deck: "", timer: 0 };
     d.getElementById("pb-back").addEventListener("click", () => { bubBackFlag = true; try { window.focus(); } catch (_) {} try { w.close(); } catch (_) {} });
     d.getElementById("pb-stop").addEventListener("click", () => { bubBackFlag = true; stopListening(); try { w.close(); } catch (_) {} });
@@ -6110,7 +6124,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793573700;
+  const MW_DJ_BUILD = 1793574575;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
