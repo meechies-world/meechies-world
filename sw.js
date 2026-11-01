@@ -41,7 +41,7 @@ const PRECACHE = ["/", "/kids-app/", "/radio-app/", "/ai-app/", "/apps/",
   "/tv-app/", "/world-app/",
   "/img/radio-promo.jpg", "/img/radio-promo-640.webp", "/img/radio-promo-1080.webp",
   "/img/kids-art-640.webp",
-  "/img/tv-poster.jpg?v=1793553518", "/img/tv-poster-640.webp?v=1793553518", "/img/tv-poster-1080.webp?v=1793553518",
+  "/img/tv-poster.jpg?v=1793555395", "/img/tv-poster-640.webp?v=1793555395", "/img/tv-poster-1080.webp?v=1793555395",
   "/img/icon-192.png", "/img/apple-touch-icon.png"];
 async function precacheShell() {
   try {
