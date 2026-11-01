@@ -2306,7 +2306,7 @@ html.popdj #dj-mini{display:none!important}
   const bubPage = () => {
     if (!bubEl) {
       bubEl = document.createElement("div"); bubEl.id = "dj-bubbg"; document.body.appendChild(bubEl);
-      bubBubble = document.createElement("button"); bubBubble.type = "button"; bubBubble.id = "mw-bubble"; bubBubble.setAttribute("aria-label", "Back to the site — the music keeps playing"); bubBubble.innerHTML = "<img src='/img/bubble-poster.jpg' alt='' onerror='this.onerror=null;this.src=\"/img/radio-promo.jpg\"'><span class='mw-eq'><i></i><i></i><i></i></span>"; document.body.appendChild(bubBubble);
+      bubBubble = document.createElement("button"); bubBubble.type = "button"; bubBubble.id = "mw-bubble"; bubBubble.setAttribute("aria-label", "Back to the site — the music keeps playing"); bubBubble.innerHTML = "<img src='/img/bubble-poster.jpg' alt='' onerror='this.onerror=null;this.src=\"/img/radio-promo-640.webp\"'><span class='mw-eq'><i></i><i></i><i></i></span>"; document.body.appendChild(bubBubble);
       let drag = null;
       bubBubble.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, l: bubBubble.offsetLeft, t: bubBubble.offsetTop, moved: false }; try { bubBubble.setPointerCapture(e.pointerId); } catch (_) {} });
       bubBubble.addEventListener("pointermove", (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true; if (drag.moved) { bubBubble.style.left = Math.max(0, Math.min(innerWidth - 68, drag.l + dx)) + "px"; bubBubble.style.top = Math.max(0, Math.min(innerHeight - 68, drag.t + dy)) + "px"; bubBubble.style.right = "auto"; bubBubble.style.bottom = "auto"; } });
@@ -2347,7 +2347,7 @@ html.popdj #dj-mini{display:none!important}
     const st = d.createElement("style");
     st.textContent = "html,body{margin:0;padding:0;background:#000;color:#f3e5c0;font-family:system-ui,sans-serif}body{padding:10px;box-sizing:border-box}.pb-brand{display:flex;align-items:center;gap:8px;font:800 11px system-ui,sans-serif;letter-spacing:.12em;color:#f0cf78;margin-bottom:8px}.pb-mw{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 32% 30%,#ffe9b0,#d4a843 58%,#9a7b24);color:#141109;font:800 10px system-ui,sans-serif;border:1.5px solid #f0cf78}.pb-vid{width:100%;aspect-ratio:16/9;background:#0a0a0c;border:1px solid #3a3520;border-radius:10px;overflow:hidden}.pb-vid iframe{width:100%;height:100%;border:0}.pb-title{margin:9px 0;font:700 13.5px system-ui,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pb-row{display:flex;gap:8px}.pb-row button{flex:1;padding:9px 6px;border-radius:999px;border:1.5px solid #f0cf78;background:#141109;color:#f0cf78;font:800 12.5px system-ui,sans-serif;cursor:pointer}#pb-stop{background:#f0cf78;color:#141109}";
     d.head.appendChild(st);
-    d.body.innerHTML = "<div class='pb-brand'><span class='pb-mw'><img src='/img/bubble-poster.jpg' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:50%;display:block' onerror='this.onerror=null;this.src=\"/img/radio-promo.jpg\"'></span><span>MEECHIE'S WORLD RADIO</span></div><div class='pb-vid' id='pb-vid'></div><div class='pb-title' id='pb-title'>Meechie's World — Live Radio</div><div class='pb-row'><button type='button' id='pb-back'>⤢ Back to site</button><button type='button' id='pb-stop'>✕ Stop</button></div>";
+    d.body.innerHTML = "<div class='pb-brand'><span class='pb-mw'><img src='/img/bubble-poster.jpg' alt='' style='width:100%;height:100%;object-fit:cover;border-radius:50%;display:block' onerror='this.onerror=null;this.src=\"/img/radio-promo-640.webp\"'></span><span>MEECHIE'S WORLD RADIO</span></div><div class='pb-vid' id='pb-vid'></div><div class='pb-title' id='pb-title'>Meechie's World — Live Radio</div><div class='pb-row'><button type='button' id='pb-back'>⤢ Back to site</button><button type='button' id='pb-stop'>✕ Stop</button></div>";
     pipBox = { vidEl: d.getElementById("pb-vid"), titleEl: d.getElementById("pb-title"), player: null, vid: null, deck: "", timer: 0 };
     d.getElementById("pb-back").addEventListener("click", () => { bubBackFlag = true; try { window.focus(); } catch (_) {} try { w.close(); } catch (_) {} });
     d.getElementById("pb-stop").addEventListener("click", () => { bubBackFlag = true; stopListening(); try { w.close(); } catch (_) {} });
@@ -6686,7 +6686,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793545387;
+  const MW_DJ_BUILD = 1793545614;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
