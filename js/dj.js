@@ -5407,7 +5407,7 @@ html.popdj #dj-mini{display:none!important}
     { id: "WB", slot: "#wb-vs1", warm: true, on: () => elOpen("v-watch"), aud: () => false },
     { id: "BO", slot: "#dj-vs1", warm: true, on: () => OWNER() && elOpen("v-djbooth"), aud: () => false }
   ];
-  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; });
+  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; });
   function chanOverlay(su) {
     const slot = document.querySelector(su.slot); if (!slot) return null;
     const box = slot.closest(".vstage"); if (!box) return null;
@@ -5425,18 +5425,25 @@ html.popdj #dj-mini{display:none!important}
   function chanPark(su) { if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; }
   function chanYtMount(su, yt, startAt, muted) {
     const kAtCall = su.key;
+    su.mounting = true; su.mountAt = Date.now();
     ytApi().then(() => {
       if (!su.el || su.key !== kAtCall) return;
-      if (!window.YT || !YT.Player) { su.err = true; return; }
+      /* YT not ready yet is PENDING, not an error (2026-11-02): ytApi()
+       * resolves after 7s even when the IFrame API has not loaded, and
+       * latching su.err here parked the segment on the poster for its
+       * whole remainder. Leave su.p null and let chanSyncSurf retry the
+       * mount on its tick until the API arrives. */
+      if (!window.YT || !YT.Player) { su.mounting = false; su.mountAt = Date.now(); return; }
       su.el.innerHTML = "<div></div>";
       try {
         su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
-          onReady: (e) => { try { e.target.mute(); e.target.seekTo(Math.max(0, startAt), true); e.target.playVideo(); if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
+          onReady: (e) => { try { e.target.mute(); } catch (_) {} try { e.target.playVideo(); } catch (_) {} try { e.target.seekTo(Math.max(0, startAt), true); } catch (_) {} try { if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
           onStateChange: (e) => { try { if (e.data === YT.PlayerState.PLAYING && su.el) { const fr = su.el.querySelector("iframe"); if (fr) fr.classList.add("playing"); } } catch (_) {} },
-          onError: () => { su.err = true; try { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } catch (_) {} }
+          onError: () => { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } catch (_) {} }
         } });
-      } catch (_) { su.err = true; }
-    }).catch(() => { su.err = true; });
+        su.mounting = false;
+      } catch (_) { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; }
+    }).catch(() => { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; });
   }
   function chanFileMount(su, url, startAt, muted, elOpt) {
     const v = elOpt || document.createElement("video");
@@ -5470,14 +5477,32 @@ html.popdj #dj-mini{display:none!important}
       const w = su.warmEnt && su.warmEnt.key === cur.key ? su.warmEnt : null;
       chanTeardown(su, w ? w.v : null);
       if (w) su.warmEnt = null;
-      su.key = cur.key; su.err = false; su.seekAt = 0;
+      su.key = cur.key; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0;
       if (w && (cur.src === "file" || cur.src === "ia")) { w.v.classList.remove("tvwarm"); chanFileMount(su, cur.url, cur.pos, !audible, w.v); }
       else if (cur.src === "yt") chanYtMount(su, cur.yt, cur.pos, !audible);
       else chanFileMount(su, cur.url, cur.pos, !audible, null);
       chanWarmNext(su, cur);
       return;
     }
-    if (su.err) return;
+    if (su.err) {
+      /* Bounded remount on real YT errors (2026-11-02): a transient
+       * construction throw or onError heals itself with a fresh mount
+       * ~15s later instead of parking the segment; the cap (errN
+       * reaches 4 = the initial mount plus 3 remounts) parks a truly
+       * unembeddable video on the poster for the rest of its segment —
+       * never-blank holds either way. File surfaces keep the old latch. */
+      if (cur.src === "yt" && (su.errN || 0) < 4 && Date.now() - (su.errAt || 0) > 15000) {
+        if (su.p) { try { su.p.destroy(); } catch (_) {} su.p = null; }
+        if (su.el) su.el.innerHTML = "";
+        su.err = false;
+        chanYtMount(su, cur.yt, cur.pos, !audible);
+      }
+      return;
+    }
+    /* Pending mount retry: the YT API had not arrived when the mount
+     * first ran (no player, no error, nothing in flight) — retry it on
+     * this tick until a player exists. */
+    if (cur.src === "yt" && !su.p && !su.v && !su.mounting && Date.now() - (su.mountAt || 0) > 2000) { chanYtMount(su, cur.yt, cur.pos, !audible); return; }
     if (su.v) {
       const wantMuted = !audible;
       if (su.v.muted !== wantMuted) { try { su.v.muted = wantMuted; } catch (_) {} }
@@ -5486,7 +5511,17 @@ html.popdj #dj-mini{display:none!important}
       if (isFinite(drift) && Math.abs(drift) > 2.5 && su.v.readyState >= 2 && !su.v.seeking) { try { su.v.currentTime = Math.max(0, cur.pos); } catch (_) {} }
     } else if (su.p && su.p.getPlayerState) {
       try {
-        if (su.p.getPlayerState() === 2) su.p.playVideo();
+        /* Kick every stuck non-playing state (2026-11-02), throttled to
+         * ~4s per surface: PAUSED (2), CUED (5) and UNSTARTED (-1) get a
+         * play attempt; ENDED (0) while the segment is still running
+         * (an overstated pool duration can strand a player past the
+         * real video end) gets a seek back to the tape position + play.
+         * Same seat semantics as the old state-2 rescue: the channel
+         * sync owns channel playback; a seat's own pause lives on the
+         * decks/screens, and TV sound stays seat-local via audible. */
+        const pst = su.p.getPlayerState();
+        if ((pst === 2 || pst === 5 || pst === -1) && Date.now() - (su.kickAt || 0) > 4000) { su.kickAt = Date.now(); su.p.playVideo(); }
+        else if (pst === 0 && Date.now() - (su.kickAt || 0) > 4000) { su.kickAt = Date.now(); su.p.seekTo(Math.max(0, cur.pos), true); su.p.playVideo(); }
         if (audible) { su.p.unMute(); su.p.setVolume(100); } else su.p.mute();
         const ct = su.p.getCurrentTime();
         if (isFinite(ct) && Math.abs(ct - cur.pos) > 3 && Date.now() - (su.seekAt || 0) > 4000) { su.seekAt = Date.now(); su.p.seekTo(Math.max(0, cur.pos), true); }
@@ -6726,7 +6761,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793659041;
+  const MW_DJ_BUILD = 1793660691;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
