@@ -1458,7 +1458,7 @@ html.popdj #dj-mini{display:none!important}
     <div class="vstage" id="dj-vstage"><div class="vslot" id="dj-vs1"></div><div class="vslot" id="dj-vs2"></div><div class="vstandby" id="dj-vstandby">No music video on a deck right now — put a YouTube video on any deck and it plays here, mixed live.</div><div class="vchip" id="dj-vchip" hidden></div><div id="dj-camwrap" class="novid"><video id="dj-camvid" autoplay muted playsinline></video><div id="dj-camph">Camera on at the booth</div><span id="dj-camtag">📷 LIVE CAM</span><div id="dj-cambanner" hidden></div></div><svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><filter id="mw-sharp" x="-10%" y="-10%" width="120%" height="120%"><feConvolveMatrix id="mw-sharp-k" order="3" kernelMatrix="0 0 0 0 1 0 0 0 0" preserveAlpha="true"/></filter><filter id="mw-duo" x="0" y="0" width="100%" height="100%"><feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 1 0"/><feComponentTransfer><feFuncR type="table" tableValues="0.043 0.941"/><feFuncG type="table" tableValues="0.035 0.812"/><feFuncB type="table" tableValues="0.027 0.471"/></feComponentTransfer></filter></defs></svg></div>
     <div class="vmixrow" id="dj-vskiprow"><button class="btn ghost sm" type="button" id="dj-vskip" data-vskip disabled>⏭ Skip — end this song, roll the next</button></div>
     <div id="dj-studio" hidden><div class="studio-hd"><b>🎬 STUDIO — CROP YOUR SCREEN</b><span class="muted">what you frame here is exactly what everyone sees</span><span style="flex:1"></span><button class="btn ghost sm" type="button" data-studiofit>🖼 Frame: Fit</button><button class="btn ghost sm" type="button" data-studioreset>Reset crop</button></div><div class="studio-sl"><label>Left <input type="range" min="0" max="45" step="1" value="0" data-crop="l"><span data-cropv="l">0%</span></label><label>Right <input type="range" min="0" max="45" step="1" value="0" data-crop="r"><span data-cropv="r">0%</span></label><label>Top <input type="range" min="0" max="45" step="1" value="0" data-crop="t"><span data-cropv="t">0%</span></label><label>Bottom <input type="range" min="0" max="45" step="1" value="0" data-crop="b"><span data-cropv="b">0%</span></label></div></div>
-    <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><button class="btn ghost sm" type="button" data-vlive id="dj-vlivebtn">📹 Live Video</button><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
+    <div class="vmixrow"><button class="btn ghost sm" type="button" data-vmix="auto">🔀 Auto · follow fader</button><button class="btn ghost sm" type="button" data-vmix="cut">✂️ Cut</button><button class="btn ghost sm" type="button" data-vmix="fade">🌫️ Fade</button><button class="btn ghost sm" type="button" data-cam id="dj-cambtn">📷 Cam</button><button class="btn ghost sm" type="button" data-vlive id="dj-vlivebtn">📹 Live Video</button><select id="dj-gsmode" aria-label="Camera backdrop" style="padding:7px 6px;font-size:14px;max-width:176px"><option value="none">🎥 Backdrop: Off</option><option value="poster">🖼 Backdrop: Poster</option><option value="green">🟩 Backdrop: Green</option></select><select id="dj-gsposter" aria-label="Backdrop picture" style="padding:7px 6px;font-size:14px;max-width:164px" hidden><option value="radio">📻 Radio poster</option><option value="tv">📺 TV poster</option><option value="bubble">🫧 Bubble poster</option></select><span style="flex:1"></span><button class="btn ghost sm" type="button" data-vsrc="A">A</button><button class="btn ghost sm" type="button" data-vsrc="B">B</button><button class="btn ghost sm" type="button" data-vsrc="C">C</button><button class="btn ghost sm" type="button" data-vsrc="D">D</button></div>
     <div class="vmixrow" id="dj-msvrow"><button class="btn ghost sm" type="button" id="dj-msvbtn" title="Play a video file on the master screen for everyone — it takes over the screen and pauses the tables, like a screen share. Starting a screen share replaces it.">📤 Video to screen</button><input type="file" id="dj-msvfile" accept="video/*" hidden><span id="dj-msvstat" style="font-size:12.5px;color:var(--muted)"></span><button class="btn ghost sm" type="button" id="dj-msvstop" hidden title="Stop the screen video — the master screen returns to the video mix and the tables come back">⏹ Stop screen video</button></div>
   </div>
   <div class="dj-panel" id="dj-edit">
@@ -2707,6 +2707,11 @@ html.popdj #dj-mini{display:none!important}
   let vsCrop = { l: 0, r: 0, t: 0, b: 0, fill: false };
   try { const c0 = JSON.parse(localStorage.getItem("mw-studio-crop") || "null"); if (c0) vsCrop = { l: Math.max(0, Math.min(45, +c0.l || 0)), r: Math.max(0, Math.min(45, +c0.r || 0)), t: Math.max(0, Math.min(45, +c0.t || 0)), b: Math.max(0, Math.min(45, +c0.b || 0)), fill: !!c0.fill }; } catch (_) {}
   let vsCropCtx = null;       // the running crop canvas: {vid, cv, cx, raf, rvfc, dead}
+  let bkdCfg = { mode: "none", poster: "radio" };   // BACKDROP (2026-11-01): device-local pick — mode none|poster|green + which poster; never a shared-doc field, it is one booth screen's camera dressing
+  try { const b0 = JSON.parse(localStorage.getItem("mw-gscreen") || "null"); if (b0) { if (b0.mode === "green" || b0.mode === "poster" || b0.mode === "none") bkdCfg.mode = b0.mode; if (b0.poster === "tv" || b0.poster === "bubble" || b0.poster === "radio") bkdCfg.poster = b0.poster; } } catch (_) {}
+  let bkdCtx = null;          // the running backdrop canvas (see bkdStart)
+  let bkdSegP = null;         // segmentation library load promise (null = not attempted yet)
+  const BKD_POSTERS = { radio: "img/radio-promo.jpg", tv: "img/tv-poster.jpg", bubble: "img/bubble-poster.jpg" };
   let vsStudioSig = "";
   let vsShown = { track: null, stream: null, hls: null, atrack: null };
   let vsWatchErr = "";        // the watcher's last failure, in plain words - the TV status line reads it out instead of the watch dying silent
@@ -3029,7 +3034,7 @@ html.popdj #dj-mini{display:none!important}
   function vsPaintStatus() { try { vsSetStatus(vsStatusFor()); } catch (_) {} }
   function vsPaintBtns() {
     try {
-      vsPaintStudio();
+      vsPaintStudio(); bkdPaint();
       const vs = S.vstream || {}, on = !!vs.on, kind = on ? (vs.kind || "") : "";
       const sig = kind + "|" + (vsPubBusy ? "b" : "") + "|" + (on && vs.hidden ? "h" : "");
       if (sig === vsPaintSig) return; vsPaintSig = sig;
@@ -3072,7 +3077,7 @@ html.popdj #dj-mini{display:none!important}
     if (p.beat) { try { clearInterval(p.beat); } catch (_) {} }
     if (vsSupIv) { try { clearInterval(vsSupIv); } catch (_) {} vsSupIv = null; }
     vsBarSrc = false; try { vsBarPaint(); } catch (_) {}
-    vsCropStop();
+    vsCropStop(); bkdStop();
     if (p.meeting) {
       try { if (p.meeting.self && p.meeting.self.disableScreenShare) await p.meeting.self.disableScreenShare(); } catch (_) {}
       try { if (p.meeting.self && p.meeting.self.disableVideo) await p.meeting.self.disableVideo(); } catch (_) {}
@@ -3260,8 +3265,16 @@ html.popdj #dj-mini{display:none!important}
       p.pubTrack = ct; p.localStream = cs;
     } else {
       try { if (meeting.self && meeting.self.disableVideo) await meeting.self.disableVideo(); } catch (_) {}
-      await meeting.self.enableVideo(rt);
-      p.pubTrack = rt; p.localStream = new MediaStream([rt]);
+      // BACKDROP (2026-11-01): a camera repair republishes through the
+      // compositing canvas too, so the backdrop survives repairs,
+      // rejoins and remints — a fresh canvas each time, exactly like
+      // the crop canvas above; with no backdrop picked the raw track
+      // publishes untouched, as before
+      let pt = rt, pl = null;
+      if (bkdWants()) { const bs = await bkdStart(rt); if (bs) { pt = bs.getVideoTracks()[0]; pl = bs; } }
+      else bkdStop();
+      await meeting.self.enableVideo(pt);
+      p.pubTrack = pt; p.localStream = pl || new MediaStream([rt]);
     }
     if (p.hidApplied && p.pubTrack) { try { p.pubTrack.enabled = false; } catch (_) {} } // a repair while hidden stays dark
     await vsPubAudio(meeting, p.rawStream);
@@ -3488,9 +3501,19 @@ html.popdj #dj-mini{display:none!important}
           const s = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 }, frameRate: { max: 30 } }, audio: false });
           vsPub.ownStream = s; track = s.getVideoTracks()[0];
         }
-        await meeting.self.enableVideo(track);
-        vsPub.pubTrack = track;
-        vsPub.localStream = new MediaStream([track]);
+        // BACKDROP (2026-11-01): with a backdrop picked, the camera
+        // publishes the compositing canvas track instead of the raw
+        // track — and any failure in there leaves the raw track
+        // publishing exactly as it always has (bkdStart returns null)
+        let pubTrack = track, pubLocal = null;
+        if (bkdWants()) {
+          const bs = await bkdStart(track);
+          if (bs) { pubTrack = bs.getVideoTracks()[0]; pubLocal = bs; }
+          else say("🎥 The backdrop could not start — normal camera instead.");
+        }
+        await meeting.self.enableVideo(pubTrack);
+        vsPub.pubTrack = pubTrack;
+        vsPub.localStream = pubLocal || new MediaStream([track]);
       } else {
         await vsStartScreen(meeting);
       }
@@ -3861,6 +3884,183 @@ html.popdj #dj-mini{display:none!important}
     try { if (cc.rvfc && cc.vid.cancelVideoFrameCallback) cc.vid.cancelVideoFrameCallback(cc.rvfc); } catch (_) {}
     try { if (cc.raf) cancelAnimationFrame(cc.raf); } catch (_) {}
     try { cc.vid.pause(); cc.vid.srcObject = null; } catch (_) {}
+  }
+  /* ---------- BACKDROP / GREEN SCREEN (owner, 2026-11-01) ----------
+   * His words: put my poster behind me — or green — or nothing. A
+   * backdrop mode for the Live Video camera, picked in the same
+   * controls row as the Live Video button itself. The camera runs
+   * through a compositing canvas (the same publish shape as the crop
+   * canvas above): an on-device person-segmentation model cuts him
+   * out of his real room and the canvas paints his poster — or solid
+   * chroma green, for OBS/editor keying — behind him. The published
+   * track is the canvas track, so the master screen, MW TV and every
+   * viewer seat see the same picture he sees in his own preview.
+   * FAIL OPEN, always: the model loads from CDN only when a backdrop
+   * is picked (the library and its model files are binary — they
+   * cannot ride this repo's text-only push — so jsDelivr serves them,
+   * the same fallback posture hls.js keeps). A load failure, a stalled
+   * model, or a device that cannot hold the frame rate drops the
+   * canvas back to drawing his raw camera: the picture never blacks,
+   * never freezes for this feature, and nothing here touches audio. */
+  function bkdWants() { return bkdCfg.mode === "green" || bkdCfg.mode === "poster"; }
+  function bkdSave() { try { localStorage.setItem("mw-gscreen", JSON.stringify(bkdCfg)); } catch (_) {} }
+  function bkdPaint() {
+    try {
+      const m = document.getElementById("dj-gsmode"), p = document.getElementById("dj-gsposter");
+      if (m && document.activeElement !== m && m.value !== bkdCfg.mode) m.value = bkdCfg.mode;
+      if (p) { p.hidden = bkdCfg.mode !== "poster"; if (document.activeElement !== p && p.value !== bkdCfg.poster) p.value = bkdCfg.poster; }
+    } catch (_) {}
+  }
+  function bkdSetMode(mode, poster) {
+    const was = bkdCfg.mode;
+    if (mode) bkdCfg.mode = mode;
+    if (poster) bkdCfg.poster = poster;
+    bkdSave(); bkdPaint(); bkdPosterImg(); // warm the poster cache
+    if (mode && mode !== was) {
+      if (bkdCtx) say(bkdCfg.mode === "none" ? "🎥 Backdrop off — your real room is back." : "🎥 Backdrop switched — everyone sees the change now.");
+      else if (vsPub && vsPub.kind === "cam") say("🎥 Backdrop set — it starts the next time you tap Live Video.");
+      else say(bkdCfg.mode === "none" ? "🎥 Backdrop off." : "🎥 Backdrop ready — it goes up behind you when you tap Live Video.");
+    } else if (poster && bkdCtx && bkdCfg.mode === "poster") say("🖼 New poster behind you — everyone sees it now.");
+  }
+  let bkdImg = null, bkdImgSrc = "";
+  function bkdPosterImg() {
+    const src = BKD_POSTERS[bkdCfg.poster] || BKD_POSTERS.radio;
+    if (bkdImgSrc !== src) { bkdImgSrc = src; bkdImg = new Image(); bkdImg.src = src; }
+    return bkdImg;
+  }
+  function bkdLoadSeg() {
+    if (window.SelfieSegmentation) return Promise.resolve(true);
+    if (bkdSegP) return bkdSegP;
+    bkdSegP = new Promise((res) => {
+      const t = setTimeout(() => res(false), 10000);
+      try {
+        const sc = document.createElement("script");
+        sc.src = "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/selfie_segmentation.js";
+        sc.onload = () => { clearTimeout(t); res(!!window.SelfieSegmentation); };
+        sc.onerror = () => { clearTimeout(t); res(false); };
+        document.head.appendChild(sc);
+      } catch (_) { clearTimeout(t); res(false); }
+    });
+    return bkdSegP;
+  }
+  async function bkdStart(track) {
+    bkdStop();
+    if (!track || track.readyState !== "live") return null;
+    if (!(await bkdLoadSeg())) return null;
+    let seg = null;
+    try {
+      seg = new window.SelfieSegmentation({ locateFile: (f) => "https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1.1675465747/" + f });
+      seg.setOptions({ modelSelection: 1, selfieMode: false }); // landscape model = the fast one; selfieMode off so the mask stays aligned with the raw camera frame he already publishes
+    } catch (_) { return null; }
+    const vid = document.createElement("video");
+    vid.muted = true; vid.playsInline = true; vid.autoplay = true;
+    vid.srcObject = new MediaStream([track]);
+    let W = 1280, H = 720;
+    try { const st = track.getSettings ? track.getSettings() : {}; if (st.width) W = Math.min(1280, st.width); if (st.height) H = Math.min(720, st.height); } catch (_) {}
+    const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    const pc = document.createElement("canvas"); pc.width = W; pc.height = H;
+    const mc = document.createElement("canvas"); mc.width = W; mc.height = H;
+    const cc = { vid, cv, cx: cv.getContext("2d"), pc, pcx: pc.getContext("2d"), mc, mcx: mc.getContext("2d"), seg, hasMask: false, busy: false, dead: false, failed: false, noted: false, slowNote: false, born: Date.now(), lastT: -1, frames: 0, winAt: Date.now(), slowN: 0, raf: 0, rvfc: 0, stream: null };
+    bkdCtx = cc;
+    try {
+      seg.onResults((r) => {
+        if (cc.dead) return;
+        try {
+          if (r && r.segmentationMask) { cc.mcx.globalCompositeOperation = "source-over"; cc.mcx.clearRect(0, 0, cc.mc.width, cc.mc.height); cc.mcx.drawImage(r.segmentationMask, 0, 0, cc.mc.width, cc.mc.height); cc.hasMask = true; }
+        } catch (_) {}
+      });
+    } catch (_) { cc.failed = true; }
+    bkdPosterImg();
+    const draw = () => {
+      if (cc.dead) return;
+      bkdDraw(cc);
+      if (vid.requestVideoFrameCallback) { try { cc.rvfc = vid.requestVideoFrameCallback(draw); return; } catch (_) {} }
+      cc.raf = requestAnimationFrame(draw);
+    };
+    try { const p = vid.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {}
+    draw();
+    cc.stream = cv.captureStream(30);
+    return cc.stream;
+  }
+  function bkdDraw(cc) {
+    try {
+      const v = cc.vid;
+      if (!v.videoWidth || !v.videoHeight) return;
+      const W = cc.cv.width, H = cc.cv.height, cx = cc.cx;
+      const mode = bkdCfg.mode; // read live every frame: green / poster / none switch on the running canvas with no republish
+      // feed the model one frame at a time, only while a backdrop is
+      // actually wanted; while it thinks, the last mask is reused, so
+      // the canvas never waits on inference
+      if (!cc.failed && !cc.busy && mode !== "none" && v.currentTime !== cc.lastT) {
+        cc.lastT = v.currentTime; cc.busy = true;
+        try {
+          const pr = cc.seg.send({ image: v });
+          if (pr && pr.then) pr.then(() => { cc.busy = false; }, () => { cc.busy = false; });
+          else cc.busy = false;
+        } catch (_) { cc.busy = false; cc.failed = true; }
+      }
+      // no mask at all within 7s of starting = the model is not coming
+      // (blocked CDN, unsupported device): fall back to the raw camera
+      if (!cc.failed && !cc.hasMask && mode !== "none" && Date.now() - cc.born > 7000) { cc.failed = true; if (!cc.noted) { cc.noted = true; say("🎥 The backdrop could not start on this device — normal camera instead."); } }
+      if (cc.failed || !cc.hasMask || mode === "none") { cx.globalCompositeOperation = "source-over"; cx.drawImage(v, 0, 0, W, H); bkdFps(cc); return; }
+      // cut him out: the person canvas is the camera frame masked to him
+      const px = cc.pcx;
+      px.globalCompositeOperation = "source-over";
+      px.clearRect(0, 0, W, H);
+      px.drawImage(v, 0, 0, W, H);
+      px.globalCompositeOperation = "destination-in";
+      px.drawImage(cc.mc, 0, 0, W, H);
+      // paint the backdrop, then him over it
+      if (mode === "green") { cx.fillStyle = "#00b140"; cx.fillRect(0, 0, W, H); }
+      else {
+        const img = bkdPosterImg();
+        cx.fillStyle = "#000"; cx.fillRect(0, 0, W, H);
+        if (img && img.complete && img.naturalWidth) {
+          const ia = img.naturalWidth / img.naturalHeight, ca = W / H;
+          let dw, dh;
+          if (ia > ca) { dh = H; dw = H * ia; } else { dw = W; dh = W / ia; }
+          cx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+        }
+      }
+      cx.globalCompositeOperation = "source-over";
+      cx.drawImage(cc.pc, 0, 0);
+      bkdFps(cc);
+    } catch (_) {}
+  }
+  function bkdFps(cc) {
+    // keep the booth smooth on a mid phone: if the composite cannot
+    // hold a sane rate, first shrink the canvas, then hand the picture
+    // back to the raw camera (the failed path above just draws it) —
+    // a stall is the one outcome this feature may never cause
+    try {
+      cc.frames++;
+      const now = Date.now();
+      if (now - cc.winAt < 2000) return;
+      const fps = cc.frames / ((now - cc.winAt) / 1000);
+      cc.frames = 0; cc.winAt = now;
+      if (cc.failed) return;
+      if (fps >= 13) { cc.slowN = 0; return; }
+      cc.slowN++;
+      if (cc.slowN < 2) return;
+      cc.slowN = 0;
+      if (cc.cv.width > 640) {
+        const nw = 640, nh = Math.max(270, Math.round(640 * cc.cv.height / cc.cv.width));
+        cc.cv.width = nw; cc.cv.height = nh; cc.pc.width = nw; cc.pc.height = nh; cc.mc.width = nw; cc.mc.height = nh;
+        if (!cc.slowNote) { cc.slowNote = true; say("🎥 Backdrop quality lowered a notch to keep your stream smooth."); }
+      } else {
+        cc.failed = true;
+        if (!cc.noted) { cc.noted = true; say("🎥 Backdrop off — this device could not keep up. Normal camera instead."); }
+      }
+    } catch (_) {}
+  }
+  function bkdStop() {
+    const cc = bkdCtx; bkdCtx = null;
+    if (!cc) return;
+    cc.dead = true;
+    try { if (cc.rvfc && cc.vid.cancelVideoFrameCallback) cc.vid.cancelVideoFrameCallback(cc.rvfc); } catch (_) {}
+    try { if (cc.raf) cancelAnimationFrame(cc.raf); } catch (_) {}
+    try { cc.vid.pause(); cc.vid.srcObject = null; } catch (_) {}
+    try { if (cc.seg && cc.seg.close) cc.seg.close(); } catch (_) {}
   }
   /* ---------- watcher (every other screen) ---------- */
   function vsPeers(meeting) {
@@ -6234,7 +6434,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793580641;
+  const MW_DJ_BUILD = 1793582674;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7337,7 +7537,7 @@ html.popdj #dj-mini{display:none!important}
     if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
-  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "aidj-on") { S.aiDj = e.target.checked; save(true); brainPaint(brainLastTaste); say(S.aiDj ? "🤖 AI-DJ on — Meechie will stock the queue while you're away." : "AI-DJ off — Meechie stops digging; what's already stocked still plays out."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-horn-top") { S.hornOn = e.target.checked; save(true); say(S.hornOn ? "📯 Transition horns ON — automated crossfades get the air horn again." : "🔇 Transition horns OFF — automated crossfades stay quiet."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "aidj-on") { S.aiDj = e.target.checked; save(true); brainPaint(brainLastTaste); say(S.aiDj ? "🤖 AI-DJ on — Meechie will stock the queue while you're away." : "AI-DJ off — Meechie stops digging; what's already stocked still plays out."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-horn-top") { S.hornOn = e.target.checked; save(true); say(S.hornOn ? "📯 Transition horns ON — automated crossfades get the air horn again." : "🔇 Transition horns OFF — automated crossfades stay quiet."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } if (e.target.id === "dj-gsmode") { bkdSetMode(e.target.value || "none", null); } if (e.target.id === "dj-gsposter") { bkdSetMode(null, e.target.value || "radio"); } });
   // circular pan pads: drag the gold dot — left/right is the X between the
   // pairs (A+B on the left, C+D on the right, the ends at 100%), up/down
   // tilts between the pairs. Same mix as the sliders and the phone fader
