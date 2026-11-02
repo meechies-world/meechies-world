@@ -821,7 +821,7 @@ html.popdj .popdj-hint{display:block}
 .vstage.vs-on .vstandby{display:none!important}
 .msvlive{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:4;display:none}
 .vstage.msv-on .msvlive{display:block}
-.vstage .tvchan{position:absolute;inset:0;z-index:3;background:#000;display:none}
+.vstage .tvchan{position:absolute;inset:0;z-index:3;background:transparent;display:none}
 .vstage .tvchan.on{display:block}
 /* MW TV page (owner correction, 2026-11-01): on its own stage the
    channel is the station, not the bottom layer — the overlay rides
@@ -829,7 +829,8 @@ html.popdj .popdj-hint{display:block}
    page never shows what the master screen is playing. Every other
    stage keeps the channel at z3, under the master screen. */
 #tw-stage .tvchan{z-index:6}
-.vstage .tvchan iframe,.vstage .tvchan video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;object-fit:contain}
+.vstage .tvchan iframe,.vstage .tvchan video{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;object-fit:contain;opacity:0;transition:opacity .25s ease}
+.vstage .tvchan iframe.playing,.vstage .tvchan video.playing{opacity:1}
 .vstage .tvchan video.tvwarm{visibility:hidden}
 .vstage.msv-on .vposter{display:none!important}
 .vstage.msv-on .vstandby{display:none!important}
@@ -5415,7 +5416,7 @@ html.popdj #dj-mini{display:none!important}
       const r = tvResolveNews(tvNewsDoc, seg);
       if (r.ed) return { key: "news-ed@" + seg.start, src: "file", yt: "", url: r.ed.videoUrl, pos: Math.max(0, Math.min(into, +r.ed.dur || into)), title: "Meechie's World News", show: "MW TV News", note: "Edition " + new Date(+r.ed.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + (r.prev ? " (repeat)" : ""), seg };
       const f = tvPoolTapeAt(tvPoolDoc, now);
-      if (f) return { key: "newsfill", src: f.it.src, yt: f.it.yt || "", url: f.it.url || "", pos: f.pos, title: f.it.title || "", show: "Music Videos", note: "The newsroom is putting the next update together — news returns at the top of the hour", seg };
+      if (f) return { key: "newsfill@" + (f.it.id || f.it.yt || f.it.url), src: f.it.src, yt: f.it.yt || "", url: f.it.url || "", pos: f.pos, title: f.it.title || "", show: "Music Videos", note: "The newsroom is putting the next update together — news returns at the top of the hour", seg };
       return null;
     }
     return { key: (seg.id || "") + "@" + seg.start, src: seg.src, yt: seg.yt || "", url: seg.url || "", pos: (seg.off || 0) + into, title: seg.title || "", show: seg.show || "", seg };
@@ -5456,7 +5457,8 @@ html.popdj #dj-mini{display:none!important}
       try {
         su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
           onReady: (e) => { try { e.target.mute(); e.target.seekTo(Math.max(0, startAt), true); e.target.playVideo(); if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
-          onError: () => { su.err = true; }
+          onStateChange: (e) => { try { if (e.data === YT.PlayerState.PLAYING && su.el) { const fr = su.el.querySelector("iframe"); if (fr) fr.classList.add("playing"); } } catch (_) {} },
+          onError: () => { su.err = true; try { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } catch (_) {} }
         } });
       } catch (_) { su.err = true; }
     }).catch(() => { su.err = true; });
@@ -5465,7 +5467,8 @@ html.popdj #dj-mini{display:none!important}
     const v = elOpt || document.createElement("video");
     if (!elOpt) { v.src = url; v.playsInline = true; v.preload = "auto"; su.el.appendChild(v); }
     v.muted = !!muted;
-    v.addEventListener("error", () => { su.err = true; }, { once: true });
+    v.addEventListener("playing", () => { v.classList.add("playing"); });
+    v.addEventListener("error", () => { su.err = true; v.classList.remove("playing"); }, { once: true });
     const go = () => { try { v.currentTime = Math.max(0, startAt); } catch (_) {} const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); };
     if (v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true });
     su.v = v;
@@ -6721,7 +6724,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793626538;
+  const MW_DJ_BUILD = 1793627624;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
