@@ -4350,6 +4350,7 @@ html.popdj #dj-mini{display:none!important}
     if (t.closest(".wpl-trial")) { wsStartTrial(t.closest(".wpl-trial")); return; }
     if (t.closest(".wpl-buy")) { wsBuyTier(t.closest(".wpl-buy")); return; }
     if (t.closest(".wpl-manage")) { wsManagePlan(t.closest(".wpl-manage")); return; }
+    if (t.closest(".wpl-signal")) { wsConnectSignal(t.closest(".wpl-signal")); return; }
     if (t.closest(".ws-ctl")) { if (!OWNER() && !SANDBOX) wsUpsell(); return; }
     if (t.closest("#tw-fs")) { const sh = document.getElementById("tw-shell"); try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {} return; }
     if (t.closest("[data-vsrestore]")) { vsPubRestore(); return; }
@@ -6705,7 +6706,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793653007;
+  const MW_DJ_BUILD = 1793653728;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7295,7 +7296,7 @@ html.popdj #dj-mini{display:none!important}
     }
     if (!document.getElementById("ws-plans")) {
       const p = document.createElement("div"); p.id = "ws-plans"; p.className = "ws-modal"; p.hidden = true;
-      p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 7-day free trial</b><span>Every feature free for 7 days: the tables, YouTube search, save sessions and the DJ Video Package</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div id="wpl-manage-row" hidden><button type="button" class="btn ghost sm wpl-manage">⚙️ Manage my plan / cancel</button></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 7-day free trial</button><button type="button" class="btn ghost wpl-free">🎛️ Open the tables</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables</b><span>Keep the exact same setup Meechie runs — same tables, same look, same arrangement. Play manually, or run your set the way he does</span></div><b class="wpl-pr">$10/month</b><button type="button" class="btn sm wpl-buy" data-tier="10">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search</b><span>Everything in Tables, plus search YouTube right from your tables</span></div><b class="wpl-pr">$15/month</b><button type="button" class="btn sm wpl-buy" data-tier="15">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search + Save sessions</b><span>Everything in YouTube search, plus save your sessions and playlists to run again</span></div><b class="wpl-pr">$20/month</b><button type="button" class="btn sm wpl-buy" data-tier="20">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>🎬 DJ VIDEO PACKAGE</b><span>Everything in Save sessions, plus the master screen: video mixes and your camera, like Meechie's TV station</span></div><b class="wpl-pr">Coming soon</b></div></div>`;
+      p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 7-day free trial</b><span>Every feature free for 7 days: the tables, YouTube search, save sessions and the DJ Video Package</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div id="wpl-manage-row" hidden><button type="button" class="btn ghost sm wpl-manage">⚙️ Manage my plan / cancel</button></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 7-day free trial</button><button type="button" class="btn ghost wpl-free">🎛️ Open the tables</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables</b><span>Keep the exact same setup Meechie runs — same tables, same look, same arrangement. Play manually, or run your set the way he does</span></div><b class="wpl-pr">$10/month</b><button type="button" class="btn sm wpl-buy" data-tier="10">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search</b><span>Everything in Tables, plus search YouTube right from your tables</span></div><b class="wpl-pr">$15/month</b><button type="button" class="btn sm wpl-buy" data-tier="15">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search + Save sessions</b><span>Everything in YouTube search, plus save your sessions and playlists to run again</span></div><b class="wpl-pr">$20/month</b><button type="button" class="btn sm wpl-buy" data-tier="20">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>🎬 DJ VIDEO PACKAGE</b><span>Everything in Save sessions, plus the master screen: video mixes and your camera, like Meechie's TV station</span></div><b class="wpl-pr">Coming soon</b></div><div id="wpl-signal-row" hidden><button type="button" class="btn ghost sm wpl-signal">🔗 Connect the Stripe signal</button> <span class="muted" id="wpl-signal-note"></span></div></div>`;
       document.body.appendChild(p);
     }
   }
@@ -7309,6 +7310,7 @@ html.popdj #dj-mini{display:none!important}
      * portal) — a second checkout can never stack two subscriptions. */
     document.querySelectorAll(".wpl-buy").forEach((b) => { const tier = +(b.getAttribute("data-tier") || 0); if (wsTier >= 10 && tier === wsTier) { b.disabled = true; b.textContent = "✅ Your plan"; } else if (wsTier >= 10) { b.disabled = true; b.textContent = "On a plan"; } else { b.disabled = false; b.textContent = "Get this plan"; } });
     const mr = document.getElementById("wpl-manage-row"); if (mr) mr.hidden = !(wsTier >= 10);
+    const sr = document.getElementById("wpl-signal-row"); if (sr) sr.hidden = !wsRealOwner();
     if (!note) return; if (wsTier >= 10) note.innerHTML = `<p style="margin:6px 0">✅ Your plan is on: <b>${SETUP_TIERS[wsTier] || "Tables"}</b> — $${wsTier}/month. Every feature in your plan is open on your tables.</p>`; else if (wsTrialAt && wsTrialActive()) { const daysLeft = Math.max(1, Math.ceil((wsTrialAt + SETUP_TRIAL_MS - Date.now()) / 864e5)); note.innerHTML = `<p style="margin:6px 0">✅ Your 7-day free trial is on — every feature is open until ${new Date(wsTrialAt + SETUP_TRIAL_MS).toLocaleDateString()} (${daysLeft} day${daysLeft === 1 ? "" : "s"} left). Nothing is charged when it ends — pick a plan below only if you want to keep your tables.</p>`; } else if (wsTrialAt) note.innerHTML = `<p style="margin:6px 0">⌛ Your 7-day free trial ended. Pick a plan below to keep your tables running — watching and listening to Meechie stays free forever.</p>`; else note.innerHTML = ""; }
   function wsPaintPlans() { const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) return; if (wsEntLoaded) { wsTrialPaint(); return; } wsLoadEnt().then(() => wsTrialPaint()); }
   async function wsStartTrial(btn) {
@@ -7352,6 +7354,23 @@ html.popdj #dj-mini{display:none!important}
       if (r.ok && r.j && /^https:\/\/billing\.stripe\.com\//.test(r.j.url || "")) { location.href = r.j.url; return; }
       say("No plan to manage yet.");
     } catch (_) { say("That did not open — tap it once more."); }
+    if (btn) btn.disabled = false;
+  }
+  /* Owner-only one-time setup (2026-11-02): the Stripe webhook endpoint is
+   * created from INSIDE the site — the owner cannot sign in to the Stripe
+   * Dashboard from his browser, so there is no dashboard step. This button
+   * shows only on the owner's own session (painted in wsTrialPaint); the
+   * server route re-checks the owner uid before touching Stripe. */
+  async function wsConnectSignal(btn) {
+    const ses = mySess(); const uid = ses && ses.user && ses.user.id;
+    if (!uid || !wsRealOwner()) return;
+    if (btn) btn.disabled = true;
+    try {
+      const r = await fetch("/api/dj/setup-webhook", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + ses.access_token }, body: "{}" }).then(async (x) => ({ ok: x.ok, status: x.status, j: await x.json().catch(() => ({})) }));
+      const note = document.getElementById("wpl-signal-note");
+      if (r.ok && r.j && r.j.connected) { if (note) note.textContent = r.j.already ? "Signal already connected ✅" : "Signal connected ✅"; if (btn) btn.textContent = "🔗 Stripe signal connected ✅"; say(r.j.already ? "The Stripe signal was already connected ✅" : "Stripe signal connected ✅ — plan payments now flip tiers on by themselves."); return; }
+      say("That did not connect — tap it once more.");
+    } catch (_) { say("That did not connect — tap it once more."); }
     if (btn) btn.disabled = false;
   }
   /* ---------- SETUP PLANS — entitlement (owner directive 2026-10-30,
