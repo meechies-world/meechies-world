@@ -4384,7 +4384,19 @@ html.popdj #dj-mini{display:none!important}
   document.addEventListener("click", (e) => {
     const t = e.target;
     if (!t || !t.closest) return;
-    if (t.closest("#tw-sound")) { if (window.MW_DJ) window.MW_DJ.toggle(); tvSig = ""; try { tvPaint(); } catch (_) {} return; }
+    if (t.closest("#tw-sound")) {
+      if (elOpen("v-mwtv")) {
+        /* on the MW TV page this button is the TV sound switch, not the
+         * radio toggle: flip the seat-local TV flag; turning TV sound ON
+         * stops the radio on this seat (local only, no state write) so
+         * the seat hears one station — the TV. chanSync() runs inside
+         * the tap so the unmute lands on the gesture itself. */
+        tvSndOn = !tvSndOn;
+        if (tvSndOn && listening) { try { stopListening(); } catch (_) {} }
+        try { chanSync(); } catch (_) {}
+      } else if (window.MW_DJ) window.MW_DJ.toggle();
+      tvSig = ""; try { tvPaint(); } catch (_) {} return;
+    }
     if (t.closest("#tw-watch") || t.closest("#st-watch")) { try { cutOtherAudio(); } catch (_) {} try { startListening(); } catch (_) {} if (typeof go === "function") go("watch"); return; }
     if (t.closest("#wb-sound")) { if (window.MW_DJ) window.MW_DJ.toggle(); return; }
     if (t.closest(".wsu-x")) { wsModal("ws-upsell", false); return; }
@@ -5272,6 +5284,14 @@ html.popdj #dj-mini{display:none!important}
    * station stage shows (same renderer, same transitions) underneath, over
    * the channel's own standby slate. It only renders while the channel is
    * open; leaving the channel parks its players so nothing plays unseen. */
+  /* MW TV's own sound switch (owner, 2026-11-02: "Theres no sound on my
+   * tv station"): the channel used to be audible only through the radio
+   * listening flag, so on the TV page — where the picture is the channel
+   * alone — there was no way to hear the TV itself. tvSndOn is a plain
+   * seat-local flag, session-only (not persisted): while on, the TW
+   * surface counts as audible and the channel players unmute on this
+   * seat only. It writes nothing to shared state. */
+  let tvSndOn = false;
   let tvSig = "";
   function tvPaint() {
     const vs = S.vstream || {};
@@ -5279,12 +5299,12 @@ html.popdj #dj-mini{display:none!important}
     if (vs.on && vs.meeting && !vs.hidden) { mode = "live"; label = vs.kind === "cam" ? "Meechie — live camera" : "Meechie — live screen"; }
     else if (msvHolds()) { mode = "mix"; label = "📤 Screen video" + ((S.msvideo || {}).title ? " — " + S.msvideo.title : ""); }
     else { const tg = vmixTargets(); if (tg.length) { mode = "mix"; label = "The video mix" + (S[tg[0].k] && S[tg[0].k].title ? " — " + S[tg[0].k].title : ""); } else { const scPk = scPictureK(); if (scPk) { mode = "mix"; label = "🎧 SoundCloud" + (S[scPk].title ? " — " + S[scPk].title : ""); } } }
-    const sig = mode + "|" + label + "|" + (listening ? 1 : 0);
+    const sig = mode + "|" + label + "|" + (listening ? 1 : 0) + "|" + (tvSndOn ? 1 : 0);
     if (sig === tvSig) return; tvSig = sig;
     const bd = $("#tw-live"), wt = $("#tw-what"), sb = $("#tw-sound");
     if (bd) { bd.hidden = !mode; bd.classList.toggle("mix", mode === "mix"); bd.textContent = mode === "live" ? "🔴 LIVE" : "ON AIR"; }
     if (wt) wt.textContent = label;
-    if (sb) sb.textContent = listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound";
+    if (sb) sb.textContent = elOpen("v-mwtv") ? (tvSndOn ? "🔊 TV sound on — tap to mute" : "🔇 TV sound off — tap for sound") : (listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound");
   }
   /* MW TV slate wording (owner, 2026-10-29: "Mw tv isnt fixed"): the
    * static first paint used to declare the station off air before any
@@ -5406,7 +5426,7 @@ html.popdj #dj-mini{display:none!important}
     return cur ? "📺 MW TV — " + cur.title : "";
   }
   const TV_SURFS = [
-    { id: "TW", slot: "#tw-vs1", warm: true, on: () => elOpen("v-mwtv"), aud: () => !!listening && !(S.live && DECKS.some((k) => S[k] && S[k].playing)) },
+    { id: "TW", slot: "#tw-vs1", warm: true, on: () => elOpen("v-mwtv"), aud: () => tvSndOn || (!!listening && !(S.live && DECKS.some((k) => S[k] && S[k].playing))) },
     { id: "ST", slot: "#st-vs1", warm: true, on: () => { const b = $("#st-ytbox"); return elOpen("v-radio") && !!b && !b.hidden; }, aud: () => false },
     { id: "MN", slot: "#mn-vs1", warm: false, on: () => !!$("#dj-mini"), aud: () => false },
     { id: "WB", slot: "#wb-vs1", warm: true, on: () => elOpen("v-watch"), aud: () => false },
@@ -6701,7 +6721,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793624192;
+  const MW_DJ_BUILD = 1793626538;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
