@@ -54,7 +54,7 @@ const LAZY_SRC={
    * these bytes for everyone (fetch only, never executed); dj.js fetches the
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
    * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
-  djbooth:["js/dj-booth.js?v=1793645289"],
+  djbooth:["js/dj-booth.js?v=1793652244"],
 };
 /* fb-feed's fallback story row must never paint ahead of the real
  * stories: this flag is up from the first eager script until stories.js
@@ -1659,7 +1659,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793649510;
+const MW_SHELL_BUILD = 1793652244;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
