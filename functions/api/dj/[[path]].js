@@ -9,12 +9,21 @@
  *
  * Owner setup (Cloudflare → Pages → meechies-world → Settings → Variables and secrets):
  *   STRIPE_SECRET_KEY        already set for Coins — reused as-is.
- *   STRIPE_DJ_WEBHOOK_SECRET the signing secret of the Stripe webhook endpoint
- *                            https://meechiesworldinc.com/api/dj/webhook
- *                            (Stripe → Developers → Webhooks → Add endpoint; events:
- *                            checkout.session.completed, customer.subscription.updated,
- *                            customer.subscription.deleted, invoice.payment_failed).
- *                            Falls back to STRIPE_WEBHOOK_SECRET when unset.
+ *   STRIPE_DJ_WEBHOOK_SECRET optional. The webhook endpoint itself is created
+ *                            from INSIDE the site (POST /api/dj/setup-webhook,
+ *                            owner session only — the "Connect the Stripe
+ *                            signal" button on the plans card), because the
+ *                            owner cannot sign in to the Stripe Dashboard
+ *                            from his browser. No dashboard step exists.
+ *
+ * Webhook verification has two modes, chosen by what the environment holds:
+ *   (a) a signing secret is set (STRIPE_DJ_WEBHOOK_SECRET, falling back to
+ *       STRIPE_WEBHOOK_SECRET) → classic HMAC signature verification;
+ *   (b) no signing secret → RE-FETCH verification: the posted body is
+ *       trusted for its event id ONLY; the event is fetched back from
+ *       Stripe with STRIPE_SECRET_KEY and only the FETCHED object is
+ *       processed. A forged post can name only an id Stripe itself must
+ *       confirm exists, so the two modes are equally forgery-proof.
  * Until STRIPE_SECRET_KEY is set, checkout refuses cleanly (501), exactly
  * like the coin shop.
  *
@@ -42,6 +51,9 @@ export const DJ_TIERS = {
   20: { cents: 2000, name: "Meechie's World DJ Setup — Tables + YouTube Search + Save Sessions" },
 };
 export const DJ_CONFIG = { trial_conversion: "pay-to-continue" };
+export const OWNER_UID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9"; // Meechie — the only session that may connect the Stripe signal
+export const WEBHOOK_URL = "https://meechiesworldinc.com/api/dj/webhook";
+export const WEBHOOK_EVENTS = ["checkout.session.completed", "customer.subscription.updated", "customer.subscription.deleted", "invoice.payment_failed"];
 const SUB_LIVE = ["active", "trialing", "past_due"]; // a subscription in one of these states blocks a second checkout
 const SCHEMA = [
   "create table if not exists dj_sub_events (id text primary key, uid text, kind text, at integer not null)",
@@ -55,9 +67,14 @@ async function stripe(env, path, form) {
   const r = await fetch("https://api.stripe.com/v1/" + path, { method: "POST", headers: { authorization: "Bearer " + env.STRIPE_SECRET_KEY, "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(form) });
   const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && j.error.message) || "Stripe error " + r.status); return j;
 }
+async function stripeGet(env, path) {
+  const r = await fetch("https://api.stripe.com/v1/" + path, { headers: { authorization: "Bearer " + env.STRIPE_SECRET_KEY } });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && j.error.message) || "Stripe error " + r.status); return j;
+}
+const webhookSecret = (env) => env.STRIPE_DJ_WEBHOOK_SECRET || env.STRIPE_WEBHOOK_SECRET || null;
 // Stripe signs each webhook: "t=<time>,v1=<hmac-sha256 of `${t}.${body}`>"
 async function stripeSigned(env, body, header) {
-  const secret = env.STRIPE_DJ_WEBHOOK_SECRET || env.STRIPE_WEBHOOK_SECRET;
+  const secret = webhookSecret(env);
   if (!secret || !header) return false;
   const parts = Object.fromEntries(header.split(",").map((kv) => kv.split("=")).filter((x) => x.length === 2 && x[0] !== "v1").map(([k, v]) => [k, v]));
   const sigs = header.split(",").filter((kv) => kv.startsWith("v1=")).map((kv) => kv.slice(3));
@@ -91,10 +108,11 @@ const ledger = async (env, id, uid, kind) => {
 };
 
 /* ---------- Stripe → us: subscription lifecycle ---------- */
-async function onWebhook(env, request) {
-  const body = await request.text();
-  if (!(await stripeSigned(env, body, request.headers.get("stripe-signature")))) return err("bad signature", 400);
-  let ev; try { ev = JSON.parse(body); } catch (_) { return err("bad event", 400); }
+// Applies one VERIFIED Stripe event. Both verification modes below hand
+// this function an event object that came from Stripe itself — either the
+// HMAC-signed body or the event re-fetched from Stripe's API — never raw
+// unverified post data.
+async function processEvent(env, ev) {
   const obj = (ev.data && ev.data.object) || {};
 
   if (ev.type === "checkout.session.completed") {
@@ -140,6 +158,71 @@ async function onWebhook(env, request) {
   }
 
   return json({ received: true });
+}
+
+async function onWebhook(env, request) {
+  const body = await request.text();
+  // Mode (a): a signing secret is configured — classic HMAC verification,
+  // exactly as this endpoint has always worked.
+  if (webhookSecret(env)) {
+    if (!(await stripeSigned(env, body, request.headers.get("stripe-signature")))) return err("bad signature", 400);
+    let ev; try { ev = JSON.parse(body); } catch (_) { return err("bad event", 400); }
+    return processEvent(env, ev);
+  }
+  // Mode (b): RE-FETCH verification. The posted body is read for its event
+  // id ONLY; the event is then fetched back from Stripe with the secret
+  // key and only the FETCHED object is processed. A forged post can name
+  // only an id Stripe itself must confirm exists, and a tampered body
+  // changes nothing — the body is never processed.
+  if (!env.STRIPE_SECRET_KEY) return err("webhook not configured", 400);
+  let posted; try { posted = JSON.parse(body); } catch (_) { return err("bad event", 400); }
+  const id = posted && typeof posted.id === "string" ? posted.id : "";
+  if (!/^evt_[A-Za-z0-9_]+$/.test(id)) return err("unknown event", 404);
+  let ev; try { ev = await stripeGet(env, "events/" + encodeURIComponent(id)); } catch (_) { return err("unknown event", 404); }
+  if (!ev || ev.id !== id || !WEBHOOK_EVENTS.includes(ev.type)) return err("unknown event", 404);
+  return processEvent(env, ev);
+}
+
+/* ---------- inside-out webhook setup (owner tap, no dashboard) ---------- */
+// The setup state doc + its mandatory changes row (writeDoc pattern from
+// station.js: update, insert-if-missing, change feed row — one batch here).
+async function recordSetupDoc(env, state) {
+  const path = "dj/webhook", nowIso = new Date().toISOString();
+  const data = JSON.stringify(state);
+  await env.DB.batch([
+    env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, "dj", null, data, nowIso, nowIso),
+    env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(data, nowIso, path),
+    change(env, "docs", path, "dj"),
+  ]);
+}
+// Owner-only: make sure the Stripe webhook endpoint for this site exists
+// with exactly our four events, talking to Stripe with the site key.
+// The endpoint secret Stripe returns at creation is deliberately discarded
+// — re-fetch verification never needs it, and no secret is ever stored,
+// returned, or logged by this route.
+async function onSetupWebhook(env, me) {
+  if (me.id !== OWNER_UID) return err("Only Meechie can connect the Stripe signal.", 403);
+  if (!env.STRIPE_SECRET_KEY) return err("DJ plan payments aren't switched on yet.", 501);
+  const mode = webhookSecret(env) ? "env-secret" : "refetch";
+  let list; try { list = await stripeGet(env, "webhook_endpoints?limit=100"); } catch (_) { return err("Payments didn't answer — tap it once more.", 502); }
+  const found = ((list && list.data) || []).find((e) => e && e.url === WEBHOOK_URL);
+  const eventForm = Object.fromEntries(WEBHOOK_EVENTS.map((e, i) => [`enabled_events[${i}]`, e]));
+  let endpointId, created = false, updated = false;
+  try {
+    if (found) {
+      endpointId = found.id;
+      const have = Array.isArray(found.enabled_events) ? found.enabled_events : [];
+      if (!(have.includes("*") || WEBHOOK_EVENTS.every((e) => have.includes(e)))) {
+        await stripe(env, "webhook_endpoints/" + encodeURIComponent(found.id), eventForm);
+        updated = true;
+      }
+    } else {
+      const ep = await stripe(env, "webhook_endpoints", { url: WEBHOOK_URL, description: "Meechie's World DJ setup subscriptions", ...eventForm });
+      endpointId = ep.id; created = true; // ep.secret intentionally not read
+    }
+  } catch (_) { return err("Payments didn't answer — tap it once more.", 502); }
+  await recordSetupDoc(env, { endpointId, mode, at: Date.now() });
+  return json({ ok: true, connected: true, already: !created, created, updated, endpointId, mode });
 }
 
 export async function onRequest({ request, env, params }) {
@@ -192,6 +275,10 @@ export async function onRequest({ request, env, params }) {
     } catch (_) { return err("Payments didn't answer — tap it once more.", 502); }
     return json({ url: s.url });
   }
+
+  // owner-only one-time setup: create/confirm the Stripe webhook endpoint
+  // from inside the site (no dashboard — see onSetupWebhook)
+  if (route === "setup-webhook" && method === "POST") return onSetupWebhook(env, me);
 
   return err("Not found", 404);
 }
