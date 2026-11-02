@@ -34,11 +34,12 @@ const LAZY_SRC={
   world:["js/world3d.js?v=1793185302"],
   games:["js/games.js?v=1793194200"],
   creators:["js/studio.js?v=1793185302"],
+  shop:["js/share.js?v=1793642290"],
   /* C1 split: dj.js's booth continuation pack. The B5 idle prefetcher warms
    * these bytes for everyone (fetch only, never executed); dj.js fetches the
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
    * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
-  djbooth:["js/dj-booth.js?v=1793633213"],
+  djbooth:["js/dj-booth.js?v=1793642290"],
 };
 const lazyAt={}, lazyBusy={};
 function lazyKick(v){
@@ -80,6 +81,27 @@ function mwPrefetchLazy(){
   step();
 }
 window.addEventListener("load", () => { if("requestIdleCallback" in window) requestIdleCallback(mwPrefetchLazy, { timeout: 4000 }); else setTimeout(mwPrefetchLazy, 2500); });
+/* ---------- Idle-executed modules (app list + app offer) ----------
+   js/app-list.js is pure data (window.MW_APP_LIST) and js/app-offer.js only
+   starts a 5s interval whose first possible visible effect is ~40s into a
+   section, so neither has boot-time duties. They execute once, at window
+   load + idle (the same trigger as the prefetch above, but executing),
+   app-list first. app-offer reads MW_APP_LIST lazily per tick, so order is
+   belt-and-braces rather than load-critical. */
+const IDLE_SRC=["js/app-list.js?v=1793642290","js/app-offer.js?v=1793642290"];
+let mwIdleDone = false;
+function mwIdleExec(){
+  if(mwIdleDone) return; mwIdleDone = true;
+  let i = 0;
+  const step = () => {
+    if(i >= IDLE_SRC.length) return;
+    const sc = document.createElement("script"); sc.src = IDLE_SRC[i++];
+    sc.onload = step; sc.onerror = step; /* a failed file never blocks the other */
+    document.head.appendChild(sc);
+  };
+  step();
+}
+window.addEventListener("load", () => { if("requestIdleCallback" in window) requestIdleCallback(mwIdleExec, { timeout: 4000 }); else setTimeout(mwIdleExec, 2500); });
 
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
@@ -1461,7 +1483,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793633213;
+const MW_SHELL_BUILD = 1793642290;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
