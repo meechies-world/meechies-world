@@ -821,6 +821,10 @@ html.popdj .popdj-hint{display:block}
 .vstage.vs-on .vstandby{display:none!important}
 .msvlive{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:4;display:none}
 .vstage.msv-on .msvlive{display:block}
+.vstage .tvchan{position:absolute;inset:0;z-index:3;background:#000;display:none}
+.vstage .tvchan.on{display:block}
+.vstage .tvchan iframe,.vstage .tvchan video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;object-fit:contain}
+.vstage .tvchan video.tvwarm{visibility:hidden}
 .vstage.msv-on .vposter{display:none!important}
 .vstage.msv-on .vstandby{display:none!important}
 #st-ytbox .msvlive,#wb-stage .msvlive{object-fit:cover}
@@ -5140,7 +5144,7 @@ html.popdj #dj-mini{display:none!important}
     return bk ? "audio" : "video";
   }
   function bandLabelSync() {
-    const txt = bandKind() === "audio" ? bandAudioLabel : bandVideoLabel;
+    const txt = chanBandText() || (bandKind() === "audio" ? bandAudioLabel : bandVideoLabel);
     if (txt === bandLabelCur) return; bandLabelCur = txt;
     const sp = document.querySelector("#dj-mini .mn-bar span"); if (sp) sp.textContent = txt;
   }
@@ -5226,7 +5230,7 @@ html.popdj #dj-mini{display:none!important}
         if (scrView.slots.some((sl) => sl.deck)) scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
       else {
-        const has = vmixTargets().length > 0 || !!((S.vstream || {}).on && (S.vstream || {}).meeting), box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
+        const has = vmixTargets().length > 0 || !!((S.vstream || {}).on && (S.vstream || {}).meeting) || chanHolds(), box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
         if (has) { const sndV = vmixSndScr(); await renderScreen(scrView, sndV !== scrView, sndV === scrView ? mix : 1, duck); }
         else if (S.live) { const sb = $("#st-vstandby"); if (sb) sb.textContent = stSlate(); await renderScreen(scrView, true, 1, 1); }
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
@@ -5237,6 +5241,7 @@ html.popdj #dj-mini{display:none!important}
       try { vsSync(); } catch (_) {}
       try { msvSync(); } catch (_) {}
       try { scStageSync(mix, duck); } catch (_) {}
+      try { chanSync(); } catch (_) {}
     } catch (_) {}
     stageBusy = false;
   }
@@ -5288,6 +5293,217 @@ html.popdj #dj-mini{display:none!important}
     const lv = document.querySelector("#tw-stage video.vslive");
     if (lv && lv.paused && (lv.srcObject || lv.currentSrc)) { try { const p = lv.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {} }
     tvPaint();
+  }
+  /* ================= MW TV — THE PROGRAMMED CHANNEL (Stage 1, 2026-11-01) =================
+   * Malik: "Let's start my own TV channel" + "Make sure everything's
+   * legal." Spec: website/mwtv-channel/SPEC.md + NEWS-BLOCK.md.
+   *
+   * The keeper (station.js tvTick) is the program director: it lays
+   * the lineup out as segments in tv/now, and this layer is only a
+   * tuner — it derives "what is on, and how far in" from the segment
+   * stamps on the server-corrected clock, so every viewer lands on
+   * the same moment of the same program (mid-show join included).
+   * The channel is the BOTTOM layer of the master screen: a visible
+   * share, a featured screen video (msvideo) or the video mix all
+   * outrank it — chanHolds() is false while any of them holds, and
+   * the overlay also sits below them in z-order — so his live moments
+   * break in instantly and the channel resumes underneath, its clock
+   * never paused (SPEC §6). Sound: channel players are muted on every
+   * surface except the MW TV page, and there only while the listener
+   * has sound on AND the live radio is not sounding — the channel
+   * never talks over the station (a full TV-sound takeover is a
+   * separate view-aware audio pass, staged). Legality: the client
+   * airs only what the keeper's gate put in the window; an item whose
+   * player errors is parked for that viewer until the next segment
+   * (SPEC §5.3) — the channel never falls back to an unlisted source.
+   * The hourly news window resolves at air time (tvResolveNews): a
+   * fresh edition, else the previous edition once, else a music-video
+   * block off the break pool played as a wall-clock tape every viewer
+   * shares; if none of those exist the window parks — never dead air
+   * faked as news, never a stale edition presented as new. */
+  const TV_NEWS_STALE_C = 2 * 3600e3;
+  let tvChanDoc = null, tvPoolDoc = null, tvNowDoc = null, tvNewsDoc = null;
+  function tvSegAtC(segs, t) { if (!Array.isArray(segs)) return null; for (const sg of segs) { if (t >= sg.start && t < sg.start + sg.dur * 1000) return sg; } return null; }
+  function tvResolveNews(newsDoc, seg) {
+    const st = seg.edWin || seg.start;
+    const fresh = (ed) => !!ed && !!ed.videoUrl && (+ed.at || 0) <= st + 60000 && (st - (+ed.at || 0)) < TV_NEWS_STALE_C;
+    const cur = newsDoc && newsDoc.current, prev = newsDoc && newsDoc.previous;
+    if (fresh(cur)) return { ed: cur, prev: false };
+    if (fresh(prev)) return { ed: prev, prev: true };
+    return { fill: true };
+  }
+  function tvPoolTapeAt(pool, now) {
+    const items = ((pool && pool.items) || []).filter((it) => it && !it.held && +it.dur > 0 && (it.src === "yt" ? !!it.yt : !!it.url));
+    if (!items.length) return null;
+    const total = items.reduce((a, x) => a + (+x.dur || 0), 0);
+    let pos = ((now / 1000) % total + total) % total;
+    for (const it of items) { if (pos < +it.dur) return { it, pos }; pos -= +it.dur; }
+    return { it: items[0], pos: 0 };
+  }
+  function chanHolds() {
+    if (SANDBOX || !stateSeen) return false;
+    if (!tvChanDoc || tvChanDoc.on === false) return false;
+    if (!tvNowDoc || tvNowDoc.off || tvNowDoc.down || !Array.isArray(tvNowDoc.segs) || !tvNowDoc.segs.length) return false;
+    const vs = S.vstream || {};
+    if (vs.on && vs.meeting && !vs.hidden) return false;
+    if (msvActive()) return false;
+    if (vmixTargets().length) return false;
+    return true;
+  }
+  function tvChanCur() {
+    if (!chanHolds()) return null;
+    const now = serverNow();
+    const seg = tvSegAtC(tvNowDoc.segs, now);
+    if (!seg) return null;
+    const into = (now - seg.start) / 1000;
+    if (seg.k === "news") {
+      const r = tvResolveNews(tvNewsDoc, seg);
+      if (r.ed) return { key: "news-ed@" + seg.start, src: "file", yt: "", url: r.ed.videoUrl, pos: Math.max(0, Math.min(into, +r.ed.dur || into)), title: "Meechie's World News", show: "MW TV News", note: "Edition " + new Date(+r.ed.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + (r.prev ? " (repeat)" : ""), seg };
+      const f = tvPoolTapeAt(tvPoolDoc, now);
+      if (f) return { key: "newsfill", src: f.it.src, yt: f.it.yt || "", url: f.it.url || "", pos: f.pos, title: f.it.title || "", show: "Music Videos", note: "The newsroom is putting the next update together — news returns at the top of the hour", seg };
+      return null;
+    }
+    return { key: (seg.id || "") + "@" + seg.start, src: seg.src, yt: seg.yt || "", url: seg.url || "", pos: (seg.off || 0) + into, title: seg.title || "", show: seg.show || "", seg };
+  }
+  function chanBandText() {
+    if (!chanHolds()) return "";
+    const cur = tvChanCur();
+    return cur ? "📺 MW TV — " + cur.title : "";
+  }
+  const TV_SURFS = [
+    { id: "TW", slot: "#tw-vs1", warm: true, on: () => elOpen("v-mwtv"), aud: () => !!listening && !(S.live && DECKS.some((k) => S[k] && S[k].playing)) },
+    { id: "ST", slot: "#st-vs1", warm: true, on: () => { const b = $("#st-ytbox"); return elOpen("v-radio") && !!b && !b.hidden; }, aud: () => false },
+    { id: "MN", slot: "#mn-vs1", warm: false, on: () => !!$("#dj-mini"), aud: () => false },
+    { id: "WB", slot: "#wb-vs1", warm: true, on: () => elOpen("v-watch"), aud: () => false },
+    { id: "BO", slot: "#dj-vs1", warm: true, on: () => OWNER() && elOpen("v-djbooth"), aud: () => false }
+  ];
+  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; });
+  function chanOverlay(su) {
+    const slot = document.querySelector(su.slot); if (!slot) return null;
+    const box = slot.closest(".vstage"); if (!box) return null;
+    let el = box.querySelector(":scope > .tvchan");
+    if (!el) { el = document.createElement("div"); el.className = "tvchan"; box.appendChild(el); }
+    return el;
+  }
+  function chanTeardown(su, keepEl) {
+    if (su.p) { try { su.p.destroy(); } catch (_) {} su.p = null; }
+    if (su.v) { try { su.v.pause(); } catch (_) {} if (su.v !== keepEl) { try { su.v.remove(); } catch (_) {} } su.v = null; }
+    if (su.warmEnt) { if (su.warmEnt.v !== keepEl) { try { su.warmEnt.v.remove(); } catch (_) {} } su.warmEnt = null; }
+    if (su.el && !keepEl) su.el.innerHTML = "";
+    su.key = "";
+  }
+  function chanPark(su) { if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; }
+  function chanYtMount(su, yt, startAt, muted) {
+    const kAtCall = su.key;
+    ytApi().then((YT) => {
+      if (!su.el || su.key !== kAtCall) return;
+      su.el.innerHTML = "<div></div>";
+      try {
+        su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
+          onReady: (e) => { try { e.target.mute(); e.target.seekTo(Math.max(0, startAt), true); e.target.playVideo(); if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
+          onError: () => { su.err = true; }
+        } });
+      } catch (_) { su.err = true; }
+    }).catch(() => { su.err = true; });
+  }
+  function chanFileMount(su, url, startAt, muted, elOpt) {
+    const v = elOpt || document.createElement("video");
+    if (!elOpt) { v.src = url; v.playsInline = true; v.preload = "auto"; su.el.appendChild(v); }
+    v.muted = !!muted;
+    v.addEventListener("error", () => { su.err = true; }, { once: true });
+    const go = () => { try { v.currentTime = Math.max(0, startAt); } catch (_) {} const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); };
+    if (v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true });
+    su.v = v;
+  }
+  function chanWarmNext(su, cur) {
+    if (!su.warm || !cur || !cur.seg || !tvNowDoc || !Array.isArray(tvNowDoc.segs)) return;
+    const now = serverNow();
+    const nx = tvNowDoc.segs.find((sg) => sg.start > cur.seg.start && (sg.k === "prog" || sg.k === "break" || sg.k === "house"));
+    if (!nx || nx.start - now > 45000 || !(nx.src === "file" || nx.src === "ia") || !nx.url) return;
+    const key = (nx.id || "") + "@" + nx.start;
+    if (su.warmEnt && su.warmEnt.key === key) return;
+    if (su.warmEnt) { try { su.warmEnt.v.remove(); } catch (_) {} su.warmEnt = null; }
+    const v = document.createElement("video");
+    v.className = "tvwarm"; v.src = nx.url; v.muted = true; v.playsInline = true; v.preload = "auto";
+    su.el.appendChild(v);
+    su.warmEnt = { key, v };
+  }
+  function chanSyncSurf(su, cur) {
+    const el = chanOverlay(su); su.el = el;
+    if (!el || !su.on() || !cur) { chanPark(su); return; }
+    el.classList.add("on");
+    const audible = su.aud();
+    if (su.key !== cur.key) {
+      const w = su.warmEnt && su.warmEnt.key === cur.key ? su.warmEnt : null;
+      chanTeardown(su, w ? w.v : null);
+      if (w) su.warmEnt = null;
+      su.key = cur.key; su.err = false; su.seekAt = 0;
+      if (w && (cur.src === "file" || cur.src === "ia")) { w.v.classList.remove("tvwarm"); chanFileMount(su, cur.url, cur.pos, !audible, w.v); }
+      else if (cur.src === "yt") chanYtMount(su, cur.yt, cur.pos, !audible);
+      else chanFileMount(su, cur.url, cur.pos, !audible, null);
+      chanWarmNext(su, cur);
+      return;
+    }
+    if (su.err) return;
+    if (su.v) {
+      const wantMuted = !audible;
+      if (su.v.muted !== wantMuted) { try { su.v.muted = wantMuted; } catch (_) {} }
+      if (su.v.paused) { const pr = su.v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      const drift = su.v.currentTime - cur.pos;
+      if (isFinite(drift) && Math.abs(drift) > 2.5 && su.v.readyState >= 2 && !su.v.seeking) { try { su.v.currentTime = Math.max(0, cur.pos); } catch (_) {} }
+    } else if (su.p && su.p.getPlayerState) {
+      try {
+        if (su.p.getPlayerState() === 2) su.p.playVideo();
+        if (audible) { su.p.unMute(); su.p.setVolume(100); } else su.p.mute();
+        const ct = su.p.getCurrentTime();
+        if (isFinite(ct) && Math.abs(ct - cur.pos) > 3 && Date.now() - (su.seekAt || 0) > 4000) { su.seekAt = Date.now(); su.p.seekTo(Math.max(0, cur.pos), true); }
+      } catch (_) {}
+    }
+  }
+  let tvGuideUntil = 0;
+  function chanGuidePaint(cur) {
+    const seg = cur ? cur.seg : (chanHolds() ? tvSegAtC(tvNowDoc.segs, serverNow()) : null);
+    const inNewsPark = !!seg && seg.k === "news" && !cur;
+    if (elOpen("v-mwtv")) {
+      const bd = $("#tw-live"), wt = $("#tw-what");
+      if (cur) {
+        if (bd) { bd.hidden = false; bd.textContent = "📺 MW TV"; }
+        if (wt) wt.textContent = "📺 " + (cur.show ? cur.show + " — " : "") + cur.title + (cur.note ? " · " + cur.note : "");
+      } else if (inNewsPark && wt) wt.textContent = "📰 MW TV News — the newsroom is putting the next update together";
+      const pw = $("#tw-progwrap"), pf = $("#tw-prog");
+      if (pw && pf) {
+        if (seg) { pw.hidden = false; const pct = Math.max(0, Math.min(100, (serverNow() - seg.start) / (seg.dur * 10))); pf.style.width = pct + "%"; }
+        else pw.hidden = true;
+      }
+      const gb = $("#tw-guidebtn");
+      if (gb && !gb.dataset.mw) { gb.dataset.mw = "1"; gb.addEventListener("click", () => { tvGuideUntil = Date.now() + 8000; }); if (wt && !wt.dataset.mw) { wt.dataset.mw = "1"; wt.addEventListener("click", () => { tvGuideUntil = Date.now() + 8000; }); } }
+      const g = $("#tw-guide");
+      if (g) {
+        const open = Date.now() < tvGuideUntil && !!seg;
+        g.hidden = !open;
+        if (open) {
+          const segs = tvNowDoc.segs, ix = segs.indexOf(seg);
+          const lbl = (sg) => sg.k === "news" ? "📰 Meechie's World News" : (sg.k === "break" ? "🎵 " : "") + (sg.title || "MW TV");
+          const ends = new Date(seg.start + seg.dur * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const set = (id, txt) => { const e = $(id); if (e) e.textContent = txt; };
+          set("#tw-g-now", "ON NOW · " + (cur ? (cur.show ? cur.show + " — " : "") + cur.title : lbl(seg)) + " · ends " + ends);
+          set("#tw-g-next1", segs[ix + 1] ? "UP NEXT · " + lbl(segs[ix + 1]) + " · " + new Date(segs[ix + 1].start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
+          set("#tw-g-next2", segs[ix + 2] ? "THEN · " + lbl(segs[ix + 2]) + " · " + new Date(segs[ix + 2].start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
+          const note = tvNowDoc.skipNote && Date.now() - tvNowDoc.skipNote.at < 3600e3 ? "Skipped “" + tvNowDoc.skipNote.title + "” — no longer cleared to air; the lineup adjusted." : (cur && cur.note ? cur.note : "");
+          set("#tw-g-note", note);
+        }
+      }
+    }
+    const tp = $("#mn-tvprog");
+    if (tp) {
+      if (cur) { tp.hidden = false; tp.textContent = "📺 MW TV · " + cur.title; }
+      else tp.hidden = true;
+    }
+  }
+  function chanSync() {
+    const cur = tvChanCur();
+    TV_SURFS.forEach((su) => { try { chanSyncSurf(su, chanHolds() ? cur : null); } catch (_) {} });
+    try { chanGuidePaint(chanHolds() ? cur : null); } catch (_) {}
   }
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
    * screen is one more screen in the same system — the live stream
@@ -6434,7 +6650,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793582674;
+  const MW_DJ_BUILD = 1793592160;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -8786,7 +9002,8 @@ html.popdj #dj-mini{display:none!important}
     // radio/dj doc the station card reads — one live signal everywhere.
     if (!window.claude) { if (initTries++ < 40) setTimeout(init, 750); return; }
     const d = await claude.use("db"); if (!d) { if (initTries++ < 40) setTimeout(init, 750); return; }
-    if (!SANDBOX) d.doc("radio/camframe").onSnapshot((snap) => { camFrameDoc = snap.exists ? snap.data() : null; camOvSync(); }, () => {}); // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
+    if (!SANDBOX) d.doc("radio/camframe").onSnapshot((snap) => { camFrameDoc = snap.exists ? snap.data() : null; camOvSync(); }, () => {});
+    if (!SANDBOX) { d.doc("tv/channel").onSnapshot((snap) => { tvChanDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/breakpool").onSnapshot((snap) => { tvPoolDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/now").onSnapshot((snap) => { tvNowDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/news").onSnapshot((snap) => { tvNewsDoc = snap.exists ? snap.data() : null; }, () => {}); } // MW TV channel docs (Stage 1) - the keeper writes tv/now, this layer only tunes in; same facade + changes feed, fail-silent, sandbox never subscribes // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt || S[k].scUrl)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
