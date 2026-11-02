@@ -1307,8 +1307,8 @@ $("#auth-switch").addEventListener("click",()=>{ authMode=authMode==="signup"?"s
   const g=$("#gate"); if(!g) return;
   let up=true;
   const paint=()=>{ $("#gt-name-f").hidden=!up; $("#gt-name").required=up; $("#gt-pass").autocomplete=up?"new-password":"current-password";
-    $("#gt-title").textContent=up?"Members only":"Welcome back"; $("#gt-sub").textContent=up?"Create your free account to enter Meechie's World.":"Sign in to enter Meechie's World.";
-    $("#gt-go").textContent=up?"Create my account & enter":"Sign in & enter"; $("#gt-switch").textContent=up?"I already have an account":"I'm new here"; $("#gt-msg").textContent=""; };
+    $("#gt-title").textContent=up?"Join Meechie's World":"Welcome back"; $("#gt-sub").textContent=up?"You have had a free look around — a free account keeps the music, your song requests and your name right here. It takes under a minute, and it is free forever.":"Good to see you — sign in and everything is right where you left it.";
+    $("#gt-go").textContent=up?"Create my free account":"Sign in & enter"; $("#gt-switch").textContent=up?"I already have an account":"I'm new here"; $("#gt-msg").textContent=""; };
   paint();
   $("#gt-switch").addEventListener("click",()=>{ up=!up; paint(); });
   if(!$("#auth-social").hidden && (window.MW_CONFIG||{}).BACKEND!=="cf") $("#gt-fb").hidden=false; // Facebook sign-in isn't on the new free system yet
@@ -1461,7 +1461,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793577075;
+const MW_SHELL_BUILD = 1793578125;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
