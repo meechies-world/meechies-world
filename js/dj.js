@@ -1668,7 +1668,14 @@ html.popdj #dj-mini{display:none!important}
   // test is written out here). Nothing existing moves, reorders or
   // restyles; member and guest booths never create the row, and the tap
   // handler re-checks wsRealOwner() before it opens the modal.
-  { const doorPl = document.getElementById("dj-door"); if (typeof isOwner !== "undefined" && !!isOwner && doorPl && !document.getElementById("wpl-door")) { const dr = document.createElement("div"); dr.className = "door-row"; dr.style.marginTop = "8px"; dr.innerHTML = "<span>🎛️ <b>Your DJ plan</b> <small>your setup plan, billing and the Stripe signal</small></span><span class=\"door-acts\"><button class=\"btn sm\" type=\"button\" id=\"wpl-door\">🎛️ Plans &amp; Stripe</button></span>"; doorPl.appendChild(dr); } }
+  // Race fix (same day): isOwner lands asynchronously (app-core sets it
+  // only after its facade loads), so a build-time-only check ran too
+  // early and the row never appeared in a real booth. Creation is now an
+  // idempotent ensure (wplDoorEnsure) that also runs at the end of
+  // init's owner-UI paint (show), so the row lands as soon as the owner
+  // session is known — exactly once, thanks to the id guard.
+  function wplDoorEnsure() { const doorPl = document.getElementById("dj-door"); if (typeof isOwner !== "undefined" && !!isOwner && doorPl && !document.getElementById("wpl-door")) { const dr = document.createElement("div"); dr.className = "door-row"; dr.style.marginTop = "8px"; dr.innerHTML = "<span>🎛️ <b>Your DJ plan</b> <small>your setup plan, billing and the Stripe signal</small></span><span class=\"door-acts\"><button class=\"btn sm\" type=\"button\" id=\"wpl-door\">🎛️ Plans &amp; Stripe</button></span>"; doorPl.appendChild(dr); } }
+  wplDoorEnsure();
   /* ---------- DJ BRAIN capture (PR-B2) ----------
    * The booth teaches the brain: every play, natural end, skip, watchdog
    * stall and queue draw on the DRIVING booth (owner + lead — a lead-booth
@@ -5418,8 +5425,9 @@ html.popdj #dj-mini{display:none!important}
   function chanPark(su) { if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; }
   function chanYtMount(su, yt, startAt, muted) {
     const kAtCall = su.key;
-    ytApi().then((YT) => {
+    ytApi().then(() => {
       if (!su.el || su.key !== kAtCall) return;
+      if (!window.YT || !YT.Player) { su.err = true; return; }
       su.el.innerHTML = "<div></div>";
       try {
         su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
@@ -6718,7 +6726,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793657782;
+  const MW_DJ_BUILD = 1793659041;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -8332,7 +8340,7 @@ html.popdj #dj-mini{display:none!important}
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt || S[k].scUrl)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
-    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; document.documentElement.classList.toggle("popdj-guest", document.documentElement.classList.contains("popdj") && !own); if (own) { libList(); paintOwner(); paintQueue(); paintPlaylists(); paintSched(); loadSchedDoc(); loadRqPlaylist(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; };
+    const show = () => { const own = OWNER(); $("#dj-owner").hidden = !own; document.documentElement.classList.toggle("popdj-guest", document.documentElement.classList.contains("popdj") && !own); if (own) { libList(); paintOwner(); paintQueue(); paintPlaylists(); paintSched(); loadSchedDoc(); loadRqPlaylist(); paintPads(); paintCurated(); subReqs(); const ti = $("#dj-ticker-in"); if (ti && document.activeElement !== ti) ti.value = S.ticker || ""; } paintPkList(); subPicks(); const vn = document.getElementById("dj-visit-note"); if (vn) vn.hidden = own; wplDoorEnsure(); };
     showOwnerUI = show; if (OWNER() || SANDBOX) boothKick(); show(); setTimeout(show, 1500); setTimeout(show, 5000);
     setInterval(() => { if (OWNER() && !$("#dj-owner").hidden && $("#dj-lib").children.length !== TRACKS().length) libList(); }, 4000);
     // scroll past the tables and the side buttons/floats fold away — nothing covers the decks
