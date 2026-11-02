@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Car Mode — Meechie's World Radio &amp; TV</title>
+<meta name="description" content="Meechie's World in the car: CH 1 live radio, the master screen, a map and one big TUNE IN. Open meechiesworldinc.com/car on any car or phone browser.">
+<style>
+  :root{ --gold:#e8b33c; --gold2:#ffcf5e; --ink:#0a0a0a; --panel:#141414; --line:#2c2c2c; --txt:#f5f0e1; --dim:#b9b09a; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ background:#000; color:var(--txt); font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body{ min-height:100vh; display:flex; flex-direction:column; }
+  header{ display:flex; align-items:center; gap:14px; padding:12px 18px; border-bottom:2px solid var(--gold); background:var(--ink); }
+  header .brand{ font-weight:900; letter-spacing:.06em; font-size:clamp(18px,3.4vw,30px); color:var(--gold2); text-transform:uppercase; }
+  header .sub{ color:var(--dim); font-size:clamp(12px,1.8vw,16px); letter-spacing:.14em; text-transform:uppercase; }
+  .livebadge{ margin-left:auto; display:none; align-items:center; gap:8px; background:#3d0a0a; color:#ff6b6b; border:1px solid #ff5252; border-radius:999px; padding:8px 16px; font-weight:800; letter-spacing:.1em; font-size:clamp(13px,2vw,17px); }
+  .livebadge.on{ display:inline-flex; }
+  .livebadge i{ width:12px; height:12px; border-radius:50%; background:#ff5252; display:inline-block; animation:blink 1.2s infinite; }
+  @keyframes blink{ 50%{ opacity:.25; } }
+  main{ flex:1; display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); gap:14px; padding:14px; }
+  @media (max-width:900px){ main{ grid-template-columns:minmax(0,1fr); } }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; }
+  .card h2{ font-size:clamp(13px,1.7vw,16px); letter-spacing:.16em; text-transform:uppercase; color:var(--gold); padding:12px 16px 0; }
+  .stage{ position:relative; background:#000; aspect-ratio:16/9; }
+  .stage img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .stage .chip{ position:absolute; left:12px; bottom:12px; background:rgba(0,0,0,.78); border:1px solid var(--gold); color:var(--gold2); border-radius:12px; padding:10px 14px; font-size:clamp(13px,1.9vw,17px); font-weight:700; }
+  .tunein{ margin:14px; min-height:96px; border:0; border-radius:16px; background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; font-size:clamp(26px,4.6vw,42px); font-weight:900; letter-spacing:.05em; cursor:pointer; }
+  .tunein.playing{ background:#1d1d1d; color:var(--gold2); border:2px solid var(--gold); }
+  .volrow{ display:flex; align-items:center; gap:14px; padding:0 16px 16px; font-size:clamp(15px,2.2vw,20px); }
+  .volrow input[type=range]{ flex:1; height:44px; accent-color:var(--gold); }
+  .nowbar{ border-top:2px solid var(--gold); background:#0d0d0d; padding:14px 16px 16px; }
+  .nowbar .ch{ color:var(--gold2); font-weight:900; letter-spacing:.08em; font-size:clamp(15px,2.3vw,21px); }
+  .nowbar .title{ font-size:clamp(18px,3vw,28px); font-weight:800; margin-top:6px; line-height:1.2; }
+  .nowbar .meta{ color:var(--dim); margin-top:4px; font-size:clamp(13px,2vw,17px); }
+  .track{ height:12px; background:#262626; border-radius:999px; margin-top:10px; overflow:hidden; }
+  .track i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--gold),var(--gold2)); transition:width 1s linear; }
+  .guide{ list-style:none; padding:10px 16px 16px; display:flex; flex-direction:column; gap:8px; }
+  .guide li{ display:flex; gap:12px; align-items:baseline; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font-size:clamp(14px,2.1vw,19px); }
+  .guide li.now{ border-color:var(--gold); background:#221a08; }
+  .guide .when{ color:var(--gold2); font-weight:800; white-space:nowrap; font-size:.86em; }
+  .guide .nowtag{ margin-left:auto; color:#ff6b6b; font-weight:900; font-size:.8em; letter-spacing:.1em; }
+  .note{ color:var(--dim); font-size:clamp(12px,1.8vw,15px); padding:0 16px 14px; line-height:1.45; }
+  .mapwrap{ flex:1; min-height:300px; background:#0d0d0d; }
+  .mapwrap iframe{ width:100%; height:100%; min-height:300px; border:0; display:block; }
+  .bigbtn{ margin:12px 14px 16px; min-height:72px; border-radius:14px; border:2px solid var(--gold); background:#1d1d1d; color:var(--gold2); font-size:clamp(18px,3vw,26px); font-weight:900; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; }
+  .presets{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:0 14px 14px; }
+  @media (max-width:640px){ .presets{ grid-template-columns:repeat(2,1fr); } }
+  .presets a,.presets button{ min-height:76px; border-radius:14px; border:1px solid var(--line); background:#1a1a1a; color:var(--txt); font-size:clamp(15px,2.4vw,21px); font-weight:800; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; text-align:center; padding:8px; }
+  .presets a:active,.presets button:active{ border-color:var(--gold); color:var(--gold2); }
+  footer{ padding:12px 18px 20px; color:var(--dim); font-size:clamp(12px,1.8vw,15px); display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+  footer a{ color:var(--gold2); font-weight:800; font-size:clamp(15px,2.2vw,19px); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">Meechie's World</div>
+    <div class="sub">Car Mode</div>
+  </div>
+  <span class="livebadge" id="livebadge"><i></i>LIVE</span>
+</header>
+
+<main>
+  <section class="card" id="radio-card">
+    <div class="stage">
+      <img src="/img/tv-poster.jpg" alt="Meechie's World TV — the master screen poster">
+      <div class="chip">Master screen · the full picture lives on MW TV</div>
+    </div>
+    <button class="tunein" id="tunein" type="button">▶ TUNE IN — CH 1 LIVE</button>
+    <div class="volrow"><span aria-hidden="true">🔊</span><input type="range" id="vol" min="0" max="100" value="90" aria-label="Volume"></div>
+    <div class="nowbar" aria-live="polite">
+      <div class="ch">CH 1 · MEECHIE'S WORLD RADIO — LIVE</div>
+      <div class="title" id="np-title">The station is on — tap TUNE IN</div>
+      <div class="meta" id="np-meta">One station, one sound — the same radio every seat hears.</div>
+      <div class="track"><i id="np-bar"></i></div>
+    </div>
+    <nav class="presets" aria-label="Presets">
+      <button type="button" id="pz-radio">🔴 LIVE Radio</button>
+      <a href="/#/mwtv">📺 MW TV</a>
+      <a href="/#/radio">🎤 Request a Song</a>
+      <button type="button" id="pz-map">🗺️ Map</button>
+    </nav>
+  </section>
+
+  <section class="card" id="side">
+    <h2>Program guide — today on CH 1</h2>
+    <ul class="guide" id="guide"></ul>
+    <p class="note">One live station — the sound changes by the hour. The guide shows what is on when (Eastern time); there are no fake extra channels.</p>
+    <h2 id="map-h">Map</h2>
+    <div class="mapwrap"><iframe id="map" title="Map — OpenStreetMap" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=-79.6484%2C39.7938%2C-79.5284%2C39.8538&amp;layer=mapnik&amp;marker=39.8238%2C-79.5884"></iframe></div>
+    <a class="bigbtn" id="dirs" href="https://www.openstreetmap.org/directions" target="_blank" rel="noopener">🧭 Directions</a>
+    <p class="note">The map shows where you are and hands directions to real navigation. Video in a moving car is the carmaker's call — parked is the viewing case, the radio is the driving case.</p>
+  </section>
+</main>
+
+<footer>
+  <a href="/">Full site →</a>
+  <span>Open this page on any car browser, or on your phone and Bluetooth it to the car. No car account, no password — the car is just a screen and speakers for the station.</span>
+</footer>
+
+<audio id="au" preload="none" src="https://eu4.fastcast4u.com/proxy/meechiesworldinc/stream"></audio>
+
+<script>
+(function(){
+  "use strict";
+  var STREAM = "https://eu4.fastcast4u.com/proxy/meechiesworldinc/stream";
+  var au = document.getElementById("au"), btn = document.getElementById("tunein"), vol = document.getElementById("vol");
+  au.volume = 0.9;
+  var on = false;
+  btn.addEventListener("click", function(){
+    if(!on){ au.src = STREAM; au.play().then(function(){ on = true; btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); }).catch(function(){ btn.textContent = "▶ TUNE IN — tap again"; }); }
+    else { au.pause(); on = false; btn.textContent = "▶ TUNE IN — CH 1 LIVE"; btn.classList.remove("playing"); }
+  });
+  vol.addEventListener("input", function(){ au.volume = vol.value / 100; });
+
+  /* Program guide (Eastern dayparts) */
+  var BLOCKS = [
+    [300, 390, "5:30–6:30 AM", "Good Morning Mix"],
+    [390, 540, "6:30–9 AM", "Weed-Smoking Music"],
+    [540, 1020, "9 AM–5 PM", "Everything Mixed"],
+    [1020, 1080, "5–6 PM", "Trap & R&B"],
+    [1080, 1620, "6 PM–3 AM", "Sexy Lane (trap-first)"],
+    [1620, 1740, "3–5:30 AM", "R&B"]
+  ];
+  function etMinutes(){ try { var p = new Intl.DateTimeFormat("en-US",{ timeZone:"America/New_York", hour12:false, hour:"2-digit", minute:"2-digit" }).formatToParts(new Date()); var h=0,m=0; p.forEach(function(x){ if(x.type==="hour") h=+x.value%24; if(x.type==="minute") m=+x.value; }); return h*60+m; } catch(_){ return -1; } }
+  function paintGuide(){
+    var now = etMinutes(), g = document.getElementById("guide"); g.innerHTML = "";
+    BLOCKS.forEach(function(b){
+      var isNow = now >= b[0] && now < b[1];
+      var li = document.createElement("li"); if(isNow) li.className = "now";
+      li.innerHTML = "<span class='when'></span><span class='what'></span>" + (isNow ? "<span class='nowtag'>ON NOW</span>" : "");
+      li.querySelector(".when").textContent = b[2]; li.querySelector(".what").textContent = b[3];
+      g.appendChild(li);
+    });
+  }
+  paintGuide(); setInterval(paintGuide, 60000);
+
+  /* Now playing — the same station feed every seat reads */
+  var titleEl = document.getElementById("np-title"), metaEl = document.getElementById("np-meta"), barEl = document.getElementById("np-bar"), badge = document.getElementById("livebadge");
+  var anchor = null; /* { startMs, durS, serverNowMs, atLocal } */
+  function fmt(s){ s = Math.max(0, Math.floor(s)); var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), r = s%60; return (h ? h+":" : "") + (h ? String(m).padStart(2,"0") : m) + ":" + String(r).padStart(2,"0"); }
+  function tick(){
+    if(!anchor) return;
+    var serverNow = anchor.serverNowMs + (Date.now() - anchor.atLocal);
+    var el = (serverNow - anchor.startMs) / 1000;
+    if(anchor.durS > 0){ el = Math.min(el, anchor.durS); barEl.style.width = Math.min(100, el / anchor.durS * 100) + "%"; }
+    metaEl.textContent = "On air now · " + fmt(el) + (anchor.durS > 0 ? " of " + fmt(anchor.durS) : "") + " · the same sound on every seat";
+  }
+  setInterval(tick, 1000);
+  function poll(){
+    fetch("/api/cf/rest", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ table:"docs", op:"select", filters:[["path","eq","radio/dj"]] }) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        var d = j && j.data && j.data[0] && j.data[0].data; if(!d) return;
+        badge.classList.toggle("on", !!d.live);
+        var decks = ["A","B","C","D"].map(function(k){ return d[k] || {}; }).filter(function(x){ return x.playing && x.title; });
+        decks.sort(function(a,b){ return (b.start||0) - (a.start||0); });
+        var cur = decks[0];
+        if(cur){ titleEl.textContent = cur.title; anchor = { startMs: cur.start || Date.now(), durS: +cur.dur || 0, serverNowMs: Date.now(), atLocal: Date.now() }; tick(); }
+        else if(d.live){ titleEl.textContent = "Live mix — the tables are playing"; anchor = null; }
+      }).catch(function(){});
+  }
+  poll(); setInterval(poll, 15000);
+
+  /* Map: center on the driver when the browser offers a position */
+  function centerMap(){
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function(p){
+      var la = p.coords.latitude.toFixed(4), lo = p.coords.longitude.toFixed(4);
+      document.getElementById("map").src = "https://www.openstreetmap.org/export/embed.html?bbox=" + (lo-0.06) + "%2C" + (la-0.03) + "%2C" + (+lo+0.06) + "%2C" + (+la+0.03) + "&layer=mapnik&marker=" + la + "%2C" + lo;
+      document.getElementById("dirs").href = "https://www.openstreetmap.org/directions?from=" + la + "%2C" + lo;
+    }, function(){}, { timeout: 8000 });
+  }
+  document.getElementById("pz-map").addEventListener("click", function(){ document.getElementById("map-h").scrollIntoView({ behavior:"smooth" }); centerMap(); });
+  document.getElementById("pz-radio").addEventListener("click", function(){ document.getElementById("radio-card").scrollIntoView({ behavior:"smooth" }); });
+})();
+</script>
+</body>
+</html>
