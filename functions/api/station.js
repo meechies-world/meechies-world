@@ -455,6 +455,292 @@ function mwVmixRescue(S, now, obs) {
 }
 /* MWVMIXRESCUE-END */
 
+/* MWTV-BEGIN */
+/* MW TV — THE PROGRAMMED CHANNEL (Stage 1, 2026-11-01 — Malik: "Let's
+ * start my own TV channel" + "Make sure everything's legal").
+ * Spec: website/mwtv-channel/SPEC.md (channel) + NEWS-BLOCK.md (news).
+ *
+ * The keeper is the channel's program director. It lays the ordered
+ * lineup (tv/channel) out on one timeline as SEGMENTS in tv/now —
+ * programs, music-video breaks drawn from tv/breakpool's shuffle bag,
+ * and the hourly :50-:00 news window — and every viewer derives "what
+ * is on now, and how far in" from those segment stamps, the same trick
+ * posOf() performs for the decks. The channel lives entirely in tv/*
+ * docs: this tick reads radio/dj (precedence + the news gate) but the
+ * channel never writes it; the radio news break below is a DECISION
+ * returned to the rotation section of the same tick, which is the only
+ * place keeper code may start a deck.
+ *
+ * LEGALITY GATE (hard, SPEC §1.7): an item airs only with a complete
+ * rights record on it (rights.basis + rights.evidence) and a known
+ * duration. Anything else is skipped at generation and held at the
+ * boundary re-check. The starter cycle seeded here is fully cleared:
+ * Malik's own video plus Internet Archive items whose metadata
+ * carries an explicit public-domain / CC0 license mark, read at seed
+ * time and quoted in each item's evidence. Embeds never carry
+ * simulcast: true; own + PD/CC items do (SPEC §12.2).
+ *
+ * NEWS (NEWS-BLOCK.md): the :50-:00 window is stamped as a segment of
+ * kind "news"; what fills it is resolved at air time from tv/news
+ * (fresh edition, else the previous edition once, else a music-video
+ * block) — that resolution is client-side; the keeper stamps windows.
+ * The RADIO interrupt is decided by tvRadioDecision: at the top of the
+ * hour, a fresh edition (<= 2h old, produced for this hour, with a
+ * radio cut) fires; anything missing or stale skips silently and the
+ * music never breaks. While the booth is fresh this keeper stands
+ * down before the rotation, so the decision names that case
+ * ("booth-fresh") for the booth-side consumer that ships with edition
+ * production — the unattended lane below is what fires today. */
+const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
+const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
+const TV_NEWS_LEN = 600;           // the TV news window: :50-:00, ten minutes
+const TV_HORIZON = 2 * 3600e3;     // segments are generated this far ahead of now
+const TV_KEEP = 3600e3;            // aired segments are kept this long behind now
+const TV_BASES = ["own", "embed", "pd", "cc", "grant", "submission"];
+
+function tvEtParts(ms) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(ms));
+  const gp = (t) => +(parts.find((x) => x.type === t) || {}).value || 0;
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+  return { hour: gp("hour") % 24, minute: gp("minute"), dayKey: day };
+}
+/* The news window containing ms (inside: true) or the next one. ET
+ * offsets are whole hours, so ms % 60000 is the seconds-into-minute
+ * reading on the ET clock too; the window edges land exactly. */
+function tvNewsWin(ms) {
+  const et = tvEtParts(ms), sec = Math.floor((ms % 60000) / 1000);
+  if (et.minute >= 50) { const start = ms - ((et.minute - 50) * 60 + sec) * 1000; return { start, end: start + TV_NEWS_LEN * 1000, inside: true }; }
+  const start = ms + ((50 - et.minute) * 60 - sec) * 1000;
+  return { start, end: start + TV_NEWS_LEN * 1000, inside: false };
+}
+function tvCleared(it) {
+  if (!it || it.held) return false;
+  if (!(+it.dur > 0)) return false;
+  const r = it.rights || {};
+  if (!TV_BASES.includes(r.basis) || !String(r.evidence || "").trim()) return false;
+  if (it.src === "yt") return /^[A-Za-z0-9_-]{11}$/.test(String(it.yt || ""));
+  if (it.src === "ia" || it.src === "file") return !!String(it.url || "");
+  return false;
+}
+function tvProgSeg(it, start, dur, off) {
+  return { k: it.kind === "house" ? "house" : "prog", id: it.id, src: it.src, yt: it.yt || "", url: it.url || "", iaId: it.iaId || "", title: it.title || "", show: it.show || "", start, dur, off };
+}
+function tvDrawBreak(pool) {
+  const cleared = (pool.items || []).filter(tvCleared);
+  if (!cleared.length) return null;
+  if (!Array.isArray(pool.bag) || !(pool.bagIx >= 0) || pool.bagIx >= pool.bag.length) {
+    pool.bag = cleared.map((x) => x.id);
+    for (let i = pool.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool.bag[i]; pool.bag[i] = pool.bag[j]; pool.bag[j] = t; }
+    pool.bagIx = 0; pool._dirty = true;
+  }
+  const id = pool.bag[pool.bagIx++]; pool._dirty = true;
+  return cleared.find((x) => x.id === id) || null;
+}
+/* Lay segments from the cursor (at = next segment start ms, ix/off =
+ * where the cycle's current program resumes, run = seconds of
+ * programming since the last break) out to horizonMs. News windows
+ * cut programs mid-item; the item resumes after the window from the
+ * offset it reached — a split program is two segments sharing an id. */
+function tvGen(chan, pool, cursor, horizonMs) {
+  const items = Array.isArray(chan.items) ? chan.items : [];
+  const segs = [];
+  let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
+  let guard = 0, skips = 0;
+  while (t < horizonMs && guard++ < 600) {
+    const win = tvNewsWin(t);
+    if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
+    const it = items[ix];
+    if (!it) break;
+    if (!tvCleared(it)) { ix = (ix + 1) % items.length; off = 0; if (++skips > items.length) break; continue; }
+    skips = 0;
+    const remain = Math.round((+it.dur - off) * 10) / 10;
+    if (!(remain > 0)) { ix = (ix + 1) % items.length; off = 0; continue; }
+    const progEnd = t + remain * 1000;
+    if (win.start < progEnd) {
+      const cutSec = Math.round((win.start - t) / 100) / 10;
+      if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
+      t = win.start;
+      continue;
+    }
+    segs.push(tvProgSeg(it, t, remain, off)); run += remain; t = progEnd; ix = (ix + 1) % items.length; off = 0;
+    if (run >= (chan.chainSec > 0 ? +chan.chainSec : TV_CHAIN_SEC)) {
+      const b = tvDrawBreak(pool);
+      if (b) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: +b.dur, off: 0 }); t += +b.dur * 1000; }
+      run = 0;
+    }
+  }
+  return { segs, cursor: { at: t, ix, off, run } };
+}
+function tvSegAt(segs, t) {
+  if (!Array.isArray(segs)) return null;
+  for (const sg of segs) { if (t >= sg.start && t < sg.start + sg.dur * 1000) return sg; }
+  return null;
+}
+/* Cold start / long-silence landing: where the cycle sits right now,
+ * by epoch math over the CLEARED items only (held items never air). */
+function tvCyclePos(chan, now) {
+  const items = (chan.items || []).map((it, i) => ({ it, i })).filter((x) => tvCleared(x.it));
+  const total = items.reduce((a, x) => a + (+x.it.dur || 0), 0);
+  if (!total) return null;
+  const epoch = +chan.epoch || now;
+  let pos = ((now - epoch) / 1000) % total; if (pos < 0) pos += total;
+  for (const x of items) { if (pos < +x.it.dur) return { ix: x.i, off: Math.round(pos * 10) / 10 }; pos -= +x.it.dur; }
+  return { ix: items[0].i, off: 0 };
+}
+/* The radio news gate (NEWS-BLOCK): fire only at the top of the hour
+ * (:00-:04), only with an edition produced for this hour (within the
+ * last hour) that is still fresh (<= 2h) and carries a radio cut,
+ * only once per hour, only on a live Auto-DJ station. Every other
+ * state is a named skip — no fresh edition, no break, ever. */
+function tvRadioDecision(S, newsDoc, now) {
+  const ed = newsDoc && newsDoc.current;
+  if (!ed || !ed.radioUrl || !(+ed.radioDur > 0)) return { fire: false, why: "no-edition" };
+  if (now - (+ed.at || 0) > TV_NEWS_STALE) return { fire: false, why: "stale-edition" };
+  const et = tvEtParts(now), sec = Math.floor((now % 60000) / 1000);
+  if (et.minute > 4) return { fire: false, why: "outside-window" };
+  const hourKey = et.dayKey + "T" + et.hour;
+  if (S.newsHour === hourKey) return { fire: false, why: "already-fired" };
+  const hourStart = now - (et.minute * 60 + sec) * 1000;
+  if ((+ed.at || 0) < hourStart - 3600e3 || (+ed.at || 0) > now) return { fire: false, why: "edition-not-for-this-hour" };
+  if (S.boothAt && now - S.boothAt < 90000) return { fire: false, why: "booth-fresh" };
+  if (!S.live || !S.autodj || S.pausedAt) return { fire: false, why: "station-not-live" };
+  return { fire: true, hourKey, item: { src: String(ed.radioUrl), title: "📰 Meechie's World News", dur: Math.min(300, Math.max(60, Math.round(+ed.radioDur))) } };
+}
+function tvSeedChannel(now) {
+  const R = (basis, evidence, simulcast) => ({ basis, evidence, clearedBy: basis === "own" ? "owner" : "keeper-check", at: now, simulcast: !!simulcast });
+  return {
+    on: true, epoch: now, breakEvery: 1, chainSec: TV_CHAIN_SEC,
+    breakMix: { video: 3, house: 1, legal: 1 },
+    items: [
+      { id: "own-anthem", kind: "house", src: "file", url: "/media/the-world-gone-be.mp4", title: "The World Gone Be — Official Video", show: "Meechie's World", dur: 266, block: "anytime", rights: R("own", "Malik's own song and video, hosted on his own site media (/media/the-world-gone-be.mp4, HTTP 200 video/mp4 verified at seed time); he is the artist and rights holder", true) },
+      { id: "ia-betty-snowwhite", kind: "show", src: "ia", iaId: "bb_snow_white", url: "https://archive.org/download/bb_snow_white/bb_snow_white_512kb.mp4", title: "Betty Boop — Snow White (1933)", show: "Classic Cartoons", dur: 424, block: "morning", rights: R("pd", "Internet Archive item bb_snow_white: metadata licenseurl http://creativecommons.org/licenses/publicdomain/ read at seed time; file playback verified (206 video/mp4)", true) },
+      { id: "ia-superman-1941", kind: "show", src: "ia", iaId: "superman-1941_202406", url: "https://archive.org/download/superman-1941_202406/Superman%20(1941).mp4", title: "Superman (1941) — Fleischer Cartoon", show: "Classic Cartoons", dur: 628, block: "morning", rights: R("pd", "Internet Archive item superman-1941_202406: metadata licenseurl https://creativecommons.org/publicdomain/mark/1.0/ read at seed time; file playback verified (206 video/mp4)", true) },
+      { id: "ia-dragnet-18", kind: "show", src: "ia", iaId: "DragnetEpisode18TheBigSeventeenwcommercials", url: "https://archive.org/download/DragnetEpisode18TheBigSeventeenwcommercials/dragnet_bigseventeen_512kb.mp4", title: "Dragnet — The Big Seventeen (Ep. 18)", show: "Dragnet", dur: 1837, block: "anytime", rights: R("pd", "Internet Archive item DragnetEpisode18TheBigSeventeenwcommercials: metadata licenseurl http://creativecommons.org/licenses/publicdomain/ read at seed time", true) },
+      { id: "ia-hillbillies-02", kind: "show", src: "ia", iaId: "Beverly_Hillbillies_Ep02_Getting_Settled", url: "https://archive.org/download/Beverly_Hillbillies_Ep02_Getting_Settled/BH02_Getting_Settled_512kb.mp4", title: "The Beverly Hillbillies — Getting Settled (Ep. 2)", show: "The Beverly Hillbillies", dur: 1494, block: "anytime", rights: R("pd", "Internet Archive item Beverly_Hillbillies_Ep02_Getting_Settled: metadata licenseurl http://creativecommons.org/licenses/publicdomain/ read at seed time", true) },
+      { id: "ia-little-shop", kind: "show", src: "ia", iaId: "The_Little_Shop_of_Horrors_60", url: "https://archive.org/download/The_Little_Shop_of_Horrors_60/The_Little_Shop_of_Horrors_60.mp4", title: "The Little Shop of Horrors (1960)", show: "MW Cinema", dur: 4386, block: "primetime", rights: R("cc", "Internet Archive item The_Little_Shop_of_Horrors_60: metadata licenseurl https://creativecommons.org/publicdomain/zero/1.0/ (CC0) read at seed time", true) },
+      { id: "ia-charade", kind: "show", src: "ia", iaId: "charade-1963-cary-grant-audrey-hepburn-comedy-mystery-romance-thriller-full-movie", url: "https://archive.org/download/charade-1963-cary-grant-audrey-hepburn-comedy-mystery-romance-thriller-full-movie/Charade_READY.mp4", title: "Charade (1963)", show: "MW Cinema", dur: 6785, block: "primetime", rights: R("pd", "Internet Archive item charade-1963-cary-grant-audrey-hepburn-comedy-mystery-romance-thriller-full-movie: metadata licenseurl https://creativecommons.org/publicdomain/mark/1.0/ read at seed time", true) }
+    ],
+    updatedAt: now, by: "keeper-seed"
+  };
+}
+function tvSeedPool(now) {
+  const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
+  const Y = (id, yt, title, dur, lane, evidence) => ({ id, kind: "break", src: "yt", yt, title, dur, lane, rights: R(evidence) });
+  const items = [
+    Y("brk-usher-yeah", "GxBSyx85Kp8", "Usher — Yeah! (Official Video) ft. Lil Jon, Ludacris", 253, "rb", "Passed the site embed gate (/api/ytsearch) at seed time; uploader UsherVEVO (artist's official VEVO channel) per YouTube oEmbed"),
+    Y("brk-nelly-herre", "GeZZr_p6vB8", "Nelly — Hot In Herre (Official Music Video)", 245, "hiphop", "Passed the site embed gate (/api/ytsearch) at seed time; uploader NellyVEVO (artist's official VEVO channel) per YouTube oEmbed"),
+    Y("brk-outkast-heyya", "PWgvGjAhvIw", "Outkast — Hey Ya! (Official HD Video)", 304, "hiphop", "Passed the site embed gate (/api/ytsearch) at seed time; uploader OutkastVEVO (artist's official VEVO channel) per YouTube oEmbed"),
+    Y("brk-cash-hurt", "8AHCfZTRGiI", "Johnny Cash — Hurt", 229, "country", "Passed the site embed gate (/api/ytsearch) at seed time; uploader JohnnyCashVEVO (artist's official VEVO channel) per YouTube oEmbed"),
+    Y("brk-nirvana-teen", "hTWKbfoikeg", "Nirvana — Smells Like Teen Spirit (Official Music Video)", 279, "rock", "Passed the site embed gate (/api/ytsearch) at seed time; uploader NirvanaVEVO (artist's official VEVO channel) per YouTube oEmbed"),
+    Y("brk-maryj-family", "znlFu_lemsU", "Mary J. Blige — Family Affair (Official Music Video)", 225, "rb", "Passed the site embed gate (/api/ytsearch) at seed time; uploader MaryJBligeVEVO (artist's official VEVO channel) per YouTube oEmbed"),
+    Y("brk-ti-whatever", "Kgdr2uytpDI", "T.I. — Whatever You Like (Official Video)", 253, "trap", "Passed the site embed gate (/api/ytsearch) at seed time; uploader Atlantic Records (the releasing label) per YouTube oEmbed"),
+    Y("brk-liljon-getlow", "IYH7_GzP4Tg", "Lil Jon & The East Side Boyz — Get Low (Official Music Video)", 271, "trap", "Passed the site embed gate (/api/ytsearch) at seed time; uploader Radial by The Orchard (the distributor) per YouTube oEmbed"),
+    { id: "brk-house-anthem", kind: "house", src: "file", url: "/media/the-world-gone-be.mp4", title: "Meechie's World — The World Gone Be", dur: 266, lane: "house", rights: { basis: "own", evidence: "Malik's own song and video on his own site media; he is the artist and rights holder", clearedBy: "owner", at: now, simulcast: true } }
+  ];
+  const bag = items.map((x) => x.id);
+  for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = bag[i]; bag[i] = bag[j]; bag[j] = t; }
+  return { items, bag, bagIx: 0, updatedAt: now, by: "keeper-seed" };
+}
+/* Boundary re-check (SPEC §1.4): embedding can be switched off after
+ * an item is added, so when the on-air segment rolls over, verify the
+ * NEXT program in the window — rights record still complete, not on
+ * the shared ban list, and (throttled, fail-open) still returned by
+ * the embed gate. A failure holds the item on the lineup itself, bans
+ * the id for every surface, and reports the held id so the tick can
+ * regenerate the window around it. */
+async function tvRecheckNext(env, chan, segs, now, origin, nw) {
+  const next = (segs || []).find((sg) => (sg.k === "prog" || sg.k === "house") && sg.start > now);
+  if (!next) return "";
+  const it = (chan.items || []).find((x) => x.id === next.id);
+  if (!it) return "";
+  let held = "";
+  if (!tvCleared(it)) held = "rights record incomplete";
+  if (!held && it.src === "yt") {
+    try { const blk = await readDoc(env, "brain/ytblock"); if (blk && Array.isArray(blk.ids) && blk.ids.includes(it.yt)) held = "embed blocked (shared ban list)"; } catch (_) {}
+    if (!held) {
+      const checked = (nw && nw.checked) || {};
+      if (!(checked[it.id] && now - checked[it.id] < 30 * 60e3)) {
+        try {
+          const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(6000) } : {};
+          const r = await fetch(origin + "/api/ytsearch?q=" + encodeURIComponent(it.title || it.yt) + "&page=1", ctl);
+          const j = await r.json();
+          if (j && j.ok && Array.isArray(j.results) && j.results.length && !j.results.some((x) => x.id === it.yt)) held = "embed gate no longer returns it";
+          else { checked[it.id] = now; if (nw) nw.checked = checked; }
+        } catch (_) { /* fail open: a dead relay says nothing about the video (the relay's own doctrine) */ }
+      }
+    }
+    if (held) { try { const blk = (await readDoc(env, "brain/ytblock")) || { ids: [] }; if (Array.isArray(blk.ids) && !blk.ids.includes(it.yt)) { blk.ids.push(it.yt); await writeDoc(env, "brain/ytblock", "brain", blk); } } catch (_) {} }
+  }
+  if (held) {
+    it.held = held; it.heldAt = now; chan.updatedAt = now; chan.by = "keeper";
+    await writeDoc(env, "tv/channel", "tv", chan);
+    return it.id;
+  }
+  return "";
+}
+async function tvTick(env, S, now, origin) {
+  let chan = await readDoc(env, "tv/channel");
+  if (!chan || !Array.isArray(chan.items) || !chan.items.length) { chan = tvSeedChannel(now); await writeDoc(env, "tv/channel", "tv", chan); }
+  let pool = await readDoc(env, "tv/breakpool");
+  if (!pool || !Array.isArray(pool.items) || !pool.items.length) { pool = tvSeedPool(now); await writeDoc(env, "tv/breakpool", "tv", pool); }
+  const newsDoc = await readDoc(env, "tv/news");
+  const decision = tvRadioDecision(S, newsDoc, now);
+  if (chan.on === false) {
+    const nw0 = await readDoc(env, "tv/now");
+    if (!nw0 || !nw0.off) await writeDoc(env, "tv/now", "tv", { off: true, segs: [], updatedAt: now });
+    return decision;
+  }
+  if (!(chan.items || []).some(tvCleared)) {
+    const nw0 = await readDoc(env, "tv/now");
+    if (!nw0 || !nw0.down) await writeDoc(env, "tv/now", "tv", { down: true, segs: [], updatedAt: now });
+    return decision;
+  }
+  let nw = await readDoc(env, "tv/now");
+  let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
+  let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
+  let dirty = false;
+  if (nw && nw.chanAt && chan.updatedAt && nw.chanAt !== chan.updatedAt) { segs = null; cursor = null; }
+  if (segs) { const kept = segs.filter((sg) => sg.start + sg.dur * 1000 > now - TV_KEEP); if (kept.length !== segs.length) { segs = kept; dirty = true; } }
+  if (!cursor || !segs || cursor.at < now - 600e3) {
+    const cp = tvCyclePos(chan, now);
+    if (!cp) return decision;
+    cursor = { at: now - Math.round(cp.off * 1000), ix: cp.ix, off: cp.off, run: 0 };
+    segs = [];
+    dirty = true;
+  }
+  const genTo = now + TV_HORIZON;
+  if (cursor.at < genTo) {
+    const gen = tvGen(chan, pool, cursor, genTo);
+    if (gen.segs.length) { segs = segs.concat(gen.segs); dirty = true; }
+    cursor = gen.cursor;
+    if (pool._dirty) { delete pool._dirty; pool.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", pool); }
+  }
+  let curSeg = tvSegAt(segs, now);
+  let skipNote = nw && nw.skipNote && now - nw.skipNote.at < 3600e3 ? nw.skipNote : null;
+  if (nw && nw.curStart && curSeg && curSeg.start !== nw.curStart) {
+    const heldId = await tvRecheckNext(env, chan, segs, now, origin, nw || {});
+    if (heldId) {
+      const heldItem = (chan.items || []).find((x) => x.id === heldId);
+      skipNote = { id: heldId, title: heldItem ? heldItem.title : heldId, at: now };
+      const badSeg = (segs || []).find((sg) => (sg.k === "prog" || sg.k === "house") && sg.id === heldId && sg.start > now);
+      const cutAt = badSeg ? badSeg.start : now;
+      segs = (segs || []).filter((sg) => sg.start < cutAt);
+      const ixAfter = badSeg ? ((chan.items || []).findIndex((x) => x.id === heldId) + 1) % (chan.items || []).length : cursor.ix;
+      cursor = { at: cutAt, ix: ixAfter, off: 0, run: 0 };
+      const gen = tvGen(chan, pool, cursor, genTo);
+      segs = segs.concat(gen.segs); cursor = gen.cursor;
+      if (pool._dirty) { delete pool._dirty; pool.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", pool); }
+      curSeg = tvSegAt(segs, now);
+      dirty = true;
+    }
+  }
+  if (dirty) {
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, genAt: now, updatedAt: now });
+  }
+  return decision;
+}
+/* MWTV-END */
+
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const now = Date.now();
@@ -553,6 +839,16 @@ export async function onRequestGet({ request, env }) {
       if (picks.length) await rqPlaylistAdd(env, picks);
     } catch (_) {}
   }
+
+  // MW TV (Stage 1): the channel tick rides the same ping — it keeps
+  // tv/now's segment window ahead of the clock and decides the hourly
+  // radio news break. It runs BEFORE the booth stand-down on purpose:
+  // the channel is programming, not decks, so it advances while Malik
+  // is at the tables too (his share/live still outranks it on every
+  // screen — precedence lives in the renderer, not here). Wrapped like
+  // the doorbell: a channel failure may never break the station ping.
+  let tvNewsFire = null;
+  try { const tvd = await tvTick(env, S, now, origin); if (tvd && tvd.fire) tvNewsFire = tvd; } catch (_) {}
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
   // 2026-10-28): unless a deck is impossibly past its end — flagged playing
@@ -869,6 +1165,24 @@ export async function onRequestGet({ request, env }) {
   let cur = S.A.playing ? "A" : S.B.playing ? "B" : null;
   if (!cur) { // dead air — start the rotation on deck A right now (fader home is CENTER, owner 2026-10-29)
     startDeckItem("A", await nextItem(""), now); S.xf = 0.5; changed = true; cur = "A";
+  }
+  /* MW TV NEWS INTERRUPT (NEWS-BLOCK.md, Malik 2026-11-01 ~21:16):
+   * the hourly Meechie's World News radio cut, decided by tvTick at
+   * the top of the hour. A fresh edition takes the incoming deck now —
+   * a hard programmed break, the way a real station cuts to news. The
+   * current song parks honestly (playing flag off, pos stamped where
+   * it stopped — its timeline is never falsified) and the rotation
+   * resumes from the news deck's end through the loop below. The 10s
+   * guard keeps a same-tick dead-air start from being consumed and
+   * parked in the same breath. No fresh edition = tvNewsFire is null
+   * and nothing here moves. */
+  if (tvNewsFire && cur) {
+    const otherN = cur === "A" ? "B" : "A";
+    if (S[cur].playing && !S[otherN].playing && now - (S[cur].start || now) > 10000) {
+      S[cur].playing = false; S[cur].pos = Math.max(0, Math.min(+S[cur].dur || 0, (now - (S[cur].start || now)) / 1000));
+      startDeckItem(otherN, tvNewsFire.item, now);
+      S.xf = 0.5; S.newsHour = tvNewsFire.hourKey; changed = true; cur = otherN;
+    }
   }
   for (let i = 0; i < 60; i++) {
     const other = cur === "A" ? "B" : "A";
