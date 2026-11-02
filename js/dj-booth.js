@@ -965,6 +965,843 @@
     catch (_) { $("#dj-net").innerHTML = '<small class="muted">Search is busy. Try again in a moment.</small>'; }
   });
 
+  /* ===== [P2 split] booth runtime: loading songs, transport, decks,
+   * Auto-DJ queue + schedule, crossfade + click engine (was dj.js lines
+   * ~7625-8480, in four chunks around the parts that stay in the core —
+   * see DESIGN-P2 §3). The text is the BST-refactored dj.js verbatim:
+   * bare queue / preLoad / handover / grainSess / JOGF references read
+   * BST.<name>, and the state itself stays in dj.js. ===== */
+  /* ---------- owner: loading songs, transport, deck tools ---------- */
+  const prepSet = () => { try { return new Set(JSON.parse(localStorage.getItem("mw-dj-prep") || "[]")); } catch (_) { return new Set(); } };
+  const histList = () => { try { return JSON.parse(localStorage.getItem("mw-dj-hist") || "[]"); } catch (_) { return []; } };
+  let libFilter = "";
+  function libList() {
+    const list = TRACKS(), prep = prepSet();
+    const rows = list.map((t, i) => [t, i]).filter(([t]) => !libFilter || (t.title || "").toLowerCase().includes(libFilter));
+    $("#dj-lib").innerHTML = list.length ? (rows.length ? rows.map(([t, i]) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button><button class="btn ghost sm" type="button" data-prep="${i}">${prep.has(URLOF(t)) ? "⭐" : "☆"}</button></div>`).join("") : '<small class="muted">No songs match that filter.</small>') : '<small class="muted">No songs in your library yet.</small>';
+  }
+  function paintPrep() { const box = $("#dj-prep"); if (!box) return; const set = prepSet(), list = TRACKS(); const rows = list.map((t, i) => [t, i]).filter(([t]) => set.has(URLOF(t))); box.innerHTML = rows.length ? rows.map(([t, i]) => `<div class="dj-item"><span title="${E(t.title)}">${E(t.title)}</span><button class="btn ghost sm" type="button" data-load="A" data-lib="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-lib="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-lib="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-lib="${i}">D</button><button class="btn ghost sm" type="button" data-queue="${i}">＋Q</button><button class="btn ghost sm" type="button" data-prep="${i}">⭐</button></div>`).join("") : '<small class="muted">Nothing prepared yet — tap ☆ on any song in Your Library.</small>'; const hb = $("#dj-hist"); if (hb) { const h = histList(); hb.innerHTML = h.length ? h.map((x, i) => `<div class="dj-item"><span title="${E(x.title || "")}">${E(x.title || "")}</span>${["A", "B", "C", "D"].map((L) => `<button class="btn ghost sm" type="button" data-hload="${L}" data-hist="${i}">${L}</button>`).join("")}</div>`).join("") : '<small class="muted">Nothing loaded yet — the booth history builds as you play.</small>'; } }
+  let net = [];
+  async function load(k, item, opts) {
+    qClear(k); // any fresh load replaces what the deck held — its stocked record is void (stockDeck re-records after its own load)
+    brainClose(k, "load"); // PR-B2: the replaced track's play closes here, classified by the clock (an early replacement is a skip)
+    const wasSounding = !!(S[k] && S[k].playing); // GENTLE LOAD: was this deck the sounding one before this pick replaced it
+    if (serverMirror()) leadTakeAt = Date.now();
+    const d = deck(k); actx();
+    d._ageSwapUsed = false; // every fresh load re-arms the deck's one age-gate swap attempt (see ageSwapTry)
+    // a pick from his own hand loads STOPPED (owner, 2026-10-27): the deck
+    // cues up and waits for his Play. The station's own flows (Auto-DJ, the
+    // queue, schedule, listener picks) call load without the cue flag and
+    // start playing through togglePlay as before.
+    const cueDeck = !!(opts && opts.cue);
+    if (item && (item.src || item.yt || item.scUrl)) { try { const key = item.src || (item.scUrl ? "sc:" + item.scUrl : ("yt:" + item.yt)); const h = histList().filter((x) => (x.src || (x.scUrl ? "sc:" + x.scUrl : ("yt:" + x.yt))) !== key); h.unshift({ src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title || "", cover: item.cover || "", dur: item.dur || 0, at: Date.now() }); localStorage.setItem("mw-dj-hist", JSON.stringify(h.slice(0, 30))); } catch (_) {} }
+    if (!boothLead) {
+      // mirror window: put the song on the shared deck — the window playing the sound loads it for real
+      S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
+      d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k); paintOwner(); save();
+      say("Loaded on deck " + k + " — the window playing the sound picked it up.");
+      return;
+    }
+    S[k] = Object.assign(blank(), { src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title, cover: item.cover || "", vol: S[k].vol ?? 0.9, rate: S[k].rate || 1, dur: item.dur || 0, bpm: item.bpm || 0, beat0: 0, key: item.key || "", cam: item.cam || "", vcut: false, bcut: false, loop: null, loopBeats: 0 });
+    d.cues = [null, null, null]; d.loop = null; d.loopBeats = 0; paintCues(k);
+    paintOwner(); $("#ttl-" + k).textContent = "Loading " + item.title + "...";
+    /* GENTLE LOAD (owner, 2026-10-29: "when I clicked to choose a song it
+     * started skipping"): a MANUAL pick (the cue flag) onto a deck that
+     * is not sounding records the state exactly as a normal load - the
+     * song sits loaded and STOPPED, per his law - but does NOT build the
+     * deck's video player. Building an iframe player at click time
+     * steals the main thread from the deck that IS sounding, and the
+     * sound stutters. Any old player is torn down so no stale picture
+     * sits under the new title. The player builds lazily at the first
+     * moment it is actually needed: his Play press builds it inside
+     * togglePlay (which already calls setYt for a video deck), and
+     * every automation path - queue draw, stockDeck, preload, Auto-DJ -
+     * calls load WITHOUT the cue flag, so it builds right here exactly
+     * as before. File picks are cheap and keep the path below as is. */
+    if ((item.yt || item.scUrl) && cueDeck && !wasSounding) { try { d.clearYt(); } catch (_) {} paintOwner(); levels(); save(); return; }
+    if (item.yt) { let okY = await d.setYt(item.yt); if (!okY) { const sw = await ageSwapTry(k, item); if (sw) okY = true; } if (!okY) { if (ageIsLocked(item.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video wouldn't play here — some are blocked from playing on other sites. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
+    if (item.scUrl) { const okS = await d.setSc(item.scUrl); if (!okS) { say("That SoundCloud track would not play here — some tracks are private or blocked from playing off SoundCloud. Try another one."); S[k] = blank(); paintOwner(); return; } try { d.el.currentTime = 0; } catch (_) {} if (cueDeck) { const stopIt = () => { try { if (!S[k].playing && d.el && !d.el.paused) d.el.pause(); } catch (_) {} }; stopIt(); [350, 900, 1600].forEach((ms) => setTimeout(stopIt, ms)); } paintOwner(); levels(); save(); return; }
+    const ok = await d.set(item.src);
+    if (!ok) { say("That song couldn't load. Try another one."); S[k] = blank(); paintOwner(); return; }
+    d.el.currentTime = 0; d.el.playbackRate = S[k].rate || 1; if (cueDeck) { try { d.el.pause(); } catch (_) {} } paintOwner(); levels(); save(); anaLater(k);
+  }
+  function paintCues(k) { document.querySelectorAll(`[data-hot^="${k}:"]`).forEach((b, i) => b.classList.toggle("on", deck(k).cues[i] != null)); document.querySelectorAll(`[data-loopb^="${k}:"]`).forEach((b) => b.classList.toggle("on", !!deck(k).loopBeats && +b.dataset.loopb.split(":")[1] === deck(k).loopBeats)); document.querySelectorAll(`[data-roll^="${k}:"]`).forEach((b) => b.classList.toggle("on", !!deck(k).roll && +b.dataset.roll.split(":")[1] === deck(k).loopBeats)); document.querySelectorAll(`[data-slip="${k}"]`).forEach((b) => b.classList.toggle("on", !!deck(k).slip)); }
+  // loop roll: the loop cycles on the speakers while a shadow playhead keeps
+  // travelling; ending the roll lands exactly where the song would have been
+  function endRoll(k) { const d = deck(k); if (!d.roll) return; const sh = d.roll.pos + (performance.now() - d.roll.at) / 1000 * (S[k].rate || 1); d.roll = null; d.loop = null; d.loopBeats = 0; S[k].loop = null; S[k].loopBeats = 0; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; paintCues(k); save(true); }
+  async function togglePlay(k) {
+    if (serverMirror()) leadTakeAt = Date.now();
+    const s = S[k], d = deck(k); if (!s.yt && !s.scUrl && !okUrl(s.src)) { say("Load a song on deck " + k + " first."); return; }
+    actx(); try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
+    if (!boothLead) {
+      // mirror window: flip the shared state only — the window holding the sound plays it
+      if (s.playing) { s.pos = posOf(k); s.playing = false; }
+      else { s.playing = true; s.start = Date.now() - (s.pos || 0) * 1000; logPlay(s.title); if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintStation(); say("🔴 You're LIVE — the window playing the sound has the tables on the radio."); } }
+      if (s.playing) S.pausedAt = 0; else if (S.live && !DECKS.some((x) => S[x].playing)) S.pausedAt = Date.now();
+      paintOwner(); save(true);
+      return;
+    }
+    if (s.playing) { s.pos = d.el.currentTime; s.playing = false; d.el.pause(); }
+    else {
+      if (s.yt) { let okY = await d.setYt(s.yt); if (!okY) { const sw = await ageSwapTry(k, { yt: s.yt, title: s.title, dur: s.dur }); if (sw) okY = true; } if (!okY) { if (ageIsLocked(s.yt)) say("That video is age-locked by YouTube — it cannot play inside the site. Skipped it for next time."); else say("That video won't play here — it may be blocked from playing on other sites, or YouTube didn't load. Try another video."); paintOwner(); return; } } else if (s.kind === "sc" && s.scUrl) { const okS = await d.setSc(s.scUrl); if (!okS) { say("That SoundCloud track would not play here — it may be private or blocked from playing off SoundCloud."); paintOwner(); return; } } else await d.set(s.src); try { d.el.currentTime = s.pos || 0; } catch (_) {}
+      d.el.playbackRate = s.rate || 1; d.el.preservesPitch = !d.vinyl;
+      await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
+      logPlay(s.title); brainPlay(k); // PR-B2: the playing flip is the brain's play event — every start path (hand, Auto-DJ, queue) funnels through here
+      // The tables ARE the radio: pressing play on a deck goes live, no separate switch.
+      if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintOwner(); paintStation(); say("🔴 You're LIVE — whatever you play on the tables is on the radio for everyone."); }
+    }
+    // A pause from the DJ is a PAUSE, not dead air: stamp it (S.pausedAt) and
+    // nothing restarts a deck over it — not this booth, not the station keeper.
+    // A song that ENDS on its own still rolls into the next one (see deckEnded).
+    if (s.playing) S.pausedAt = 0; else if (S.live && !DECKS.some((x) => S[x].playing)) S.pausedAt = Date.now();
+    paintOwner(); levels(); save(true);
+  }
+  onMain("click", async (e) => {
+    const b = e.target.closest("button"); if (!b || !OWNER()) return;
+    if (b.dataset.pop != null) { popOut(); return; }
+    if (b.dataset.dsecbtn) { const n = b.dataset.dsecbtn; secState[n] = secState[n] ? 0 : 1; try { localStorage.setItem("mw-dsec-v1", JSON.stringify(secState)); } catch (_) {} document.querySelectorAll('.dsec[data-dsec="' + n + '"]').forEach((s) => s.classList.toggle("shut", !secState[n])); return; }
+    /* mwLeadLock client phase: on a mirror booth (another screen holds the
+     * server claim) performance taps never touch the decks - they ask for
+     * control instead, so a second booth cannot silently drive the set. */
+    if (serverMirror() && (b.dataset.mwauto != null || b.closest("#dj-owner .deck, #dj-owner #dj-browser, #dj-owner #dj-xfbar, #dj-owner .mixer"))) { takeControl(); return; }
+    if (b.dataset.vtr || b.dataset.vspd || b.dataset.vfx) {
+      if (b.dataset.vfx) { fireVfx(b.dataset.vfx); return; }
+      if (b.dataset.vtr) { S.vmix = Object.assign({}, S.vmix || {}, { tr: b.dataset.vtr }); paintOwner(); save(true); say("\uD83D\uDCFA Video transition: " + b.dataset.vtr.toUpperCase() + " - it dresses the next master-screen switch on every screen."); return; }
+      S.vmix = Object.assign({}, S.vmix || {}, { trMs: +b.dataset.vspd || 650 }); paintOwner(); save(true); say("\uD83D\uDCFA Video transition speed set."); return;
+    }
+    if (b.dataset.cam != null) { camToggle(); return; }
+    if (b.dataset.vmix || b.dataset.vsrc) {
+      const ytDecks = () => DECKS.filter((k) => S[k].yt && S[k].playing).sort((x, y) => stageGain(y) - stageGain(x));
+      // every discrete switch keeps the chosen transition + speed and stamps
+      // S.vmix.at, so every screen animates the same switch (renderScreen)
+      const vKeep = () => ({ tr: (S.vmix && S.vmix.tr) || "fade", trMs: (S.vmix && S.vmix.trMs) || 650, at: Date.now() });
+      if (b.dataset.vsrc) { const k = b.dataset.vsrc; if (S[k] && S[k].yt) { S.vmix = Object.assign({ mode: "man", a: k, b: "", t: 0 }, vKeep()); say("📺 Master screen: deck " + k + " full screen — viewers see it too."); } else say("No video on deck " + k + " — put a YouTube video there first."); paintOwner(); save(true); return; }
+      const a = b.dataset.vmix;
+      if (a === "auto") { S.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0 }, vKeep()); say("📺 Video screen on AUTO — the picture now fades with the X fader, just like the sound."); paintOwner(); save(true); return; }
+      const top2 = ytDecks(), cur = vmixTargets()[0];
+      if (top2.length < 2 || !cur) { say("Put videos on two decks first — then Cut and Fade mix the pictures."); return; }
+      const other = top2.find((k) => k !== cur.k);
+      if (a === "cut") { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); say("✂️ Video CUT to deck " + other + "."); paintOwner(); save(true); return; }
+      // the chosen transition dresses this switch too: Cut lands instantly
+      // and any other non-Fade pick switches now (renderScreen animates it
+      // from the S.vmix.at stamp); Fade keeps the classic dissolve below
+      const trSel = (S.vmix && S.vmix.tr) || "fade";
+      if (trSel === "cut") { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); say("\u2702\uFE0F Video CUT to deck " + other + "."); paintOwner(); save(true); return; }
+      if (trSel !== "fade") { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); say("\uD83D\uDCFA Video switch (" + trSel + ") to deck " + other + "."); paintOwner(); save(true); return; }
+      // fade: dissolve from the deck on screen to the other one over ~1.2s,
+      // saving as it goes so viewers dissolve with the booth
+      S.vmix = Object.assign({ mode: "man", a: cur.k, b: other, t: 0 }, vKeep()); save(true);
+      const t0 = performance.now(); say("🌫️ Fading the picture to deck " + other + "…");
+      const step = () => { const p = Math.min(1, (performance.now() - t0) / 1200); S.vmix.t = p; stageApply(1, 1); save(); if (p < 1) requestAnimationFrame(step); else { S.vmix = Object.assign({ mode: "man", a: other, b: "", t: 0 }, vKeep()); paintOwner(); save(true); } };
+      requestAnimationFrame(step); return;
+    }
+    if (b.dataset.vskip != null) {
+      const top = vmixTop();
+      if (top && S[top.k] && S[top.k].playing) deckEnded(top.k);
+      return;
+    }
+    if (b.dataset.preset) {
+      const P = {
+        loud: { fx: { mf: 100, echo: 0, fb: 0.3, verb: 0.1, fla: 0, gate: 0, crush: 0, boost: 1.25 }, vinyl: false, keepMix: true, msg: "🔊 Loud & Clear: the phone setup — mud off, boost set, and the broadcast polish brings the bass and clarity. Your mix and deck volumes stay right where they are." },
+        radio: { fx: { mf: 100, echo: 0, fb: 0.34, verb: 0.12, fla: 0, gate: 0, crush: 0 }, vinyl: false, msg: "🏆 Pro Radio setup: clean broadcast sound, a touch of reverb, echo armed for drops." },
+        club: { fx: { mf: 100, echo: 0.22, fb: 0.45, verb: 0.3, fla: 0.25, gate: 0, crush: 0 }, vinyl: false, msg: "🔥 Club setup: echo, reverb and flanger up — big-room energy on everything you play." },
+        scratch: { fx: { mf: 100, echo: 0.1, fb: 0.3, verb: 0.05, fla: 0, gate: 0, crush: 15 }, vinyl: true, msg: "🎺 Scratch Session: vinyl mode on every deck and a little grit — grab a platter and cut." },
+        chop: { fx: { mf: 100, echo: 0.15, fb: 0.4, verb: 0.1, fla: 0, gate: 4, crush: 0 }, vinyl: false, msg: "⚡ Transformer setup: the chop is ON at medium speed — the beat gets sliced live for everyone." },
+      }[b.dataset.preset];
+      if (!P) return;
+      S.fx = Object.assign(defFx(), P.fx); if (!P.keepMix) { S.xf = 0.5; S.xf2 = 0.5; S.panX = 0.5; }
+      DECKS.forEach((k) => { const d = deck(k); d.vinyl = P.vinyl; d.el.preservesPitch = !P.vinyl; const vc = document.querySelector(`[data-vinyl="${k}"]`); if (vc) vc.checked = P.vinyl; if (!P.keepMix) S[k].vol = 0.9; });
+      document.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate));
+      applyFx(); levels(); paintOwner(); save(true); say(P.msg); return;
+    }
+    if (b.dataset.curplay != null) { const ci = CURATED[+b.dataset.curplay]; if (ci) { b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (src) { if (boothLead) playPadUrl(src); stampPad({ kind: "url", i: -1, url: src }); } else say("That sound wouldn't load. Try another."); } return; }
+    if (b.dataset.fsave) { const [kind, ix] = b.dataset.fsave.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (!it) return; const u = it.src; let om = {}; try { om = JSON.parse(localStorage.getItem("mw-offline-meta") || "{}"); } catch (_) {} if (om[u]) { say("Already saved for offline — it is in the 📥 Offline shelf on the Radio page."); return; } b.disabled = true; const oldT = b.textContent; b.textContent = "Saving…"; try { const r = await fetch(u, { headers: { "x-mw-save": "1" } }); if (!r.ok) throw new Error("fetch"); const len = +r.headers.get("content-length") || 0; if (len && len < 100000) throw new Error("tiny"); if (len > 200 * 1024 * 1024) { try { r.body && r.body.cancel(); } catch (_) {} say("That one is too big to save on a phone (" + Math.round(len / 1048576) + " MB)."); b.disabled = false; b.textContent = oldT; return; } if ("caches" in window) { const c = await caches.open("mw-music"); await c.put(u, r); } else await r.arrayBuffer(); om[u] = { title: it.t, artist: it.a, cover: it.cover || "", kind: kind === "v" ? "video" : "audio" }; try { localStorage.setItem("mw-offline-meta", JSON.stringify(om)); } catch (_) {} b.textContent = "✓ Saved"; say("⬇ Saved offline: " + it.t + " — find it in the 📥 Offline shelf on the Radio page. It plays with no internet now."); } catch (_) { b.disabled = false; b.textContent = oldT; say("That save didn't go through — check your signal (or the phone's storage) and try again."); } return; }
+    if (b.dataset.freeload) { const [dk, kind, ix] = b.dataset.freeload.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (it) load(dk, { src: it.src, yt: "", title: it.t, cover: it.cover, dur: it.dur || 0 }, { cue: true }); return; }
+    if (b.dataset.vput) { const [dk, ix] = b.dataset.vput.split(":"), it = vRes[+ix]; if (!it) return; if (it.kind === "sc") { load(dk, { kind: "sc", scUrl: it.url, scId: it.id, yt: "", src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; } if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } load(dk, { src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }, { cue: true }); return; } const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; load(dk, { yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; }
+    if (b.dataset.ytload) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a YouTube or Vimeo link first — then pick the deck."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } load(b.dataset.ytload, { src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }, { cue: true }); return; } load(b.dataset.ytload, item, { cue: true }); return; }
+    if (b.dataset.load) {
+      if (b.dataset.cur != null) { const ci = CURATED[+b.dataset.cur]; if (!ci) return; b.disabled = true; const src = await curatedSrc(ci); b.disabled = false; if (!src) { say("That sound wouldn't load. Try another."); return; } load(b.dataset.load, { src, title: ci.name, cover: "" }, { cue: true }); }
+      else if (b.dataset.lib != null) { const t = TRACKS()[+b.dataset.lib]; if (t) load(b.dataset.load, { src: URLOF(t), title: t.title, cover: t.cover, dur: +t.duration || 0, bpm: +t.bpm || 0, key: t.key || "", cam: t.cam || "" }, { cue: true }); }
+      else if (b.dataset.net != null) { const n = net[+b.dataset.net]; if (!n) return; b.disabled = true; const src = await iaFile(n.id); b.disabled = false; if (!src) { say("No playable file in that one. Pick another."); return; } load(b.dataset.load, { src, title: n.title, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id) }, { cue: true }); }
+      return;
+    }
+    if (b.dataset.queue != null) { const t = TRACKS()[+b.dataset.queue]; if (t) { BST.queue.push({ src: URLOF(t), title: t.title, cover: t.cover || "", dur: +t.duration || 0 }); saveQueue(); paintQueue(); say("Queued: " + t.title); } return; }
+    if (b.dataset.nqueue != null) { const n = net[+b.dataset.nqueue]; if (!n) return; b.disabled = true; const src = await iaFile(n.id); b.disabled = false; if (!src) { say("No playable file in that one. Pick another."); return; } BST.queue.push({ src, title: n.title, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), dur: 0 }); saveQueue(); paintQueue(); say("Queued: " + n.title); return; }
+    if (b.dataset.ytqueue != null) { const inp = $("#dj-yt"), item = vidParse(inp && inp.value); if (!item) { say("Paste a video link first — then tap ＋Q."); return; } if (item.iaId) { say("Finding the video file on the Archive..."); const asrc = await iaVideoFile(item.iaId); if (!asrc) { say("That Archive item has no playable video file."); return; } BST.queue.push({ src: asrc, yt: "", title: item.title || "Archive video", cover: "https://archive.org/services/img/" + item.iaId, dur: 0 }); } else if (item.kind === "sc") { BST.queue.push({ kind: "sc", scUrl: item.scUrl, scId: 0, yt: "", src: "", title: item.title || "SoundCloud track", cover: "", dur: 0 }); } else BST.queue.push({ yt: item.yt, src: "", title: item.title || "Video", cover: item.cover || "", dur: 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + (item.title || "video")); return; }
+    if (b.dataset.vqueue != null) { const it = vRes[+b.dataset.vqueue]; if (!it) return; if (it.kind === "sc") { BST.queue.push({ kind: "sc", scUrl: it.url, scId: it.id, yt: "", src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); } else if (it.kind === "ia") { say("Finding the video file on the Archive..."); const fsrc = await iaVideoFile(it.id); if (!fsrc) { say("That Archive item has no playable video file — try another one."); return; } BST.queue.push({ src: fsrc, yt: "", title: it.title, cover: it.thumb || "", dur: 0 }); } else { const tok2 = it.kind === "dm" ? "dm:" + it.id : it.id; BST.queue.push({ yt: tok2, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); } saveQueue(); paintQueue(); say("🎶 Queued: " + it.title); return; }
+    if (b.dataset.freequeue != null) { const [kind, ix] = b.dataset.freequeue.split(":"), it = (kind === "m" ? FREE_MEDIA.music : FREE_MEDIA.videos)[+ix]; if (it) { BST.queue.push({ src: it.src, yt: "", title: it.t, cover: it.cover, dur: it.dur || 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + it.t); } return; }
+    if (b.dataset.ahload != null) { ahLoadShelf(+b.dataset.ahload); return; }
+    if (b.dataset.ahput) { const [dk, si, ix] = b.dataset.ahput.split(":"), it = (ahCache[+si] || [])[+ix]; if (!it) return; load(dk, { yt: it.id, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }, { cue: true }); return; }
+    if (b.dataset.ahqueue != null) { const [si, ix] = b.dataset.ahqueue.split(":"), it = (ahCache[+si] || [])[+ix]; if (!it) return; BST.queue.push({ yt: it.id, src: "", title: it.title, cover: it.thumb || "", dur: it.dur || 0 }); saveQueue(); paintQueue(); say("🎶 Queued: " + it.title); return; }
+    if (b.dataset.qact) { const a = b.dataset.qact;
+      if (a === "clear") { BST.queue = []; saveQueue(); paintQueue(); say("Queue cleared."); }
+      else if (a === "open") { plOpen = !plOpen; paintPlaylists(); }
+      else if (a === "save") { if (SANDBOX && setupGate(20)) return; if (!BST.queue.length) { say("The queue is empty — add songs first, then save the list."); return; } const name = prompt("Name this playlist:"); if (!name || !name.trim()) return; const rec = { name: name.trim().slice(0, 60), items: BST.queue.slice() }; const ex = playlists.findIndex((p) => (p.name || "").toLowerCase() === rec.name.toLowerCase()); if (ex >= 0) playlists[ex] = rec; else playlists.unshift(rec); savePlaylists(); plOpen = true; paintPlaylists(); paintSched(); say("💾 Playlist saved: " + rec.name); }
+      else if (a === "play") { if (!BST.queue.length) { say("The queue is empty — add songs with ＋Q first."); return; } if (!SANDBOX) { playQueueStock(); return; } if (DECKS.some((k) => S[k].playing)) { say("▶ The queue is rolling — the next one in line loads when this deck finishes."); return; } const it = BST.queue.shift(); saveQueue(); paintQueue(); load("A", it).then(() => togglePlay("A")); say("▶ Playing the queue: " + (it.title || "")); }
+      return; }
+    if (b.dataset.plload != null || b.dataset.pladd != null || b.dataset.pldel != null) { const i = +(b.dataset.plload ?? b.dataset.pladd ?? b.dataset.pldel); const p = playlists[i]; if (!p) return; if (b.dataset.pldel != null) { playlists.splice(i, 1); savePlaylists(); paintPlaylists(); paintSched(); say("Playlist deleted: " + (p.name || "")); } else if (b.dataset.plload != null) { BST.queue = (p.items || []).slice(); saveQueue(); paintQueue(); say("📂 In the queue: " + (p.name || "") + " — press ▶ Play the queue, or it rolls in as decks finish."); } else { BST.queue = BST.queue.concat(p.items || []); saveQueue(); paintQueue(); say("📂 Added to the queue: " + (p.name || "")); } return; }
+    if (b.dataset.rqplload != null || b.dataset.rqpladd != null) { const items = rqPlQueueItems(); if (!items.length) { say("Listener Requests is empty right now."); return; } if (b.dataset.rqplload != null) { BST.queue = items.slice(); saveQueue(); paintQueue(); say("🎧 In the queue: Listener Requests — press ▶ Play the queue, or it rolls in as decks finish."); } else { BST.queue = BST.queue.concat(items); saveQueue(); paintQueue(); say("🎧 Added to the queue: Listener Requests"); } return; }
+    if (b.dataset.sched) { const t = $("#sched-time"), sel = $("#sched-sel"); const p = sel ? (sel.value === "rq" ? (rqPlItems && rqPlItems.length ? { name: "Listener Requests", items: rqPlQueueItems() } : null) : playlists[+sel.value]) : null; if (!t || !t.value) { say("Pick a time first."); return; } if (!p) { say("Save a playlist first — the schedule runs playlists."); return; } sched.push({ id: "s" + Date.now().toString(36), time: t.value, name: p.name || "", items: (p.items || []).slice() }); sched.sort((x, y) => (x.time < y.time ? -1 : 1)); saveSched(); paintSched(); say("📅 Scheduled: " + (p.name || "") + " every day at " + t.value + "."); return; }
+    if (b.dataset.sdel != null) { const en = sched[+b.dataset.sdel]; sched.splice(+b.dataset.sdel, 1); saveSched(); paintSched(); if (en) say("Schedule removed: " + (en.name || "") + " at " + (en.time || "")); return; }
+    if (b.dataset.play) return togglePlay(b.dataset.play);
+    if (b.dataset.cue0) { const k = b.dataset.cue0, s = S[k], d = deck(k); s.pos = 0; if (s.playing) s.start = Date.now(); try { d.el.currentTime = 0; } catch (_) {} save(true); return; }
+    if (b.dataset.brake) { const k = b.dataset.brake, d = deck(k); if (d.el.paused) return; d.noSync = Date.now() + 1100; const r0 = d.el.playbackRate, t0 = performance.now(), pos0 = d.el.currentTime || 0, slip = !!d.slip; const step = () => { const p = (performance.now() - t0) / 800; if (p >= 1) { d.el.playbackRate = S[k].rate || 1; if (slip) { try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, pos0 + 0.8 * (S[k].rate || 1))); } catch (_) {} d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; save(true); say("🌀 Slip brake — deck " + k + " lands right where the song would have been."); } else { d.el.pause(); if (S[k].playing) { S[k].playing = false; S[k].pos = d.el.currentTime; paintOwner(); save(true); } } return; } d.el.playbackRate = Math.max(0.02, r0 * (1 - p)); requestAnimationFrame(step); }; step(); return; }
+    if (b.dataset.hot) { if (hotTimer === "done") { hotTimer = null; return; } const [k, n] = b.dataset.hot.split(":"), d = deck(k), i = +n - 1; if (d.cues[i] == null) { let ct = d.el.currentTime || 0; if (S.quant !== false) ct = snapBeat(k, ct); d.cues[i] = ct; S[k].cues = d.cues.slice(); save(true); say("Cue " + n + " set at " + fmt(ct) + (S.quant !== false && beatLen(k) ? " (snapped to the beat)" : "")); } else { try { d.el.currentTime = d.cues[i]; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.cues[i] * 1000; save(true); } paintCues(k); return; }
+    if (b.dataset.loopb) { const [k, beats] = b.dataset.loopb.split(":"), d = deck(k), bl = beatLen(k); if (d.roll) { endRoll(k); return; } if (d.loop && d.loopBeats === +beats) { d.loop = null; d.loopBeats = 0; S[k].loop = null; S[k].loopBeats = 0; save(true); } else { let st = d.el.currentTime || 0; if (S.quant !== false) st = snapBeat(k, st); const len = bl ? +beats * bl : +beats; d.loop = [st, st + len]; d.loopBeats = +beats; S[k].loop = d.loop; S[k].loopBeats = d.loopBeats; try { d.el.currentTime = st; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - st * 1000; save(true); say("Looping " + beats + " beats on deck " + k + (bl ? "" : " (no BPM measured yet — seconds for now)")); } paintCues(k); return; }
+    if (b.dataset.roll) { const [k, beats] = b.dataset.roll.split(":"), d = deck(k), bl = beatLen(k); if (d.roll) { endRoll(k); say("🌀 Roll off — deck " + k + " is back where the song would have been."); return; } let st = d.el.currentTime || 0; if (S.quant !== false) st = snapBeat(k, st); const len = bl ? +beats * bl : +beats; d.loop = [st, st + len]; d.loopBeats = +beats; S[k].loop = d.loop; S[k].loopBeats = d.loopBeats; d.roll = { pos: st, at: performance.now() }; try { d.el.currentTime = st; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - st * 1000; paintCues(k); save(true); say("🌀 Rolling " + beats + " beats on deck " + k + " — tap Roll again and it lands where the song would have been."); return; }
+    if (b.dataset.slip) { const k = b.dataset.slip, d = deck(k); d.slip = !d.slip; paintCues(k); say(d.slip ? "🌀 Slip ON for deck " + k + " — scratch, brake or backspin, and it lands where the song would have been." : "Slip off for deck " + k + "."); return; }
+    if (b.dataset.spin) { const k = b.dataset.spin, d = deck(k); if (d.el.paused) return; d.noSync = Date.now() + 950; const t0 = performance.now(); scratchBed(); const iv = setInterval(() => { const p = (performance.now() - t0) / 750; if (p >= 1) { clearInterval(iv); scratchStop(); if (d.slip) { try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, (d.el.currentTime || 0) + 0.75 * (S[k].rate || 1))); } catch (_) {} if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; save(true); say("🌀 Slip backspin — deck " + k + " never lost its place."); } else { d.el.pause(); if (S[k].playing) { S[k].playing = false; S[k].pos = d.el.currentTime; paintOwner(); save(true); } } return; } try { d.el.currentTime = Math.max(0, (d.el.currentTime || 0) - (0.04 + p * 0.3)); } catch (_) {} scratchSound(0.4 + p); }, 50); return; }
+    if (b.dataset.prep != null) { const t = TRACKS()[+b.dataset.prep]; if (t) { const set = prepSet(), u = URLOF(t); if (set.has(u)) set.delete(u); else set.add(u); try { localStorage.setItem("mw-dj-prep", JSON.stringify([...set])); } catch (_) {} libList(); paintPrep(); say(set.has(u) ? "⭐ Prepared: " + t.title : "Removed from Prepare: " + t.title); } return; }
+    if (b.dataset.hload) { const x = histList()[+b.dataset.hist]; if (x) load(b.dataset.hload, { src: x.src || "", yt: x.yt || "", kind: x.kind || "", scUrl: x.scUrl || "", scId: x.scId || 0, title: x.title || "", cover: x.cover || "", dur: x.dur || 0 }, { cue: true }); return; }
+    if (b.dataset.ediv) { S.fx.ediv = +b.dataset.ediv; applyFx(); document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", x === b)); save(true); say("Echo locked to " + b.textContent + " of a beat."); return; }
+    if (b.dataset.sync) { const k = b.dataset.sync, o = DECKS.find((x) => x !== k && S[x].playing) || PAIR[k];
+      if (S[k].bpm > 0 && S[o].bpm > 0) {
+        const target = (S[o].bpm * (S[o].rate || 1)) / S[k].bpm;
+        if (target < 0.92 || target > 1.08) { say("Deck " + k + " (" + S[k].bpm + " BPM) and deck " + o + " (" + S[o].bpm + " BPM) are too far apart for the pitch fader — ride the pitch by hand or pick a closer song."); return; }
+        S[k].rate = +target.toFixed(3); deck(k).el.playbackRate = S[k].rate;
+        if (S[k].playing && S[o].playing) { const dk = deck(k), dl = beatLen(k); let delta = beatPhase(o, deck(o).el.currentTime) - beatPhase(k, dk.el.currentTime); delta = ((delta % 1) + 1.5) % 1 - 0.5; if (Math.abs(delta) > 0.02 && dl) { const nt = Math.max(0, Math.min((dk.el.duration || 1) - 0.3, dk.el.currentTime + delta * dl)); try { dk.el.currentTime = nt; } catch (_) {} } S[k].start = Date.now() - dk.el.currentTime * 1000; say("⚡ Deck " + k + " SYNCED to deck " + o + " — tempo matched, beats locked"); }
+        else say("Deck " + k + " tempo matched to deck " + o + " (" + S[o].bpm + " BPM)");
+      } else { S[k].rate = S[o].rate || 1; deck(k).el.playbackRate = S[k].rate; if (S[k].playing) S[k].start = Date.now() - deck(k).el.currentTime * 1000; say("Deck " + k + " speed matched to deck " + o + " (no BPM measured yet — speed only)"); }
+      paintOwner(); save(true); return; }
+    if (b.dataset.tap) { const k = b.dataset.tap; tapT[k] = (tapT[k] || []).filter((t) => performance.now() - t < 2500); tapT[k].push(performance.now()); if (tapT[k].length >= 3) { const iv = (tapT[k][tapT[k].length - 1] - tapT[k][0]) / (tapT[k].length - 1); const nb = +(60000 / iv).toFixed(1); S[k].bpm = nb; S[k].beat0 = +(((deck(k).el.currentTime || 0) % (60 / nb)) ).toFixed(3); anaStore(deck(k).src || S[k].src, { b: nb, o: S[k].beat0, k: S[k].key || "", c: S[k].cam || "" }); paintBeat(k); applyFx(); save(true); say("Deck " + k + " tapped in at " + nb + " BPM"); } else say("Keep tapping on the beat…"); return; }
+    if (b.dataset.bpmadj) { const [k, dv] = b.dataset.bpmadj.split(":"); if (!(S[k].bpm > 0)) { say("No BPM on deck " + k + " yet — tap the tempo or let it measure."); return; } S[k].bpm = +(S[k].bpm + (+dv)).toFixed(1); anaStore(deck(k).src || S[k].src, { b: S[k].bpm, o: S[k].beat0 || 0, k: S[k].key || "", c: S[k].cam || "" }); paintBeat(k); applyFx(); save(true); return; }
+    if (b.dataset.bpmx) { const [k, mx] = b.dataset.bpmx.split(":"); if (!(S[k].bpm > 0)) { say("No BPM on deck " + k + " yet."); return; } S[k].bpm = +(S[k].bpm * (+mx)).toFixed(1); anaStore(deck(k).src || S[k].src, { b: S[k].bpm, o: S[k].beat0 || 0, k: S[k].key || "", c: S[k].cam || "" }); paintBeat(k); applyFx(); save(true); say("Deck " + k + " tempo " + (+mx === 2 ? "doubled" : "halved") + ": " + S[k].bpm + " BPM"); return; }
+    if (b.dataset.nudge) { const [k, dir] = b.dataset.nudge.split(":"), bl = beatLen(k); if (!bl) { say("No beat grid on deck " + k + " yet."); return; } let nb0 = ((S[k].beat0 || 0) + (+dir) * 0.02) % bl; if (nb0 < 0) nb0 += bl; S[k].beat0 = +nb0.toFixed(3); anaStore(deck(k).src || S[k].src, { b: S[k].bpm, o: S[k].beat0, k: S[k].key || "", c: S[k].cam || "" }); save(true); say("Beat grid nudged on deck " + k); return; }
+    if (b.dataset.bjump) { const [k, nb2] = b.dataset.bjump.split(":"), d = deck(k), bl = beatLen(k); const delta = bl ? (+nb2) * bl : (+nb2); let t = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, (d.el.currentTime || 0) + delta)); if (S.quant !== false && bl) t = snapBeat(k, t); try { d.el.currentTime = t; } catch (_) {} if (S[k].playing) S[k].start = Date.now() - t * 1000; else S[k].pos = t; save(true); return; }
+    if (b.dataset.vcut != null && b.dataset.vcut !== "") { const k = b.dataset.vcut; S[k].vcut = !S[k].vcut; applyFx(); paintOwner(); save(true); say(S[k].vcut ? "🎤 Vocal cut ON deck " + k + " — the center (vocals) drops out for everyone. Karaoke trick, not true stems." : "Vocal cut off, deck " + k); return; }
+    if (b.dataset.bcut != null && b.dataset.bcut !== "") { const k = b.dataset.bcut; S[k].bcut = !S[k].bcut; applyFx(); paintOwner(); save(true); say(S[k].bcut ? "🔊 Bass cut ON deck " + k + " — the low end is out, classic mix move." : "Bass back in, deck " + k); return; }
+    if (b.dataset.gate != null) { S.fx.gate = +b.dataset.gate; document.querySelectorAll("[data-gate]").forEach((x) => x.classList.toggle("on", +x.dataset.gate === S.fx.gate)); applyFx(); save(true); say(S.fx.gate ? "Transformer chop is ON — everyone listening hears the beat get sliced." : "Transformer off."); return; }
+    if (b.id === "djx-vreset") { S.ved = { b: 1, c: 1, s: 1, z: 1 }; paintVEdit(); paintEdit(); save(true); say("Master picture reset — brightness, contrast, color and zoom back to normal for everyone."); return; }
+    if (b.dataset.xfc) { S.xfCurve = b.dataset.xfc; paintXfPads(); levels(); save(true); say("Crossfader curve: " + S.xfCurve + (S.xfCurve === "cut" ? " — instant switch at the center." : S.xfCurve === "sharp" ? " — stays loud in the middle, made for scratch work." : " — the smooth equal-power blend.")); return; }
+  });
+  // long-press a hot cue clears it
+  let hotTimer = null, hotAt = null;
+  onMain("pointerdown", (e) => { const b = e.target.closest("[data-hot]"); if (!b || !OWNER()) return; hotAt = { x: e.clientX, y: e.clientY }; hotTimer = setTimeout(() => { const [k, n] = b.dataset.hot.split(":"); deck(k).cues[+n - 1] = null; S[k].cues = deck(k).cues.slice(); save(true); paintCues(k); say("Cue " + n + " cleared"); hotTimer = "done"; }, 650); });
+  onMainRaw("pointerup", (e) => { hotAt = null; if (hotTimer === "done") { e.preventDefault(); return; } clearTimeout(hotTimer); hotTimer = null; }, true);
+  // LAW 22: a press that turns into a scroll (it moves off the button, or
+  // the browser cancels it) is not a long-press — the hold is abandoned,
+  // so scrolling across a hot cue can never clear the cue mid-scroll.
+  onMainRaw("pointermove", (e) => { if (hotAt && Math.hypot(e.clientX - hotAt.x, e.clientY - hotAt.y) > 10) { hotAt = null; if (hotTimer !== "done") { clearTimeout(hotTimer); hotTimer = null; } } }, true);
+  onMainRaw("pointercancel", () => { hotAt = null; if (hotTimer !== "done") { clearTimeout(hotTimer); hotTimer = null; } }, true);
+  onMain("input", (e) => {
+    if (!OWNER()) return;
+    const t = e.target;
+    if (t.dataset.vol) { S[t.dataset.vol].vol = +t.value; levels(); save(); }
+    if (t.dataset.pitch) { const k = t.dataset.pitch; S[k].rate = +t.value; deck(k).el.playbackRate = S[k].rate; deck(k).el.preservesPitch = !deck(k).vinyl; $("#pit-v-" + k).textContent = ((S[k].rate - 1) * 100).toFixed(1).replace("-", "−") + "%"; save(); }
+    if (t.dataset.eq) { const [k, band] = t.dataset.eq.split(":"), d = deck(k); if (d.eq) d.eq[band].gain.value = +t.value; S[k].eq = Object.assign({ lo: 0, mid: 0, hi: 0 }, S[k].eq || {}); S[k].eq[band] = +t.value; save(); }
+    if (t.dataset.flt) { const k = t.dataset.flt; S[k].flt = +t.value; if (deck(k).flt) fltFreq(deck(k).flt, +t.value); save(); }
+    if (t.id === "dj-crush") { S.fx.crush = +t.value; applyFx(); save(); }
+    if (t.id === "dj-master") { localMaster = +t.value; applyMaster(); }
+    if (t.id === "dj-boost") { S.fx.boost = +t.value; applyFx(); save(); }
+    if (t.id === "dj-filter") { S.fx.mf = +t.value; applyFx(); save(); }
+    if (t.id === "dj-echo") { S.fx.echo = +t.value; applyFx(); save(); }
+    if (t.id === "dj-fb") { S.fx.fb = +t.value; applyFx(); save(); }
+    if (t.id === "dj-verb") { S.fx.verb = +t.value; applyFx(); save(); }
+    if (t.id === "dj-fla") { S.fx.fla = +t.value; applyFx(); save(); }
+    if (t.id === "dj-pha") { S.fx.pha = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "dj-noise") { S.fx.noise = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "dj-libq") { libFilter = t.value.trim().toLowerCase(); libList(); }
+    if (t.id === "djx-boost") { S.fx.boost = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-filter") { S.fx.mf = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-echo") { S.fx.echo = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-fb") { S.fx.fb = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-verb") { S.fx.verb = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-fla") { S.fx.fla = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-pha") { S.fx.pha = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-noise") { S.fx.noise = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-crush") { S.fx.crush = +t.value; applyFx(); paintEdit(); save(); }
+    if (t.id === "djx-vb") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).b = +t.value; paintVEdit(); paintEdit(); save(); }
+    if (t.id === "djx-vc") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).c = +t.value; paintVEdit(); paintEdit(); save(); }
+    if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
+    if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
+  });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "aidj-on") { S.aiDj = e.target.checked; save(true); brainPaint(brainLastTaste); say(S.aiDj ? "🤖 AI-DJ on — Meechie will stock the queue while you're away." : "AI-DJ off — Meechie stops digging; what's already stocked still plays out."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-horn-top") { S.hornOn = e.target.checked; save(true); say(S.hornOn ? "📯 Transition horns ON — automated crossfades get the air horn again." : "🔇 Transition horns OFF — automated crossfades stay quiet."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { BST.JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(BST.JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } if (e.target.id === "dj-gsmode") { bkdSetMode(e.target.value || "none", null); } if (e.target.id === "dj-gsposter") { bkdSetMode(null, e.target.value || "radio"); } });
+  // circular pan pads: drag the gold dot — left/right is the X between the
+  // pairs (A+B on the left, C+D on the right, the ends at 100%), up/down
+  // tilts between the pairs. Same mix as the sliders and the phone fader
+  // bar; everything stays in sync, including Auto-DJ crossfades.
+  function paintXfPads() { // THE ONE FADER dot: full-travel paint (the dot reaches the edge your finger reaches) + live mix readout
+    XFCURVE = S.xfCurve || "smooth"; document.querySelectorAll("[data-xfc]").forEach((x) => x.classList.toggle("on", x.dataset.xfc === XFCURVE));
+    const dot = $("#dj-xfdot"); if (dot) { dot.style.left = (50 + ((S.panX ?? 0.5) - 0.5) * 84) + "%"; dot.style.top = (50 + (S.panY || 0) * 42) + "%"; }
+    const rd = $("#dj-pan-read"); if (rd) { const py = S.panY || 0, ab = py > 0 ? 1 - py : 1, cd = py < 0 ? 1 + py : 1; const g = { A: xfGain(S.xf, "A") * ab * pairXGain(S.panX, false), B: xfGain(S.xf, "B") * ab * pairXGain(S.panX, false), C: xfGain(S.xf2 ?? 0.5, "A") * cd * pairXGain(S.panX, true), D: xfGain(S.xf2 ?? 0.5, "B") * cd * pairXGain(S.panX, true) }; const mx = Math.max(g.A, g.B, g.C, g.D, 0.0001); rd.textContent = ["A", "B", "C", "D"].map((k) => k + " " + Math.round(g[k] / mx * 100) + "%").join(" · "); }
+    document.querySelectorAll("[data-xv]").forEach((el) => { const k = el.dataset.xv, v = S[k] ? (S[k].vol || 0) : 0; el.style.setProperty("--rot", (-135 + (v / 2) * 270) + "deg"); const b = el.querySelector("b"); if (b) b.textContent = Math.round(v * 100) + "%"; });
+  }
+  // ONE pan dot for all four decks. THE X LAW (owner, 2026-10-29):
+  // left/right is the X — it rides BETWEEN THE PAIRS (S.panX): all the way
+  // left = decks A+B at 100% and C+D silent, all the way right = C+D at
+  // 100% and A+B silent, center = both pairs full. Up/down still tilts
+  // between the pairs (top = A/B, bottom = C/D). The within-pair faders
+  // (S.xf / S.xf2) are no longer written by the pad — they belong to the
+  // automated blends, the follow guard and the curve, exactly as the
+  // crossfade code below expects.
+  // LAW 22 (owner, 2026-10-30): scroll and touch never touch the music.
+  // A press on a sideways booth surface (the X pad, a waveform, a platter)
+  // is classified ONCE by pressIntent and the verdict never flips back:
+  // "control" = sideways travel of 10px or more, at least 1.6x the vertical
+  // travel (a deliberate drag); "scroll" = vertical travel of 10px or more,
+  // at least the sideways travel (a page scroll, however it veers later);
+  // anything else is undecided and the press does nothing yet.
+  const pressIntent = (pend, e) => { const dx = e.clientX - pend.x, dy = e.clientY - pend.y; if (Math.abs(dx) >= 10 && Math.abs(dx) >= Math.abs(dy) * 1.6) return "control"; if (Math.abs(dy) >= 10 && Math.abs(dy) >= Math.abs(dx)) return "scroll"; return ""; };
+  (() => { const pad = $("#dj-xfpad"); if (!pad) return; let drag = false;
+    const center = () => { xfTouchedAt = Date.now(); S.xf = 0.5; S.xf2 = 0.5; S.panX = 0.5; S.panY = 0; paintXfPads(); levels(); save(true); };
+    const apply = (e) => { if (serverMirror()) { takeControl(); return; } const r = pad.getBoundingClientRect(), rad = r.width / 2; let dx = (e.clientX - (r.left + rad)) / rad, dy = (e.clientY - (r.top + rad)) / rad; dx = Math.min(1, Math.max(-1, dx)); dy = Math.min(1, Math.max(-1, dy)); if (Math.abs(dx) < 0.07) dx = 0; if (Math.abs(dy) < 0.09) dy = 0; xfTouchedAt = Date.now(); if (xfAnim) { clearInterval(xfAnim); xfAnim = null; } S.panX = Math.round(((dx + 1) / 2) * 1000) / 1000; S.panY = Math.round(dy * 1000) / 1000; paintXfPads(); levels(); save(); };
+    // scroll gate (owner, 2026-10-29; LAW 22, 2026-10-30): a press applies
+    // nothing until pressIntent calls it a control move, and the moment it
+    // calls it a scroll the press is dropped for good — a scroll that veers
+    // sideways mid-page can never grab the fader. A vertical scroll starting
+    // on the pad is the page scroll (pan-y) and a pointercancel drops the
+    // press untouched; a clean tap applies the tapped point on release.
+    let pend = null;
+    pad.addEventListener("pointerdown", (e) => { if (!OWNER()) return; pend = { x: e.clientX, y: e.clientY, id: e.pointerId }; e.preventDefault(); });
+    pad.addEventListener("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const intent = pressIntent(pend, e); if (intent === "scroll") { pend = null; return; } if (intent !== "control") return; drag = true; try { pad.setPointerCapture(pend.id); } catch (_) {} apply(e); pend = null; } if (drag) apply(e); });
+    pad.addEventListener("pointerup", (e) => { if (pend) { pend = null; apply(e); save(true); return; } if (drag) { drag = false; save(true); } });
+    pad.addEventListener("pointercancel", () => { pend = null; drag = false; });
+    pad.addEventListener("dblclick", () => { if (OWNER()) center(); });
+    pad.addEventListener("keydown", (e) => { if (!OWNER()) return; const st = e.shiftKey ? 0.01 : 0.05; if (e.key === "ArrowLeft") { S.panX = Math.max(0, (S.panX ?? 0.5) - st); } else if (e.key === "ArrowRight") { S.panX = Math.min(1, (S.panX ?? 0.5) + st); } else if (e.key === "ArrowUp") { S.panY = Math.max(-1, (S.panY || 0) - st); } else if (e.key === "ArrowDown") { S.panY = Math.min(1, (S.panY || 0) + st); } else return; xfTouchedAt = Date.now(); paintXfPads(); levels(); save(); e.preventDefault(); });
+    const cb = $("#dj-pan-center"); if (cb) cb.addEventListener("click", () => { if (OWNER()) center(); });
+  })();
+  // touch the waveform to jump the song there: tap a spot to play from it, or drag
+  // across to scrub. Works in the sound window and from the mirror (it writes the
+  // shared position and the leader follows). Seeking outside an active loop clears it.
+  DECKS.forEach((k) => {
+    const cv = document.getElementById("wv-" + k); if (!cv) return;
+    let scrub = false;
+    const seekTo = (e) => { const d = deck(k); const dur = d.el.duration || S[k].dur || 0; if (!dur) { say("That deck needs a song loaded before you can scrub it."); return; } const r = cv.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)); const t = f * dur;
+      if (d.loop && (t < d.loop[0] || t > d.loop[1])) { d.loop = null; d.loopBeats = 0; S[k].loop = null; S[k].loopBeats = 0; }
+      try { d.el.currentTime = t; } catch (_) {}
+      if (S[k].playing) S[k].start = Date.now() - t * 1000; else S[k].pos = t;
+      paintCues(k); peaks(k); };
+    // scroll gate (owner, 2026-10-29; LAW 22, 2026-10-30): the wave no
+    // longer seeks on touch-down — the seek waits until pressIntent calls
+    // the gesture a control move, and a scroll verdict drops the press for
+    // good, so a scroll veering sideways can never scrub the song. It then
+    // seeks to the current pointer spot and scrubs on as before. A vertical
+    // scroll starting on the wave just scrolls the page (pan-y) and a
+    // pointercancel abandons the press; a clean tap still seeks, on release.
+    let pend = null;
+    cv.addEventListener("pointerdown", (e) => { if (!OWNER()) return; pend = { x: e.clientX, y: e.clientY, id: e.pointerId }; e.preventDefault(); });
+    cv.addEventListener("pointermove", (e) => { if (pend && !scrub) { if (!e.buttons) { pend = null; return; } const intent = pressIntent(pend, e); if (intent === "scroll") { pend = null; return; } if (intent !== "control") return; scrub = true; try { cv.setPointerCapture(pend.id); } catch (_) {} seekTo(e); pend = null; } if (scrub) seekTo(e); });
+    cv.addEventListener("pointerup", (e) => { if (pend) { pend = null; seekTo(e); save(true); return; } if (scrub) { scrub = false; save(true); } });
+    cv.addEventListener("pointercancel", () => { pend = null; scrub = false; });
+  });
+  $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
+    // Auto-DJ is the station's play method: if nothing is playing it starts the rotation itself,
+    // and it primes the idle deck so the first crossfade is ready
+    if (S.live && S.autodj) {
+      const playing = ["A", "B"].find((k) => S[k].playing);
+      if (!playing) { const item = BST.queue.length ? BST.queue.shift() : nextFromLibrary(); if (item) { saveQueue(); paintQueue(); load("A", item).then(() => togglePlay("A")); } }
+      else { const idle = playing === "A" ? "B" : "A"; if (!okUrl(S[idle].src)) { const item = BST.queue.length ? BST.queue[0] : nextFromLibrary(); if (item && !BST.queue.length) bag.push(item); if (item) load(idle, item); } }
+    }
+  });
+  // scratch / scrub: drag a platter sideways — the song position follows the
+  // hand AND the hand makes a scratch noise (owner ask, 2026-10-26). The deck
+  // element is paused while scrubbing, so the track itself stays silent; the
+  // noise is a synthesized vinyl bed (looped noise through a bandpass whose
+  // pitch and volume ride the hand speed) on the master bus — the booth hears
+  // it and show recordings keep it. YouTube decks scrub coarsely (their player
+  // seeks in chunks) but get the same noise, so every disc answers the hand.
+  let scrBed = null;
+  /* JOGF lives in BST (phase-2 split) — declared and loaded at the bridge block above. */
+  const scratchBed = () => { const c = (typeof actx === "function") ? actx() : ctx; if (!c || !masterIn) return null; if (scrBed) return scrBed; try { const len = 2 * c.sampleRate, buf = c.createBuffer(1, len, c.sampleRate), ch = buf.getChannelData(0); for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1; const src = c.createBufferSource(); src.buffer = buf; src.loop = true; const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 1.1; const g = c.createGain(); g.gain.value = 0; src.connect(bp); bp.connect(g); g.connect(masterIn); src.start(); scrBed = { bp, g }; } catch (_) {} return scrBed; };
+  const scratchSound = (vel) => { const s = scratchBed(); if (!s || !ctx) return; const v = Math.min(1, Math.abs(vel) / 1.6), t = ctx.currentTime; s.g.gain.setTargetAtTime(v * (BST.grainSess ? 0.1 : 0.38), t, 0.012); s.bp.frequency.setTargetAtTime(450 + v * 1600, t, 0.02); };
+  const scratchStop = () => { if (scrBed && ctx) scrBed.g.gain.setTargetAtTime(0, ctx.currentTime, 0.06); };
+  // the REAL scratch for his own files (top-tier build, 2026-10-26): decode the
+  // track once into memory, then while the hand drags, fire short grains of the
+  // actual song at the hand position — the slice start points step with the
+  // hand, so forward, backward and baby scratches are the track itself, the
+  // way pro systems resample at hand speed. YouTube decks keep the noise bed
+  // (their audio can never be decoded). Grains ride the deck's own fader gain.
+  const bufCache = new Map(); /* grainSess lives in BST (phase-2 split) */
+  const deckBuffer = async (k) => { const d = deck(k); if (!d || d.shim || !d.src) return null; if (bufCache.has(d.src)) return bufCache.get(d.src); const c = (typeof actx === "function") ? actx() : ctx; if (!c) return null; try { const r = await fetch(d.src); const ab = await r.arrayBuffer(); const buf = await c.decodeAudioData(ab); if (buf.duration > 900) return null; bufCache.set(d.src, buf); if (bufCache.size > 2) bufCache.delete(bufCache.keys().next().value); return buf; } catch (_) { return null; } };
+  const grainStart = (k) => { const d = deck(k), c = ctx; if (!c || !masterIn || BST.grainSess || !d || d.shim) return; const buf = bufCache.get(d.src); if (!buf) return; try { const bus = c.createGain(); bus.gain.value = 0; bus.connect(d.gain || masterIn); bus.gain.setTargetAtTime(1, c.currentTime, 0.03); BST.grainSess = { k, bus, timer: setInterval(() => { const dd = deck(k); if (!dd) return; const pos = dd.el.currentTime || 0, vel = Math.max(0.35, Math.min(2, Math.abs(dd.scrVel || 0) || 0.8)); const g = c.createBufferSource(); g.buffer = buf; g.playbackRate.value = vel; const e = c.createGain(), t = c.currentTime; e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(0.85, t + 0.02); e.gain.linearRampToValueAtTime(0, t + 0.1); g.connect(e); e.connect(bus); try { g.start(t, Math.max(0, Math.min(buf.duration - 0.15, pos))); g.stop(t + 0.12); } catch (_) {} }, 25) }; } catch (_) {} };
+  const grainStop = () => { if (!BST.grainSess) return; const s = BST.grainSess; BST.grainSess = null; clearInterval(s.timer); try { s.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.03); setTimeout(() => { try { s.bus.disconnect(); } catch (_) {} }, 200); } catch (_) {} };
+  DECKS.forEach((k) => {
+    const pl = () => $("#pl-" + k); let drag = null, pend = null;
+    // scroll gate (owner, 2026-10-29; LAW 22, 2026-10-30): the platter no
+    // longer pauses on touch-down — a press only arms the scratch, and the
+    // scratch (pause, grain, noise bed) starts when pressIntent calls the
+    // gesture a control move. A scroll verdict drops the armed press for
+    // good: a scroll that veers sideways mid-page can never grab the disc.
+    // A vertical scroll starting on the platter scrolls the page (pan-y).
+    // A clean tap left no trace before either (down paused, up resumed at
+    // the same spot, slip shadow included — the song ends up where it
+    // would have played to), so a gated tap simply does nothing.
+    const beginScratch = (e) => { drag = { x: e.clientX, t: performance.now(), at: performance.now(), pos: deck(k).el.currentTime || 0, was: !deck(k).el.paused }; deck(k).el.pause(); scratchBed(); deckBuffer(k).then(() => { if (drag) grainStart(k); }); if (bufCache.has(deck(k).src)) grainStart(k); };
+    onMain("pointerdown", (e) => { if (e.target !== pl() || !OWNER()) return; pend = { x: e.clientX, y: e.clientY }; e.preventDefault(); });
+    onMainRaw("pointermove", (e) => { if (pend && !drag) { if (!e.buttons) { pend = null; return; } const intent = pressIntent(pend, e); if (intent === "scroll") { pend = null; return; } if (intent !== "control") return; beginScratch(e); pend = null; } if (!drag) return; const d = deck(k), now = performance.now(), dx = e.clientX - drag.x, dt = Math.max(1, now - drag.t); drag.x = e.clientX; drag.t = now; try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 0) - 0.2, d.el.currentTime + dx * BST.JOGF)); } catch (_) {} if (S[k]) S[k].pos = d.el.currentTime; d.scrVel = (d.scrVel || 0) * 0.55 + (Math.abs(dx * BST.JOGF) / (dt / 1000)) * 0.45; scratchSound(dx / dt); });
+    onMainRaw("pointerup", () => { if (pend) { pend = null; return; } if (!drag) return; grainStop(); scratchStop(); const d = deck(k); if (drag.was && d.slip) { const sh = drag.pos + (performance.now() - drag.at) / 1000 * (S[k].rate || 1); try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} } if (drag.was) { d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else if (S[k]) S[k].pos = d.el.currentTime; drag = null; save(true); });
+    // LAW 22: a pointercancel means the browser took the gesture away (a
+    // page scroll) — an interrupted scratch is undone as if it never
+    // happened: a playing deck lands where the song would have played to
+    // and resumes; a paused deck returns to the exact spot it was grabbed.
+    onMainRaw("pointercancel", () => { pend = null; if (!drag) return; grainStop(); scratchStop(); const d = deck(k); if (drag.was) { const sh = drag.pos + (performance.now() - drag.at) / 1000 * (S[k].rate || 1); try { d.el.currentTime = Math.max(0, Math.min((d.el.duration || 1e9) - 0.3, sh)); } catch (_) {} d.el.play().catch(() => {}); if (S[k].playing) S[k].start = Date.now() - d.el.currentTime * 1000; } else { try { d.el.currentTime = drag.pos; } catch (_) {} if (S[k]) S[k].pos = drag.pos; } drag = null; save(true); });
+  });
+  // deck ended -> owner bookkeeping + Auto-DJ
+  // dead-air guard: a deck that runs out (or stalls at the end) while the station is
+  // LIVE hands over automatically — listener pick first, then the queue, then the mix —
+  // even with Auto-DJ switched off, because a live set should never just stop
+  function deckEnded(k) {
+    // The booth LEAD owns the advance even when this same tab is also
+    // listening to the station: gating on listening alone can leave a lead
+    // booth unable to end or roll a deck while the keeper stands down for
+    // its fresh heartbeat (2026-10-28, the song that ended and rolled nothing).
+    if (!OWNER() || (listening && !boothLead) || !S[k].playing) return;
+    brainClose(k, "ended"); // PR-B2: classify by position vs duration BEFORE the deck state is wiped — a full play is an end, an early vskip through this same door is a skip
+    S[k].playing = false; S[k].pos = 0; BST.lastEndedK = k; paintOwner(); save(true);
+    // Only Auto-DJ picks songs by itself. With Auto-DJ off the DJ is in charge: a deck that ends just stops
+    // (owner, 2026-10-27: "it keeps forcing songs to change").
+    // Another deck flagged playing blocks the roll only when it is genuinely
+    // mid-song — a corpse flag (playing, but already past its own end) must
+    // never veto the next song.
+    if (S.live && (S.autodj || BST.queue.length) && !DECKS.some((x) => S[x].playing && !(+S[x].dur > 0 && posOf(x) > +S[x].dur + 15))) { say("⏭️ Deck " + k + " ended — rolling the next song."); autoNext(k, true); }
+  }
+  DECKS.forEach((k) => { deck(k).onEnded = () => deckEnded(k); });
+
+  /* [P2 split] — in dj.js, the queue state plumbing (saveQueue, adoptQueue) sits between this chunk and the next; it stays in the core (DESIGN-P2 §3). */
+  /* The listener requests waiting at the head of the DJ queue line (owner,
+   * 2026-10-30: requests live in the setup own queue, not a side list) —
+   * they play ahead of the queued songs, so every Up Next list shows them
+   * first, marked as requests, never editable as queue rows. reqCache is
+   * the booth own subscription; on a viewer tab it stays empty and the
+   * Watch list merges the same line from pkLine instead. */
+  function pendingPickRows() {
+    const rows = (Array.isArray(reqCache) ? reqCache : []).filter((r) => r.data && r.data.kind === "pick" && !usedPicks.has(r.id)).sort((a, b) => (a.data.at || 0) - (b.data.at || 0));
+    return rows.map((r, i) => `<div class="dj-item"><span title="${E(r.data.title || "")}">🎤 ${i + 1}. ${r.data.yt ? "🎬 " : ""}${E(r.data.title || "")}</span><small class="muted">song request${r.data.by ? " · " + E(r.data.by) : ""} — plays next</small></div>`).join("");
+  }
+  function paintQueue() { const pk = pendingPickRows(); const rich = $("#dj-queue"); if (rich) rich.innerHTML = pk + (BST.queue.length ? BST.queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${q.yt ? "🎬 " : ""}${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qup="${i}" aria-label="Move up">▲</button><button class="btn ghost sm" type="button" data-qdn="${i}" aria-label="Move down">▼</button><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : (pk ? "" : '<small class="muted">Nothing queued — tap ＋Q on any song or video and it plays next, in order.</small>')); const box = $("#ad-queue"); if (box) box.innerHTML = pk + (BST.queue.length ? BST.queue.map((q, i) => `<div class="dj-item"><span title="${E(q.title || "")}">${i + 1}. ${E(q.title || "")}</span><button class="btn ghost sm" type="button" data-qdel="${i}">✕</button></div>`).join("") : (pk ? "" : '<small class="muted">Queue is empty — Auto-DJ pulls from the full library rotation.</small>')); }
+  onMain("click", (e) => { const b = e.target.closest("[data-qdel],[data-qup],[data-qdn]"); if (!b) return; if (b.dataset.qdel != null) BST.queue.splice(+b.dataset.qdel, 1); else if (b.dataset.qup != null) { const i = +b.dataset.qup; if (i > 0) { const t = BST.queue[i - 1]; BST.queue[i - 1] = BST.queue[i]; BST.queue[i] = t; } } else if (b.dataset.qdn != null) { const i = +b.dataset.qdn; if (i < BST.queue.length - 1) { const t = BST.queue[i + 1]; BST.queue[i + 1] = BST.queue[i]; BST.queue[i] = t; } } saveQueue(); paintQueue(); });
+  /* playlists: name a queue and keep it (owner ask, 2026-10-27 — "que that
+     list or make a play list") */
+  let playlists = []; try { playlists = JSON.parse(localStorage.getItem("mw-dj-playlists") || "[]"); } catch (_) {}
+  const savePlaylists = () => { try { localStorage.setItem("mw-dj-playlists", JSON.stringify(playlists)); } catch (_) {} };
+  let plOpen = false;
+  function paintPlaylists() { const box = $("#dj-playlists"); if (box) box.innerHTML = !plOpen ? "" : (playlists.length ? playlists.map((p, i) => `<div class="dj-item"><span title="${E(p.name || "")}">📂 ${E(p.name || "")} <small class="muted">${(p.items || []).length} in line</small></span><button class="btn ghost sm" type="button" data-plload="${i}">Load</button><button class="btn ghost sm" type="button" data-pladd="${i}">＋ Add</button><button class="btn ghost sm" type="button" data-pldel="${i}">✕</button></div>`).join("") : '<small class="muted">No playlists saved yet — build a queue and tap 💾 Save as playlist.</small>'); if (plOpen && box && rqPlItems && rqPlItems.length) box.innerHTML += `<div class="dj-item"><span title="Saved automatically from listener song requests">🎧 Listener Requests <small class="muted">${rqPlItems.length} saved · shuffles into the rotation on its own</small></span><button class="btn ghost sm" type="button" data-rqplload="1">Load</button><button class="btn ghost sm" type="button" data-rqpladd="1">＋ Add</button></div>`; paintSchedSel(); }
+  function paintSchedSel() { const sel = $("#sched-sel"); if (!sel) return; const cur = sel.value; sel.innerHTML = playlists.length ? playlists.map((p, i) => `<option value="${i}">${E(p.name || "")} (${(p.items || []).length})</option>`).join("") : '<option value="">Save a playlist first</option>'; if (rqPlItems && rqPlItems.length) sel.innerHTML += `<option value="rq">🎧 Listener Requests (${rqPlItems.length})</option>`; if (cur === "rq" && rqPlItems && rqPlItems.length) sel.value = "rq"; else if (cur !== "" && playlists[+cur]) sel.value = cur; }
+  /* ---------- schedule: what plays when (owner ask, 2026-10-27) ----------
+     Entries live in this browser AND in the station/schedule doc, which the
+     station keeper reads — so a scheduled playlist runs even with the booth
+     closed (file items there; video items join in when the booth is open). */
+  let sched = []; try { sched = JSON.parse(localStorage.getItem("mw-dj-sched") || "[]"); } catch (_) {}
+  const saveSchedLocal = () => { try { localStorage.setItem("mw-dj-sched", JSON.stringify(sched)); } catch (_) {} };
+  const saveSched = () => { saveSchedLocal(); try { const d = DBF(); if (d) d.doc("station/schedule").set({ entries: sched, updatedAt: Date.now() }).catch(() => {}); } catch (_) {} };
+  function paintSched() { const box = $("#dj-sched-list"); if (box) box.innerHTML = sched.length ? sched.map((en, i) => `<div class="dj-item"><span>🕐 ${E(en.time || "")} — 📂 ${E(en.name || "")} <small class="muted">${(en.items || []).length} in line · every day</small></span><button class="btn ghost sm" type="button" data-sdel="${i}">✕</button></div>`).join("") : '<small class="muted">Nothing scheduled — the station runs its normal mix.</small>'; paintSchedSel(); }
+  const etHM = () => { try { const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(new Date()); const g = (t) => (p.find((x) => x.type === t) || {}).value || "00"; return g("hour").padStart(2, "0") + ":" + g("minute").padStart(2, "0"); } catch (_) { return ""; } };
+  const etDay = () => { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); } catch (_) { return ""; } };
+  function fireSched(en) { BST.queue = (en.items || []).slice(); saveQueue(); paintQueue(); say("📅 Schedule: " + (en.name || "playlist") + " is up — " + BST.queue.length + " in line."); if (BST.queue.length && !DECKS.some((k) => S[k].playing)) { const it = BST.queue.shift(); saveQueue(); paintQueue(); load("A", it).then(() => togglePlay("A")); } }
+  setInterval(() => { if (!OWNER() || !leadDrive() || !sched.length) return; const hm = etHM(), day = etDay(); if (!hm || !day) return; let fired = {}; try { fired = JSON.parse(localStorage.getItem("mw-dj-sched-fired") || "{}"); } catch (_) {} sched.forEach((en) => { const key = en.id + "@" + day; if (en.time === hm && fired[key] !== 1) { fired[key] = 1; try { localStorage.setItem("mw-dj-sched-fired", JSON.stringify(fired)); } catch (_) {} fireSched(en); } }); }, 20000);
+  let schedDocTried = false;
+  function loadSchedDoc() { if (schedDocTried || !OWNER()) return; schedDocTried = true; try { const d = DBF(); if (!d) { schedDocTried = false; return; } d.doc("station/schedule").get().then((doc) => { const e = doc && doc.exists && doc.data() && doc.data().entries; if (Array.isArray(e)) { sched = e; saveSchedLocal(); paintSched(); } }).catch(() => {}); } catch (_) {} }
+  /* Listener Requests playlist (server-kept at station/rqplaylist):
+     every accepted song request lands there on its own — the keeper
+     folds picks in as they arrive and as they play. Shown here like
+     any playlist: Load it, Add it, or put it on the schedule. The
+     keeper also shuffles it into the unattended rotation by itself,
+     so it plays even if he never opens this panel. */
+  let rqPlItems = null, rqPlTried = false;
+  function rqPlQueueItems() { return (rqPlItems || []).filter((r) => r && (r.yt || r.src)).map((r) => ({ src: r.src || "", yt: r.yt || "", title: r.title || "", cover: r.cover || "", dur: +r.dur || 0 })); }
+  function loadRqPlaylist() { if (rqPlTried || !OWNER()) return; rqPlTried = true; try { const d = DBF(); if (!d) { rqPlTried = false; return; } d.doc("station/rqplaylist").get().then((doc) => { const it = doc && doc.exists && doc.data() && doc.data().items; if (Array.isArray(it)) { rqPlItems = it; paintPlaylists(); paintSchedSel(); } }).catch(() => {}); } catch (_) {} }
+  /* the library rotation: a shuffled bag of the whole library, refilled when it runs out —
+     this is what the station plays on Auto-DJ when the hand-picked queue is empty */
+  let bag = [], lastTitle = "";
+  function nextFromLibrary() {
+    if (!bag.length) { bag = TRACKS().map((t) => ({ src: URLOF(t), title: t.title, cover: t.cover || "", dur: +t.duration || 0 })).filter((x) => okUrl(x.src)); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } }
+    if (!bag.length) return null;
+    let item = bag.pop();
+    if (item.title === lastTitle && bag.length) { const other = bag.pop(); bag.push(item); item = other; }
+    lastTitle = item.title;
+    return item;
+  }
+  /* the mixed rotation, booth side: alternate Meechie's own tracks with real-artist
+     music from the Archive pool — like a real station, not just his catalog */
+  let mixFlip = false, poolCache = null;
+  async function nextFromPool() {
+    if (!poolCache) poolCache = await iaMulti(['creator:"Johnny Cash"', 'creator:"Miles Davis"', 'creator:"Grateful Dead"', 'creator:"James Brown"', 'creator:"Bob Marley"', 'creator:"Duke Ellington"', 'creator:"John Coltrane"', '"hip hop" mixtape', '"soul" "live"', '"rock" "live" concert', '"reggae" "live"', '"jazz" "live"']);
+    for (let tries = 0; tries < 3 && poolCache && poolCache.length; tries++) {
+      const n = poolCache[Math.floor(Math.random() * poolCache.length)];
+      const src = await iaFile(n.id);
+      if (src) return { src, title: n.title, cover: "https://archive.org/services/img/" + encodeURIComponent(n.id), dur: 0 };
+    }
+    return null;
+  }
+  let xfAnim = null, adTimer = null, xfTouchedAt = 0; /* handoverBusy/handoverAt/lastEndedK/deadAirAt/preLoad live in BST (phase-2 split) */
+  const usedPicks = new Set((() => { try { return JSON.parse(localStorage.getItem("mw-dj-usedpicks") || "[]"); } catch (_) { return []; } })());
+  /* YouTube age / embed lock (owner, 2026-10-29: the age walls keep
+   * stopping his videos — he is 36; the wall is YouTube's own and no
+   * site player can prove an age, so the booth stops sitting on it):
+   * when a deck player reports error 100, 101 or 150 (gone, or the
+   * embed / age restriction YouTube documents under 101 and 150), the
+   * video is remembered in a persistent skip-set, automation treats
+   * the deck as a failed start and rolls on, and no draw ever hands
+   * the booth that video again. Only a real player error marks a
+   * video — a slow load never does. */
+  function ageSkipSet() { try { return new Set(JSON.parse(localStorage.getItem("mw-dj-ageskip") || "[]")); } catch (_) { return new Set(); } }
+  const ageSharedSent = new Set();
+  /* fix-3 write side (2026-10-29): a local 100/101/150 conviction also
+   * reports the id to the shared ban list (POST /api/brain/block, which
+   * appends to the brain/ytblock doc) so the search relay can drop the
+   * video for every device, not just this one. Fire-and-forget on the
+   * house session pattern: no session = silence, any failure = silence,
+   * at most one POST per id per page session, and nothing here may
+   * ever throw into the deck error path that called ageMarkLocked. */
+  function ageShareBlock(id) {
+    try {
+      if (!id || ageSharedSent.has(id)) return;
+      const ses = mySess(), tok = ses && ses.access_token;
+      if (!tok) return;
+      ageSharedSent.add(id);
+      fetch("/api/brain/block", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ id }) }).catch(() => {});
+    } catch (_) {}
+  }
+  function ageMarkLocked(tok) { const vp = vparseTok(tok || ""); if (vp.p !== "yt" || !vp.id) return; const s = ageSkipSet(); if (s.has(vp.id)) return; s.add(vp.id); try { localStorage.setItem("mw-dj-ageskip", JSON.stringify([...s].slice(-300))); } catch (_) {} ageShareBlock(vp.id); }
+  function ageIsLocked(tok) { const vp = vparseTok(tok || ""); return vp.p === "yt" && !!vp.id && ageSkipSet().has(vp.id); }
+  /* Search side of the same lock (fix-search-filter, 2026-10-29): the
+   * relay now drops age / embed-gated videos server-side before they are
+   * offered, and this drops the ones this device has already caught — a
+   * video a deck player ever refused (errors 100/101/150, marked into
+   * mw-dj-ageskip by the shim's onError) never comes back in this
+   * booth's search results. Applied inside ytPage, so the relay path,
+   * the direct fallback path, MORE RESULTS and the After Hours shelves
+   * are all covered by the same two return points. */
+  function ytUnblocked(list) { try { const s = ageSkipSet(); if (!s.size || !Array.isArray(list)) return list; return list.filter((it) => !it || !it.id || !s.has(it.id)); } catch (_) { return list; } }
+  const ageSaid = new Set();
+  function ageNote(it) { const id = (it && it.yt) || ""; if (!id || ageSaid.has(id)) return; ageSaid.add(id); say("That video is age-locked by YouTube — it cannot play inside the site, so it is out of the picks for next time."); }
+  /* Age-gate auto-swap (owner, 2026-10-31 — "they wont let me play
+   * 18 plus videos"): the wall is YouTube's own and no site player
+   * can climb it, so when a video dies on that wall (errors 101/150,
+   * marked locked by the shim before the load ever saw the failure)
+   * the booth does not sit on a dead deck — it searches for a
+   * playable version of the same song (official audio first, then
+   * the lyric video, then the clean title as-is) and loads the best
+   * alternate onto the SAME deck. The ban itself lands exactly as
+   * before; the swap only decides what the deck holds next. What
+   * happens after is NOT the swap's business: the caller keeps its
+   * own intent — a station flow rolls on and plays it, a cued hand
+   * pick stays stopped (gentle-load law), a Play press plays it
+   * (his explicit play). ONE attempt per load: ageSwapTry spends
+   * the deck's swap token before mounting the alternate, load()
+   * re-arms it on every fresh load, and an alternate that also
+   * errors falls through to the caller's existing failure path —
+   * it can never loop. */
+  function ageSwapCleanTitle(t) { return String(t || "").replace(/\[[^\]]*\]/g, " ").replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim(); }
+  function ageSwapQueries(title) { const c = ageSwapCleanTitle(title); if (!c) return []; return [c + " official audio", c + " lyric video", c]; }
+  function ageSwapPick(results, deadId, deadDur) {
+    if (!Array.isArray(results)) return null;
+    const banned = ageSkipSet();
+    const ok = results.filter((r) => r && r.id && r.id !== deadId && !banned.has(r.id));
+    if (!ok.length) return null;
+    const dd = +deadDur || 0;
+    if (dd > 0) { const inBand = ok.filter((r) => { const d = +r.dur || 0; return d > 0 && d >= dd * 0.5 && d <= dd * 2; }); if (inBand.length) return inBand[0]; }
+    return ok[0];
+  }
+  async function ageSwapFind(item) {
+    try {
+      const vp = vparseTok((item && item.yt) || "");
+      if (vp.p !== "yt" || !vp.id) return null;
+      for (const q of ageSwapQueries(item.title)) {
+        const res = await ytPage(q, 1);
+        if (res === "TIER") return null;
+        const alt = ageSwapPick(res, vp.id, item.dur);
+        if (alt) return { yt: alt.id, title: alt.title || item.title || "YouTube video", cover: "https://i.ytimg.com/vi/" + alt.id + "/hqdefault.jpg", dur: +alt.dur || 0 };
+      }
+    } catch (_) {}
+    return null;
+  }
+  async function ageSwapTry(k, item) {
+    try {
+      const d = deck(k); if (!d || d._ageSwapUsed) return null;
+      if (!item || !item.yt || !ageIsLocked(item.yt)) return null;
+      const alt = await ageSwapFind(item);
+      if (!alt) return null;
+      if (!S[k] || S[k].yt !== item.yt) return null; // the deck changed hands while the search ran — this load no longer owns it
+      d._ageSwapUsed = true; // spent before the mount: an alternate that errors is the end of this load's one attempt
+      const okA = await d.setYt(alt.yt);
+      if (!okA) return null;
+      item.yt = alt.yt; item.title = alt.title; item.cover = alt.cover; item.dur = alt.dur;
+      S[k].yt = alt.yt; S[k].title = alt.title; S[k].cover = alt.cover; S[k].dur = alt.dur; S[k].pos = 0;
+      say("That video is age-locked by YouTube — swapped in a playable version.");
+      return alt;
+    } catch (_) { return null; }
+  }
+  /* drawQueueItem: ONLY the queue draw out of pickNextItem — the
+   * owner's shuffle rule (2026-10-28): pick at random and remove it, so
+   * nothing repeats until the queue empties. No listener picks, no
+   * pool, no library. The draw mutates the queue array; the caller owns
+   * saveQueue() + paintQueue() afterwards. Age-locked videos are drawn
+   * out and dropped instead of returned — the caller's saveQueue() +
+   * paintQueue() upkeep persists the shorter queue. */
+  function drawQueueItem() {
+    while (BST.queue.length) { const qi = Math.floor(Math.random() * BST.queue.length); const it = BST.queue.splice(qi, 1)[0]; if (it && it.yt && ageIsLocked(it.yt)) { ageNote(it); continue; } brainDraw(it); return it; }
+    return null;
+  }
+  /* pickNextItem: what plays next, in the booth's order — a listener pick
+   * first (played once, then deleted), then the queue (shuffled: drawn at
+   * random and removed, no repeats until it empties), then, with Auto-DJ
+   * on, the pool and the library rotation. Null when nothing is available. */
+  async function pickNextItem() {
+    let item = null, pendingShout = null;
+    const pick = reqCache.filter((r) => r.data && r.data.kind === "pick" && !usedPicks.has(r.id)).sort((a, b) => (a.data.at || 0) - (b.data.at || 0))[0];
+    if (pick) {
+      // a pick plays once, even if deleting its request fails (it used to come back on every handover)
+      usedPicks.add(pick.id); try { localStorage.setItem("mw-dj-usedpicks", JSON.stringify([...usedPicks].slice(-200))); } catch (_) {}
+      if (pick.data.yt && /^[A-Za-z0-9_-]{11}$/.test(String(pick.data.yt))) item = { yt: String(pick.data.yt), title: pick.data.title || "", cover: pick.data.cover || ("https://i.ytimg.com/vi/" + pick.data.yt + "/hqdefault.jpg"), dur: +pick.data.dur || 0 };
+      else if (pick.data.src && okUrl(pick.data.src)) item = { src: pick.data.src, title: pick.data.title || "", cover: pick.data.cover || "", dur: pick.data.dur || 0 };
+      else if (pick.data.iaId) { const src = await iaFile(pick.data.iaId); if (src) item = { src, title: pick.data.title || "", cover: "https://archive.org/services/img/" + encodeURIComponent(pick.data.iaId) }; }
+      DBF()?.doc("requests/" + pick.id).delete().catch(() => {});
+      if (item) { say("🎵 Listener pick up next: " + item.title); if (pick.data.shoutout) pendingShout = { text: String(pick.data.shoutout).slice(0, 140), by: String(pick.data.by || "A listener").slice(0, 40), title: item.title, at: Date.now() }; }
+    }
+    // The queue SHUFFLES through the decks (owner, 2026-10-28): draw at
+    // random and remove the pick, so nothing repeats until the queue is empty.
+    if (!item) item = drawQueueItem();
+    if (item && item.yt && ageIsLocked(item.yt)) { ageNote(item); item = null; } // defense in depth: a locked video never leaves this picker, whatever path produced it
+    if (item && pendingShout) S.shout = pendingShout; // the shout-out rides the shared state, so every screen shows it while the requested song plays
+    if (!item && !S.autodj) return null;
+    if (!item) { mixFlip = !mixFlip; if (mixFlip) item = await nextFromPool(); if (!item) item = nextFromLibrary(); }
+    return item;
+  }
+  /* Crossfader home (owner, 2026-10-29: "keep it centered... or make it
+     follow whats playing automatically"): the fader RESTS at center. After
+     an automated blend lands on a side, xfSettle eases it back to 0.5; and
+     xfFollowGuard (booth tick, Auto-DJ on only) walks it back to center
+     whenever a playing deck is left faded out (gain under 0.2 — the state
+     that reads as "music aint playing"). His hand always wins: pad, arrow
+     keys and MIDI all stamp xfTouchedAt — a blend that began after his
+     last touch never settles, and the guard stands down for 8s a touch. */
+  function xfSettle(key, touch0) {
+    if (xfTouchedAt > (touch0 || 0)) return;
+    const from = S[key] ?? 0.5; if (Math.abs(from - 0.5) < 0.01) return;
+    const t0 = performance.now();
+    clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 2200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+  }
+  /* xfSettle for a cross-pair blend: BOTH faders ease home to center
+   * together — same 2.2s glide, same hands-off rule (a touch after the
+   * blend began cancels the settle) as the single-fader xfSettle. */
+  function xfSettleKeys(keys, touch0) {
+    if (xfTouchedAt > (touch0 || 0)) return;
+    const froms = keys.map((key) => S[key] ?? 0.5);
+    if (froms.every((f) => Math.abs(f - 0.5) < 0.01)) return;
+    const t0 = performance.now();
+    clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 2200); keys.forEach((key, i) => { S[key] = froms[i] + (0.5 - froms[i]) * p; }); levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+  }
+  function xfFollowGuard() {
+    if (!OWNER() || !leadDrive() || !S.autodj || xfAnim || Date.now() - xfTouchedAt < 8000) return;
+    [["xf", "A", "B"], ["xf2", "C", "D"]].forEach(([key, a, b]) => {
+      if (xfAnim) return;
+      const pa = !!S[a].playing, pb = !!S[b].playing;
+      if (pa === pb) return;
+      const k = pa ? a : b, x = S[key] ?? 0.5;
+      if (xfGain(x, k === "B" || k === "D" ? "B" : "A") >= 0.2) return;
+      const from = x, t0 = performance.now();
+      xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 1200); S[key] = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+    });
+    // THE X LAW rescue, same hands-off spirit: if the ONLY deck playing
+    // sits on the pair the parked X has silenced (pair gain under 0.2
+    // while its own pair fader would pass it), the station would be
+    // silent under Auto-DJ — ease the X home to center. Layered play
+    // (decks on both pairs) never triggers it: a parked X with decks
+    // playing on the favored pair is the owner's mix, not a stranding.
+    if (xfAnim) return;
+    const px = S.panX ?? 0.5;
+    if (Math.abs(px - 0.5) < 0.01) return;
+    const playing = DECKS.filter((k) => S[k].playing);
+    if (playing.length !== 1) return;
+    const k = playing[0], cd = k === "C" || k === "D";
+    if (pairXGain(px, cd) >= 0.2) return;
+    const x = cd ? (S.xf2 ?? 0.5) : S.xf;
+    if (xfGain(x, k === "B" || k === "D" ? "B" : "A") < 0.2) return; // the pair fader owns that silence — the loop above handles it
+    const from = px, t0 = performance.now();
+    xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / 1200); S.panX = from + (0.5 - from) * p; levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); } }, 100);
+  }
+  /* [P2 split] — in dj.js, qKeyOf + qStockValid sit between this chunk and the next; they stay in the core (DESIGN-P2 §3). */
+  /* stockDeck: the cued load — the exact pattern the booth tick's
+   * preload uses (load, then for a video mount the player and pause it
+   * while the deck is not flagged playing), then record the deck as
+   * stocked with this item. */
+  async function stockDeck(k, item) {
+    if (item && item.yt && ageIsLocked(item.yt)) { qClear(k); ageNote(item); return; } // a locked video is never stocked
+    try { await load(k, item); if (item.yt) { const dp = decks[k]; if (dp) { await dp.setYt(item.yt); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } else if (item.scUrl) { const dp = decks[k]; if (dp) { await dp.setSc(item.scUrl); if (!S[k].playing && dp.el) { try { dp.el.pause(); } catch (_) {} } } } } catch (_) {}
+    if (item && item.yt && decks[k] && decks[k].shim && decks[k].shim._locked) { qClear(k); return; } // it locked while loading cued — do not stock a dead deck
+    qSet(k, item);
+  }
+  /* Play the queue (owner, 2026-10-29: "Load the next 4 queue songs
+   * onto A, B, C, D right away"): draw up to four queue items and stock
+   * them onto the decks in order. A deck that is playing is never
+   * stomped — it refills when it ends (see autoNext). From a cold booth
+   * deck A takes the first draw as a station flow and STARTS it — that
+   * is playing the queue; B, C, D load cued. If something is already on
+   * air, every free deck (A included) just loads cued and the rotation
+   * in autoNext rolls them in as decks finish. Live booth only — the
+   * Playground keeps the old single-deck play. */
+  async function playQueueStock() {
+    qSyncFromS();
+    const stocked = []; let startedK = null;
+    const anyPlaying = DECKS.some((k) => S[k].playing);
+    for (const k of DECKS) {
+      if (!BST.queue.length) break;
+      if (S[k].playing) continue;
+      const it = drawQueueItem(); if (!it) break;
+      if (k === "A" && !anyPlaying) {
+        try { await load("A", it); await togglePlay("A"); } catch (_) {}
+        if (S.A.playing && decks.A && decks.A.shim && decks.A.shim._locked) { try { decks.A.el.pause(); } catch (_) {} S.A.playing = false; } // age / embed locked: flagged playing but the player can never roll
+        if (S.A.playing) startedK = "A";
+        else if (decks.A && decks.A.shim && decks.A.shim._locked) { /* locked on its first load — already out of the queue; never stocked */ }
+        else { qSet("A", it); stocked.push("A"); } // loaded but would not start — leave it stocked cued like the others
+      } else { await stockDeck(k, it); if (qStock[k]) stocked.push(k); }
+    }
+    saveQueue(); paintQueue();
+    if (!boothLead && (startedK || stocked.length)) say("🎶 Queue is on the decks (" + [startedK].concat(stocked).filter(Boolean).join(" ") + ") — this screen is the mirror, so the records went to the shared station and the screen driving the sound rolls them through all four decks.");
+    else if (startedK) say("🎶 Queue on the decks — A playing" + (stocked.length ? ", " + stocked.join(" ") + " loaded and ready" : "") + ".");
+    else if (stocked.length) say("🎶 Queue loaded onto the decks — " + stocked.join(" ") + " ready, and they roll in as each deck finishes.");
+    else say("🎶 Every deck is playing — each one refills from the queue as it finishes.");
+  }
+  /* [P2 split] — in dj.js, the DROP_TEXTS table sits between this chunk and the next; it stays in the core (DESIGN-P2 §3). */
+  async function autoNext(endedK, force, fadeMs) {
+    if ((!S.autodj && !force) || !leadDrive()) return;
+    // A handover that died mid-flight (an unsettled load or play promise)
+    // must not hold this latch forever: one older than 20s is stuck, and
+    // this call takes over (2026-10-28: a stuck latch meant the song ended
+    // and nothing ever rolled again).
+    if (BST.handoverBusy && Date.now() - BST.handoverAt < 20000) return; BST.handoverBusy = true; BST.handoverAt = Date.now();
+    let target = PAIR[endedK] || "A";
+    /* Station voice drops (owner, 2026-10-29): every 3rd AUTOMATED
+     * transition speaks ONE line from the drop rotation over the join.
+     * The counters live in S (dropN / dropIx, normalized in mergeState)
+     * so every screen agrees on the cadence and a refresh does not
+     * reset it. A drop REPLACES the pads[0] station ID on its
+     * transition — one voice at a time, his words. Manual moves never
+     * reach autoNext, so they never count and never fire. */
+    let dropFired = false;
+    if (!SANDBOX && S.dropsOn !== false) {
+      S.dropN = (S.dropN || 0) + 1;
+      if (S.dropN % 3 === 0) { const ix = (S.dropIx || 0) % DROP_TEXTS.length; S.dropIx = ix + 1; S.voice = { id: "drop" + ix + "-" + Date.now(), text: DROP_TEXTS[ix], at: Date.now() }; dropFired = true; }
+    }
+    if (!dropFired) { const idPad = (S.pads || [])[0]; if (idPad && okUrl(idPad.url)) { S.voice = { id: idPad.id, url: idPad.url, at: Date.now() }; } }
+    // Stocked rotation (live booth only, owner 2026-10-29): when decks
+    // hold cued queue items (Play the queue, or the refill below), the
+    // next deck in rotation A→B→C→D→A after the ended one that holds a
+    // stocked item goes FIRST — already loaded, so this is play + fade
+    // only, no pick and no load. Each stocked try spends from the same
+    // 4-attempt budget as the pick path below; if no stocked deck
+    // starts, target stays the pair deck and the pick path runs exactly
+    // as before (preload fast-path included).
+    let started = false, attempts = 0;
+    if (!SANDBOX) {
+      let cand = ROT[endedK];
+      for (let step = 0; step < 3 && !started && attempts < 4; step++) {
+        if (qStockValid(cand)) {
+          if (ageIsLocked((qStock[cand] || {}).yt || "")) { qClear(cand); } // locked while it sat cued — void the record without spending an attempt; the refill draw replaces it
+          else {
+            attempts++;
+            try { await togglePlay(cand); } catch (_) {}
+            started = !!S[cand].playing;
+            if (started && decks[cand] && decks[cand].shim && decks[cand].shim._locked) { try { decks[cand].el.pause(); } catch (_) {} S[cand].playing = false; started = false; } // age / embed locked: flagged playing, but the player can never roll — a failed start
+            if (started) target = cand; else say("⏭ That one would not play — rolling the next.");
+            qClear(cand); // started (record served its purpose) or would not play (record is void)
+          }
+        }
+        cand = ROT[cand];
+      }
+    }
+    // A preloaded pair deck (loaded during the last 15 seconds, see the
+    // booth tick) skips the pick and the load entirely — play and fade only.
+    let preItem = null;
+    if (BST.preLoad && BST.preLoad.item && BST.preLoad.target === target && (S[target].yt || "") === (BST.preLoad.item.yt || "") && (S[target].src || "") === (BST.preLoad.item.src || "") && !(BST.preLoad.item.yt && ageIsLocked(BST.preLoad.item.yt))) { preItem = BST.preLoad.item; BST.preLoad = null; }
+    // Pick, load, play — then CHECK the deck actually started. One
+    // unplayable pick (an embed-blocked video, a player that will not
+    // mount in this tab) used to eat the whole transition silently: the
+    // horn stamped, the fade animated, nothing played, and the booth
+    // burned one item every 20 seconds without making a sound (the
+    // 2026-10-28 13:58 dead air: three silent minutes, full queue). A
+    // failed start now rolls straight to the next candidate, up to 4.
+    for (let attempt = attempts; attempt < 4 && !started; attempt++) {
+      const item = attempt === 0 && preItem ? preItem : await pickNextItem();
+      if (!item) break;
+      if (!(attempt === 0 && preItem)) { saveQueue(); paintQueue(); try { await load(target, item); } catch (_) {} }
+      try { await togglePlay(target); } catch (_) {}
+      started = !!S[target].playing;
+      if (started && decks[target] && decks[target].shim && decks[target].shim._locked) { try { decks[target].el.pause(); } catch (_) {} S[target].playing = false; started = false; } // age / embed locked: flagged playing, but the player can never roll — a failed start, roll on
+      if (!started) say("⏭ That one would not play — rolling the next.");
+    }
+    if (started) {
+      // Automated transition: stamp the horn so every audible client plays
+      // the same pattern at the same moment, and play it here on the
+      // driver. The stamp lands only on a REAL start — no more horns
+      // over silence.
+      if (S.hornOn === true) { S.fxHornAt = hornHeard = Date.now(); hornInit = true; hornStab(); } // horns OFF (owner, 2026-10-29): no stamp and no stab; when on, mark heard so an echo of this stamp does not horn again
+      // The crossfade: every deck rides its pair fader — A/B on S.xf,
+      // C/D on S.xf2 — toward the value where that deck is full and its
+      // pair mate is silent (xfGain: A and C are full at 0, B and D at
+      // 1). A same-pair handover animates the one shared fader, exactly
+      // as before. A rotation handover across pairs (A ends, C starts)
+      // animates BOTH faders in the same interval: the target's fader
+      // rides to the target's full value while the ended deck's fader
+      // rides to the ended deck's silent value. The other two decks are
+      // not playing during a handover, so their gains moving changes
+      // nothing heard. Afterwards every fader that moved settles back
+      // to center (xfSettle / xfSettleKeys). THE X LAW rides along on a
+      // cross-pair handover only: if the owner left the X (S.panX) parked
+      // off center, the blend eases it home to center in the same
+      // interval, so the incoming pair rises to full instead of landing
+      // in the parked pair's silence; at center (the home) nothing about
+      // the X moves and the blend is gain-identical to before the law.
+      const fullAt = (k) => (k === "B" || k === "D") ? 1 : 0;
+      const eKey = (endedK === "C" || endedK === "D") ? "xf2" : "xf", tKey = (target === "C" || target === "D") ? "xf2" : "xf";
+      const moves = [{ key: tKey, from: S[tKey] ?? 0.5, to: fullAt(target) }];
+      if (eKey !== tKey) { moves.push({ key: eKey, from: S[eKey] ?? 0.5, to: 1 - fullAt(endedK) }); if (Math.abs((S.panX ?? 0.5) - 0.5) > 0.01) moves.push({ key: "panX", from: S.panX ?? 0.5, to: 0.5 }); }
+      const t0 = performance.now(), dur = Math.max(800, fadeMs || 3500);
+      const touch0 = xfTouchedAt;
+      clearInterval(xfAnim); xfAnim = setInterval(() => { const p = Math.min(1, (performance.now() - t0) / dur); moves.forEach((m) => { S[m.key] = m.from + (m.to - m.from) * p; }); levels(); paintXfPads(); if (p >= 1) { clearInterval(xfAnim); xfAnim = null; save(true); if (moves.length === 1) xfSettle(moves[0].key, touch0); else xfSettleKeys(moves.map((m) => m.key), touch0); } }, 100);
+    }
+    // Refill (live booth only): after a successful transition the deck
+    // that just ended takes the next queue draw, cued and stocked, so
+    // the rotation always has somewhere to go. The early-crossfade path
+    // calls in while the ended deck is still flagged playing (its last
+    // seconds are blending out), so when it is, the refill re-checks a
+    // few seconds later once the deck has actually stopped. Every guard
+    // is re-tested at fire time: not playing, not already stocked. The
+    // re-check is a bounded retry, not a single shot (2026-10-29 audit:
+    // one timer meant one transient miss — a video deck whose player
+    // had not quite reported its end at that instant — lost the refill
+    // forever, and the rotation decayed deck by deck back to the pair
+    // path). The refill also never stomps a hand load: if the deck's
+    // content changed since the transition, it is his, not the queue's.
+    if (!SANDBOX && started && BST.queue.length) {
+      const endedKey = qKeyOf(S[endedK].src || "", S[endedK].yt || "");
+      const refill = async () => { if (S[endedK].playing || qStockValid(endedK) || !BST.queue.length) return; const ck = qKeyOf(S[endedK].src || "", S[endedK].yt || "", S[endedK].scUrl || ""); if (ck && ck !== endedKey) return; const itR = drawQueueItem(); if (itR) { await stockDeck(endedK, itR); saveQueue(); paintQueue(); } };
+      if (!S[endedK].playing) await refill();
+      else [6500, 14000, 24000].forEach((ms) => setTimeout(() => { refill().catch(() => {}); }, ms));
+    }
+    BST.handoverBusy = false; save(true);
+  }
+
+  /* ---------- pro DJ sounds: best of the free market (curated, verified) ---------- */
+    const CURATED = [
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 02.mp3", name: "🎺 Clean Scratch 2", tag: "Scratch Tactics · scratch · public domain" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 01.mp3", name: "🎺 Clean Scratch 1", tag: "Scratch Tactics · scratch" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 03.mp3", name: "🎺 Clean Scratch 3", tag: "Scratch Tactics · scratch" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 05.mp3", name: "🎺 Clean Scratch 5", tag: "Scratch Tactics · scratch" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 04.mp3", name: "💿 Battle Scratch 4", tag: "Scratch Tactics · scratch · public domain" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Mixed Scratches/Clean/Clean Mixed Sratch 07.mp3", name: "💿 Battle Scratch 7", tag: "Scratch Tactics · scratch · public domain" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Battle Beats/Battle Beat 08.mp3", name: "🥁 Battle Beat 8", tag: "Scratch Tactics · beat loop" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Battle Beats/Battle Beat 10.mp3", name: "🥁 Battle Beat 10", tag: "Scratch Tactics · beat loop" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Bass/Bass 01.mp3", name: "🔊 Bass Line 1", tag: "Scratch Tactics · bass" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Bass/Bass 03.mp3", name: "🔊 Bass Line 3", tag: "Scratch Tactics · bass" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/One Shots/Old Skool Hit 01.mp3", name: "💥 Old Skool Hit 1", tag: "Scratch Tactics · one-shot" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/One Shots/Old Skool Hit 04.mp3", name: "💥 Old Skool Hit 4", tag: "Scratch Tactics · one-shot" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/SFX/SFX  01.mp3", name: "✨ Pro SFX 1", tag: "Scratch Tactics · fx" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/SFX/SFX  05.mp3", name: "✨ Pro SFX 5", tag: "Scratch Tactics · fx" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Old Skool Elements/Old Skool Element 02.mp3", name: "📼 Old Skool Element 2", tag: "Scratch Tactics · element" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Atmospherics/Atmospheric  01.mp3", name: "🌌 Atmosphere 1", tag: "Scratch Tactics · texture" },
+    { id: "dj-puzzle-scratch-tactics", file: "Scratch Tactics/Atmospherics/Atmospheric  09.mp3", name: "🌌 Atmosphere 9 (long)", tag: "Scratch Tactics · texture" },
+  ];
+  async function curatedSrc(ci) {
+    if (ci.file) return "https://archive.org/download/" + encodeURIComponent(ci.id) + "/" + ci.file.split("/").map(encodeURIComponent).join("/");
+    return iaFile(ci.id);
+  }
+  function paintCurated() {
+    const box = $("#dj-cur"); if (!box || !OWNER()) return;
+    box.innerHTML = CURATED.length ? CURATED.map((c, i) => `<div class="dj-item"><span title="${E(c.name)}">${E(c.name)} <small class="muted">${E(c.tag)}</small></span><button class="btn ghost sm" type="button" data-curplay="${i}">▶</button><button class="btn ghost sm" type="button" data-load="A" data-cur="${i}">A</button><button class="btn ghost sm" type="button" data-load="B" data-cur="${i}">B</button><button class="btn ghost sm" type="button" data-load="C" data-cur="${i}">C</button><button class="btn ghost sm" type="button" data-load="D" data-cur="${i}">D</button></div>`).join("") : '<small class="muted">Loading the sound library…</small>';
+  }
+
   /* [C1 split] registration trailer (patcher-appended): hand the pack's
    * cross-boundary surface to the core's stubs, then replay the paints and
    * the camera FX attach that the stubs deferred while the pack was in
@@ -976,4 +1813,16 @@
     try { paintPads(); } catch (_) {}
     try { ahEnsure(); } catch (_) {}
     if (camStream) { try { camFxOnStream(); } catch (_) {} }
+  }
+  /* [P2 split] registration trailer (phase 2): the booth runtime's
+   * cross-boundary surface for the core's P2 stubs, then the replays
+   * for the paints the stubs deferred while the pack was in flight. */
+  Object.assign(BOOTH, { load, togglePlay, pickNextItem, autoNext, deckEnded, xfFollowGuard, ageMarkLocked, paintCues, paintQueue, paintPrep, paintXfPads, libList, paintPlaylists, paintSched, paintCurated, loadSchedDoc, loadRqPlaylist });
+  if (OWNER()) {
+    try { libList(); } catch (_) {}
+    try { paintQueue(); } catch (_) {}
+    try { paintPlaylists(); } catch (_) {}
+    try { paintSched(); } catch (_) {}
+    try { paintCurated(); } catch (_) {}
+    try { paintXfPads(); } catch (_) {}
   }
