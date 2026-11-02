@@ -618,17 +618,7 @@ html{scrollbar-gutter:stable}
 .micmeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#45bd62,#f7b928,#e5484d);transition:width .08s}
 .dj-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px;margin-top:14px;grid-auto-flow:dense;align-items:start}
 .dj-panel{background:#0c0a07;border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:10px;align-content:start;min-width:0}
-#dj-door .door-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #2a2418;font-size:17.5px;flex-wrap:wrap}
-#dj-door .door-row.new{animation:doornew 1.6s ease-in-out 2}
-@keyframes doornew{50%{background:rgba(240,207,120,.16)}}
-#dj-door .door-row small{color:var(--muted);white-space:nowrap}
-#dj-door .door-acts{display:flex;gap:6px;flex-wrap:wrap}
 .dj-panel h4{margin:0;font:800 12px var(--body);letter-spacing:.16em;color:var(--gold-hi)}
-.pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.pad{padding:20px 8px;border-radius:12px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font:700 15px var(--body);cursor:pointer}
-.pad:active{transform:scale(.96)}
-.pad.custom{border-style:dashed}
-.pad small{display:block;color:var(--muted);font-weight:600;font-size:12.5px;margin-top:3px}
 .dj-list{display:grid;gap:6px;max-height:240px;overflow:auto;min-width:0}
 .dj-item{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-width:0}
 .dj-item>span{flex:1 1 130px;min-width:0}
@@ -692,10 +682,9 @@ body[data-view="dj"] .player-bar,body[data-view="dj"] .apptab{opacity:0!importan
 .dj-decks>.deck .btn{padding:6px 8px;font-size:12px}
 .dj-decks>.deck .ttl{font-size:12px}
 body.dj-on #dj-booth-root{padding-bottom:70px}
-.dj-grid2{grid-template-columns:1fr}.pads{grid-template-columns:repeat(2,1fr)}
+.dj-grid2{grid-template-columns:1fr}
 #dj-owner .btn{min-height:42px}
 #dj-owner [data-play]{min-height:50px;font-size:20px}
-#dj-owner .pad{min-height:52px}
 #dj-owner input[type=range]{min-height:32px}
 #dj-owner .platter{width:118px}
 .deck{padding:10px;gap:6px;background:linear-gradient(180deg,#181310,#0c0a07)}
@@ -703,7 +692,6 @@ body.dj-on #dj-booth-root{padding-bottom:70px}
 .deck .wave{height:52px}
 .mixer{padding:10px 8px;gap:7px}
 .dj-panel{padding:10px}
-#dj-online{color:#45bd62;font-weight:800}
 #dj-browser .dj-item{min-height:48px}
 #dj-browser .dj-item .btn{min-height:42px;min-width:42px}
 }
@@ -717,17 +705,11 @@ html.playdj header.bar,html.playdj #player-bar,html.playdj footer,html.playdj #f
 html.playdj main{margin:0!important;padding:10px!important}
 html.playdj #v-radio .wrap{max-width:none!important;width:100%!important}
 html.playdj #v-radio .wrap>*:not(#dj-booth-root){display:none!important}
-.pad{transition:filter .15s ease,transform .15s ease}
-.pad.hit{filter:brightness(1.9);transform:scale(.93)}
 #dj-ptabs{display:none}
 @media (max-width:900px){
   html.popdj #dj-ptabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
   html.popdj #dj-ptabs .btn.on{background:var(--gold);color:#15130f}
-  html.popdj #dj-owner[data-ptab="decks"] .pg-studio,html.popdj #dj-owner[data-ptab="decks"] .pg-music{display:none}
-  html.popdj #dj-owner[data-ptab="studio"] .pg-music{display:none}
-  html.popdj #dj-owner[data-ptab="music"] .pg-studio{display:none}
   html.popdj #dj-owner .btn{min-height:44px}
-  html.popdj #dj-owner .pad{min-height:58px}
   html.popdj #dj-owner [data-play]{min-height:52px;font-size:20px}
 }
 html.popdj #dj-booth-root{width:100%!important;margin:0!important;transform:none!important}
@@ -796,10 +778,6 @@ html.popdj .popdj-hint{display:block}
 #app-poll [data-appvote].on{outline:2px solid #f0cf78;outline-offset:2px}
 .vstage .vslot{overflow:hidden}
 .vstage .vslot iframe{filter:brightness(var(--vb,1)) contrast(var(--vc,1)) saturate(var(--vs,1));transform:scale(var(--vz,1))}
-#dj-edit .edgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
-@media(max-width:760px){#dj-edit .edgrid{grid-template-columns:1fr}}
-#dj-edit label{display:flex;justify-content:space-between;gap:8px;font-size:15px;color:var(--muted);margin-top:7px}
-#dj-edit label span{color:#e9d9a6;font-weight:700}
 .vslot iframe{width:100%;height:100%;border:0}
 .vstandby{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:600 12.5px var(--body);letter-spacing:.05em;text-align:center;padding:12px;z-index:1}
 .vposter{position:absolute;inset:0;z-index:2;pointer-events:none;background:#000}
@@ -881,15 +859,6 @@ html.popdj .popdj-hint{display:block}
 .capbig.on{background:#e5484d;color:#fff;border-color:#e5484d}
 .vmixrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
 .vmixrow .btn.on{background:var(--gold);color:#0b0a08;border-color:var(--gold)}
-/* OBS STUDIO strip (2026-10-29): the crop controls for a live screen share,
-   one bar under the booth master stage, shown only while THIS tab is sharing */
-#dj-studio{margin-top:8px;border:1px solid var(--gold-lo);border-radius:10px;padding:8px 10px;background:rgba(0,0,0,.35)}
-#dj-studio .studio-hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:700 15px var(--body);letter-spacing:.05em;color:#f0cf78}
-#dj-studio .studio-hd .muted{color:var(--muted);font-weight:600;letter-spacing:0}
-#dj-studio .studio-sl{display:flex;gap:14px;flex-wrap:wrap;margin-top:7px}
-#dj-studio .studio-sl label{display:flex;gap:6px;align-items:center;font:600 15px var(--body);color:var(--text)}
-#dj-studio .studio-sl input[type=range]{width:110px;accent-color:#f0cf78}
-#dj-studio .studio-sl span{min-width:34px;color:#f0cf78;font-weight:700}
 /* CAMERA SQUARE (owner, 2026-10-29): his webcam sits in a square beside the
    master video on the BOOTH screen only — the slots scoot over by exactly the
    square (the stage height), and turning the cam off removes .cam-on so the
@@ -907,37 +876,11 @@ html.popdj .popdj-hint{display:block}
 #dj-camwrap.novid #dj-camph{display:grid}
 #dj-camtag{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.68);border:1px solid var(--gold-lo,#8a6d2f);color:#f0cf78;border-radius:999px;padding:2px 8px;font:800 13px var(--body);letter-spacing:.08em;z-index:5}
 #dj-camwrap.novid #dj-camtag{display:none}
-/* CAMERA SUITE (owner, 2026-10-29): filters + background removal on his
-   camera box, and the small live square of him on the viewers' pop-out
-   master screen (.mw-camov, bottom-right, draggable).
-   CAMERA PRO (owner, 2026-10-29): the cramped chip strip on the square is
-   GONE — the square now carries only a slim [🎛 Edit] bar (top-right) and
-   the name banner (bottom); every control lives in the 📷 CAMERA PRO
-   panel in the studio grid. The composite canvas carries NO CSS mirror
-   any more: the pipeline bakes mirror + zoom + pan into its bitmap, so
-   the booth display and the broadcast frame are the same picture. */
-#dj-camfx{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:2px solid var(--gold,#f0cf78);box-sizing:border-box;display:none;background:#000;z-index:2}
-#dj-camwrap.fxbg #dj-camfx{display:block}
-#dj-camwrap.fxbg #dj-camvid{opacity:0}
-#dj-camwrap.novid #dj-camfx{display:none}
-#dj-cambar{position:absolute;top:6px;right:6px;z-index:6;display:flex;align-items:center;gap:6px;background:rgba(5,5,8,.72);border:1px solid var(--gold-lo,#8a6d2f);border-radius:999px;padding:3px 4px 3px 8px}
 #dj-camlook{font:800 13px var(--body);letter-spacing:.06em;color:var(--gold-hi,#f0cf78);white-space:nowrap}
 #dj-camedit{background:var(--gold,#f0cf78);color:#0b0a08;border:0;border-radius:999px;padding:5px 11px;font:800 14.5px var(--body);cursor:pointer;white-space:nowrap}
 #dj-cambanner{position:absolute;left:0;right:0;bottom:0;height:11.5%;z-index:5;display:flex;align-items:center;justify-content:center;background:var(--gold,#f0cf78);color:#0b0a08;font-weight:800;letter-spacing:.04em;white-space:nowrap;overflow:hidden;padding:0 8px;box-sizing:border-box}
 #dj-cambanner[hidden]{display:none}
 #dj-camwrap.novid #dj-cambanner{display:none}
-.cp-sec{margin-top:14px}
-.cp-sec:first-of-type{margin-top:2px}
-.cp-lab{display:block;font:800 14px var(--body);letter-spacing:.1em;color:var(--gold-hi,#f0cf78);margin-bottom:7px}
-.cp-chips{display:flex;flex-wrap:wrap;gap:6px}
-.cp-chip{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);color:#e8e2d2;border-radius:999px;padding:9px 14px;min-height:38px;font:700 15.5px var(--body);cursor:pointer;white-space:nowrap}
-#cp-bgs.warming .cp-chip{opacity:.55}
-#cp-bgs.dead .cp-chip{opacity:.55}
-.cp-chip.on{background:var(--gold,#f0cf78);color:#0b0a08;border-color:var(--gold,#f0cf78)}
-.cp-row{display:flex;justify-content:space-between;gap:8px;font-size:15px;color:var(--muted);margin-top:9px}
-.cp-row span{color:#e9d9a6;font-weight:700}
-#dj-campro input[type=range]{width:100%;margin:2px 0 0}
-#dj-campro input[type=text]{background:rgba(255,255,255,.06);border:1px solid rgba(240,207,120,.35);border-radius:8px;color:#e8e2d2;padding:9px 10px;font:600 17px var(--body);box-sizing:border-box}
 .mw-camov{position:absolute;width:30%;aspect-ratio:1/1;z-index:8;border:2px solid var(--gold,#f0cf78);border-radius:8px;overflow:hidden;background:#000;box-shadow:0 6px 18px rgba(0,0,0,.5);touch-action:none;cursor:grab}
 .mw-camov:active{cursor:grabbing}
 .mw-camov img{width:100%;height:100%;object-fit:cover;display:block;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
@@ -1051,13 +994,7 @@ body[data-view="dj"] #dj-livealert{display:none}
 #dj-mini .mn-bar button{background:none;border:0;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;flex:none}
 #dj-mini .vstage{border:0;border-radius:0}
 html.popdj #dj-mini{display:none!important}
-#dj-owner [data-ckey]{position:relative}
-#dj-owner [data-ckey].ck-off{display:none!important}
-#dj-owner.ck-on [data-ckey]{outline:1.5px dashed rgba(212,168,67,.55);outline-offset:2px}
-.ck-chip{position:absolute;top:6px;right:6px;z-index:6;display:none;background:#1d1a14;border:1px solid var(--gold);color:var(--gold-hi);border-radius:999px;padding:5px 11px;font:700 15px var(--body);cursor:pointer}
-#dj-owner.ck-on .ck-chip{display:block}
 #dj-ckbar{display:none;flex-wrap:wrap;gap:6px;align-items:center;background:#12100c;border:1px dashed var(--gold-lo);border-radius:10px;padding:8px 10px;margin-bottom:10px;grid-column:1/-1}
-#dj-owner.ck-on #dj-ckbar{display:flex}
 #dj-booth-root #dj-owner{max-width:100%}
 #dj-booth-root #dj-owner .dj-decks>*{min-width:0}
 @media (max-width:760px){
@@ -1153,11 +1090,6 @@ html.popdj #dj-mini{display:none!important}
 .deck.playing [data-play]{animation:mwpulse 1.6s ease-in-out infinite}
 @keyframes mwpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,70,70,.55)}50%{box-shadow:0 0 0 8px rgba(255,70,70,0)}}
 .loglist{overflow-x:hidden}.loglist>div{white-space:normal;word-break:break-word}.loglist div span{min-width:0;overflow-wrap:anywhere}
-.midilist{display:grid;gap:3px;max-height:260px;overflow:auto;margin-top:8px}
-.midilist .mrow{display:flex;align-items:center;gap:6px;font-size:15px;padding:2px 4px;border-radius:6px}
-.midilist .mrow b{flex:1;min-width:0;font-weight:600}
-.midilist .mrow .mb{font-size:13px;color:var(--gold-hi,#f0cf78);white-space:nowrap}
-.midilist .mrow.learning{background:rgba(240,207,120,.14);outline:1px solid var(--gold-lo)}
 .xfrow{display:flex;align-items:center;justify-content:center;gap:18px}
 .xfvols{display:flex;gap:14px}
 .xv{width:64px;text-align:center;cursor:ns-resize;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -1166,15 +1098,6 @@ html.popdj #dj-mini{display:none!important}
 .xv span{display:block;font:700 9.5px var(--body);letter-spacing:.08em;color:var(--gold-hi,#f0cf78);margin-top:4px}
 .xv b{display:block;font-size:10.5px;color:#e8e2d0;font-weight:600}
 @media(max-width:760px){.xv{width:54px}.xv i{width:44px;height:44px}.xfrow{gap:10px}.xfvols{gap:8px}}
-/* SAME CONSOLE EVERYWHERE (owner, 2026-10-27 late: "make all set ups the same
- * as desktops version just make it smaller so everything fits — not so big
- * like people are blind"): the portrait-phone setup switcher below is retired
- * by this. Every screen gets the full desktop console — all four decks, both
- * mixers, in the desktop arrangement — just sized down to fit the screen it
- * is on. Nothing hidden, nothing rearranged. The phset element and its JS
- * stay in the file but are never shown again, and the data-phn attributes
- * they stamp have no rules left to read them. */
-#dj-phset{display:none!important}
 @media (max-width:760px) and (orientation:portrait){
 #dj-booth-root{overflow-x:clip}
 #dj-booth-root #dj-owner .dj-decks>.deck[data-deck="A"]{grid-column:1;grid-row:1}
@@ -1272,14 +1195,9 @@ html.popdj #dj-mini{display:none!important}
 #dj-booth-root #dj-owner .xfcurve span{font:800 12.5px var(--body);letter-spacing:.12em;color:var(--muted)}
 #dj-booth-root #dj-owner .xfcurve button{background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;border-radius:8px;padding:5px 10px;font:700 14px var(--body);cursor:pointer;box-shadow:0 2px 0 #000}
 #dj-booth-root #dj-owner .xfcurve button.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.35)}
-#dj-booth-root #dj-owner .pads{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
-#dj-booth-root #dj-owner .pad{min-height:56px;border-radius:12px;background:linear-gradient(180deg,#17181a,#0c0c0e);border:2px solid #3a3a40;color:#e8e4da;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 3px 0 #000;font-weight:800;cursor:pointer}
-#dj-booth-root #dj-owner .pad:active{transform:translateY(2px);box-shadow:0 0 14px rgba(240,207,120,.35)}
 @media(min-width:761px) and (min-height:560px){#dj-booth-root #dj-owner .deck .wave{height:66px}}
 #dj-booth-root #dj-owner .dj-top{box-shadow:0 1px 0 rgba(240,207,120,.35)}
 #dj-station h3{background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #2b2b30;border-radius:8px;padding:6px 9px}
-#dj-booth-root #dj-owner [data-slip].on,#dj-booth-root #dj-owner [data-roll].on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.4)}
-#dj-booth-root #dj-owner .edivb.on{border-color:#f0cf78;color:#ffe9b0;box-shadow:0 0 10px rgba(240,207,120,.4)}
 #dj-mini .mn-row{display:flex;align-items:stretch;justify-content:center;max-width:780px;margin:0 auto;padding:0 6px}
 #dj-mini .mn-row .vstage{flex:0 1 640px;width:100%;min-width:0}
 #dj-mini .mn-chip-l{display:block;width:54px;flex:none;margin:4px 4px 4px 0}
@@ -1354,10 +1272,6 @@ html.popdj #dj-mini{display:none!important}
 #dj-owner .btn,#dj-station .btn{padding:13px 24px}
 #dj-owner .btn.sm,#dj-station .btn.sm{padding:8px 17px;font-size:15px}
 #dj-owner .btn{min-height:46px}
-/* organize: the drag grip lives in each below-decks panel header and only shows while the layout is unlocked */
-#dj-owner .org-grip{display:none;flex:none;cursor:grab;touch-action:none;color:var(--gold-hi);font-size:19px;line-height:1;padding:5px 8px;margin-left:8px;border:1px solid var(--gold-lo);border-radius:8px;background:#141109;user-select:none;-webkit-user-select:none}
-#dj-owner.org-open .org-grip{display:inline-grid;place-items:center}
-#dj-owner .dj-panel.org-drag{opacity:.55;outline:2px dashed var(--gold);outline-offset:2px;position:relative;z-index:5}
 #dj-orglock.on{border-color:var(--gold);color:#191104;background:var(--gold)}
 /* BOOTH PLACEMENTS (owner, voice call 2026-10-29): the search + queue band
    sits directly under the widescreen master screen and directly above the
@@ -1405,10 +1319,6 @@ html.popdj #dj-mini{display:none!important}
    decktop row never grows taller and the deck bank never grows wider. */
 .decktop .dpads{flex:0 100 46px;min-width:0;min-height:0;align-self:stretch;contain:size;display:grid;grid-template-columns:1fr;grid-auto-rows:38px;gap:4px;overflow-y:auto;overflow-x:hidden;padding:3px;border:1px solid var(--line);border-radius:10px;background:rgba(240,207,120,.04);scrollbar-width:none}
 .decktop .dpads::-webkit-scrollbar{display:none}
-.dpad{display:flex;align-items:center;justify-content:center;width:100%;height:38px;padding:0;border-radius:8px;border:1px solid var(--gold-lo);background:#171208;color:var(--text);font-size:20px;line-height:1;white-space:nowrap;overflow:hidden;cursor:pointer;transition:filter .15s ease,transform .15s ease}
-.dpad.custom{border-style:dashed}
-.dpad small{font-size:11.5px;font-weight:700;margin-left:2px}
-.dpad.hit{filter:brightness(1.9);transform:scale(.93)}
 /* WATCH THE SETUP: the spectator bank mirrors the booth as the placements
    leave it - one bank split A/B, center cluster, C/D, with the queue band
    directly under the master screen */
@@ -1434,8 +1344,6 @@ html.popdj #dj-mini{display:none!important}
 #dj-owner .keyv, #dj-booth-root #dj-owner .keyv{font-size:14px}
 #dj-owner .onair-lamp, #dj-booth-root #dj-owner .onair-lamp{font-size:16.5px}
 #dj-owner .btn.sm, #dj-booth-root #dj-owner .btn.sm{font-size:19px}
-#dj-owner .loglist, #dj-booth-root #dj-owner .loglist{font-size:16.5px}
-#dj-owner .loglist time, #dj-booth-root #dj-owner .loglist time{font-size:14px}
 @media (max-width:760px){
 #dj-owner .dj-decks>.deck .ttl, #dj-booth-root #dj-owner .dj-decks>.deck .ttl{font-size:15px}
 #dj-owner .dj-decks>.deck .btn, #dj-booth-root #dj-owner .dj-decks>.deck .btn{font-size:15px}
@@ -6795,7 +6703,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793642290;
+  const MW_DJ_BUILD = 1793645289;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
