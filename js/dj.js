@@ -510,7 +510,7 @@
    * stage tick for every viewer). */
   async function iaVideoFile(id) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaVideoFile ? BOOTH.iaVideoFile(id) : ""; }
   async function iaFile(id) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaFile ? BOOTH.iaFile(id) : ""; }
-  async function iaSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaSearch ? BOOTH.iaSearch(q) : []; }
+  async function iaSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaSearch ? BOOTH.iaSearch(q) : null; }
   async function ytSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.ytSearch ? BOOTH.ytSearch(q) : null; }
   async function ytPage(q, p) { if (!BOOTH.ready) await boothKick(); return BOOTH.ytPage ? BOOTH.ytPage(q, p) : null; }
   async function ahLoadShelf(s) { if (!BOOTH.ready) await boothKick(); if (BOOTH.ahLoadShelf) return BOOTH.ahLoadShelf(s); }
@@ -3007,13 +3007,27 @@ html.popdj #dj-mini{display:none!important}
    * reflected here, so a failed watch says WHERE it stopped instead of
    * going silent the way the first builds did. */
   function vsNoteErr(e) { try { const m = (e && e.message) ? String(e.message) : String(e || ""); if (m) vsWatchErr = m.slice(0, 42); } catch (_) {} }
+  let vsTwStatusTxt = null; // last text painted into the MW TV stage status pill (its own lane, below)
+  /* MW TV page (owner, 2026-11-01: "its now its own channel"): the share
+   * status line must not narrate that page. While the channel is on air
+   * there, the pill tells the channel truth (on air + the title); when
+   * the channel is not on air, the page falls back to the master screen
+   * and the share line is the truth again. Every other stage keeps the
+   * share line exactly as before. */
+  function twStatusFor(shareTxt) {
+    try {
+      if (!elOpen("v-mwtv")) return shareTxt;
+      const cur = tvChanCurTv();
+      return cur ? "📺 MW TV — " + cur.title : shareTxt;
+    } catch (_) { return shareTxt; }
+  }
   function vsSetStatus(txt) {
-    if (txt === vsStatusTxt) return; vsStatusTxt = txt;
-    const hosts = [];
-    const st = document.querySelector("#st-ytbox .vstage"); if (st) hosts.push(st);
-    const tw = document.querySelector("#tw-stage"); if (tw) hosts.push(tw);
-    const wb = document.querySelector("#wb-stage"); if (wb) hosts.push(wb);
-    hosts.forEach((h) => { let el = h.querySelector(".vstatus"); if (!el) { el = document.createElement("div"); el.className = "vstatus"; h.appendChild(el); } el.hidden = !txt; if (txt && el.textContent !== txt) el.textContent = txt; });
+    const twTxt = twStatusFor(txt);
+    if (txt === vsStatusTxt && twTxt === vsTwStatusTxt) return; vsStatusTxt = txt; vsTwStatusTxt = twTxt;
+    const paint = (h, t) => { let el = h.querySelector(".vstatus"); if (!el) { el = document.createElement("div"); el.className = "vstatus"; h.appendChild(el); } el.hidden = !t; if (t && el.textContent !== t) el.textContent = t; };
+    const st = document.querySelector("#st-ytbox .vstage"); if (st) paint(st, txt);
+    const tw = document.querySelector("#tw-stage"); if (tw) paint(tw, twTxt);
+    const wb = document.querySelector("#wb-stage"); if (wb) paint(wb, txt);
   }
   /* the publisher's own verdict on its chain (fix-studio5): while the
    * diag stage is repairing or source-gone, no surface may call the
@@ -5280,11 +5294,11 @@ html.popdj #dj-mini{display:none!important}
    * off-air words are earned only by a snapshot that says the station
    * is not live with nothing featured. A warm tab (a snapshot already
    * in) paints the earned words on its first tvApply, as before. */
-  let twSlateSig = "";
+  let twSlateSig = "", twSlateNode = null; // the node is tracked too: the shell can swap the MW TV DOM after first paint, and a fresh node carries the static "TV: connecting…" default — repaint it even when the text itself has not changed
   function tvSlatePaint() {
     const p = document.querySelector("#tw-vstandby .tw-sb p"); if (!p) return;
     const txt = !stateSeen ? "TV: connecting…" : (!S.live && !(S.vstream || {}).on && !vmixTargets().length) ? "Meechie is off air — the radio is always on." : "🔴 Meechie is live on the tables — the video mix appears here the moment a music video plays.";
-    if (txt !== twSlateSig) { twSlateSig = txt; p.textContent = txt; }
+    if (txt !== twSlateSig || p !== twSlateNode) { twSlateSig = txt; twSlateNode = p; p.textContent = txt; }
   }
   async function tvApply(mix, duck) {
     tvSlatePaint();
@@ -5529,6 +5543,14 @@ html.popdj #dj-mini{display:none!important}
     TV_SURFS.forEach((su) => { try { chanSyncSurf(su, su.id === "TW" ? curTv : (chanHolds() ? cur : null)); } catch (_) {} });
     try { chanGuidePaint(chanHolds() ? cur : null); } catch (_) {}
   }
+  /* the channel tuner + guide also run on their OWN cadence, not only at
+   * stageApply's tail — the same starvation the vsSync/msvSync split
+   * fixed: that path awaits third-party player APIs and, on the owner's
+   * tab, runs the whole booth branch first under the stageBusy mutex,
+   * so the tail paints are the first to starve on a loaded tab.
+   * chanSync is idempotent (per-surface key guards), so a 1s tick of
+   * its own costs nothing when nothing changed. */
+  setInterval(() => { try { chanSync(); } catch (_) {} }, 1000);
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
    * screen is one more screen in the same system — the live stream
    * overlays it through vsStageEls and this paints the SAME video mix
@@ -6621,7 +6643,12 @@ html.popdj #dj-mini{display:none!important}
    * forever — a frozen "3 online" during an outage. The 12s cadence
    * itself never changes (the keeper tick rides it; no backoff, no
    * slowing), but after two missed answers the counts admit it: the
-   * chip dims and the booth lines say reconnecting until a ping lands. */
+   * chip dims and the booth lines say reconnecting until a ping lands.
+   * Truth pass (2026-11-01): the restore runs on success too (heartPaint
+   * was only called on the failure branches, so a dimmed chip never
+   * cleared), and an answer that arrives with an empty or unparseable
+   * body counts as neither a success nor a failure — the station
+   * answered; the body was lost on the way, which is not an outage. */
   /* HEART-H1-BEGIN */
   let pingFails = 0;
   function heartPaint() {
@@ -6635,7 +6662,7 @@ html.popdj #dj-mini{display:none!important}
   }
   /* HEART-H1-END */
   const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
-    const t0 = Date.now(); fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) { const t2 = Date.now(); clockSamples.push(j.now - (t0 + t2) / 2); if (clockSamples.length > 5) clockSamples.shift(); const srt = clockSamples.slice().sort((a, b) => a - b); clockOff = srt[Math.floor(srt.length / 2)]; clockAnchor = { wall: t2, mono: performance.now() }; } if (j && j.online != null) { pingFails = 0; paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); } else pingFails++; heartPaint(); }).catch(() => { pingFails++; heartPaint(); }); };
+    const t0 = Date.now(); fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.text().then((t) => ({ ok: r.ok, t })).catch(() => ({ ok: r.ok, t: "" }))).then(({ ok, t }) => { let j = null; try { j = t ? JSON.parse(t) : null; } catch (_) { j = null; } if (j && j.now) { const t2 = Date.now(); clockSamples.push(j.now - (t0 + t2) / 2); if (clockSamples.length > 5) clockSamples.shift(); const srt = clockSamples.slice().sort((a, b) => a - b); clockOff = srt[Math.floor(srt.length / 2)]; clockAnchor = { wall: t2, mono: performance.now() }; } if (j && j.online != null) { pingFails = 0; paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); } else if (j || !ok) pingFails++; heartPaint(); }).catch(() => { pingFails++; heartPaint(); }); };
   let clockOff = 0; // this device's clock error vs the server, learned from keeper pings — the sync math below trusts it over the local clock
   /* Clock estimation, NTP-style (2026-11-01): each keeper ping now stamps
    * its send and receive instants, so a sample estimates the offset at the
@@ -6674,7 +6701,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793620727;
+  const MW_DJ_BUILD = 1793592400;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7037,10 +7064,8 @@ html.popdj #dj-mini{display:none!important}
      user-activated, so the hidden handoff play is allowed where the
      platform permits it. The pause is skipped if a handoff already owns
      the element or the page has gone hidden in the meantime. */
-  /* phones only: a hidden desktop tab keeps playing the decks, so a handoff there would double the sound */
-  function bgsPhone() { return (typeof IOS !== "undefined" && IOS) || (typeof TOUCH !== "undefined" && TOUCH); }
   function bgsArm() {
-    if (SANDBOX || bgsOn || !bgsPhone()) return;
+    if (SANDBOX || bgsOn) return;
     const el = bgsMake(); bgsEnsureSrc(el);
     try {
       el.volume = 0;
@@ -7050,11 +7075,11 @@ html.popdj #dj-mini{display:none!important}
     } catch (_) { try { el.volume = mixVol; } catch (_) {} }
   }
   async function bgsTryStart() {
-    if (SANDBOX || bgsOn || !bgsPhone()) return;
+    if (SANDBOX || bgsOn) return;
     if (!bgsSounding() || bgsExcluded()) return;
     if (OWNER() && boothLead) return; // the booth tab never hands off
     const live = await bgsGateLive();
-    if (live !== true) { try { if (bgsEl && !bgsOn) bgsEl.pause(); } catch (_) {} return; } // doubt or the placeholder: no handoff
+    if (live !== true) return; // doubt or the placeholder: no handoff
     if (!document.hidden || !bgsSounding() || bgsExcluded()) return; // the world changed while the gate answered
     const el = bgsMake(); bgsEnsureSrc(el);
     try { el.volume = mixVol; } catch (_) {}
@@ -7091,7 +7116,7 @@ html.popdj #dj-mini{display:none!important}
   }
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { if (!SANDBOX && !bubOn) bgsTryStart(); }
-    else if (bgsOn || (bgsEl && !bgsEl.paused)) bgsStopEl(); // stop the stream element FIRST; the decks resume on the existing 350 ms path, so nothing ever double-plays
+    else if (bgsOn) bgsStopEl(); // stop the stream element FIRST; the decks resume on the existing 350 ms path, so nothing ever double-plays
   });
   window.MW_BGS = { on: () => bgsOn, state: () => ({ on: bgsOn, el: !!bgsEl }) };
   /* pop the decks out onto their own screen: a clean window with only the DJ view */
