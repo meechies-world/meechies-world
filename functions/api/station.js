@@ -492,7 +492,7 @@ function mwVmixRescue(S, now, obs) {
  * ("booth-fresh") for the booth-side consumer that ships with edition
  * production — the unattended lane below is what fires today. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 2;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired)
+const TV_PROGRAM_V = 3;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
 const TV_PREM_PROBE_MS = 600e3;      // premiere slot file-existence probes are cached this long in tv/now
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
@@ -748,7 +748,8 @@ function tvSeedPool(now) {
     Y("brk-ry0wxgsxdee", "rY0WxgSXdEE", "Queen - Another One Bites the Dust (Official Video Remastered)", 219, "rock", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader Queen Official (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed"),
     Y("brk-pagnjdjn4va", "pAgnJDJN4VA", "AC/DC - Back In Black (Official 4K Video)", 254, "rock", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader acdcVEVO (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed"),
     Y("brk-evtxpuf4oz4", "eVTXPUF4Oz4", "In The End [Official HD Music Video] - Linkin Park", 219, "rock", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader Linkin Park (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed"),
-    { id: "brk-house-anthem", kind: "house", src: "file", url: "/media/the-world-gone-be.mp4", title: "Meechie's World — The World Gone Be", dur: 266, lane: "house", rights: { basis: "own", evidence: "Malik's own song and video, hosted on his own site media (/media/the-world-gone-be.mp4, HTTP 200 video/mp4 verified at seed time); he is the artist and rights holder", clearedBy: "owner", at: now, simulcast: true } }
+    { id: "brk-house-anthem", kind: "house", src: "file", url: "/media/the-world-gone-be.mp4", title: "Meechie's World — The World Gone Be", dur: 266, lane: "house", rights: { basis: "own", evidence: "Malik's own song and video, hosted on his own site media (/media/the-world-gone-be.mp4, HTTP 200 video/mp4 verified at seed time); he is the artist and rights holder", clearedBy: "owner", at: now, simulcast: true } },
+    { id: "brk-my-empire-ad", kind: "house", src: "file", url: "/media/my-empire-commercial.mp4", title: "MY EMPIRE — Premiere Commercial", dur: 42, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, his business and himself, hosted on his own site media (/media/my-empire-commercial.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } }
   ];
   const bag = items.map((x) => x.id);
   for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = bag[i]; bag[i] = bag[j]; bag[j] = t; }
