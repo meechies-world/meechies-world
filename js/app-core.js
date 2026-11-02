@@ -42,6 +42,14 @@ const LAZY_SRC={
    * keep their last-change stamp; stories.js changed in this build (it
    * clears MW_STORIES_PENDING), so its pin tracks this build stamp. */
   community:["js/fb-feed-plus.js?v=1793645289","js/stories.js?v=1793647500","js/book-plus.js?v=1793645289"],
+  /* Profile bundle (max-speed Lever 2, 2026-11-02): profile-setup.js and
+   * profile-page.js load once, the first time a profile surface is needed
+   * (avatar/name tap, cold #u/<id> link, the setup nudge, the designer
+   * button in Edit profile). The eager stub further down owns their
+   * first-paint duties until they land; MW_socUrl is carved out eager in
+   * the same section because friends.js paints social links through it.
+   * Both files changed in this build, so both pins track this stamp. */
+  profile:["js/profile-setup.js?v=1793649510","js/profile-page.js?v=1793649510"],
   /* C1 split: dj.js's booth continuation pack. The B5 idle prefetcher warms
    * these bytes for everyone (fetch only, never executed); dj.js fetches the
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
@@ -162,7 +170,137 @@ function mwPostRoute(){
 }
 window.addEventListener("hashchange", mwPostRoute);
 document.addEventListener("click",e=>{const a=e.target.closest("[data-go]"); if(a){e.preventDefault();go(a.dataset.go);}});
-if(!mwPostRoute()) go(location.hash.slice(1));
+/* ---------- Profile bundle: socUrl carve-out + eager stub ----------
+ * profile-setup.js and profile-page.js load lazily (LAZY_SRC.profile)
+ * the first time a profile surface is needed. Until they land, this
+ * section owns their first-paint duties:
+ *  - MW_socUrl (below, byte-identical to its original home in
+ *    profile-setup.js): friends.js paints members' social links
+ *    through it on surfaces that may never open a profile, so it can
+ *    never be lazy. profile-setup.js now reads it back off window.
+ *  - Avatar/name taps: held, the bundle kicked, and the tap replayed
+ *    into MW_profilePage the moment it exists — exactly once. Once
+ *    the bundle has landed the stub steps aside and profile-page's
+ *    own handler (which people's sheet handler still accompanies, in
+ *    the same order as before) owns taps again.
+ *  - fb-feed's own profile buttons: [data-fb="me"] falls back to the
+ *    friends view and the contacts rail goes dead without
+ *    MW_profilePage, so the stub pre-empts just those two in the
+ *    capture phase, before fb-feed's handlers can run.
+ *  - A cold #u/<id> link: the router would rewrite it to #home before
+ *    profile-page could ever read it, so the stub holds the id (the
+ *    boot check at the bottom of this file section is consulted
+ *    before the first go(), the same shape as the #post- stub above),
+ *    boots home, and replays the open on arrival. The regex is
+ *    profile-page's own, byte for byte. Warm #u/ hash changes keep
+ *    the router's existing behavior: nothing inside the site
+ *    produces one (profile-page opens with pushState), so there is
+ *    nothing to restore there.
+ *  - The "Design your profile" button profile-setup adds to the Edit
+ *    profile form: inserted here under the same guard profile-setup
+ *    uses, so the real file never adds a second one; its click kicks
+ *    the bundle and opens the designer on arrival.
+ *  - The setup nudge: profile-setup's poll condition, mirrored at
+ *    the same 2s cadence; when it fires it kicks the bundle, and the
+ *    real poll (which travels with profile-setup.js) inserts the
+ *    card. The stub deliberately never stamps the "shown" flag —
+ *    that stamp is how the real poll knows it already fired. */
+{
+  const BASE = { facebook: "https://facebook.com/", snapchat: "https://snapchat.com/add/", instagram: "https://instagram.com/", tiktok: "https://tiktok.com/@", youtube: "https://youtube.com/@", x: "https://x.com/", whatsapp: "https://wa.me/", cashapp: "https://cash.app/$", threads: "https://threads.net/@", linkedin: "https://linkedin.com/in/", soundcloud: "https://soundcloud.com/", twitch: "https://twitch.tv/", kick: "https://kick.com/", telegram: "https://t.me/", pinterest: "https://pinterest.com/", reddit: "https://reddit.com/user/", venmo: "https://venmo.com/u/", paypal: "https://paypal.me/", linktree: "https://linktr.ee/", patreon: "https://patreon.com/", bluesky: "https://bsky.app/profile/", tumblr: "https://tumblr.com/", vimeo: "https://vimeo.com/", rumble: "https://rumble.com/c/", lemon8: "https://www.lemon8-app.com/@", triller: "https://triller.co/@", audiomack: "https://audiomack.com/", bandcamp: "https://{v}.bandcamp.com", substack: "https://{v}.substack.com", medium: "https://medium.com/@", etsy: "https://etsy.com/shop/", depop: "https://depop.com/", poshmark: "https://poshmark.com/closet/", truthsocial: "https://truthsocial.com/@", clubhouse: "https://clubhouse.com/@", bereal: "https://bere.al/", messenger: "https://m.me/" };
+  const LINK_ONLY = new Set(["spotify", "applemusic", "discord", "other", "mastodon", "signal", "tidal", "amazonmusic", "onlinestore"]); // these need a full https:// link
+  // turn "@name", "name" or a full link into a safe link for that app
+  function socUrl(k, v) {
+    v = String(v || "").trim(); if (!v) return "";
+    if (/^https:\/\//i.test(v)) { try { const u = new URL(v); return u.protocol === "https:" ? u.href : ""; } catch (_) { return ""; } }
+    if (LINK_ONLY.has(k)) return "";
+    if (k === "whatsapp") { const d = v.replace(/\D/g, ""); return d.length >= 10 ? BASE.whatsapp + (d.length === 10 ? "1" + d : d) : ""; }
+    v = v.replace(/^(https?:\/\/)?(www\.)?[a-z.]*\.(com|me|app)\/(add\/|@)?/i, "").replace(/^[@$]/, "").replace(/[^\w.\-]/g, "");
+    return v ? (BASE[k].includes("{v}") ? BASE[k].replace("{v}", v) : BASE[k] + v) : "";
+  }
+  window.MW_socUrl = socUrl;
+}
+const MW_U_RE = /^#u\/[\w-]+$/;
+const mwProfileQueue = [];
+let mwProfileTimer = null;
+function mwProfileReady(it){ return it.k === "setup" ? !!window.MW_profileSetup : !!window.MW_profilePage; }
+function mwProfileFlush(){
+  while(mwProfileQueue.length && mwProfileReady(mwProfileQueue[0])){
+    const it = mwProfileQueue.shift();
+    try{
+      if(it.k === "open") window.MW_profilePage.open(it.id);
+      else if(it.k === "mine") window.MW_profilePage.mine();
+      else window.MW_profileSetup.open();
+    }catch(_){}
+  }
+  if(!mwProfileQueue.length && mwProfileTimer){ clearInterval(mwProfileTimer); mwProfileTimer = null; }
+}
+function mwProfileKick(it){
+  if(it) mwProfileQueue.push(it);
+  lazyKick("profile");
+  if(mwProfileQueue.length && !mwProfileTimer){
+    let n = 0;
+    mwProfileTimer = setInterval(() => {
+      mwProfileFlush();
+      if(mwProfileTimer && ++n > 75){ clearInterval(mwProfileTimer); mwProfileTimer = null; mwProfileQueue.length = 0; } /* a failed load drops the held taps; the next tap kicks again */
+    }, 200);
+  }
+  mwProfileFlush();
+}
+document.addEventListener("click", (e) => {
+  if(window.MW_profilePage) return; /* the bundle owns taps now */
+  if(e.target.closest("#me-av, #me-handle, [data-myprofile]")){
+    e.preventDefault();
+    if(typeof me !== "undefined" && me) mwProfileKick({ k: "mine" });
+    return;
+  }
+  const fbx = e.target.closest("[data-fbx-prof]");
+  if(fbx){ mwProfileKick({ k: "open", id: fbx.dataset.fbxProf }); return; }
+  const p = e.target.closest("[data-profile], .avatar[data-uid], .post-head .who b");
+  if(!p || e.target.closest("button[data-dm],button[data-add],button[data-acc]")) return;
+  let id = p.dataset.profile || p.dataset.uid;
+  if(!id && p.matches(".post-head .who b")) id = p.closest(".post-head")?.querySelector(".avatar[data-uid]")?.dataset.uid;
+  if(!id) return;
+  e.preventDefault();
+  mwProfileKick({ k: "open", id });
+});
+document.addEventListener("click", (e) => {
+  if(window.MW_profilePage) return; /* fb-feed owns these again */
+  const c = e.target.closest("[data-contact]");
+  if(c){ e.preventDefault(); e.stopPropagation(); mwProfileKick({ k: "open", id: c.dataset.contact }); return; }
+  const fb = e.target.closest('[data-fb="me"]');
+  if(fb && typeof me !== "undefined" && me){ e.preventDefault(); e.stopPropagation(); mwProfileKick({ k: "mine" }); }
+}, true);
+{ const pf = document.getElementById("profile-form");
+  if(pf && !pf.querySelector("#ps-open")){
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn ghost"; b.id = "ps-open"; b.textContent = "🎨 Photo, phone, website, apps & job application";
+    b.addEventListener("click", () => { document.getElementById("profile-dialog")?.close(); mwProfileKick({ k: "setup" }); });
+    if(pf.querySelector("h3")) pf.querySelector("h3").after(b);
+  } }
+const MW_PS_DAY30 = 30 * 24 * 3600 * 1000;
+const mwPsLaterAt = (k) => { try { return +localStorage.getItem(k) || 0; } catch (_) { return 0; } };
+const mwPsSflag = (k) => { try { return sessionStorage.getItem(k) === "1"; } catch (_) { return false; } };
+const mwPsPrivPhone = () => { try { return window.MW?.session?.()?.user?.user_metadata?.phone_private || ""; } catch (_) { return ""; } };
+let mwPsTries = 0;
+const mwPsT = setInterval(() => {
+  if(++mwPsTries > 300) return clearInterval(mwPsT);
+  const p = profileMe; if(!me || !p) return;
+  if(mwPsSflag("mw_ps_shown")) return clearInterval(mwPsT);
+  const missing = !p.photo || !(p.phone || mwPsPrivPhone());
+  const which = !p.setupDone ? "full" : (missing ? "quick" : null);
+  if(!which) return clearInterval(mwPsT);
+  if(mwPsSflag(which === "full" ? "mw_ps_later" : "mw_pq_later")) return clearInterval(mwPsT);
+  if(Date.now() - mwPsLaterAt(which === "full" ? "mw_ps_later_at" : "mw_pq_later_at") < MW_PS_DAY30) return clearInterval(mwPsT);
+  if(document.documentElement.classList.contains("gated")) return;
+  clearInterval(mwPsT);
+  lazyKick("profile");
+}, 2000);
+function mwProfileRoute(){
+  if(!MW_U_RE.test(location.hash)) return false;
+  mwProfileKick({ k: "open", id: location.hash.slice(3) });
+  go("home");
+  return true;
+}
+if(!mwPostRoute() && !mwProfileRoute()) go(location.hash.slice(1));
 
 /* ---------- Copy ---------- */
 $$("[data-copy]").forEach(b=>b.addEventListener("click",()=>{
@@ -1521,7 +1659,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793647500;
+const MW_SHELL_BUILD = 1793649510;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();

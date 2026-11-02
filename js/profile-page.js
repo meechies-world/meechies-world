@@ -196,5 +196,4 @@ ${main}</div>`;
   });
   document.addEventListener("mw-posts", () => { if (uid) paint(); });
   window.MW_profilePage = { open, mine: () => ME() && open(ME()) };
-  if (/^#u\/[\w-]+$/.test(location.hash)) setTimeout(() => open(location.hash.slice(3)), 2500);
 })();
