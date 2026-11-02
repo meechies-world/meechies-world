@@ -1658,6 +1658,17 @@ html.popdj #dj-mini{display:none!important}
   // reports/index doc and the newest report docs through the docs REST
   // select (see reportsRead) and paints them; it never writes.
   { const doorR = document.getElementById("dj-door"); if (OWNER() && doorR && doorR.parentElement && !document.getElementById("dj-reports")) { const rp = document.createElement("div"); rp.className = "dj-panel"; rp.id = "dj-reports"; rp.innerHTML = "<h4>📋 REPORTS</h4><div style=\"display:flex;align-items:center;gap:8px;margin:2px 0 6px\"><button type=\"button\" class=\"btn sm\" id=\"reports-send\">📤 SEND TO AMANI</button><small class=\"muted\" id=\"reports-send-note\"></small></div><div id=\"reports-body\"><small class=\"muted\">Loading reports…</small></div>"; doorR.parentElement.appendChild(rp); } }
+  // DJ PLAN door (owner fix, 2026-11-02): the plans modal could only be
+  // opened from the Watch mirror upsell, whose tap handler blocks the
+  // owner — so the owner-only Stripe signal row inside the modal (the
+  // #wpl-signal-row wsTrialPaint unhides for the owner) had no door at
+  // all. One small row appended INSIDE the existing DOOR panel, created
+  // only on the real owner's booth (the same isOwner test wsRealOwner
+  // makes; that const is declared far below this build block, so the
+  // test is written out here). Nothing existing moves, reorders or
+  // restyles; member and guest booths never create the row, and the tap
+  // handler re-checks wsRealOwner() before it opens the modal.
+  { const doorPl = document.getElementById("dj-door"); if (typeof isOwner !== "undefined" && !!isOwner && doorPl && !document.getElementById("wpl-door")) { const dr = document.createElement("div"); dr.className = "door-row"; dr.style.marginTop = "8px"; dr.innerHTML = "<span>🎛️ <b>Your DJ plan</b> <small>your setup plan, billing and the Stripe signal</small></span><span class=\"door-acts\"><button class=\"btn sm\" type=\"button\" id=\"wpl-door\">🎛️ Plans &amp; Stripe</button></span>"; doorPl.appendChild(dr); } }
   /* ---------- DJ BRAIN capture (PR-B2) ----------
    * The booth teaches the brain: every play, natural end, skip, watchdog
    * stall and queue draw on the DRIVING booth (owner + lead — a lead-booth
@@ -4351,6 +4362,7 @@ html.popdj #dj-mini{display:none!important}
     if (t.closest(".wpl-buy")) { wsBuyTier(t.closest(".wpl-buy")); return; }
     if (t.closest(".wpl-manage")) { wsManagePlan(t.closest(".wpl-manage")); return; }
     if (t.closest(".wpl-signal")) { wsConnectSignal(t.closest(".wpl-signal")); return; }
+    if (t.closest("#wpl-door")) { if (wsRealOwner()) { wsModal("ws-plans", true); wsPaintPlans(); } return; }
     if (t.closest(".ws-ctl")) { if (!OWNER() && !SANDBOX) wsUpsell(); return; }
     if (t.closest("#tw-fs")) { const sh = document.getElementById("tw-shell"); try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {} return; }
     if (t.closest("[data-vsrestore]")) { vsPubRestore(); return; }
@@ -6706,7 +6718,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793653728;
+  const MW_DJ_BUILD = 1793657782;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
