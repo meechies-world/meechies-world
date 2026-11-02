@@ -208,7 +208,7 @@
     { tag: "Meechie's World", head: "📖 Meechie's Book", line: "Post, talk, gift and build with the whole community.", href: "#community", go: "community", cta: "Open →" },
     { tag: "Meechie's World", head: "🎚️ The Studio", line: "Make beats, record and polish your sound — the full studio.", href: "#studio", go: "studio", cta: "Create →" },
     { tag: "Meechie's World", head: "🧒 Meechie's World for Kids", line: "Your playlist, your lock — hand the phone over with confidence.", href: "/kids-app/", ext: true, cta: "Open →" },
-    { tag: "Meechie's World", head: "💼 Free Vendor Slots", line: "Sellers: get your products on this site FREE for a week.", href: "#promote", go: "promote", cta: "See how →" },
+    { tag: "Meechie's World", head: "💼 Free Vendor Slots", line: "Sellers: get your products on this site FREE for a week.", href: "/promote", ext: true, cta: "See how →" },
     { tag: "Meechie's World", head: "🎮 Meechie LIVE on Twitch", line: "Watch the live sets on Twitch — @meechiesworldinc.", href: "https://www.twitch.tv/meechiesworldinc", ext: true, cta: "Watch →" },
     { tag: "Meechie's World", head: "🚗 Car Mode", line: "On the road? The station, big and simple — TV poster, tune in, directions.", href: "/car", ext: true, cta: "Open →" }
   ];
