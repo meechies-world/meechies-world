@@ -823,6 +823,12 @@ html.popdj .popdj-hint{display:block}
 .vstage.msv-on .msvlive{display:block}
 .vstage .tvchan{position:absolute;inset:0;z-index:3;background:#000;display:none}
 .vstage .tvchan.on{display:block}
+/* MW TV page (owner correction, 2026-11-01): on its own stage the
+   channel is the station, not the bottom layer — the overlay rides
+   above the master-screen layers (share z5, screen video z4) so the
+   page never shows what the master screen is playing. Every other
+   stage keeps the channel at z3, under the master screen. */
+#tw-stage .tvchan{z-index:6}
 .vstage .tvchan iframe,.vstage .tvchan video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;object-fit:contain}
 .vstage .tvchan video.tvwarm{visibility:hidden}
 .vstage.msv-on .vposter{display:none!important}
@@ -5308,7 +5314,13 @@ html.popdj #dj-mini{display:none!important}
    * outrank it — chanHolds() is false while any of them holds, and
    * the overlay also sits below them in z-order — so his live moments
    * break in instantly and the channel resumes underneath, its clock
-   * never paused (SPEC §6). Sound: channel players are muted on every
+   * never paused (SPEC §6). ONE exception, the MW TV page itself
+   * (owner correction, 2026-11-01: "its now its own channel"): on
+   * #tw-stage the channel is the station — the TW surface tunes with
+   * tvChanCurTv() (chanReady(), no master-screen hold checks) and
+   * its overlay rides at z-index 6, above the share and the screen
+   * video, so that page always shows the channel and never whatever
+   * the master screen is playing. Sound: channel players are muted on every
    * surface except the MW TV page, and there only while the listener
    * has sound on AND the live radio is not sounding — the channel
    * never talks over the station (a full TV-sound takeover is a
@@ -5340,18 +5352,27 @@ html.popdj #dj-mini{display:none!important}
     for (const it of items) { if (pos < +it.dur) return { it, pos }; pos -= +it.dur; }
     return { it: items[0], pos: 0 };
   }
-  function chanHolds() {
+  function chanReady() {
     if (SANDBOX || !stateSeen) return false;
     if (!tvChanDoc || tvChanDoc.on === false) return false;
     if (!tvNowDoc || tvNowDoc.off || tvNowDoc.down || !Array.isArray(tvNowDoc.segs) || !tvNowDoc.segs.length) return false;
+    return true;
+  }
+  function chanHolds() {
+    if (!chanReady()) return false;
     const vs = S.vstream || {};
     if (vs.on && vs.meeting && !vs.hidden) return false;
     if (msvActive()) return false;
     if (vmixTargets().length) return false;
     return true;
   }
-  function tvChanCur() {
-    if (!chanHolds()) return null;
+  function tvChanCur() { return tvChanCurPick(chanHolds()); }
+  /* MW TV page only: the channel there answers to chanReady() alone —
+   * a share, a screen video or the mix holding the master screen
+   * never parks the channel on its own page (owner, 2026-11-01). */
+  function tvChanCurTv() { return tvChanCurPick(chanReady()); }
+  function tvChanCurPick(holds) {
+    if (!holds) return null;
     const now = serverNow();
     const seg = tvSegAtC(tvNowDoc.segs, now);
     if (!seg) return null;
@@ -5462,13 +5483,15 @@ html.popdj #dj-mini{display:none!important}
   }
   let tvGuideUntil = 0;
   function chanGuidePaint(cur) {
-    const seg = cur ? cur.seg : (chanHolds() ? tvSegAtC(tvNowDoc.segs, serverNow()) : null);
-    const inNewsPark = !!seg && seg.k === "news" && !cur;
-    if (elOpen("v-mwtv")) {
+    const twOpen = elOpen("v-mwtv");
+    const curTv = twOpen ? tvChanCurTv() : cur;
+    const seg = curTv ? curTv.seg : ((twOpen ? chanReady() : chanHolds()) ? tvSegAtC(tvNowDoc.segs, serverNow()) : null);
+    const inNewsPark = !!seg && seg.k === "news" && !curTv;
+    if (twOpen) {
       const bd = $("#tw-live"), wt = $("#tw-what");
-      if (cur) {
+      if (curTv) {
         if (bd) { bd.hidden = false; bd.textContent = "📺 MW TV"; }
-        if (wt) wt.textContent = "📺 " + (cur.show ? cur.show + " — " : "") + cur.title + (cur.note ? " · " + cur.note : "");
+        if (wt) wt.textContent = "📺 " + (curTv.show ? curTv.show + " — " : "") + curTv.title + (curTv.note ? " · " + curTv.note : "");
       } else if (inNewsPark && wt) wt.textContent = "📰 MW TV News — the newsroom is putting the next update together";
       const pw = $("#tw-progwrap"), pf = $("#tw-prog");
       if (pw && pf) {
@@ -5486,10 +5509,10 @@ html.popdj #dj-mini{display:none!important}
           const lbl = (sg) => sg.k === "news" ? "📰 Meechie's World News" : (sg.k === "break" ? "🎵 " : "") + (sg.title || "MW TV");
           const ends = new Date(seg.start + seg.dur * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           const set = (id, txt) => { const e = $(id); if (e) e.textContent = txt; };
-          set("#tw-g-now", "ON NOW · " + (cur ? (cur.show ? cur.show + " — " : "") + cur.title : lbl(seg)) + " · ends " + ends);
+          set("#tw-g-now", "ON NOW · " + (curTv ? (curTv.show ? curTv.show + " — " : "") + curTv.title : lbl(seg)) + " · ends " + ends);
           set("#tw-g-next1", segs[ix + 1] ? "UP NEXT · " + lbl(segs[ix + 1]) + " · " + new Date(segs[ix + 1].start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
           set("#tw-g-next2", segs[ix + 2] ? "THEN · " + lbl(segs[ix + 2]) + " · " + new Date(segs[ix + 2].start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
-          const note = tvNowDoc.skipNote && Date.now() - tvNowDoc.skipNote.at < 3600e3 ? "Skipped “" + tvNowDoc.skipNote.title + "” — no longer cleared to air; the lineup adjusted." : (cur && cur.note ? cur.note : "");
+          const note = tvNowDoc.skipNote && Date.now() - tvNowDoc.skipNote.at < 3600e3 ? "Skipped “" + tvNowDoc.skipNote.title + "” — no longer cleared to air; the lineup adjusted." : (curTv && curTv.note ? curTv.note : "");
           set("#tw-g-note", note);
         }
       }
@@ -5502,7 +5525,8 @@ html.popdj #dj-mini{display:none!important}
   }
   function chanSync() {
     const cur = tvChanCur();
-    TV_SURFS.forEach((su) => { try { chanSyncSurf(su, chanHolds() ? cur : null); } catch (_) {} });
+    const curTv = tvChanCurTv();
+    TV_SURFS.forEach((su) => { try { chanSyncSurf(su, su.id === "TW" ? curTv : (chanHolds() ? cur : null)); } catch (_) {} });
     try { chanGuidePaint(chanHolds() ? cur : null); } catch (_) {}
   }
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
@@ -6650,7 +6674,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793592160;
+  const MW_DJ_BUILD = 1793592400;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
