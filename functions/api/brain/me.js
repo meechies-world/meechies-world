@@ -23,6 +23,7 @@ export async function onRequestGet({ request, env }) {
     favArtists: (mem.favArtists || []).slice(0, 5),
     favTracks: (mem.favTracks || []).slice(0, 3).map((t) => t.title),
     lastHeard: mem.lastHeard || null,
+    lastRequest: mem.lastRequest || null,
     topics: (mem.topics || []).slice(0, 8),
     greet: g ? g.greet : null,
     hello: g ? g.hello : null,
