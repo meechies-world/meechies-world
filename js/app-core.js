@@ -35,12 +35,23 @@ const LAZY_SRC={
   games:["js/games.js?v=1793194200"],
   creators:["js/studio.js?v=1793185302"],
   shop:["js/share.js?v=1793642290"],
+  /* Community trio (max-speed Lever 1, 2026-11-02): the Book's enhancement
+   * files load once, the first time the community view opens. fb-feed.js
+   * stays eager — it is the desktop chrome (rails + main margins on every
+   * view). fb-feed-plus and book-plus are unchanged files, so their pins
+   * keep their last-change stamp; stories.js changed in this build (it
+   * clears MW_STORIES_PENDING), so its pin tracks this build stamp. */
+  community:["js/fb-feed-plus.js?v=1793645289","js/stories.js?v=1793647500","js/book-plus.js?v=1793645289"],
   /* C1 split: dj.js's booth continuation pack. The B5 idle prefetcher warms
    * these bytes for everyone (fetch only, never executed); dj.js fetches the
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
    * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
   djbooth:["js/dj-booth.js?v=1793645289"],
 };
+/* fb-feed's fallback story row must never paint ahead of the real
+ * stories: this flag is up from the first eager script until stories.js
+ * lands and clears it as it sets MW_REAL_STORIES (fb-feed checks both). */
+window.MW_STORIES_PENDING = true;
 const lazyAt={}, lazyBusy={};
 function lazyKick(v){
   const list=LAZY_SRC[v]; if(!list) return;
@@ -123,8 +134,35 @@ function go(v){ if(/access_token|error_description|refresh_token/.test(location.
   if(location.hash.slice(1)!==v) history.replaceState(null,"","#"+v);
   window.scrollTo({top:0});
 }
+/* ---------- #post-<id> links into Meechie's Book ----------
+ * book-plus.js owns these links and now loads lazily with the community
+ * bundle, but the router would rewrite a #post-... hash to #home before
+ * the bundle could ever read it. The stub holds the id instead: route
+ * to the Book (go() kicks the bundle), then hand the hash back the
+ * moment book-plus has landed (its #bk-bar appears) so book-plus's own
+ * deep-link poll takes over. The regex is book-plus's own, byte for
+ * byte. The router's hashchange listener below consults the stub first
+ * for the same reason. */
+const MW_POST_RE = /^#post-([A-Za-z0-9_-]{4,64})$/;
+let mwPostHeld = null, mwPostPass = false, mwPostTimer = null;
+function mwPostHand(){
+  if(mwPostTimer || !mwPostHeld) return;
+  let n = 0;
+  mwPostTimer = setInterval(() => {
+    const ready = !!document.getElementById("bk-bar");
+    if((ready && document.body.dataset.view === "community") || ++n > 75){ clearInterval(mwPostTimer); mwPostTimer = null;
+      const id = mwPostHeld; mwPostHeld = null;
+      if(ready && id){ mwPostPass = true; location.hash = "post-" + id; setTimeout(() => { mwPostPass = false; }, 150); } }
+  }, 200);
+}
+function mwPostRoute(){
+  if(mwPostPass) return true; /* the handover's own echo: book-plus's deep() owns this one — the router must not touch it */
+  const m = MW_POST_RE.exec(location.hash); if(!m) return false;
+  mwPostHeld = m[1]; go("community"); mwPostHand(); return true;
+}
+window.addEventListener("hashchange", mwPostRoute);
 document.addEventListener("click",e=>{const a=e.target.closest("[data-go]"); if(a){e.preventDefault();go(a.dataset.go);}});
-go(location.hash.slice(1));
+if(!mwPostRoute()) go(location.hash.slice(1));
 
 /* ---------- Copy ---------- */
 $$("[data-copy]").forEach(b=>b.addEventListener("click",()=>{
@@ -1370,7 +1408,7 @@ $("#auth-form").addEventListener("submit",async e=>{ e.preventDefault(); if(!win
   $("#auth-msg").textContent="You're in. Loading...";
 });
 function paintAuthBar(){ $("#authbar").innerHTML = me ? `<button class="btn ghost sm" type="button" data-auth="signout">Sign out</button>` : `<button class="btn sm" type="button" data-auth="signup">Join free</button>`; }
-window.addEventListener("hashchange",()=>go(location.hash.slice(1)));
+window.addEventListener("hashchange",()=>{ if(!mwPostRoute()) go(location.hash.slice(1)); });
 (function(){ const q=new URLSearchParams(location.search), h=new URLSearchParams(location.hash.replace(/^#/,""));
   const err=q.get("error_description")||h.get("error_description");
   if(err){ setTimeout(()=>toast("Login didn't finish: "+err.replace(/\+/g," ")),500); history.replaceState(null,"",location.pathname+"#home"); go("home"); } })();
@@ -1483,7 +1521,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793645289;
+const MW_SHELL_BUILD = 1793647500;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
