@@ -324,7 +324,7 @@ async function rest(request, env) {
       const where = [], args = [];
       for (const c of ["coll", "path", "owner"]) { const v = f(c); if (v !== undefined) { where.push(c + " = ?"); args.push(String(v)); } }
       // reports are private to the sender and Meechie; the phone-alert channel only to Meechie (same as the old database)
-      if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'", "coll <> 'pushsubs'"); args.push(uid || "-"); }
+      if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'", "coll <> 'pushsubs'", "path not like 'brain/calls/%'", "path not like 'brain/texts/%'", "(path not like 'brain/member/%' or owner = ?)"); args.push(uid || "-", uid || "-"); }
       const W = where.length ? " where " + where.join(" and ") : "";
       if (q.count && q.head) { const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: r ? r.n : 0, error: null }); }
       let order = " order by created_at asc";

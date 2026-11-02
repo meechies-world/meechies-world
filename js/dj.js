@@ -510,7 +510,7 @@
    * stage tick for every viewer). */
   async function iaVideoFile(id) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaVideoFile ? BOOTH.iaVideoFile(id) : ""; }
   async function iaFile(id) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaFile ? BOOTH.iaFile(id) : ""; }
-  async function iaSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaSearch ? BOOTH.iaSearch(q) : null; }
+  async function iaSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaSearch ? BOOTH.iaSearch(q) : []; }
   async function ytSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.ytSearch ? BOOTH.ytSearch(q) : null; }
   async function ytPage(q, p) { if (!BOOTH.ready) await boothKick(); return BOOTH.ytPage ? BOOTH.ytPage(q, p) : null; }
   async function ahLoadShelf(s) { if (!BOOTH.ready) await boothKick(); if (BOOTH.ahLoadShelf) return BOOTH.ahLoadShelf(s); }
@@ -6674,7 +6674,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793592400;
+  const MW_DJ_BUILD = 1793620727;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7037,8 +7037,10 @@ html.popdj #dj-mini{display:none!important}
      user-activated, so the hidden handoff play is allowed where the
      platform permits it. The pause is skipped if a handoff already owns
      the element or the page has gone hidden in the meantime. */
+  /* phones only: a hidden desktop tab keeps playing the decks, so a handoff there would double the sound */
+  function bgsPhone() { return (typeof IOS !== "undefined" && IOS) || (typeof TOUCH !== "undefined" && TOUCH); }
   function bgsArm() {
-    if (SANDBOX || bgsOn) return;
+    if (SANDBOX || bgsOn || !bgsPhone()) return;
     const el = bgsMake(); bgsEnsureSrc(el);
     try {
       el.volume = 0;
@@ -7048,11 +7050,11 @@ html.popdj #dj-mini{display:none!important}
     } catch (_) { try { el.volume = mixVol; } catch (_) {} }
   }
   async function bgsTryStart() {
-    if (SANDBOX || bgsOn) return;
+    if (SANDBOX || bgsOn || !bgsPhone()) return;
     if (!bgsSounding() || bgsExcluded()) return;
     if (OWNER() && boothLead) return; // the booth tab never hands off
     const live = await bgsGateLive();
-    if (live !== true) return; // doubt or the placeholder: no handoff
+    if (live !== true) { try { if (bgsEl && !bgsOn) bgsEl.pause(); } catch (_) {} return; } // doubt or the placeholder: no handoff
     if (!document.hidden || !bgsSounding() || bgsExcluded()) return; // the world changed while the gate answered
     const el = bgsMake(); bgsEnsureSrc(el);
     try { el.volume = mixVol; } catch (_) {}
@@ -7089,7 +7091,7 @@ html.popdj #dj-mini{display:none!important}
   }
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { if (!SANDBOX && !bubOn) bgsTryStart(); }
-    else if (bgsOn) bgsStopEl(); // stop the stream element FIRST; the decks resume on the existing 350 ms path, so nothing ever double-plays
+    else if (bgsOn || (bgsEl && !bgsEl.paused)) bgsStopEl(); // stop the stream element FIRST; the decks resume on the existing 350 ms path, so nothing ever double-plays
   });
   window.MW_BGS = { on: () => bgsOn, state: () => ({ on: bgsOn, el: !!bgsEl }) };
   /* pop the decks out onto their own screen: a clean window with only the DJ view */

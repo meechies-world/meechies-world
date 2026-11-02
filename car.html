@@ -127,7 +127,7 @@
   function paintGuide(){
     var now = etMinutes(), g = document.getElementById("guide"); g.innerHTML = "";
     BLOCKS.forEach(function(b){
-      var isNow = now >= b[0] && now < b[1];
+      var n2 = (now >= 0 && now < 300) ? now + 1440 : now; var isNow = n2 >= b[0] && n2 < b[1];
       var li = document.createElement("li"); if(isNow) li.className = "now";
       li.innerHTML = "<span class='when'></span><span class='what'></span>" + (isNow ? "<span class='nowtag'>ON NOW</span>" : "");
       li.querySelector(".when").textContent = b[2]; li.querySelector(".what").textContent = b[3];
