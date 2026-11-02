@@ -4348,6 +4348,8 @@ html.popdj #dj-mini{display:none!important}
     if (t.closest(".wpl-x")) { wsModal("ws-plans", false); return; }
     if (t.closest(".wpl-free")) { wsModal("ws-plans", false); wsGoBasic(); return; }
     if (t.closest(".wpl-trial")) { wsStartTrial(t.closest(".wpl-trial")); return; }
+    if (t.closest(".wpl-buy")) { wsBuyTier(t.closest(".wpl-buy")); return; }
+    if (t.closest(".wpl-manage")) { wsManagePlan(t.closest(".wpl-manage")); return; }
     if (t.closest(".ws-ctl")) { if (!OWNER() && !SANDBOX) wsUpsell(); return; }
     if (t.closest("#tw-fs")) { const sh = document.getElementById("tw-shell"); try { if (document.fullscreenElement) document.exitFullscreen(); else if (sh && sh.requestFullscreen) sh.requestFullscreen(); } catch (_) {} return; }
     if (t.closest("[data-vsrestore]")) { vsPubRestore(); return; }
@@ -6703,7 +6705,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793645289;
+  const MW_DJ_BUILD = 1793652244;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7293,14 +7295,21 @@ html.popdj #dj-mini{display:none!important}
     }
     if (!document.getElementById("ws-plans")) {
       const p = document.createElement("div"); p.id = "ws-plans"; p.className = "ws-modal"; p.hidden = true;
-      p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 7-day free trial</b><span>Every feature free for 7 days: the tables, YouTube search, save sessions and the DJ Video Package</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 7-day free trial</button><button type="button" class="btn ghost wpl-free">🎛️ Open the tables</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables</b><span>Keep the exact same setup Meechie runs — same tables, same look, same arrangement. Play manually, or run your set the way he does</span></div><b class="wpl-pr">$10/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search</b><span>Everything in Tables, plus search YouTube right from your tables</span></div><b class="wpl-pr">$15/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search + Save sessions</b><span>Everything in YouTube search, plus save your sessions and playlists to run again</span></div><b class="wpl-pr">$20/month</b></div><div class="wpl-row"><div class="wpl-nm"><b>🎬 DJ VIDEO PACKAGE</b><span>Everything in Save sessions, plus the master screen: video mixes and your camera, like Meechie's TV station</span></div><b class="wpl-pr">$35/month</b></div></div>`;
+      p.innerHTML = `<div class="ws-card"><button type="button" class="btn ghost sm ws-x wpl-x" aria-label="Close">✕</button><h3 style="margin:0 0 6px">🎛️ Run your own setup</h3><p class="muted" style="margin:0 0 6px">Watching and listening to Meechie live is always free. Plans are only for running your own tables.</p><div class="wpl-row"><div class="wpl-nm"><b>Full setup — 7-day free trial</b><span>Every feature free for 7 days: the tables, YouTube search, save sessions and the DJ Video Package</span></div><b class="wpl-pr">$0</b></div><div id="wpl-trial-note"></div><div id="wpl-manage-row" hidden><button type="button" class="btn ghost sm wpl-manage">⚙️ Manage my plan / cancel</button></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 6px"><button type="button" class="btn wpl-trial" id="wpl-trial">Start my 7-day free trial</button><button type="button" class="btn ghost wpl-free">🎛️ Open the tables</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables</b><span>Keep the exact same setup Meechie runs — same tables, same look, same arrangement. Play manually, or run your set the way he does</span></div><b class="wpl-pr">$10/month</b><button type="button" class="btn sm wpl-buy" data-tier="10">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search</b><span>Everything in Tables, plus search YouTube right from your tables</span></div><b class="wpl-pr">$15/month</b><button type="button" class="btn sm wpl-buy" data-tier="15">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>Tables + YouTube search + Save sessions</b><span>Everything in YouTube search, plus save your sessions and playlists to run again</span></div><b class="wpl-pr">$20/month</b><button type="button" class="btn sm wpl-buy" data-tier="20">Get this plan</button></div><div class="wpl-row"><div class="wpl-nm"><b>🎬 DJ VIDEO PACKAGE</b><span>Everything in Save sessions, plus the master screen: video mixes and your camera, like Meechie's TV station</span></div><b class="wpl-pr">Coming soon</b></div></div>`;
       document.body.appendChild(p);
     }
   }
   function wsModal(id, show) { wsEnsureModals(); const m = document.getElementById(id); if (m) m.hidden = !show; if (show && id === "ws-plans") wsTrialPaint(); }
   function wsUpsell() { const now = Date.now(); if (now - wsUpsellAt < 60000) return; wsUpsellAt = now; wsModal("ws-upsell", true); }
   function wsGoBasic() { if (typeof go === "function") go("dj"); const pg = document.getElementById("pg-open"); if (pg) { try { pg.click(); } catch (_) {} } }
-  function wsTrialPaint() { const note = document.getElementById("wpl-trial-note"); const btn = document.getElementById("wpl-trial"); if (btn && wsTrialAt) { btn.disabled = true; btn.textContent = wsTrialActive() ? "✅ Trial on" : "⌛ Trial ended"; } if (!note) return; if (wsTier >= 10) note.innerHTML = `<p style="margin:6px 0">✅ Your plan is on: <b>${SETUP_TIERS[wsTier] || "Tables"}</b> — $${wsTier}/month. Every feature in your plan is open on your tables.</p>`; else if (wsTrialAt && wsTrialActive()) note.innerHTML = `<p style="margin:6px 0">✅ Your 7-day free trial is on — every feature is open until ${new Date(wsTrialAt + SETUP_TRIAL_MS).toLocaleDateString()}. After that, $10/month keeps your tables. We will remind you before it ends.</p>`; else if (wsTrialAt) note.innerHTML = `<p style="margin:6px 0">⌛ Your 7-day free trial ended. Pick a plan below to keep your tables running — watching and listening to Meechie stays free forever.</p>`; else note.innerHTML = ""; }
+  function wsTrialPaint() { const note = document.getElementById("wpl-trial-note"); const btn = document.getElementById("wpl-trial"); if (btn && wsTrialAt) { btn.disabled = true; btn.textContent = wsTrialActive() ? "✅ Trial on" : "⌛ Trial ended"; }
+    /* plans-card charging states (2026-11-02): a member on a plan sees it
+     * marked on its own row and gets the Manage door; everybody else gets
+     * live buy buttons. Plan changes ride Manage (the Stripe billing
+     * portal) — a second checkout can never stack two subscriptions. */
+    document.querySelectorAll(".wpl-buy").forEach((b) => { const tier = +(b.getAttribute("data-tier") || 0); if (wsTier >= 10 && tier === wsTier) { b.disabled = true; b.textContent = "✅ Your plan"; } else if (wsTier >= 10) { b.disabled = true; b.textContent = "On a plan"; } else { b.disabled = false; b.textContent = "Get this plan"; } });
+    const mr = document.getElementById("wpl-manage-row"); if (mr) mr.hidden = !(wsTier >= 10);
+    if (!note) return; if (wsTier >= 10) note.innerHTML = `<p style="margin:6px 0">✅ Your plan is on: <b>${SETUP_TIERS[wsTier] || "Tables"}</b> — $${wsTier}/month. Every feature in your plan is open on your tables.</p>`; else if (wsTrialAt && wsTrialActive()) { const daysLeft = Math.max(1, Math.ceil((wsTrialAt + SETUP_TRIAL_MS - Date.now()) / 864e5)); note.innerHTML = `<p style="margin:6px 0">✅ Your 7-day free trial is on — every feature is open until ${new Date(wsTrialAt + SETUP_TRIAL_MS).toLocaleDateString()} (${daysLeft} day${daysLeft === 1 ? "" : "s"} left). Nothing is charged when it ends — pick a plan below only if you want to keep your tables.</p>`; } else if (wsTrialAt) note.innerHTML = `<p style="margin:6px 0">⌛ Your 7-day free trial ended. Pick a plan below to keep your tables running — watching and listening to Meechie stays free forever.</p>`; else note.innerHTML = ""; }
   function wsPaintPlans() { const ses = mySess(); const uid = ses && ses.user && ses.user.id; if (!uid) return; if (wsEntLoaded) { wsTrialPaint(); return; } wsLoadEnt().then(() => wsTrialPaint()); }
   async function wsStartTrial(btn) {
     const ses = mySess(); const uid = ses && ses.user && ses.user.id;
@@ -7311,14 +7320,49 @@ html.popdj #dj-mini{display:none!important}
     try { await d.doc("members/" + uid).update({ trial_started_at: Date.now() }); wsTrialAt = Date.now(); wsTrialChecked = true; wsEntLoaded = true; wsTrialPaint(); }
     catch (e) { if (btn) btn.disabled = false; say("That did not save — tap it once more."); }
   }
+  /* ---------- SETUP PLANS — charging (owner launch, 2026-11-02) ----------
+   * The buy buttons ride the site own Stripe rails: /api/dj/checkout makes
+   * a subscription Checkout Session on the server (the price lives there,
+   * never in the tap), and the Stripe webhook is the only writer of
+   * setup_tier. Trial conversion is PAY-TO-CONTINUE: the trial ending
+   * charges nobody — the member picks a plan here to keep the tier. The
+   * $35 DJ Video Package stays "coming soon" (owner ruling) — no button. */
+  async function wsBuyTier(btn) {
+    const tier = +(btn && btn.getAttribute ? btn.getAttribute("data-tier") : 0) || 0;
+    if (tier !== 10 && tier !== 15 && tier !== 20) return;
+    const ses = mySess(); const uid = ses && ses.user && ses.user.id;
+    if (!uid) { wsModal("ws-plans", false); if (typeof openAuth === "function") openAuth("signup"); say("Join free first — plans ride on your free account."); return; }
+    if (wsTier >= 10) { say("You already have a plan — use Manage my plan to change or cancel it."); return; }
+    if (btn) { btn.disabled = true; btn.textContent = "One moment…"; }
+    try {
+      const r = await fetch("/api/dj/checkout", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + ses.access_token }, body: JSON.stringify({ tier }) }).then(async (x) => ({ ok: x.ok, status: x.status, j: await x.json().catch(() => ({})) }));
+      if (r.ok && r.j && /^https:\/\/checkout\.stripe\.com\//.test(r.j.url || "")) { location.href = r.j.url; return; }
+      if (r.status === 501) say("Payments are not switched on yet — your trial and tables still work.");
+      else if (r.status === 409) say("You already have a plan — use Manage my plan to change or cancel it.");
+      else say("That did not start — tap it once more.");
+    } catch (_) { say("That did not start — tap it once more."); }
+    if (btn) { btn.disabled = false; btn.textContent = "Get this plan"; }
+  }
+  async function wsManagePlan(btn) {
+    const ses = mySess(); const uid = ses && ses.user && ses.user.id;
+    if (!uid) return;
+    if (btn) btn.disabled = true;
+    try {
+      const r = await fetch("/api/dj/portal", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + ses.access_token }, body: "{}" }).then(async (x) => ({ ok: x.ok, status: x.status, j: await x.json().catch(() => ({})) }));
+      if (r.ok && r.j && /^https:\/\/billing\.stripe\.com\//.test(r.j.url || "")) { location.href = r.j.url; return; }
+      say("No plan to manage yet.");
+    } catch (_) { say("That did not open — tap it once more."); }
+    if (btn) btn.disabled = false;
+  }
   /* ---------- SETUP PLANS — entitlement (owner directive 2026-10-30,
    * supersedes the #366 ladder): 7 days free, then Tables $10/month,
    * +YouTube search $15, +Save sessions $20, DJ Video Package $35.
    * The member doc carries the stamps: trial_started_at (already the
    * #366 field, window now 7 days) + setup_tier (the dollar tier:
-   * 0/10/15/20/35). No real charging in this phase — Stripe
-   * subscriptions come later; this is presentation + entitlement
-   * only, never a fake checkout. Malik (the real isOwner) is never
+   * 0/10/15/20/35). Charging went live 2026-11-02 for $10/$15/$20
+   * (see SETUP PLANS — charging above): real Stripe subscriptions via
+   * /api/dj, the webhook writes the tier. $35 stays presentation-only
+   * ("coming soon") until its video feature exists. Malik (the real isOwner) is never
    * gated, the station is never gated, watching/listening stays free
    * forever, and a member performing on the station under Malik's own
    * grant (guest DJ / battle) is on air, not on a plan. ------------ */
