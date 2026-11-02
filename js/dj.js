@@ -510,7 +510,7 @@
    * stage tick for every viewer). */
   async function iaVideoFile(id) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaVideoFile ? BOOTH.iaVideoFile(id) : ""; }
   async function iaFile(id) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaFile ? BOOTH.iaFile(id) : ""; }
-  async function iaSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaSearch ? BOOTH.iaSearch(q) : null; }
+  async function iaSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.iaSearch ? BOOTH.iaSearch(q) : []; }
   async function ytSearch(q) { if (!BOOTH.ready) await boothKick(); return BOOTH.ytSearch ? BOOTH.ytSearch(q) : null; }
   async function ytPage(q, p) { if (!BOOTH.ready) await boothKick(); return BOOTH.ytPage ? BOOTH.ytPage(q, p) : null; }
   async function ahLoadShelf(s) { if (!BOOTH.ready) await boothKick(); if (BOOTH.ahLoadShelf) return BOOTH.ahLoadShelf(s); }
@@ -5830,7 +5830,7 @@ html.popdj #dj-mini{display:none!important}
   // drift seeks clean. Loops, paused elements (a scratch in progress), and
   // brake/spin moves (noSync stamp) are left alone. Video decks can only be
   // re-seeked, and coarsely (their player lands on keyframes).
-  function syncDecks() { if (document.hidden) return; const now = serverNow(); const nowT = boothLead ? Date.now() : now; /* mwFlapFix: the booth lead authored start on its own clock, so its sync target is plain local time with no clockOff; listeners keep the corrected basis */ DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; /* end zone (fix, 2026-10-28): with <=5s left on the element itself, no drift correction at all — it plays out into the crossfade */ const elDurZ = (d.el && isFinite(d.el.duration) && d.el.duration > 0) ? d.el.duration : 0; if (elDurZ > 0 && elDurZ - (d.el.currentTime || 0) <= 5) return; const target = Math.max(0, (nowT - (s.start || nowT)) / 1000); const durT = +s.dur || 0; if (durT > 0 && target > durT + 2) { try { d.el.pause(); } catch (_) {} return; } if (d.shim) { if (Math.abs((d.el.currentTime || 0) - target) > 5) { follow(k); d.noSync = Date.now() + 3000; /* mwFlapFix: rest 3s after a sync seek so shim clock jitter cannot retrigger it */ } return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
+  function syncDecks() { if (document.hidden) return; const now = serverNow(); const nowT = boothLead ? Date.now() : now; /* mwFlapFix: the booth lead authored start on its own clock, so its sync target is plain local time with no clockOff; listeners keep the corrected basis */ DECKS.forEach((k) => { const s = S[k], d = decks[k]; if (!s || !s.playing || !d || !d.el || s.loop) return; if (d.noSync && Date.now() < d.noSync) return; /* end zone (fix, 2026-10-28): with <=5s left on the element itself, no drift correction at all — it plays out into the crossfade */ const elDurZ = (d.el && isFinite(d.el.duration) && d.el.duration > 0) ? d.el.duration : 0; if (elDurZ > 0 && elDurZ - (d.el.currentTime || 0) <= 5) return; const target = Math.max(0, (nowT - (s.start || nowT)) / 1000); const durT = +s.dur || 0; if (durT > 0 && target > durT + 2) { try { d.el.pause(); } catch (_) {} return; } if (d.shim) { if (!listening && !(OWNER() && boothLead)) return; if (Math.abs((d.el.currentTime || 0) - target) > 5) { follow(k); d.noSync = Date.now() + 3000; /* mwFlapFix: rest 3s after a sync seek so shim clock jitter cannot retrigger it */ } return; } if (d.el.paused) return; const drift = d.el.currentTime - target, base = s.rate || 1; if (Math.abs(drift) > 0.35) { try { d.el.currentTime = Math.max(0, target); } catch (_) {} if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; } else if (Math.abs(drift) > 0.08) { const want = base * (drift > 0 ? 0.96 : 1.04); if (Math.abs(d.el.playbackRate - want) > 0.001) d.el.playbackRate = want; } else if (Math.abs(d.el.playbackRate - base) > 0.001) d.el.playbackRate = base; }); }
   setInterval(syncDecks, 500);
   // the screens follow the shared state on their own clock: a booth window that
   // is not the one driving the sound, and a visitor who has not tuned in yet,
@@ -6701,7 +6701,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793595125;
+  const MW_DJ_BUILD = 1793624192;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -6952,7 +6952,7 @@ html.popdj #dj-mini{display:none!important}
     try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
     try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
-  function stopListening() { listening = false; document.removeEventListener("pointerdown", tapStart, true); djKeepSet(false); try { bgsOff(); } catch (_) {} wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
+  function stopListening() { listening = false; document.removeEventListener("pointerdown", tapStart, true); djKeepSet(false); try { bgsOff(); } catch (_) {} wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); try { if (typeof scStageW !== "undefined" && scStageW) scStageW.pause(); } catch (_) {} voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   try {
     if (!SANDBOX && djKeepWanted()) document.addEventListener("pointerdown", function djResumeTap(e) {
       if (listening || !djKeepWanted()) { document.removeEventListener("pointerdown", djResumeTap); return; }
@@ -7064,8 +7064,10 @@ html.popdj #dj-mini{display:none!important}
      user-activated, so the hidden handoff play is allowed where the
      platform permits it. The pause is skipped if a handoff already owns
      the element or the page has gone hidden in the meantime. */
+  /* phones only: a hidden desktop tab keeps playing the decks, so a handoff there would double the sound */
+  function bgsPhone() { return (typeof IOS !== "undefined" && IOS) || (typeof TOUCH !== "undefined" && TOUCH); }
   function bgsArm() {
-    if (SANDBOX || bgsOn) return;
+    if (SANDBOX || bgsOn || !bgsPhone()) return;
     const el = bgsMake(); bgsEnsureSrc(el);
     try {
       el.volume = 0;
@@ -7075,11 +7077,11 @@ html.popdj #dj-mini{display:none!important}
     } catch (_) { try { el.volume = mixVol; } catch (_) {} }
   }
   async function bgsTryStart() {
-    if (SANDBOX || bgsOn) return;
+    if (SANDBOX || bgsOn || !bgsPhone()) return;
     if (!bgsSounding() || bgsExcluded()) return;
     if (OWNER() && boothLead) return; // the booth tab never hands off
     const live = await bgsGateLive();
-    if (live !== true) return; // doubt or the placeholder: no handoff
+    if (live !== true) { try { if (bgsEl && !bgsOn) bgsEl.pause(); } catch (_) {} return; } // doubt or the placeholder: no handoff
     if (!document.hidden || !bgsSounding() || bgsExcluded()) return; // the world changed while the gate answered
     const el = bgsMake(); bgsEnsureSrc(el);
     try { el.volume = mixVol; } catch (_) {}
@@ -7116,7 +7118,7 @@ html.popdj #dj-mini{display:none!important}
   }
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) { if (!SANDBOX && !bubOn) bgsTryStart(); }
-    else if (bgsOn) bgsStopEl(); // stop the stream element FIRST; the decks resume on the existing 350 ms path, so nothing ever double-plays
+    else if (bgsOn || (bgsEl && !bgsEl.paused)) bgsStopEl(); // stop the stream element FIRST; the decks resume on the existing 350 ms path, so nothing ever double-plays
   });
   window.MW_BGS = { on: () => bgsOn, state: () => ({ on: bgsOn, el: !!bgsEl }) };
   /* pop the decks out onto their own screen: a clean window with only the DJ view */
