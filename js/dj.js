@@ -5370,6 +5370,16 @@ html.popdj #dj-mini{display:none!important}
    * faked as news, never a stale edition presented as new. */
   const TV_NEWS_STALE_C = 2 * 3600e3;
   let tvChanDoc = null, tvPoolDoc = null, tvNowDoc = null, tvNewsDoc = null;
+  /* TV-FIRST readiness (instant-on, 2026-11-02): the channel tunes off
+   * its own docs alone. tvSeen turns true the moment the tv/channel AND
+   * tv/now snapshots have both arrived, so the tuner no longer waits for
+   * the first radio/dj snapshot (stateSeen), which tuning never needed:
+   * positions ride serverNow(), and its offset is learned from the
+   * /api/station keeper pings (pingKeeper, started at script load), not
+   * from radio state. stateSeen still guards the viewer slates' words
+   * exactly as before; only chanReady's gate moves. */
+  let tvSeen = false, tvArrChan = false, tvArrNow = false;
+  function tvMarkArrive() { if (tvArrChan && tvArrNow) tvSeen = true; }
   function tvSegAtC(segs, t) { if (!Array.isArray(segs)) return null; for (const sg of segs) { if (t >= sg.start && t < sg.start + sg.dur * 1000) return sg; } return null; }
   function tvResolveNews(newsDoc, seg) {
     const st = seg.edWin || seg.start;
@@ -5388,7 +5398,7 @@ html.popdj #dj-mini{display:none!important}
     return { it: items[0], pos: 0 };
   }
   function chanReady() {
-    if (SANDBOX || !stateSeen) return false;
+    if (SANDBOX || !tvSeen) return false;
     if (!tvChanDoc || tvChanDoc.on === false) return false;
     if (!tvNowDoc || tvNowDoc.off || tvNowDoc.down || !Array.isArray(tvNowDoc.segs) || !tvNowDoc.segs.length) return false;
     return true;
@@ -6751,7 +6761,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793628467;
+  const MW_DJ_BUILD = 1793629437;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -9106,7 +9116,7 @@ html.popdj #dj-mini{display:none!important}
     if (!window.claude) { if (initTries++ < 40) setTimeout(init, 750); return; }
     const d = await claude.use("db"); if (!d) { if (initTries++ < 40) setTimeout(init, 750); return; }
     if (!SANDBOX) d.doc("radio/camframe").onSnapshot((snap) => { camFrameDoc = snap.exists ? snap.data() : null; camOvSync(); }, () => {});
-    if (!SANDBOX) { d.doc("tv/channel").onSnapshot((snap) => { tvChanDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/breakpool").onSnapshot((snap) => { tvPoolDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/now").onSnapshot((snap) => { tvNowDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/news").onSnapshot((snap) => { tvNewsDoc = snap.exists ? snap.data() : null; }, () => {}); } // MW TV channel docs (Stage 1) - the keeper writes tv/now, this layer only tunes in; same facade + changes feed, fail-silent, sandbox never subscribes // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
+    if (!SANDBOX) { d.doc("tv/channel").onSnapshot((snap) => { tvChanDoc = snap.exists ? snap.data() : null; tvArrChan = true; tvMarkArrive(); }, () => {}); d.doc("tv/breakpool").onSnapshot((snap) => { tvPoolDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/now").onSnapshot((snap) => { tvNowDoc = snap.exists ? snap.data() : null; tvArrNow = true; tvMarkArrive(); }, () => {}); d.doc("tv/news").onSnapshot((snap) => { tvNewsDoc = snap.exists ? snap.data() : null; }, () => {}); } // MW TV channel docs (Stage 1) - the keeper writes tv/now, this layer only tunes in; same facade + changes feed, fail-silent, sandbox never subscribes // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt || S[k].scUrl)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
