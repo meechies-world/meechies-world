@@ -41,7 +41,10 @@ const PRECACHE = ["/", "/kids-app/", "/radio-app/", "/ai-app/", "/apps/",
   "/tv-app/", "/world-app/",
   "/img/radio-promo.jpg", "/img/radio-promo-640.webp", "/img/radio-promo-1080.webp",
   "/img/kids-art-640.webp",
-  "/img/tv-poster.jpg?v=1793555395", "/img/tv-poster-640.webp?v=1793555395", "/img/tv-poster-1080.webp?v=1793555395",
+  "/img/tv-poster.jpg?v=1793629856", "/img/tv-poster-640.webp?v=1793629856", "/img/tv-poster-1080.webp?v=1793629856",
+  // (the stamped poster URLs above name the copies the shell itself
+  // references; their stamp moves with the shell stamp sweep, like every
+  // stamped reference in index.html)
   "/img/icon-192.png", "/img/apple-touch-icon.png"];
 async function precacheShell() {
   try {
@@ -56,7 +59,51 @@ async function precacheShell() {
     }));
   } catch (_) {}
 }
-self.addEventListener("install", (e) => e.waitUntil((async () => { await precacheShell(); await self.skipWaiting(); })()));
+
+// --- install-time skeleton seeding (2026-11-02): begin ---
+// The skeleton generation for the current build used to fill only as the
+// visitor's own loads trickled through the worker, so an interrupted
+// first visit (or a generation the browser trimmed under storage
+// pressure) left the next visit fetching shell files the frame should
+// already hold. At install, seed the CURRENT build's generation with the
+// stamped shell scripts and stylesheets the shell itself references.
+// The build stamp is read from version.json at runtime (skelBuildCheck,
+// the same derivation the generation naming uses) and only references
+// carrying exactly that stamp are seeded, so nothing here can rot or
+// pull a neighbouring build's files. This only ADDS files to the
+// generation the site is already serving: it never writes the meta
+// record, never prunes a generation and never stores the shell HTML
+// (skelNavStrategy owns the frame and its rollover), so a page already
+// open keeps running exactly what it loaded. Best-effort per file,
+// exactly like precacheShell: one bad URL never fails the install, and
+// anything already stored is left exactly as it is.
+async function skelSeedGeneration() {
+  let build = null;
+  try { build = await skelBuildCheck(); } catch (_) { return; }
+  let html = "";
+  try {
+    const r = await fetch("/", { cache: "no-cache" });
+    if (!r.ok) return;
+    html = await r.text();
+  } catch (_) { return; }
+  const urls = new Set();
+  const re = /(?:src|href)="((?:\/)?(?:js|css)\/[^"]+\?v=(\d+))"/g;
+  let m;
+  while ((m = re.exec(html))) { if (m[2] === build) urls.add(new URL(m[1], self.location.origin).href); }
+  if (!urls.size) return;
+  try {
+    const cache = await caches.open(SKEL_PREFIX + build);
+    await Promise.all([...urls].map(async (u) => {
+      try { if (await cache.match(u)) return; } catch (_) {}
+      try {
+        const r = await fetch(u, { cache: "no-cache" });
+        if (r.ok) await cache.put(u, r);
+      } catch (_) {}
+    }));
+  } catch (_) {}
+}
+// --- install-time skeleton seeding: end ---
+self.addEventListener("install", (e) => e.waitUntil((async () => { await precacheShell(); await skelSeedGeneration(); await self.skipWaiting(); })()));
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
   const keep = new Set([MUSIC, SHELL, SKEL_META, IMAGES, KIDSTHUMBS]);
   const meta = await skelMetaRead();
