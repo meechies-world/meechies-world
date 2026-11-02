@@ -6,7 +6,13 @@
    starved the apps of ads for good (owner, 2026-10-27: "make sure my ads are on all my apps").
    One owner-ordered exception to the in-flow rule (2026-10-30): when the master screen is
    popped out big (the MW TV channel), a slim bar from this same pool rides the bottom of
-   that screen — see mountScreenBar. Everywhere else the in-flow rule stands. */
+   that screen — see mountScreenBar. Everywhere else the in-flow rule stands.
+   Second owner-ordered exception (2026-11-01): on MW TV the centred picture leaves big
+   black bands above and below it on portrait phones, and the owner ordered those bands
+   filled with ads about our products and website — see mountTvFill. The fill zones live
+   only in genuinely empty space measured off the live picture box: they never overlay
+   the video, never shrink it, never cover the channel controls, the on-air chip or
+   the screen bar, and they collapse to nothing when the picture fills the screen. */
 (function () {
   "use strict";
   if (window.__mwHouseAds) return;
@@ -53,13 +59,33 @@
     ".mw-adbar .mw-adbar-price{flex:0 0 auto;color:#d4af37;font-weight:800;font-size:13.5px;white-space:nowrap}" +
     ".mw-adbar .mw-adbar-cta{flex:0 0 auto;white-space:nowrap;font-weight:700;font-size:12.5px;color:#d4af37}" +
     ".mw-adbar .mw-adbar-x{flex:0 0 auto;background:none;border:0;color:#f3ead2;opacity:.55;font-size:17px;cursor:pointer;line-height:1;padding:0 10px}" +
-    "@media (max-width:640px){.mw-adbar{height:38px;bottom:66px}.mw-adbar .mw-adbar-tag{display:none}.mw-adbar .mw-adbar-title{font-size:12.5px}}";
+    "@media (max-width:640px){.mw-adbar{height:38px;bottom:66px}.mw-adbar .mw-adbar-tag{display:none}.mw-adbar .mw-adbar-title{font-size:12.5px}}" +
+    /* MW TV fill zones (owner, 2026-11-01): cards centred in the black
+       bands above and below the centred MW TV picture. Position and
+       height are set in px by layoutTvFill() from the measured picture
+       box; display:none until a band is genuinely big enough. z-index 8
+       keeps them under the channel top bar (z 9) and the screen bar
+       (z 10) even if a measurement ever strays. */
+    ".mw-tvfill{position:absolute;left:0;right:0;z-index:8;display:none;align-items:center;justify-content:center;padding:10px 14px;box-sizing:border-box;overflow:hidden}" +
+    ".mw-tvfill.on{display:flex}" +
+    ".mw-tvfill .mw-tvwrap{position:relative;width:100%;max-width:560px;max-height:100%}" +
+    ".mw-tvfill .mw-tvcard{display:flex;align-items:center;gap:12px;width:100%;max-height:100%;box-sizing:border-box;border:1px solid rgba(212,175,55,.5);border-radius:14px;background:linear-gradient(90deg,rgba(212,175,55,.16),rgba(212,175,55,.05));padding:10px 36px 10px 14px;text-decoration:none;color:#f3ead2}" +
+    ".mw-tvfill img{width:64px;height:64px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:#141414}" +
+    ".mw-tvfill .mw-tv-mid{flex:1;min-width:0}" +
+    ".mw-tvfill .mw-tv-tag{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#d4af37;font-weight:700}" +
+    ".mw-tvfill .mw-tv-title{display:block;font-weight:700;font-size:15px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+    ".mw-tvfill .mw-tv-line{display:block;font-size:12.5px;line-height:1.35;color:#cfc4a4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+    ".mw-tvfill .mw-tv-price{flex:0 0 auto;color:#d4af37;font-weight:800;font-size:15px;white-space:nowrap}" +
+    ".mw-tvfill .mw-tv-cta{flex:0 0 auto;white-space:nowrap;font-weight:700;font-size:13px;color:#d4af37}" +
+    ".mw-tvfill .mw-tv-x{position:absolute;top:2px;right:6px;background:none;border:0;color:#f3ead2;opacity:.55;font-size:18px;cursor:pointer;line-height:1;padding:6px;z-index:2}" +
+    "@media (max-width:640px){.mw-tvfill img{width:48px;height:48px}.mw-tvfill .mw-tv-title{font-size:13.5px}.mw-tvfill .mw-tv-price{font-size:13px}}";
   document.head.appendChild(css);
 
   var products = [];
   var slots = [];
   var shelves = [];
   var barSlots = [];
+  var tvFillSlots = [];
 
   /* One hide for every house-ad surface (owner rule: closing an ad hides
      the ads for 24 hours): the banners, the shelves and the screen bar
@@ -72,6 +98,8 @@
     shelves = [];
     barSlots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
     barSlots = [];
+    tvFillSlots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); });
+    tvFillSlots = [];
   }
 
   function fill(slot) {
@@ -160,6 +188,155 @@
     barSlots.push(bar);
   }
 
+  /* MW TV fill (owner, 2026-11-01): the centred MW TV picture leaves
+     black bands above and below it on portrait phones, and those bands
+     carry house ads — products from this same pool on top, website
+     promos below. The zones are plain absolutely-positioned boxes in
+     #tw-shell; layoutTvFill() measures the live picture box (the active
+     .vslot rect while a mix video is showing) plus the top bar, the
+     on-air chip and the screen bar, and gives a zone height only where
+     a genuinely empty band of at least MIN_BAND px exists. No band, no
+     zone: the picture is never shrunk, moved or covered, and a share
+     or an uploaded screen video (object-fit contain over the whole
+     stage, so its real picture edges are unknowable) disables the fill
+     outright. Nothing here touches any player: layout is rect reads
+     and style writes on the ad boxes only. */
+  var TV_MIN_BAND = 84;
+  var PROMOS = [
+    { tag: "Meechie's World", head: "🛍️ The Shop", line: "Merch, apparel and more from the movement — new drops all the time.", href: "#shop", go: "shop", cta: "Shop →" },
+    { tag: "Meechie's World", head: "🎧 Meechie's World Radio", line: "Live DJ sets, real music, real talk — all day. Tune in.", href: "#radio", go: "radio", cta: "Listen →" },
+    { tag: "Meechie's World", head: "📖 Meechie's Book", line: "Post, talk, gift and build with the whole community.", href: "#community", go: "community", cta: "Open →" },
+    { tag: "Meechie's World", head: "🎚️ The Studio", line: "Make beats, record and polish your sound — the full studio.", href: "#studio", go: "studio", cta: "Create →" },
+    { tag: "Meechie's World", head: "🧒 Meechie's World for Kids", line: "Your playlist, your lock — hand the phone over with confidence.", href: "/kids-app/", ext: true, cta: "Open →" },
+    { tag: "Meechie's World", head: "💼 Free Vendor Slots", line: "Sellers: get your products on this site FREE for a week.", href: "#promote", go: "promote", cta: "See how →" },
+    { tag: "Meechie's World", head: "🎮 Meechie LIVE on Twitch", line: "Watch the live sets on Twitch — @meechiesworldinc.", href: "https://www.twitch.tv/meechiesworldinc", ext: true, cta: "Watch →" },
+    { tag: "Meechie's World", head: "🚗 Car Mode", line: "On the road? The station, big and simple — TV poster, tune in, directions.", href: "/car", ext: true, cta: "Open →" }
+  ];
+  var promoIx = Math.floor(Math.random() * PROMOS.length);
+
+  function tvCardShell(zone) {
+    zone.innerHTML = "";
+    var wrap = document.createElement("div");
+    wrap.className = "mw-tvwrap";
+    var a = document.createElement("a");
+    a.className = "mw-tvcard";
+    var x = document.createElement("button");
+    x.className = "mw-tv-x"; x.type = "button";
+    x.setAttribute("aria-label", "Hide ads for 24 hours"); x.textContent = "×";
+    x.addEventListener("click", function (ev) { if (ev) { ev.preventDefault(); ev.stopPropagation(); } hideAll(); });
+    wrap.appendChild(a); wrap.appendChild(x);
+    zone.appendChild(wrap);
+    return a;
+  }
+
+  function fillTvTop(zone) {
+    if (!products.length) return;
+    var p = products[Math.floor(Math.random() * products.length)];
+    var a = tvCardShell(zone);
+    a.href = p.url; a.target = "_blank"; a.rel = "noopener";
+    if (p.img) {
+      var img = document.createElement("img");
+      img.src = p.img; img.alt = ""; img.loading = "lazy";
+      a.appendChild(img);
+    }
+    var mid = document.createElement("span");
+    mid.className = "mw-tv-mid";
+    var tag = document.createElement("span");
+    tag.className = "mw-tv-tag"; tag.textContent = "Meechie's World Merch · " + (p.src || "Ad");
+    var ttl = document.createElement("span");
+    ttl.className = "mw-tv-title"; ttl.textContent = p.title;
+    mid.appendChild(tag); mid.appendChild(ttl);
+    a.appendChild(mid);
+    if (p.price) {
+      var pr = document.createElement("span");
+      pr.className = "mw-tv-price"; pr.textContent = p.price;
+      a.appendChild(pr);
+    }
+    var cta = document.createElement("span");
+    cta.className = "mw-tv-cta"; cta.textContent = "Shop now →";
+    a.appendChild(cta);
+  }
+
+  function fillTvBot(zone) {
+    var pr = PROMOS[promoIx % PROMOS.length]; promoIx++;
+    var a = tvCardShell(zone);
+    a.href = pr.href;
+    if (pr.go) a.setAttribute("data-go", pr.go);
+    if (pr.ext) { a.target = "_blank"; a.rel = "noopener"; }
+    var mid = document.createElement("span");
+    mid.className = "mw-tv-mid";
+    var tag = document.createElement("span");
+    tag.className = "mw-tv-tag"; tag.textContent = pr.tag;
+    var ttl = document.createElement("span");
+    ttl.className = "mw-tv-title"; ttl.textContent = pr.head;
+    var ln = document.createElement("span");
+    ln.className = "mw-tv-line"; ln.textContent = pr.line;
+    mid.appendChild(tag); mid.appendChild(ttl); mid.appendChild(ln);
+    a.appendChild(mid);
+    var cta = document.createElement("span");
+    cta.className = "mw-tv-cta"; cta.textContent = pr.cta;
+    a.appendChild(cta);
+  }
+
+  function mountTvFill() {
+    if (isHidden()) return;
+    var shell = document.getElementById("tw-shell");
+    if (!shell || shell.querySelector(".mw-tvfill")) return;
+    var top = document.createElement("div");
+    top.className = "mw-tvfill"; top.id = "mw-tvfill-top";
+    var bot = document.createElement("div");
+    bot.className = "mw-tvfill"; bot.id = "mw-tvfill-bot";
+    shell.appendChild(top); shell.appendChild(bot);
+    tvFillSlots.push(top); tvFillSlots.push(bot);
+    layoutTvFill();
+  }
+
+  function tvFillHide() {
+    tvFillSlots.forEach(function (z) { z.classList.remove("on"); z.style.height = "0px"; });
+  }
+
+  function layoutTvFill() {
+    if (!tvFillSlots.length) return;
+    var shell = document.getElementById("tw-shell");
+    var stage = document.getElementById("tw-stage");
+    if (!shell || !stage || !document.body || document.body.dataset.view !== "mwtv") { tvFillHide(); return; }
+    if (stage.classList.contains("vs-on") || stage.classList.contains("msv-on")) { tvFillHide(); return; }
+    var slot = null, best = 0.05;
+    ["tw-vs1", "tw-vs2"].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var op = parseFloat(el.style.opacity || "0");
+      if (op > best && el.querySelector("iframe,video,canvas")) { best = op; slot = el; }
+    });
+    if (!slot) { tvFillHide(); return; }
+    var sr = shell.getBoundingClientRect();
+    if (!sr.height) { tvFillHide(); return; }
+    var pic = slot.getBoundingClientRect();
+    var picTop = pic.top - sr.top, picBot = pic.bottom - sr.top;
+    var bar = document.getElementById("tw-bar");
+    var topEdge = 0;
+    if (bar) topEdge = Math.max(0, bar.getBoundingClientRect().bottom - sr.top);
+    var botEdge = sr.height;
+    var adbar = shell.querySelector(".mw-adbar");
+    if (adbar) botEdge = Math.min(botEdge, adbar.getBoundingClientRect().top - sr.top);
+    var chip = document.getElementById("tw-vchip");
+    var contentBot = picBot;
+    if (chip && !chip.hidden) {
+      var cr = chip.getBoundingClientRect();
+      if (cr.height) contentBot = Math.max(contentBot, cr.bottom - sr.top);
+    }
+    var GAP = 8;
+    var top = tvFillSlots[0], bot = tvFillSlots[1];
+    var tH = picTop - GAP - (topEdge + GAP);
+    if (top && tH >= TV_MIN_BAND) {
+      top.style.top = (topEdge + GAP) + "px"; top.style.height = tH + "px"; top.classList.add("on");
+    } else if (top) { top.classList.remove("on"); top.style.height = "0px"; }
+    var bH = (botEdge - GAP) - (contentBot + GAP);
+    if (bot && bH >= TV_MIN_BAND) {
+      bot.style.top = (contentBot + GAP) + "px"; bot.style.height = bH + "px"; bot.classList.add("on");
+    } else if (bot) { bot.classList.remove("on"); bot.style.height = "0px"; }
+  }
+
   /* No-jump rule (owner, 2026-10-27: "when they refresh it, it doesn't jump"):
      the ad boxes are created IMMEDIATELY, empty, at their final size — the space
      is reserved before the product fetch returns, so when the ads fill in (and
@@ -181,6 +358,7 @@
     });
     mountRadioSlots();
     mountScreenBar();
+    mountTvFill();
   }
 
   function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
@@ -257,12 +435,22 @@
         slots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); slots = [];
         shelves.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); shelves = [];
         barSlots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); barSlots = [];
+        tvFillSlots.forEach(function (s) { if (s.parentNode) s.parentNode.removeChild(s); }); tvFillSlots = [];
         return;
       }
       slots.forEach(fill);
       barSlots.forEach(fillBar);
+      if (tvFillSlots.length) { fillTvTop(tvFillSlots[0]); fillTvBot(tvFillSlots[1]); layoutTvFill(); }
       fillRadio();
-      if (slots.length || barSlots.length) setInterval(function () { if (!document.hidden) { slots.forEach(fill); barSlots.forEach(fillBar); } }, 12000);
+      if (slots.length || barSlots.length || tvFillSlots.length) setInterval(function () { if (!document.hidden) { slots.forEach(fill); barSlots.forEach(fillBar); if (tvFillSlots.length) { fillTvTop(tvFillSlots[0]); fillTvBot(tvFillSlots[1]); layoutTvFill(); } } }, 12000);
+      if (tvFillSlots.length) {
+        // geometry watch: rotation changes, orientation flips and the
+        // top bar wrapping all move the empty bands — re-measure only,
+        // never touching the players (rect reads + ad-box styles).
+        setInterval(layoutTvFill, 1000);
+        window.addEventListener("resize", layoutTvFill);
+        window.addEventListener("orientationchange", layoutTvFill);
+      }
     };
     var n = 0, step = function () { if (++n === 2) done(); };
     if (window.MW_shopCatalog) {
