@@ -17,8 +17,11 @@
  *                            from his browser. No dashboard step exists.
  *
  * Webhook verification has two modes, chosen by what the environment holds:
- *   (a) a signing secret is set (STRIPE_DJ_WEBHOOK_SECRET, falling back to
- *       STRIPE_WEBHOOK_SECRET) → classic HMAC signature verification;
+ *   (a) the DJ signing secret is set (STRIPE_DJ_WEBHOOK_SECRET) → classic
+ *       HMAC signature verification. The coins secret STRIPE_WEBHOOK_SECRET
+ *       is NOT used here: Stripe signs each endpoint with its own secret,
+ *       so that one can never verify a DJ event, and its presence must not
+ *       switch this endpoint out of refetch mode;
  *   (b) no signing secret → RE-FETCH verification: the posted body is
  *       trusted for its event id ONLY; the event is fetched back from
  *       Stripe with STRIPE_SECRET_KEY and only the FETCHED object is
@@ -71,7 +74,11 @@ async function stripeGet(env, path) {
   const r = await fetch("https://api.stripe.com/v1/" + path, { headers: { authorization: "Bearer " + env.STRIPE_SECRET_KEY } });
   const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error((j.error && j.error.message) || "Stripe error " + r.status); return j;
 }
-const webhookSecret = (env) => env.STRIPE_DJ_WEBHOOK_SECRET || env.STRIPE_WEBHOOK_SECRET || null;
+const webhookSecret = (env) => env.STRIPE_DJ_WEBHOOK_SECRET || null;
+// NOTE: STRIPE_WEBHOOK_SECRET is deliberately NOT a fallback here. That
+// secret belongs to the COINS webhook endpoint; Stripe signs every endpoint
+// with its own secret, so the coins secret can never verify a DJ event —
+// and its presence must not switch this endpoint out of refetch mode.
 // Stripe signs each webhook: "t=<time>,v1=<hmac-sha256 of `${t}.${body}`>"
 async function stripeSigned(env, body, header) {
   const secret = webhookSecret(env);
