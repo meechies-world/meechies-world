@@ -493,6 +493,8 @@ function mwVmixRescue(S, now, obs) {
  * production — the unattended lane below is what fires today. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
 const TV_PROGRAM_V = 2;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired)
+const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
+const TV_PREM_PROBE_MS = 600e3;      // premiere slot file-existence probes are cached this long in tv/now
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
 const TV_NEWS_LEN = 600;           // the TV news window: :50-:00, ten minutes
 const TV_HORIZON = 2 * 3600e3;     // segments are generated this far ahead of now
@@ -549,7 +551,17 @@ function tvGen(chan, pool, cursor, horizonMs) {
   let guard = 0, skips = 0;
   while (t < horizonMs && guard++ < 600) {
     const win = tvNewsWin(t);
+    const pwin = tvPremWin(t, chan._prem);
     if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
+    if (pwin && pwin.inside) {
+      // MY EMPIRE premiere slot: chain the live slot items; the program
+      // cursor freezes and the interrupted program resumes after the
+      // slot from the offset it reached (same split rule as news).
+      let slotOff = (t - pwin.start) / 1000, segIt = null, segOff = 0;
+      for (const sit of chan._prem.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
+      if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((pwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
+      t = pwin.end; continue;
+    }
     const it = items[ix];
     if (!it) break;
     if (!tvCleared(it)) { ix = (ix + 1) % items.length; off = 0; if (++skips > items.length) break; continue; }
@@ -557,10 +569,12 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const remain = Math.round((+it.dur - off) * 10) / 10;
     if (!(remain > 0)) { ix = (ix + 1) % items.length; off = 0; continue; }
     const progEnd = t + remain * 1000;
-    if (win.start < progEnd) {
-      const cutSec = Math.round((win.start - t) / 100) / 10;
+    let boundary = win.start;
+    if (pwin && !pwin.inside && pwin.start > t && pwin.start < boundary) boundary = pwin.start;
+    if (boundary < progEnd) {
+      const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
-      t = win.start;
+      t = boundary;
       continue;
     }
     segs.push(tvProgSeg(it, t, remain, off)); run += remain; t = progEnd; ix = (ix + 1) % items.length; off = 0;
@@ -740,6 +754,35 @@ function tvSeedPool(now) {
   for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = bag[i]; bag[i] = bag[j]; bag[j] = t; }
   return { items, bag, bagIx: 0, progV: TV_PROGRAM_V, updatedAt: now, by: "keeper-seed" };
 }
+function tvSeedPremiere(now) {
+  const R = (evidence) => ({ basis: "own", evidence, clearedBy: "owner", at: now, simulcast: true });
+  // MY EMPIRE premiere slot (owner order 2026-11-02): every day at
+  // 20:00 ET. Items chain in order inside the slot. A file item airs
+  // only once the file actually exists on site media (tvPremLive
+  // probes it): a missing file means the slot silently skips and the
+  // music cycle plays through, so the slot can never be dead air
+  // before the uploads land.
+  return { on: true, startMinET: 1200, progV: TV_PREM_V, items: [
+    { id: "me-episode", kind: "show", src: "file", url: "/media/my-empire-ep1.mp4", title: "Episode 1 — Premiere Night", show: "MY EMPIRE", dur: 900, rights: R("Malik own show: his life, his music, his businesses; he is the creator and rights holder. Episode file lands on his own site media.") },
+    { id: "me-teaser", kind: "show", src: "file", url: "/media/my-empire-teaser.mp4", title: "First Look — Official Teaser", show: "MY EMPIRE", dur: 210, rights: R("Malik own show teaser, cut from his own episode footage at his request (2026-11-02).") }
+  ], updatedAt: now, by: "keeper-seed" };
+}
+/* The MY EMPIRE premiere window containing ms (inside: true) or the
+ * next one. prem = { startMinET, liveDurSec } as built by tvPremLive.
+ * Same whole-hour ET offset arithmetic as tvNewsWin; 20:00 ET exists
+ * every day, DST transitions never touch it. */
+function tvPremWin(ms, prem) {
+  if (!prem || !(prem.liveDurSec > 0)) return null;
+  const startMin = +prem.startMinET || 1200;
+  const et = tvEtParts(ms), sec = Math.floor((ms % 60000) / 1000);
+  const mins = et.hour * 60 + et.minute;
+  let start = ms - ((mins - startMin) * 60 + sec) * 1000;
+  if (start > ms) start -= 86400e3;
+  const end = start + prem.liveDurSec * 1000;
+  if (ms >= start && ms < end) return { start, end, inside: true };
+  const nstart = start + 86400e3;
+  return { start: nstart, end: nstart + prem.liveDurSec * 1000, inside: false };
+}
 /* Boundary re-check (SPEC §1.4): embedding can be switched off after
  * an item is added, so when the on-air segment rolls over, verify the
  * NEXT program in the window — rights record still complete, not on
@@ -772,16 +815,49 @@ async function tvRecheckNext(env, chan, segs, now, origin, nw) {
   }
   if (held) {
     it.held = held; it.heldAt = now; chan.updatedAt = now; chan.by = "keeper";
+    delete chan._prem;
     await writeDoc(env, "tv/channel", "tv", chan);
     return it.id;
   }
   return "";
+}
+/* Which premiere slot items can actually air right now: cleared items
+ * whose media exists. YouTube items pass on the gate/recheck rules;
+ * file items are probed (1-byte range GET) with the verdict cached in
+ * tv/now for TV_PREM_PROBE_MS, so a file that has not landed yet costs
+ * one tiny probe per 10 minutes and the slot stays dark — never a
+ * stall — until the upload exists. liveDurSec is clamped so the slot
+ * can never reach the next :50 news window. */
+async function tvPremLive(prem, nw, now, origin) {
+  const cache = { ...((nw && nw.premProbe) || {}) };
+  let cacheChanged = false;
+  if (!prem || prem.on === false || !Array.isArray(prem.items)) return { prem: null, cache, cacheChanged };
+  const live = [];
+  for (const it of prem.items) {
+    if (!tvCleared(it)) continue;
+    if (it.src === "yt") { live.push(it); continue; }
+    if (it.src !== "file" && it.src !== "ia") continue;
+    const c = cache[it.url];
+    if (c && now - c.at < TV_PREM_PROBE_MS) { if (c.ok) live.push(it); continue; }
+    let ok = false;
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      ok = r.status === 200 || r.status === 206;
+    } catch (_) { ok = false; }
+    cache[it.url] = { ok, at: now }; cacheChanged = true;
+    if (ok) live.push(it);
+  }
+  const liveDurSec = Math.min(2940, live.reduce((a, i) => a + (+i.dur || 0), 0));
+  return { prem: live.length && liveDurSec > 0 ? { startMinET: +prem.startMinET || 1200, items: live, liveDurSec } : null, cache, cacheChanged };
 }
 async function tvTick(env, S, now, origin) {
   let chan = await readDoc(env, "tv/channel");
   if (!chan || !Array.isArray(chan.items) || !chan.items.length || (+chan.progV || 0) < TV_PROGRAM_V) { chan = tvSeedChannel(now); await writeDoc(env, "tv/channel", "tv", chan); }
   let pool = await readDoc(env, "tv/breakpool");
   if (!pool || !Array.isArray(pool.items) || !pool.items.length || (+pool.progV || 0) < TV_PROGRAM_V) { pool = tvSeedPool(now); await writeDoc(env, "tv/breakpool", "tv", pool); }
+  let prem = await readDoc(env, "tv/premiere");
+  if (!prem || !Array.isArray(prem.items) || !prem.items.length || (+prem.progV || 0) < TV_PREM_V) { prem = tvSeedPremiere(now); await writeDoc(env, "tv/premiere", "tv", prem); }
   const newsDoc = await readDoc(env, "tv/news");
   const decision = tvRadioDecision(S, newsDoc, now);
   if (chan.on === false) {
@@ -795,6 +871,8 @@ async function tvTick(env, S, now, origin) {
     return decision;
   }
   let nw = await readDoc(env, "tv/now");
+  const premState = await tvPremLive(prem, nw, now, origin);
+  chan._prem = premState.prem;
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
   let dirty = false;
@@ -833,8 +911,10 @@ async function tvTick(env, S, now, origin) {
       dirty = true;
     }
   }
+  if (premState.cacheChanged) dirty = true;
+  delete chan._prem;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, genAt: now, updatedAt: now });
   }
   return decision;
 }
