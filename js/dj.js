@@ -5573,7 +5573,34 @@ html.popdj #dj-mini{display:none!important}
    * so the tail paints are the first to starve on a loaded tab.
    * chanSync is idempotent (per-surface key guards), so a 1s tick of
    * its own costs nothing when nothing changed. */
-  setInterval(() => { try { chanSync(); } catch (_) {} }, 1000);
+  /* MW TV IMMERSIVE (owner, 2026-11-02: "All that stuff is in the way
+   * people will get mad about that"): while the MW TV view is open, every
+   * overlay on the page — the top bar, guide, progress, deck chip, the
+   * house-ad bar and fill zones, the chat bubble and heads, the owner's
+   * Edit site button — fades out after ~3.5s without a touch and stays
+   * out while he watches. Any pointerdown or keypress brings the chrome
+   * back and restarts the clock. The state is one body class
+   * (tw-immersive); the CSS half lives in the #mwtv-styles block in
+   * index.html, every rule gated on body[data-view="mwtv"] so no other
+   * page can ever wear it, and leaving the view clears the class on the
+   * next tick — nothing here touches a player, the sound switch or the
+   * channel tuner itself. */
+  const TW_IDLE_MS = 3500;
+  let twLastAct = 0, twImmOn = false, twImmWired = false;
+  function twImmSet(on) { twImmOn = !!on; try { document.body.classList.toggle("tw-immersive", twImmOn); } catch (_) {} }
+  function twImmPoke() { twLastAct = Date.now(); if (twImmOn) twImmSet(false); }
+  function twImmWire() {
+    if (twImmWired) return; twImmWired = true;
+    try { document.addEventListener("pointerdown", () => { if (elOpen("v-mwtv")) twImmPoke(); }, true); } catch (_) {}
+    try { document.addEventListener("keydown", () => { if (elOpen("v-mwtv")) twImmPoke(); }, true); } catch (_) {}
+  }
+  function twImmTick() {
+    if (!elOpen("v-mwtv")) { if (twImmOn) twImmSet(false); twLastAct = 0; return; }
+    twImmWire();
+    if (!twLastAct) { twLastAct = Date.now(); return; }
+    if (!twImmOn && Date.now() - twLastAct >= TW_IDLE_MS) twImmSet(true);
+  }
+  setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} }, 1000);
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
    * screen is one more screen in the same system — the live stream
    * overlays it through vsStageEls and this paints the SAME video mix
@@ -6724,7 +6751,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793627624;
+  const MW_DJ_BUILD = 1793628467;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
