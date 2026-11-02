@@ -41,7 +41,14 @@ const LAZY_SRC={
    * view). fb-feed-plus and book-plus are unchanged files, so their pins
    * keep their last-change stamp; stories.js changed in this build (it
    * clears MW_STORIES_PENDING), so its pin tracks this build stamp. */
-  community:["js/fb-feed-plus.js?v=1793645289","js/stories.js?v=1793647500","js/book-plus.js?v=1793645289"],
+  community:["js/fb-feed-plus.js?v=1793645289","js/stories.js?v=1793647500","js/book-plus.js?v=1793645289","js/soul-greet.js?v=1793653007"],
+  /* SOUL S1 — "He Knows Your Name" (2026-11-02): the host brain's member
+   * greeting (js/soul-greet.js) rides the first open of the radio, Watch
+   * or community views and paints one recognition line on each of those
+   * surfaces from the member's own /api/brain/me summary. One module,
+   * three doors — it guards itself against double-loading. */
+  radio:["js/soul-greet.js?v=1793653007"],
+  watch:["js/soul-greet.js?v=1793653007"],
   /* Profile bundle (max-speed Lever 2, 2026-11-02): profile-setup.js and
    * profile-page.js load once, the first time a profile surface is needed
    * (avatar/name tap, cold #u/<id> link, the setup nudge, the designer
@@ -54,7 +61,7 @@ const LAZY_SRC={
    * these bytes for everyone (fetch only, never executed); dj.js fetches the
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
    * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
-  djbooth:["js/dj-booth.js?v=1793652244"],
+  djbooth:["js/dj-booth.js?v=1793653007"],
 };
 /* fb-feed's fallback story row must never paint ahead of the real
  * stories: this flag is up from the first eager script until stories.js
@@ -1659,7 +1666,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793652633;
+const MW_SHELL_BUILD = 1793653007;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();

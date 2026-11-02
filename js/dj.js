@@ -6705,7 +6705,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793652244;
+  const MW_DJ_BUILD = 1793653007;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7697,9 +7697,26 @@ html.popdj #dj-mini{display:none!important}
   });
 
   /* ---------- requests + listener voice drops ---------- */
+  /* SOUL S1: a signed-in member's own pick folds its title into their
+   * host-brain memory (lastRequest) through the member door of
+   * /api/brain/event — the same single writer path as visits. The uid is
+   * the session's own, stamped server-side, never the body's; guests have
+   * no session to stamp, and the owner and the sandbox never teach the
+   * member brain. Fire and forget: a failed note changes nothing about
+   * the request itself, and only successful sends are noted. */
+  function rqBrainNote(data) {
+    try {
+      if (!data || data.kind !== "pick" || !data.title) return;
+      if (typeof SANDBOX !== "undefined" && SANDBOX) return;
+      if (typeof OWNER === "function" && OWNER()) return;
+      const ses = (typeof mySess === "function") ? mySess() : null; const tok = ses && ses.access_token;
+      if (!tok) return;
+      fetch("/api/brain/event", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ events: [{ type: "request", title: String(data.title).slice(0, 160), at: Date.now() }] }), keepalive: true }).catch(() => {});
+    } catch (_) {}
+  }
   async function sendRequest(data) {
     const d = DBF();
-    if (d) { try { await d.collection("requests").add(data); return; } catch (_) {} }
+    if (d) { try { await d.collection("requests").add(data); rqBrainNote(data); return; } catch (_) {} }
     // not signed in (or the member write refused): the station itself takes song
     // picks and text requests from anyone — the booth sees them like any request
     const body = { kind: data.kind, title: data.title || "", cover: data.cover || "", dur: +data.dur || 0, text: data.text || "" };
@@ -7707,6 +7724,7 @@ html.popdj #dj-mini{display:none!important}
     if (data.kind === "pick" && !data.yt) { let src = data.src || ""; if (!src && data.iaId) { try { src = await iaFile(data.iaId); } catch (_) {} } if (!src) throw new Error("no src"); body.src = src; }
     const r = await fetch("/api/station", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (!r.ok) { let code = ""; try { code = (await r.json()).error || ""; } catch (_) {} const err = new Error(code || "request refused"); err.code = code; throw err; }
+    rqBrainNote(data);
   }
   $("#rq-form").addEventListener("submit", async (e) => {
     e.preventDefault(); const v = $("#rq-text").value.trim(); if (!v) return;

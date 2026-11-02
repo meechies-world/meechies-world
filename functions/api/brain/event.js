@@ -16,10 +16,17 @@
  * PR-B3 adds one exception, kept narrow on purpose: a batch of ONLY
  * {type:"visit"} events from any signed-in member folds that member's own
  * host-brain memory (lib/brain-member.js) and writes nothing here. Music
- * events stay owner-only, unchanged. */
+ * events stay owner-only, unchanged.
+ *
+ * SOUL S1 widens that one exception by a single sibling: {type:"request"}
+ * events (the title of a pick the member just sent to the station) fold
+ * into the same member doc through the same writer — the uid still comes
+ * from the session, never the body, so a request note can only ever land
+ * on the requester's own memory. A batch mixing either fold type with a
+ * music event falls through to the owner-only path, exactly as before. */
 import { userFrom, json, take, isAdmin } from "../../../lib/cf.js";
 import { cleanBrainEvent, recordBrainEvents } from "../../../lib/brain-taste.js";
-import { foldVisit } from "../../../lib/brain-member.js";
+import { foldVisit, foldRequest } from "../../../lib/brain-member.js";
 
 const MAX_BATCH = 25; // the blueprint cap: one flush is a handful of songs, never a flood
 
@@ -37,12 +44,21 @@ export async function onRequestPost({ request, env }) {
    * or the taste profile, so it cannot plant anything on air. The uid comes
    * from the session, never the body. A batch mixing a visit with anything
    * else falls through to the owner-only music path below and is refused
-   * for non-owners exactly as before. */
-  if (list.length && list.every((e) => e && e.type === "visit")) {
+   * for non-owners exactly as before. SOUL S1: a {type:"request"} event is
+   * the same shape of exception — the member's own client reporting a pick
+   * they just sent (see the header note) — so the fold family is exactly
+   * {visit, request} and nothing else. */
+  if (list.length && list.every((e) => e && (e.type === "visit" || e.type === "request"))) {
     if (!(await take(env, "bvisit:" + me.id, 60, 6))) return json({ ok: false, error: "too_fast" }, 429);
     try {
-      const mem = await foldVisit(env, me);
-      return json({ ok: true, visit: true, visits: mem ? +mem.visits || 0 : 0 });
+      const out = { ok: true };
+      if (list.some((e) => e.type === "visit")) {
+        const mem = await foldVisit(env, me);
+        out.visit = true; out.visits = mem ? +mem.visits || 0 : 0;
+      }
+      const reqs = list.filter((e) => e.type === "request");
+      if (reqs.length) { await foldRequest(env, me, reqs[reqs.length - 1].title); out.requested = true; }
+      return json(out);
     } catch (_) {
       return json({ ok: false, error: "write_failed" }, 500);
     }
