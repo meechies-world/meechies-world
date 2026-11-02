@@ -5407,7 +5407,7 @@ html.popdj #dj-mini{display:none!important}
     { id: "WB", slot: "#wb-vs1", warm: true, on: () => elOpen("v-watch"), aud: () => false },
     { id: "BO", slot: "#dj-vs1", warm: true, on: () => OWNER() && elOpen("v-djbooth"), aud: () => false }
   ];
-  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; });
+  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; });
   function chanOverlay(su) {
     const slot = document.querySelector(su.slot); if (!slot) return null;
     const box = slot.closest(".vstage"); if (!box) return null;
@@ -5425,6 +5425,14 @@ html.popdj #dj-mini{display:none!important}
   function chanPark(su) { if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; }
   function chanYtMount(su, yt, startAt, muted) {
     const kAtCall = su.key;
+    /* Tape position at READY time (2026-11-02): startAt is the position
+     * captured when the mount was CALLED, and API + construction latency
+     * on a cold seat is seconds — seeking to the stale startAt on ready
+     * made the player start at a wrong point, jump once to the stale
+     * point, then get drift-seeked again. freshPos recomputes the same
+     * pick that built cur (TW answers to tvChanCurTv, the rest to
+     * tvChanCur) and only answers while this mount's key is current. */
+    const freshPos = () => { try { const c = su.id === "TW" ? tvChanCurTv() : tvChanCur(); return c && c.key === kAtCall ? c.pos : null; } catch (_) { return null; } };
     su.mounting = true; su.mountAt = Date.now();
     ytApi().then(() => {
       if (!su.el || su.key !== kAtCall) return;
@@ -5437,7 +5445,7 @@ html.popdj #dj-mini{display:none!important}
       su.el.innerHTML = "<div></div>";
       try {
         su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
-          onReady: (e) => { try { e.target.mute(); } catch (_) {} try { e.target.playVideo(); } catch (_) {} try { e.target.seekTo(Math.max(0, startAt), true); } catch (_) {} try { if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
+          onReady: (e) => { try { e.target.mute(); } catch (_) {} try { const fp = freshPos(); e.target.seekTo(Math.max(0, fp != null ? fp : startAt), true); } catch (_) {} try { e.target.playVideo(); } catch (_) {} try { if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
           onStateChange: (e) => { try { if (e.data === YT.PlayerState.PLAYING && su.el) { const fr = su.el.querySelector("iframe"); if (fr) fr.classList.add("playing"); } } catch (_) {} },
           onError: () => { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } catch (_) {} }
         } });
@@ -5477,7 +5485,7 @@ html.popdj #dj-mini{display:none!important}
       const w = su.warmEnt && su.warmEnt.key === cur.key ? su.warmEnt : null;
       chanTeardown(su, w ? w.v : null);
       if (w) su.warmEnt = null;
-      su.key = cur.key; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0;
+      su.key = cur.key; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0;
       if (w && (cur.src === "file" || cur.src === "ia")) { w.v.classList.remove("tvwarm"); chanFileMount(su, cur.url, cur.pos, !audible, w.v); }
       else if (cur.src === "yt") chanYtMount(su, cur.yt, cur.pos, !audible);
       else chanFileMount(su, cur.url, cur.pos, !audible, null);
@@ -5520,11 +5528,34 @@ html.popdj #dj-mini{display:none!important}
          * sync owns channel playback; a seat's own pause lives on the
          * decks/screens, and TV sound stays seat-local via audible. */
         const pst = su.p.getPlayerState();
+        /* Overstated-duration tail (2026-11-02): when the tape position
+         * is past the real video end (+1s grace) the player can only sit
+         * at ENDED and every seek lands clamped at the end — suppress
+         * BOTH the ENDED kick and the drift seek down there; the segment
+         * key change moves on. In-range ENDED recovery is unchanged. */
+        let dur = 0; try { dur = +su.p.getDuration() || 0; } catch (_) {}
+        const pastEnd = dur > 0 && cur.pos > dur + 1;
         if ((pst === 2 || pst === 5 || pst === -1) && Date.now() - (su.kickAt || 0) > 4000) { su.kickAt = Date.now(); su.p.playVideo(); }
-        else if (pst === 0 && Date.now() - (su.kickAt || 0) > 4000) { su.kickAt = Date.now(); su.p.seekTo(Math.max(0, cur.pos), true); su.p.playVideo(); }
+        else if (pst === 0 && !pastEnd && Date.now() - (su.kickAt || 0) > 4000) { su.kickAt = Date.now(); su.p.seekTo(Math.max(0, cur.pos), true); su.p.playVideo(); }
         if (audible) { su.p.unMute(); su.p.setVolume(100); } else su.p.mute();
+        /* Drift correction (2026-11-02): NEVER seek a BUFFERING player.
+         * Its clock is frozen while the wall-clock tape runs on, so the
+         * old rule hard-seeked every ~4s through every stall, throwing
+         * away the very buffer that would have ended it — the "skippy"
+         * storm, and a NO-SKIP violation. Now drift observed in state 1
+         * (PLAYING) only stamps su.driftAt; the stamp clears the moment
+         * drift is back within 3s, and only drift that PERSISTS ~3s in
+         * state 1 earns exactly ONE corrective seek — the 3s threshold
+         * and the ~4s seekAt throttle are kept for that one seek. A
+         * buffering player is left alone to resume; a brief dip clears
+         * the stamp and self-recovers with no seek at all. */
         const ct = su.p.getCurrentTime();
-        if (isFinite(ct) && Math.abs(ct - cur.pos) > 3 && Date.now() - (su.seekAt || 0) > 4000) { su.seekAt = Date.now(); su.p.seekTo(Math.max(0, cur.pos), true); }
+        const drifted = isFinite(ct) && Math.abs(ct - cur.pos) > 3;
+        if (!drifted) su.driftAt = 0;
+        else if (pst === 1) {
+          if (!su.driftAt) su.driftAt = Date.now();
+          else if (!pastEnd && Date.now() - su.driftAt >= 3000 && Date.now() - (su.seekAt || 0) > 4000) { su.seekAt = Date.now(); su.driftAt = 0; su.p.seekTo(Math.max(0, cur.pos), true); }
+        }
       } catch (_) {}
     }
   }
@@ -5588,8 +5619,14 @@ html.popdj #dj-mini{display:none!important}
    * overlay on the page — the top bar, guide, progress, deck chip, the
    * house-ad bar and fill zones, the chat bubble and heads, the owner's
    * Edit site button — fades out after ~3.5s without a touch and stays
-   * out while he watches. Any pointerdown or keypress brings the chrome
-   * back and restarts the clock. The state is one body class
+   * out while he watches. A pointerdown, a pointer move, a keypress or
+   * a fullscreen change brings the chrome back and restarts the clock
+   * (2026-11-02: pointermove + fullscreenchange added, and the
+   * #tw-summon layer in index.html takes pointer events over the
+   * stage while — and only while — the chrome is hidden, because the
+   * YouTube iframe swallows every event over the picture and no page
+   * listener could ever hear a click that landed on the video). The
+   * state is one body class
    * (tw-immersive); the CSS half lives in the #mwtv-styles block in
    * index.html, every rule gated on body[data-view="mwtv"] so no other
    * page can ever wear it, and leaving the view clears the class on the
@@ -5602,7 +5639,19 @@ html.popdj #dj-mini{display:none!important}
   function twImmWire() {
     if (twImmWired) return; twImmWired = true;
     try { document.addEventListener("pointerdown", () => { if (elOpen("v-mwtv")) twImmPoke(); }, true); } catch (_) {}
+    /* Pointer MOVE restores too (2026-11-02): waving the mouse is the
+     * gesture every desktop viewer actually makes, and until now no
+     * move listener existed at all — the chrome could only come back
+     * from a click that landed on page territory or a keypress while
+     * the page (not the YouTube iframe) held focus. The poke itself
+     * is two field writes plus a class toggle only when on, so a
+     * capture listener on every move costs nothing. */
+    try { document.addEventListener("pointermove", () => { if (elOpen("v-mwtv")) twImmPoke(); }, true); } catch (_) {}
     try { document.addEventListener("keydown", () => { if (elOpen("v-mwtv")) twImmPoke(); }, true); } catch (_) {}
+    /* Entering or leaving fullscreen also shows the chrome and
+     * restarts the idle clock (2026-11-02) — Esc used to leave a
+     * fullscreen exit with the chrome still hidden and no way back. */
+    try { document.addEventListener("fullscreenchange", () => { if (elOpen("v-mwtv")) twImmPoke(); }); } catch (_) {}
   }
   function twImmTick() {
     if (!elOpen("v-mwtv")) { if (twImmOn) twImmSet(false); twLastAct = 0; return; }
@@ -6761,7 +6810,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793660691;
+  const MW_DJ_BUILD = 1793662201;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };

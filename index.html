@@ -1117,6 +1117,25 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 @media(orientation:landscape){#tw-stagebox{position:absolute;inset:0}#tw-stage{width:100dvw;height:100dvh;aspect-ratio:auto}}
 body[data-view="mwtv"] #tw-bar,body[data-view="mwtv"] #tw-guide,body[data-view="mwtv"] #tw-progwrap,body[data-view="mwtv"] #tw-vchip,body[data-view="mwtv"] #tw-shell .mw-adbar,body[data-view="mwtv"] #tw-shell .mw-tvfill,body[data-view="mwtv"] #mx-fab,body[data-view="mwtv"] #mx-heads,body[data-view="mwtv"] #mw-fab{transition:opacity .35s ease}
 body[data-view="mwtv"].tw-immersive #tw-bar,body[data-view="mwtv"].tw-immersive #tw-guide,body[data-view="mwtv"].tw-immersive #tw-progwrap,body[data-view="mwtv"].tw-immersive #tw-vchip,body[data-view="mwtv"].tw-immersive #tw-shell .mw-adbar,body[data-view="mwtv"].tw-immersive #tw-shell .mw-tvfill,body[data-view="mwtv"].tw-immersive #mx-fab,body[data-view="mwtv"].tw-immersive #mx-heads,body[data-view="mwtv"].tw-immersive #mw-fab{opacity:0!important;pointer-events:none!important;visibility:hidden}
+/* Summon layer (2026-11-02): while the chrome is hidden, the YouTube
+   iframe owns every pointer event over the picture — events inside a
+   cross-origin iframe never reach the page, so no document listener
+   could hear a click or tap on the video asking for the chrome back,
+   and mouse movement had no listener at all: in exact-fit landscape
+   or true fullscreen there was NO gesture that restored the bar
+   (including #tw-sound, the one control that turns the TV sound on).
+   This fully transparent layer sits above the channel layer (z6) and
+   below the in-stage chrome (progress z8, guide z9); it is inert
+   (pointer-events:none) whenever the chrome is up, so the iframe
+   behaves exactly as before, and only while tw-immersive is set does
+   it take pointer events — a click/tap anywhere on the stage then
+   lands on a page element, the capture-phase pointerdown poke in
+   dj.js fires, the chrome returns and the layer goes inert again.
+   Losing the iframe's own click while immersive costs nothing: the
+   channel player is built with controls:0, so there are no native
+   controls behind it to preserve. */
+#tw-summon{position:absolute;inset:0;z-index:7;pointer-events:none;background:transparent}
+body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 /* Once the channel layer is on, the standby slate's words (the giant
    MW TV wordmark + the status line) must never peek above or below the
    playing picture — the poster art itself stays: it is the never-blank
@@ -1147,6 +1166,7 @@ body[data-view="mwtv"].tw-immersive #tw-bar,body[data-view="mwtv"].tw-immersive 
         <div class="vchip" id="tw-vchip" hidden></div>
 <div id="tw-progwrap" hidden><div id="tw-prog"></div></div>
 <div id="tw-guide" hidden><div class="tw-g-row" id="tw-g-now"></div><div class="tw-g-row" id="tw-g-next1"></div><div class="tw-g-row" id="tw-g-next2"></div><div class="tw-g-note" id="tw-g-note"></div></div>
+        <div id="tw-summon" aria-hidden="true"></div>
       </div>
     </div>
     <div id="tw-bar">
@@ -1865,7 +1885,7 @@ body[data-view="mwtv"].tw-immersive #tw-bar,body[data-view="mwtv"].tw-immersive 
 <script src="js/owner.js?v=1793655457"></script>
 <script src="js/messages.js?v=1793655457"></script>
 <script src="js/videos.js?v=1793655457"></script>
-<script src="js/dj.js?v=1793660691"></script>
+<script src="js/dj.js?v=1793662201"></script>
 <script src="js/live.js?v=1793655457"></script>
 <script src="js/friends.js?v=1793655457"></script>
 <script src="js/social.js?v=1793655457"></script>
