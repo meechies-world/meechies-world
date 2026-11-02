@@ -306,7 +306,11 @@
       var el = document.getElementById(id);
       if (!el) return;
       var op = parseFloat(el.style.opacity || "0");
-      if (op > best && el.querySelector("iframe,video,canvas")) { best = op; slot = el; }
+      /* The renderer flags the featured slot with an inline opacity and
+         mounts its player inside; the flagged box IS the picture area,
+         whatever element the mount uses, so any child counts. A warm
+         or parked slot sits at opacity 0 and never qualifies. */
+      if (op > best && el.children.length) { best = op; slot = el; }
     });
     if (!slot) { tvFillHide(); return; }
     var sr = shell.getBoundingClientRect();
