@@ -1812,19 +1812,22 @@ html.popdj #dj-mini{display:none!important}
    * as every other booth doc: a get() on open, the doc's own snapshot
    * feed while the booth lives (the fold writes a changes row, so taste
    * rides the sync like any doc), and a slow re-read as a backstop. */
+  let brainLastTaste = null; // the taste doc brainPaint last painted with (PR-C2: the AI-DJ fetch repaints with it)
   function brainPaint(taste) {
     const box = document.getElementById("brain-body"); if (!box) return;
+    brainLastTaste = taste;
     const empty = "<small class=\"muted\">The brain is listening. Play, skip, and finish songs and it will start leaning your way.</small>";
-    if (!taste || typeof taste !== "object") { box.innerHTML = empty; return; }
+    if (!taste || typeof taste !== "object") { box.innerHTML = empty + aiDjSectionHtml(S, null, aiDjRows); return; }
     const tracks = taste.tracks && typeof taste.tracks === "object" ? taste.tracks : {};
     const artists = taste.artists && typeof taste.artists === "object" ? taste.artists : {};
     const topA = Object.keys(artists).map((n) => [n, artists[n]]).filter((x) => (x[1].p || 0) + (x[1].e || 0) + (x[1].s || 0) > 0).sort((a, b) => brainScore(b[1]) - brainScore(a[1])).slice(0, 5);
     const topT = Object.keys(tracks).map((k2) => [k2, tracks[k2]]).sort((a, b) => brainScore(b[1]) - brainScore(a[1])).slice(0, 5);
-    if (!topA.length && !topT.length && !taste.plays && !taste.ends && !taste.skips) { box.innerHTML = empty; return; }
+    if (!topA.length && !topT.length && !taste.plays && !taste.ends && !taste.skips) { box.innerHTML = empty + aiDjSectionHtml(S, taste, aiDjRows); return; }
     let h = "<div style=\"font-size:17.5px;margin-bottom:6px\">▶ " + (+taste.plays || 0) + " plays · ⏹ " + (+taste.ends || 0) + " finishes · ⏭ " + (+taste.skips || 0) + " skips</div>";
     if (topA.length) h += "<b style=\"font-size:15px;letter-spacing:.1em\">TOP ARTISTS</b>" + topA.map((x) => "<div class=\"dj-item\"><span>" + E(x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
     if (topT.length) h += "<b style=\"font-size:15px;letter-spacing:.1em;display:block;margin-top:8px\">TOP TRACKS</b>" + topT.map((x) => "<div class=\"dj-item\"><span title=\"" + E(x[1].title || x[0]) + "\">" + E(x[1].title || x[0]) + "</span><small class=\"muted\">" + (+x[1].p || 0) + " played · " + (+x[1].e || 0) + " finished · " + (+x[1].s || 0) + " skipped</small></div>").join("");
     if (topA.length) h += "<div style=\"margin-top:8px;font-size:17.5px\">🎧 Auto-DJ is leaning on: <b>" + E(topA[0][0]) + "</b></div>";
+    h += aiDjSectionHtml(S, taste, aiDjRows);
     box.innerHTML = h;
   }
   function brainTasteRead() {
@@ -1833,9 +1836,51 @@ html.popdj #dj-mini{display:none!important}
   }
   setTimeout(() => {
     brainTasteRead();
+    aiDjFetch();
     try { const d = DBF(); if (d && !SANDBOX && OWNER()) d.doc("brain/taste").onSnapshot((snap) => { brainPaint(snap && snap.exists && snap.data ? snap.data() : null); }, () => {}); } catch (_) {}
   }, 1500);
-  setInterval(() => { if (document.getElementById("dj-brain")) brainTasteRead(); }, 60000);
+  setInterval(() => { if (document.getElementById("dj-brain")) { brainTasteRead(); aiDjFetch(); } }, 60000);
+  /* ---------- AI-DJ panel section (PR-C2) ----------
+   * The BRAIN panel gains the AI-DJ readout C1 (PR #407) left for it: what
+   * Meechie AI has stocked in S.aiQ, why (the anchor artist rides the aidj
+   * draw rows in brain_events, not the queue item — joined here by key),
+   * what already played, and the booth side of the S.aiDj kill switch the
+   * keeper already honors (station.js aiDjGateCore: aiDj === false is off,
+   * anything else is on). Owner-only like the rest of the panel: the fetch
+   * rides the owner session and /api/brain/events refuses everyone else. */
+  /* AIDJ-C2-BEGIN */
+  let aiDjRows = []; // recent draw + play rows, newest first per kind
+  function aiDjSectionHtml(S2, taste, rows) {
+    const on = !S2 || S2.aiDj !== false;
+    const stock = S2 && Array.isArray(S2.aiQ) ? S2.aiQ.filter((it) => it && (it.title || it.yt)) : [];
+    const all = Array.isArray(rows) ? rows : [];
+    const draws = all.filter((r) => r && r.actor === "aidj" && r.type === "draw");
+    const anchorByKey = {}; for (const r of draws) if (r.key && r.artist) anchorByKey[r.key] = r.artist;
+    const playedKeys = new Set(all.filter((r) => r && r.type === "play").map((r) => r.key));
+    const artists = taste && typeof taste === "object" && taste.artists && typeof taste.artists === "object" ? taste.artists : {};
+    const topArtist = Object.keys(artists).sort((a, b) => brainScore(artists[b]) - brainScore(artists[a]))[0] || "";
+    let h = "<b style=\"font-size:15px;letter-spacing:.1em;display:block;margin-top:10px\">🤖 AI-DJ</b>";
+    h += "<label style=\"display:flex;gap:8px;align-items:center;font-size:15px;margin:4px 0\"><input type=\"checkbox\" id=\"aidj-on\" style=\"width:auto\"" + (on ? " checked" : "") + "> Meechie AI stocks the queue while you are away</label>";
+    if (!on) { h += "<small class=\"muted\">AI-DJ is off — your queue and the library rotation still run the station.</small>"; return h; }
+    if (!stock.length) h += "<small class=\"muted\">Nothing stocked right now — Meechie digs while the booth is quiet and keeps a few picks ready.</small>";
+    else h += stock.map((it) => { const anchor = anchorByKey["yt:" + it.yt] || topArtist; return "<div class=\"dj-item\"><span>" + E(it.title || it.yt) + "</span><small class=\"muted\">queued by Meechie AI" + (anchor ? " — because you play " + E(anchor) : "") + "</small></div>"; }).join("");
+    const recent = draws.slice(0, 5);
+    if (recent.length) h += "<div style=\"margin-top:6px\">" + recent.map((r) => "<small class=\"muted\" style=\"display:block\">🎧 " + E(r.title || r.key || "") + (r.artist ? " — dug for your " + E(r.artist) + " plays" : "") + (playedKeys.has(r.key) ? " · ▶ played" : " · stocked") + "</small>").join("") + "</div>";
+    return h;
+  }
+  function aiDjFetch() {
+    if (SANDBOX || !OWNER()) return;
+    try {
+      const ses = mySess(); if (!ses || !ses.access_token) return;
+      const hdrs = { authorization: "Bearer " + ses.access_token };
+      const grab = (kind, limit) => fetch("/api/brain/events?kind=" + kind + "&limit=" + limit, { headers: hdrs }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      Promise.all([grab("draw", 30), grab("play", 40)]).then(([d, p]) => {
+        const rows = [...((d && d.rows) || []), ...((p && p.rows) || [])];
+        if (rows.length) { aiDjRows = rows; if (document.getElementById("brain-body")) brainPaint(brainLastTaste); }
+      }).catch(() => {});
+    } catch (_) {}
+  }
+  /* AIDJ-C2-END */
   /* BRAIN-B2-END */
   /* ---------- the REPORTS panel readout (REPORTS LAW, 2026-10-30) ------
    * One door now: POST /api/reports with the session Bearer (mySess() —
@@ -6129,8 +6174,28 @@ html.popdj #dj-mini{display:none!important}
     try { doorPing(users); } catch (_) {} // HOST MODE: the same paint feeds the booth door
     try { arriveWatch(users); } catch (_) {} // and every owner screen gets the arrival notice
   }
+  /* ---------- HEART-H1 (staged with PR-C2): truthful reconnecting paint ----------
+   * The audit (brain-heart wave, 2026-11-01) proved the one heart gap on
+   * the live shell: when /api/station fails, the ping catch swallowed the
+   * error and every presence surface kept painting the last good numbers
+   * forever — a frozen "3 online" during an outage. The 12s cadence
+   * itself never changes (the keeper tick rides it; no backoff, no
+   * slowing), but after two missed answers the counts admit it: the
+   * chip dims and the booth lines say reconnecting until a ping lands. */
+  /* HEART-H1-BEGIN */
+  let pingFails = 0;
+  function heartPaint() {
+    const stale = pingFails >= 2;
+    const chip = document.getElementById("online-chip");
+    if (chip) { chip.style.opacity = stale ? ".55" : ""; if (stale) chip.title = "Reconnecting to the station…"; else if (chip.title === "Reconnecting to the station…") chip.title = "See who's online"; }
+    if (stale) {
+      const b = document.getElementById("dj-online"); if (b) b.textContent = "📡 Reconnecting to the station…";
+      const o2 = document.getElementById("dj-online2"); if (o2) o2.textContent = "📡 Reconnecting…";
+    }
+  }
+  /* HEART-H1-END */
   const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
-    const t0 = Date.now(); fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) { const t2 = Date.now(); clockSamples.push(j.now - (t0 + t2) / 2); if (clockSamples.length > 5) clockSamples.shift(); const srt = clockSamples.slice().sort((a, b) => a - b); clockOff = srt[Math.floor(srt.length / 2)]; clockAnchor = { wall: t2, mono: performance.now() }; } if (j && j.online != null) paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); }).catch(() => {}); };
+    const t0 = Date.now(); fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.json()).then((j) => { if (j && j.now) { const t2 = Date.now(); clockSamples.push(j.now - (t0 + t2) / 2); if (clockSamples.length > 5) clockSamples.shift(); const srt = clockSamples.slice().sort((a, b) => a - b); clockOff = srt[Math.floor(srt.length / 2)]; clockAnchor = { wall: t2, mono: performance.now() }; } if (j && j.online != null) { pingFails = 0; paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); } else pingFails++; heartPaint(); }).catch(() => { pingFails++; heartPaint(); }); };
   let clockOff = 0; // this device's clock error vs the server, learned from keeper pings — the sync math below trusts it over the local clock
   /* Clock estimation, NTP-style (2026-11-01): each keeper ping now stamps
    * its send and receive instants, so a sample estimates the offset at the
@@ -6169,7 +6234,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793579938;
+  const MW_DJ_BUILD = 1793580641;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7272,7 +7337,7 @@ html.popdj #dj-mini{display:none!important}
     if (t.id === "djx-vs") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).s = +t.value; paintVEdit(); paintEdit(); save(); }
     if (t.id === "djx-vz") { (S.ved = S.ved || { b: 1, c: 1, s: 1, z: 1 }).z = +t.value; paintVEdit(); paintEdit(); save(); }
   });
-  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-horn-top") { S.hornOn = e.target.checked; save(true); say(S.hornOn ? "📯 Transition horns ON — automated crossfades get the air horn again." : "🔇 Transition horns OFF — automated crossfades stay quiet."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
+  onMain("change", (e) => { if (!OWNER()) return; if (e.target.dataset.vinyl != null) { const k = e.target.dataset.vinyl, d = deck(k); d.vinyl = e.target.checked; d.el.preservesPitch = !d.vinyl; } if (e.target.id === "ad-on") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "aidj-on") { S.aiDj = e.target.checked; save(true); brainPaint(brainLastTaste); say(S.aiDj ? "🤖 AI-DJ on — Meechie will stock the queue while you're away." : "AI-DJ off — Meechie stops digging; what's already stocked still plays out."); } if (e.target.id === "dj-ad-top") { S.autodj = e.target.checked; save(true); say(S.autodj ? "Auto-DJ is running the station 🤖" : "Auto-DJ off — you're flying manual."); } if (e.target.id === "dj-horn-top") { S.hornOn = e.target.checked; save(true); say(S.hornOn ? "📯 Transition horns ON — automated crossfades get the air horn again." : "🔇 Transition horns OFF — automated crossfades stay quiet."); } if (e.target.id === "ad-drops") { S.dropsOn = e.target.checked; save(true); say(S.dropsOn ? "🎙 Station drops on — one spoken line every 3rd song change." : "Station drops off — transitions go back to the pad ID only."); } if (e.target.id === "dj-quant") { S.quant = e.target.checked; save(true); say(S.quant ? "Quantize ON — cues and loops snap to the beat." : "Quantize off — cues and loops land exactly where you tap."); } if (e.target.id === "dj-jogf") { JOGF = parseFloat(e.target.value) || 0.09; try { localStorage.setItem("mw-jogf", String(JOGF)); } catch (_) {} say("Jog feel set — grab a platter and feel the difference."); } if (e.target.id === "dj-fxsync") { S.fx.sync = e.target.checked; applyFx(); save(true); say(S.fx.sync ? "Effects now follow the live tempo — echo, flanger and the chopper lock to the beat." : "Effects free-running."); } });
   // circular pan pads: drag the gold dot — left/right is the X between the
   // pairs (A+B on the left, C+D on the right, the ends at 100%), up/down
   // tilts between the pairs. Same mix as the sliders and the phone fader
