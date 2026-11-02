@@ -62,6 +62,14 @@ const LAZY_SRC={
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
    * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
   djbooth:["js/dj-booth.js?v=1793653728"],
+  /* Messages view core (max-speed Lever 5, 2026-11-02): js/messages.js
+   * stays eager — it is the always-on layer (Message buttons site-wide,
+   * the chat bubble, heads, pop-up card, arrival pop, unread dot). Only
+   * the #v-messages view core rides out, and NOT through lazyKick:
+   * messages.js fetches this file and evals it inside its own closure
+   * (the djbooth pattern above), so this entry exists only so the B5
+   * idle prefetcher warms the bytes. NEVER lazyKick("mxview"). */
+  mxview:["js/messages-view.js?v=1793655457"],
 };
 /* fb-feed's fallback story row must never paint ahead of the real
  * stories: this flag is up from the first eager script until stories.js
@@ -1666,7 +1674,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793653728;
+const MW_SHELL_BUILD = 1793655457;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
