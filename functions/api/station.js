@@ -506,6 +506,26 @@ const TV_PREM_PROBE_MS = 600e3;
  * keeper verifying its OWN media presents as a browser; verdicts also become
  * independent of which client happened to trigger the tick. */
 const TV_PROBE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";      // premiere slot file-existence probes are cached this long in tv/now
+/* Media existence for lineup file items. Own media (/m/<bucket>/<file>) is
+ * checked directly in the project's KV store (the same binding the /m relay
+ * serves from): an HTTP probe of our own zone from the server is answered
+ * 403 by the zone anti-bot rule no matter what UA it carries (PR #580's
+ * header fix proved insufficient live — luProbe still ok:false), so
+ * file-backed states could never air. Non-/m URLs keep the browser-UA
+ * 1-byte range probe. */
+async function tvMediaExists(env, origin, url) {
+  try {
+    const m = /^\/m\/(.+)$/.exec(url || "");
+    if (m && env && env.MEDIA) {
+      const probe = await env.MEDIA.getWithMetadata(m[1], { type: "stream", range: { offset: 0, length: 1 } }).catch(() => null);
+      if (probe && probe.value) { try { await probe.value.cancel(); } catch (_) {} return true; }
+      return false;
+    }
+    const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
+    const r = await fetch(origin + url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
+    return r.status === 200 || r.status === 206;
+  } catch (_) { return false; }
+}
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
 const TV_LOCAL_HOLD_MS = 70 * 60e3; // Uniontown Local Update break spot: held out of rotation once the producer stamp (tv/localupdate) is older than this — the producer refreshes hourly, so a spot lives at most ~65 min on air and coverage stays continuous
 const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: fixed daily slots, minutes ET (12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM)
@@ -1285,7 +1305,7 @@ function tvAnchorWin(ms, anch) {
  * The doc is producer-owned (the keeper never seeds or writes it):
  * { on, current: { slotMinET, producedAt, videoUrl, dur } }, published
  * ~30 min before each slot by the anchor producer. */
-async function tvAnchorLive(doc, nw, now, origin) {
+async function tvAnchorLive(env, doc, nw, now, origin) {
   const cache = { ...((nw && nw.anchorProbe) || {}) };
   let cacheChanged = false;
   const cur = doc && (doc.current || (doc.videoUrl ? doc : null));
@@ -1295,12 +1315,7 @@ async function tvAnchorLive(doc, nw, now, origin) {
   const c = cache[it.url];
   if (c && now - c.at < TV_PREM_PROBE_MS) { if (!c.ok) return { anch: null, cache, cacheChanged }; }
   else {
-    let ok = false;
-    try {
-      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
-      ok = r.status === 200 || r.status === 206;
-    } catch (_) { ok = false; }
+    const ok = await tvMediaExists(env, origin, it.url);
     cache[it.url] = { ok, at: now }; cacheChanged = true;
     if (!ok) return { anch: null, cache, cacheChanged };
   }
@@ -1334,7 +1349,7 @@ function tvAnchorCut(chan, segs, cursor, anch, now) {
  * site news producer alongside each fresh edition. The returned char
  * state — { item, producedAt, dur } — chains onto every cadence
  * occurrence whose start it is still fresh at (tvAdSpans). */
-async function tvCharLive(doc, nw, now, origin) {
+async function tvCharLive(env, doc, nw, now, origin) {
   const cache = { ...((nw && nw.charProbe) || {}) };
   let cacheChanged = false;
   const cur = doc && (doc.current || (doc.videoUrl ? doc : null));
@@ -1344,12 +1359,7 @@ async function tvCharLive(doc, nw, now, origin) {
   const c = cache[it.url];
   if (c && now - c.at < TV_PREM_PROBE_MS) { if (!c.ok) return { char: null, cache, cacheChanged }; }
   else {
-    let ok = false;
-    try {
-      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
-      ok = r.status === 200 || r.status === 206;
-    } catch (_) { ok = false; }
+    const ok = await tvMediaExists(env, origin, it.url);
     cache[it.url] = { ok, at: now }; cacheChanged = true;
     if (!ok) return { char: null, cache, cacheChanged };
   }
@@ -1383,7 +1393,7 @@ function tvCharCut(chan, segs, cursor, cutAt) {
  * 5-minute update rail (tvUpdSpans) and the ad-cadence fallback
  * (tvAdSpans); freshness is gated per mark there, so an aged-out
  * edition simply stops producing hits — no cut needed on expiry. */
-async function tvLuLive(luDoc, newsDoc, nw, now, origin) {
+async function tvLuLive(env, luDoc, newsDoc, nw, now, origin) {
   const cache = { ...((nw && nw.luProbe) || {}) };
   let cacheChanged = false;
   const ed = newsDoc && newsDoc.current;
@@ -1393,12 +1403,7 @@ async function tvLuLive(luDoc, newsDoc, nw, now, origin) {
   const c = cache[it.url];
   if (c && now - c.at < TV_PREM_PROBE_MS) { if (!c.ok) return { lu: null, cache, cacheChanged }; }
   else {
-    let ok = false;
-    try {
-      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
-      ok = r.status === 200 || r.status === 206;
-    } catch (_) { ok = false; }
+    const ok = await tvMediaExists(env, origin, it.url);
     cache[it.url] = { ok, at: now }; cacheChanged = true;
     if (!ok) return { lu: null, cache, cacheChanged };
   }
@@ -1497,7 +1502,7 @@ async function tvRecheckNext(env, chan, segs, now, origin, nw) {
  * one tiny probe per 10 minutes and the slot stays dark — never a
  * stall — until the upload exists. liveDurSec is clamped so the slot
  * can never reach the next :50 news window. */
-async function tvPremLive(prem, nw, now, origin) {
+async function tvPremLive(env, prem, nw, now, origin) {
   const cache = { ...((nw && nw.premProbe) || {}) };
   let cacheChanged = false;
   if (!prem || prem.on === false || !Array.isArray(prem.items)) return { prem: null, cache, cacheChanged };
@@ -1508,12 +1513,7 @@ async function tvPremLive(prem, nw, now, origin) {
     if (it.src !== "file" && it.src !== "ia") continue;
     const c = cache[it.url];
     if (c && now - c.at < TV_PREM_PROBE_MS) { if (c.ok) live.push(it); continue; }
-    let ok = false;
-    try {
-      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
-      ok = r.status === 200 || r.status === 206;
-    } catch (_) { ok = false; }
+    const ok = await tvMediaExists(env, origin, it.url);
     cache[it.url] = { ok, at: now }; cacheChanged = true;
     if (ok) live.push(it);
   }
@@ -1630,9 +1630,9 @@ async function tvTick(env, S, now, origin) {
     return decision;
   }
   let nw = await readDoc(env, "tv/now");
-  const premState = await tvPremLive(prem, nw, now, origin);
+  const premState = await tvPremLive(env, prem, nw, now, origin);
   chan._prem = premState.prem;
-  const luState = await tvLuLive(luDoc, newsDoc, nw, now, origin);
+  const luState = await tvLuLive(env, luDoc, newsDoc, nw, now, origin);
   chan._lu = luState.lu;
   const luStamp = luState.lu ? luState.lu.at : 0;
   chan._movies = tvMovieState(movies, prem, premState);
@@ -1652,7 +1652,7 @@ async function tvTick(env, S, now, origin) {
   // probe) and, when a NEW edition has landed since the laid window
   // was generated, cut the laid segments at its slot so this tick's
   // generation re-lays through the slot with the edition on air.
-  const anchorState = await tvAnchorLive(anchorDoc, nw, now, origin);
+  const anchorState = await tvAnchorLive(env, anchorDoc, nw, now, origin);
   chan._anchor = anchorState.anch;
   const anchStamp = anchorState.anch ? anchorState.anch.producedAt : 0;
   if (anchorState.cacheChanged) dirty = true;
@@ -1669,7 +1669,7 @@ async function tvTick(env, S, now, origin) {
   // segments at the first cadence occurrence start after now —
   // computed with the NEW state — so this tick's generation re-lays
   // the upcoming occurrences with the update chained after the spot.
-  const charState = await tvCharLive(charDoc, nw, now, origin);
+  const charState = await tvCharLive(env, charDoc, nw, now, origin);
   chan._char = charState.char;
   const charStamp = charState.char ? charState.char.producedAt : 0;
   if (charState.cacheChanged) dirty = true;
