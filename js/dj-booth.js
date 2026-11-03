@@ -1047,7 +1047,7 @@
     if (!boothLead) {
       // mirror window: flip the shared state only — the window holding the sound plays it
       if (s.playing) { s.pos = posOf(k); s.playing = false; }
-      else { s.playing = true; s.start = Date.now() - (s.pos || 0) * 1000; logPlay(s.title); if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintStation(); say("🔴 You're LIVE — the window playing the sound has the tables on the radio."); } }
+      else { s.playing = true; s.start = Date.now() - (s.pos || 0) * 1000; logPlay(s.title); if (!S.live) { S.live = true; S.liveSince = Date.now(); S.radioSrc = "booth"; const gl = $("#dj-golive"); if (gl) gl.checked = true; paintLiveBtn(); paintStation(); say("🔴 You're LIVE — the window playing the sound has the tables on the radio."); } }
       if (s.playing) S.pausedAt = 0; else if (S.live && !DECKS.some((x) => S[x].playing)) S.pausedAt = Date.now();
       paintOwner(); save(true);
       return;
@@ -1059,7 +1059,7 @@
       await d.el.play().catch(() => {}); s.start = Date.now() - d.el.currentTime * 1000; s.playing = true;
       logPlay(s.title); brainPlay(k); // PR-B2: the playing flip is the brain's play event — every start path (hand, Auto-DJ, queue) funnels through here
       // The tables ARE the radio: pressing play on a deck goes live, no separate switch.
-      if (!S.live) { S.live = true; S.liveSince = Date.now(); const gl = $("#dj-golive"); if (gl) gl.checked = true; paintOwner(); paintStation(); say("🔴 You're LIVE — whatever you play on the tables is on the radio for everyone."); }
+      if (!S.live) { S.live = true; S.liveSince = Date.now(); S.radioSrc = "booth"; const gl = $("#dj-golive"); if (gl) gl.checked = true; paintOwner(); paintStation(); say("🔴 You're LIVE — whatever you play on the tables is on the radio for everyone."); }
     }
     // A pause from the DJ is a PAUSE, not dead air: stamp it (S.pausedAt) and
     // nothing restarts a deck over it — not this booth, not the station keeper.
@@ -1295,7 +1295,7 @@
     cv.addEventListener("pointerup", (e) => { if (pend) { pend = null; seekTo(e); save(true); return; } if (scrub) { scrub = false; save(true); } });
     cv.addEventListener("pointercancel", () => { pend = null; scrub = false; });
   });
-  $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
+  $("#dj-golive").addEventListener("change", (e) => { S.live = e.target.checked; S.liveSince = S.live ? Date.now() : 0; S.radioSrc = S.live ? "booth" : "tv"; /* MW TV IS THE RADIO (2026-11-03): the Go Live switch and the LIVE button are one state — off hands the radio to MW TV */ save(true); paintOwner(); paintStation(); say(S.live ? "You're live. Everyone on the radio hears your mix." : "Live DJ set ended.");
     // Auto-DJ is the station's play method: if nothing is playing it starts the rotation itself,
     // and it primes the idle deck so the first crossfade is ready
     if (S.live && S.autodj) {
