@@ -3,7 +3,7 @@
 (function () {
   "use strict";
   const TABS = [
-    ["home", "Home", '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
+    ["community", "Home", '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
     ["mwtv", "MW TV", '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l5 3-5 3z"/>'],
     ["community", "Meechie's Book", '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M14 20c0-2.4 1.4-4.4 3.5-5"/>'],
     ["radio", "Radio", '<circle cx="12" cy="13" r="3"/><path d="M5 9h14v11H5zM7 9l9-5"/>'],
@@ -90,7 +90,11 @@ nav.tabs a{letter-spacing:.02em}
   document.body.append(bar, more);
 
   function fillMore() {
-    const links = [...document.querySelectorAll("header nav.tabs a[data-go]")];
+    /* One tile per destination: the header carries two doors to the Book
+       (Home + Meechie's Book) since the Book became the home page — the
+       grid keeps a single tile, with the Book name on it. */
+    const byGo = new Map(); [...document.querySelectorAll("header nav.tabs a[data-go]")].forEach((a) => byGo.set(a.dataset.go, a));
+    const links = [...byGo.values()];
     /* Curated order (2026-11-01): the doors visitors come for lead the grid —
        Radio, MW TV, Watch the Setup, Shop, Coin Jackpot — then everything
        else in header order (Array sort is stable). Kids and All Apps are
@@ -106,7 +110,7 @@ nav.tabs a{letter-spacing:.02em}
   more.addEventListener("click", (e) => { if (e.target === more || e.target.closest("[data-go]")) more.hidden = true; });
   addEventListener("keydown", (e) => { if (e.key === "Escape") more.hidden = true; });
   // keep the bottom tabs in step with the page
-  const sync = () => { const cur = (document.querySelector("header nav.tabs a[aria-current=page]") || {}).dataset?.go || location.hash.slice(1) || "home"; bar.querySelectorAll("a").forEach((a) => (a.dataset.go === cur ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"))); };
+  const sync = () => { const cur = (document.querySelector("header nav.tabs a[aria-current=page]") || {}).dataset?.go || location.hash.slice(1) || "community"; bar.querySelectorAll("a").forEach((a) => (a.dataset.go === cur ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"))); };
   const nav = document.querySelector("header nav.tabs");
   if (nav) new MutationObserver(sync).observe(nav, { attributes: true, subtree: true, attributeFilter: ["aria-current"] });
   addEventListener("hashchange", sync); sync();

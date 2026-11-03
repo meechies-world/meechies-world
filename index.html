@@ -247,24 +247,26 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 <link rel="stylesheet" href="css/lux-fx.css?v=1793655457">
 <script>
 /* FIRST PAINT FOLLOWS THE LINK (instant-on, 2026-11-02): every view ships
- * hidden except home, and the router (js/app-core.js go()) only flips the
- * flags when it executes near the end of the body script chain — so a deep
- * link painted home first, then jumped to the linked view. When the hash
- * names a view, pin that view from the first parse instead: a two-rule
- * style keeps home folded and the linked view open (its poster and frame
- * paint first, at full priority), and the companion script right after
- * the app-core tag removes the pin once go() has set the real flags —
- * the booted state is the router's own, byte for byte. The view list and
- * aliases mirror go() exactly; an empty, unknown or home hash (and the
- * OAuth return hashes go() refuses) change nothing. */
+ * hidden except the Book (community — the home page since the owner made
+ * Meechie's Book the front page, 2026-11-02), and the router (js/app-core.js
+ * go()) only flips the flags when it executes near the end of the body
+ * script chain — so a deep link painted the Book first, then jumped to the
+ * linked view. When the hash names a view, pin that view from the first
+ * parse instead: a two-rule style keeps the Book folded and the linked view
+ * open (its poster and frame paint first, at full priority), and the
+ * companion script right after the app-core tag removes the pin once go()
+ * has set the real flags — the booted state is the router's own, byte for
+ * byte. The view list and aliases mirror go() exactly; an empty, unknown
+ * or community hash (and the OAuth return hashes go() refuses) change
+ * nothing. */
 (function(){ try{
   var VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","tv","mwtv","watch","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact"];
   var ALIAS={liveradio:"radio",livetv:"videos"};
   var h=(location.hash||"").slice(1), v=ALIAS[h]||h;
-  if(!v || v==="home" || VIEWS.indexOf(v)<0) return;
+  if(!v || v==="community" || VIEWS.indexOf(v)<0) return;
   window.__MW_PREBOOT_VIEW=v;
   var st=document.createElement("style"); st.id="mw-preboot-style";
-  st.textContent="#v-home{display:none!important}#v-"+v+"{display:block!important}";
+  st.textContent="#v-community{display:none!important}#v-"+v+"{display:block!important}";
   document.head.appendChild(st);
 }catch(_){} })();
 </script>
@@ -446,13 +448,13 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 
 <header class="bar">
   <div class="wrap bar-in">
-    <a class="brand" href="#home" data-go="home">
+    <a class="brand" href="#community" data-go="community">
       <svg aria-hidden="true"><use href="#emblem"/></svg>
       <span><b>MEECHIE'S WORLD</b><small>INC • CONSCIENTIA</small></span>
     </a>
     <span id="online-chip" class="online-chip" hidden>🟢 <b id="online-n">0</b>&nbsp;online</span>
     <nav class="tabs" aria-label="Sections">
-      <a href="#home" data-go="home">Home</a>
+      <a href="#community" data-go="community">Home</a>
       <a href="#community" data-go="community">Meechie's Book</a>
       <a href="#services" data-go="services">Services</a>
       <a href="#legal" data-go="legal">⚖️ Legal Help</a>
@@ -518,22 +520,22 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 
 <main>
 <!-- HOME -->
-<section class="view" id="v-home">
+<section class="view" id="v-home" hidden>
   <style id="home2-styles">
 #v-home .lux-hero{margin-bottom:14px;padding-top:clamp(14px,2.4vw,28px)}
 #v-home .home-live{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:11px 14px;border:1px solid rgba(216,180,90,.55);border-radius:14px;background:linear-gradient(180deg,#1a1509,#0c0a06);color:#f4d98a;font-weight:700;font-size:15px;line-height:1.4}
 #v-home .home-live[hidden]{display:none}
 #v-home .home-live .btn{flex:0 0 auto}
-#v-home .home-jump-head{margin-top:24px}
-#v-home .home-jump-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 20px}
-@media(min-width:820px){#v-home .home-jump-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-#v-home .home-card{display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;min-height:118px;padding:16px 15px;border:1px solid rgba(216,180,90,.38);border-radius:18px;background:linear-gradient(160deg,rgba(216,180,90,.09),rgba(255,255,255,.015));color:inherit;text-decoration:none;font:inherit;cursor:pointer;transition:border-color .2s,transform .2s}
-#v-home .home-card:hover,#v-home .home-card:focus-visible{border-color:rgba(244,217,138,.85);transform:translateY(-2px)}
-#v-home .home-card .hc-ico{font-size:30px;line-height:1}
-#v-home .home-card b{font-size:17px;line-height:1.25}
-#v-home .home-card .hc-line{font-size:13px;line-height:1.45;color:#b9ac8d}
-#v-home .home-card .hc-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-#v-home .home-card .hc-links a{border:1px solid rgba(216,180,90,.5);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;color:#f4d98a;text-decoration:none}
+#v-home .home-jump-head,#v-community .home-jump-head{margin-top:24px}
+#v-home .home-jump-grid,#v-community .home-jump-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 20px}
+@media(min-width:820px){#v-home .home-jump-grid,#v-community .home-jump-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+#v-home .home-card,#v-community .home-card{display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;min-height:118px;padding:16px 15px;border:1px solid rgba(216,180,90,.38);border-radius:18px;background:linear-gradient(160deg,rgba(216,180,90,.09),rgba(255,255,255,.015));color:inherit;text-decoration:none;font:inherit;cursor:pointer;transition:border-color .2s,transform .2s}
+#v-home .home-card:hover,#v-home .home-card:focus-visible,#v-community .home-card:hover,#v-community .home-card:focus-visible{border-color:rgba(244,217,138,.85);transform:translateY(-2px)}
+#v-home .home-card .hc-ico,#v-community .home-card .hc-ico{font-size:30px;line-height:1}
+#v-home .home-card b,#v-community .home-card b{font-size:17px;line-height:1.25}
+#v-home .home-card .hc-line,#v-community .home-card .hc-line{font-size:13px;line-height:1.45;color:#b9ac8d}
+#v-home .home-card .hc-links,#v-community .home-card .hc-links{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+#v-home .home-card .hc-links a,#v-community .home-card .hc-links a{border:1px solid rgba(216,180,90,.5);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;color:#f4d98a;text-decoration:none}
 #v-home .home-now{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;margin:0 0 10px;scrollbar-width:thin}
 #v-home .home-now[hidden]{display:none}
 #v-home .home-now-block{flex:0 0 auto;min-width:230px;max-width:86vw;border:1px solid rgba(216,180,90,.3);border-radius:16px;background:#0d0b08;padding:12px 14px}
@@ -548,17 +550,17 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
 #v-home .mw-path{border-color:rgba(216,180,90,.45);box-shadow:0 10px 30px rgba(0,0,0,.35)}
 #v-home .mw-path:hover{border-color:rgba(244,217,138,.8)}
 #v-home .mw-path-art span{color:#f4d98a;text-shadow:0 0 22px rgba(255,190,70,.45)}
-#v-home .kids-hero{display:flex;gap:14px;align-items:center;margin:0 0 18px;padding:12px;border:1px solid rgba(216,180,90,.55);border-radius:20px;background:linear-gradient(135deg,#1c1608,#0c0a06 65%);color:inherit;text-decoration:none;box-shadow:0 14px 34px rgba(0,0,0,.35);transition:border-color .2s,transform .2s}
-#v-home .kids-hero:hover,#v-home .kids-hero:focus-visible{border-color:rgba(244,217,138,.9);transform:translateY(-2px)}
-#v-home .kids-hero img{width:92px;height:92px;flex:0 0 auto;object-fit:cover;border-radius:14px;border:1px solid rgba(216,180,90,.4);background:#000}
-#v-home .kids-hero .kh-copy{display:flex;flex-direction:column;gap:3px;align-items:flex-start;min-width:0}
-#v-home .kids-hero .kh-pill{border:1px solid rgba(216,180,90,.6);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#f4d98a;text-transform:uppercase}
-#v-home .kids-hero b{font-size:19px;line-height:1.2}
-#v-home .kids-hero .kh-line{font-size:13px;line-height:1.45;color:#b9ac8d}
-#v-home .kids-hero .kh-go{font-size:13.5px;font-weight:800;color:#f4d98a}
-@media(min-width:820px){#v-home .kids-hero{padding:16px;gap:18px}#v-home .kids-hero img{width:128px;height:128px}#v-home .kids-hero b{font-size:23px}#v-home .kids-hero .kh-line{font-size:14.5px}}
+#v-home .kids-hero,#v-community .kids-hero{display:flex;gap:14px;align-items:center;margin:0 0 18px;padding:12px;border:1px solid rgba(216,180,90,.55);border-radius:20px;background:linear-gradient(135deg,#1c1608,#0c0a06 65%);color:inherit;text-decoration:none;box-shadow:0 14px 34px rgba(0,0,0,.35);transition:border-color .2s,transform .2s}
+#v-home .kids-hero:hover,#v-home .kids-hero:focus-visible,#v-community .kids-hero:hover,#v-community .kids-hero:focus-visible{border-color:rgba(244,217,138,.9);transform:translateY(-2px)}
+#v-home .kids-hero img,#v-community .kids-hero img{width:92px;height:92px;flex:0 0 auto;object-fit:cover;border-radius:14px;border:1px solid rgba(216,180,90,.4);background:#000}
+#v-home .kids-hero .kh-copy,#v-community .kids-hero .kh-copy{display:flex;flex-direction:column;gap:3px;align-items:flex-start;min-width:0}
+#v-home .kids-hero .kh-pill,#v-community .kids-hero .kh-pill{border:1px solid rgba(216,180,90,.6);border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:800;letter-spacing:.06em;color:#f4d98a;text-transform:uppercase}
+#v-home .kids-hero b,#v-community .kids-hero b{font-size:19px;line-height:1.2}
+#v-home .kids-hero .kh-line,#v-community .kids-hero .kh-line{font-size:13px;line-height:1.45;color:#b9ac8d}
+#v-home .kids-hero .kh-go,#v-community .kids-hero .kh-go{font-size:13.5px;font-weight:800;color:#f4d98a}
+@media(min-width:820px){#v-home .kids-hero,#v-community .kids-hero{padding:16px;gap:18px}#v-home .kids-hero img,#v-community .kids-hero img{width:128px;height:128px}#v-home .kids-hero b,#v-community .kids-hero b{font-size:23px}#v-home .kids-hero .kh-line,#v-community .kids-hero .kh-line{font-size:14.5px}}
 @media(max-width:640px){#v-home .wrap{display:flex;flex-direction:column}#v-home .kids-hero{order:-1}}
-@media(prefers-reduced-motion:reduce){#v-home .home-card,#v-home .kids-hero{transition:none}}
+@media(prefers-reduced-motion:reduce){#v-home .home-card,#v-home .kids-hero,#v-community .home-card,#v-community .kids-hero{transition:none}}
   </style>
   <div class="wrap">
     <div class="lux-hero">
@@ -755,7 +757,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   </div>
 </section>
 
-<section class="view" data-theme="community" id="v-community" hidden>
+<section class="view" data-theme="community" id="v-community">
   <div class="wrap">
     <div class="section-head">
       <div><p class="eyebrow">Meechie's World</p><h2>Meechie's Book</h2></div>
@@ -763,6 +765,38 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     </div>
     <img class="book-poster" src="/img/book-cover.jpg?v=1793655457" srcset="/img/book-cover-640.webp?v=1793655457 640w, /img/book-cover-1080.webp?v=1793655457 1080w" sizes="(max-width: 920px) 100vw, 880px" alt="Meechies World — The Book" loading="eager" fetchpriority="high" decoding="async" width="1536" height="1024">
     <div class="live-strip" id="live-strip" hidden></div>
+    <!-- HOME HUB (owner, 2026-11-02): the Book is the home page now, so the
+         home page's own front door lives here too — the Kids card and the
+         "Everything in one world" index, same cards as the classic home
+         page, one tap from the feed. The classic home page itself is the
+         last card. -->
+    <div class="bk-hub" id="bk-hub">
+    <a class="kids-hero" href="/kids-app/">
+      <img src="/img/kids-art.jpg?v=1793655457" srcset="/img/kids-art-640.webp?v=1793655457 640w, /img/kids-art-1024.webp?v=1793655457 1024w" sizes="(max-width: 640px) 100vw, 640px" alt="Meechie's World for Kids — cartoon Meechie with a crown, a golden book and ABC blocks" loading="lazy" decoding="async">
+      <span class="kh-copy"><span class="kh-pill">7 days free</span><b>🧒 Meechie's World for Kids</b><span class="kh-line">A little school in an app — lessons, movies &amp; Meechie Talks for babies, toddlers &amp; preschoolers.</span><span class="kh-go">Open the Kids app →</span></span>
+    </a>
+    <div class="section-head home-jump-head">
+      <div><p class="eyebrow">Inside the platform</p><h2>Everything in one world</h2></div>
+      <p class="muted">Free to browse, free to join. Tap a card and step inside.</p>
+    </div>
+    <div class="home-jump-grid">
+      <a class="home-card" href="#radio" data-go="radio"><span class="hc-ico" aria-hidden="true">🎧</span><b>Live Radio &amp; DJ Battles</b><span class="hc-line">The 24/7 station, guest DJs, requests and head-to-head battles.</span></a>
+      <a class="home-card" href="#live" data-go="live"><span class="hc-ico" aria-hidden="true">📡</span><b>Go Live — Stream &amp; Watch</b><span class="hc-line">Go live from your own camera, or pull up a chair and watch.</span></a>
+      <a class="home-card" href="#games" data-go="games"><span class="hc-ico" aria-hidden="true">🎰</span><b>Coin Jackpot</b><span class="hc-line">Play the games, stack your coins, cash out real winnings.</span></a>
+      <a class="home-card" href="#shop" data-go="shop"><span class="hc-ico" aria-hidden="true">🛍️</span><b>Shop the Drop</b><span class="hc-line">Apparel and gear from the movement, new pieces first.</span></a>
+      <a class="home-card" href="#tv" data-go="tv"><span class="hc-ico" aria-hidden="true">🎬</span><b>Cinema &amp; TV</b><span class="hc-line">16,000+ free movies: classics, horror, sci-fi and cartoons.</span></a>
+      <a class="home-card" href="#mwtv" data-go="mwtv"><span class="hc-ico" aria-hidden="true">📺</span><b>MW TV</b><span class="hc-line">Meechie's own TV station: his live screen, his camera and the music-video mix — fullscreen, nothing else.</span></a>
+      <a class="home-card" href="#world" data-go="world"><span class="hc-ico" aria-hidden="true">🌐</span><b>Virtual World</b><span class="hc-line">Dress up your character and hang out in the Gold Lounge, Studio B, the Rooftop, and Club Conscientia.</span></a>
+      <a class="home-card" href="#chat" data-go="chat"><span class="hc-ico" aria-hidden="true">💬</span><b>Chat &amp; Walkie-Talkie</b><span class="hc-line">Channels for every topic, plus voice clips.</span></a>
+      <a class="home-card" href="#ads" data-go="ads"><span class="hc-ico" aria-hidden="true">🏷️</span><b>Shops &amp; Free Ads</b><span class="hc-line">Link your Printify or Shopify. List your business free.</span></a>
+      <a class="home-card" href="#promote" data-go="promote"><span class="hc-ico" aria-hidden="true">📣</span><b>Promote With Us</b><span class="hc-line">Spotlight, Featured, and Takeover campaigns from $50.</span></a>
+      <a class="home-card" href="#services" data-go="services"><span class="hc-ico" aria-hidden="true">🏠</span><b>We Remodel Houses</b><span class="hc-line">Kitchens, floors, paint and full home makeovers.</span></a>
+      <a class="home-card" href="#contact" data-go="contact"><span class="hc-ico" aria-hidden="true">🤖</span><b>Meechie's AI</b><span class="hc-line">Ask about services and pricing any time, day or night. Or DM us.</span></a>
+      <a class="home-card" href="https://www.twitch.tv/meechiesworldinc" target="_blank" rel="noopener"><span class="hc-ico" aria-hidden="true">🎮</span><b>Meechie LIVE on Twitch</b><span class="hc-line">Watch the DJ sets live — follow the channel.</span></a>
+      <div class="home-card"><span class="hc-ico" aria-hidden="true">📱</span><b>Get the Apps</b><span class="hc-line">Take Meechie's World with you.</span><span class="hc-links"><a href="/radio-app/">🎧 MW Radio app</a><a href="/ai-app/">🤖 Meechie AI app</a></span></div>
+      <a class="home-card" href="#home" data-go="home"><span class="hc-ico" aria-hidden="true">🏠</span><b>Home Page</b><span class="hc-line">The classic front page — the hero, the featured video, the Movement and the latest TikToks.</span></a>
+    </div>
+    </div>
     <div class="grid-2">
       <div>
         <div class="card" id="join-card" hidden>
@@ -1874,14 +1908,14 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/float-layout.js?v=1793655457"></script>
 <script src="js/cf-client.js?v=1793655457"></script>
 <script src="js/platform.js?v=1793655457"></script>
-<script src="js/app-core.js?v=1793655457"></script>
+<script src="js/app-core.js?v=1793675956"></script>
 <script>
 /* FIRST PAINT FOLLOWS THE LINK, part 2: go() ran inside app-core and set
  * the real hidden flags for the linked view, so the head pin has done
  * its job — remove it and hand the page back to the router's own state. */
 (function(){ try{ var st=document.getElementById("mw-preboot-style"); if(st) st.remove(); window.__MW_PREBOOT_VIEW=null; }catch(_){} })();
 </script>
-<script src="js/appnav.js?v=1793655457"></script>
+<script src="js/appnav.js?v=1793675956"></script>
 <script src="js/fb-feed.js?v=1793655457"></script>
 <script src="js/owner.js?v=1793655457"></script>
 <script src="js/messages.js?v=1793655457"></script>
