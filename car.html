@@ -146,7 +146,12 @@
      stream is used ONLY behind /api/bgsgate, fail-closed exactly
      like dj.js: it carries the station only while the gate says the
      feeder is the source — never handed to a driver as the station
-     on doubt, and never while a share holds the master sound.
+     on doubt, and never while a share holds the master sound. A
+     share holds only while genuinely live (the keeper's rule:
+     fresh proof stamp, not source-gone). Under the decks and the
+     stream sits the playlist clock — the main site's own radio
+     mode (library + epoch, airNow math) — so a dark booth still
+     sounds, exactly like every other seat.
      Nothing on this page autoplays: TUNE IN is the deliberate act,
      and this page's own button is the only control of its sound —
      no scroll, touch or timer may touch the music (Law 22).
@@ -175,8 +180,25 @@
       .catch(function(){});
   }
   function isLive(){ return !!(S && S.live && serverNow() - (S.updatedAt || 0) < 180000); }
-  function shareHolds(){ var v = (S && S.vstream) || {}; return !!(v.on && v.meeting); }
+  /* A share holds this page ONLY while it is genuinely live — the
+     keeper's own rule (station.js, GHOST-SHARE HOLD): the keeper
+     never ends a share, but once the publisher's proof stamp
+     (vstream.at, re-stamped only on a verified capture chain) is
+     15 minutes stale it marks diag "source-gone", and from then on
+     viewers fall back to the station — the mix/poster slate —
+     instead of holding a corpse. The old test here (on + meeting,
+     no freshness) let a share abandoned on 2026-11-01 hold /car
+     silent for 52+ hours: no decks, no stream, no sound on TUNE IN
+     (owner bug, 2026-11-03). Mirror the keeper: source-gone or a
+     stamp older than 15 minutes is NOT a holding share. The share
+     itself is untouched — only the owner ends it; this page merely
+     stops obeying a ghost. */
+  function shareHolds(){ var v = (S && S.vstream) || {}; if(!(v.on && v.meeting)) return false; if(v.diag && v.diag.stage === "source-gone") return false; return serverNow() - (Number(v.at) || 0) <= 900000; }
   function bcastPos(k){ var s = S && S[k]; if(!s) return 0; if(!s.playing) return s.pos || 0; return Math.max(0, (serverNow() - (s.start || serverNow())) / 1000); }
+  /* Follow position, clamped inside the track: a deck whose stamp
+     ran past its end would otherwise be seeked past the end and sit
+     dead (YouTube fires ENDED and never starts). */
+  function followPos(k){ var w = bcastPos(k); var d = (S && S[k] && +S[k].dur) || 0; if(d > 0 && w > d - 1) w = Math.max(0, d - 1); return w; }
   function sounding(k){ var s = S && S[k]; if(!s || !s.playing || !s.title) return false; if(s.dur && s.start && serverNow() - s.start > (s.dur + 45) * 1000) return false; return true; }
   /* the booth's own crossfade curve (dj.js xfGain, smooth default) */
   function xfGain(xf, side){ var t = side === "A" ? xf : 1 - xf; return Math.cos(Math.min(1, Math.max(0, t)) * Math.PI / 2); }
@@ -186,6 +208,7 @@
     if(s.kind === "sc" || s.scUrl) return s.scUrl ? { kind:"sc", key:"sc:" + s.scUrl, url: s.scUrl } : null;
     if(s.yt){ var v = vparseTok(s.yt); return { kind: v.p, key: v.p + ":" + v.id, id: v.id }; }
     if(s.src && /^https?:\/\//.test(s.src)) return { kind:"file", key:"f:" + s.src, url: s.src };
+    if(s.src && s.src.charAt(0) === "/") return { kind:"file", key:"f:" + s.src, url: location.origin + s.src };
     return null;
   }
 
@@ -228,17 +251,17 @@
     if(src.kind === "yt"){
       sdk("yt").then(function(){ if(P[k] !== p || !window.YT || !YT.Player) return;
         var div = document.createElement("div"); m.appendChild(div);
-        p.api = new YT.Player(div, { videoId: src.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: function(){ p.ready = true; try { p.api.seekTo(Math.max(0, bcastPos(k)), true); } catch(_){} applyDeck(k); if(tuned) playDeck(k); } } });
+        p.api = new YT.Player(div, { videoId: src.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: function(){ p.ready = true; try { p.api.seekTo(followPos(k), true); } catch(_){} applyDeck(k); if(tuned) playDeck(k); } } });
       });
     } else if(src.kind === "sc"){
       var ifr = document.createElement("iframe"); ifr.allow = "autoplay"; ifr.src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(src.url) + "&auto_play=false&visual=true"; m.appendChild(ifr); p.el = ifr;
-      sdk("sc").then(function(){ if(P[k] !== p || !window.SC || !SC.Widget) return; p.api = SC.Widget(ifr); p.api.bind(SC.Widget.Events.READY, function(){ p.ready = true; try { p.api.seekTo(Math.round(bcastPos(k) * 1000)); } catch(_){} applyDeck(k); if(tuned) playDeck(k); }); });
+      sdk("sc").then(function(){ if(P[k] !== p || !window.SC || !SC.Widget) return; p.api = SC.Widget(ifr); p.api.bind(SC.Widget.Events.READY, function(){ p.ready = true; try { p.api.seekTo(Math.round(followPos(k) * 1000)); } catch(_){} applyDeck(k); if(tuned) playDeck(k); }); });
     } else if(src.kind === "vm"){
       var ifr2 = document.createElement("iframe"); ifr2.allow = "autoplay; fullscreen"; ifr2.src = "https://player.vimeo.com/video/" + encodeURIComponent(src.id) + "?autoplay=0&controls=0"; m.appendChild(ifr2); p.el = ifr2;
-      sdk("vm").then(function(){ if(P[k] !== p || !window.Vimeo || !Vimeo.Player) return; p.api = new Vimeo.Player(ifr2); p.api.ready().then(function(){ p.ready = true; try { p.api.setCurrentTime(Math.max(0, bcastPos(k))).catch(function(){}); } catch(_){} applyDeck(k); if(tuned) playDeck(k); }); });
+      sdk("vm").then(function(){ if(P[k] !== p || !window.Vimeo || !Vimeo.Player) return; p.api = new Vimeo.Player(ifr2); p.api.ready().then(function(){ p.ready = true; try { p.api.setCurrentTime(followPos(k)).catch(function(){}); } catch(_){} applyDeck(k); if(tuned) playDeck(k); }); });
     } else if(src.kind === "dm"){
       var holder = document.createElement("div"); m.appendChild(holder);
-      sdk("dm").then(function(){ if(P[k] !== p || !window.DM || !DM.player) return; p.api = DM.player(holder, { video: src.id, width: "100%", height: "100%", params: { autoplay: false, controls: false } }); p.el = holder; p.ready = true; try { if(p.api.seek) p.api.seek(Math.max(0, bcastPos(k))); } catch(_){} applyDeck(k); if(tuned) playDeck(k); });
+      sdk("dm").then(function(){ if(P[k] !== p || !window.DM || !DM.player) return; p.api = DM.player(holder, { video: src.id, width: "100%", height: "100%", params: { autoplay: false, controls: false } }); p.el = holder; p.ready = true; try { if(p.api.seek) p.api.seek(followPos(k)); } catch(_){} applyDeck(k); if(tuned) playDeck(k); });
     }
     return p;
   }
@@ -286,11 +309,69 @@
 
   /* ---------- gated fallback stream (dj.js's bgsgate rule) ---------- */
   var streamEl = null, gateLive = null, gateFalseN = 0;
-  function checkGate(){ fetch("/api/bgsgate", { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){ var v = j && typeof j.live === "boolean" ? j.live : null; gateLive = v; gateFalseN = v === false ? gateFalseN + 1 : 0; }).catch(function(){ gateLive = null; }); }
+  function checkGate(){ fetch("/api/bgsgate", { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){ var v = j && typeof j.live === "boolean" ? j.live : null; var was = gateLive; gateLive = v; gateFalseN = v === false ? gateFalseN + 1 : 0; if(S && v === true && was !== true) syncAll(); }).catch(function(){ gateLive = null; }); }
   function streamWanted(anyPlayable){ return tuned && !shareHolds() && !anyPlayable && gateLive === true; }
   function syncStream(anyPlayable){
     if(streamWanted(anyPlayable)){ if(!streamEl){ streamEl = new Audio(); streamEl.preload = "none"; streamEl.src = STREAM; } streamEl.volume = masterVol; var pr = streamEl.play(); if(pr && pr.catch) pr.catch(function(){}); }
     else if(streamEl && (tuned === false || anyPlayable || shareHolds() || gateFalseN >= 2)){ try { streamEl.pause(); } catch(_){} }
+  }
+
+  /* ---------- the playlist clock (the main site's radio mode) ----------
+     When the booth is dark, the main site's radio IS this clock:
+     app-core's airNow() walks the track library (docs coll "tracks",
+     addedAt order) around the radio/state epoch, each song's slot
+     trimmed by the 4s crossfade. /car reads the same two inputs
+     through the same REST door and runs the same math on the
+     server-synced clock, so the car hears — and names — exactly
+     what every other seat hears. It is the fallback UNDER the
+     decks and the gated stream, never over them: the moment a
+     deck sounds or the gate says the feeder carries the station,
+     the clock yields. (Before this, a dark booth meant /car had
+     no source at all and TUNE IN played nothing.) */
+  var XF = 4, DEFAULT_EPOCH = Date.UTC(2026, 0, 1);
+  var sched = { tracks: [], epoch: DEFAULT_EPOCH };
+  function slotOf(t){ var d = t.duration || 0; return d > XF * 3 ? d - XF : d; }
+  function airNow(){
+    var total = 0, i; for(i = 0; i < sched.tracks.length; i++) total += slotOf(sched.tracks[i]);
+    if(!total) return null;
+    var el = (serverNow() - sched.epoch) / 1000, cyc = Math.floor(el / total);
+    var t = el % total; if(t < 0) t += total;
+    for(i = 0; i < sched.tracks.length; i++){ var d = slotOf(sched.tracks[i]); if(t < d) return { i: i, offset: t, left: d - t, slot: d, cycle: cyc }; t -= d; }
+    return { i: 0, offset: 0, left: slotOf(sched.tracks[0]), slot: slotOf(sched.tracks[0]), cycle: cyc };
+  }
+  function restDocs(body){ return fetch("/api/cf/rest", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) }).then(function(r){ return r.json(); }); }
+  function pollSchedule(){
+    restDocs({ table:"docs", op:"select", select:"path,data", filters:[["coll","eq","tracks"]], limit:500 }).then(function(j){
+      var rows = (j && j.data) || [];
+      var ts = rows.map(function(r){ var d = (r && r.data) || {}; return { title: d.title || "", artist: d.artist || "", duration: +d.duration || 0, assetId: d.assetId || "", addedAt: +d.addedAt || 0 }; }).filter(function(x){ return x.title; });
+      ts.sort(function(a, b){ return a.addedAt - b.addedAt; });
+      if(ts.length){ sched.tracks = ts; paintNow(); }
+    }).catch(function(){});
+    restDocs({ table:"docs", op:"select", select:"path,data", filters:[["path","eq","radio/state"]] }).then(function(j){
+      var d = j && j.data && j.data[0] && j.data[0].data; if(d && d.epoch) sched.epoch = +d.epoch || DEFAULT_EPOCH;
+    }).catch(function(){});
+  }
+  var schedEl = null, schedKey = null;
+  function schedWanted(anyPlayable){ return tuned && !anyPlayable && !shareHolds() && gateLive !== true; }
+  function syncSched(anyPlayable){
+    if(!schedWanted(anyPlayable)){ if(schedEl){ try { schedEl.pause(); } catch(_){} } return; }
+    var a = airNow(); if(!a) return;
+    var tr = sched.tracks[a.i]; if(!tr || !tr.assetId) return;
+    if(!schedEl){ schedEl = new Audio(); schedEl.preload = "auto"; schedEl.addEventListener("ended", function(){ schedKey = null; syncAll(); }); }
+    schedEl.volume = masterVol;
+    var key = a.i + "@" + a.cycle;
+    if(schedKey !== key){
+      schedKey = key;
+      schedEl.src = "/_blob/" + tr.assetId;
+      var off = a.offset;
+      if(schedEl._sk) schedEl.removeEventListener("loadedmetadata", schedEl._sk);
+      schedEl._sk = function(){ try { schedEl.currentTime = off; } catch(_){} };
+      schedEl.addEventListener("loadedmetadata", schedEl._sk);
+      try { schedEl.currentTime = off; } catch(_){}
+    } else if(isFinite(schedEl.currentTime) && Math.abs(schedEl.currentTime - a.offset) > 4){
+      try { schedEl.currentTime = a.offset; } catch(_){}
+    }
+    var pr = schedEl.play(); if(pr && pr.catch) pr.catch(function(){});
   }
 
   /* ---------- the sync cycle ---------- */
@@ -304,9 +385,9 @@
       if(on && deckGain(k) > bestGain){ bestGain = deckGain(k); best = k; }
       if(!tuned || !on || !src){ if(P[k] && (!on || !src || P[k].key !== (src && src.key))) killPlayer(k); else if(P[k]) pauseDeck(k); return; }
       var p = P[k];
-      if(!p || p.key !== src.key) p = makePlayer(k, src, bcastPos(k));
+      if(!p || p.key !== src.key) p = makePlayer(k, src, followPos(k));
       applyDeck(k); playDeck(k);
-      deckPos(k, function(cur){ var want = bcastPos(k); if(cur >= 0 && Math.abs(cur - want) > 3) seekDeck(k, want); });
+      deckPos(k, function(cur){ var want = followPos(k); if(cur >= 0 && Math.abs(cur - want) > 3) seekDeck(k, want); });
       var m = mount(k); if(m) m.classList.toggle("on", k === best && p.kind !== "file");
     });
     /* stage art: the dominant deck's cover when its player is not the picture */
@@ -314,6 +395,7 @@
     if(best && (!bp || bp.kind === "file" || bp.kind === "sc")){ var cov = S[best].cover; if(cov && artEl.getAttribute("src") !== cov) artEl.src = cov; }
     if(!best && artEl.getAttribute("src") !== "/img/tv-poster.jpg") artEl.src = "/img/tv-poster.jpg";
     syncStream(anyPlayable);
+    syncSched(anyPlayable);
     if(tuned && !anyPlayable && !shareHolds() && gateLive !== true) checkGate();
     var nk = best || ""; if(nk !== domKey){ domKey = nk; mediaMeta(); }
   }
@@ -325,8 +407,8 @@
     badge.classList.toggle("on", isLive());
     var on = DECKS.filter(sounding);
     var best = null, bg = -1; on.forEach(function(k){ if(deckGain(k) > bg){ bg = deckGain(k); best = k; } });
-    if(shareHolds() && !on.length){ titleEl.textContent = "Live share on the master screen"; metaEl.textContent = "The share carries its own sound on the main site — the decks come back when it ends."; barEl.style.width = "0%"; return; }
-    if(!on.length){ titleEl.textContent = isLive() ? "Live — the tables are between songs" : "The station is on — tap TUNE IN"; metaEl.textContent = "One station, one sound — the same radio every seat hears."; barEl.style.width = "0%"; return; }
+    if(shareHolds() && !on.length){ var sa = airNow(); if(sa){ var st = sched.tracks[sa.i]; titleEl.textContent = st.title; metaEl.textContent = (st.artist || "Meechie") + " · " + fmt(sa.left) + " left · Live share on the master screen — the share carries its own sound on the main site"; } else { titleEl.textContent = "Live share on the master screen"; metaEl.textContent = "The share carries its own sound on the main site — the decks come back when it ends."; } barEl.style.width = "0%"; return; }
+    if(!on.length){ var sa2 = airNow(); if(tuned && sa2){ var st2 = sched.tracks[sa2.i]; titleEl.textContent = st2.title; metaEl.textContent = (st2.artist || "Meechie") + " · " + fmt(sa2.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; } else { titleEl.textContent = isLive() ? "Live — the tables are between songs" : "The station is on — tap TUNE IN"; metaEl.textContent = "One station, one sound — the same radio every seat hears."; } barEl.style.width = "0%"; return; }
     var d = S[best], g = S.djGuest, fresh = S.boothAt && serverNow() - S.boothAt < 90000;
     var gOn = !!(g && g.until > serverNow() && fresh);
     var left = d.dur && d.start ? Math.max(0, Math.round(d.dur - (serverNow() - d.start) / 1000)) : 0;
@@ -337,6 +419,7 @@
     if(!S) return;
     var on = DECKS.filter(sounding), best = null, bg = -1; on.forEach(function(k){ if(deckGain(k) > bg){ bg = deckGain(k); best = k; } });
     if(best){ var d = S[best], el = bcastPos(best); if(d.dur > 0) barEl.style.width = Math.min(100, el / d.dur * 100) + "%"; }
+    else if(schedEl && !schedEl.paused){ var a3 = airNow(); if(a3 && a3.slot > 0) barEl.style.width = Math.min(100, a3.offset / a3.slot * 100) + "%"; }
   }
   setInterval(tick, 1000);
 
@@ -352,13 +435,14 @@
 
   /* ---------- the one big button ---------- */
   function toggle(){
-    if(!tuned){ tuned = true; btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); gateFalseN = 0; checkGate(); syncAll(); try { navigator.mediaSession.playbackState = "playing"; } catch(_){} }
+    if(!tuned){ tuned = true; btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); gateFalseN = 0; pollStation(); pollSchedule(); checkGate(); syncAll(); try { navigator.mediaSession.playbackState = "playing"; } catch(_){} }
     else { tuned = false; stopAll(); btn.textContent = "▶ TUNE IN — CH 1 LIVE"; btn.classList.remove("playing"); try { navigator.mediaSession.playbackState = "paused"; } catch(_){} }
   }
   btn.addEventListener("click", toggle);
-  volEl.addEventListener("input", function(){ masterVol = volEl.value / 100; DECKS.forEach(applyDeck); if(streamEl) streamEl.volume = masterVol; });
+  volEl.addEventListener("input", function(){ masterVol = volEl.value / 100; DECKS.forEach(applyDeck); if(streamEl) streamEl.volume = masterVol; if(schedEl) schedEl.volume = masterVol; });
 
   pollStation(); setInterval(pollStation, 12000);
+  pollSchedule(); setInterval(pollSchedule, 300000);
 
   /* Program guide — Malik's dayparts (Eastern), 2026-11-03 grid */
   var BLOCKS = [
