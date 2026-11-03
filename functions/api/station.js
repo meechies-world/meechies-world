@@ -498,7 +498,14 @@ const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (
 const TV_MOVIE_V = 1;                // post-premiere movie block doc generation (tv/movieblock)
 const TV_INSERT_V = 2;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy)
 const TV_MOVIE_FALLBACK_MIN = 15;    // when the premiere slot airs nothing, the movie block starts this many minutes after the slot start (20:15 ET)
-const TV_PREM_PROBE_MS = 600e3;      // premiere slot file-existence probes are cached this long in tv/now
+const TV_PREM_PROBE_MS = 600e3;
+/* The zone anti-bot rule 403s UA-less requests ("AI bots and scrapers are not
+ * allowed"), and keeper media probes leave from the server with no browser UA —
+ * so every file-backed update probed dead and never aired (found live
+ * 2026-11-03: luProbe ok:false twice on a URL browsers read as 206). The
+ * keeper verifying its OWN media presents as a browser; verdicts also become
+ * independent of which client happened to trigger the tick. */
+const TV_PROBE_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";      // premiere slot file-existence probes are cached this long in tv/now
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
 const TV_LOCAL_HOLD_MS = 70 * 60e3; // Uniontown Local Update break spot: held out of rotation once the producer stamp (tv/localupdate) is older than this — the producer refreshes hourly, so a spot lives at most ~65 min on air and coverage stays continuous
 const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: fixed daily slots, minutes ET (12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM)
@@ -1225,7 +1232,7 @@ async function tvAnchorLive(doc, nw, now, origin) {
     let ok = false;
     try {
       const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
       ok = r.status === 200 || r.status === 206;
     } catch (_) { ok = false; }
     cache[it.url] = { ok, at: now }; cacheChanged = true;
@@ -1274,7 +1281,7 @@ async function tvCharLive(doc, nw, now, origin) {
     let ok = false;
     try {
       const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
       ok = r.status === 200 || r.status === 206;
     } catch (_) { ok = false; }
     cache[it.url] = { ok, at: now }; cacheChanged = true;
@@ -1323,7 +1330,7 @@ async function tvLuLive(luDoc, newsDoc, nw, now, origin) {
     let ok = false;
     try {
       const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
       ok = r.status === 200 || r.status === 206;
     } catch (_) { ok = false; }
     cache[it.url] = { ok, at: now }; cacheChanged = true;
@@ -1438,7 +1445,7 @@ async function tvPremLive(prem, nw, now, origin) {
     let ok = false;
     try {
       const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
       ok = r.status === 200 || r.status === 206;
     } catch (_) { ok = false; }
     cache[it.url] = { ok, at: now }; cacheChanged = true;
