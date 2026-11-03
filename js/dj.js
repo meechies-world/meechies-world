@@ -5378,6 +5378,12 @@ html.popdj #dj-mini{display:none!important}
    * only LEAVING and re-entering the view applies sound-on again,
    * which is exactly the owner's rule. */
   let tvInView = false, tvSndArm = false, tvLastGesture = 0;
+  /* tvSeatAct: has this seat made ANY pointer/key gesture yet?
+   * Browsers refuse unmuted playback before one, so channel players
+   * mount muted-always until it flips (picture starts on arrival;
+   * sound joins on the first tap anywhere — tvEntryGesture hears
+   * every pointerdown/keydown on the document, capture phase). */
+  let tvSeatAct = false;
   function tvEnterApply() {
     tvSndOn = true;
     /* THE WALL: no stopListening() — TV entry never touches the
@@ -5401,6 +5407,7 @@ html.popdj #dj-mini{display:none!important}
     else if (!on && tvInView) { tvInView = false; tvSndArm = false; }
   }
   function tvEntryGesture() {
+    tvSeatAct = true;
     tvLastGesture = Date.now();
     if (tvSndArm && tvInView) { tvSndArm = false; try { chanSync(); } catch (_) {} tvSig = ""; try { tvPaint(); } catch (_) {} }
   }
@@ -5565,7 +5572,7 @@ html.popdj #dj-mini{display:none!important}
      * #st-vs1 / #mn-vs1 / #wb-vs1 / #dj-vs1 slots in the markup are
      * simply never mounted again. */
   ];
-  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; });
+  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.lastCur = null; });
   function chanOverlay(su) {
     const slot = document.querySelector(su.slot); if (!slot) return null;
     const box = slot.closest(".vstage"); if (!box) return null;
@@ -5580,7 +5587,7 @@ html.popdj #dj-mini{display:none!important}
     if (su.el && !keepEl) su.el.innerHTML = "";
     su.key = "";
   }
-  function chanPark(su) { if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; }
+  function chanPark(su) { if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; su.lastCur = null; }
   function chanYtMount(su, yt, startAt, muted) {
     const kAtCall = su.key;
     /* Tape position at READY time (2026-11-02): startAt is the position
@@ -5634,11 +5641,39 @@ html.popdj #dj-mini{display:none!important}
     su.el.appendChild(v);
     su.warmEnt = { key, v };
   }
+  /* Holdover (2026-11-03): the keeper's re-lay cuts used to be able
+   * to leave this seat's CURRENT segment unlaid for a stretch (the
+   * cut dropped the straddling segment whole), so the picker
+   * returned null mid-segment and the surface parked — poster over
+   * a segment whose sound was still running. The keeper now trims
+   * instead of dropping, and this is the client-side half of the
+   * same law: while the segment this surface is already playing is
+   * still inside its laid end, a null pick holds THAT segment at
+   * the wall-clock position instead of parking. Bounded by the
+   * segment's own laid end (300ms grace); a genuinely new segment
+   * replaces it on the next tick, and leaving the view still parks
+   * (su.on() is checked before this is ever consulted). */
+  function chanHoldCur(su, now) {
+    if (!su || !su.lastCur || !su.lastCur.seg) return null;
+    const seg = su.lastCur.seg;
+    const end = seg.start + (+seg.dur || 0) * 1000;
+    if (!(end - now > 300)) return null;
+    return { ...su.lastCur, pos: Math.max(0, (seg.off || 0) + (now - seg.start) / 1000) };
+  }
   function chanSyncSurf(su, cur) {
     const el = chanOverlay(su); su.el = el;
-    if (!el || !su.on() || !cur) { chanPark(su); return; }
+    if (!el || !su.on()) { chanPark(su); return; }
+    if (!cur) cur = chanHoldCur(su, serverNow());
+    if (!cur) { chanPark(su); return; }
+    su.lastCur = cur;
     el.classList.add("on");
-    const audible = su.aud();
+    /* Players are audible only once the seat has gestured (see
+     * tvSeatAct): before that they run muted, so an arrival segment
+     * — file spots and news files above all — can actually START
+     * instead of sitting on a rejected unmuted play() under the
+     * poster. The first gesture flips it and this same line unmutes
+     * on the next tick (tvEntryGesture also re-syncs at once). */
+    const audible = su.aud() && tvSeatAct;
     if (su.key !== cur.key) {
       const w = su.warmEnt && su.warmEnt.key === cur.key ? su.warmEnt : null;
       chanTeardown(su, w ? w.v : null);
@@ -7047,7 +7082,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793739543;
+  const MW_DJ_BUILD = 1793747670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
