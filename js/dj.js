@@ -5720,6 +5720,84 @@ html.popdj #dj-mini{display:none!important}
     if (!twImmOn && Date.now() - twLastAct >= TW_IDLE_MS) twImmSet(true);
   }
   setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} }, 1000);
+  /* MW TV OWNER SEARCH (Malik, 2026-11-02 ~20:56: "Make it so i can
+   * search what i want to play on my tv channel" — "Give just me a
+   * search box somewhere" — "Bottom right corner"): a compact search
+   * panel at the BOTTOM RIGHT of the TV screen, built ONLY on the
+   * owner seat (the same isOwner test as the Door plan row) and only
+   * while the MW TV view is open — guests and members never get the
+   * node at all, and the 1s ensure below removes it again the moment
+   * the seat or the view changes. It rides with the summonable TV
+   * chrome: under tw-immersive it fades out with the rest (the rule
+   * in twsCss mirrors the immersive list in index.html #mwtv-styles),
+   * so the MW TV watching law stays intact for every seat. Search
+   * runs through ytSearch — the same playability-filtered relay the
+   * booth uses (no age-gated, no embed-blocked, no banned ids) — and
+   * tapping a result posts the pick to POST /api/tv/insert, which
+   * re-checks the gate server-side and replaces the tv/insert doc;
+   * the keeper fires it at the next segment boundary, so the pick
+   * plays NEXT on MW TV for everyone watching. Nothing here touches
+   * a player, the sound switch or the channel tuner itself. */
+  const twsCss = "#tw-search{position:absolute;right:14px;bottom:14px;z-index:11;width:min(332px,88vw);background:rgba(8,8,10,.93);border:1px solid #c9a227;border-radius:12px;padding:10px 11px;color:#f3ead2;box-shadow:0 10px 34px rgba(0,0,0,.6);transition:opacity .35s ease}"
+    + "body[data-view=\"mwtv\"].tw-immersive #tw-search{opacity:0!important;pointer-events:none!important;visibility:hidden}"
+    + "#tw-search .tws-h{font-size:11px;letter-spacing:.12em;color:#c9a227;margin:0 0 7px;font-weight:700}"
+    + "#tw-search .tws-row{display:flex;gap:6px}"
+    + "#tw-search input{flex:1;min-width:0;background:#101010;color:#f3ead2;border:1px solid #554a22;border-radius:8px;padding:8px 9px;font-size:14px}"
+    + "#tw-search .tws-go{background:#c9a227;color:#111;border:0;border-radius:8px;padding:8px 13px;font-weight:700;cursor:pointer;font-size:14px}"
+    + "#tw-search .tws-stat{font-size:12.5px;margin-top:7px;color:#e8dfc8}"
+    + "#tw-search .tws-res{margin-top:8px;max-height:36vh;overflow:auto;display:grid;gap:6px}"
+    + "#tw-search .tws-item{display:flex;gap:8px;align-items:center;text-align:left;background:#151410;border:1px solid #38341f;border-radius:8px;padding:5px;cursor:pointer;width:100%;color:#f3ead2}"
+    + "#tw-search .tws-item img{width:84px;height:47px;object-fit:cover;border-radius:5px;flex:none;background:#000}"
+    + "#tw-search .tws-t{font-size:12.5px;line-height:1.3;display:block}"
+    + "#tw-search .tws-d{color:#c9a227;font-size:11.5px;display:block;margin-top:2px}";
+  let twsCache = [], twsBusy = false;
+  const twsDur = (s) => { s = Math.max(0, Math.round(+s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0"); };
+  function twsEnsure() {
+    const on = elOpen("v-mwtv") && typeof isOwner !== "undefined" && !!isOwner;
+    let box = document.getElementById("tw-search");
+    if (!on) { if (box) box.remove(); return; }
+    if (box) return;
+    const shell = document.getElementById("tw-shell"); if (!shell) return;
+    if (!document.getElementById("tw-search-css")) { const st = document.createElement("style"); st.id = "tw-search-css"; st.textContent = twsCss; document.head.appendChild(st); }
+    box = document.createElement("div"); box.id = "tw-search";
+    box.innerHTML = "<div class=\"tws-h\">📺 PLAY NEXT ON MW TV — OWNER SEARCH</div><div class=\"tws-row\"><input type=\"text\" id=\"tws-q\" maxlength=\"100\" placeholder=\"Search YouTube — plays next on MW TV\" aria-label=\"Search YouTube to play next on MW TV\"><button type=\"button\" class=\"tws-go\" id=\"tws-go\">Search</button></div><div class=\"tws-res\" id=\"tws-res\"></div><div class=\"tws-stat\" id=\"tws-stat\"></div>";
+    shell.appendChild(box);
+    box.querySelector("#tws-go").addEventListener("click", () => { twsRun(); });
+    box.querySelector("#tws-q").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); twsRun(); } });
+    box.querySelector("#tws-res").addEventListener("click", (e) => { const b = e.target.closest("[data-tws]"); if (!b) return; const it = twsCache[+b.dataset.tws]; if (it) twsPlay(it); });
+  }
+  async function twsRun() {
+    if (twsBusy) return;
+    const box = document.getElementById("tw-search"); if (!box) return;
+    const qEl = box.querySelector("#tws-q"), resEl = box.querySelector("#tws-res"), stEl = box.querySelector("#tws-stat");
+    const q = qEl ? qEl.value.trim() : ""; if (!q) { if (stEl) stEl.textContent = "Type what you want to play first."; return; }
+    twsBusy = true; if (stEl) stEl.textContent = "Searching…"; if (resEl) resEl.innerHTML = "";
+    try {
+      const res = await ytSearch(q);
+      if (!res || !res.length) { if (stEl) stEl.textContent = "No playable video found — try the title another way."; twsCache = []; return; }
+      twsCache = res.slice(0, 8);
+      if (resEl) resEl.innerHTML = twsCache.map((it, i) => "<button type=\"button\" class=\"tws-item\" data-tws=\"" + i + "\"><img src=\"https://i.ytimg.com/vi/" + E(it.id) + "/hqdefault.jpg\" alt=\"\" loading=\"lazy\"><span><span class=\"tws-t\">" + E(it.title || "YouTube video") + "</span><span class=\"tws-d\">" + twsDur(it.dur) + " · tap to play next</span></span></button>").join("");
+      if (stEl) stEl.textContent = "Tap one — it plays next on MW TV.";
+    } catch (_) { if (stEl) stEl.textContent = "Search is busy — try again in a moment."; }
+    finally { twsBusy = false; }
+  }
+  async function twsPlay(it) {
+    const box = document.getElementById("tw-search"); if (!box) return;
+    const stEl = box.querySelector("#tws-stat"), resEl = box.querySelector("#tws-res");
+    const ses = mySess(); const tok = ses && ses.access_token;
+    if (!tok) { if (stEl) stEl.textContent = "Sign-in is not ready — give it a second and tap again."; return; }
+    if (stEl) stEl.textContent = "Lining it up…";
+    try {
+      const r = await fetch("/api/tv/insert", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ yt: String(it.id), title: String(it.title || "YouTube video").slice(0, 200), dur: Math.round(+it.dur || 0) }) });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || !j.ok) { if (stEl) stEl.textContent = "That one could not be lined up — pick another."; return; }
+      if (stEl) stEl.textContent = "▶ Playing next on MW TV: " + (j.title || it.title);
+      say("▶ Playing next on MW TV: " + (j.title || it.title));
+      if (resEl) resEl.innerHTML = "";
+      const qEl = box.querySelector("#tws-q"); if (qEl) qEl.value = "";
+    } catch (_) { if (stEl) stEl.textContent = "That did not go through — try again."; }
+  }
+  setInterval(() => { try { twsEnsure(); } catch (_) {} }, 1000);
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
    * screen is one more screen in the same system — the live stream
    * overlays it through vsStageEls and this paints the SAME video mix
@@ -6870,7 +6948,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793734162;
+  const MW_DJ_BUILD = 1793734368;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
