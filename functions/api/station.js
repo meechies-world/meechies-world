@@ -493,7 +493,7 @@ function mwVmixRescue(S, now, obs) {
  * that the break cuts in even during his own live booth sets, so
  * there is no booth exception. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 6;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool)
+const TV_PROGRAM_V = 7;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
 const TV_MOVIE_V = 1;                // post-premiere movie block doc generation (tv/movieblock)
 const TV_INSERT_V = 2;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy)
@@ -512,6 +512,31 @@ const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: 
 const TV_ANCHOR_FRESH_MS = 6 * 3600e3; // an anchor edition airs only at its own slot and only when produced within the 6h before that slot (productions run ~30 min ahead of each slot)
 const TV_NEWS_LEN = 600;           // the TV news window: :50-:00, ten minutes
 const TV_AD_EVERY_MS = 900e3;      // MY EMPIRE ad cadence (Malik, 2026-11-02 ~21:05: "my tv show comercial every 15 min"): the show commercial plays on this fixed cadence — see tvAdCadItems/tvAdWin
+/* MY EMPIRE show spots (Malik, 2026-11-03: "play them randomly,
+ * even on the radio"): the full show-spot pool. On MW TV these are
+ * house items in tv/breakpool — drawn by the break bag like every
+ * break, and on the 15-minute cadence rail by the seeded block
+ * shuffle in tvAdPick. On the radio the same spots play as audio
+ * (RADIO_SPOTS below), served through nextItem at song boundaries
+ * on a light cadence. A spot only ever airs while its media
+ * actually exists on the site: tvSpotGate probes the newest pool
+ * files and every radio cut (verdicts cached in tv/now as
+ * spotProbe) and holds a pooled spot — or skips a radio pick —
+ * whose file is missing, so this keeper can land ahead of a media
+ * upload and each spot joins rotation by itself once its file is
+ * in place, with no further code change. */
+const TV_SHOW_SPOT_IDS = ["brk-my-empire-ad", "brk-my-empire-v2", "brk-my-empire-by10", "brk-my-empire-8oclock", "brk-my-empire-shop", "brk-my-empire-family", "brk-my-empire-12"];
+const TV_SPOT_GATE_IDS = ["brk-my-empire-v2", "brk-my-empire-shop", "brk-my-empire-family", "brk-my-empire-12"]; // pooled spots whose files were not on the site when this landed (v1 / done-by-10 / 8-o-clock files were verified live at their seed times and are not gated)
+const RADIO_SPOT_EVERY_MS = 900e3;   // radio show spots: at most one at a song boundary per ~15 min of Auto-DJ rotation (the station's light-touch break cadence — no other radio break pattern exists)
+const RADIO_SPOTS = [
+  { id: "spot-v1", src: "/media/my-empire-commercial.mp3", title: "MY EMPIRE — Show Commercial", dur: 42.3 },
+  { id: "spot-v2", src: "/media/my-empire-commercial-v2.mp3", title: "MY EMPIRE — The Don (Show Commercial)", dur: 42.2 },
+  { id: "spot-by10", src: "/media/my-empire-by10.mp3", title: "MY EMPIRE — Done by 10 Tonight", dur: 14.5 },
+  { id: "spot-8oclock", src: "/media/my-empire-8oclock.mp3", title: "MY EMPIRE — Every Day at 8, Rerun at 10", dur: 14.5 },
+  { id: "spot-shop", src: "/media/my-empire-shop-station-family.mp3", title: "MY EMPIRE — The Shop, The Station, The Family", dur: 10 },
+  { id: "spot-family", src: "/media/my-empire-family-foundation.mp3", title: "MY EMPIRE — Family Is the Foundation", dur: 10 },
+  { id: "spot-12", src: "/media/my-empire-12-shirts.mp3", title: "MY EMPIRE — 12 Shirts, Zero Excuses", dur: 10 }
+];
 const TV_UPD_EVERY_MS = 300e3;     // MW TV news+traffic update rail (Malik, 2026-11-03 ~11:19: "updates on the live feeds every five minutes"): a short update hit on every 5-minute mark — see tvUpdSpans/tvUpdWin; quarter marks ride the ad cadence instead (spot + chained update)
 const TV_HORIZON = 2 * 3600e3;     // segments are generated this far ahead of now
 const TV_KEEP = 3600e3;            // aired segments are kept this long behind now
@@ -905,6 +930,10 @@ function tvSeedPool(now) {
     { id: "brk-my-empire-ad", kind: "house", src: "file", url: "/media/my-empire-commercial.mp4", title: "MY EMPIRE — Premiere Commercial", dur: 42, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, his business and himself, hosted on his own site media (/media/my-empire-commercial.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
     { id: "brk-my-empire-by10", kind: "house", src: "file", url: "/media/my-empire-by10.mp4", title: "MY EMPIRE — Done by 10 Tonight", dur: 15, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, hosted on his own site media (/media/my-empire-by10.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
     { id: "brk-my-empire-8oclock", kind: "house", src: "file", url: "/media/my-empire-8oclock.mp4", title: "MY EMPIRE — Every Day at 8, Rerun at 10", dur: 15, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, hosted on his own site media (/media/my-empire-8oclock.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
+    { id: "brk-my-empire-v2", kind: "house", src: "file", url: "/media/my-empire-commercial-v2.mp4", title: "MY EMPIRE — The Don (Show Commercial)", dur: 42, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE (v2 — his character on camera, the premieres-at-8 announcement), hosted on his own site media (/media/my-empire-commercial-v2.mp4); he is the creator and rights holder. Joins the pool under his 2026-11-03 order to play the show commercials in random rotation on MW TV and radio", clearedBy: "owner", at: now, simulcast: true } },
+    { id: "brk-my-empire-shop", kind: "house", src: "file", url: "/media/my-empire-shop-station-family.mp4", title: "MY EMPIRE — The Shop, The Station, The Family", dur: 10, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE (the shop-opened, station-signed-on, family line), supplied by Malik on 2026-11-03 for the random show-spot rotation and hosted on his own site media (/media/my-empire-shop-station-family.mp4); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
+    { id: "brk-my-empire-family", kind: "house", src: "file", url: "/media/my-empire-family-foundation.mp4", title: "MY EMPIRE — Family Is the Foundation", dur: 10, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE (the family-is-the-foundation line), supplied by Malik on 2026-11-03 for the random show-spot rotation and hosted on his own site media (/media/my-empire-family-foundation.mp4); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
+    { id: "brk-my-empire-12", kind: "house", src: "file", url: "/media/my-empire-12-shirts.mp4", title: "MY EMPIRE — 12 Shirts, Zero Excuses", dur: 10, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE (the 12-shirts, zero-excuses line), supplied by Malik on 2026-11-03 for the random show-spot rotation and hosted on his own site media (/media/my-empire-12-shirts.mp4); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
     { id: "brk-local-update", kind: "house", src: "file", url: "/m/media/local-update.mp4", title: "Uniontown Local Update — News & Traffic", dur: 51, lane: "house", rights: { basis: "own", evidence: "Produced in-house by the site news producer from attributed public sources (Herald-Standard headlines, PennDOT 511PA traffic, NWS alerts); Malik is the publisher and rights holder of the produced spot", clearedBy: "owner", at: now, simulcast: true } }
   ];
   const bag = items.map((x) => x.id);
@@ -1016,21 +1045,58 @@ function tvInsertWin(ms, ins) {
   return null;
 }
 /* The MY EMPIRE ad cadence lineup (Malik, 2026-11-02 ~21:05: "my tv
- * show comercial every 15 min"): the show commercial on a fixed
- * 15-minute cadence, resolved from the break pool on every pass —
- * the pool is the gate, so a slot exists only while the spot is in
- * the pool and cleared. While the "done by 10" spot is also in the
- * pool, the slots alternate between the two (show commercial first);
- * when it leaves the pool, the show commercial takes every slot
- * again. A missing or uncleared spot is simply no cadence — never
- * an error, never dead air. */
+ * show comercial every 15 min"; pool + random draw, Malik,
+ * 2026-11-03: "play them randomly"): the 15-minute rail serves the
+ * FULL show-spot pool — every MY EMPIRE spot currently in the break
+ * pool and cleared (tvSpotGate holds any whose file is not on the
+ * site yet, so a spot joins the rail by itself once uploaded) —
+ * resolved from the break pool on every pass. The pool is the
+ * gate, so a missing or uncleared spot is simply no cadence —
+ * never an error, never dead air. Which spot fills an occurrence
+ * is tvAdPick's seeded block shuffle, never a fixed order. */
 function tvAdCadItems(pool) {
   const items = [];
-  for (const id of ["brk-my-empire-ad", "brk-my-empire-8oclock"]) {
+  for (const id of TV_SHOW_SPOT_IDS) {
     const it = ((pool && pool.items) || []).find((x) => x.id === id);
     if (it && tvCleared(it)) items.push(it);
   }
   return items.length ? items : null;
+}
+/* Which pool spot fills cadence occurrence k: a seeded shuffle-bag
+ * over blocks of n occurrences (n = pool size). Every block plays
+ * each spot exactly once, in an order shuffled by a PRNG seeded
+ * from the block index — so the draw is a pure function of k:
+ * every keeper pass agrees on the same spot for the same
+ * occurrence with no state to store, while the order still varies
+ * block to block. A block never opens with the previous block's
+ * last spot: when the fresh block's head equals the previous
+ * block's (raw) last entry, the head is swapped with the first
+ * differing entry from the block's middle — the swap never touches
+ * the block's own last entry, so the next block's check reads the
+ * same last entry this block actually played, and every position
+ * of the block reads the one adjusted order. With two spots the
+ * only no-repeat order is strict alternation; with one, itself. */
+function tvAdPick(cad, k) {
+  const n = cad.length;
+  if (n <= 1) return cad[0];
+  if (n === 2) return cad[((k % 2) + 2) % 2];
+  const raw = (b) => {
+    const a = []; for (let i = 0; i < n; i++) a.push(i);
+    let s = ((b + 1) * 2654435761) >>> 0;
+    const rnd = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+    for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  };
+  const block = Math.floor(k / n), pos = k - block * n;
+  const ord = raw(block);
+  if (block > 0) {
+    const prevLast = raw(block - 1)[n - 1];
+    if (ord[0] === prevLast) {
+      const j = ord.findIndex((x, ix) => ix >= 1 && ix <= n - 2 && x !== prevLast);
+      if (j > 0) { const t = ord[0]; ord[0] = ord[j]; ord[j] = t; }
+    }
+  }
+  return cad[ord[pos]];
 }
 /* The effective cadence spans overlapping [fromMs, toMs), in order.
  * Occurrences sit on fixed 15-minute wall-clock blocks (the whole-
@@ -1076,7 +1142,7 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu) {
     return null;
   };
   for (let k = kFirst; k <= kLast; k++) {
-    const it = cad[((k % cad.length) + cad.length) % cad.length];
+    const it = tvAdPick(cad, k);
     const dur = +it.dur || 0;
     if (!(dur > 0)) continue;
     let s = k * TV_AD_EVERY_MS;
@@ -1454,6 +1520,55 @@ async function tvPremLive(prem, nw, now, origin) {
   const liveDurSec = Math.min(2940, live.reduce((a, i) => a + (+i.dur || 0), 0));
   return { prem: live.length && liveDurSec > 0 ? { startMinET: +prem.startMinET || 1200, items: live, liveDurSec } : null, cache, cacheChanged };
 }
+/* Show-spot media gate: probe every gated show-spot file (the
+ * four newest pool videos + all seven radio cuts) exactly like the
+ * premiere / character probes — Range bytes=0-0, verdicts cached
+ * in tv/now as spotProbe for TV_PREM_PROBE_MS. Returns the set of
+ * URLs that exist right now. tvTick holds any gated pool item
+ * whose file is missing (the brk-local-update hold discipline) and
+ * the radio decision only picks spots in the set — so a spot whose
+ * media has not been uploaded yet can never lay a dead segment or
+ * a silent deck, and joins rotation by itself once the file lands. */
+async function tvSpotGate(nw, now, origin) {
+  const cache = { ...((nw && nw.spotProbe) || {}) };
+  let cacheChanged = false;
+  const urls = ["/media/my-empire-commercial-v2.mp4", "/media/my-empire-shop-station-family.mp4", "/media/my-empire-family-foundation.mp4", "/media/my-empire-12-shirts.mp4"].concat(RADIO_SPOTS.map((sp) => sp.src));
+  const ok = new Set();
+  for (const url of urls) {
+    const c = cache[url];
+    if (c && now - c.at < TV_PREM_PROBE_MS) { if (c.ok) ok.add(url); continue; }
+    let good = false;
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
+      const r = await fetch(origin + url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      good = r.status === 200 || r.status === 206;
+    } catch (_) { good = false; }
+    cache[url] = { ok: good, at: now }; cacheChanged = true;
+    if (good) ok.add(url);
+  }
+  return { ok, cache, cacheChanged };
+}
+/* The radio show-spot gate (Malik, 2026-11-03: the show
+ * commercials play on the radio too, randomly): fire at most one
+ * spot per RADIO_SPOT_EVERY_MS of station time, only on a live
+ * Auto-DJ station with no deliberate pause standing, only a spot
+ * whose audio file is actually on the site (okUrls, from
+ * tvSpotGate), and never the same spot twice in a row (S.spotLast).
+ * The handler serves the item through nextItem — a song boundary,
+ * behind listener picks, the schedule, Malik's own queue and AI
+ * stock, and never while his booth is fresh — so a spot can never
+ * cut, skip or crowd out anything he or a listener put on. No
+ * media, no fire — never a silent deck. */
+function tvSpotDecision(S, okUrls, now) {
+  if (!S || !S.live || !S.autodj || S.pausedAt) return { fire: false, why: "station-not-live" };
+  if (now - (+S.spotAt || 0) < RADIO_SPOT_EVERY_MS) return { fire: false, why: "not-due" };
+  const avail = RADIO_SPOTS.filter((sp) => okUrls && okUrls.has(sp.src));
+  if (!avail.length) return { fire: false, why: "no-media" };
+  let pool = avail.filter((sp) => sp.id !== S.spotLast);
+  if (!pool.length) pool = avail;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  return { fire: true, spotId: pick.id, item: { src: pick.src, title: pick.title, dur: pick.dur } };
+}
 async function tvTick(env, S, now, origin) {
   let chan = await readDoc(env, "tv/channel");
   if (!chan || !Array.isArray(chan.items) || !chan.items.length || (+chan.progV || 0) < TV_PROGRAM_V) { chan = tvSeedChannel(now); await writeDoc(env, "tv/channel", "tv", chan); }
@@ -1484,14 +1599,34 @@ async function tvTick(env, S, now, origin) {
       await writeDoc(env, "tv/breakpool", "tv", pool);
     }
   }
+  // Show-spot media gate (tvSpotGate): hold any gated pool spot
+  // whose file is not on the site yet and unhold it the moment the
+  // file lands — the brk-local-update hold discipline, driven by
+  // media existence instead of age. The same verdicts feed the
+  // radio spot decision attached to this tick's decision, so the
+  // radio lane works even while the TV channel is off or down.
+  const nwEarly = await readDoc(env, "tv/now");
+  const spotState = await tvSpotGate(nwEarly, now, origin);
+  for (const it of (pool.items || [])) {
+    if (!TV_SPOT_GATE_IDS.includes(it.id)) continue;
+    const held = !spotState.ok.has(it.url);
+    if (!!it.held !== held) {
+      if (held) it.held = true; else delete it.held;
+      pool.updatedAt = now;
+      await writeDoc(env, "tv/breakpool", "tv", pool);
+    }
+  }
+  decision.spot = tvSpotDecision(S, spotState.ok, now);
   if (chan.on === false) {
     const nw0 = await readDoc(env, "tv/now");
     if (!nw0 || !nw0.off) await writeDoc(env, "tv/now", "tv", { off: true, segs: [], updatedAt: now });
+    if (spotState.cacheChanged) { const base0 = nw0 && nw0.off ? nw0 : { off: true, segs: [], updatedAt: now }; await writeDoc(env, "tv/now", "tv", { ...base0, spotProbe: spotState.cache, updatedAt: now }); }
     return decision;
   }
   if (!(chan.items || []).some(tvCleared)) {
     const nw0 = await readDoc(env, "tv/now");
     if (!nw0 || !nw0.down) await writeDoc(env, "tv/now", "tv", { down: true, segs: [], updatedAt: now });
+    if (spotState.cacheChanged) { const base0 = nw0 && nw0.down ? nw0 : { down: true, segs: [], updatedAt: now }; await writeDoc(env, "tv/now", "tv", { ...base0, spotProbe: spotState.cache, updatedAt: now }); }
     return decision;
   }
   let nw = await readDoc(env, "tv/now");
@@ -1652,6 +1787,7 @@ async function tvTick(env, S, now, origin) {
   }
   if (premState.cacheChanged) dirty = true;
   if (luState.cacheChanged) dirty = true;
+  if (spotState.cacheChanged) dirty = true;
   delete chan._prem;
   delete chan._anchor;
   delete chan._char;
@@ -1659,7 +1795,7 @@ async function tvTick(env, S, now, origin) {
   delete chan._movies;
   delete chan._insert;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, insWin: insWin || null, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, spotProbe: spotState.cache, insWin: insWin || null, genAt: now, updatedAt: now });
   }
   return decision;
 }
@@ -1772,7 +1908,8 @@ export async function onRequestGet({ request, env }) {
   // screen — precedence lives in the renderer, not here). Wrapped like
   // the doorbell: a channel failure may never break the station ping.
   let tvNewsFire = null;
-  try { const tvd = await tvTick(env, S, now, origin); if (tvd && tvd.fire) tvNewsFire = tvd; } catch (_) {}
+  let tvSpotItem = null;
+  try { const tvd = await tvTick(env, S, now, origin); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
   // 2026-10-28): unless a deck is impossibly past its end — flagged playing
@@ -2009,6 +2146,21 @@ export async function onRequestGet({ request, env }) {
         if (!it) continue;
         if (it.yt && +it.dur > 0) return { src: "", yt: String(it.yt), title: String(it.title || "").slice(0, 120), cover: String(it.cover || "").slice(0, 300), dur: +it.dur };
       }
+    }
+    /* MW TV SHOW SPOTS ON THE RADIO (Malik, 2026-11-03: "play them
+       randomly, even on the radio"): a due spot (tvSpotDecision in
+       tvTick — live Auto-DJ, ~15-minute cadence, media probed on
+       the site, never the same spot twice in a row) is served
+       HERE, at a song boundary, behind everything with a person
+       behind it — listener picks, the schedule, Malik's own queue
+       and AI stock all play first — and never while his booth is
+       fresh (his live set is his; unlike the news, spots carry no
+       cut-in order). Serving stamps S.spotAt / S.spotLast into the
+       station doc this tick already writes. */
+    if (tvSpotItem && !(S.boothAt && now - S.boothAt < BOOTH_FRESH)) {
+      const sp = tvSpotItem; tvSpotItem = null;
+      S.spotAt = now; S.spotLast = sp.spotId; changed = true;
+      return { src: sp.item.src, title: sp.item.title, dur: sp.item.dur };
     }
     // REQUESTS PLAYLIST LANE (2026-10-30): the tail of the rotation is
     // where nothing fresher is waiting, so the settled priority above
