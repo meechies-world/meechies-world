@@ -73,6 +73,12 @@ const LAZY_SRC={
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
    * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
   djbooth:["js/dj-booth.js?v=1793664600"],
+  /* C1 split (2026-11-03): dj.js's Watch-the-Setup + Setup Plans +
+   * spectator-booth continuation pack. Same contract as djbooth above:
+   * dj.js fetches the text itself and evals it inside its closure; this
+   * entry exists only so the B5 idle prefetcher warms the bytes.
+   * NEVER lazyKick("watchpack"). Pin tracks the DJ build stamp. */
+  watchpack:["js/dj-watch.js?v=1793749670"], 
   /* Messages view core (max-speed Lever 5, 2026-11-02): js/messages.js
    * stays eager — it is the always-on layer (Message buttons site-wide,
    * the chat bubble, heads, pop-up card, arrival pop, unread dot). Only
