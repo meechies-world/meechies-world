@@ -186,7 +186,7 @@
       else { await ytApi(); if (!window.YT || !YT.Player) { d.ytId = ""; return false; } sh = ytShim(d, vp.id, onT); }
       d.shim = sh; d.el = sh; d._hookEnd(sh);
       const okP = await sh._mount(mount); if (d.shim !== sh) return false;
-      try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing) sh.play(); } catch (_) {}
+      try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing && !(boothPlayHeld && OWNER() && boothLead)) sh.play(); } catch (_) {} // AUTO-STOP LAW: a held booth mounts the player cued + silent
       return okP;
     };
     // a SoundCloud deck: the track plays in the deck's own widget frame and
@@ -208,7 +208,7 @@
       const sh = scShim(url, onM);
       d.shim = sh; d.el = sh; d._hookEnd(sh);
       const okP = await sh._mount(mount); if (d.shim !== sh) return false;
-      try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing) sh.play(); } catch (_) {}
+      try { sh._p && sh._p.setVolume(Math.round(d.level * 100)); if (S[d.letter] && S[d.letter].playing && !(boothPlayHeld && OWNER() && boothLead)) sh.play(); } catch (_) {} // AUTO-STOP LAW: a held booth mounts the player cued + silent
       return okP;
     };
     d.clearYt = () => { if (d.shim) { try { d.shim._p && d.shim._p.destroy(); } catch (_) {} d.shim = null; if (d._audioEl) { d.el = d._audioEl; d._hookEnd(d.el); } } if (d.ytId) d.ytId = ""; if (d.scUrl) d.scUrl = ""; const wrap = document.getElementById("ytw-" + d.letter); if (wrap) { wrap.hidden = true; wrap.innerHTML = '<div id="yt-' + d.letter + '"></div>'; } };
@@ -444,7 +444,7 @@
   /* ---------- shared station state (doc radio/dj) ---------- */
   const blank = () => ({ src: "", yt: "", kind: "", scUrl: "", scId: 0, title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1, dur: 0 });
   const defFx = () => ({ mf: 100, echo: 0, fb: 0.34, verb: 0, fla: 0, pha: 0, noise: 0, ediv: 0.75, gate: 0, crush: 0, sync: true, boost: 1 });
-  let S = { live: false, radioSrc: "tv", xf: 0.5, xf2: 0.5, panX: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, hornOn: false, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
+  let S = { live: false, xf: 0.5, xf2: 0.5, panX: 0.5, xfCurve: "smooth", panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, updatedAt: 0, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, hornOn: false, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, battle: { on: false, id: "", p1: { uid: "", name: "" }, p2: { uid: "", name: "" }, round: 1, rounds: 3, turnSec: 90, turn: "", turnEndsAt: 0, phase: "off", winner: "", at: 0, lastWrite: 0 } };
   const posOf = (k) => { const s = S[k]; return s.playing ? Math.max(0, (Date.now() - s.start) / 1000) : (s.pos || 0); };
   let saveT = null;
   let guestPostAt = 0;
@@ -575,7 +575,6 @@
 .onair-lamp.on{color:#fff;background:#a3161c;border-color:#e5484d;box-shadow:0 0 18px rgba(229,72,77,.55)}
 .onair-lamp .dot{width:9px;height:9px;border-radius:50%;background:#666}
 .onair-lamp.on .dot{background:#ff5b60;animation:djpulse 1.2s infinite}
-#dj-livebtn.on{background:#c00d14!important;color:#fff!important;border-color:#ff6b6f!important;box-shadow:0 0 16px 3px rgba(255,40,45,.8),0 0 38px 10px rgba(255,0,0,.32)}
 @keyframes djpulse{50%{opacity:.35}}
 .dj-clock{font:700 16.5px ui-monospace,monospace;color:var(--gold-hi)}
 .dj-decks{display:grid;grid-template-columns:minmax(0,1fr) 300px minmax(0,1fr);gap:16px;align-items:stretch}
@@ -1413,7 +1412,7 @@ html.popdj #dj-mini{display:none!important}
   <div class="dj-top"><div><p class="eyebrow" style="margin:0">Owner only · the station board</p><h3>🎛️ DJ Station</h3></div>
     <span class="onair-lamp" id="dj-lamp"><span class="dot"></span>OFF AIR</span>
     <span class="dj-clock" id="dj-lead"></span><span class="dj-clock" id="dj-online"></span><span class="dj-clock" id="dj-clock"></span><span class="dj-clock" id="dj-showtime"></span>
-    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><label class="dj-live"><input type="checkbox" id="dj-horn-top"> 📯 HORNS</label><button class="btn sm" type="button" id="dj-reports-btn" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">📋 REPORTS <span class="rp-badge" id="dj-reports-badge" hidden></span></button><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button><button class="btn sm" type="button" id="dj-livebtn" aria-pressed="false" title="LIVE — on: your booth is the radio. Off: MW TV is the radio." style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">○ LIVE</button><button class="btn sm" type="button" data-capbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🖥 CAPTURE</button><button class="btn sm" type="button" data-hidebtn data-lab-off="🙈 HIDE" data-lab-on="👁 SHOW" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🙈 HIDE</button></div>
+    <label class="dj-live"><input type="checkbox" id="dj-golive"> Go live (everyone hears your mix)</label><label class="dj-live"><input type="checkbox" id="dj-ad-top" checked> AUTO-DJ</label><label class="dj-live"><input type="checkbox" id="dj-horn-top"> 📯 HORNS</label><button class="btn sm" type="button" id="dj-reports-btn" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">📋 REPORTS <span class="rp-badge" id="dj-reports-badge" hidden></span></button><button class="btn sm" type="button" data-bobtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🌑 BLACKOUT</button><button class="btn sm" type="button" data-bubbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🫧 BUBBLE</button><button class="btn sm" type="button" data-capbtn style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🖥 CAPTURE</button><button class="btn sm" type="button" data-hidebtn data-lab-off="🙈 HIDE" data-lab-on="👁 SHOW" hidden style="background:#000;color:#f0cf78;border:2px solid #f0cf78;font-weight:800">🙈 HIDE</button></div>
   <div class="dj-rotate">📱↔️ <span>Rotate your phone sideways — you get the full DJ console, all four tables in a row like the desktop.</span></div>
   <div class="dj-setups" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px"><span style="font:700 14px var(--body);color:var(--muted);letter-spacing:.12em;align-self:center">SETUPS:</span><button class="btn ghost sm" type="button" data-preset="loud">🔊 Loud &amp; Clear</button><button class="btn ghost sm" type="button" data-preset="radio">🏆 Pro Radio</button><button class="btn ghost sm" type="button" data-preset="club">🔥 Club</button><button class="btn ghost sm" type="button" data-preset="scratch">🎺 Scratch Session</button><button class="btn ghost sm" type="button" data-preset="chop">⚡ Transformer</button><button class="btn ghost sm" type="button" data-pop>⛶ Pop out — own screen</button></div>
   <div class="dj-screen" id="dj-screen">
@@ -2241,6 +2240,7 @@ html.popdj #dj-mini{display:none!important}
 
   /* ---------- levels, following the shared state, listener side ---------- */
   let listening = false, voiceEl = null, heardVoice = "", micHot = 0, mixVol = 1, dropDuckUntil = 0;
+  let boothPlayHeld = true; // BOOTH AUTO-STOP LAW (Malik, 2026-11-03): a booth window loads STOPPED. State-driven deck starts load + cue but never SOUND the driving booth until the owner presses play in this window (deck play / play-the-queue clicks, Listen, TAKE CONTROL, the sound-here tap). Once he plays, the hold is off for the window and the set keeps playing under the normal continuity rules. Only the OWNER()+boothLead seat consults it; listener seats and the shared station state are untouched, so the keeper/Auto-DJ keep the radio rolling for listeners exactly as before.
   /* keep the screen awake while a listener is tuned in (owner, 2026-10-27):
      a sleeping screen is what freezes video decks — the phone itself pauses
      the page, and no website can override a real lock or a closed app. But
@@ -2359,7 +2359,7 @@ html.popdj #dj-mini{display:none!important}
         navigator.mediaSession.metadata = new MediaMetadata({ title: "Meechie's World — Live Radio", artist: "Meechie's World Inc", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/bubble-poster-256.webp", sizes: "256x256", type: "image/webp" }, { src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] });
         navigator.mediaSession.playbackState = "playing";
         if (navigator.mediaSession.setActionHandler) {
-          navigator.mediaSession.setActionHandler("play", () => { if (!listening && (radioOnAir() || OWNER())) startListening(); });
+          navigator.mediaSession.setActionHandler("play", () => { if (!listening && (isLive() || OWNER())) startListening(); });
           navigator.mediaSession.setActionHandler("pause", () => { if (listening) stopListening(); });
         }
       } else if (navigator.mediaSession.setActionHandler) { navigator.mediaSession.setActionHandler("play", null); navigator.mediaSession.setActionHandler("pause", null); }
@@ -4385,7 +4385,6 @@ html.popdj #dj-mini{display:none!important}
     if (t.closest("[data-vsrestore]")) { vsPubRestore(); return; }
     if (t.closest(".vspause")) { vsToggleLocalPause(); return; }
     if (t.closest("[data-hidebtn]")) { vsToggleHide(); return; }
-    if (t.closest("#dj-livebtn")) { if (OWNER()) setRadioLive(S.radioSrc !== "booth"); return; }
     if (t.closest("[data-capbtn]")) { vsToggle("screen"); return; }
     if (t.closest("[data-vlive]")) { vsToggle("cam"); return; }
     if (t.closest("#dj-msvbtn")) { msvPick(); return; }
@@ -4716,7 +4715,6 @@ html.popdj #dj-mini{display:none!important}
     if (OWNER() || !listening) return null;
     if (vsBroadcast() && !(S.vstream || {}).hidden) return null;
     if (msvActive()) return null; // SCREEN VIDEO (owner, 2026-10-30): an uploaded video holding the master screen outranks the mix for sound as well as picture — no mix screen sounds under it; msvSync hands the file sound to exactly one surface on this same ladder (share > screen video > mix)
-    if (radioSrc() === "tv") return null; // MW TV IS THE RADIO (2026-11-03): no mix screen sounds while the channel is the radio — chanSndSurf hands the sound to the channel overlay instead
     if (SANDBOX) return scrView;
     const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return scrTV;
     const wa = document.getElementById("v-watch"); if (wa && !wa.hidden) return scrWatch;
@@ -5406,7 +5404,7 @@ html.popdj #dj-mini{display:none!important}
    * from radio state. stateSeen still guards the viewer slates' words
    * exactly as before; only chanReady's gate moves. */
   let tvSeen = false, tvArrChan = false, tvArrNow = false;
-  function tvMarkArrive() { if (tvArrChan && tvArrNow && !tvSeen) { tvSeen = true; try { paintStation(); } catch (_) {} try { radioSrcApply(); } catch (_) {} } } // the channel just became tunable: if it is the radio source, say so on the station card and apply the source
+  function tvMarkArrive() { if (tvArrChan && tvArrNow) tvSeen = true; }
   function tvSegAtC(segs, t) { if (!Array.isArray(segs)) return null; for (const sg of segs) { if (t >= sg.start && t < sg.start + sg.dur * 1000) return sg; } return null; }
   function tvResolveNews(newsDoc, seg) {
     const st = seg.edWin || seg.start;
@@ -5430,48 +5428,12 @@ html.popdj #dj-mini{display:none!important}
     if (!tvNowDoc || tvNowDoc.off || tvNowDoc.down || !Array.isArray(tvNowDoc.segs) || !tvNowDoc.segs.length) return false;
     return true;
   }
-  /* MW TV IS THE RADIO (Malik, 2026-11-03): the live radio's source is
-   * a persisted selector in radio/dj — S.radioSrc. "booth" only while
-   * Malik's LIVE button (next to CAPTURE in the booth) is on; otherwise
-   * MW TV is the radio: listeners hear the channel's current item and
-   * every master screen shows it. A live share still outranks both
-   * (takeover law). When the channel cannot tune (keeper down, channel
-   * off), the source falls back to the booth so the radio is never
-   * silent — today's behaviour exactly. */
-  function radioSrc() {
-    const vs = S.vstream || {};
-    if (vs.on && vs.meeting && !vs.hidden) return "share";
-    if (S.radioSrc === "booth") return "booth";
-    return chanReady() ? "tv" : "booth";
-  }
-  function radioOnAir() { return isLive() || radioSrc() === "tv"; }
-  /* the ONE channel surface allowed to carry the radio's sound in TV
-   * mode — the chanSync twin of vmixSndScr's ladder: MW TV page, then
-   * Watch, then the in-flow master band, then the station stage. A
-   * share or a screen video carries its own sound and mutes this. */
-  function chanSndSurf() {
-    if (!listening || radioSrc() !== "tv") return "";
-    if (msvActive()) return "";
-    const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return "TW";
-    const wa = document.getElementById("v-watch"); if (wa && !wa.hidden) return "WB";
-    try { const mb = document.getElementById("dj-mini"); if (mb && !mb.hidden && !document.documentElement.classList.contains("gated")) return "MN"; } catch (_) {}
-    return "ST";
-  }
-  let lastRadioSrc = "";
-  function radioSrcApply() {
-    const src = radioSrc();
-    if (src === lastRadioSrc) return;
-    const prev = lastRadioSrc; lastRadioSrc = src;
-    if (!listening) return;
-    if (src === "tv") { if (!boothLead) DECKS.forEach((k) => { try { if (decks[k]) decks[k].stop(); } catch (_) {} }); }
-    else if (src === "booth" && prev === "tv") DECKS.forEach((k) => { try { follow(k); } catch (_) {} });
-  }
   function chanHolds() {
     if (!chanReady()) return false;
     const vs = S.vstream || {};
     if (vs.on && vs.meeting && !vs.hidden) return false;
     if (msvActive()) return false;
-    if (vmixTargets().length && radioSrc() !== "tv") return false; // MW TV IS THE RADIO: with LIVE off the channel holds every master screen over the deck mix; LIVE on, the mix takes the screen back
+    if (vmixTargets().length) return false;
     return true;
   }
   function tvChanCur() { return tvChanCurPick(chanHolds()); }
@@ -5500,10 +5462,10 @@ html.popdj #dj-mini{display:none!important}
     return cur ? "📺 MW TV — " + cur.title : "";
   }
   const TV_SURFS = [
-    { id: "TW", slot: "#tw-vs1", warm: true, on: () => elOpen("v-mwtv"), aud: () => tvSndOn || chanSndSurf() === "TW" || (!!listening && radioSrc() !== "tv" && !(S.live && DECKS.some((k) => S[k] && S[k].playing))) },
-    { id: "ST", slot: "#st-vs1", warm: true, on: () => { const b = $("#st-ytbox"); return elOpen("v-radio") && !!b && !b.hidden; }, aud: () => chanSndSurf() === "ST" },
-    { id: "MN", slot: "#mn-vs1", warm: false, on: () => !!$("#dj-mini"), aud: () => chanSndSurf() === "MN" },
-    { id: "WB", slot: "#wb-vs1", warm: true, on: () => elOpen("v-watch"), aud: () => chanSndSurf() === "WB" },
+    { id: "TW", slot: "#tw-vs1", warm: true, on: () => elOpen("v-mwtv"), aud: () => tvSndOn || (!!listening && !(S.live && DECKS.some((k) => S[k] && S[k].playing))) },
+    { id: "ST", slot: "#st-vs1", warm: true, on: () => { const b = $("#st-ytbox"); return elOpen("v-radio") && !!b && !b.hidden; }, aud: () => false },
+    { id: "MN", slot: "#mn-vs1", warm: false, on: () => !!$("#dj-mini"), aud: () => false },
+    { id: "WB", slot: "#wb-vs1", warm: true, on: () => elOpen("v-watch"), aud: () => false },
     { id: "BO", slot: "#dj-vs1", warm: true, on: () => OWNER() && elOpen("v-djbooth"), aud: () => false }
   ];
   TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; });
@@ -6027,7 +5989,7 @@ html.popdj #dj-mini{display:none!important}
   }
   async function followRun(k) {
     const s = S[k], d = deck(k);
-    if (listening && radioSrc() === "tv") { try { d.stop(); } catch (_) {} return; } // MW TV IS THE RADIO: a tuned-in seat's decks stay silent — the channel overlay carries the sound (chanSndSurf)
+    const holdPlay = boothPlayHeld && OWNER() && boothLead; // AUTO-STOP LAW: while held, follow() loads + cues this window's decks but never sounds them
     if (s.yt) {
       // a YouTube deck: listeners watch it on the station's ON AIR video stage;
       // the booth (and its mirrors) run a real player in the deck itself
@@ -6055,7 +6017,7 @@ html.popdj #dj-mini{display:none!important}
       // claimed it was playing. The library player in index.html has always
       // played first and seeked after, for exactly this reason.
       const setP = d.set(s.src);
-      if (s.playing) { try { const pp = d.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} }
+      if (s.playing && !holdPlay) { try { const pp = d.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} }
       await setP;
     }
     d.el.playbackRate = s.rate || 1;
@@ -6064,7 +6026,7 @@ html.popdj #dj-mini{display:none!important}
     // OVER, whatever the doc still claims: park it locally instead of seeking
     // past the end on every sync tick (the seek loop sounds like skipping)
     if (s.playing && +s.dur > 0 && want > +s.dur + 2) { try { d.el.pause(); } catch (_) {} levels(); return; }
-    if (s.playing) {
+    if (s.playing && !holdPlay) {
       // end zone (fix, 2026-10-28, "it starts skipping at the end of the song
       // instead of fading"): judge the end by the ELEMENT and its own clock,
       // never by the wall clock alone. A deck always trails the shared
@@ -6455,7 +6417,7 @@ html.popdj #dj-mini{display:none!important}
     const qz = $("#dj-quant"); if (qz && document.activeElement !== qz) qz.checked = S.quant !== false;
     const jf = $("#dj-jogf"); if (jf && document.activeElement !== jf) jf.value = String(BST.JOGF);
     const fsx = $("#dj-fxsync"); if (fsx && document.activeElement !== fsx) fsx.checked = (S.fx && S.fx.sync) !== false;
-    const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live; paintLiveBtn(); paintEdit(); paintXfPads();
+    const cr = $("#dj-crush"); if (cr && document.activeElement !== cr) cr.value = (S.fx && S.fx.crush) || 0; $("#dj-golive").checked = !!S.live; paintEdit(); paintXfPads();
     [["dj-filter", S.fx && S.fx.mf], ["dj-echo", S.fx && S.fx.echo], ["dj-fb", S.fx && S.fx.fb], ["dj-verb", S.fx && S.fx.verb], ["dj-fla", S.fx && S.fx.fla]].forEach(([id, v]) => { const el = document.getElementById(id); if (el && document.activeElement !== el && v != null) el.value = v; });
     document.querySelectorAll(".edivb").forEach((x) => x.classList.toggle("on", Math.abs((+x.dataset.ediv) - ((S.fx && S.fx.ediv) || 0.75)) < 0.01));
     const ad = $("#ad-on"); if (ad) ad.checked = !!S.autodj;
@@ -6474,33 +6436,17 @@ html.popdj #dj-mini{display:none!important}
     box._logSig = sig;
     box.innerHTML = lg.length ? lg.map((x) => `<div><span>${E(x.t)}${x.live ? ' <small style="color:#ff8b8f">● LIVE</small>' : ""}</span><time>${agoT(x.at)}</time></div>`).join("") : '<small class="muted">Nothing played yet this session.</small>';
   }
-  function paintLiveBtn() { const b = document.getElementById("dj-livebtn"); if (!b) return; const on = S.radioSrc === "booth"; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "● LIVE" : "○ LIVE"; }
-  /* THE LIVE BUTTON (Malik, 2026-11-03): on = his booth is the radio
-   * (and the mix is live, exactly like the Go Live switch — the two
-   * are two faces of one state and move together); off = the mix
-   * comes off the station and MW TV is the radio, picture and sound.
-   * Persisted in radio/dj by the normal booth save, so every booth
-   * screen and every listener lands on the same source at once. */
-  function setRadioLive(on) {
-    S.radioSrc = on ? "booth" : "tv";
-    S.live = on; S.liveSince = on ? Date.now() : 0;
-    const gl = $("#dj-golive"); if (gl) gl.checked = on;
-    save(true); paintLiveBtn(); paintOwner(); paintStation();
-    say(on ? "🔴 You're LIVE — your booth is on the radio." : "📺 MW TV is the radio now — your booth takes it back the moment you turn LIVE on.");
-  }
   function paintStation() {
     if (!stateSeen && !OWNER() && !SANDBOX) { const lamp0 = $("#st-lamp"); if (lamp0) { lamp0.classList.toggle("on", false); if (lamp0.lastChild) lamp0.lastChild.textContent = "CONNECTING"; } const now0 = $("#st-now"); if (now0) now0.textContent = "Connecting to the station…"; const sw0 = $("#st-watch"); if (sw0) sw0.hidden = true; return; } // no state snapshot yet: never paint OFF AIR from default state
     const tvLive = vsBroadcast() && !(S.vstream || {}).hidden; // SHARING = LIVE: a TV broadcast lights the station even with the radio switch off and the tables paused for the share
-    const srcTv = radioSrc() === "tv"; // MW TV IS THE RADIO: the channel is the station while LIVE is off
-    const live = isLive() || tvLive || srcTv;
+    const live = isLive() || tvLive;
     const lamp = $("#st-lamp"); lamp.classList.toggle("on", live); lamp.lastChild.textContent = SANDBOX ? (guestLiveOn() ? "ON AIR" : live ? "PRACTICE" : "STANDBY") : (live ? "ON AIR" : "OFF AIR");
     const tk = $("#st-ticker"); tk.hidden = !S.ticker; if (S.ticker) $("#st-ticker-t").textContent = S.ticker;
     const now = live ? DECKS.filter((k) => S[k].playing && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000)).map((k) => S[k].title).filter(Boolean) : [];
     const boothLive = S.boothAt && Date.now() - S.boothAt < 45000;
     const gN = S.djGuest && S.djGuest.until > Date.now() ? gName(S.djGuest) : null;
     $("#st-now").textContent = tvLive && !now.length && !gN ? "📺 Meechie is live on the master screen — watch it on MW TV. The tables pick back up when the share ends." : live ? (now.length ? (boothLive ? "🎧 Live now: " : S.autodj ? "🤖 Auto-DJ live: " : "🎧 Live now: ") + now.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now. When Meechie goes live on the decks, it shows up here.";
-    if (srcTv) $("#st-now").textContent = "📺 MW TV is on the radio — " + ((tvChanCur() && tvChanCur().title) || "the channel") + " · the tables take over when Meechie turns LIVE on.";
-    const stWatch = $("#st-watch"); if (stWatch) stWatch.hidden = !live || OWNER() || SANDBOX || srcTv;
+    const stWatch = $("#st-watch"); if (stWatch) stWatch.hidden = !live || OWNER() || SANDBOX;
     const stHost = $("#st-host"); // HOST MODE: the room can see the host is in — same booth-fresh window the keeper trusts (90s), and never while a guest DJ holds the tables
     if (stHost) { const hosting = !SANDBOX && live && !gN && (Date.now() - (S.boothAt || 0) < 90000); if (stHost._h !== hosting) { stHost._h = hosting; stHost.hidden = !hosting; if (hosting) stHost.textContent = "🔴 Meechie is in the booth — hosting live"; } }
     const stShow = $("#st-show");
@@ -6546,7 +6492,7 @@ html.popdj #dj-mini{display:none!important}
    * state, per deck. */
   const wdPos = {};
   const wdKeyOf = (k) => { const s = S[k]; return ((s.kind === "sc" && s.scUrl) ? "sc:" + s.scUrl : (s.yt ? "yt:" + s.yt : "f:" + (s.src || ""))) + "|" + (s.title || ""); };
-  const wdKick = (k) => { const d = decks[k]; if (!d || !d.el) return; try { const pp = d.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} };
+  const wdKick = (k) => { if (boothPlayHeld && OWNER() && boothLead) return; const d = decks[k]; if (!d || !d.el) return; try { const pp = d.el.play(); if (pp && pp.catch) pp.catch(() => {}); } catch (_) {} }; // AUTO-STOP LAW: the watchdog never sounds a held booth
   const wdReload = (k, at) => {
     const s = S[k], d = decks[k]; if (!s || !d) return;
     if (s.yt) { const tok = s.yt; try { d.clearYt(); } catch (_) {} d.setYt(tok).then((okY) => { if (!okY || !S[k].playing || S[k].yt !== tok) return; try { d.el.currentTime = at; } catch (_) {} wdKick(k); S[k].start = Date.now() - at * 1000; }).catch(() => {}); return; }
@@ -6594,7 +6540,7 @@ html.popdj #dj-mini{display:none!important}
       // hidden tab's frozen player is the browser's doing, and the keeper
       // covers the station meanwhile. An active grain scratch on the deck
       // is a hand on the record, never a stall.
-      if (OWNER() && leadDrive() && S.live && S[k].playing && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S.pausedAt && !document.hidden && !(BST.grainSess && BST.grainSess.k === k)) {
+      if (OWNER() && leadDrive() && S.live && S[k].playing && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S.pausedAt && !document.hidden && !(BST.grainSess && BST.grainSess.k === k) && !boothPlayHeld) { // AUTO-STOP LAW: a held deck is paused on purpose — never a stall
         const dd = decks[k], ct = dd.el.currentTime || 0;
         const frozen = !dd.el.paused && dd.el.readyState < 3 && Math.abs(ct - (dd._stallCt ?? ct)) < 0.05;
         const stalled = (dd.el.paused && !dd.el.ended) || frozen;
@@ -6611,7 +6557,7 @@ html.popdj #dj-mini{display:none!important}
       {
         const wd = wdPos[k] || (wdPos[k] = { key: "", pos: 0, adv: 0, act: 0, step: 0, reloads: 0 });
         if (!S[k].playing || S.pausedAt) { wd.key = ""; wd.step = 0; wd.reloads = 0; wd.adv = 0; wd.act = 0; }
-        else if (OWNER() && leadDrive() && S.live && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S[k].loop) {
+        else if (OWNER() && leadDrive() && S.live && decks[k] && decks[k].el && !decks[k].loop && !decks[k].roll && !S[k].loop && !boothPlayHeld) { // AUTO-STOP LAW: a held deck is paused on purpose — never a stall
           const key = wdKeyOf(k), ddw = decks[k];
           if (wd.key !== key) { wd.key = key; wd.pos = ddw.el.currentTime || 0; wd.adv = Date.now(); wd.act = 0; wd.step = 0; wd.reloads = 0; }
           else {
@@ -7004,7 +6950,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793736621;
+  const MW_DJ_BUILD = 1793737687;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7182,7 +7128,7 @@ html.popdj #dj-mini{display:none!important}
       else if (leadFresh()) badge.textContent = "🎛 Driving: THIS SCREEN" + (boothLead ? " · 🔊 sound here" : " · 🔊 sound elsewhere — tap to play it here") + (onlineN > 1 ? " · 👥 " + onlineN + " on the site" : "");
       else badge.textContent = boothLead ? "🔊 This window is playing the sound" : "🪞 Mirror: the sound is on your other window or device. Tap here to play it here";
       badge.style.cursor = (serverMirror() || !boothLead) ? "pointer" : ""; badge.setAttribute("role", "button");
-      if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (!OWNER()) return; if (serverMirror()) { takeControl(); return; } if (boothLead) return; driveWant = Date.now(); try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
+      if (!badge._take) { badge._take = 1; badge.addEventListener("click", () => { if (!OWNER()) return; if (serverMirror()) { takeControl(); return; } if (boothLead) return; boothPlayHeld = false; driveWant = Date.now(); try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {} leaseBeat(); actx(); say("🔊 The sound is in this window now."); }); }
     }
     if (boothLead && !was && OWNER()) DECKS.forEach((k) => { if (S[k] && S[k].playing) adoptDeck(k); });
     if (boothLead && !was && OWNER()) setTimeout(() => save(true), 400);
@@ -7197,6 +7143,7 @@ html.popdj #dj-mini{display:none!important}
    * in position. Nothing restarts. */
   async function takeControl() {
     if (!serverMirror()) return;
+    boothPlayHeld = false; // AUTO-STOP LAW: TAKE CONTROL is his press to drive — the adopted set may sound in this window
     driveWant = Date.now();
     try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {}
     leadTakeAt = Date.now();
@@ -7247,13 +7194,14 @@ html.popdj #dj-mini{display:none!important}
   function tapStart() { if (boOn) return; if (!listening) return; if (decksStuck()) DECKS.forEach((k) => follow(k)); pokeScreens(); }
   function checkStuck() { if (listening && decksStuck()) say("👆 Your phone held the sound back — tap anywhere on the page and the radio starts."); }
   function startListening() {
+    if (OWNER()) boothPlayHeld = false; // AUTO-STOP LAW: his Listen tap is a play press — the booth may sound from here
     try { sessionStorage.removeItem("mw_mini_off"); } catch (_) {}
     listening = true; djKeepSet(true); actx(); wakeForListening(true);
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
     $("#dj-listen").textContent = "⏹ Stop listening"; DECKS.forEach((k) => follow(k));
     pokeScreens(); try { scPrimeTap(); } catch (_) {} try { bgsArm(); } catch (_) {} document.removeEventListener("pointerdown", tapStart, true); document.addEventListener("pointerdown", tapStart, true); setTimeout(checkStuck, 2200);
-    try { if (typeof showBar === "function") { const tvR = radioSrc() === "tv"; showBar({ title: tvR ? "MW TV" : "LIVE DJ SET", artist: "Meechie", cover: "" }, tvR ? "MW TV on the radio" : "Live on the decks"); } } catch (_) {}
-    try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: radioSrc() === "tv" ? "MW TV" : "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
+    try { if (typeof showBar === "function") showBar({ title: "LIVE DJ SET", artist: "Meechie", cover: "" }, "Live on the decks"); } catch (_) {}
+    try { if ("mediaSession" in navigator) { navigator.mediaSession.playbackState = "playing"; navigator.mediaSession.metadata = new MediaMetadata({ title: "LIVE DJ SET", artist: "Meechie", album: "Meechie's World Radio", artwork: [{ src: location.origin + "/img/icon-512.png", sizes: "512x512", type: "image/png" }] }); } } catch (_) {}
   }
   function stopListening() { listening = false; document.removeEventListener("pointerdown", tapStart, true); djKeepSet(false); try { bgsOff(); } catch (_) {} wakeForListening(false); DECKS.forEach((k) => decks[k]?.stop()); try { if (typeof scStageW !== "undefined" && scStageW) scStageW.pause(); } catch (_) {} voiceEl?.pause(); $("#dj-listen").textContent = "🎧 Listen live"; try { navigator.mediaSession.playbackState = "paused"; } catch (_) {} }
   try {
@@ -7262,16 +7210,16 @@ html.popdj #dj-mini{display:none!important}
       // the listen / tune-in / blackout / bubble buttons start the radio themselves on click;
       // starting it here first made their click see "listening" and stop it again
       if (e && e.target && e.target.closest && e.target.closest("#dj-listen,#tune-in,#la-tune,[data-bobtn],[data-bubbtn]")) { document.removeEventListener("pointerdown", djResumeTap); return; }
-      if (radioOnAir() || OWNER()) { startListening(); document.removeEventListener("pointerdown", djResumeTap); }
+      if (isLive() || OWNER()) { startListening(); document.removeEventListener("pointerdown", djResumeTap); }
     });
   } catch (_) {}
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
-  window.MW_DJ = { start: () => { if (radioOnAir() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (radioOnAir() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, sharing: () => { try { return !!vsPub || vsBroadcast(); } catch (_) { return false; } }, bubble: () => { if (bubOn) return; bubOn = true; if (!listening && (radioOnAir() || OWNER())) startListening(); bubbleOpen(); }, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
-  window.MW_DJ_LIVE = () => radioOnAir(); // MW TV IS THE RADIO: the shell routes Tune In to the station listener while the channel is the source too
+  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, sharing: () => { try { return !!vsPub || vsBroadcast(); } catch (_) { return false; } }, bubble: () => { if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
+  window.MW_DJ_LIVE = () => isLive();
   // the top MWR card reads the tables: whatever is on the decks is what the station says is on air
   window.MW_AIRNOW = () => {
-    if (!isLive()) { if (radioSrc() === "tv") { const c = tvChanCur() || tvChanCurTv(); if (c) return { title: c.title || "MW TV", sub: "📺 MW TV on the radio · Meechie's World Radio", cover: "" }; } return null; }
+    if (!isLive()) return null;
     const fresh = S.boothAt && Date.now() - S.boothAt < 90000;
     const playing = DECKS.filter((k) => S[k].playing && S[k].title && !(S[k].dur && S[k].start && Date.now() - S[k].start > (S[k].dur + 45) * 1000));
     const g = S.djGuest, gOn = !!(g && g.until > Date.now() && fresh);
@@ -7518,15 +7466,14 @@ html.popdj #dj-mini{display:none!important}
     // hero, lock-screen controls, radio-keep) hands over to the deck mix, not the playlist.
     if (!OWNER() && isLive() && typeof mode !== "undefined" && mode === "radio") { autoMoved = true; startListening(); }
   });
-  $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : radioOnAir() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
-  document.querySelectorAll("[data-bobtn]").forEach((b) => b.addEventListener("click", () => { if (!listening && (radioOnAir() || OWNER())) startListening(); blackout(true); }));
-  document.querySelectorAll("[data-bubbtn]").forEach((b) => b.addEventListener("click", () => { if (bubOn) return; bubOn = true; if (!listening && (radioOnAir() || OWNER())) startListening(); bubbleOpen(); }));
+  $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : isLive() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
+  document.querySelectorAll("[data-bobtn]").forEach((b) => b.addEventListener("click", () => { if (!listening && (isLive() || OWNER())) startListening(); blackout(true); }));
+  document.querySelectorAll("[data-bubbtn]").forEach((b) => b.addEventListener("click", () => { if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }));
 
   let ownerLoaded = false;
   function mergeState(d) {
-    const m = Object.assign({ live: false, radioSrc: "tv", xf: 0.5, xf2: 0.5, panX: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, hornOn: false, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, vcam: { on: false, at: 0 } }, d || {});
+    const m = Object.assign({ live: false, xf: 0.5, xf2: 0.5, panX: 0.5, panY: 0, duck: false, quant: true, A: blank(), B: blank(), C: blank(), D: blank(), voice: null, liveSince: 0, ticker: "", log: [], show: null, pads: [], autodj: true, fxHornAt: 0, hornOn: false, fx: defFx(), vmix: { mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, vfx: { kind: "", at: 0 }, vcam: { on: false, at: 0 } }, d || {});
     m.fx = Object.assign(defFx(), m.fx || {});
-    m.radioSrc = m.radioSrc === "booth" ? "booth" : "tv"; // MW TV IS THE RADIO (2026-11-03): the persisted source selector — "booth" only while Malik's LIVE button is on; anything else is the MW TV default
     m.vmix = Object.assign({ mode: "auto", a: "", b: "", t: 0, tr: "fade", trMs: 650, at: 0 }, m.vmix || {});
     if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
     m.vmix.trMs = Math.max(250, Math.min(1600, +m.vmix.trMs || 650)); m.vmix.at = +m.vmix.at || 0;
@@ -7913,13 +7860,12 @@ html.popdj #dj-mini{display:none!important}
     watchHorn(); watchVfx();
     // heal the booth: anything still pointing at the dead storage comes off the decks
     if (OWNER()) { let dirty = false; DECKS.forEach((k) => { if (DEAD(S[k].src)) { S[k] = blank(); dirty = true; } }); if (S.voice && DEAD(S.voice.url)) { S.voice = null; dirty = true; } if (S.show && DEAD(S.show.url)) { S.show = null; dirty = true; } if (dirty) setTimeout(() => save(true), 800); }
-    const live = isLive() || (vsBroadcast() && !(S.vstream || {}).hidden) || radioSrc() === "tv"; // SHARING = LIVE, same rule as paintStation: the station section and banner stay up while the TV broadcasts; MW TV IS THE RADIO: the station is likewise on air while the channel is the source, so a set never "ends" into silence
+    const live = isLive() || (vsBroadcast() && !(S.vstream || {}).hidden); // SHARING = LIVE, same rule as paintStation: the station section and banner stay up while the TV broadcasts
     $("#dj-banner").hidden = !live || OWNER();
     $("#dj-station").hidden = OWNER() ? false : (live || (S.log || []).length > 0 || !!S.show);
     if (!live && listening) endSet();
     if (live && !was && !document.hidden && !OWNER() && typeof mode !== "undefined" && mode === "radio" && typeof media !== "undefined" && !media.paused) { autoMoved = true; startListening(); }
     if (listening) DECKS.forEach((k) => follow(k));
-    radioSrcApply();
     // taking control: opening the booth pulls whatever the station is playing onto the
     // decks, in sync, so the tables are his from the first second
     if (firstOwnerLoad) { showOwnerUI(); DECKS.forEach((k) => { if (S[k].playing && boothLead) adoptDeck(k); }); }
