@@ -100,7 +100,7 @@
     }
   } catch (_) {}
 
-  const featuredBook = `<div class="bk-featured"><img src="/img/book-cover.jpg" alt="Meechies World — The Book cover" loading="lazy" width="1536" height="1024"><div class="bk-featured-in"><div><h3>Meechies World — The Book</h3><p>Real Life · Real Hustle · Real Legacy</p></div><a class="btn" href="#shop" data-go="shop">Get your copy</a></div></div>`;
+  const featuredBook = `<div class="bk-featured"><img src="/img/book-cover.jpg" srcset="/img/book-cover-640.webp?v=1793655457 640w, /img/book-cover-1080.webp?v=1793655457 1080w" sizes="(max-width: 920px) 100vw, 880px" alt="Meechies World — The Book cover" loading="lazy" width="1536" height="1024"><div class="bk-featured-in"><div><h3>Meechies World — The Book</h3><p>Real Life · Real Hustle · Real Legacy</p></div><a class="btn" href="#shop" data-go="shop">Get your copy</a></div></div>`;
   function shelf() {
     const own = OWNER();
     root.innerHTML = featuredBook + `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages${okBuy(b.buy) && b.price ? " · " + E(b.price) : ""}</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
