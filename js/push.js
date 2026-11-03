@@ -53,6 +53,7 @@
     const en = document.getElementById("enter"); if (en && !en.hidden) return;
     if (document.getElementById("wv-box") || document.getElementById("mw-choices") || document.querySelector("dialog[open]")) return;
     if (window.MW_screenClear && !window.MW_screenClear("mw-push-ask")) return;
+    if (window.MW_popGate && !window.MW_popGate()) return; /* pop-up spacing (owner, 2026-11-02): keep polling, ask after the gap */
     clearInterval(t); setTimeout(ask, 4000);
   }, 3000);
   document.addEventListener("click", (e) => { if (e.target.closest("[data-push-on]")) { e.preventDefault(); turnOn(); } });

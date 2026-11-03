@@ -37,7 +37,7 @@
        answers 200 {"ok":true}; a cold function, a slow network, an aborted
        fetch or a bot-blocked UA all fail once). Confirm with a second probe
        15s later before declaring sign-in down — a false "down" also lifts the
-       5-minute sign-in wall for everyone, via MW_OUTAGE. */
+       30-minute sign-in wall for everyone, via MW_OUTAGE. */
     setTimeout(async () => { if (!(await healthy())) guest("auth check failed twice"); }, 15000);
   }
   probe();

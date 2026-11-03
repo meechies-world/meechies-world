@@ -78,7 +78,7 @@
   const popSeen = () => { try { return !!localStorage.getItem("mw_popup_seen"); } catch (_) { return false; } };
   window.MW_welcome = function (done, manual) {
     if (!manual && (popAppMode() || (popSeen() && !window.__mwPopupChain))) { if (done) done(); return; }
-    if (!manual) { try { localStorage.setItem("mw_popup_seen", "1"); } catch (_) {} window.__mwPopupChain = true; }
+    if (!manual) { try { localStorage.setItem("mw_popup_seen", "1"); } catch (_) {} window.__mwPopupChain = true; try { if (window.MW_popStamp) MW_popStamp(); } catch (_) {} /* pop-up spacing (owner, 2026-11-02): the welcome chain starts the shared clock, so no other card piles on behind it */ }
     let finished = false;
     const fin = () => { if (finished) return; finished = true; try { v.pause(); } catch (_) {} b.remove(); done && done(); };
     const b = document.createElement("div"); b.id = "wv-box"; b.setAttribute("role", "dialog"); b.setAttribute("aria-label", "Welcome to Meechie's World");

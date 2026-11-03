@@ -79,6 +79,7 @@
   /* ---------- offer to turn it on ---------- */
   async function offer(u) {
     if (ls(KEY(u)) || ls("mw_bio_no_" + u) || document.getElementById("bio-offer")) return;
+    if (window.MW_popGate && !window.MW_popGate()) return; /* pop-up spacing (owner, 2026-11-02): the offer is a nudge — it waits for a quiet visit (the lock screen itself is essential and never gated) */
     let ok = false; try { ok = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); } catch (_) {}
     if (!ok) return;
     const o = document.createElement("div"); o.id = "bio-offer"; o.setAttribute("role", "dialog"); o.setAttribute("aria-label", "Turn on " + label);

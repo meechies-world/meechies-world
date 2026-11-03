@@ -34,6 +34,7 @@
   function offer(app) {
     if (D.getElementById("mw-appoffer")) return;
     if (window.MW_screenClear && !window.MW_screenClear("mw-appoffer")) return;
+    if (window.MW_popGate && !window.MW_popGate()) return; /* pop-up spacing (owner, 2026-11-02): a denied claim leaves offeredThisVisit false, so the 5s tick tries again after the gap */
     offeredThisVisit = true; try { sessionStorage.setItem("mw_appoffer_done", "1"); } catch (_) {}
     const seen = get("mw_appoffer_seen", {}); seen[app.id] = Date.now(); put("mw_appoffer_seen", seen);
     const c = D.createElement("div"); c.id = "mw-appoffer"; c.setAttribute("role", "dialog"); c.setAttribute("aria-label", "Get the " + app.name + " app");

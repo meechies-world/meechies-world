@@ -177,6 +177,7 @@ body.has-player #vz-pill{bottom:calc(var(--tabbar,0px) + 140px + env(safe-area-i
       if (++secs < 60) return;
       if (document.querySelector("dialog[open], #ct-box, #vz-sheet") || (window.MW_screenClear && !window.MW_screenClear("ct-box")) || (typeof profileMe !== "undefined" && !profileMe)) { secs = 50; return; } // wait until they're not in the middle of something
       if (typeof profileMe !== "undefined" && profileMe && profileMe.contactShared) { ls("mw_contact_done", "1"); clearInterval(t); return; }
+      if (window.MW_popGate && !window.MW_popGate()) { secs = 50; return; } /* pop-up spacing (owner, 2026-11-02): wait for the shared gate like the other cards */
       clearInterval(t); showContact();
     }, 1000);
   }
