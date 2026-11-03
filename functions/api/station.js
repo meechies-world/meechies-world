@@ -126,16 +126,16 @@ const AIDJ_DAY = 864e5; // AI stock older than 24h expires unplayed; event dedup
 /* Dayparts are DATA: a brain/dayparts doc ({blocks:[{start,end,name,
  * seeds}]}) wins whenever it exists and is well formed, so the daily
  * program can be re-tuned without a code ship. Until that doc exists,
- * the fallback below is the owner spec of 2026-10-29 transcribed as-is
- * (his hours, his lanes), nothing invented. */
+ * the fallback below is the owner spec of 2026-11-03 transcribed as-is
+ * (his hours, his lanes; supersedes the 2026-10-29 grid): 21:00–06:00
+ * trap love-making, 06:00–12:00 weed-smoking wake-up (his words:
+ * "Mornin — is the weed songs"), 12:00–21:00 mixed — old school, pop,
+ * country, rock and EDM. Each block is one line: re-tune in place. */
 function aiDjDefaultDayparts() {
   return [
-    { start: "18:00", end: "03:00", name: "night", seeds: ["trap music mix", "female rappers mix", "sexy r&b slow jams", "hip hop mix"] },
-    { start: "03:00", end: "05:30", name: "rnb", seeds: ["r&b slow jams", "90s r&b mix", "r&b love songs mix"] },
-    { start: "05:30", end: "06:30", name: "morning", seeds: ["good morning mix", "feel good music mix", "upbeat pop mix"] },
-    { start: "06:30", end: "09:00", name: "weed", seeds: ["weed smoking music mix", "chill hip hop mix", "stoner music mix"] },
-    { start: "09:00", end: "17:00", name: "mixed", seeds: ["hip hop mix", "r&b mix", "country hits mix", "pop hits mix", "edm mix", "metal mix"] },
-    { start: "17:00", end: "18:00", name: "bridge", seeds: ["trap mix", "r&b mix", "trap r&b mix"] },
+    { start: "21:00", end: "06:00", name: "traplove", seeds: ["trap love songs mix", "trap music mix", "female rappers mix", "sexy r&b slow jams", "r&b love songs mix"] },
+    { start: "06:00", end: "12:00", name: "weed", seeds: ["weed smoking music mix", "wake and bake music mix", "stoner music mix", "chill hip hop mix"] },
+    { start: "12:00", end: "21:00", name: "mixed", seeds: ["old school hip hop mix", "pop hits mix", "country hits mix", "rock hits mix", "edm mix"] },
   ];
 }
 function aiDjValidBlocks(doc) {
