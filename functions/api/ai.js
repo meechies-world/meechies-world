@@ -2,7 +2,7 @@
 // Every Workers AI model in lib/ai-catalog.js is wired through here: chat brains answer in the
 // chat box (members can pick their brain), image makers return a picture, and the ears / voice /
 // language-plumbing models answer their own JSON shapes for the site's features to use.
-import { answer, verifyAnswer, take, logQuestion, recentQuestions, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { answer, answerAmani, verifyAnswer, take, logQuestion, recentQuestions, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
 import { foldChat } from "../../lib/brain-member.js";
 import { userFrom, isAdmin, take as cfTake } from "../../lib/cf.js";
 import { MODELS, MODEL_BY_ID } from "../../lib/ai-catalog.js";
@@ -52,11 +52,15 @@ async function runKind(env, model, body) {
     if (kind === "tts") {
       const text = String(body.text || "").slice(0, 1200);
       if (!text) return json({ error: "bad_request" }, 400);
-      // Meechie speaks with a man's voice (owner, 2026-10-27): Aura's Arcas.
+      // Meechie speaks with a man's voice (owner, 2026-10-27): Aura's Arcas —
+      // still the default for every caller. A caller may name another Aura
+      // speaker from this allowlist (Amani's chat uses Asteria for her lines,
+      // owner 2026-11-03); anything else falls back to Arcas.
       // If the voice field is ever refused, fall back to the plain call rather
       // than going silent.
+      const AURA_SPEAKERS = new Set(["arcas", "asteria", "luna", "stella", "athena", "hera", "orion"]);
       let out;
-      if (model.includes("aura")) { try { out = await env.AI.run(model, { text, speaker: "arcas" }); } catch (_) { out = await env.AI.run(model, { text }); } }
+      if (model.includes("aura")) { const spk = AURA_SPEAKERS.has(body.speaker) ? body.speaker : "arcas"; try { out = await env.AI.run(model, { text, speaker: spk }); } catch (_) { out = await env.AI.run(model, { text }); } }
       else out = await env.AI.run(model, model.includes("melotts") ? { prompt: text } : { text });
       if (out instanceof ArrayBuffer || ArrayBuffer.isView(out) || (out && typeof out.getReader === "function")) return new Response(out, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
       if (out && typeof out.audio === "string") { const u8 = b64ToBytes(out.audio); return new Response(u8, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } }); }
@@ -121,6 +125,15 @@ export async function onRequestPost({ request, env, waitUntil }) {
     .slice(-20).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
   if (!turns.length || turns[turns.length - 1].role !== "user") return json({ error: "bad_request" }, 400);
   const image = typeof body.image === "string" && body.image.length < 2200000 ? body.image : "";
+  if (body.persona === "amani") {
+    // Amani's chat (her own view): her persona, her own fair-use bucket, and
+    // deliberately NO question log and NO member-memory fold — those are
+    // Meechie's memory systems, and her lane stays separate (owner, 2026-11-03).
+    if (!(await lim("amani", 3600, 60)) || !(await lim("amani-day", 86400, 300)))
+      return json({ reply: "You've chatted with Amani a lot this hour. Take a short break and try again later.", limited: true, persona: "amani" });
+    const outA = await answerAmani(env, turns, { origin: new URL(request.url).origin, token });
+    return json(outA, outA.error ? 503 : 200);
+  }
   // fair-use limit: 60 questions an hour, 300 a day per member (the reply explains it, so every chat box shows it)
   if (!(await lim("ai", 3600, 60)) || !(await lim("ai-day", 86400, 300)))
     return json({ reply: "You've used Meechie's AI a lot this hour. Take a short break and try again later.", limited: true });
