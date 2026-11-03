@@ -1046,19 +1046,79 @@ function tvCleared(it) {
   if (it.src === "ia" || it.src === "file") return !!String(it.url || "");
   return false;
 }
+/* PAID SPONSOR SPOTS (Malik, 2026-11-03: "put paid commercials on my
+ * TV channel — I get paid every time people see commercials"): a pool
+ * item with kind "sponsor" is a paying business's commercial, sold on
+ * /promote. The sponsor record of truth (contact, payment) lives in
+ * the sponsor_claims D1 table — never in this public doc; the pool
+ * item carries only what airs: { sponsor: { name, tier, paidThrough,
+ * approved, claimId }, tally }. A sponsor spot airs only while
+ * approved AND inside its paid week: the tick gate holds it the
+ * moment either lapses and the cadence gate checks it per occurrence,
+ * so an expired or unapproved spot never plays. The tally counts only
+ * segments that actually aired — "plays served" — plus the site's own
+ * online count at the last airing ("people tuned in at air time");
+ * nothing is ever estimated. */
+const SPONSOR_WEEK_MS = 7 * 24 * 3600e3;
+function tvSponsorLive(it, now) {
+  return !!(it && it.kind === "sponsor" && it.sponsor && it.sponsor.approved === true && (+it.sponsor.paidThrough || 0) > now);
+}
+/* The promotion gate: a claim becomes a pool spot only when the owner
+ * approved it (status approved), it has a real playable file with a
+ * positive duration, and — for paid tiers — payment was verified
+ * against Stripe server-side (paidVerified is set only by
+ * /api/sponsors after reading the session back from Stripe). */
+function tvSponsorClaimReady(c, now) {
+  if (!c || c.status !== "approved") return false;
+  if (!c.mediaUrl || !(+c.dur > 0)) return false;
+  if (c.tier !== "free" && c.paidVerified !== true) return false;
+  return true;
+}
+function tvSponsorItemFromClaim(c, now) {
+  return {
+    id: "spn-" + c.id, kind: "sponsor", src: "file", yt: "", url: c.mediaUrl,
+    audioSrc: c.audioSrc || "", audioDur: +c.audioDur || 0,
+    title: c.title || (c.business + " — sponsor spot"), show: "", dur: +c.dur, lane: "sponsor",
+    rights: { basis: "submission", evidence: "Sponsor-submitted via /promote claim " + c.id + "; sponsor warrants rights to their own ad creative." },
+    sponsor: { name: c.business || "", tier: c.tier || "free", paidThrough: now + SPONSOR_WEEK_MS, approved: true, claimId: c.id },
+    tally: { served: 0, radioServed: 0, lastAt: 0, lastOnline: 0, countedThrough: 0 },
+  };
+}
 function tvProgSeg(it, start, dur, off) {
-  return { k: it.kind === "house" ? "house" : "prog", id: it.id, src: it.src, yt: it.yt || "", url: it.url || "", iaId: it.iaId || "", title: it.title || "", show: it.show || "", start, dur, off };
+  return { k: (it.kind === "house" || it.kind === "sponsor") ? "house" : "prog", id: it.id, src: it.src, yt: it.yt || "", url: it.url || "", iaId: it.iaId || "", title: it.title || "", show: it.show || "", start, dur, off };
 }
 function tvDrawBreak(pool) {
   const cleared = (pool.items || []).filter(tvCleared);
   if (!cleared.length) return null;
   if (!Array.isArray(pool.bag) || !(pool.bagIx >= 0) || pool.bagIx >= pool.bag.length) {
-    pool.bag = cleared.map((x) => x.id);
+    // Paid sponsors ride the same bag; a Featured sponsor's spot sits
+    // in the bag twice (its ~2x rotation weight — the cadence rail
+    // weights it the same way, tvAdCadItems).
+    pool.bag = [];
+    for (const x of cleared) { pool.bag.push(x.id); if (x.kind === "sponsor" && x.sponsor && x.sponsor.tier === "featured") pool.bag.push(x.id); }
     for (let i = pool.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool.bag[i]; pool.bag[i] = pool.bag[j]; pool.bag[j] = t; }
     pool.bagIx = 0; pool._dirty = true;
   }
-  const id = pool.bag[pool.bagIx++]; pool._dirty = true;
-  return cleared.find((x) => x.id === id) || null;
+  let id = pool.bag[pool.bagIx];
+  let item = cleared.find((x) => x.id === id) || null;
+  // Sponsor run cap: never three sponsor spots back-to-back out of the
+  // bag — after two, the draw swaps to the nearest non-sponsor still
+  // in the bag, so the house (or the news) takes its turn.
+  const recent = Array.isArray(pool.recentBreaks) ? pool.recentBreaks : [];
+  if (item && item.kind === "sponsor" && recent.length >= 2 && recent[recent.length - 1] && recent[recent.length - 2]) {
+    let swapped = false;
+    for (let j = pool.bagIx + 1; j < pool.bag.length; j++) {
+      const alt = cleared.find((x) => x.id === pool.bag[j]);
+      if (alt && alt.kind !== "sponsor") { const t = pool.bag[pool.bagIx]; pool.bag[pool.bagIx] = pool.bag[j]; pool.bag[j] = t; id = pool.bag[pool.bagIx]; item = alt; swapped = true; break; }
+    }
+    // The rest of this bag is all sponsors: skip the break entirely
+    // rather than run a third sponsor spot back-to-back — the slot
+    // is consumed, nothing is laid, and the next bag starts clean.
+    if (!swapped) { pool.bagIx++; pool._dirty = true; return null; }
+  }
+  pool.bagIx++; pool._dirty = true;
+  pool.recentBreaks = [...recent.slice(-1), !!(item && item.kind === "sponsor")];
+  return item;
 }
 /* Lay segments from the cursor (at = next segment start ms, ix/off =
  * where the cycle's current program resumes, run = seconds of
@@ -1221,7 +1281,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
         for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
-        if (bd > 0.05) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
+        if (bd > 0.05) { segs.push({ k: (b.kind === "house" || b.kind === "sponsor") ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
       run = 0;
     }
@@ -1580,6 +1640,23 @@ function tvAdCadItems(pool) {
     const it = ((pool && pool.items) || []).find((x) => x.id === id);
     if (it && tvCleared(it)) items.push(it);
   }
+  // PAID SPONSOR SPOTS join the cadence rail alongside the house
+  // spots: a Starter spot takes one slot in the block shuffle, a
+  // Featured spot takes two (~2x rotation). Sponsor slots never
+  // outnumber the house slots in a block — Malik's own commercials
+  // keep the majority of his breaks. Held sponsors (unapproved, past
+  // their paid week, or missing their file — the tick gate holds
+  // them) never reach this list because tvCleared drops held items.
+  if (items.length) {
+    const spn = ((pool && pool.items) || []).filter((x) => x && x.kind === "sponsor" && tvCleared(x) && x.sponsor && x.sponsor.approved === true);
+    const feat = spn.filter((x) => x.sponsor && x.sponsor.tier === "featured");
+    const start = spn.filter((x) => !(x.sponsor && x.sponsor.tier === "featured"));
+    const entries = [];
+    for (const it of feat) entries.push(it, it);
+    for (const it of start) entries.push(it);
+    const room = Math.min(entries.length, items.length);
+    for (let i = 0; i < room; i++) items.push(entries[i]);
+  }
   return items.length ? items : null;
 }
 /* Which pool spot fills cadence occurrence k: a seeded shuffle-bag
@@ -1608,15 +1685,97 @@ function tvAdPick(cad, k) {
     return a;
   };
   const block = Math.floor(k / n), pos = k - block * n;
-  const ord = raw(block);
-  if (block > 0) {
-    const prevLast = raw(block - 1)[n - 1];
-    if (ord[0] === prevLast) {
-      const j = ord.findIndex((x, ix) => ix >= 1 && ix <= n - 2 && x !== prevLast);
-      if (j > 0) { const t = ord[0]; ord[0] = ord[j]; ord[j] = t; }
+  // House-only cadence: the original seeded block shuffle with its
+  // boundary no-repeat swap, byte for byte — sponsor machinery below
+  // never touches the rotation Malik already hears.
+  if (!cad.some((x) => x && x.kind === "sponsor")) {
+    const ord = raw(block);
+    if (block > 0) {
+      const prevLast = raw(block - 1)[n - 1];
+      if (ord[0] === prevLast) {
+        const j = ord.findIndex((x, ix) => ix >= 1 && ix <= n - 2 && x !== prevLast);
+        if (j > 0) { const t = ord[0]; ord[0] = ord[j]; ord[j] = t; }
+      }
     }
+    return cad[ord[pos]];
   }
-  return cad[ord[pos]];
+  // Sponsor cadence — break discipline (paid spots): no spot plays
+  // twice in a row (a Featured sponsor legitimately holds two entries
+  // in a block, so the check is on the spot id, not the entry), and
+  // sponsor spots never run three deep: after two, the house is owed
+  // a turn. Construction: every block ENDS on a house spot (the last
+  // house entry in the block's raw order, reserved as the tail), so
+  // the next block's context is exact — the previous tail is a house
+  // spot whose id is a pure function of the previous block's raw
+  // order — and the remaining positions are filled greedily by raw
+  // rank, taking the highest-ranked entry that is legal there and
+  // does not strand the rest (the doom filter: never leave a
+  // remainder that is all one spot, or all sponsors behind a run of
+  // two). A repair pass then swaps inside the block if anything
+  // still violates; only a truly degenerate remainder keeps a
+  // violation, and the harness measures that honestly.
+  const tailOf = (ordRaw) => { for (let i = n - 1; i >= 0; i--) { const it = cad[ordRaw[i]]; if (it && it.kind !== "sponsor") return ordRaw[i]; } return -1; };
+  const ord0 = raw(block);
+  const tailIx = tailOf(ord0);
+  if (tailIx < 0) return cad[ord0[pos]]; // no house entry at all — nothing to discipline against
+  let ctxId = null;
+  if (block > 0) { const pTail = tailOf(raw(block - 1)); ctxId = pTail >= 0 ? cad[pTail].id : null; }
+  const remaining = ord0.filter((ix) => ix !== tailIx);
+  const out = [];
+  let lastId = ctxId, spnRun = 0;
+  const legalHere = (it, lid, run) => !!it && (lid === null || it.id !== lid) && !(it.kind === "sponsor" && run >= 2);
+  const doomed = (candIt, runAfter, rem) => {
+    if (!rem.length) return false;
+    if (rem.every((ix) => cad[ix].id === candIt.id)) return true;         // next slot would repeat the pick
+    if (rem.length >= 2 && rem.every((ix) => cad[ix].id === cad[rem[0]].id)) return true; // a stranded pair always repeats
+    if (runAfter >= 2 && rem.every((ix) => cad[ix].kind === "sponsor")) return true;      // next slot would be a third sponsor
+    return false;
+  };
+  for (let i = 0; i < n - 1; i++) {
+    let pickAt = -1, fallbackAt = -1;
+    for (let j = 0; j < remaining.length; j++) {
+      const it = cad[remaining[j]];
+      if (!legalHere(it, lastId, spnRun)) continue;
+      if (fallbackAt < 0) fallbackAt = j;
+      const remAfter = remaining.filter((_, x) => x !== j);
+      if (!doomed(it, it.kind === "sponsor" ? spnRun + 1 : 0, remAfter)) { pickAt = j; break; }
+    }
+    if (pickAt < 0) pickAt = fallbackAt;
+    if (pickAt < 0) pickAt = 0;
+    const ix = remaining.splice(pickAt, 1)[0];
+    out.push(ix);
+    const it = cad[ix];
+    lastId = it.id; spnRun = it.kind === "sponsor" ? spnRun + 1 : 0;
+  }
+  out.push(tailIx);
+  // Repair pass: count violations of the emitted block (with the
+  // exact cross-block context); swap any two non-tail positions that
+  // reduce the count, until clean or out of ideas.
+  const violations = (seq) => {
+    let v = 0, lid = ctxId, run = 0;
+    for (let i = 0; i < n; i++) {
+      const it = cad[seq[i]];
+      if (!it) continue;
+      if (lid !== null && it.id === lid) v++;
+      if (it.kind === "sponsor" && run >= 2) v++;
+      lid = it.id; run = it.kind === "sponsor" ? run + 1 : 0;
+    }
+    return v;
+  };
+  let v = violations(out);
+  for (let pass = 0; pass < n && v > 0; pass++) {
+    let improved = false;
+    for (let i = 0; i < n - 1 && v > 0; i++) {
+      for (let j = i + 1; j < n - 1; j++) {
+        const t = out[i]; out[i] = out[j]; out[j] = t;
+        const nv = violations(out);
+        if (nv < v) { v = nv; improved = true; break; }
+        const t2 = out[i]; out[i] = out[j]; out[j] = t2;
+      }
+    }
+    if (!improved) break;
+  }
+  return cad[out[pos]];
 }
 /* The effective cadence spans overlapping [fromMs, toMs), in order.
  * Occurrences sit on fixed 15-minute wall-clock blocks (the whole-
@@ -1659,7 +1818,15 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr) {  if
     return null;
   };
   for (let k = kFirst; k <= kLast; k++) {
-    const it = tvAdPick(cad, k);
+    let it = tvAdPick(cad, k);
+    // Paid-week boundary, per occurrence: a sponsor spot whose week
+    // has run out by this occurrence's start never plays — the house
+    // pick for the same occurrence takes its place, so the break and
+    // its chained fresh update still run.
+    if (it && it.kind === "sponsor" && !tvSponsorLive(it, k * TV_AD_EVERY_MS)) {
+      const houseCad = cad.filter((x) => x && x.kind !== "sponsor");
+      if (houseCad.length) it = tvAdPick(houseCad, k);
+    }
     const dur = +it.dur || 0;
     if (!(dur > 0)) continue;
     let s = k * TV_AD_EVERY_MS;
@@ -1997,10 +2164,14 @@ async function tvPremLive(env, prem, nw, now, origin, cacheKey) {
  * the radio decision only picks spots in the set — so a spot whose
  * media has not been uploaded yet can never lay a dead segment or
  * a silent deck, and joins rotation by itself once the file lands. */
-async function tvSpotGate(env, nw, now, origin) {
+async function tvSpotGate(env, nw, now, origin, pool) {
   const cache = { ...((nw && nw.spotProbe) || {}) };
   let cacheChanged = false;
   const urls = ["/media/my-empire-commercial-v2.mp4", "/media/my-empire-shop-station-family.mp4", "/media/my-empire-family-foundation.mp4", "/media/my-empire-12-shirts.mp4"].concat(RADIO_SPOTS.map((sp) => sp.src));
+  // Sponsor media rides the same existence probe: the video file the
+  // TV spots are gated on, and the audio cut for the radio lane.
+  const spnItems = ((pool && pool.items) || []).filter((x) => x && x.kind === "sponsor");
+  for (const it of spnItems) { if (it.url) urls.push(it.url); if (it.audioSrc) urls.push(it.audioSrc); }
   const ok = new Set();
   for (const url of urls) {
     const c = cache[url];
@@ -2009,7 +2180,11 @@ async function tvSpotGate(env, nw, now, origin) {
     cache[url] = { ok: good, at: now }; cacheChanged = true;
     if (good) ok.add(url);
   }
-  return { ok, cache, cacheChanged };
+  // Sponsor audio cuts eligible for the radio spot lane right now:
+  // approved, inside the paid week, with a probed audio file.
+  const sponsors = spnItems.filter((it) => it.audioSrc && ok.has(it.audioSrc) && tvSponsorLive(it, now))
+    .map((it) => ({ id: it.id, src: it.audioSrc, title: it.title || "", dur: +it.audioDur || +it.dur || 0 }));
+  return { ok, cache, cacheChanged, sponsors };
 }
 /* The radio show-spot gate (Malik, 2026-11-03: the show
  * commercials play on the radio too, randomly): fire at most one
@@ -2022,21 +2197,89 @@ async function tvSpotGate(env, nw, now, origin) {
  * stock, and never while his booth is fresh — so a spot can never
  * cut, skip or crowd out anything he or a listener put on. No
  * media, no fire — never a silent deck. */
-function tvSpotDecision(S, okUrls, now) {
+function tvSpotDecision(S, okUrls, now, sponsorSpots) {
   if (!S || !S.live || !S.autodj || S.pausedAt) return { fire: false, why: "station-not-live" };
   if (now - (+S.spotAt || 0) < RADIO_SPOT_EVERY_MS) return { fire: false, why: "not-due" };
-  const avail = RADIO_SPOTS.filter((sp) => okUrls && okUrls.has(sp.src));
+  // House cuts and approved sponsor cuts share this lane and its
+  // rails (song boundaries, ~1 per 15 min, never twice in a row).
+  const avail = RADIO_SPOTS.filter((sp) => okUrls && okUrls.has(sp.src)).map((sp) => ({ id: sp.id, src: sp.src, title: sp.title, dur: sp.dur }));
+  for (const sp of (sponsorSpots || [])) avail.push(sp);
   if (!avail.length) return { fire: false, why: "no-media" };
   let pool = avail.filter((sp) => sp.id !== S.spotLast);
   if (!pool.length) pool = avail;
   const pick = pool[Math.floor(Math.random() * pool.length)];
   return { fire: true, spotId: pick.id, item: { src: pick.src, title: pick.title, dur: pick.dur } };
 }
-async function tvTick(env, S, now, origin) {
+/* Sponsor pool maintenance, one pass per tick: promote owner-approved
+ * claims from the sponsor_claims table into the pool (the ONLY door a
+ * sponsor spot enters rotation through), and hold any sponsor spot
+ * that is unapproved, past its paid week, or missing its media file,
+ * so it stops airing automatically. */
+async function tvSponsorMaintain(env, pool, spotOk, now) {
+  let changed = false;
+  try {
+    const rows = ((await env.DB.prepare("select id, data from sponsor_claims where status = 'approved'").all()).results) || [];
+    for (const r of rows) {
+      let c = null; try { c = JSON.parse(r.data || "{}"); } catch (_) {}
+      if (!c || !tvSponsorClaimReady(c, now)) continue;
+      if ((pool.items || []).some((x) => x && x.sponsor && x.sponsor.claimId === c.id)) continue;
+      const probe = await tvMediaExists(env, "", c.mediaUrl);
+      if (!probe) continue;
+      pool.items.push(tvSponsorItemFromClaim(c, now));
+      changed = true;
+      try { c.status = "live"; c.poolItemId = "spn-" + c.id; c.promotedAt = now; await env.DB.prepare("update sponsor_claims set status = 'live', data = ?, updated_at = ? where id = ?").bind(JSON.stringify(c), now, c.id).run(); } catch (_) {}
+    }
+  } catch (_) {}
+  for (const it of (pool.items || [])) {
+    if (!it || it.kind !== "sponsor") continue;
+    const wantHeld = !tvSponsorLive(it, now) || (spotOk && it.url && !spotOk.has(it.url));
+    if (wantHeld && !it.held) { it.held = true; changed = true; }
+    else if (!wantHeld && it.held) { delete it.held; changed = true; }
+  }
+  if (changed) { pool.updatedAt = now; pool._dirty = true; await writeDoc(env, "tv/breakpool", "tv", pool); }
+}
+/* Play tally: count sponsor segments that actually aired. A segment
+ * counts once, when the keeper's laid timeline shows its start has
+ * passed; countedThrough is the watermark so a re-laid timeline never
+ * double-counts, and starts closer than half the spot's own duration
+ * to the previous counted start are the same airing split by a
+ * re-lay seam, not a new play. lastOnline is the site's own online
+ * count at the most recent airing — labelled exactly that, never an
+ * estimate. */
+async function tvSponsorTally(env, pool, segs, now, online) {
+  if (!pool || !Array.isArray(pool.items) || !Array.isArray(segs)) return;
+  let changed = false;
+  for (const it of pool.items) {
+    if (!it || it.kind !== "sponsor") continue;
+    if (!it.tally || typeof it.tally !== "object") it.tally = { served: 0, radioServed: 0, lastAt: 0, lastOnline: 0, countedThrough: 0 };
+    const t = it.tally;
+    const mine = segs.filter((sg) => sg && sg.id === it.id && sg.start <= now).sort((a, b) => a.start - b.start);
+    let lastCounted = +t.countedThrough || 0, n = 0;
+    for (const sg of mine) {
+      if (sg.start <= (+t.countedThrough || 0)) continue;
+      if (lastCounted > 0 && sg.start - lastCounted < (+it.dur || 0) * 500) { lastCounted = sg.start; continue; }
+      n++; lastCounted = sg.start;
+    }
+    if (n > 0) {
+      t.served = (+t.served || 0) + n;
+      t.countedThrough = lastCounted; t.lastAt = lastCounted;
+      if (online != null) t.lastOnline = online;
+      changed = true;
+    }
+  }
+  if (changed) { pool.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", pool); }
+}
+async function tvTick(env, S, now, origin, online) {
   let chan = await readDoc(env, "tv/channel");
   if (!chan || !Array.isArray(chan.items) || !chan.items.length || (+chan.progV || 0) < TV_PROGRAM_V) { chan = tvSeedChannel(now); await writeDoc(env, "tv/channel", "tv", chan); }
   let pool = await readDoc(env, "tv/breakpool");
   if (!pool || !Array.isArray(pool.items) || !pool.items.length || (+pool.progV || 0) < TV_PROGRAM_V) { pool = tvSeedPool(now); await writeDoc(env, "tv/breakpool", "tv", pool); }
+  // Paid sponsors: promotion + expiry/approval gate (their media
+  // existence joins the spot probe below; the hold for a missing
+  // file lands on the next tick, same discipline as the house
+  // spots in TV_SPOT_GATE_IDS). pool._dirty is persisted by the
+  // writes further down this tick.
+  try { await tvSponsorMaintain(env, pool, null, now); } catch (_) {}
   let prem = await readDoc(env, "tv/premiere");
   if (!prem || !Array.isArray(prem.items) || !prem.items.length || (+prem.progV || 0) < TV_PREM_V) { prem = tvSeedPremiere(now); await writeDoc(env, "tv/premiere", "tv", prem); }
   let rerun = await readDoc(env, "tv/rerun");
@@ -2072,7 +2315,7 @@ async function tvTick(env, S, now, origin) {
   // radio spot decision attached to this tick's decision, so the
   // radio lane works even while the TV channel is off or down.
   const nwEarly = await readDoc(env, "tv/now");
-  const spotState = await tvSpotGate(env, nwEarly, now, origin);
+  const spotState = await tvSpotGate(env, nwEarly, now, origin, pool);
   for (const it of (pool.items || [])) {
     if (!TV_SPOT_GATE_IDS.includes(it.id)) continue;
     const held = !spotState.ok.has(it.url);
@@ -2082,7 +2325,14 @@ async function tvTick(env, S, now, origin) {
       await writeDoc(env, "tv/breakpool", "tv", pool);
     }
   }
-  decision.spot = tvSpotDecision(S, spotState.ok, now);
+  // Sponsor spots: hold the ones whose video file has gone missing
+  // (their approval/expiry hold is tvSponsorMaintain's, above).
+  for (const it of (pool.items || [])) {
+    if (!it || it.kind !== "sponsor" || !it.url) continue;
+    if (!spotState.ok.has(it.url) && !it.held) { it.held = true; pool.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", pool); }
+    else if (spotState.ok.has(it.url) && it.held && tvSponsorLive(it, now)) { delete it.held; pool.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", pool); }
+  }
+  decision.spot = tvSpotDecision(S, spotState.ok, now, spotState.sponsors);
   if (chan.on === false) {
     const nw0 = await readDoc(env, "tv/now");
     if (!nw0 || !nw0.off) await writeDoc(env, "tv/now", "tv", { off: true, segs: [], updatedAt: now });
@@ -2286,6 +2536,8 @@ async function tvTick(env, S, now, origin) {
   if (dirty) {
     await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, genAt: now, updatedAt: now });
   }
+  // Play tally for sponsor spots (segments that aired this tick).
+  try { await tvSponsorTally(env, pool, segs, now, online); } catch (_) {}
   return decision;
 }
 /* MWTV-END */
@@ -2410,7 +2662,7 @@ export async function onRequestGet({ request, env }) {
   // the doorbell: a channel failure may never break the station ping.
   let tvNewsFire = null;
   let tvSpotItem = null;
-  try { const tvd = await tvTick(env, S, now, origin); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
+  try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
   // 2026-10-28): unless a deck is impossibly past its end — flagged playing
@@ -2671,6 +2923,21 @@ export async function onRequestGet({ request, env }) {
     if (tvSpotItem && !(S.boothAt && now - S.boothAt < BOOTH_FRESH)) {
       const sp = tvSpotItem; tvSpotItem = null;
       S.spotAt = now; S.spotLast = sp.spotId; changed = true;
+      // Sponsor radio plays count too (the pool doc's radio tally),
+      // with the same honest air-time online count.
+      if (String(sp.spotId || "").indexOf("spn-") === 0) {
+        try {
+          const p = await readDoc(env, "tv/breakpool");
+          const it = p && (p.items || []).find((x) => x && x.id === sp.spotId);
+          if (it) {
+            if (!it.tally || typeof it.tally !== "object") it.tally = { served: 0, radioServed: 0, lastAt: 0, lastOnline: 0, countedThrough: 0 };
+            it.tally.radioServed = (+it.tally.radioServed || 0) + 1;
+            it.tally.lastAt = now;
+            if (counts && counts.online != null) it.tally.lastOnline = counts.online;
+            p.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", p);
+          }
+        } catch (_) {}
+      }
       return { src: sp.item.src, title: sp.item.title, dur: sp.item.dur };
     }
     // REQUESTS PLAYLIST LANE (2026-10-30): the tail of the rotation is

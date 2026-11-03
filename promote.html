@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>Vendor Slots — Sell on Meechie's World (First Week Free)</title>
-<meta name="description" content="Sellers: get your products on Meechie's World FREE for a week — a slot in the shop on MeechiesWorldInc.com plus a break spot on MW TV. Indie streetwear, beauty and barber products, handmade goods, sneakers and Western PA local businesses. Claim by email or phone — no card, no charges.">
+<meta name="description" content="Sellers: get your products on Meechie's World FREE for a week — a slot in the shop on MeechiesWorldInc.com plus a break spot on MW TV. Then keep your commercial running on MW TV: Starter $25/week, Featured $50/week, claimed and paid right here. Indie streetwear, beauty and barber products, handmade goods, sneakers and Western PA local businesses.">
 <style>
   :root{ --gold:#e8b33c; --gold2:#ffcf5e; --ink:#0a0a0a; --panel:#141414; --line:#2c2c2c; --txt:#f5f0e1; --dim:#b9b09a; }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -47,6 +47,24 @@
   .sendlist li::before{ content:"• "; color:var(--gold); font-weight:900; }
   footer{ padding:14px 18px 22px; color:var(--dim); font-size:clamp(12px,1.8vw,15px); display:flex; gap:16px; flex-wrap:wrap; align-items:center; max-width:1080px; margin:0 auto; width:100%; }
   footer a{ color:var(--gold2); font-weight:800; font-size:clamp(15px,2.2vw,19px); }
+  .frm{ display:flex; flex-direction:column; gap:12px; margin-top:6px; }
+  .frm label{ display:flex; flex-direction:column; gap:6px; font-weight:700; font-size:clamp(13px,2vw,16px); color:var(--txt); }
+  .frm label small{ color:var(--dim); font-weight:500; line-height:1.45; }
+  .frm input[type=text], .frm input[type=email], .frm select{ background:#0d0d0d; border:1px solid var(--line); border-radius:10px; color:var(--txt); padding:12px; font-size:16px; width:100%; }
+  .frm input[type=file]{ color:var(--dim); font-size:15px; }
+  .tiers3{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media (max-width:640px){ .tiers3{ grid-template-columns:1fr; } }
+  .tiers3 label{ border:1px solid var(--line); border-radius:12px; padding:12px; cursor:pointer; flex-direction:row; align-items:center; gap:10px; }
+  .tiers3 label:has(input:checked){ border-color:var(--gold); background:#221a08; }
+  .tiers3 input{ accent-color:var(--gold); width:20px; height:20px; }
+  .checkline{ flex-direction:row !important; align-items:flex-start; gap:10px; border:1px solid var(--line); border-radius:12px; padding:12px; cursor:pointer; }
+  .checkline input{ accent-color:var(--gold); width:22px; height:22px; margin-top:2px; flex:none; }
+  .bigbtn{ background:var(--gold); color:#000; border:0; border-radius:14px; padding:16px; font-size:clamp(17px,2.6vw,22px); font-weight:900; cursor:pointer; width:100%; }
+  .bigbtn:disabled{ opacity:.55; cursor:wait; }
+  .statusbox{ border:1px solid var(--gold); background:#221a08; border-radius:14px; padding:16px; line-height:1.55; font-size:clamp(14px,2.1vw,17px); display:none; }
+  .statusbox.err{ border-color:#a33; background:#220d0d; }
+  .steps{ list-style:none; display:flex; flex-direction:column; gap:8px; font-size:clamp(14px,2.1vw,17px); line-height:1.5; }
+  .steps li b{ color:var(--gold2); }
 </style>
 </head>
 <body>
@@ -124,12 +142,71 @@
         </ul>
       </div>
     </div>
-    <p class="note" style="margin-top:12px">Nothing is charged today and there is no payment form on this page. The paid rungs only start if you choose to stay after your free week, and only after we confirm it with you directly.</p>
+    <p class="note" style="margin-top:12px">Paid tiers are claimed and paid right on this page — card payment runs through Stripe, the same checkout the site's Coins use. Nothing auto-renews: each week is a fresh claim. <b style="color:var(--gold2)">And nothing airs until Malik approves your spot personally</b> — your paid week starts when your commercial enters the rotation, not when you pay.</p>
   </section>
 
   <section class="card">
-    <h2>Claim your free week</h2>
-    <p>Claiming is a conversation, not a checkout. Email or call us with these four things:</p>
+    <h2>How a paid MW TV commercial works</h2>
+    <ol class="steps">
+      <li><b>1. Pick your tier</b> — Free Week, Starter ($25/week) or Featured ($50/week — about double the rotation).</li>
+      <li><b>2. Upload your commercial</b> — your video file goes straight into the station's media library. No spot yet? See the production note in the form — we can make it for you.</li>
+      <li><b>3. Pay (paid tiers)</b> — one secure Stripe payment for the week. The Free Week skips this step entirely.</li>
+      <li><b>4. Malik approves it</b> — every spot is reviewed by hand before it airs. Approved spots enter the MW TV break rotation — and your audio cut rides the radio spot lane too, at song breaks.</li>
+      <li><b>5. Your plays are counted</b> — the station counts every time your spot is served, and we can show you the tally. That's your proof.</li>
+    </ol>
+    <p class="note" style="margin-top:10px">Your commercial is your own creative: by submitting it you confirm you hold the rights to everything in it — footage, music, logos, all of it.</p>
+  </section>
+
+  <section class="card">
+    <h2>Claim your slot</h2>
+    <div class="statusbox" id="claimStatus"></div>
+    <form class="frm" id="claimForm">
+      <label>Your business name
+        <input type="text" id="fBusiness" maxlength="80" required placeholder="e.g. Joe's Garage">
+      </label>
+      <label>Best email or phone
+        <small>So we can reach you about your spot — approval news, your play tally, renewals.</small>
+        <input type="text" id="fContact" maxlength="120" required placeholder="you@yourshop.com or (555) 123-4567">
+      </label>
+      <label>What you sell + a link to your shop or page
+        <input type="text" id="fPitch" maxlength="300" placeholder="Handmade candles — yourshop.com">
+      </label>
+      <div>
+        <div style="font-weight:700;font-size:clamp(13px,2vw,16px);margin-bottom:8px">Pick your tier</div>
+        <div class="tiers3">
+          <label><input type="radio" name="tier" value="free" checked><span><b>Free Week</b><br>$0 / 7 days</span></label>
+          <label><input type="radio" name="tier" value="starter"><span><b>Starter</b><br>$25 / week</span></label>
+          <label><input type="radio" name="tier" value="featured"><span><b>Featured</b><br>$50 / week · ~2× rotation</span></label>
+        </div>
+      </div>
+      <label>Commercial title <small>(optional — what we call the spot)</small>
+        <input type="text" id="fTitle" maxlength="120" placeholder="e.g. Joe's Garage — Winter Special">
+      </label>
+      <label>Your commercial video — MP4 or WebM, up to 24 MB
+        <small>A 15–60 second spot at web quality is perfect. This file is what plays on MW TV.</small>
+        <input type="file" id="fVideo" accept="video/mp4,video/webm">
+      </label>
+      <label>Radio cut (optional) — MP3 / M4A / OGG / WAV, up to 12 MB
+        <small>The audio version of your spot, for the radio lane. Skip it and your spot is TV-only.</small>
+        <input type="file" id="fAudio" accept="audio/mpeg,audio/mp4,audio/ogg,audio/wav">
+      </label>
+      <label class="checkline">
+        <input type="checkbox" id="fProduction">
+        <span><b>Don't have a commercial? We'll make it.</b><br>
+        <small>Malik's AI character stars in it — the same production lane behind the MY EMPIRE product commercials. Check this box and we'll reach out with a quote. Price: just ask — no obligation.</small></span>
+      </label>
+      <button class="bigbtn" id="claimBtn" type="submit">Claim my slot →</button>
+      <p class="note">By claiming you confirm the commercial is your own creative and you hold the rights to everything in it. Paid tiers are charged through Stripe when you claim; if your spot isn't approved, we make it right — your week only starts when your spot enters rotation.</p>
+    </form>
+    <div id="payStep" style="display:none;margin-top:14px">
+      <button class="bigbtn" id="payBtn" type="button">Pay securely with Stripe →</button>
+      <p class="note" style="margin-top:8px">Your video is in. One payment starts your claim — then it goes to Malik's approval queue before anything airs.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Rather talk first?</h2>
+    <p>Email or call us with these four things and we'll set your claim up by hand:</p>
     <ul class="sendlist" style="margin-top:10px">
       <li>Your business name</li>
       <li>What you sell</li>
@@ -137,7 +214,7 @@
       <li>Your best product photo</li>
     </ul>
     <div class="claim" style="margin-top:14px">
-      <a href="mailto:meechiesworldinc@gmail.com?subject=Free%20Vendor%20Slot%20Claim">✉️ meechiesworldinc@gmail.com</a>
+      <a href="mailto:meechiesworldinc@gmail.com?subject=Vendor%20Slot%20Claim">✉️ meechiesworldinc@gmail.com</a>
       <a href="tel:+13019881469">📞 (301) 988-1469</a>
     </div>
     <p class="note" style="margin-top:12px">Every claim gets a personal reply from Meechie's World. Slots are placed by hand so the shop stays curated — if the current round fills, we will tell you straight and hold your place for the next one.</p>
@@ -148,5 +225,106 @@
   <a href="/">Full site →</a>
   <span>Meechie's World Inc — live online radio &amp; TV, DJ sets, barbering, apparel and websites for local businesses. Global, not local. 🌐</span>
 </footer>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var box = $("claimStatus"), form = $("claimForm"), btn = $("claimBtn"), payStep = $("payStep"), payBtn = $("payBtn");
+  var claim = null;
+  try { claim = JSON.parse(localStorage.getItem("mw-sponsor-claim") || "null"); } catch (e) { claim = null; }
+
+  function show(msg, err) { box.style.display = "block"; box.className = "statusbox" + (err ? " err" : ""); box.innerHTML = msg; box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  function api(path, opts) {
+    return fetch("/api/sponsors/" + path, opts).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) throw new Error(j.error || ("Something went wrong (" + r.status + ") — try again, or reach us by email/phone below."));
+        return j;
+      });
+    });
+  }
+  function measure(file, audio) {
+    return new Promise(function (resolve) {
+      try {
+        var el = document.createElement(audio ? "audio" : "video");
+        var url = URL.createObjectURL(file);
+        var done = false;
+        var finish = function (v) { if (done) return; done = true; try { URL.revokeObjectURL(url); } catch (e) {} resolve(v || 0); };
+        el.preload = "metadata";
+        el.onloadedmetadata = function () { finish(Math.round((el.duration || 0) * 10) / 10); };
+        el.onerror = function () { finish(0); };
+        setTimeout(function () { finish(0); }, 4000);
+        el.src = url;
+      } catch (e) { resolve(0); }
+    });
+  }
+  function upload(kind, file, dur) {
+    return api("upload?claim=" + encodeURIComponent(claim.claimId) + "&token=" + encodeURIComponent(claim.token) + "&kind=" + kind + "&dur=" + (dur || 0), {
+      method: "POST", headers: { "content-type": file.type || "application/octet-stream" }, body: file
+    });
+  }
+  var STATUS_TEXT = {
+    "created": "Your claim is started — upload your commercial video in the form below to finish it.",
+    "awaiting-payment": "Your video is in. Finish the payment step and your spot goes to Malik's approval queue.",
+    "awaiting-approval": "You're in the approval queue ✓ — Malik reviews every spot by hand before it airs. We'll reach out at your contact the moment it moves.",
+    "approved": "Approved ✓ — your spot is heading into the MW TV break rotation, and your paid week starts when it enters.",
+    "live": "Your spot is LIVE in the MW TV break rotation ✓ — plays are being counted; ask us any time for your tally.",
+    "rejected": "This spot wasn't approved this round — email or call us and we'll tell you straight why and make a plan."
+  };
+  function pollStatus(done) {
+    if (!claim) return;
+    api("status?claim=" + encodeURIComponent(claim.claimId) + "&token=" + encodeURIComponent(claim.token)).then(function (s) {
+      show("<b>" + (s.business || "Your claim") + "</b> — " + (STATUS_TEXT[s.status] || ("Status: " + s.status)));
+      if (done) done(s);
+    }).catch(function () {});
+  }
+
+  form.addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var tier = (form.querySelector("input[name=tier]:checked") || {}).value || "free";
+    var video = $("fVideo").files[0], audio = $("fAudio").files[0];
+    var production = $("fProduction").checked;
+    if (!video && !production) { show("Upload your commercial video — or check the <b>“We'll make it”</b> box and we'll produce it for you.", true); return; }
+    btn.disabled = true; btn.textContent = "Claiming…";
+    api("claim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+      business: $("fBusiness").value, contact: $("fContact").value, pitch: $("fPitch").value,
+      title: $("fTitle").value, tier: tier, production: production
+    })}).then(function (c) {
+      claim = { claimId: c.claimId, token: c.token };
+      try { localStorage.setItem("mw-sponsor-claim", JSON.stringify(claim)); } catch (e) {}
+      var chain = Promise.resolve();
+      if (video) { show("Claim saved ✓ — uploading your commercial…"); chain = chain.then(function () { return measure(video, false).then(function (d) { return upload("video", video, d); }); }); }
+      if (audio) { chain = chain.then(function () { return measure(audio, true).then(function (d) { return upload("audio", audio, d); }); }); }
+      return chain.then(function () {
+        btn.textContent = "Claimed ✓";
+        if (!video && production) { show("<b>You're in.</b> We got your claim and your production request — Malik's AI character can star in your commercial. We'll reach out at your contact with a quote and next steps."); return; }
+        if (tier === "free") { show("<b>You're in the approval queue ✓</b> — the Free Week needs no payment. Malik reviews every spot by hand; the moment yours is approved it enters the MW TV break rotation for 7 days."); return; }
+        show("<b>Video in ✓</b> — one step left: pay for your week. Then your spot goes to Malik's approval queue, and your week starts when it enters rotation.");
+        payBtn.textContent = "Pay " + (tier === "featured" ? "$50" : "$25") + " securely with Stripe →";
+        payStep.style.display = "block";
+        payStep.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+    }).catch(function (e) { show(e.message, true); btn.disabled = false; btn.textContent = "Claim my slot →"; });
+  });
+
+  payBtn.addEventListener("click", function () {
+    if (!claim) return;
+    payBtn.disabled = true; payBtn.textContent = "Opening secure checkout…";
+    api("checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ claimId: claim.claimId, token: claim.token }) })
+      .then(function (r) { window.location.href = r.url; })
+      .catch(function (e) { show(e.message, true); payBtn.disabled = false; payBtn.textContent = "Pay securely with Stripe →"; });
+  });
+
+  var qs = new URLSearchParams(location.search);
+  if (qs.get("paid") && claim && qs.get("paid") === claim.claimId) {
+    show("Payment sent — confirming with Stripe…");
+    var tries = 0;
+    (function again() { pollStatus(function (s) { if (s.status === "awaiting-payment" && ++tries < 6) setTimeout(again, 2500); }); })();
+  } else if (qs.get("cancelled")) {
+    show("Payment cancelled — no charge was made. Your claim and your uploaded video are saved; the pay button above finishes it whenever you're ready.", true);
+    if (claim) { payStep.style.display = "block"; }
+  } else if (claim) {
+    pollStatus();
+  }
+})();
+</script>
 </body>
 </html>
