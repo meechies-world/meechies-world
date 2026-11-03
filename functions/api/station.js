@@ -494,6 +494,7 @@ function mwVmixRescue(S, now, obs) {
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
 const TV_PROGRAM_V = 5;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
+const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 1;                // post-premiere movie block doc generation (tv/movieblock)
 const TV_INSERT_V = 2;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy)
 const TV_MOVIE_FALLBACK_MIN = 15;    // when the premiere slot airs nothing, the movie block starts this many minutes after the slot start (20:15 ET)
@@ -557,17 +558,18 @@ function tvGen(chan, pool, cursor, horizonMs) {
   // The movie block freezes for the cadence spots laid inside it
   // (the insert freeze rule): tvMovieWin runs the window long by
   // the spot time inside it, which it computes from this state.
-  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert };
+  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, rer: chan._rerun };
   const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
   while (t < horizonMs && guard++ < 600) {
     const win = tvNewsWin(t);
     const pwin = tvPremWin(t, chan._prem);
+    const rwin = tvPremWin(t, chan._rerun);
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
     const iwin = tvInsertWin(t, chan._insert);
-    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert);
+    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._rerun);
     if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
@@ -577,6 +579,17 @@ function tvGen(chan, pool, cursor, horizonMs) {
       for (const sit of chan._prem.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((pwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = pwin.end; continue;
+    }
+    if (rwin && rwin.inside) {
+      // MY EMPIRE 10 PM rerun slot: the premiere chain replayed at
+      // 22:00 ET (tvPremLive over tv/rerun, same window arithmetic):
+      // the slot items chain in order, the program cursor freezes
+      // and the interrupted program resumes after the slot from the
+      // offset it reached (same split rule as the premiere).
+      let slotOff = (t - rwin.start) / 1000, segIt = null, segOff = 0;
+      for (const sit of chan._rerun.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
+      if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((rwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
+      t = rwin.end; continue;
     }
     if (awin && awin.inside) {
       // Anchor news slot: the current anchor edition plays as one
@@ -616,6 +629,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       let cap = iwin.end;
       if (win.start > t && win.start < cap) cap = win.start;
       if (pwin && !pwin.inside && pwin.start > t && pwin.start < cap) cap = pwin.start;
+      if (rwin && !rwin.inside && rwin.start > t && rwin.start < cap) cap = rwin.start;
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
       const list = Array.isArray(chan._insert.items) && chan._insert.items.length ? chan._insert.items : [chan._insert.item];
@@ -637,6 +651,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       let cap = mwin.end;
       if (win.start > t && win.start < cap) cap = win.start;
       if (pwin && !pwin.inside && pwin.start > t && pwin.start < cap) cap = pwin.start;
+      if (rwin && !rwin.inside && rwin.start > t && rwin.start < cap) cap = rwin.start;
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
       if (iwin && !iwin.inside && iwin.start > t && iwin.start < cap) cap = iwin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
@@ -648,7 +663,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // The ad cadence froze the block at every spot inside it:
       // positions likewise sit behind the wall clock by the spot
       // time laid between the window start and here.
-      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t);
+      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._rerun);
       for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
@@ -662,6 +677,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const progEnd = t + remain * 1000;
     let boundary = win.start;
     if (pwin && !pwin.inside && pwin.start > t && pwin.start < boundary) boundary = pwin.start;
+    if (rwin && !rwin.inside && rwin.start > t && rwin.start < boundary) boundary = rwin.start;
     if (awin && !awin.inside && awin.start > t && awin.start < boundary) boundary = awin.start;
     if (mwin && !mwin.inside && mwin.start > t && mwin.start < boundary) boundary = mwin.start;
     if (iwin && !iwin.inside && iwin.start > t && iwin.start < boundary) boundary = iwin.start;
@@ -682,7 +698,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
+        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._rerun)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
         if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
@@ -875,6 +891,22 @@ function tvSeedPremiere(now) {
     { id: "me-teaser", kind: "show", src: "file", url: "/media/my-empire-teaser.mp4", title: "First Look — Official Teaser", show: "MY EMPIRE", dur: 210, rights: R("Malik own show teaser, cut from his own episode footage at his request (2026-11-02).") }
   ], updatedAt: now, by: "keeper-seed" };
 }
+function tvSeedRerun(now) {
+  const R = (evidence) => ({ basis: "own", evidence, clearedBy: "owner", at: now, simulcast: true });
+  // MY EMPIRE 10 PM rerun slot (owner order 2026-11-02 ~22:05 ET:
+  // a new episode premieres every day at 8 PM and reruns at
+  // 10 PM): the mirror of tvSeedPremiere at 22:00 ET, carrying the
+  // same items by default — the day's episode, then the teaser.
+  // Same probe gate as the premiere (tvPremLive, its own probe
+  // cache): a file item airs only once the file actually exists on
+  // site media, so on a night when the episode has not landed the
+  // slot stays dark and the evening programs normally — the slot
+  // can never be dead air.
+  return { on: true, startMinET: 1320, progV: TV_RERUN_V, items: [
+    { id: "me-episode", kind: "show", src: "file", url: "/media/my-empire-ep1.mp4", title: "Episode 1 — 10 PM Rerun", show: "MY EMPIRE", dur: 900, rights: R("Malik own show: his life, his music, his businesses; he is the creator and rights holder. Episode file lands on his own site media.") },
+    { id: "me-teaser", kind: "show", src: "file", url: "/media/my-empire-teaser.mp4", title: "First Look — Official Teaser", show: "MY EMPIRE", dur: 210, rights: R("Malik own show teaser, cut from his own episode footage at his request (2026-11-02).") }
+  ], updatedAt: now, by: "keeper-seed" };
+}
 function tvSeedMovieBlock(now) {
   const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
   // Post-MY EMPIRE movie block (owner order 2026-11-02): all nine
@@ -941,7 +973,7 @@ function tvInsertItems(doc) {
 }
 /* How much of an insert window actually FREEZES the movie block:
  * the window's full span, minus the spans the precedence windows
- * (news, premiere, anchor) covered inside it — those pass over
+ * (news, premiere, anchor, rerun) covered inside it — those pass over
  * the movie by the channel's standing doctrine, so the movie's
  * position kept advancing through them even while the insert
  * owned the screen everywhere else. */
@@ -953,6 +985,7 @@ function tvInsertFrozen(ins, chan) {
   for (let ws = nw0.start; ws < i1; ws += 3600e3) { const o = Math.min(i1, ws + TV_NEWS_LEN * 1000) - Math.max(i0, ws); if (o > 0) froz -= o / 1000; }
   const pw = tvPremWin(i0, chan._prem); if (pw && pw.start < i1 && pw.end > i0) froz -= (Math.min(i1, pw.end) - Math.max(i0, pw.start)) / 1000;
   const aw = tvAnchorWin(i0, chan._anchor); if (aw && aw.start < i1 && aw.end > i0) froz -= (Math.min(i1, aw.end) - Math.max(i0, aw.start)) / 1000;
+  const rw = tvPremWin(i0, chan._rerun); if (rw && rw.start < i1 && rw.end > i0) froz -= (Math.min(i1, rw.end) - Math.max(i0, rw.start)) / 1000;
   return Math.max(0, Math.round(froz * 10) / 10);
 }
 /* The one-shot insert window: a single fixed span [start, start+dur]
@@ -987,7 +1020,7 @@ function tvAdCadItems(pool) {
  * Occurrences sit on fixed 15-minute wall-clock blocks (the whole-
  * hour ET offset keeps the blocks on the ET quarter hours);
  * occurrence k plays items[k % items.length]. News, premiere,
- * anchor and insert windows outrank the spot: an occurrence whose
+ * anchor, insert and rerun windows outrank the spot: an occurrence whose
  * span would overlap one slides to that window's end (re-checked
  * until clear), and an occurrence displaced past the previous
  * occurrence's end chains right behind it — the spot never stacks
@@ -995,7 +1028,7 @@ function tvAdCadItems(pool) {
  * The chain is computed from 2h before fromMs: no combination of
  * the higher windows can displace an occurrence further than that,
  * so the carry-in is exact. */
-function tvAdSpans(cad, prem, anch, ins, fromMs, toMs) {
+function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, rer) {
   if (!cad || !cad.length) return [];
   const spans = [];
   let prevEnd = -Infinity;
@@ -1009,7 +1042,7 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs) {
     for (let i = 0; i < 8; i++) {
       const e = s + dur * 1000;
       let slid = false;
-      for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins)]) {
+      for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins), tvPremWin(s, rer)]) {
         if (w && s < w.end && e > w.start) { s = w.end; slid = true; break; }
       }
       if (!slid) break;
@@ -1021,9 +1054,9 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs) {
   return spans;
 }
 /* The cadence window containing ms (inside: true) or the next one. */
-function tvAdWin(ms, cad, prem, anch, ins) {
+function tvAdWin(ms, cad, prem, anch, ins, rer) {
   if (!cad || !cad.length) return null;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON)) {
+  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON, rer)) {
     if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, item: sp.item };
     if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, item: sp.item };
   }
@@ -1033,9 +1066,9 @@ function tvAdWin(ms, cad, prem, anch, ins) {
  * movie block freezes for the spots laid inside it (the insert
  * freeze rule — the block resumes from the offset it reached and
  * its window runs long by this much). */
-function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs) {
+function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs, rer) {
   let sec = 0;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;
+  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs, rer)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;
   return Math.round(sec * 10) / 10;
 }
 /* The MY EMPIRE premiere window containing ms (inside: true) or the
@@ -1164,7 +1197,7 @@ function tvMovieWin(ms, mov) {
   // absent (the calls tvTick makes itself) nothing changes.
   if (mov._cad) {
     let e2 = end;
-    for (let i = 0; i < 4; i++) { const ext = tvAdTimeIn(mov._cad.cad, mov._cad.prem, mov._cad.anch, mov._cad.ins, start, e2); const ne = end + ext * 1000; if (!(ne > e2)) break; e2 = ne; }
+    for (let i = 0; i < 4; i++) { const ext = tvAdTimeIn(mov._cad.cad, mov._cad.prem, mov._cad.anch, mov._cad.ins, start, e2, mov._cad.rer); const ne = end + ext * 1000; if (!(ne > e2)) break; e2 = ne; }
     end = e2;
   }
   if (ms >= start && ms < end) return { start, end, inside: true };
@@ -1205,6 +1238,7 @@ async function tvRecheckNext(env, chan, segs, now, origin, nw) {
   if (held) {
     it.held = held; it.heldAt = now; chan.updatedAt = now; chan.by = "keeper";
     delete chan._prem;
+    delete chan._rerun;
     await writeDoc(env, "tv/channel", "tv", chan);
     return it.id;
   }
@@ -1216,9 +1250,12 @@ async function tvRecheckNext(env, chan, segs, now, origin, nw) {
  * tv/now for TV_PREM_PROBE_MS, so a file that has not landed yet costs
  * one tiny probe per 10 minutes and the slot stays dark — never a
  * stall — until the upload exists. liveDurSec is clamped so the slot
- * can never reach the next :50 news window. */
-async function tvPremLive(prem, nw, now, origin) {
-  const cache = { ...((nw && nw.premProbe) || {}) };
+ * can never reach the next :50 news window. The 10 PM rerun slot
+ * (tv/rerun) resolves through this same function, with its own
+ * probe cache key (rerunProbe) so the two slots never share a
+ * verdict stamp. */
+async function tvPremLive(prem, nw, now, origin, cacheKey) {
+  const cache = { ...((nw && nw[cacheKey || "premProbe"]) || {}) };
   let cacheChanged = false;
   if (!prem || prem.on === false || !Array.isArray(prem.items)) return { prem: null, cache, cacheChanged };
   const live = [];
@@ -1247,6 +1284,8 @@ async function tvTick(env, S, now, origin) {
   if (!pool || !Array.isArray(pool.items) || !pool.items.length || (+pool.progV || 0) < TV_PROGRAM_V) { pool = tvSeedPool(now); await writeDoc(env, "tv/breakpool", "tv", pool); }
   let prem = await readDoc(env, "tv/premiere");
   if (!prem || !Array.isArray(prem.items) || !prem.items.length || (+prem.progV || 0) < TV_PREM_V) { prem = tvSeedPremiere(now); await writeDoc(env, "tv/premiere", "tv", prem); }
+  let rerun = await readDoc(env, "tv/rerun");
+  if (!rerun || !Array.isArray(rerun.items) || !rerun.items.length || (+rerun.progV || 0) < TV_RERUN_V) { rerun = tvSeedRerun(now); await writeDoc(env, "tv/rerun", "tv", rerun); }
   let movies = await readDoc(env, "tv/movieblock");
   if (!movies || !Array.isArray(movies.items) || !movies.items.length || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
   let insDoc = await readDoc(env, "tv/insert");
@@ -1282,6 +1321,8 @@ async function tvTick(env, S, now, origin) {
   let nw = await readDoc(env, "tv/now");
   const premState = await tvPremLive(prem, nw, now, origin);
   chan._prem = premState.prem;
+  const rerunState = await tvPremLive(rerun, nw, now, origin, "rerunProbe");
+  chan._rerun = rerunState.prem;
   chan._movies = tvMovieState(movies, prem, premState);
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
@@ -1393,12 +1434,14 @@ async function tvTick(env, S, now, origin) {
     }
   }
   if (premState.cacheChanged) dirty = true;
+  if (rerunState.cacheChanged) dirty = true;
   delete chan._prem;
+  delete chan._rerun;
   delete chan._anchor;
   delete chan._movies;
   delete chan._insert;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, insWin: insWin || null, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, insWin: insWin || null, genAt: now, updatedAt: now });
   }
   return decision;
 }
