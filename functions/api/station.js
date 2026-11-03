@@ -562,11 +562,36 @@ const TV_HORIZON = 2 * 3600e3;     // segments are generated this far ahead of n
 const TV_KEEP = 3600e3;            // aired segments are kept this long behind now
 const TV_BASES = ["own", "embed", "pd", "cc", "grant", "submission"];
 
+/* tvEtParts is called tens of thousands of times by a single tick
+ * that has to re-lay the segment window (measured 41-52k calls: the
+ * span/window math re-checks every candidate start against every
+ * window). It used to construct two Intl.DateTimeFormat objects per
+ * call, and that construction cost ~93% of the tick's CPU — a re-lay
+ * tick burned ~20-45s of CPU, the worker was killed (error 1102)
+ * before tv/now could be written, and every following poll retried
+ * the identical re-lay forever (the 2026-11-03 station outage).
+ * The formatters are now built once (kept on the function itself,
+ * so the function stays self-contained) and results are memoized
+ * per ET minute: ET offsets are whole hours, so hour/minute/dayKey
+ * are constant within a UTC minute bucket (the same whole-hour
+ * offset arithmetic tvNewsWin already relies on). Outputs are
+ * identical; callers only read the fields. */
 function tvEtParts(ms) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(ms));
-  const gp = (t) => +(parts.find((x) => x.type === t) || {}).value || 0;
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
-  return { hour: gp("hour") % 24, minute: gp("minute"), dayKey: day };
+  const F = tvEtParts._f || (tvEtParts._f = {
+    hm: new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }),
+    day: new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }),
+    memo: new Map(),
+  });
+  const bucket = Math.floor(ms / 60000);
+  let v = F.memo.get(bucket);
+  if (!v) {
+    const parts = F.hm.formatToParts(new Date(ms));
+    const gp = (t) => +(parts.find((x) => x.type === t) || {}).value || 0;
+    v = { hour: gp("hour") % 24, minute: gp("minute"), dayKey: F.day.format(new Date(ms)) };
+    if (F.memo.size > 512) F.memo.clear();
+    F.memo.set(bucket, v);
+  }
+  return v;
 }
 /* The news window containing ms (inside: true) or the next one. ET
  * offsets are whole hours, so ms % 60000 is the seconds-into-minute
