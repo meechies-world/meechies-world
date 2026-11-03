@@ -15,12 +15,14 @@
  * Earth should open to an empty folder, not an error page. */
 const MIN = 60000, HOUR = 60 * MIN;
 const TYPES = {
-  police:   { icon: "🚔", label: "Police",        ttl: 45 * MIN },
-  traffic:  { icon: "🐢", label: "Heavy Traffic", ttl: 30 * MIN },
-  crash:    { icon: "💥", label: "Crash",         ttl: 2 * HOUR },
-  hazard:   { icon: "⚠️", label: "Hazard",        ttl: 2 * HOUR },
-  roadwork: { icon: "🚧", label: "Road Work",     ttl: 12 * HOUR },
-  closed:   { icon: "🚫", label: "Road Closed",   ttl: 12 * HOUR },
+  police:   { icon: "🚔", label: "Police",                 ttl: 45 * MIN },
+  trap:     { icon: "🚨", label: "Speed Trap",             ttl: 3 * HOUR },
+  camera:   { icon: "📸", label: "Speed/Red-Light Camera", ttl: 30 * 24 * HOUR },
+  traffic:  { icon: "🐢", label: "Heavy Traffic",          ttl: 30 * MIN },
+  crash:    { icon: "💥", label: "Crash",                  ttl: 2 * HOUR },
+  hazard:   { icon: "⚠️", label: "Hazard",                 ttl: 2 * HOUR },
+  roadwork: { icon: "🚧", label: "Road Work",              ttl: 12 * HOUR },
+  closed:   { icon: "🚫", label: "Road Closed",            ttl: 12 * HOUR },
 };
 const GONE_VOTES = 2;
 const READ_CAP = 200;

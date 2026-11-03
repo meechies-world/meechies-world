@@ -1,7 +1,8 @@
 /* ================================================================
    ROAD REPORTS — Meechie's World's own Waze-style community layer.
-   Members drop pins (police, road work, crash, hazard, heavy
-   traffic, road closed); everybody — guests included — sees them.
+   Members drop pins (police, speed trap, camera, road work, crash,
+   hazard, heavy traffic, road closed); everybody — guests
+   included — sees them.
    Data lives in the site's own docs (coll "roadreports"), one doc
    per report, through the regular /api/cf doors:
      post    → rest insert (signed-in members only, server-checked)
@@ -25,6 +26,21 @@
    ResizeObserver keeps Leaflet's grid matched to the real box
    (the card grows after init when the guide renders — a one-shot
    invalidateSize left the lower half of the box untiled).
+
+   DRIVER FEATURES (2026-11-03, round 2): a "you are here" blue
+   dot + accuracy ring rides ONE watchPosition owned by this
+   layer (the car page's own one-shot fix feeds the same state
+   through MWRR.center — there is never a second watcher). The
+   map opens centered on the driver when a fix exists, a big
+   📍 LOCATE button re-centers, and a denied/unavailable fix
+   says so in plain words instead of failing silently. A driver
+   strip shows current speed from GPS and the speed limit of
+   the road under the driver from OpenStreetMap's maxspeed
+   tags (Overpass, cached per stretch of road) — an untagged
+   road shows "Limit —", never an invented number. Location
+   stays on the device: the dot is painted locally and never
+   written to any doc; only a pin a member deliberately drops
+   carries a location, exactly like before.
    ================================================================ */
 var MWRR = (function () {
   "use strict";
@@ -32,14 +48,16 @@ var MWRR = (function () {
   /* ---------------- pure logic (harness-tested) ---------------- */
   var MIN = 60000, HOUR = 60 * MIN;
   var TYPES = {
-    police:   { icon: "🚔", label: "Police",       ttl: 45 * MIN },
-    traffic:  { icon: "🐢", label: "Heavy Traffic", ttl: 30 * MIN },
-    crash:    { icon: "💥", label: "Crash",         ttl: 2 * HOUR },
-    hazard:   { icon: "⚠️", label: "Hazard",        ttl: 2 * HOUR },
-    roadwork: { icon: "🚧", label: "Road Work",     ttl: 12 * HOUR },
-    closed:   { icon: "🚫", label: "Road Closed",   ttl: 12 * HOUR }
+    police:   { icon: "🚔", label: "Police",                ttl: 45 * MIN },
+    trap:     { icon: "🚨", label: "Speed Trap",            ttl: 3 * HOUR },
+    camera:   { icon: "📸", label: "Speed/Red-Light Camera", ttl: 30 * 24 * HOUR },
+    traffic:  { icon: "🐢", label: "Heavy Traffic",         ttl: 30 * MIN },
+    crash:    { icon: "💥", label: "Crash",                 ttl: 2 * HOUR },
+    hazard:   { icon: "⚠️", label: "Hazard",                ttl: 2 * HOUR },
+    roadwork: { icon: "🚧", label: "Road Work",             ttl: 12 * HOUR },
+    closed:   { icon: "🚫", label: "Road Closed",           ttl: 12 * HOUR }
   };
-  var TYPE_ORDER = ["police", "roadwork", "crash", "hazard", "traffic", "closed"];
+  var TYPE_ORDER = ["police", "trap", "camera", "roadwork", "crash", "hazard", "traffic", "closed"];
   var GONE_VOTES = 2;          // "Gone" taps from 2 different members bury a pin
   var POST_GAP_MS = 2 * MIN;   // one report per member per 2 minutes (owner exempt)
   var READ_CAP = 200;          // newest reports fetched per refresh
@@ -108,10 +126,95 @@ var MWRR = (function () {
   }
   function newId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
 
+  /* ---------------- driver logic (harness-tested) ----------------
+   * Speed limit source of truth: the OpenStreetMap `maxspeed` tag
+   * on the way the driver is on. OSM's unit rule: a bare number is
+   * km/h; "35 mph" is explicit. Anything that isn't a clean number
+   * ("signals", "none", "walk", zone refs like "DE:urban") means
+   * UNKNOWN — the strip shows "Limit —", never a guess. */
+  var KMH_TO_MPH = 0.621371;
+  function parseMaxspeed(raw) {
+    if (raw == null) return null;
+    var s = String(raw).trim().toLowerCase();
+    if (!s) return null;
+    var m = /^(\d+(?:\.\d+)?)\s*(mph|km\/h|kmh|kph)?/.exec(s);
+    if (!m) return null;
+    var rest = s.slice(m[0].length).trim();
+    if (rest && rest !== ";") return null; // trailing junk → not a clean tag
+    var v = parseFloat(m[1]);
+    if (!isFinite(v) || v <= 0 || v > 250) return null;
+    var mph = (m[2] === "mph") ? v : v * KMH_TO_MPH; // unitless = km/h, per OSM
+    return Math.round(mph);
+  }
+  /* GPS speed arrives in metres/second; null/negative = no reading. */
+  function speedMphFromMs(ms) {
+    if (ms == null || !isFinite(ms) || ms < 0) return null;
+    return Math.round(ms * 2.236936);
+  }
+  function isOverLimit(nowMph, limitMph) {
+    return typeof nowMph === "number" && typeof limitMph === "number" && nowMph > limitMph;
+  }
+  /* The plain-words note a driver sees when the map can't place
+   * them. Shown when geolocation is unsupported, denied, or
+   * unavailable before any fix; hidden the moment a fix lands. */
+  var LOC_NOTE = "Location is off — the map can't show where you are. Turn on location for this site in your browser settings.";
+  function locNoteText(state) {
+    if (!state) return "";
+    if (state.hasFix) return "";
+    if (!state.supported) return LOC_NOTE;
+    if (state.status === "denied" || state.status === "unavailable") return LOC_NOTE;
+    return "";
+  }
+  /* One light Overpass ask: every highway way within `radiusM` of
+   * the driver, tags + geometry, so the nearest way can be picked
+   * locally. Cached per stretch of road by the caller — this is a
+   * shared free service and gets asked politely, not hammered. */
+  function overpassQuery(lat, lng, radiusM) {
+    return "[out:json][timeout:8];way(around:" + Math.round(radiusM) + "," +
+      lat.toFixed(6) + "," + lng.toFixed(6) + ")[\"highway\"];out tags geom;";
+  }
+  /* Distance in metres from a point to a segment (equirectangular
+   * approximation — plenty at road scale). */
+  function segDistM(pLat, pLng, aLat, aLng, bLat, bLng) {
+    var k = 111320, kx = k * Math.cos(pLat * Math.PI / 180);
+    var px = pLng * kx, py = pLat * k, ax = aLng * kx, ay = aLat * k, bx = bLng * kx, by = bLat * k;
+    var dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy;
+    var t = L2 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L2)) : 0;
+    var ex = ax + t * dx - px, ey = ay + t * dy - py;
+    return Math.sqrt(ex * ex + ey * ey);
+  }
+  function wayDistM(geom, lat, lng) {
+    if (!Array.isArray(geom) || !geom.length) return Infinity;
+    if (geom.length === 1) return segDistM(lat, lng, geom[0].lat, geom[0].lon, geom[0].lat, geom[0].lon);
+    var best = Infinity;
+    for (var i = 0; i < geom.length - 1; i++) {
+      var d = segDistM(lat, lng, geom[i].lat, geom[i].lon, geom[i + 1].lat, geom[i + 1].lon);
+      if (d < best) best = d;
+    }
+    return best;
+  }
+  /* The road the driver is ON is the nearest way. If that way has
+   * no maxspeed tag, the honest answer is "unknown" — a tagged
+   * side street nearby must not lend its limit. Ways farther than
+   * maxDistM aren't the driver's road at all. */
+  function pickLimit(elements, lat, lng, maxDistM) {
+    var best = null, bestD = Infinity;
+    (Array.isArray(elements) ? elements : []).forEach(function (el) {
+      if (!el || el.type !== "way" || !el.geometry) return;
+      var d = wayDistM(el.geometry, lat, lng);
+      if (d < bestD) { bestD = d; best = el; }
+    });
+    if (!best || bestD > maxDistM) return null;
+    var mph = parseMaxspeed(best.tags && best.tags.maxspeed);
+    return mph == null ? null : { mph: mph, distM: bestD };
+  }
+
   var PURE = {
     TYPES: TYPES, TYPE_ORDER: TYPE_ORDER, GONE_VOTES: GONE_VOTES, POST_GAP_MS: POST_GAP_MS, READ_CAP: READ_CAP,
     ttlFor: ttlFor, createdMs: createdMs, expiryOf: expiryOf, isAlive: isAlive, ageLabel: ageLabel,
-    toggleUid: toggleUid, canPost: canPost, validateReport: validateReport, nearestTown: nearestTown, distMi: distMi, newId: newId
+    toggleUid: toggleUid, canPost: canPost, validateReport: validateReport, nearestTown: nearestTown, distMi: distMi, newId: newId,
+    parseMaxspeed: parseMaxspeed, speedMphFromMs: speedMphFromMs, isOverLimit: isOverLimit,
+    LOC_NOTE: LOC_NOTE, locNoteText: locNoteText, overpassQuery: overpassQuery, pickLimit: pickLimit, wayDistM: wayDistM
   };
   if (typeof module !== "undefined" && module.exports) module.exports = PURE;
   if (typeof window === "undefined" || typeof document === "undefined") return PURE;
@@ -128,12 +231,17 @@ var MWRR = (function () {
   var OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   var OSM_ATTR = "&copy; OpenStreetMap contributors";
   var BASE_KEY = "mw-rr-base";
-  var map = null, layer = null, meMark = null, dropMark = null;
+  var map = null, layer = null, dropMark = null;
   var satLayer = null, refLayer = null, streetLayer = null, baseMode = "sat";
   var satBtn = null, stBtn = null;
   var rows = [], admins = {}, started = false, lastFix = null;
   var pending = null; // {type, lat, lng} waiting on the confirm bar
   var placing = false;
+  /* Driver state: lastFix = {lat, lng, acc (m), spd (m/s), at}.
+   * follow = the map rides with the driver until they drag it.
+   * geoStatus: "pending" | "ok" | "denied" | "unavailable". */
+  var meDot = null, meRing = null, watchId = null, gotFix = false;
+  var follow = true, geoStatus = "pending";
 
   function $(id) { return document.getElementById(id); }
   function session() { try { var s = JSON.parse(localStorage.getItem("mw-cf-session") || "null"); return (s && s.access_token && s.user) ? s : null; } catch (_) { return null; } }
@@ -277,24 +385,155 @@ var MWRR = (function () {
     });
   }
 
-  /* ---------- location ---------- */
+  /* ---------- location: one watcher, one blue dot ----------
+   * This layer owns the site's single watchPosition. The car
+   * page's Map preset still runs its own one-shot ask and hands
+   * the fix in through center() — same state, never a second
+   * watcher. The dot and ring are painted locally only; nothing
+   * about the driver's position is ever written to a doc. */
+  function paintMe() {
+    if (!map || !lastFix || typeof L === "undefined") return;
+    try {
+      var ll = [lastFix.lat, lastFix.lng];
+      if (lastFix.acc && isFinite(lastFix.acc)) {
+        if (!meRing) meRing = L.circle(ll, { radius: lastFix.acc, color: "#3d8bff", weight: 1, opacity: 0.55, fillColor: "#3d8bff", fillOpacity: 0.15, interactive: false }).addTo(map);
+        else { meRing.setLatLng(ll); meRing.setRadius(lastFix.acc); }
+      }
+      if (!meDot) meDot = L.circleMarker(ll, { radius: 9, color: "#ffffff", weight: 3, fillColor: "#1c7dff", fillOpacity: 1, interactive: false }).addTo(map);
+      else meDot.setLatLng(ll);
+      if (meRing && meRing.bringToFront) meRing.bringToFront();
+      if (meDot && meDot.bringToFront) meDot.bringToFront();
+    } catch (_) {}
+  }
+  function paintLocNote() {
+    var el = $("rr-locnote"); if (!el) return;
+    var txt = locNoteText({ supported: !!navigator.geolocation, status: geoStatus, hasFix: gotFix });
+    el.textContent = txt;
+    el.style.display = txt ? "block" : "none";
+  }
+  function onFix(p, opts) {
+    if (!p || !p.coords) return;
+    var first = !gotFix;
+    lastFix = {
+      lat: p.coords.latitude, lng: p.coords.longitude,
+      acc: (p.coords.accuracy != null && isFinite(p.coords.accuracy)) ? p.coords.accuracy : null,
+      spd: (p.coords.speed != null && isFinite(p.coords.speed)) ? p.coords.speed : null,
+      at: Date.now()
+    };
+    gotFix = true; geoStatus = "ok";
+    paintLocNote(); paintMe(); paintSpeed(); updateLimit();
+    if (map && follow && !(opts && opts.noPan)) {
+      if (first) map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom() || HOME_ZOOM, 15));
+      else if (map.panTo) map.panTo([lastFix.lat, lastFix.lng]);
+      updateEarthLink();
+    }
+  }
+  function onGeoErr(e) {
+    geoStatus = (e && e.code === 1) ? "denied" : "unavailable";
+    paintLocNote();
+  }
+  function startWatch() {
+    if (watchId != null) return;
+    if (!navigator.geolocation) { paintLocNote(); return; }
+    try {
+      watchId = navigator.geolocation.watchPosition(function (p) { onFix(p); }, onGeoErr,
+        { enableHighAccuracy: true, maximumAge: 4000, timeout: 20000 });
+    } catch (_) { geoStatus = "unavailable"; paintLocNote(); }
+  }
   function askGeo(cb) {
     if (!navigator.geolocation) { cb(null); return; }
     navigator.geolocation.getCurrentPosition(function (p) {
-      lastFix = { lat: p.coords.latitude, lng: p.coords.longitude };
-      showMe(); cb(lastFix);
-    }, function () { cb(null); }, { timeout: 8000, maximumAge: 60000 });
+      onFix(p, { noPan: true }); cb(lastFix);
+    }, function (e) { onGeoErr(e); cb(null); }, { timeout: 8000, maximumAge: 60000 });
   }
-  function showMe() {
-    if (!map || !lastFix) return;
-    if (!meMark) meMark = L.circleMarker([lastFix.lat, lastFix.lng], { radius: 9, color: "#191104", weight: 3, fillColor: "#ffcf5e", fillOpacity: 1 }).addTo(map);
-    else meMark.setLatLng([lastFix.lat, lastFix.lng]);
+  /* 📍 LOCATE: ride back to the dot. With no fix yet, ask once —
+   * a denial lands on the plain-words note, never silence. */
+  function locateMe() {
+    if (lastFix && map) {
+      follow = true;
+      map.setView([lastFix.lat, lastFix.lng], Math.max(map.getZoom() || HOME_ZOOM, 16));
+      paintMe(); updateEarthLink();
+      return;
+    }
+    if (!navigator.geolocation) { paintLocNote(); return; }
+    navigator.geolocation.getCurrentPosition(function (p) {
+      follow = true; onFix(p);
+    }, function (e) { onGeoErr(e); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+  }
+  function buildLocateCtl() {
+    if (typeof L === "undefined" || !L.control) return;
+    var ctl = L.control({ position: "topright" });
+    ctl.onAdd = function () {
+      var div = L.DomUtil.create("div", "rr-nav");
+      var b = document.createElement("button"); b.type = "button"; b.className = "rr-locate-btn"; b.textContent = "📍 Locate me";
+      b.addEventListener("click", locateMe);
+      div.appendChild(b);
+      if (L.DomEvent) { L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div); }
+      return div;
+    };
+    ctl.addTo(map);
   }
   /* Called by the car page's own Map preset (it runs the geolocation
-   * ask there, exactly like it did for the old embed). */
-  function center(lat, lng) {
-    lastFix = { lat: lat, lng: lng };
-    if (map) { map.setView([lat, lng], Math.max(map.getZoom(), 12)); try { map.invalidateSize(); } catch (_) {} showMe(); updateEarthLink(); }
+   * ask there, exactly like it did for the old embed). Its fuller
+   * fix (accuracy, GPS speed) feeds the same driver state. */
+  function center(lat, lng, acc, spd) {
+    onFix({ coords: { latitude: lat, longitude: lng, accuracy: acc, speed: spd } }, { noPan: true });
+    follow = true;
+    if (map) { map.setView([lat, lng], Math.max(map.getZoom(), 12)); try { map.invalidateSize(); } catch (_) {} updateEarthLink(); }
+  }
+
+  /* ---------- speed + the limit of the road you're on ----------
+   * Current speed: straight off the GPS fix. Limit: the maxspeed
+   * tag of the nearest OpenStreetMap way, via one light Overpass
+   * ask, cached per stretch of road — re-asked only after the
+   * driver has moved LIMIT_MOVE_M from the last ask (and never
+   * more often than LIMIT_GAP_MS, failures included). A cached
+   * limit is only trusted within LIMIT_KEEP_M of where it was
+   * read; past that, or on any doubt, the strip shows "—". */
+  var OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+  var LIMIT_RADIUS_M = 40, LIMIT_WAY_MAX_M = 35;
+  var LIMIT_MOVE_M = 150, LIMIT_GAP_MS = 12000, LIMIT_KEEP_M = 300;
+  var lim = { mph: null, qLat: 0, qLng: 0, qAt: 0, triedAt: 0, inflight: false };
+
+  function curSpeedMph() { return lastFix ? speedMphFromMs(lastFix.spd) : null; }
+  function paintSpeed() {
+    var n = $("rr-speed-now"), l = $("rr-speed-limit");
+    var spd = curSpeedMph();
+    if (n) {
+      n.textContent = spd == null ? "—" : String(spd);
+      n.classList.toggle("over", isOverLimit(spd, lim.mph));
+    }
+    if (l) l.textContent = lim.mph == null ? "—" : String(lim.mph);
+  }
+  function updateLimit() {
+    if (!lastFix || typeof fetch === "undefined") return;
+    if (typeof document !== "undefined" && document.hidden) return; // parked tab: don't spend asks
+    var now = Date.now();
+    var movedM = lim.qAt ? distMi(lim.qLat, lim.qLng, lastFix.lat, lastFix.lng) * 1609.34 : Infinity;
+    if (lim.qAt && movedM > LIMIT_KEEP_M && lim.mph != null) { lim.mph = null; paintSpeed(); } // outran the cached stretch
+    if (lim.inflight) return;
+    if (lim.qAt && movedM < LIMIT_MOVE_M) return;                 // same stretch — cache holds
+    if (now - lim.triedAt < LIMIT_GAP_MS) return;                 // polite spacing, success or failure
+    lim.inflight = true; lim.triedAt = now;
+    var qLat = lastFix.lat, qLng = lastFix.lng;
+    var body = "data=" + encodeURIComponent(overpassQuery(qLat, qLng, LIMIT_RADIUS_M));
+    var done = function () { lim.inflight = false; };
+    var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (_) {} }, 9000) : null;
+    fetch(OVERPASS_URL, {
+      method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8" },
+      body: body, signal: ctl ? ctl.signal : undefined
+    }).then(function (r) { return r.json(); }).then(function (j) {
+      if (timer) clearTimeout(timer); done();
+      var picked = pickLimit(j && j.elements, qLat, qLng, LIMIT_WAY_MAX_M);
+      lim.mph = picked ? picked.mph : null;
+      lim.qLat = qLat; lim.qLng = qLng; lim.qAt = Date.now();
+      paintSpeed();
+    }).catch(function () {
+      if (timer) clearTimeout(timer); done();
+      // no answer: the cached stretch (if still in range) stands; nothing invented
+    });
   }
 
   /* ---------- base layers: satellite default, street on tap ---------- */
@@ -371,6 +610,12 @@ var MWRR = (function () {
   function buildUI() {
     var ui = $("rr-ui"); if (!ui) return;
     ui.innerHTML =
+      "<div class='rr-drive' id='rr-drive'>" +
+        "<div class='rr-speedbox'><span class='rr-speednum' id='rr-speed-now'>—</span><span class='rr-speedunit'>mph</span></div>" +
+        "<div class='rr-limitbox'><span class='rr-limitlab'>LIMIT</span><span class='rr-limitnum' id='rr-speed-limit'>—</span></div>" +
+      "</div>" +
+      "<p class='rr-limitsrc'>Speed from your GPS · limit from OpenStreetMap, shown only where the road is tagged.</p>" +
+      "<p class='rr-locnote' id='rr-locnote' role='status' style='display:none'></p>" +
       "<button type='button' id='rr-open' class='rr-open'>⚠️ REPORT ON THE ROAD</button>" +
       "<p class='rr-count' id='rr-count'>Loading road reports…</p>" +
       "<div id='rr-sheet' class='rr-sheet' style='display:none'>" +
@@ -405,6 +650,8 @@ var MWRR = (function () {
   function init() {
     if (started) return; started = true;
     buildUI();
+    startWatch(); // GPS speed + the blue dot work even if the map CDN stumbles
+    paintLocNote();
     if (typeof L === "undefined") { fallbackEmbed(); return; }
     var el = $("map"); if (!el) return;
     map = L.map(el, { scrollWheelZoom: true }).setView(HOME, HOME_ZOOM);
@@ -414,9 +661,16 @@ var MWRR = (function () {
     applyBase(savedBase(), false); // satellite unless this device chose street
     layer = L.layerGroup().addTo(map);
     try { buildBaseCtl(); } catch (_) {}
+    try { buildLocateCtl(); } catch (_) {}
     sizeKeeper();
     updateEarthLink();
     map.on("moveend", updateEarthLink);
+    map.on("dragstart", function () { follow = false; }); // the driver's hand wins; 📍 rides back
+    if (lastFix) { // a fix beat the map here — open on the driver, not the home view
+      follow = true;
+      map.setView([lastFix.lat, lastFix.lng], Math.max(HOME_ZOOM, 15));
+      paintMe(); paintSpeed(); updateEarthLink();
+    }
     map.on("click", function (e) { if (placing && pending && pending.type) setPending(pending.type, e.latlng.lat, e.latlng.lng); });
     map.on("contextmenu", function (e) {
       if (!session()) { note("👀 Viewing is open to everyone. To drop a report, sign in on the main site first."); return; }
