@@ -140,7 +140,7 @@ window.addEventListener("load", () => { if("requestIdleCallback" in window) requ
 function go(v){ if(/access_token|error_description|refresh_token/.test(location.hash)) return;
   if(ALIAS[v]){ const [view,el]=ALIAS[v]; go(view); history.replaceState(null,"","#"+v); $$("nav.tabs a").forEach(a=>{ if(a.dataset.go===v) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
     let n=0; const t=setInterval(()=>{ const e=document.getElementById(el); if(e||++n>30){ clearInterval(t); e&&e.scrollIntoView({behavior:"smooth",block:"start"}); } },100); return; }
-  if(!VIEWS.includes(v)) v="home";
+  if(!VIEWS.includes(v)) v="community";
   lazyKick(v);
   const prevView=VIEWS.find(x=>!$("#v-"+x).hidden);
   if(prevView && prevView!==v){ // stop videos that would keep playing on a hidden page
@@ -159,7 +159,7 @@ function go(v){ if(/access_token|error_description|refresh_token/.test(location.
 }
 /* ---------- #post-<id> links into Meechie's Book ----------
  * book-plus.js owns these links and now loads lazily with the community
- * bundle, but the router would rewrite a #post-... hash to #home before
+ * bundle, but the router would rewrite a #post-... hash to #community before
  * the bundle could ever read it. The stub holds the id instead: route
  * to the Book (go() kicks the bundle), then hand the hash back the
  * moment book-plus has landed (its #bk-bar appears) so book-plus's own
@@ -202,7 +202,7 @@ document.addEventListener("click",e=>{const a=e.target.closest("[data-go]"); if(
  *    friends view and the contacts rail goes dead without
  *    MW_profilePage, so the stub pre-empts just those two in the
  *    capture phase, before fb-feed's handlers can run.
- *  - A cold #u/<id> link: the router would rewrite it to #home before
+ *  - A cold #u/<id> link: the router would rewrite it to #community before
  *    profile-page could ever read it, so the stub holds the id (the
  *    boot check at the bottom of this file section is consulted
  *    before the first go(), the same shape as the #post- stub above),
@@ -312,7 +312,7 @@ const mwPsT = setInterval(() => {
 function mwProfileRoute(){
   if(!MW_U_RE.test(location.hash)) return false;
   mwProfileKick({ k: "open", id: location.hash.slice(3) });
-  go("home");
+  go("community");
   return true;
 }
 if(!mwPostRoute() && !mwProfileRoute()) go(location.hash.slice(1));
@@ -1564,7 +1564,7 @@ function paintAuthBar(){ $("#authbar").innerHTML = me ? `<button class="btn ghos
 window.addEventListener("hashchange",()=>{ if(!mwPostRoute()) go(location.hash.slice(1)); });
 (function(){ const q=new URLSearchParams(location.search), h=new URLSearchParams(location.hash.replace(/^#/,""));
   const err=q.get("error_description")||h.get("error_description");
-  if(err){ setTimeout(()=>toast("Login didn't finish: "+err.replace(/\+/g," ")),500); history.replaceState(null,"",location.pathname+"#home"); go("home"); } })();
+  if(err){ setTimeout(()=>toast("Login didn't finish: "+err.replace(/\+/g," ")),500); history.replaceState(null,"",location.pathname+"#community"); go("community"); } })();
 
 /* ---------- Shop catalog: ONE device-held copy (device-max B2, 2026-11-01) ----------
    The shop page and the house ads read the same /api/store + /api/shopify
