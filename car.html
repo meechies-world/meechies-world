@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#000000">
 <title>Car Mode — Meechie's World Radio &amp; TV</title>
 <meta name="description" content="Meechie's World in the car: CH 1 live radio, the master screen, a map and one big TUNE IN. Open meechiesworldinc.com/car on any car or phone browser.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root{ --gold:#e8b33c; --gold2:#ffcf5e; --ink:#0a0a0a; --panel:#141414; --line:#2c2c2c; --txt:#f5f0e1; --dim:#b9b09a; }
   *{ box-sizing:border-box; margin:0; padding:0; }
@@ -46,6 +47,29 @@
   .note{ color:var(--dim); font-size:clamp(12px,1.8vw,15px); padding:0 16px 14px; line-height:1.45; }
   .mapwrap{ flex:1; min-height:300px; background:#0d0d0d; }
   .mapwrap iframe{ width:100%; height:100%; min-height:300px; border:0; display:block; }
+  .mapwrap #map{ width:100%; height:100%; min-height:300px; display:block; background:#0d0d0d; }
+  .leaflet-container{ font:inherit; }
+  .rr-pinwrap{ background:none; border:none; }
+  .rr-pin{ width:46px; height:46px; border-radius:50%; background:#141414; border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 2px 10px rgba(0,0,0,.55); }
+  .rr-pin-owner{ border-color:var(--gold2); box-shadow:0 0 0 3px rgba(255,207,94,.4), 0 2px 10px rgba(0,0,0,.55); }
+  .rr-pin-drop{ border-style:dashed; }
+  .rr-open{ margin:12px 14px 0; min-height:64px; width:calc(100% - 28px); border-radius:14px; border:2px solid var(--gold); background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; font-size:clamp(17px,2.8vw,24px); font-weight:900; letter-spacing:.03em; cursor:pointer; }
+  .rr-count{ color:var(--dim); font-size:clamp(13px,2vw,16px); padding:10px 16px 0; line-height:1.4; }
+  .rr-note{ color:var(--gold2); font-size:clamp(13px,2vw,16px); padding:6px 16px 0; line-height:1.4; }
+  .rr-sheet{ margin:10px 14px 0; border:1px solid var(--gold); border-radius:14px; padding:12px; background:#0d0d0d; }
+  .rr-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  @media (min-width:641px){ .rr-grid{ grid-template-columns:repeat(3,1fr); } }
+  .rr-type{ min-height:64px; border-radius:12px; border:1px solid var(--line); background:#1a1a1a; color:var(--txt); font-size:clamp(16px,2.4vw,20px); font-weight:800; cursor:pointer; padding:6px; }
+  .rr-type:active{ border-color:var(--gold); color:var(--gold2); }
+  .rr-confirm{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; font-size:clamp(15px,2.2vw,19px); font-weight:700; }
+  .rr-drop{ min-height:56px; padding:0 18px; border-radius:12px; border:0; background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; font-weight:900; font-size:17px; cursor:pointer; }
+  .rr-cancel{ min-height:48px; padding:0 14px; border-radius:12px; border:1px solid var(--line); background:#1a1a1a; color:var(--txt); font-weight:700; cursor:pointer; margin-top:10px; }
+  .rr-confirm .rr-cancel{ margin-top:0; }
+  .rr-safe{ color:var(--dim); margin-top:12px; font-size:clamp(12px,1.8vw,15px); line-height:1.4; }
+  .rr-pop-t{ font-weight:900; font-size:17px; margin-bottom:4px; }
+  .rr-pop-m{ color:#555; font-size:13px; margin-bottom:8px; }
+  .rr-pop-btns{ display:flex; gap:8px; flex-wrap:wrap; }
+  .rr-pop-btns button{ min-height:44px; padding:0 12px; border-radius:10px; border:1px solid #999; background:#fff; color:#111; font-weight:800; cursor:pointer; font-size:14px; }
   .bigbtn{ margin:12px 14px 16px; min-height:72px; border-radius:14px; border:2px solid var(--gold); background:#1d1d1d; color:var(--gold2); font-size:clamp(18px,3vw,26px); font-weight:900; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; }
   .presets{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:0 14px 14px; }
   @media (max-width:640px){ .presets{ grid-template-columns:repeat(2,1fr); } }
@@ -94,8 +118,9 @@
     <h2>Program guide — today on CH 1</h2>
     <ul class="guide" id="guide"></ul>
     <p class="note">One live station — the sound changes by the hour. The guide shows what is on when (Eastern time); there are no fake extra channels.</p>
-    <h2 id="map-h">Map</h2>
-    <div class="mapwrap"><iframe id="map" title="Map — OpenStreetMap" loading="lazy" src="https://www.openstreetmap.org/export/embed.html?bbox=-79.6484%2C39.7938%2C-79.5284%2C39.8538&amp;layer=mapnik&amp;marker=39.8238%2C-79.5884"></iframe></div>
+    <h2 id="map-h">Map — road reports</h2>
+    <div class="mapwrap"><div id="map" role="application" aria-label="Map with community road reports"></div></div>
+    <div id="rr-ui"></div>
     <a class="bigbtn" id="dirs" href="https://www.openstreetmap.org/directions" target="_blank" rel="noopener">🧭 Directions</a>
     <p class="note">The map shows where you are and hands directions to real navigation. Video in a moving car is the carmaker's call — parked is the viewing case, the radio is the driving case.</p>
   </section>
@@ -354,12 +379,15 @@
   }
   paintGuide(); setInterval(paintGuide, 60000);
 
-  /* Map: center on the driver when the browser offers a position */
+  /* Map: center on the driver when the browser offers a position.
+   * The map itself (Leaflet + the road-reports layer) lives in
+   * js/road-reports.js — this page only hands it the position and
+   * keeps the Directions link pointed from the driver, like before. */
   function centerMap(){
     if(!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(function(p){
       var la = p.coords.latitude.toFixed(4), lo = p.coords.longitude.toFixed(4);
-      document.getElementById("map").src = "https://www.openstreetmap.org/export/embed.html?bbox=" + (lo-0.06) + "%2C" + (la-0.03) + "%2C" + (+lo+0.06) + "%2C" + (+la+0.03) + "&layer=mapnik&marker=" + la + "%2C" + lo;
+      if(window.MWRR && MWRR.center) MWRR.center(+la, +lo);
       document.getElementById("dirs").href = "https://www.openstreetmap.org/directions?from=" + la + "%2C" + lo;
     }, function(){}, { timeout: 8000 });
   }
@@ -367,5 +395,7 @@
   document.getElementById("pz-radio").addEventListener("click", function(){ document.getElementById("radio-card").scrollIntoView({ behavior:"smooth" }); });
 })();
 </script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/road-reports.js?v=1793740870"></script>
 </body>
 </html>
