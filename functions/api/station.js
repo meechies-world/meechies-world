@@ -484,13 +484,14 @@ function mwVmixRescue(S, now, obs) {
  * kind "news"; what fills it is resolved at air time from tv/news
  * (fresh edition, else the previous edition once, else a music-video
  * block) — that resolution is client-side; the keeper stamps windows.
- * The RADIO interrupt is decided by tvRadioDecision: at the top of the
- * hour, a fresh edition (<= 2h old, produced for this hour, with a
- * radio cut) fires; anything missing or stale skips silently and the
- * music never breaks. While the booth is fresh this keeper stands
- * down before the rotation, so the decision names that case
- * ("booth-fresh") for the booth-side consumer that ships with edition
- * production — the unattended lane below is what fires today. */
+ * The RADIO interrupt is decided by tvRadioDecision: every quarter
+ * hour (Malik, 2026-11-03: news+traffic on the radio every 15
+ * minutes), a fresh edition (<= 2h old — the NEWS-BLOCK freshness
+ * law — with a radio cut) fires; anything missing or stale skips
+ * silently and the music never breaks. A due fire falls through the
+ * booth stand-down like the breakers do — Malik's standing rule is
+ * that the break cuts in even during his own live booth sets, so
+ * there is no booth exception. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
 const TV_PROGRAM_V = 6;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
@@ -504,6 +505,7 @@ const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: 
 const TV_ANCHOR_FRESH_MS = 6 * 3600e3; // an anchor edition airs only at its own slot and only when produced within the 6h before that slot (productions run ~30 min ahead of each slot)
 const TV_NEWS_LEN = 600;           // the TV news window: :50-:00, ten minutes
 const TV_AD_EVERY_MS = 900e3;      // MY EMPIRE ad cadence (Malik, 2026-11-02 ~21:05: "my tv show comercial every 15 min"): the show commercial plays on this fixed cadence — see tvAdCadItems/tvAdWin
+const TV_UPD_EVERY_MS = 300e3;     // MW TV news+traffic update rail (Malik, 2026-11-03 ~11:19: "updates on the live feeds every five minutes"): a short update hit on every 5-minute mark — see tvUpdSpans/tvUpdWin; quarter marks ride the ad cadence instead (spot + chained update)
 const TV_HORIZON = 2 * 3600e3;     // segments are generated this far ahead of now
 const TV_KEEP = 3600e3;            // aired segments are kept this long behind now
 const TV_BASES = ["own", "embed", "pd", "cc", "grant", "submission"];
@@ -557,7 +559,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
   // The movie block freezes for the cadence spots laid inside it
   // (the insert freeze rule): tvMovieWin runs the window long by
   // the spot time inside it, which it computes from this state.
-  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char };
+  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu };
   const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
@@ -567,7 +569,8 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
     const iwin = tvInsertWin(t, chan._insert);
-    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char);
+    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu);
+    const updwin = tvUpdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu);
     if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
@@ -613,6 +616,21 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (d > 0.05) { segs.push(tvProgSeg(adit, t, d, adoff)); t += Math.round(d * 1000); skips = 0; continue; }
       t = cadwin.end; continue;
     }
+    if (updwin && updwin.inside) {
+      // MW TV 5-minute news+traffic update rail: the hit interrupts
+      // whatever is playing — music program, movie chain or insert
+      // alike — and what it interrupts resumes from the offset it
+      // reached (the news-window split rule, same as the cadence
+      // spot). The item is the character update when one is fresh,
+      // else the produced local update of the current edition
+      // (tvUpdItemAt) — laid as an ordinary house segment, so every
+      // client renders it with no client change.
+      const upit = updwin.item;
+      const upoff = (t - updwin.start) / 1000;
+      const d = Math.min(Math.round((+upit.dur - upoff) * 10) / 10, Math.round((updwin.end - t) / 100) / 10);
+      if (d > 0.05) { segs.push(tvProgSeg(upit, t, d, upoff)); t += Math.round(d * 1000); skips = 0; continue; }
+      t = updwin.end; continue;
+    }
     if (iwin && iwin.inside) {
       // One-shot owner-ordered insert (tv/insert): the item — or,
       // v2, the short playlist — plays exactly once, wall-clock
@@ -651,6 +669,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
       if (iwin && !iwin.inside && iwin.start > t && iwin.start < cap) cap = iwin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
+      if (updwin && !updwin.inside && updwin.start > t && updwin.start < cap) cap = updwin.start;
       let slotOff = (t - mwin.start) / 1000, segIt = null, segOff = 0;
       // An insert that cut into this block froze it: once the
       // insert window has run, positions sit behind the wall clock
@@ -659,7 +678,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // The ad cadence froze the block at every spot inside it:
       // positions likewise sit behind the wall clock by the spot
       // time laid between the window start and here.
-      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char);
+      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu);
       for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
@@ -677,6 +696,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (mwin && !mwin.inside && mwin.start > t && mwin.start < boundary) boundary = mwin.start;
     if (iwin && !iwin.inside && iwin.start > t && iwin.start < boundary) boundary = iwin.start;
     if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < boundary) boundary = cadwin.start;
+    if (updwin && !updwin.inside && updwin.start > t && updwin.start < boundary) boundary = updwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
@@ -693,7 +713,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
+        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu), tvUpdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
         if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
@@ -718,24 +738,34 @@ function tvCyclePos(chan, now) {
   for (const x of items) { if (pos < +x.it.dur) return { ix: x.i, off: Math.round(pos * 10) / 10 }; pos -= +x.it.dur; }
   return { ix: items[0].i, off: 0 };
 }
-/* The radio news gate (NEWS-BLOCK): fire only at the top of the hour
- * (:00-:04), only with an edition produced for this hour (within the
- * last hour) that is still fresh (<= 2h) and carries a radio cut,
- * only once per hour, only on a live Auto-DJ station. Every other
- * state is a named skip — no fresh edition, no break, ever. */
+/* The radio news gate (NEWS-BLOCK, cadence changed by Malik
+ * 2026-11-03 ~11:22: "my radio station give the news every 15
+ * minutes" — traffic included): fire in the first five minutes of
+ * every quarter hour (:00/:15/:30/:45), only with an edition that is
+ * still fresh (<= 2h — the NEWS-BLOCK freshness law; hourly
+ * production normally keeps the newest edition ~10-70 minutes old)
+ * and carries a radio cut, only once per quarter, only on a live
+ * Auto-DJ station.
+ * Each hit plays the produced radio cut at its honest length — the
+ * duration is the edition's own radioDur, never stretched; the cap
+ * leaves room for the fuller long-form block at its produced length
+ * when the producer ships one. There is NO booth exception (Malik,
+ * 2026-11-01: the break cuts in even during his own live booth
+ * sets): a due fire falls through the booth stand-down in the
+ * handler, like the breakers. Every other state is a named skip —
+ * no fresh edition, no break, ever. */
 function tvRadioDecision(S, newsDoc, now) {
   const ed = newsDoc && newsDoc.current;
   if (!ed || !ed.radioUrl || !(+ed.radioDur > 0)) return { fire: false, why: "no-edition" };
   if (now - (+ed.at || 0) > TV_NEWS_STALE) return { fire: false, why: "stale-edition" };
-  const et = tvEtParts(now), sec = Math.floor((now % 60000) / 1000);
-  if (et.minute > 4) return { fire: false, why: "outside-window" };
-  const hourKey = et.dayKey + "T" + et.hour;
-  if (S.newsHour === hourKey) return { fire: false, why: "already-fired" };
-  const hourStart = now - (et.minute * 60 + sec) * 1000;
-  if ((+ed.at || 0) < hourStart - 3600e3 || (+ed.at || 0) > now) return { fire: false, why: "edition-not-for-this-hour" };
-  if (S.boothAt && now - S.boothAt < 90000) return { fire: false, why: "booth-fresh" };
+  const et = tvEtParts(now);
+  const q = Math.floor(et.minute / 15), minInQ = et.minute - q * 15;
+  if (minInQ > 4) return { fire: false, why: "outside-window" };
+  const qKey = et.dayKey + "T" + et.hour + ":" + String(q * 15).padStart(2, "0");
+  if (S.newsHour === qKey) return { fire: false, why: "already-fired" };
+  if ((+ed.at || 0) > now) return { fire: false, why: "future-edition" };
   if (!S.live || !S.autodj || S.pausedAt) return { fire: false, why: "station-not-live" };
-  return { fire: true, hourKey, item: { src: String(ed.radioUrl), title: "📰 Meechie's World News", dur: Math.min(300, Math.max(60, Math.round(+ed.radioDur))) } };
+  return { fire: true, hourKey: qKey, item: { src: String(ed.radioUrl), title: "📰 Meechie's World News", dur: Math.min(600, Math.max(5, Math.round(+ed.radioDur))) } };
 }
 function tvSeedChannel(now) {
   const R = (basis, evidence, simulcast) => ({ basis, evidence, clearedBy: basis === "own" ? "owner" : "keeper-check", at: now, simulcast: !!simulcast });
@@ -1007,7 +1037,7 @@ function tvAdCadItems(pool) {
  * The chain is computed from 2h before fromMs: no combination of
  * the higher windows can displace an occurrence further than that,
  * so the carry-in is exact. */
-function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char) {
+function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu) {
   if (!cad || !cad.length) return [];
   const spans = [];
   let prevEnd = -Infinity;
@@ -1024,14 +1054,27 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char) {
   // combined duration, so the update never stacks on a news,
   // premiere, anchor or insert window either.
   const charDur = char && char.item ? (+char.dur || +char.item.dur || 0) : 0;
-  const updAt = (st) => (char && char.item && charDur > 0 && +char.producedAt > 0 && char.producedAt <= st && st - char.producedAt < TV_NEWS_STALE) ? char.item : null;
+  const luDur = lu && lu.item ? (+lu.dur || +lu.item.dur || 0) : 0;
+  // The update chained after the spot (Malik, 2026-11-03): the
+  // character-delivered update when one is fresh at the occurrence,
+  // otherwise the produced Uniontown Local Update from the same
+  // fresh edition (lu, built by tvLuLive from tv/localupdate) — so
+  // every quarter-hour break carries the news+traffic update,
+  // character version first. Gated at the occurrence's own start,
+  // exactly like the character update: the edition must already
+  // exist by then and still be fresh then.
+  const updAt = (st) => {
+    if (char && char.item && charDur > 0 && +char.producedAt > 0 && char.producedAt <= st && st - char.producedAt < TV_NEWS_STALE) return { item: char.item, dur: charDur };
+    if (lu && lu.item && luDur > 0 && +lu.at > 0 && lu.at <= st && st - lu.at < TV_NEWS_STALE) return { item: lu.item, dur: luDur };
+    return null;
+  };
   for (let k = kFirst; k <= kLast; k++) {
     const it = cad[((k % cad.length) + cad.length) % cad.length];
     const dur = +it.dur || 0;
     if (!(dur > 0)) continue;
     let s = k * TV_AD_EVERY_MS;
     for (let i = 0; i < 8; i++) {
-      const e = s + (dur + (updAt(s) ? charDur : 0)) * 1000;
+      const e = s + (dur + (updAt(s) ? updAt(s).dur : 0)) * 1000;
       let slid = false;
       for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins)]) {
         if (w && s < w.end && e > w.start) { s = w.end; slid = true; break; }
@@ -1040,16 +1083,16 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char) {
     }
     const start = Math.max(s, prevEnd);
     const upd = updAt(start);
-    const end = start + (dur + (upd ? charDur : 0)) * 1000;
+    const end = start + (dur + (upd ? upd.dur : 0)) * 1000;
     prevEnd = end;
-    if (end > fromMs && start < toMs) spans.push({ start, end, item: it, upd });
+    if (end > fromMs && start < toMs) spans.push({ start, end, item: it, upd: upd ? upd.item : null });
   }
   return spans;
 }
 /* The cadence window containing ms (inside: true) or the next one. */
-function tvAdWin(ms, cad, prem, anch, ins, char) {
+function tvAdWin(ms, cad, prem, anch, ins, char, lu) {
   if (!cad || !cad.length) return null;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON, char)) {
+  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON, char, lu)) {
     if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, item: sp.item, upd: sp.upd || null };
     if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, item: sp.item, upd: sp.upd || null };
   }
@@ -1059,10 +1102,67 @@ function tvAdWin(ms, cad, prem, anch, ins, char) {
  * movie block freezes for the spots laid inside it (the insert
  * freeze rule — the block resumes from the offset it reached and
  * its window runs long by this much). */
-function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs, char) {
+function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs, char, lu) {
   let sec = 0;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;
+  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;
   return Math.round(sec * 10) / 10;
+}
+/* The MW TV 5-MINUTE NEWS+TRAFFIC UPDATE RAIL (Malik, 2026-11-03
+ * ~11:19: "I want updates on the traffic and everything on the live
+ * feeds on the news every five minutes"). A short update hit starts
+ * on every 5-minute mark: the character-delivered update when one is
+ * fresh at the mark (the tv/charnews lane), otherwise the produced
+ * Uniontown Local Update of the latest published edition (tvLuLive).
+ * Quarter marks (:00/:15/:30/:45) are NOT laid here — the ad cadence
+ * owns them and chains the same update after the commercial
+ * (tvAdSpans' fallback upd), so the update still airs there, right
+ * after the spot. No fresh edition = no hit at all: the span simply
+ * does not exist and programming runs on — never fake, never stale.
+ * Spans slide off the higher windows (news :50, premiere, anchor,
+ * insert) and off ad spans exactly like the cadence does, and chain
+ * behind a displaced previous hit. ET offsets are whole hours, so
+ * the epoch marks land exactly on the ET 5-minute marks. */
+function tvUpdItemAt(char, lu, st) {
+  if (char && char.item && +char.dur > 0 && +char.producedAt > 0 && char.producedAt <= st && st - char.producedAt < TV_NEWS_STALE) return char.item;
+  if (lu && lu.item && +lu.dur > 0 && +lu.at > 0 && lu.at <= st && st - lu.at < TV_NEWS_STALE) return lu.item;
+  return null;
+}
+function tvUpdSpans(cad, prem, anch, ins, char, lu, fromMs, toMs) {
+  const spans = [];
+  let prevEnd = -Infinity;
+  const kFirst = Math.floor((fromMs - 2 * 3600e3) / TV_UPD_EVERY_MS);
+  const kLast = Math.floor(toMs / TV_UPD_EVERY_MS) + 1;
+  const adSpans = tvAdSpans(cad, prem, anch, ins, fromMs - 2 * 3600e3, toMs, char, lu);
+  for (let k = kFirst; k <= kLast; k++) {
+    const mark = k * TV_UPD_EVERY_MS;
+    if (cad && mark % TV_AD_EVERY_MS === 0) continue; // quarter marks belong to the ad cadence (spot + its chained update)
+    if (tvNewsWin(mark).inside) continue; // marks inside the :50-:00 news block (:50, :55): the block itself is that stretch's update — never slide a second hit in behind it
+    const it = tvUpdItemAt(char, lu, mark);
+    if (!it) continue;
+    const dur = +it.dur || 0;
+    if (!(dur > 0)) continue;
+    let s = mark;
+    for (let i = 0; i < 8; i++) {
+      const e = s + dur * 1000;
+      let slid = false;
+      for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins)]) { if (w && s < w.end && e > w.start) { s = w.end; slid = true; break; } }
+      if (!slid) for (const sp of adSpans) { if (s < sp.end && e > sp.start) { s = sp.end; slid = true; break; } }
+      if (!slid) break;
+    }
+    const start = Math.max(s, prevEnd);
+    const end = start + dur * 1000;
+    prevEnd = end;
+    if (end > fromMs && start < toMs) spans.push({ start, end, item: it });
+  }
+  return spans;
+}
+/* The update-rail window containing ms (inside: true) or the next one. */
+function tvUpdWin(ms, cad, prem, anch, ins, char, lu) {
+  for (const sp of tvUpdSpans(cad, prem, anch, ins, char, lu, ms, ms + TV_HORIZON)) {
+    if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, item: sp.item };
+    if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, item: sp.item };
+  }
+  return null;
 }
 /* The MY EMPIRE premiere window containing ms (inside: true) or the
  * next one. prem = { startMinET, liveDurSec } as built by tvPremLive.
@@ -1199,6 +1299,38 @@ function tvCharCut(chan, segs, cursor, cutAt) {
   if (!cp) return null;
   return { segs: kept, cursor: { at: cutAt, ix: cp.ix, off: cp.off, run: 0 } };
 }
+/* Which produced local update can air: the tv/localupdate doc the
+ * news producer publishes with every edition — its stamp IS the
+ * edition stamp, and tvLuLive requires it to match tv/news' current
+ * edition, so a half-published pair never airs. Gated by the same
+ * rights rule as every lineup item (tvCleared over a synthesized
+ * house item) and by the media actually existing, probed exactly
+ * like the character update with the verdict cached in tv/now as
+ * luProbe. The returned lu state — { item, at, dur } — feeds the
+ * 5-minute update rail (tvUpdSpans) and the ad-cadence fallback
+ * (tvAdSpans); freshness is gated per mark there, so an aged-out
+ * edition simply stops producing hits — no cut needed on expiry. */
+async function tvLuLive(luDoc, newsDoc, nw, now, origin) {
+  const cache = { ...((nw && nw.luProbe) || {}) };
+  let cacheChanged = false;
+  const ed = newsDoc && newsDoc.current;
+  if (!luDoc || !luDoc.url || !(+luDoc.dur > 0) || !(+luDoc.at > 0) || !ed || +ed.at !== +luDoc.at) return { lu: null, cache, cacheChanged };
+  const it = { id: "brk-local-update-5", kind: "house", src: "file", url: String(luDoc.url), title: "Uniontown Local Update", show: "MW TV News", dur: +luDoc.dur, rights: { basis: "own", evidence: "Local news+traffic update produced in-house by the site news producer from the current published edition's attributed sources (Herald-Standard headlines, PennDOT 511PA traffic, NWS alerts); Malik is the publisher and rights holder of the produced segment", clearedBy: "owner", at: +luDoc.at, simulcast: true } };
+  if (!tvCleared(it)) return { lu: null, cache, cacheChanged };
+  const c = cache[it.url];
+  if (c && now - c.at < TV_PREM_PROBE_MS) { if (!c.ok) return { lu: null, cache, cacheChanged }; }
+  else {
+    let ok = false;
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      ok = r.status === 200 || r.status === 206;
+    } catch (_) { ok = false; }
+    cache[it.url] = { ok, at: now }; cacheChanged = true;
+    if (!ok) return { lu: null, cache, cacheChanged };
+  }
+  return { lu: { item: it, at: +luDoc.at, dur: +luDoc.dur }, cache, cacheChanged };
+}
 /* The movie block's standing state, from the tv/movieblock doc and
  * tonight's premiere state: the block starts when the premiere chain
  * actually ends (slot start + its live duration), or — when the
@@ -1239,7 +1371,7 @@ function tvMovieWin(ms, mov) {
   // absent (the calls tvTick makes itself) nothing changes.
   if (mov._cad) {
     let e2 = end;
-    for (let i = 0; i < 4; i++) { const ext = tvAdTimeIn(mov._cad.cad, mov._cad.prem, mov._cad.anch, mov._cad.ins, start, e2, mov._cad.char); const ne = end + ext * 1000; if (!(ne > e2)) break; e2 = ne; }
+    for (let i = 0; i < 4; i++) { const ext = tvAdTimeIn(mov._cad.cad, mov._cad.prem, mov._cad.anch, mov._cad.ins, start, e2, mov._cad.char, mov._cad.lu); const ne = end + ext * 1000; if (!(ne > e2)) break; e2 = ne; }
     end = e2;
   }
   if (ms >= start && ms < end) return { start, end, inside: true };
@@ -1358,6 +1490,9 @@ async function tvTick(env, S, now, origin) {
   let nw = await readDoc(env, "tv/now");
   const premState = await tvPremLive(prem, nw, now, origin);
   chan._prem = premState.prem;
+  const luState = await tvLuLive(luDoc, newsDoc, nw, now, origin);
+  chan._lu = luState.lu;
+  const luStamp = luState.lu ? luState.lu.at : 0;
   chan._movies = tvMovieState(movies, prem, premState);
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
@@ -1400,10 +1535,28 @@ async function tvTick(env, S, now, origin) {
     dirty = true; // persist the new stamp in this tick's tv/now write
     if (segs && cursor) {
       const cadCut = tvAdCadItems(pool);
-      const spansCut = cadCut ? tvAdSpans(cadCut, chan._prem, chan._anchor, chan._insert, now, now + TV_HORIZON, charState.char) : [];
+      const spansCut = cadCut ? tvAdSpans(cadCut, chan._prem, chan._anchor, chan._insert, now, now + TV_HORIZON, charState.char, luState.lu) : [];
       const nextOcc = spansCut.find((sp) => sp.start > now);
       if (nextOcc) {
         const cut = tvCharCut(chan, segs, cursor, nextOcc.start);
+        if (cut) { segs = cut.segs; cursor = cut.cursor; }
+      }
+    }
+  }
+  // Update-rail re-lay: when a NEW edition's local update lands (or
+  // the character state changed above), segments already laid would
+  // carry the old update — or none — at the coming 5-minute marks,
+  // and cadence occurrences already laid would chain nothing after
+  // the spot. Cut at the first 5-minute mark after now so this
+  // tick's generation re-lays the rail and the cadence fallback
+  // from there (same tvCharCut discipline). Stamp changes ride this
+  // tick's tv/now write, so the cut fires once per new edition.
+  if ((+((nw || {}).luStamp) || 0) !== luStamp || (+((nw || {}).charStamp) || 0) !== charStamp) {
+    dirty = true; // persist the new stamps in this tick's tv/now write
+    if (segs && cursor) {
+      const mark = (Math.floor(now / TV_UPD_EVERY_MS) + 1) * TV_UPD_EVERY_MS;
+      if (mark < cursor.at) {
+        const cut = tvCharCut(chan, segs, cursor, mark);
         if (cut) { segs = cut.segs; cursor = cut.cursor; }
       }
     }
@@ -1491,13 +1644,15 @@ async function tvTick(env, S, now, origin) {
     }
   }
   if (premState.cacheChanged) dirty = true;
+  if (luState.cacheChanged) dirty = true;
   delete chan._prem;
   delete chan._anchor;
   delete chan._char;
+  delete chan._lu;
   delete chan._movies;
   delete chan._insert;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, insWin: insWin || null, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, insWin: insWin || null, genAt: now, updatedAt: now });
   }
   return decision;
 }
@@ -1658,7 +1813,13 @@ export async function onRequestGet({ request, env }) {
   // double-started. Same gates as the silence backstop: station live,
   // Auto-DJ on, no deliberate pause stamped.
   const handBreak = !!(S.live && S.autodj && !S.pausedAt && ["A", "B"].some((k) => { const dk = S[k]; const pk = S[k === "A" ? "B" : "A"]; return dk && dk.playing && +dk.dur > 0 && +dk.start > 0 && now >= +dk.start + (+dk.dur) * 1000 - XF * 1000 && !(pk && pk.playing); }));
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+  // A due radio news break (tvNewsFire, decided by tvTick above) also
+  // falls through this stand-down, exactly like the breakers: Malik's
+  // standing rule (NEWS-BLOCK) is that the news cuts in even during
+  // his own live booth sets — no booth exception. The rotation's fire
+  // block below applies it with its own guards and stamps S.newsHour,
+  // so the fall-through happens at most once per quarter hour.
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak && !tvNewsFire) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   // VMIX RESCUE (mwVmixRescue, 2026-10-29): past this line the booth is
   // stale or a breaker fell through; the helper re-tests staleness itself
   // (a breaker fall-through with a fresh booth must never move the
@@ -1928,9 +2089,9 @@ export async function onRequestGet({ request, env }) {
   if (!cur) { // dead air — start the rotation on deck A right now (fader home is CENTER, owner 2026-10-29)
     startDeckItem("A", await nextItem(""), now); S.xf = 0.5; changed = true; cur = "A";
   }
-  /* MW TV NEWS INTERRUPT (NEWS-BLOCK.md, Malik 2026-11-01 ~21:16):
-   * the hourly Meechie's World News radio cut, decided by tvTick at
-   * the top of the hour. A fresh edition takes the incoming deck now —
+  /* MW TV NEWS INTERRUPT (NEWS-BLOCK.md, Malik 2026-11-01 ~21:16;
+   * cadence 2026-11-03: every quarter hour): the Meechie's World
+   * News radio cut, decided by tvTick for this quarter hour. A fresh edition takes the incoming deck now —
    * a hard programmed break, the way a real station cuts to news. The
    * current song parks honestly (playing flag off, pos stamped where
    * it stopped — its timeline is never falsified) and the rotation
