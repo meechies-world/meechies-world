@@ -53,8 +53,8 @@ const LAZY_SRC={
    * reveal the owner-only Studio button in the TV bar) and with the desk
    * view itself (direct #showstudio entry). It guards against
    * double-loading. */
-  mwtv:["js/show-studio.js?v=1793740702"],
-  showstudio:["js/show-studio.js?v=1793740702"],
+  mwtv:["js/show-studio.js?v=1793742032"],
+  showstudio:["js/show-studio.js?v=1793742032"],
   watch:["js/soul-greet.js?v=1793653007"],
   /* Profile bundle (max-speed Lever 2, 2026-11-02): profile-setup.js and
    * profile-page.js load once, the first time a profile surface is needed

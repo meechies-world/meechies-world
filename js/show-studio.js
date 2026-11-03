@@ -516,16 +516,66 @@
     } catch (e) { status("⚠️ " + (e.message || e), true); }
     finally { rendering = false; }
   }
+  /* Admin confirmation (fixed 2026-11-03): the desk used to read
+   * window.MW_CF_ADMIN exactly once, after cf-client's page-load
+   * `checked` promise. That flag is written ONLY by the one
+   * refreshSession call cf-client makes when it first evaluates — so
+   * a single transient auth/session failure at load, or a sign-in
+   * that landed after cf-client evaluated (the sign-in paths never
+   * set the flag), left the desk dark for the whole page session
+   * while the rest of the site still saw the owner fine (owner.js
+   * confirms admin through the admins table, via platform.js). The
+   * desk now confirms the same way the site does, and keeps
+   * confirming: the flag, a fresh refreshSession, then the admins
+   * table itself — retried on a short schedule, on every auth
+   * change, and whenever the MW TV / studio views are entered. The
+   * button stays hidden until a server-backed check says admin;
+   * the server-side owner-only write rails stay the real fence. */
+  let confirming = false, adminTries = 0, lastConfirmAt = 0;
+  async function confirmAdmin() {
+    if (admin || confirming) return admin;
+    confirming = true; lastConfirmAt = Date.now();
+    try {
+      if (window.MW_CF_ADMIN) admin = true;
+      if (!admin) {
+        try { const cf = window.MW_CF && MW_CF.createClient(); if (cf && cf.auth && cf.auth.refreshSession) await cf.auth.refreshSession(); } catch (_) {}
+        if (window.MW_CF_ADMIN) admin = true;
+      }
+      if (!admin) {
+        try {
+          const cf = window.MW_CF && MW_CF.createClient();
+          const s = window.MW_CF && MW_CF.session();
+          const uid = s && s.user && s.user.id;
+          if (cf && uid) {
+            const r = await cf.from("admins").select("user_id").eq("user_id", uid).maybeSingle();
+            if (r && r.data) admin = true;
+          }
+        } catch (_) {}
+      }
+    } catch (_) {}
+    confirming = false;
+    if (admin) { reveal(); if (isStudioOpen()) open(); }
+    return admin;
+  }
+  function confirmAdminSoon() { if (!admin && Date.now() - lastConfirmAt > 2500) confirmAdmin(); }
+  function retryAdmin() {
+    if (admin || adminTries >= 6) return;
+    const wait = [1200, 3000, 6000, 12000, 20000, 30000][adminTries];
+    adminTries++;
+    setTimeout(() => { confirmAdmin().then(retryAdmin); }, wait);
+  }
   async function init() {
     try { if (window.MW_CF && MW_CF.checked) await MW_CF.checked; } catch (_) {}
-    admin = !!(window.MW_CF_ADMIN);
-    if (!admin) {
-      // the session check may land after this module: re-check on sign-in changes
-      try {
-        const cf = window.MW_CF && MW_CF.createClient();
-        if (cf && cf.auth && cf.auth.onAuthStateChange) cf.auth.onAuthStateChange(() => { if (window.MW_CF_ADMIN && !admin) { admin = true; reveal(); if (isStudioOpen()) open(); } });
-      } catch (_) {}
-    }
+    await confirmAdmin();
+    // the session may land after this module: re-confirm on auth changes
+    try {
+      const cf = window.MW_CF && MW_CF.createClient();
+      if (cf && cf.auth && cf.auth.onAuthStateChange) cf.auth.onAuthStateChange((evt) => {
+        if (evt === "SIGNED_OUT") { admin = false; const b = $("#tw-studio-btn"); if (b) b.hidden = true; return; }
+        confirmAdmin();
+      });
+    } catch (_) {}
+    retryAdmin();
     reveal();
     if (isStudioOpen()) open();
   }
@@ -539,7 +589,11 @@
   let wasOpen = false;
   const mo = new MutationObserver(() => {
     const openNow = isStudioOpen();
-    if (openNow && !wasOpen && admin) { booted = true; open(); }
+    if (openNow && !wasOpen) {
+      if (admin) { booted = true; open(); }
+      else { render(); confirmAdminSoon(); } /* entered cold: show the lock card, take a fresh admin look */
+    }
+    if (!admin && document.body && (document.body.dataset.view === "mwtv" || document.body.dataset.view === "showstudio")) confirmAdminSoon();
     wasOpen = openNow;
   });
   if (document.body) mo.observe(document.body, { attributes: true, subtree: true, attributeFilter: ["hidden", "data-view"] });
