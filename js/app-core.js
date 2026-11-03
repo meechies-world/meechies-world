@@ -61,7 +61,7 @@ const LAZY_SRC={
    * these bytes for everyone (fetch only, never executed); dj.js fetches the
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
    * The pin tracks the DJ build stamp — bump it in lockstep with MW_DJ_BUILD. */
-  djbooth:["js/dj-booth.js?v=1793662201"],
+  djbooth:["js/dj-booth.js?v=1793664600"],
   /* Messages view core (max-speed Lever 5, 2026-11-02): js/messages.js
    * stays eager — it is the always-on layer (Message buttons site-wide,
    * the chat bubble, heads, pop-up card, arrival pop, unread dot). Only

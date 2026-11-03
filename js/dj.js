@@ -1577,7 +1577,7 @@ html.popdj #dj-mini{display:none!important}
   // fallback for a stale cached shell that predates the static
   // markup; either way there is exactly one #dj-mini in the page.
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; const sbMn = document.getElementById("dj-mini"); if (sbMn) sbMn.hidden = true; }
-  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
+  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-tv'>📺 MW TV</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); la.querySelector("#la-tv").addEventListener("click", () => { la.hidden = true; if (typeof go === "function") go("mwtv"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
   if (!SANDBOX) { let mn = document.getElementById("dj-mini"); if (!mn) { mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>📺 MW TV</button></div><div class='mn-row'><aside class='mn-chip mn-chip-l' id='mn-chip-l' hidden></aside><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><aside class='mn-chipcol'><button type='button' class='mn-rqbtn' data-rqopen='mn' aria-label='Request a song — Meechie AI finds the video'>🎤</button><div class='mn-chip mn-chip-p' id='mn-chip-p' hidden></div></aside></div><div class='mn-rqwrap'><span class='rq-mystat' id='mn-mystat'></span><div class='rq-form2' id='mn-rqform' hidden><div class='dj-search'><input type='text' id='mn-rq-song' maxlength='100' placeholder='Type a song — Meechie AI finds the video' aria-label='Song to request'><input type='text' id='mn-rq-shout' maxlength='140' placeholder='Shout-out (optional) — it shows when your song plays' aria-label='Shout-out'></div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='btn sm' type='button' data-rqgo='mn'>🎵 Request it</button><small class='muted'>One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class='rq-results' id='mn-rqres'></div></div></div>"; const mnBand = document.getElementById("dj-band"); (mnBand || document.body).appendChild(mn); } mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
     // MANDATORY SCREEN package: the mini lives in the shell's band
     // slot (#dj-band, above <main>), outside the <main> delegation (onMain only fires inside #dj-root /
@@ -5271,6 +5271,57 @@ html.popdj #dj-mini{display:none!important}
     if (wt) wt.textContent = label;
     if (sb) sb.textContent = elOpen("v-mwtv") ? (tvSndOn ? "🔊 TV sound on — tap to mute" : "🔇 TV sound off — tap for sound") : (listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound");
   }
+  /* MW TV ENTRY = SOUND ON, RADIO OFF (owner, 2026-11-02: "Make sure
+   * if they click on MW TV it comes on with the sound on and the radio
+   * cuts off"): entering the MW TV view IS the sound tap now — the
+   * seat-local intent (tvSndOn) goes on, this seat's radio listening
+   * stops (the exact #530 switch semantics, local only, nothing
+   * written), and chanSync runs so an entry that rides a real tap
+   * unmutes inside that tap's own gesture. Detection is the router's
+   * own signal: go() stamps body[data-view] on every navigation, so a
+   * MutationObserver on that one attribute sees EVERY entry path —
+   * header link, home card, appnav, the station-card MW TV button,
+   * programmatic go() — with no per-link wiring to miss one. A direct
+   * load on #mwtv has no gesture yet (the router ran before this file
+   * loaded): the same intent is set, and a one-shot arm re-runs
+   * chanSync inside the seat's FIRST pointer/key interaction anywhere
+   * on the page, so the sound lands on their first tap instead of
+   * never. The arm only ever re-syncs — it never writes the flag — and
+   * nothing here ever turns the flag off: a #tw-sound tap OFF is
+   * respected for the rest of the visit (no tick re-applies it), and
+   * only LEAVING and re-entering the view applies sound-on again,
+   * which is exactly the owner's rule. */
+  let tvInView = false, tvSndArm = false, tvLastGesture = 0;
+  function tvEnterApply() {
+    tvSndOn = true;
+    if (listening) { try { stopListening(); } catch (_) {} }
+    try { chanSync(); } catch (_) {}
+    tvSig = ""; try { tvPaint(); } catch (_) {}
+  }
+  function tvEnter() {
+    if (Date.now() - tvLastGesture < 1500) { tvSndArm = false; tvEnterApply(); return; }
+    tvSndOn = true;
+    if (listening) { try { stopListening(); } catch (_) {} }
+    tvSndArm = true;
+    tvSig = ""; try { tvPaint(); } catch (_) {}
+  }
+  function tvEntryCheck() {
+    let on = false;
+    try { on = !!(document.body && document.body.dataset && document.body.dataset.view === "mwtv"); } catch (_) {}
+    if (!on) on = elOpen("v-mwtv");
+    if (on && !tvInView) { tvInView = true; tvEnter(); }
+    else if (!on && tvInView) { tvInView = false; tvSndArm = false; }
+  }
+  function tvEntryGesture() {
+    tvLastGesture = Date.now();
+    if (tvSndArm && tvInView) { tvSndArm = false; try { chanSync(); } catch (_) {} tvSig = ""; try { tvPaint(); } catch (_) {} }
+  }
+  try { document.addEventListener("pointerdown", tvEntryGesture, true); } catch (_) {}
+  try { document.addEventListener("keydown", tvEntryGesture, true); } catch (_) {}
+  try {
+    if (window.MutationObserver && document.body) new MutationObserver(() => { try { tvEntryCheck(); } catch (_) {} }).observe(document.body, { attributes: true, attributeFilter: ["data-view"] });
+  } catch (_) {}
+  try { tvEntryCheck(); } catch (_) {}
   /* MW TV slate wording (owner, 2026-10-29: "Mw tv isnt fixed"): the
    * static first paint used to declare the station off air before any
    * state had arrived - a false off-air slate on a live station, which
@@ -6810,7 +6861,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793662201;
+  const MW_DJ_BUILD = 1793664600;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
