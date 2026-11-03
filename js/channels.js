@@ -18,10 +18,16 @@
  * MW_DJ.stop(), the global tuneIn(), and pausing this tab's own
  * station element when a genre channel takes this tab's sound.
  * Genre playback lives in ONE YouTube player owned by this file,
- * so a genre channel cannot fight the live radio: the moment the
- * station sounds on this tab by any door, the genre player yields
- * (see the reconciliation tick), and taking a genre channel first
- * silences this tab's station follow — never the station itself.
+ * so a genre channel cannot fight the live radio. The listener's
+ * LAST explicit choice owns this tab's sound: taking a genre
+ * channel silences this tab's station follow — never the station
+ * itself — and the pick then defends itself against the follow's
+ * auto-resume paths (which cannot know a channel is playing).
+ * Only an explicit station door (Tune In, the player bar, the
+ * booth listen button, a live alert) hands the sound back to the
+ * station; see the reconciliation tick. The player is created
+ * WITHOUT a video, so it can only ever play what this file's
+ * state machine currently wants — no orphaned autoplay.
  *
  * Picks ride the same doors as booth search: the /api/ytsearch
  * relay (which server-side drops banned/unplayable videos) plus
@@ -47,7 +53,7 @@
       { id: "weed", num: 3, name: "WEED WAKE-UP", tag: "Weed-smoking wake-up music — wake & bake, chill and lifted", seeds: ["weed smoking music mix", "wake and bake music mix", "stoner music mix", "chill hip hop mix"] },
       { id: "oldschool", num: 4, name: "OLD SCHOOL", tag: "Old school hip hop and the classics", seeds: ["old school hip hop mix", "old school hip hop classics", "90s hip hop mix"] },
       { id: "pop", num: 5, name: "POP", tag: "Pop hits, all day", seeds: ["pop hits mix", "pop hits 2025 mix", "top pop songs mix"] },
-      { id: "country", num: 6, name: "COUNTRY", tag: "Country hits and modern country", seeds: ["country hits mix", "country music hits", "modern country mix"] },
+      { id: "country", num: 6, name: "COUNTRY", tag: "Country hits and modern country", seeds: ["country music hits", "top country songs", "country hits 2025", "modern country mix", "country hits mix"] },
       { id: "rock", num: 7, name: "ROCK", tag: "Rock hits and classic rock", seeds: ["rock hits mix", "classic rock mix", "rock music mix"] },
       { id: "edm", num: 8, name: "EDM", tag: "EDM and dance — festival energy", seeds: ["edm mix", "edm festival mix", "dance music mix"] },
     ];
@@ -69,12 +75,19 @@
     const out = [], inList = new Set();
     for (const r of Array.isArray(results) ? results : []) {
       if (!r || !r.id || inList.has(r.id)) continue;
+      if (r.live) continue; // a live stream never ends — channels roll finite picks
       if (bannedSet && bannedSet.has(r.id)) continue;
       if (seenSet && seenSet.has(r.id)) continue;
       const dur = +r.dur || 0;
-      if (dur > 0 && (dur < 30 || dur > 2400)) continue;
+      // A channel is a stream, not a song pick: long mixes are
+      // legitimate channel fare (the old 40-minute cap starved
+      // COUNTRY — its lead seed's results are all long mixes).
+      if (dur > 0 && (dur < 30 || dur > 7200)) continue;
       inList.add(r.id);
-      out.push({ id: r.id, title: r.title || "YouTube video", dur, thumb: r.thumb || ("https://i.ytimg.com/vi/" + r.id + "/hqdefault.jpg") });
+      // The live relay speaks { t: title } (its compact shape); the
+      // repo relay speaks { title }. Take either — reading only
+      // `title` left every pick named "YouTube video" on the tuner.
+      out.push({ id: r.id, title: r.title || r.t || "YouTube video", dur, thumb: r.thumb || ("https://i.ytimg.com/vi/" + r.id + "/hqdefault.jpg") });
     }
     return out;
   }
@@ -126,6 +139,9 @@
   let sounding = false;      // the player is actually making sound
   let stallAt = 0;           // buffering watchdog stamp
   let selected = null;       // channel id the tuner shows as chosen
+  let doorAt = 0;            // stamp of the last explicit station-door click
+  let fightN = 0;            // consecutive station re-sounds defended against
+  let dryN = 0;              // consecutive dry digs for the current channel
 
   function ytApi() {
     if (window.YT && YT.Player) return Promise.resolve();
@@ -140,12 +156,16 @@
     });
     return ytP;
   }
-  function ensurePlayer(firstId) {
+  function ensurePlayer() {
     if (player) return;
     const host = document.getElementById("chan-yt");
     if (!host) return;
+    // No videoId here on purpose: a constructor video autoplays on
+    // ready even after the state machine has moved on, which left
+    // genre video sounding under a tuner that said LIVE. The
+    // player now loads only from playItem / onReady, always the
+    // item the state machine currently wants.
     player = new YT.Player("chan-yt", {
-      videoId: firstId || undefined,
       playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, modestbranding: 1 },
       events: {
         onReady: () => { playerReady = true; if (wantPlay && curItem) { try { player.loadVideoById(curItem.id); } catch (_) {} } },
@@ -176,13 +196,14 @@
   }
   async function playItem(def, item) {
     curItem = item;
+    dryN = 0; fightN = 0;
     const q = queueOf(def);
     q.hist.push(item); if (q.hist.length > 24) q.hist.shift();
+    wantPlay = true; // set before the player exists, so a fast onReady loads this item
     await ytApi();
     if (curChan !== def) return; // listener changed their mind mid-tune
-    ensurePlayer(item.id);
+    ensurePlayer();
     if (player && playerReady) { try { player.loadVideoById(item.id); } catch (_) {} }
-    wantPlay = true;
     paint();
     ensureQueue(def, 4); // keep the channel deep behind the current song
   }
@@ -191,9 +212,14 @@
     const q = await ensureQueue(def, 1);
     const next = q.list.shift();
     if (next) { playItem(def, next); return; }
-    // Dry well (relay unreachable): wait, then dig again — never dead air by choice.
-    paint("Tuning… the picks are reloading.");
-    setTimeout(() => { if (curChan === def && wantPlay) advance(); }, 4000);
+    // Dry well: keep digging on THIS channel — never a silent
+    // revert to LIVE. After two dry digs in a row the tuner says
+    // so plainly on the card, and the digging slows down but
+    // never stops, so the channel recovers on its own.
+    dryN++;
+    if (dryN >= 2) paint(def.name + " is quiet right now — no playable picks are coming up. Staying on this channel and still digging.");
+    else paint("Tuning… the picks are reloading.");
+    setTimeout(() => { if (curChan === def && wantPlay) advance(); }, dryN >= 3 ? 20000 : 4000);
   }
   function stopGenre() {
     wantPlay = false; sounding = false; stallAt = 0;
@@ -223,7 +249,7 @@
   }
   function startLive() {
     stopGenre();
-    curChan = null; selected = "live";
+    curChan = null; selected = "live"; fightN = 0; dryN = 0;
     try { localStorage.removeItem("mw-chan-last"); } catch (_) {}
     if (window.MW_DJ_LIVE && window.MW_DJ_LIVE()) { try { window.MW_DJ.start(); } catch (_) {} }
     else if (typeof tuneIn === "function") { try { tuneIn(); } catch (_) {} }
@@ -238,6 +264,11 @@
   /* ---------- channel selection ---------- */
   function selectGenre(def) {
     selected = def.id; curChan = def;
+    // The tap IS the intent to hear this channel: wantPlay goes on
+    // now, not when the first pick lands — otherwise a slow or dry
+    // first fill left the retry loop disarmed and the tuner sat
+    // mute on "Tuning…" with the pick liable to be reverted.
+    wantPlay = true; dryN = 0; fightN = 0;
     try { localStorage.setItem("mw-chan-last", def.id); } catch (_) {}
     silenceStationHere();
     paint("Tuning " + def.name + "…");
@@ -246,7 +277,7 @@
       if (curChan !== def) return;
       const first = q.list.shift();
       if (first) playItem(def, first);
-      else { paint("Tuning… the picks are reloading."); setTimeout(() => { if (curChan === def) advance(); }, 2500); }
+      else advance(); // dry first fill: advance owns the note + the digging
     })();
   }
   function toggleCurrent() {
@@ -345,27 +376,48 @@
     });
   }
 
-  /* ---------- reconciliation: one sound per tab, always ---------- */
+  /* ---------- reconciliation: one sound per tab, always ----------
+   * The listener's last explicit choice owns this tab's sound.
+   * (The shipped version yielded the channel the first tick the
+   * station probed as sounding — but the station follow has
+   * auto-resume paths that fire without any listener choice, so
+   * picks flipped back to LIVE within seconds while the tuner,
+   * the ON AIR pills and the actual sound disagreed. A pick now
+   * defends itself; only a real door hands the sound back.) */
   setInterval(() => {
     try {
       if (curChan && wantPlay) {
-        // The station took this tab's sound back through any door
-        // (Tune In, the bubble, the player bar, a live alert): the
-        // live radio wins and the genre channel yields.
-        if (stationSounding()) {
-          stopGenre();
-          selected = "live"; curChan = null;
-          paint("You're on the live station — your channel waits here whenever you want it.");
-          return;
-        }
         // MW TV's own rule: entering its screen, the TV sound is on
-        // and other sound is cut on that screen.
+        // and other sound is cut on that screen. Going to that
+        // screen is the listener's own move, so the channel yields
+        // at once, exactly as before.
         if (document.body && document.body.dataset && document.body.dataset.view === "mwtv") {
           stopGenre();
           selected = null; curChan = null;
           paint("MW TV has the sound on its screen — your channel waits here.");
           return;
         }
+        if (stationSounding()) {
+          // An explicit station door in the last moments means the
+          // listener just chose the station: hand the sound over.
+          // A determined re-sounder (four defended re-sounds) also
+          // wins — but the tuner says what happened either way;
+          // the pick never reverts silently or by surprise.
+          if (Date.now() - doorAt < 2500 || fightN >= 4) {
+            stopGenre();
+            selected = "live"; curChan = null; fightN = 0;
+            paint("You're on the live station — your channel waits here whenever you want it.");
+            return;
+          }
+          // No door was touched: this is the follow machinery
+          // re-asserting itself. Re-silence THIS TAB's follow and
+          // keep the channel — one sound, the chosen one.
+          fightN++;
+          silenceStationHere();
+          paint();
+          return;
+        }
+        fightN = 0;
         // Buffering stall: roll to the next pick, never sit silent.
         if (stallAt && Date.now() - stallAt > 15000) { stallAt = 0; advance(); return; }
       }
@@ -375,6 +427,11 @@
   }, 1000);
 
   /* ---------- wire up ---------- */
+  // Explicit station doors, stamped in the capture phase so the
+  // reconciliation tick can tell "the listener chose the station"
+  // apart from the follow machinery re-asserting itself.
+  const DOOR_SEL = "#tune-in, #pb-play, #dj-listen, #la-tune, #la-watch, #wb-sound, #tw-watch, #st-watch, [data-bobtn], [data-bubbtn], [data-play]";
+  document.addEventListener("click", (e) => { try { if (e.target && e.target.closest && e.target.closest(DOOR_SEL)) doorAt = Date.now(); } catch (_) {} }, true);
   if (toggleBtn) toggleBtn.addEventListener("click", toggleCurrent);
   if (nextBtn) nextBtn.addEventListener("click", nextCurrent);
   if (prevBtn) prevBtn.addEventListener("click", prevCurrent);
