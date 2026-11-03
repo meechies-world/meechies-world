@@ -493,9 +493,9 @@ function mwVmixRescue(S, now, obs) {
  * production — the unattended lane below is what fires today. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
 const TV_PROGRAM_V = 6;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool)
-const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
+const TV_PREM_V = 2;                 // MY EMPIRE premiere slot doc generation (tv/premiere) (v2 = Episode 1 duration corrected to the verified finished master, 905s)
 const TV_MOVIE_V = 1;                // post-premiere movie block doc generation (tv/movieblock)
-const TV_INSERT_V = 2;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy)
+const TV_INSERT_V = 3;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy; v3 = MY EMPIRE Episode 1 premiere, no startAt: fires at the next segment boundary)
 const TV_MOVIE_FALLBACK_MIN = 15;    // when the premiere slot airs nothing, the movie block starts this many minutes after the slot start (20:15 ET)
 const TV_PREM_PROBE_MS = 600e3;      // premiere slot file-existence probes are cached this long in tv/now
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
@@ -872,7 +872,7 @@ function tvSeedPremiere(now) {
   // music cycle plays through, so the slot can never be dead air
   // before the uploads land.
   return { on: true, startMinET: 1200, progV: TV_PREM_V, items: [
-    { id: "me-episode", kind: "show", src: "file", url: "/media/my-empire-ep1.mp4", title: "Episode 1 — Premiere Night", show: "MY EMPIRE", dur: 900, rights: R("Malik own show: his life, his music, his businesses; he is the creator and rights holder. Episode file lands on his own site media.") },
+    { id: "me-episode", kind: "show", src: "file", url: "/media/my-empire-ep1.mp4", title: "Episode 1 — Premiere Night", show: "MY EMPIRE", dur: 905, rights: R("Malik own show: his life, his music, his businesses; he is the creator and rights holder. Episode file lands on his own site media.") },
     { id: "me-teaser", kind: "show", src: "file", url: "/media/my-empire-teaser.mp4", title: "First Look — Official Teaser", show: "MY EMPIRE", dur: 210, rights: R("Malik own show teaser, cut from his own episode footage at his request (2026-11-02).") }
   ], updatedAt: now, by: "keeper-seed" };
 }
@@ -900,27 +900,24 @@ function tvSeedMovieBlock(now) {
   ], updatedAt: now, by: "keeper-seed" };
 }
 function tvSeedInsert(now) {
-  // One-shot owner-ordered insert, v2: a short playlist (Malik,
-  // 2026-11-02 ~20:55 ET: "Play youtube hood pranks next"). The
-  // order carries an explicit startAt — tonight 21:00 ET, the
-  // segment boundary at the end of the 20:50 news window — and a
-  // hard endBy (22:00 ET): the 10 PM MY EMPIRE premiere keeps the
-  // late hour, so a block that can no longer finish before endBy
-  // never fires late across the line (the firing rule in tvTick).
-  // Every pick passed the channel gates at build time (2026-11-02):
-  // YouTube oEmbed HTTP 200 with the author being the creator's own
-  // channel, and the site embed gate (/api/ytsearch) returning the
-  // id (embeddable, not age-gated) with the duration pinned from
-  // the actual upload. Total 1301s.
-  const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
-  const PK = (id, yt, title, dur, evidence) => ({ id, kind: "show", src: "yt", yt, title, show: "MW Hood Pranks", dur, rights: R(evidence) });
-  const et = tvEtParts(now), sec = Math.floor((now % 60000) / 1000);
-  const mins = et.hour * 60 + et.minute;
-  const startAt = now - ((mins - 1260) * 60 + sec) * 1000; // today 21:00 ET (whole-hour ET offset arithmetic, as tvPremWin)
-  return { progV: TV_INSERT_V, at: now, show: "MW Hood Pranks", startAt, endBy: startAt + 3600e3, items: [
-    PK("prank-staring-thugs", "E6QyZG74-nQ", "Aggressively Staring at THUGS in the Hood GONE WRONG! (MUST WATCH) Part 2", 530, "Upload on TopNotch Idiots, the creators own channel; embedding verified via YouTube oEmbed (HTTP 200, author TopNotch Idiots) and the site embed gate (/api/ytsearch, id-matched) at build time (2026-11-02); duration 530s pinned from the actual upload via the embed gate relay"),
-    PK("prank-2piece-combo", "ZI3Qrijjh84", "Thugs Catching 2 PIECE COMBO in the Hood! (MUST WATCH)", 498, "Upload on TopNotch Idiots, the creators own channel; embedding verified via YouTube oEmbed (HTTP 200, author TopNotch Idiots) and the site embed gate (/api/ytsearch, id-matched) at build time (2026-11-02); duration 498s pinned from the actual upload via the embed gate relay"),
-    PK("prank-license-plates", "HDiQEdWE2pg", "Stealing License Plates In The Hood Prank!", 273, "Upload on VitalyzdTv, the creators own channel; embedding verified via YouTube oEmbed (HTTP 200, author VitalyzdTv) and the site embed gate (/api/ytsearch, id-matched) at build time (2026-11-02); duration 273s pinned from the actual upload via the embed gate relay")
+  // One-shot owner-ordered insert, v3: the MY EMPIRE Episode 1
+  // premiere (Malik order 2026-11-02; the finished episode is his
+  // own show and this seed merges only after he approves it). The
+  // order carries NO startAt and NO endBy on purpose: the firing
+  // rule in tvTick stamps the window at the end of the segment
+  // playing when the keeper first sees the doc, so the episode
+  // premieres at the next segment boundary the night this lands,
+  // cuts the laid timeline there, and the interrupted program
+  // freezes and resumes around it (the movie-block freeze rule);
+  // the doc is marked consumed in the same tick, so it lays
+  // exactly once. News, premiere-slot and anchor windows inside
+  // the span keep their standing precedence (the layout caps and
+  // tvInsertFrozen already account for them). Duration 905s is
+  // the verified finished master (905.064s incl. end card); the
+  // episode file lands on site media in the same premiere chain.
+  const R = (evidence) => ({ basis: "own", evidence, clearedBy: "owner", at: now, simulcast: true });
+  return { progV: TV_INSERT_V, at: now, show: "MY EMPIRE", items: [
+    { id: "me-ep1-premiere", kind: "show", src: "file", url: "/media/my-empire-ep1.mp4", title: "MY EMPIRE — Episode 1", show: "MY EMPIRE", dur: 905, rights: R("Malik own show: his life, his music, his businesses; he is the creator and rights holder. Finished Episode 1 master verified at 905s; episode file lands on his own site media in the same premiere chain.") }
   ], updatedAt: now, by: "keeper-seed" };
 }
 /* The insert doc as a lineup: v2 docs carry an items array (a
