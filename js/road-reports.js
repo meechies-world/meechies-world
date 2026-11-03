@@ -16,6 +16,15 @@
    every viewer. Expired/buried pins simply stop rendering.
    This layer writes ONLY its own roadreports docs. It never
    touches the radio, the TV, or any other part of the site.
+
+   MAP LOOK (2026-11-03): the base map opens SATELLITE — Esri
+   World Imagery with its boundaries/places reference layer on
+   top, Google-Earth style — with a big 🛰️ Satellite / 🗺️ Street
+   switch (Street = the OpenStreetMap tiles). The choice is
+   remembered per device. Pins ride on top of either base. A
+   ResizeObserver keeps Leaflet's grid matched to the real box
+   (the card grows after init when the guide renders — a one-shot
+   invalidateSize left the lower half of the box untiled).
    ================================================================ */
 var MWRR = (function () {
   "use strict";
@@ -110,7 +119,18 @@ var MWRR = (function () {
   /* ---------------- browser layer ---------------- */
   var REST = "/api/cf/rest", RPC = "/api/cf/rpc";
   var HOME = [39.8238, -79.5884]; // Fairchance / Uniontown area — the map's home view
+  var HOME_ZOOM = 13; // street-readable, like the original embed's framing
+  /* Base layers: satellite first (Esri World Imagery + its labels
+   * reference layer), street = OpenStreetMap. Choice persists. */
+  var SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+  var SAT_ATTR = "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics";
+  var REF_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+  var OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  var OSM_ATTR = "&copy; OpenStreetMap contributors";
+  var BASE_KEY = "mw-rr-base";
   var map = null, layer = null, meMark = null, dropMark = null;
+  var satLayer = null, refLayer = null, streetLayer = null, baseMode = "sat";
+  var satBtn = null, stBtn = null;
   var rows = [], admins = {}, started = false, lastFix = null;
   var pending = null; // {type, lat, lng} waiting on the confirm bar
   var placing = false;
@@ -274,7 +294,77 @@ var MWRR = (function () {
    * ask there, exactly like it did for the old embed). */
   function center(lat, lng) {
     lastFix = { lat: lat, lng: lng };
-    if (map) { map.setView([lat, lng], Math.max(map.getZoom(), 12)); showMe(); }
+    if (map) { map.setView([lat, lng], Math.max(map.getZoom(), 12)); try { map.invalidateSize(); } catch (_) {} showMe(); updateEarthLink(); }
+  }
+
+  /* ---------- base layers: satellite default, street on tap ---------- */
+  function savedBase() { try { return localStorage.getItem(BASE_KEY) === "street" ? "street" : "sat"; } catch (_) { return "sat"; } }
+  function paintBaseCtl() {
+    if (satBtn) { satBtn.classList.toggle("on", baseMode === "sat"); satBtn.setAttribute("aria-pressed", baseMode === "sat" ? "true" : "false"); }
+    if (stBtn) { stBtn.classList.toggle("on", baseMode !== "sat"); stBtn.setAttribute("aria-pressed", baseMode !== "sat" ? "true" : "false"); }
+  }
+  function applyBase(name, save) {
+    baseMode = name === "street" ? "street" : "sat";
+    if (!map) return;
+    try {
+      if (baseMode === "sat") {
+        if (streetLayer && map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
+        if (satLayer && !map.hasLayer(satLayer)) satLayer.addTo(map);
+        if (refLayer && !map.hasLayer(refLayer)) refLayer.addTo(map);
+      } else {
+        if (satLayer && map.hasLayer(satLayer)) map.removeLayer(satLayer);
+        if (refLayer && map.hasLayer(refLayer)) map.removeLayer(refLayer);
+        if (streetLayer && !map.hasLayer(streetLayer)) streetLayer.addTo(map);
+      }
+    } catch (_) {}
+    if (save !== false) { try { localStorage.setItem(BASE_KEY, baseMode); } catch (_) {} }
+    paintBaseCtl();
+  }
+  function buildBaseCtl() {
+    if (typeof L === "undefined" || !L.control) return;
+    var ctl = L.control({ position: "topright" });
+    ctl.onAdd = function () {
+      var div = L.DomUtil.create("div", "rr-layers");
+      satBtn = document.createElement("button"); satBtn.type = "button"; satBtn.className = "rr-layer-btn"; satBtn.textContent = "🛰️ Satellite";
+      stBtn = document.createElement("button"); stBtn.type = "button"; stBtn.className = "rr-layer-btn"; stBtn.textContent = "🗺️ Street";
+      satBtn.addEventListener("click", function () { applyBase("sat"); });
+      stBtn.addEventListener("click", function () { applyBase("street"); });
+      div.appendChild(satBtn); div.appendChild(stBtn);
+      if (L.DomEvent) { L.DomEvent.disableClickPropagation(div); L.DomEvent.disableScrollPropagation(div); }
+      return div;
+    };
+    ctl.addTo(map);
+    paintBaseCtl();
+  }
+
+  /* ---------- Google Earth link: follows the map's current view ---------- */
+  function earthUrl() {
+    var c = (map && map.getCenter) ? map.getCenter() : { lat: HOME[0], lng: HOME[1] };
+    var z = (map && map.getZoom) ? map.getZoom() : HOME_ZOOM;
+    var d = Math.round(Math.min(120000, Math.max(900, 2600 * Math.pow(2, HOME_ZOOM - z))));
+    return "https://earth.google.com/web/@" + (+c.lat).toFixed(5) + "," + (+c.lng).toFixed(5) + ",900a," + d + "d";
+  }
+  function updateEarthLink() { var a = $("earthlink"); if (a) a.href = earthUrl(); }
+
+  /* ---------- size keeper: Leaflet's grid must match the real box ----------
+   * The car card grows after init (the guide list renders, fonts land),
+   * and a one-shot invalidateSize left tiles only in a top strip with
+   * black below. Re-sync on every size signal: staged retries, window
+   * resize/orientation, tab visibility, the container entering view —
+   * and a ResizeObserver on the container itself, the definitive one. */
+  function sizeKeeper() {
+    var fix = function () { if (map) { try { map.invalidateSize(); } catch (_) {} } };
+    if (window.requestAnimationFrame) requestAnimationFrame(fix);
+    [150, 450, 1200, 2600].forEach(function (ms) { setTimeout(fix, ms); });
+    window.addEventListener("resize", fix);
+    window.addEventListener("orientationchange", fix);
+    window.addEventListener("load", fix);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) fix(); });
+    var el = null; try { el = map.getContainer ? map.getContainer() : $("map"); } catch (_) { el = $("map"); }
+    if (el && "ResizeObserver" in window) { try { new ResizeObserver(fix).observe(el); } catch (_) {} }
+    if (el && "IntersectionObserver" in window) {
+      try { new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) fix(); }); }, { threshold: [0.1, 0.5, 0.9] }).observe(el); } catch (_) {}
+    }
   }
 
   /* ---------- build the UI ---------- */
@@ -307,8 +397,8 @@ var MWRR = (function () {
 
   function fallbackEmbed() {
     var el = $("map"); if (!el || el.dataset.rrFallback) return; el.dataset.rrFallback = "1";
-    el.innerHTML = "<iframe title='Map — OpenStreetMap' style='width:100%;height:100%;min-height:300px;border:0;display:block' loading='lazy' src='https://www.openstreetmap.org/export/embed.html?bbox=-79.6484%2C39.7938%2C-79.5284%2C39.8538&amp;layer=mapnik&amp;marker=39.8238%2C-79.5884'></iframe>";
-    var c = $("rr-count"); if (c) c.textContent = "Road reports need the interactive map — it's having a moment. The plain map is up instead.";
+    el.innerHTML = "<iframe title='Map — satellite view' style='width:100%;height:100%;min-height:300px;border:0;display:block' loading='lazy' src='https://maps.google.com/maps?q=39.8238%2C-79.5884&amp;z=13&amp;t=k&amp;output=embed'></iframe>";
+    var c = $("rr-count"); if (c) c.textContent = "Road reports need the interactive map — it's having a moment. A satellite map is up instead.";
     var o = $("rr-open"); if (o) o.style.display = "none";
   }
 
@@ -317,10 +407,16 @@ var MWRR = (function () {
     buildUI();
     if (typeof L === "undefined") { fallbackEmbed(); return; }
     var el = $("map"); if (!el) return;
-    map = L.map(el, { scrollWheelZoom: true }).setView(HOME, 11);
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+    map = L.map(el, { scrollWheelZoom: true }).setView(HOME, HOME_ZOOM);
+    satLayer = L.tileLayer(SAT_URL, { maxZoom: 19, attribution: SAT_ATTR });
+    refLayer = L.tileLayer(REF_URL, { maxZoom: 19 });
+    streetLayer = L.tileLayer(OSM_URL, { maxZoom: 19, attribution: OSM_ATTR });
+    applyBase(savedBase(), false); // satellite unless this device chose street
     layer = L.layerGroup().addTo(map);
-    setTimeout(function () { try { map.invalidateSize(); } catch (_) {} }, 350);
+    try { buildBaseCtl(); } catch (_) {}
+    sizeKeeper();
+    updateEarthLink();
+    map.on("moveend", updateEarthLink);
     map.on("click", function (e) { if (placing && pending && pending.type) setPending(pending.type, e.latlng.lat, e.latlng.lng); });
     map.on("contextmenu", function (e) {
       if (!session()) { note("👀 Viewing is open to everyone. To drop a report, sign in on the main site first."); return; }
