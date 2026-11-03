@@ -11,7 +11,8 @@
  * rotation when a track reaches its crossfade point, fast-forwarding through any
  * gap where nobody was listening. Writes are rare: only on an advance, or a light
  * updatedAt touch so clients keep reading the station as live. */
-import { userFrom } from "../../lib/cf.js";
+import { userFrom, isAdmin } from "../../lib/cf.js";
+import * as HANDS from "../../lib/meechie-hands.js";
 import { encrypt, vapid } from "./push.js";
 import { cleanBrainEvent, recordBrainEvents, readTaste, tasteScore, weightedBagOrder } from "../../lib/brain-taste.js";
 
@@ -280,7 +281,13 @@ async function aiDjSearch(deps, q) {
  * taste fold, so a stock action never moves a weight — the play that
  * follows is what counts) with the attribution carried in actor. */
 async function aiDjPass(deps, S, now) {
-  const gate = aiDjGateCore(S, now);
+  let gate = aiDjGateCore(S, now);
+  /* HANDS: a commanded stock (deps.force, from the keeper's hands drain
+   * — Malik told Meechie to dig NOW) bypasses only the two waiting
+   * gates, "booth" and "throttle"; the drain has already applied its
+   * own stricter booth stand-down, and kill / notlive / noautodj /
+   * paused still refuse absolutely. */
+  if (gate && deps && deps.force && (gate === "booth" || gate === "throttle")) gate = "";
   if (gate) return { changed: false, events: [], note: gate };
   const prevAt = +S.aiDjAt || 0;
   S.aiDjAt = now; // stamped on every attempt, so a dead relay is not retried on the next 12s ping
@@ -290,7 +297,10 @@ async function aiDjPass(deps, S, now) {
     if (keep.length !== S.aiQ.length) S.aiQ = keep;
   }
   const sg = aiDjGateStock(S);
-  if (sg) return { changed, events: [], note: sg };
+  /* HANDS: a commanded pass may top up past the "stocked" wait (the
+   * survivors cap still bounds the AI line at AIDJ_MAX), but Malik's
+   * own queue ("queue") always still wins — forced or not. */
+  if (sg && !(deps && deps.force && sg === "stocked")) return { changed, events: [], note: sg };
   if (!Array.isArray(S.aiQ)) S.aiQ = [];
   let taste = null;
   try { taste = await deps.readTaste(deps.env); } catch (_) {}
@@ -584,6 +594,169 @@ async function selfReviewPass(deps, S, now) {
   return { ran: "review", changes: changes.length };
 }
 /* SELF-REVIEW-END */
+/* HANDS-BEGIN — MEECHIE'S HANDS: the keeper-side drain (Malik,
+ * 2026-11-03: "I want him to be able to touch the tv and radio or do
+ * anything you can do to his site"). The shared core — control doc,
+ * log, queue, authority, immediate actions — lives in
+ * lib/meechie-hands.js. What lives HERE is only what must run inside
+ * the keeper's timeline: commands queued from chat / the POST door
+ * (brain/commands) execute on this tick, through the keeper's own
+ * mechanisms, under the keeper's own rules:
+ *  - OWNER SUPREMACY: a fresh booth (BOOTH_FRESH) stands every radio
+ *    command down, silently, until the booth goes stale or the
+ *    command's window (HANDS_CMD_TTL) closes and it resolves as
+ *    expired. TV commands never wait for the booth (the wall).
+ *  - KILL SWITCH: brain/control.hands === false refuses everything.
+ *  - THE WALL BOTH WAYS: radio commands mutate only S (radio/dj) and
+ *    read tv/quarternews read-only for the news decision; the one TV
+ *    command (tv.skip) writes only tv/now.
+ *  - EVERY OUTCOME IS LOGGED to brain/selflog (actor "Meechie").
+ * The drain never throws: a hands failure can never hurt the station. */
+let handsCtlMemo = { at: 0, ctl: null };
+async function handsCtlCached(env, now) {
+  if (handsCtlMemo.ctl && now - handsCtlMemo.at < 30000) return handsCtlMemo.ctl;
+  const ctl = await HANDS.handsControl(env);
+  handsCtlMemo = { at: now, ctl };
+  return ctl;
+}
+
+/* First tick after the hands ship, with no control doc yet: Meechie
+ * introduces himself on the Book (the one harmless live action of the
+ * rollout — a badged announcement Malik can delete), the control doc
+ * is born with the kill switch ON (hands live), and the moment is
+ * logged. Runs at most once: the control doc's existence is the flag. */
+async function handsActivate(env) {
+  await HANDS.handsSetControl(env, { hands: true, aiHold: false, announced: true }, "system");
+  try {
+    const a = await HANDS.handsAnnounce(env, "🤖 Hey everybody — Meechie AI here. Malik gave me hands on the site: I can run the radio, MW TV and the Show Studio desk for him, and post here as myself, badged as the AI. Every move I make is logged where he can read it. Global, not local. — Meechie AI");
+    await HANDS.handsLog(env, { action: "hands.online", target: "posts/" + a.id, summary: "Meechie's hands went live under Malik's 2026-11-03 order. Activation announcement posted to the Book (badged, deletable). Kill switch: brain/control + the booth BRAIN panel.", by: "system", role: "owner" });
+  } catch (_) {}
+}
+
+/* K = { S, now, tvOnly, deps, startDeckItem, cur, brainEvts }.
+ * Returns { changed, cur } for the tick to fold in. */
+async function handsDrain(env, K) {
+  const S = K.S, now = K.now;
+  let changed = false, cur = K.cur || null;
+  try {
+    let ctl = await HANDS.handsControl(env);
+    if (!ctl.exists) { await handsActivate(env); ctl = await HANDS.handsControl(env); }
+    const doc = await HANDS.handsCommandsRead(env);
+    const items = Array.isArray(doc.items) ? doc.items : [];
+    if (!items.some((c) => c && c.status === "queued")) return { changed, cur };
+    const boothFresh = !!(S.boothAt && now - S.boothAt < BOOTH_FRESH);
+    let dirty = false;
+    for (const cmd of items) {
+      if (!cmd || cmd.status !== "queued") continue;
+      const isRadio = String(cmd.action || "").startsWith("radio.");
+      const isTvSkip = cmd.action === "tv.skip";
+      if (K.tvOnly && !isTvSkip) continue;
+      const age = now - (+cmd.at || 0);
+      const finish = (status, result) => { cmd.status = status; cmd.doneAt = now; cmd.result = String(result || "").slice(0, 300); dirty = true; };
+      const logIt = (summary, refusedFlag) => HANDS.handsLog(env, { action: cmd.action, target: "brain/commands/" + cmd.id, summary, refused: !!refusedFlag, by: cmd.by || "", uid: cmd.uid || "", role: cmd.role || "owner" });
+      if (!ctl.hands) { finish("refused", "kill switch OFF"); await logIt("Refused: the kill switch is OFF — nothing Meechie does goes through.", true); continue; }
+      if (age > HANDS.HANDS_CMD_TTL) { finish("expired", "stood down — window passed"); await logIt("Stood down: the command aged out before the keeper could run it (booth busy or station quiet). Nothing was touched.", true); continue; }
+      if (!K.tvOnly && isRadio && boothFresh) continue; // owner supremacy: stands down silently until the booth goes stale
+      try {
+        if (cmd.action === "radio.stock") {
+          if (ctl.aiHold) { finish("refused", "AI stocking on hold"); await logIt("Refused: AI stocking is on hold.", true); continue; }
+          const r = await aiDjPass({ ...(K.deps || {}), force: true }, S, now);
+          if (r && r.changed) changed = true;
+          if (r && r.events && r.events.length && Array.isArray(K.brainEvts)) K.brainEvts.push(...r.events);
+          finish("done", "pass: " + (r ? r.note : "?"));
+          await logIt("Stocked the AI queue on command — pass result: " + (r ? r.note : "unknown") + ". The AI line now holds " + (Array.isArray(S.aiQ) ? S.aiQ.length : 0) + " pick(s), all inside the daypart grid and the playability gate.");
+        } else if (cmd.action === "radio.skipAi") {
+          if (!Array.isArray(S.aiQ) || !S.aiQ.length) { finish("done", "AI queue already empty"); await logIt("Skip asked, but the AI queue was already empty — nothing removed."); continue; }
+          let ix = 0; const want = cmd.args && (cmd.args.yt || cmd.args.title);
+          if (want) { const f = S.aiQ.findIndex((it) => it && (String(it.yt) === String(want) || String(it.title || "").toLowerCase().includes(String(want).toLowerCase()))); if (f >= 0) ix = f; }
+          const gone = S.aiQ.splice(ix, 1)[0]; changed = true;
+          finish("done", "removed: " + (gone && (gone.title || gone.yt)));
+          await logIt("Removed an AI pick from the queue: “" + String((gone && (gone.title || gone.yt)) || "").slice(0, 80) + "”. " + S.aiQ.length + " AI pick(s) remain. Malik's own queue was not touched.");
+        } else if (cmd.action === "radio.pickNext") {
+          const q = String((cmd.args && cmd.args.query) || "").trim();
+          if (!q) { finish("refused", "nothing named"); await logIt("Refused: pick-next with nothing named.", true); continue; }
+          const rows = await aiDjSearch(K.deps || {}, q);
+          const banned = new Set(); const addId = (v) => { if (v) banned.add(String(v)); };
+          if (Array.isArray(S.aiQ)) for (const it of S.aiQ) addId(it && it.yt);
+          if (Array.isArray(S.queue)) for (const it of S.queue) addId(it && it.yt);
+          if (Array.isArray(S.schedQ)) for (const it of S.schedQ) addId(it && it.yt);
+          for (const k of ["A", "B", "C", "D"]) addId(S[k] && S[k].yt);
+          try { const blk = await readDoc(env, "brain/ytblock"); for (const id of (blk && blk.ids) || []) addId(id); } catch (_) {}
+          const hit = rows.find((r) => r && r.id && +r.dur > 0 && !banned.has(String(r.id)));
+          if (!hit) { finish("done", "nothing playable found"); await logIt("Pick-next for “" + q.slice(0, 60) + "”: the embed gate returned nothing new and playable, so the line is unchanged."); continue; }
+          if (!Array.isArray(S.aiQ)) S.aiQ = [];
+          S.aiQ.unshift({ yt: hit.id, title: String(hit.title || "").slice(0, 120), cover: "", dur: hit.dur, ai: 1, q, at: now, via: "hands" });
+          if (S.aiQ.length > 8) S.aiQ.length = 8;
+          changed = true;
+          finish("done", "first in AI line: " + hit.title);
+          await logIt("Put “" + String(hit.title || "").slice(0, 80) + "” first in the AI line (asked: “" + q.slice(0, 60) + "”) — it plays right behind Malik's queue and listener picks, never over them.");
+        } else if (cmd.action === "radio.newsNow") {
+          /* tvRadioDecision's checks, minus ONLY the 5-minute window:
+             Malik's order is that Meechie may fire the piece early or
+             late inside its freshness window. Freshness, quarter match,
+             already-fired and station-live checks all still bind. The
+             interrupt itself is the rotation block's own move, copied
+             exactly: park honestly, start on the free deck, stamp. */
+          const qDoc = await readDoc(env, "tv/quarternews");
+          const cur2 = qDoc && qDoc.current;
+          let why = "";
+          if (!qDoc || qDoc.on === false || !cur2 || !cur2.radioUrl || !(+cur2.radioDur > 0)) why = "no quarter piece exists";
+          else {
+            const qStart = Math.floor(now / TV_AD_EVERY_MS) * TV_AD_EVERY_MS;
+            const et = tvEtParts(now);
+            const qKey = et.dayKey + "T" + et.hour + ":" + String(Math.floor(et.minute / 15) * 15).padStart(2, "0");
+            if (+cur2.forQuarter !== qStart) why = "the newest piece belongs to a different quarter";
+            else if (+cur2.producedAt > now) why = "the piece is stamped in the future";
+            else if (now - +cur2.producedAt > TV_QUARTER_FRESH_MS) why = "the piece is past its freshness window — stale news never airs";
+            else if (S.newsHour === qKey) why = "this quarter's piece already aired";
+            else if (!S.live || !S.autodj || S.pausedAt) why = "the station isn't in live Auto-DJ right now";
+            else if (!cur || !K.startDeckItem) why = "no deck is turning to cut from";
+            else {
+              const other = cur === "A" ? "B" : "A";
+              if (S[cur].playing && !S[other].playing && now - (S[cur].start || now) > 10000) {
+                S[cur].playing = false; S[cur].pos = Math.max(0, Math.min(+S[cur].dur || 0, (now - (S[cur].start || now)) / 1000));
+                K.startDeckItem(other, { src: String(cur2.radioUrl), title: "📰 Meechie's World News", dur: Math.min(600, Math.max(5, Math.round(+cur2.radioDur))) }, now);
+                S.xf = 0.5; S.newsHour = qKey; changed = true; cur = other;
+                finish("done", "news fired on deck " + other);
+                await logIt("Fired this quarter's fresh news piece on the radio on command (" + qKey + ") — cut in on deck " + other + ", the playing song parked honestly where it stopped.");
+                continue;
+              }
+              why = "the decks weren't in a safe spot to cut this second — the normal top-of-quarter window still takes it";
+            }
+          }
+          finish("done", "not fired: " + why);
+          await logIt("News-now asked; not fired: " + why + ".");
+        } else if (isTvSkip) {
+          const nw = await readDoc(env, "tv/now");
+          if (!nw || !Array.isArray(nw.segs) || !nw.segs.length) { finish("refused", "channel is dark"); await logIt("Refused: the TV channel is dark — there is no segment to skip.", true); continue; }
+          const seg = nw.segs.find((s) => s && now >= +s.start && now < +s.start + (+s.dur || 0) * 1000);
+          if (!seg) { finish("refused", "nothing on air this second"); await logIt("Refused: no TV segment is on air this second.", true); continue; }
+          if (seg.k !== "prog" && seg.k !== "house") { finish("refused", "programmed window"); await logIt("Refused: what's on TV is a programmed window (“" + seg.k + "”) — premieres, news and inserts are Malik's programming, not skippable.", true); continue; }
+          const chan = await readDoc(env, "tv/channel");
+          const chanItems = chan && Array.isArray(chan.items) ? chan.items : [];
+          const ix = chanItems.findIndex((it) => it && it.id === seg.id);
+          if (ix < 0) { finish("refused", "movie chain"); await logIt("Refused: the current piece rides the movie chain, which runs wall-clock — there is no lineup cursor to advance inside it.", true); continue; }
+          const cut = Math.max(0.1, Math.round((now - +seg.start) / 100) / 10);
+          const keptSegs = [];
+          for (const s of nw.segs) { if (s === seg) keptSegs.push({ ...s, dur: cut }); else if (+s.start >= now) { /* the rest of the laid window goes; the keeper re-lays from the new cursor */ } else keptSegs.push(s); }
+          nw.segs = keptSegs;
+          nw.cursor = { at: now, ix: (ix + 1) % Math.max(1, chanItems.length), off: 0, run: ((nw.cursor && +nw.cursor.run) || 0) + 1 };
+          nw.handsSkip = { at: now, id: seg.id };
+          nw.genAt = now; nw.updatedAt = now;
+          await writeDoc(env, "tv/now", "tv", nw);
+          finish("done", "skipped: " + (seg.title || seg.id));
+          await logIt("Skipped the TV segment “" + String(seg.title || seg.id).slice(0, 80) + "” — the lineup cursor advanced one piece; the keeper re-lays from there. The radio was not touched.");
+        } else { finish("refused", "unknown action"); await logIt("Refused: unknown action “" + String(cmd.action) + "”.", true); }
+      } catch (e) {
+        finish("refused", "error: " + String((e && e.message) || e).slice(0, 120));
+        await logIt("Failed mid-action: " + String((e && e.message) || e).slice(0, 160) + " — the station kept its state.", true);
+      }
+    }
+    if (dirty) { try { await HANDS.handsCommandsWrite(env, doc); } catch (_) {} }
+  } catch (_) {}
+  return { changed, cur };
+}
+/* HANDS-END */
 
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
 const BELL_WINDOW = 120000; // at most one doorbell push per two minutes
@@ -2291,6 +2464,12 @@ export async function onRequestGet({ request, env }) {
   // his own live booth sets — no booth exception. The rotation's fire
   // block below applies it with its own guards and stamps S.newsHour,
   // so the fall-through happens at most once per quarter hour.
+  /* HANDS: TV-only drain — the wall means TV commands don't wait for
+     the booth: a tv.skip asked while Malik is live at the tables still
+     lands (and the one-time activation runs), while radio commands
+     stay queued for the main drain below. Decks are never touched in
+     this mode (startDeckItem stays null on purpose). */
+  try { await handsDrain(env, { S, now, tvOnly: true, deps: { env, origin, readDoc, readTaste, tasteScore, cleanBrainEvent, fetchFn: fetch }, startDeckItem: null, cur: null, brainEvts: [] }); } catch (_) {}
   if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak && !tvNewsFire) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   // VMIX RESCUE (mwVmixRescue, 2026-10-29): past this line the booth is
   // stale or a breaker fell through; the helper re-tests staleness itself
@@ -2571,7 +2750,12 @@ export async function onRequestGet({ request, env }) {
      Fully wrapped: a pass failure leaves the rotation untouched, and
      anything it stocks rides this same tick write via the changed flag. */
   try {
-    const aidj = await aiDjPass({ env, origin, lib, readDoc, readTaste, tasteScore, cleanBrainEvent, fetchFn: fetch }, S, now);
+    /* HANDS: Malik's hold (brain/control.aiHold — flipped from the
+       booth BRAIN panel or by his word in chat) pauses Meechie's
+       stocking without touching anything else; his queue and the
+       library rotation still run the station. */
+    const hctl = await handsCtlCached(env, now);
+    const aidj = hctl.aiHold ? { changed: false, events: [], note: "hold" } : await aiDjPass({ env, origin, lib, readDoc, readTaste, tasteScore, cleanBrainEvent, fetchFn: fetch }, S, now);
     if (aidj && aidj.changed) changed = true;
     if (aidj && aidj.events && aidj.events.length) brainEvts.push(...aidj.events);
   } catch (_) {}
@@ -2598,6 +2782,14 @@ export async function onRequestGet({ request, env }) {
       S.xf = 0.5; S.newsHour = tvNewsFire.hourKey; changed = true; cur = otherN;
     }
   }
+  /* HANDS DRAIN (2026-11-03): Meechie's queued operator commands run
+     here — after tvTick and the news interrupt, inside the keeper's
+     own tick — so every radio action inherits the keeper's rules and
+     rides this tick's write (see the HANDS block for the full shape). */
+  try {
+    const hd = await handsDrain(env, { S, now, tvOnly: false, deps: { env, origin, lib, readDoc, readTaste, tasteScore, cleanBrainEvent, fetchFn: fetch }, startDeckItem, cur, brainEvts });
+    if (hd) { if (hd.changed) changed = true; if (hd.cur) cur = hd.cur; }
+  } catch (_) {}
   for (let i = 0; i < 60; i++) {
     const other = cur === "A" ? "B" : "A";
     const dur = durOf(S[cur]) || 240;
@@ -2676,6 +2868,34 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   let b = null; try { b = await request.json(); } catch (_) {}
   if (!b) return json({ ok: false, error: "bad_body" }, 400);
+  /* HANDS doors (2026-11-03): Meechie's operator actions, session-
+   * checked server-side. kind "handsctl" flips the kill switch / the
+   * stocking hold (owner only — the booth BRAIN panel rides this).
+   * kind "hands" runs one intent through lib/meechie-hands.js
+   * handsAct: owner sessions get the full hand; member sessions get
+   * the member-safe subset (song requests + declines). Anonymous
+   * callers get nothing. Authority lives in the registry + handsAct,
+   * never in the client. */
+  if (b.kind === "handsctl" || b.kind === "hands") {
+    const me = await userFrom(request, env).catch(() => null);
+    if (!me) return json({ ok: false, error: "sign_in_required" }, 401);
+    const owner = await isAdmin(env, me.id).catch(() => false);
+    if (b.kind === "handsctl") {
+      if (!owner) return json({ ok: false, error: "owner_only" }, 403);
+      const patch = {};
+      if (typeof b.hands === "boolean") patch.hands = b.hands;
+      if (typeof b.aiHold === "boolean") patch.aiHold = b.aiHold;
+      if (!Object.keys(patch).length) return json({ ok: false, error: "nothing_to_set" }, 400);
+      const ctl = await HANDS.handsSetControl(env, patch, me.id);
+      await HANDS.handsLog(env, { action: "control." + (typeof b.hands === "boolean" ? "hands" : "hold"), target: "brain/control", summary: "Owner flipped " + Object.keys(patch).map((k) => k + " → " + patch[k]).join(", ") + " from the booth BRAIN panel.", by: me.name || "", uid: me.id, role: "owner" });
+      handsCtlMemo = { at: 0, ctl: null };
+      return json({ ok: true, control: { hands: ctl.hands, aiHold: ctl.aiHold } });
+    }
+    const intent = HANDS.handsIntent(String(b.text || ""));
+    if (!intent) return json({ ok: false, error: "no_action_in_text" }, 400);
+    const r = await HANDS.handsAct(env, { role: owner ? "owner" : "member", uid: me.id, name: me.name || "" }, intent, { origin: new URL(request.url).origin, fetchFn: fetch, cookie: request.headers.get("cookie") || "", aiText: (p) => HANDS.handsAiText(env, p) });
+    return json({ ok: true, reply: r.reply, action: r.action || null, queued: r.queued || null, refused: !!r.refused });
+  }
   /* guest DJ relay: a member Malik approved (S.djGuest in the station doc, set only
      by his own booth) performs on their sandboxed table and posts the performance
      here. The gate is strict: a live session, a grant naming that exact member,

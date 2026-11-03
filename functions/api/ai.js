@@ -6,6 +6,7 @@ import { answer, answerAmani, verifyAnswer, take, logQuestion, recentQuestions, 
 import { foldChat } from "../../lib/brain-member.js";
 import { userFrom, isAdmin, take as cfTake } from "../../lib/cf.js";
 import { MODELS, MODEL_BY_ID } from "../../lib/ai-catalog.js";
+import * as HANDS from "../../lib/meechie-hands.js";
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const CHAT_KINDS = new Set(["chat", "reasoning", "code", "vision"]);
 
@@ -124,6 +125,22 @@ export async function onRequestPost({ request, env, waitUntil }) {
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-20).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
   if (!turns.length || turns[turns.length - 1].role !== "user") return json({ error: "bad_request" }, 400);
+  /* HANDS (Malik, 2026-11-03): an action ask in chat is an ACTION, not
+     a question — the owner's "play more country" produces a logged
+     station action, not a paragraph about country. Authority is
+     decided here, server-side, from the session: the owner gets the
+     full hand; a member gets the member-safe subset (song requests +
+     honest declines) and never station control. Anything that is not
+     an action ask falls through to the normal brain untouched, and an
+     action ask never dies on the chat allowance below. */
+  {
+    const intent = HANDS.handsIntent(turns[turns.length - 1].content);
+    if (intent) {
+      const owner = await isAdmin(env, me.id).catch(() => false);
+      const r = await HANDS.handsAct(env, { role: owner ? "owner" : "member", uid: me.id, name: me.name || "" }, intent, { origin: new URL(request.url).origin, fetchFn: fetch, cookie: request.headers.get("cookie") || "", aiText: (p) => HANDS.handsAiText(env, p) });
+      if (r && r.reply) return json({ reply: r.reply, model: "meechie-hands", hands: r.action || null });
+    }
+  }
   const image = typeof body.image === "string" && body.image.length < 2200000 ? body.image : "";
   if (body.persona === "amani") {
     // Amani's chat (her own view): her persona, her own fair-use bucket, and
