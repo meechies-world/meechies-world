@@ -55,6 +55,19 @@
   .rr-layers{ display:flex; flex-direction:column; gap:8px; }
   .rr-layer-btn{ min-height:52px; min-width:136px; padding:8px 14px; border-radius:12px; border:2px solid var(--gold); background:rgba(13,13,13,.88); color:var(--txt); font-size:17px; font-weight:900; cursor:pointer; }
   .rr-layer-btn.on{ background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; }
+  .rr-nav{ margin-top:8px; }
+  .rr-locate-btn{ min-height:52px; min-width:136px; padding:8px 14px; border-radius:12px; border:2px solid #1c7dff; background:rgba(13,13,13,.88); color:var(--txt); font-size:17px; font-weight:900; cursor:pointer; width:100%; }
+  .rr-locate-btn:active{ background:#1c7dff; color:#fff; }
+  .rr-drive{ display:flex; gap:12px; align-items:stretch; margin:12px 14px 0; }
+  .rr-speedbox{ flex:1; display:flex; align-items:baseline; justify-content:center; gap:8px; background:#0d0d0d; border:1px solid var(--line); border-radius:14px; padding:8px 12px; }
+  .rr-speednum{ font-size:46px; font-weight:900; line-height:1; color:var(--txt); }
+  .rr-speednum.over{ color:#ff5252; }
+  .rr-speedunit{ color:var(--dim); font-weight:800; font-size:15px; }
+  .rr-limitbox{ width:106px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f5f0e1; color:#111; border:3px solid #111; box-shadow:0 0 0 2px #f5f0e1; border-radius:10px; padding:6px 4px; }
+  .rr-limitlab{ font-size:12px; font-weight:900; letter-spacing:.18em; }
+  .rr-limitnum{ font-size:34px; font-weight:900; line-height:1.05; }
+  .rr-limitsrc{ color:var(--dim); font-size:11px; padding:6px 18px 0; line-height:1.35; }
+  .rr-locnote{ color:#ffb3b3; background:#2a0d0d; border:1px solid #ff5252; border-radius:12px; margin:10px 14px 0; padding:10px 12px; font-size:clamp(13px,2vw,16px); line-height:1.4; }
   .maplinks{ display:flex; gap:10px; flex-wrap:wrap; padding:0 14px; }
   .maplinks .bigbtn{ flex:1 1 230px; margin:12px 0 4px; }
   .rr-pin-drop{ border-style:dashed; }
@@ -480,7 +493,7 @@
     if(!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(function(p){
       var la = p.coords.latitude.toFixed(4), lo = p.coords.longitude.toFixed(4);
-      if(window.MWRR && MWRR.center) MWRR.center(+la, +lo);
+      if(window.MWRR && MWRR.center) MWRR.center(+la, +lo, p.coords.accuracy, p.coords.speed);
       document.getElementById("dirs").href = "https://www.openstreetmap.org/directions?from=" + la + "%2C" + lo;
     }, function(){}, { timeout: 8000 });
   }
@@ -489,6 +502,6 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="js/road-reports.js?v=1793741919"></script>
+<script src="js/road-reports.js?v=1793745670"></script>
 </body>
 </html>
