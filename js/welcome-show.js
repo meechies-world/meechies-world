@@ -14,7 +14,7 @@
    * works on the regular site. */
   const appMode = () => { try { return document.documentElement.classList.contains("appmode") || (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || !!window.navigator.standalone; } catch (_) { return false; } };
   const popSeen = () => { try { return !!localStorage.getItem("mw_popup_seen"); } catch (_) { return false; } };
-  const popMark = () => { try { localStorage.setItem("mw_popup_seen", "1"); } catch (_) {} window.__mwPopupChain = true; };
+  const popMark = () => { try { localStorage.setItem("mw_popup_seen", "1"); } catch (_) {} window.__mwPopupChain = true; try { if (window.MW_popStamp) MW_popStamp(); } catch (_) {} /* pop-up spacing (owner, 2026-11-02): the welcome chain starts the shared clock, so no other card piles on behind it */ };
 
   const css = document.createElement("style");
   css.textContent = `

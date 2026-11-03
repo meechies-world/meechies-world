@@ -427,9 +427,12 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   </div>
 </div>
 <script>
-/* Open browsing with a 5-minute head start (owner's call, Oct 2026): visitors look around
-   freely; after 5 minutes, guests get the sign-up screen and must sign in or join to keep
-   going. Member data stays locked to signed-in accounts on the database side. */
+/* Open browsing with a 30-minute head start (owner's call, Oct 2026; raised
+   from 5 to 30 minutes 2026-11-02 after a visitor complained about pop-ups:
+   "let them stay on the site 30 min before we id them"): visitors look
+   around freely; after 30 minutes, guests get the sign-up screen and must
+   sign in or join to keep going. Member data stays locked to signed-in
+   accounts on the database side. */
 (function(){ var KEY=/^sb-.*-auth-token$/;
   function signedIn(){ try{ for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if((KEY.test(k) || k==="mw-cf-session") && localStorage.getItem(k) && localStorage.getItem(k)!=="null") return true; } }catch(_){}
     try{ if(window.MW && MW.session && MW.session()) return true; }catch(_){}
@@ -438,11 +441,11 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
   setTimeout(function(){ if(signedIn() || window.MW_OUTAGE) return; /* signed in meanwhile, or sign-in is down: keep browsing */
     var gate=function(){ if(signedIn() || window.MW_OUTAGE) return; document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true; };
     /* MW TV is a viewing channel: no sign-in wall while someone is watching it.
-       If the 5 minutes run out on the channel, the wall waits and lands the
+       If the 30 minutes run out on the channel, the wall waits and lands the
        moment they step back into the site proper. */
     if(document.body && document.body.dataset && document.body.dataset.view==="mwtv"){ var iv=setInterval(function(){ if(!(document.body && document.body.dataset && document.body.dataset.view==="mwtv")){ clearInterval(iv); gate(); } },30000); return; }
     gate();
-  }, 5*60*1000);
+  }, 30*60*1000);
 })();
 </script>
 
@@ -1905,11 +1908,11 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <div class="toast" id="toast" hidden></div>
 
 <script src="js/config.js?v=1793706841"></script>
-<script src="js/outage.js?v=1793706841"></script>
-<script src="js/float-layout.js?v=1793706841"></script>
+<script src="js/outage.js?v=1793731933"></script>
+<script src="js/float-layout.js?v=1793731933"></script>
 <script src="js/cf-client.js?v=1793706841"></script>
 <script src="js/platform.js?v=1793706841"></script>
-<script src="js/app-core.js?v=1793730782"></script>
+<script src="js/app-core.js?v=1793731933"></script>
 <script>
 /* FIRST PAINT FOLLOWS THE LINK, part 2: go() ran inside app-core and set
  * the real hidden flags for the linked view, so the head pin has done
@@ -1921,27 +1924,27 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/owner.js?v=1793706841"></script>
 <script src="js/messages.js?v=1793706841"></script>
 <script src="js/videos.js?v=1793706841"></script>
-<script src="js/dj.js?v=1793706841"></script>
+<script src="js/dj.js?v=1793731933"></script>
 <script src="js/live.js?v=1793706841"></script>
 <script src="js/friends.js?v=1793706841"></script>
-<script src="js/social.js?v=1793706841"></script>
+<script src="js/social.js?v=1793731933"></script>
 <script src="js/shop-gift.js?v=1793706841"></script>
 <script src="js/coins.js?v=1793706841"></script>
 <script src="js/gifts-plus.js?v=1793706841"></script>
 <script src="js/gold-icons.js?v=1793706841"></script>
 <script src="js/people.js?v=1793706841"></script>
-<script src="js/originals.js?v=1793706841"></script>
-<script src="js/welcome-show.js?v=1793706841"></script>
+<script src="js/originals.js?v=1793731933"></script>
+<script src="js/welcome-show.js?v=1793731933"></script>
 <script src="js/social-login.js?v=1793706841"></script>
 <script src="js/radio-keep.js?v=1793706841"></script>
 <script src="js/share-song.js?v=1793706841"></script>
-<script src="js/push.js?v=1793706841"></script>
+<script src="js/push.js?v=1793731933"></script>
 <script src="js/email-find.js?v=1793706841"></script>
 <script src="js/verify.js?v=1793706841"></script>
-<script src="js/biolock.js?v=1793706841"></script>
+<script src="js/biolock.js?v=1793731933"></script>
 <script src="js/engage.js?v=1793706841"></script>
-<script src="js/visitors.js?v=1793706841"></script>
-<script src="js/ai-widget.js?v=1793706841"></script>
+<script src="js/visitors.js?v=1793731933"></script>
+<script src="js/ai-widget.js?v=1793731933"></script>
 <script src="js/house-ads.js?v=1793706841"></script>
 <script>
 /* Offline music shelf: songs saved to this device (from here, or automatically

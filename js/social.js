@@ -97,6 +97,7 @@
     if (document.documentElement.classList.contains("appmode")) return; /* already inside one of the apps */
     if (window.MW_screenClear && !window.MW_screenClear("mw-install")) return;
     try { if (+localStorage.getItem("mw_inst_skip") > Date.now()) return; } catch (_) {}
+    if (window.MW_popGate && !window.MW_popGate()) return; /* pop-up spacing (owner, 2026-11-02): non-essential cards share one spaced gate — claimed last, only when the card really shows */
     const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
     const d = document.createElement("div"); d.id = "mw-install"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "Download the Meechie's World apps");
     d.innerHTML = `<p class="mw-q">📲 Want the Meechie's World apps?</p>
