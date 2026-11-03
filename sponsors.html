@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MW TV Sponsors · Meechie's World</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0a08">
+<style>
+body{margin:0;background:#0b0a08;color:#f3ecdc;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:24px 16px 48px}
+h1{font:800 24px Georgia,serif;color:#f0cf78;margin:0 0 8px}
+h2{font:800 19px Georgia,serif;color:#f0cf78;margin:26px 0 10px}
+.sub{color:#a99f8b;font-size:14px;line-height:1.5}
+.card{background:#15130f;border:1px solid #3a3223;border-radius:16px;padding:16px;display:grid;gap:10px;margin-bottom:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.badge{border:1px solid #d4a843;color:#f0cf78;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.badge.dim{border-color:#3a3223;color:#a99f8b}
+.badge.red{border-color:#a33;color:#e88}
+.big{font-size:19px;font-weight:800}
+.meta{color:#a99f8b;font-size:14px;line-height:1.55}
+.meta b{color:#f3ecdc}
+.btn{border:0;border-radius:999px;padding:11px 20px;background:#d4a843;color:#0b0a08;font:800 15px system-ui,sans-serif;cursor:pointer}
+.btn.ghost{background:#241f16;color:#f0cf78;border:1px solid #3a3223}
+.btn.red{background:#5a1d1d;color:#f3c1c1}
+.btn[disabled]{opacity:.5;cursor:default}
+input[type=number]{background:#0b0a08;border:1px solid #3a3223;border-radius:8px;color:#f3ecdc;padding:8px;width:90px;font:inherit}
+video{width:100%;border-radius:10px;background:#000}
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.tally div{border:1px solid #3a3223;border-radius:12px;padding:10px}
+.tally .n{font-size:24px;font-weight:900;color:#f0cf78}
+.tally .l{font-size:12px;color:#a99f8b;text-transform:uppercase;letter-spacing:.08em;line-height:1.4}
+#gate{font-weight:700;color:#f0cf78}
+.err{color:#e88;font-weight:700}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MW TV Sponsors</h1>
+<p class="sub">Paid commercials from <a href="/promote.html" style="color:#f0cf78">/promote</a>. Nothing airs until you approve it here. Approving puts the spot into the MW TV break rotation on the station keeper's next pass (about a minute) — and its paid week starts then, not when they paid. Expired spots stop on their own.</p>
+<p class="sub"><b style="color:#f3ecdc">Rights:</b> sponsors submit their own creative and are responsible for the rights to their own ad — footage, music, logos, all of it. If a spot looks like it uses somebody else's music or brand, reject it and tell them why.</p>
+<div id="gate">Checking your owner sign-in…</div>
+<div id="app" hidden>
+  <div class="row" style="margin:14px 0"><button class="btn ghost" id="refreshBtn" type="button">↻ Refresh</button><span class="meta" id="stamp"></span></div>
+  <h2>Approval queue</h2>
+  <div id="queue"></div>
+  <h2>On air — play tallies</h2>
+  <p class="sub">Proof you can show a sponsor. <b style="color:#f3ecdc">Plays served</b> = times the keeper laid the spot into a break that aired (TV) or played it at a song boundary (radio). <b style="color:#f3ecdc">Online at last airing</b> = the site's own visitor count at that moment — a real count, never an estimate.</p>
+  <div id="onair"></div>
+</div>
+</div>
+<script>
+(function () {
+  var gate = document.getElementById("gate");
+  var app = document.getElementById("app");
+  var queueEl = document.getElementById("queue");
+  var onairEl = document.getElementById("onair");
+  var stampEl = document.getElementById("stamp");
+  var token = "";
+  try { token = localStorage.getItem("mw-cf-session") || ""; } catch (e) { token = ""; }
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function when(ts) { return ts ? new Date(ts).toLocaleString() : "—"; }
+  function api(method, body) {
+    return fetch("/api/sponsors/admin", { method: method, headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: body ? JSON.stringify(body) : undefined })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+  }
+
+  var TIER = { free: "Free Week", starter: "Starter $25/wk", featured: "Featured $50/wk" };
+  var STATUS = { created: "Started — no video yet", "awaiting-payment": "Video in — waiting on payment", "awaiting-approval": "⏳ WAITING FOR YOUR APPROVAL", approved: "Approved — entering rotation", live: "LIVE in rotation", rejected: "Rejected" };
+
+  function claimCard(c) {
+    var el = document.createElement("div");
+    el.className = "card";
+    var canApprove = c.status === "awaiting-approval";
+    el.innerHTML =
+      '<div class="row"><span class="big">' + esc(c.business) + '</span>' +
+      '<span class="badge">' + esc(TIER[c.tier] || c.tier) + '</span>' +
+      (c.production ? '<span class="badge">🎬 Wants production</span>' : '') +
+      '<span class="badge ' + (canApprove ? "" : "dim") + '">' + esc(STATUS[c.status] || c.status) + '</span></div>' +
+      '<div class="meta">' +
+      (c.title ? '<b>Spot:</b> ' + esc(c.title) + '<br>' : '') +
+      '<b>Contact:</b> ' + esc(c.contact) + '<br>' +
+      (c.pitch ? '<b>Sells:</b> ' + esc(c.pitch) + '<br>' : '') +
+      '<b>Claimed:</b> ' + when(c.createdAt) +
+      (c.tier !== "free" ? ' · <b>Payment:</b> ' + (c.paidVerified ? "verified ✓ (" + when(c.paidAt) + ")" : "NOT verified") : '') +
+      (c.note ? '<br><b>Note:</b> ' + esc(c.note) : '') +
+      '</div>' +
+      (c.mediaUrl ? '<video controls preload="metadata" src="' + esc(c.mediaUrl) + '"></video>' : '<div class="meta">No video uploaded yet.</div>') +
+      (c.audioSrc ? '<div class="meta"><b>Radio cut:</b> <a style="color:#f0cf78" href="' + esc(c.audioSrc) + '" target="_blank" rel="noopener">listen</a></div>' : '') +
+      (canApprove ?
+        '<div class="row"><label class="meta">Spot length (seconds) <input type="number" min="1" max="600" step="0.1" value="' + (c.dur || "") + '" data-dur></label>' +
+        '<button class="btn" type="button" data-approve>✓ Approve — put it on air</button>' +
+        '<button class="btn red" type="button" data-reject>Reject</button></div>' +
+        '<div class="meta" data-msg></div>' : '');
+    if (canApprove) {
+      var msg = el.querySelector("[data-msg]");
+      el.querySelector("[data-approve]").addEventListener("click", function () {
+        var dur = parseFloat(el.querySelector("[data-dur]").value || "0");
+        this.disabled = true;
+        api("POST", { action: "approve", claimId: c.id, dur: dur }).then(function (r) {
+          msg.textContent = "✓ " + (r.note || "Approved.");
+          load();
+        }).catch(function (e) { msg.innerHTML = '<span class="err">' + esc(e.message) + "</span>"; });
+      });
+      el.querySelector("[data-reject]").addEventListener("click", function () {
+        var note = window.prompt("Why is this spot rejected? (the sponsor hears this)", "");
+        if (note === null) return;
+        this.disabled = true;
+        api("POST", { action: "reject", claimId: c.id, note: note }).then(function () { load(); })
+          .catch(function (e) { msg.innerHTML = '<span class="err">' + esc(e.message) + "</span>"; });
+      });
+    }
+    return el;
+  }
+
+  function poolCard(it) {
+    var t = it.tally || {};
+    var el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML =
+      '<div class="row"><span class="big">' + esc((it.sponsor && it.sponsor.name) || it.title || it.id) + '</span>' +
+      '<span class="badge">' + esc(TIER[(it.sponsor || {}).tier] || "") + '</span>' +
+      (it.held ? '<span class="badge red">HELD — not airing</span>' : '<span class="badge">On air</span>') + '</div>' +
+      '<div class="tally">' +
+      '<div><div class="n">' + (+t.served || 0) + '</div><div class="l">TV plays served</div></div>' +
+      '<div><div class="n">' + (+t.radioServed || 0) + '</div><div class="l">Radio plays served</div></div>' +
+      '<div><div class="n">' + (+t.lastOnline || 0) + '</div><div class="l">Online at last airing</div></div>' +
+      '<div><div class="n" style="font-size:16px;line-height:1.9">' + when(+((it.sponsor || {}).paidThrough || 0)) + '</div><div class="l">Paid through</div></div>' +
+      '</div>' +
+      '<div class="meta"><b>Spot:</b> ' + esc(it.title || "") + ' · <b>Last aired:</b> ' + when(+t.lastAt || 0) + '</div>';
+    return el;
+  }
+
+  function load() {
+    if (!token) { gate.textContent = "Owner sign-in required — open the main site, sign in as Meechie, then come back to this page."; return; }
+    api("GET").then(function (r) {
+      gate.hidden = true; app.hidden = false;
+      stampEl.textContent = "Updated " + new Date().toLocaleTimeString();
+      queueEl.innerHTML = "";
+      var order = { "awaiting-approval": 0, "awaiting-payment": 1, created: 2, approved: 3, live: 4, rejected: 5 };
+      var claims = (r.claims || []).slice().sort(function (a, b) { return (order[a.status] - order[b.status]) || (b.createdAt - a.createdAt); });
+      if (!claims.length) queueEl.innerHTML = '<div class="meta">No claims yet. When a seller claims on /promote, they land here.</div>';
+      claims.forEach(function (c) { queueEl.appendChild(claimCard(c)); });
+      onairEl.innerHTML = "";
+      if (!(r.poolItems || []).length) onairEl.innerHTML = '<div class="meta">No sponsor spots in rotation yet.</div>';
+      (r.poolItems || []).forEach(function (it) { onairEl.appendChild(poolCard(it)); });
+    }).catch(function (e) {
+      gate.innerHTML = '<span class="err">' + esc(e.message) + "</span> — if you are signed in on the main site as the owner, refresh once; otherwise this page is owner-only.";
+    });
+  }
+  document.getElementById("refreshBtn").addEventListener("click", load);
+  load();
+})();
+</script>
+</body>
+</html>
