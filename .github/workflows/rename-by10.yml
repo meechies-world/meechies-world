@@ -1,6 +1,8 @@
 name: Rename by-10 commercial
 on:
   workflow_dispatch:
+  push:
+    branches: [upload/by10-commercial]
 permissions:
   contents: write
 jobs:
@@ -18,6 +20,8 @@ jobs:
           git rm .github/workflows/rename-by10.yml
           git commit -m "Rename by-10 commercial to media/my-empire-by10.mp4"
           git push
+
+
 
 
 
