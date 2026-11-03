@@ -22,9 +22,10 @@
  * Keeper contract (read from station.js before building — do not
  * improvise around it):
  *   - The keeper reseeds tv/insert whenever doc.progV < TV_INSERT_V,
- *     so the doc MUST carry progV: TV_INSERT_V (2 — bumped by the
- *     keeper when the seed became a v2 playlist, 2026-11-02 late;
- *     this endpoint matched it at landing, 2026-11-03) or it is
+ *     so the doc MUST carry progV: TV_INSERT_V (2 when the seed
+ *     became a v2 playlist, 2026-11-02 late; 3 since the schedule
+ *     build's Comedy Hour seed, PR #587 — this endpoint matches
+ *     the keeper's current generation) or it is
  *     overwritten by the seed before it can ever fire. The doc
  *     itself stays the v1 top-level shape on purpose: with no
  *     startAt, the keeper's firing rule stamps the window at the
@@ -42,7 +43,7 @@ import { userFrom, isAdmin, take, json } from "../../../lib/cf.js";
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
 /* MUST match TV_INSERT_V in functions/api/station.js. If the keeper
  * ever bumps its insert generation, bump this in the same build. */
-const TV_INSERT_V = 2;
+const TV_INSERT_V = 3;
 const YT_RE = /^[A-Za-z0-9_-]{11}$/;
 const EVIDENCE = "Owner pick from the MW TV owner search box (owner seat only, functions/api/tv/insert.js); passed the site embed gate at order time: /api/ytsearch age/embed relay (id-matched) plus the brain/ytblock learned-ban check";
 
