@@ -503,6 +503,7 @@ const TV_LOCAL_HOLD_MS = 70 * 60e3; // Uniontown Local Update break spot: held o
 const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: fixed daily slots, minutes ET (12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM)
 const TV_ANCHOR_FRESH_MS = 6 * 3600e3; // an anchor edition airs only at its own slot and only when produced within the 6h before that slot (productions run ~30 min ahead of each slot)
 const TV_NEWS_LEN = 600;           // the TV news window: :50-:00, ten minutes
+const TV_AD_EVERY_MS = 900e3;      // MY EMPIRE ad cadence (Malik, 2026-11-02 ~21:05: "my tv show comercial every 15 min"): the show commercial plays on this fixed cadence — see tvAdCadItems/tvAdWin
 const TV_HORIZON = 2 * 3600e3;     // segments are generated this far ahead of now
 const TV_KEEP = 3600e3;            // aired segments are kept this long behind now
 const TV_BASES = ["own", "embed", "pd", "cc", "grant", "submission"];
@@ -552,6 +553,11 @@ function tvDrawBreak(pool) {
  * offset it reached — a split program is two segments sharing an id. */
 function tvGen(chan, pool, cursor, horizonMs) {
   const items = Array.isArray(chan.items) ? chan.items : [];
+  const cad = tvAdCadItems(pool);
+  // The movie block freezes for the cadence spots laid inside it
+  // (the insert freeze rule): tvMovieWin runs the window long by
+  // the spot time inside it, which it computes from this state.
+  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert };
   const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
@@ -561,6 +567,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
     const iwin = tvInsertWin(t, chan._insert);
+    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert);
     if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
@@ -581,6 +588,20 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (d > 0.05) { segs.push(tvProgSeg(ait, t, d, aoff)); t += Math.round(d * 1000); skips = 0; continue; }
       t = awin.end; continue;
     }
+    if (cadwin && cadwin.inside) {
+      // MY EMPIRE ad cadence: the spot interrupts whatever is
+      // playing — music program, movie chain or insert alike — and
+      // what it interrupts resumes from the offset it reached: the
+      // music program's generator cursor does not move here (the
+      // news-window split rule), and the movie block subtracts the
+      // spot time from its wall-clock position (the insert freeze
+      // rule, tvAdTimeIn in the movie branch).
+      const adit = cadwin.item;
+      const adoff = (t - cadwin.start) / 1000;
+      const d = Math.min(Math.round((+adit.dur - adoff) * 10) / 10, Math.round((cadwin.end - t) / 100) / 10);
+      if (d > 0.05) { segs.push(tvProgSeg(adit, t, d, adoff)); t += Math.round(d * 1000); skips = 0; continue; }
+      t = cadwin.end; continue;
+    }
     if (iwin && iwin.inside) {
       // One-shot owner-ordered insert (tv/insert): the item — or,
       // v2, the short playlist — plays exactly once, wall-clock
@@ -596,6 +617,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (win.start > t && win.start < cap) cap = win.start;
       if (pwin && !pwin.inside && pwin.start > t && pwin.start < cap) cap = pwin.start;
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
+      if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
       const list = Array.isArray(chan._insert.items) && chan._insert.items.length ? chan._insert.items : [chan._insert.item];
       let slotOff = (t - iwin.start) / 1000, segIt = null, segOff = 0;
       for (const sit of list) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
@@ -617,11 +639,16 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (pwin && !pwin.inside && pwin.start > t && pwin.start < cap) cap = pwin.start;
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
       if (iwin && !iwin.inside && iwin.start > t && iwin.start < cap) cap = iwin.start;
+      if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
       let slotOff = (t - mwin.start) / 1000, segIt = null, segOff = 0;
       // An insert that cut into this block froze it: once the
       // insert window has run, positions sit behind the wall clock
       // by the frozen span (tvInsertFrozen, stamped in tvTick).
       if (chan._movies.insShift > 0 && isFinite(chan._movies.insEnd) && t >= chan._movies.insEnd) slotOff -= chan._movies.insShift;
+      // The ad cadence froze the block at every spot inside it:
+      // positions likewise sit behind the wall clock by the spot
+      // time laid between the window start and here.
+      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t);
       for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
@@ -638,6 +665,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (awin && !awin.inside && awin.start > t && awin.start < boundary) boundary = awin.start;
     if (mwin && !mwin.inside && mwin.start > t && mwin.start < boundary) boundary = mwin.start;
     if (iwin && !iwin.inside && iwin.start > t && iwin.start < boundary) boundary = iwin.start;
+    if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < boundary) boundary = cadwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
@@ -654,7 +682,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
+        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
         if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
@@ -938,6 +966,78 @@ function tvInsertWin(ms, ins) {
   if (ms < start) return { start, end, inside: false };
   return null;
 }
+/* The MY EMPIRE ad cadence lineup (Malik, 2026-11-02 ~21:05: "my tv
+ * show comercial every 15 min"): the show commercial on a fixed
+ * 15-minute cadence, resolved from the break pool on every pass —
+ * the pool is the gate, so a slot exists only while the spot is in
+ * the pool and cleared. While the "done by 10" spot is also in the
+ * pool, the slots alternate between the two (show commercial first);
+ * when it leaves the pool, the show commercial takes every slot
+ * again. A missing or uncleared spot is simply no cadence — never
+ * an error, never dead air. */
+function tvAdCadItems(pool) {
+  const items = [];
+  for (const id of ["brk-my-empire-ad", "brk-my-empire-by10"]) {
+    const it = ((pool && pool.items) || []).find((x) => x.id === id);
+    if (it && tvCleared(it)) items.push(it);
+  }
+  return items.length ? items : null;
+}
+/* The effective cadence spans overlapping [fromMs, toMs), in order.
+ * Occurrences sit on fixed 15-minute wall-clock blocks (the whole-
+ * hour ET offset keeps the blocks on the ET quarter hours);
+ * occurrence k plays items[k % items.length]. News, premiere,
+ * anchor and insert windows outrank the spot: an occurrence whose
+ * span would overlap one slides to that window's end (re-checked
+ * until clear), and an occurrence displaced past the previous
+ * occurrence's end chains right behind it — the spot never stacks
+ * on a window, and a premiere or news block is never cut for it.
+ * The chain is computed from 2h before fromMs: no combination of
+ * the higher windows can displace an occurrence further than that,
+ * so the carry-in is exact. */
+function tvAdSpans(cad, prem, anch, ins, fromMs, toMs) {
+  if (!cad || !cad.length) return [];
+  const spans = [];
+  let prevEnd = -Infinity;
+  const kFirst = Math.floor((fromMs - 2 * 3600e3) / TV_AD_EVERY_MS);
+  const kLast = Math.floor(toMs / TV_AD_EVERY_MS) + 1;
+  for (let k = kFirst; k <= kLast; k++) {
+    const it = cad[((k % cad.length) + cad.length) % cad.length];
+    const dur = +it.dur || 0;
+    if (!(dur > 0)) continue;
+    let s = k * TV_AD_EVERY_MS;
+    for (let i = 0; i < 8; i++) {
+      const e = s + dur * 1000;
+      let slid = false;
+      for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins)]) {
+        if (w && s < w.end && e > w.start) { s = w.end; slid = true; break; }
+      }
+      if (!slid) break;
+    }
+    const start = Math.max(s, prevEnd), end = start + dur * 1000;
+    prevEnd = end;
+    if (end > fromMs && start < toMs) spans.push({ start, end, item: it });
+  }
+  return spans;
+}
+/* The cadence window containing ms (inside: true) or the next one. */
+function tvAdWin(ms, cad, prem, anch, ins) {
+  if (!cad || !cad.length) return null;
+  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON)) {
+    if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, item: sp.item };
+    if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, item: sp.item };
+  }
+  return null;
+}
+/* How much cadence time falls inside [fromMs, toMs): the span the
+ * movie block freezes for the spots laid inside it (the insert
+ * freeze rule — the block resumes from the offset it reached and
+ * its window runs long by this much). */
+function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs) {
+  let sec = 0;
+  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;
+  return Math.round(sec * 10) / 10;
+}
 /* The MY EMPIRE premiere window containing ms (inside: true) or the
  * next one. prem = { startMinET, liveDurSec } as built by tvPremLive.
  * Same whole-hour ET offset arithmetic as tvNewsWin; 20:00 ET exists
@@ -1057,6 +1157,16 @@ function tvMovieWin(ms, mov) {
   // long by exactly that frozen span (stamped on the state in
   // tvTick as insShift/insStart; absent = the standing behaviour).
   if (mov.insShift > 0 && mov.insStart >= start && mov.insStart < end) end += mov.insShift * 1000;
+  // The ad cadence freezes the block at every spot inside it (the
+  // insert freeze rule), so the window runs long by the spot time
+  // laid inside it — fixed-pointed, because a longer window can
+  // pull in one more spot at its tail. _cad is attached by tvGen;
+  // absent (the calls tvTick makes itself) nothing changes.
+  if (mov._cad) {
+    let e2 = end;
+    for (let i = 0; i < 4; i++) { const ext = tvAdTimeIn(mov._cad.cad, mov._cad.prem, mov._cad.anch, mov._cad.ins, start, e2); const ne = end + ext * 1000; if (!(ne > e2)) break; e2 = ne; }
+    end = e2;
+  }
   if (ms >= start && ms < end) return { start, end, inside: true };
   if (ms < start) return { start, end, inside: false };
   const nstart = start + 86400e3;
