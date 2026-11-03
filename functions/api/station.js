@@ -492,10 +492,15 @@ function mwVmixRescue(S, now, obs) {
  * ("booth-fresh") for the booth-side consumer that ships with edition
  * production — the unattended lane below is what fires today. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 3;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool)
+const TV_PROGRAM_V = 4;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
+const TV_MOVIE_V = 1;                // post-premiere movie block doc generation (tv/movieblock)
+const TV_MOVIE_FALLBACK_MIN = 15;    // when the premiere slot airs nothing, the movie block starts this many minutes after the slot start (20:15 ET)
 const TV_PREM_PROBE_MS = 600e3;      // premiere slot file-existence probes are cached this long in tv/now
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
+const TV_LOCAL_HOLD_MS = 70 * 60e3; // Uniontown Local Update break spot: held out of rotation once the producer stamp (tv/localupdate) is older than this — the producer refreshes hourly, so a spot lives at most ~65 min on air and coverage stays continuous
+const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: fixed daily slots, minutes ET (12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM)
+const TV_ANCHOR_FRESH_MS = 6 * 3600e3; // an anchor edition airs only at its own slot and only when produced within the 6h before that slot (productions run ~30 min ahead of each slot)
 const TV_NEWS_LEN = 600;           // the TV news window: :50-:00, ten minutes
 const TV_HORIZON = 2 * 3600e3;     // segments are generated this far ahead of now
 const TV_KEEP = 3600e3;            // aired segments are kept this long behind now
@@ -552,6 +557,8 @@ function tvGen(chan, pool, cursor, horizonMs) {
   while (t < horizonMs && guard++ < 600) {
     const win = tvNewsWin(t);
     const pwin = tvPremWin(t, chan._prem);
+    const awin = tvAnchorWin(t, chan._anchor);
+    const mwin = tvMovieWin(t, chan._movies);
     if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
@@ -562,6 +569,34 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((pwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = pwin.end; continue;
     }
+    if (awin && awin.inside) {
+      // Anchor news slot: the current anchor edition plays as one
+      // program segment; the interrupted program freezes and resumes
+      // after the slot from the offset it reached (premiere split rule).
+      const ait = chan._anchor.item;
+      const aoff = (t - awin.start) / 1000;
+      const d = Math.min(Math.round((+ait.dur - aoff) * 10) / 10, Math.round((awin.end - t) / 100) / 10);
+      if (d > 0.05) { segs.push(tvProgSeg(ait, t, d, aoff)); t += Math.round(d * 1000); skips = 0; continue; }
+      t = awin.end; continue;
+    }
+    if (mwin && mwin.inside) {
+      // Post-premiere movie block: chain tonight's movies in order;
+      // the music program freezes and resumes after the block (same
+      // split rule as the premiere slot). Movie offsets are wall-clock
+      // like the premiere chain, so a news window or an anchor slot
+      // that takes its place mid-movie passes over the span it covers
+      // and the movie resumes on the other side — the chain therefore
+      // cuts at the next news/anchor/premiere boundary, exactly like
+      // a program item does.
+      let cap = mwin.end;
+      if (win.start > t && win.start < cap) cap = win.start;
+      if (pwin && !pwin.inside && pwin.start > t && pwin.start < cap) cap = pwin.start;
+      if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
+      let slotOff = (t - mwin.start) / 1000, segIt = null, segOff = 0;
+      for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
+      if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
+      t = cap; continue;
+    }
     const it = items[ix];
     if (!it) break;
     if (!tvCleared(it)) { ix = (ix + 1) % items.length; off = 0; if (++skips > items.length) break; continue; }
@@ -571,6 +606,8 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const progEnd = t + remain * 1000;
     let boundary = win.start;
     if (pwin && !pwin.inside && pwin.start > t && pwin.start < boundary) boundary = pwin.start;
+    if (awin && !awin.inside && awin.start > t && awin.start < boundary) boundary = awin.start;
+    if (mwin && !mwin.inside && mwin.start > t && mwin.start < boundary) boundary = mwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
@@ -580,7 +617,17 @@ function tvGen(chan, pool, cursor, horizonMs) {
     segs.push(tvProgSeg(it, t, remain, off)); run += remain; t = progEnd; ix = (ix + 1) % items.length; off = 0;
     if (run >= (chan.chainSec > 0 ? +chan.chainSec : TV_CHAIN_SEC)) {
       const b = tvDrawBreak(pool);
-      if (b) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: +b.dur, off: 0 }); t += +b.dur * 1000; }
+      if (b) {
+        // A break never overruns a slot start: premiere, anchor and
+        // movie-block windows begin on time, so a break that would
+        // cross one is cut at its edge (and skipped if only a sliver
+        // would remain). News windows keep their long-standing
+        // behaviour — the window simply starts when the break ends.
+        let bd = +b.dur, capS = Infinity;
+        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
+        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
+        if (bd > 0.05) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
+      }
       run = 0;
     }
   }
@@ -749,7 +796,8 @@ function tvSeedPool(now) {
     Y("brk-pagnjdjn4va", "pAgnJDJN4VA", "AC/DC - Back In Black (Official 4K Video)", 254, "rock", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader acdcVEVO (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed"),
     Y("brk-evtxpuf4oz4", "eVTXPUF4Oz4", "In The End [Official HD Music Video] - Linkin Park", 219, "rock", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader Linkin Park (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed"),
     { id: "brk-house-anthem", kind: "house", src: "file", url: "/media/the-world-gone-be.mp4", title: "Meechie's World — The World Gone Be", dur: 266, lane: "house", rights: { basis: "own", evidence: "Malik's own song and video, hosted on his own site media (/media/the-world-gone-be.mp4, HTTP 200 video/mp4 verified at seed time); he is the artist and rights holder", clearedBy: "owner", at: now, simulcast: true } },
-    { id: "brk-my-empire-ad", kind: "house", src: "file", url: "/media/my-empire-commercial.mp4", title: "MY EMPIRE — Premiere Commercial", dur: 42, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, his business and himself, hosted on his own site media (/media/my-empire-commercial.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } }
+    { id: "brk-my-empire-ad", kind: "house", src: "file", url: "/media/my-empire-commercial.mp4", title: "MY EMPIRE — Premiere Commercial", dur: 42, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, his business and himself, hosted on his own site media (/media/my-empire-commercial.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
+    { id: "brk-local-update", kind: "house", src: "file", url: "/m/media/local-update.mp4", title: "Uniontown Local Update — News & Traffic", dur: 51, lane: "house", rights: { basis: "own", evidence: "Produced in-house by the site news producer from attributed public sources (Herald-Standard headlines, PennDOT 511PA traffic, NWS alerts); Malik is the publisher and rights holder of the produced spot", clearedBy: "owner", at: now, simulcast: true } }
   ];
   const bag = items.map((x) => x.id);
   for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = bag[i]; bag[i] = bag[j]; bag[j] = t; }
@@ -768,6 +816,29 @@ function tvSeedPremiere(now) {
     { id: "me-teaser", kind: "show", src: "file", url: "/media/my-empire-teaser.mp4", title: "First Look — Official Teaser", show: "MY EMPIRE", dur: 210, rights: R("Malik own show teaser, cut from his own episode footage at his request (2026-11-02).") }
   ], updatedAt: now, by: "keeper-seed" };
 }
+function tvSeedMovieBlock(now) {
+  const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
+  // Post-MY EMPIRE movie block (owner order 2026-11-02): all nine
+  // cleared hood movies chain in this order every night after the
+  // premiere slot. Every title is a full-length upload on the
+  // distributor's own channel (Maverick Movies / Shout! Studios),
+  // embedding verified per title (YouTube oEmbed HTTP 200, 2026-11-02);
+  // durations pinned from the actual uploads through the site embed
+  // gate relay (/api/ytsearch, id-matched). Research record:
+  // mwtv-reprogram-2026-11-02/HOOD-MOVIES.md.
+  const MV = (id, yt, title, dur, evidence) => ({ id, kind: "show", src: "yt", yt, title, show: "MW Movie Night", dur, rights: R(evidence) });
+  return { on: true, progV: TV_MOVIE_V, items: [
+    MV("mov-harder-they-come", "TWe60ZC6icc", "The Harder They Come", 6168, "Full-length upload by the authorized distributor (Shout! Studios, presented by Radial Entertainment) on its official free-movies channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6168s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-curfew", "HziWdpePIhw", "Curfew: Sins of the Father", 4829, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 4829s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-grit", "fdb6ofP2ViM", "GRIT", 6636, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6636s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-conflict-of-interest", "VAP2TpkjrF4", "Conflict of Interest", 6888, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6888s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-the-hills", "zxE0GGl-tJA", "The Hills", 5041, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 5041s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-lady-thug", "bIfQnBzEggk", "Lady Thug", 6333, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6333s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-blood-4-blood", "rvph5KLOPBk", "Blood 4 Blood", 4701, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 4701s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-the-next-day", "okLDf_ge2oQ", "The Next Day", 4522, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 4522s pinned from the actual upload via the site embed-gate relay"),
+    MV("mov-night-in-compton", "uo6GRLmhgms", "A Night in Compton", 6780, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6780s pinned from the actual upload via the site embed-gate relay")
+  ], updatedAt: now, by: "keeper-seed" };
+}
 /* The MY EMPIRE premiere window containing ms (inside: true) or the
  * next one. prem = { startMinET, liveDurSec } as built by tvPremLive.
  * Same whole-hour ET offset arithmetic as tvNewsWin; 20:00 ET exists
@@ -783,6 +854,109 @@ function tvPremWin(ms, prem) {
   if (ms >= start && ms < end) return { start, end, inside: true };
   const nstart = start + 86400e3;
   return { start: nstart, end: nstart + prem.liveDurSec * 1000, inside: false };
+}
+/* The anchor news window containing ms (inside: true) or the next one,
+ * over the fixed daily slots (TV_ANCHOR_SLOTS, minutes ET). anch is the
+ * state built by tvAnchorLive: { slots, dur, slotMinET, producedAt }.
+ * A window exists ONLY for the slot the current edition was produced
+ * for (strictly its own slot — a stale edition never re-airs as new),
+ * and only while the edition is fresh: produced within
+ * TV_ANCHOR_FRESH_MS before the slot and never after the slot begins.
+ * Same whole-hour ET offset arithmetic as tvPremWin. */
+function tvAnchorWin(ms, anch) {
+  if (!anch || !(anch.dur > 0) || !Array.isArray(anch.slots)) return null;
+  const et = tvEtParts(ms), sec = Math.floor((ms % 60000) / 1000);
+  const mins = et.hour * 60 + et.minute;
+  let next = null;
+  for (const slotMin of anch.slots) {
+    let start = ms - ((mins - slotMin) * 60 + sec) * 1000;
+    if (start > ms) start -= 86400e3;
+    const end = start + anch.dur * 1000;
+    if (slotMin !== anch.slotMinET) continue;
+    if (ms >= start && ms < end && anch.producedAt >= start - TV_ANCHOR_FRESH_MS && anch.producedAt <= start) return { start, end, inside: true, slotMinET: slotMin };
+    const nstart = start + 86400e3;
+    if (anch.producedAt >= nstart - TV_ANCHOR_FRESH_MS && anch.producedAt <= nstart && (!next || nstart < next.start)) next = { start: nstart, end: nstart + anch.dur * 1000, inside: false, slotMinET: slotMin };
+  }
+  return next;
+}
+/* Which anchor edition can air: the tv/anchor doc's current edition,
+ * gated by the same rights rule as every lineup item (tvCleared over a
+ * synthesized program item) and by the media actually existing — the
+ * file is probed like premiere files, verdict cached in tv/now, so a
+ * missing file means the slot silently plays music, never dead air.
+ * The doc is producer-owned (the keeper never seeds or writes it):
+ * { on, current: { slotMinET, producedAt, videoUrl, dur } }, published
+ * ~30 min before each slot by the anchor producer. */
+async function tvAnchorLive(doc, nw, now, origin) {
+  const cache = { ...((nw && nw.anchorProbe) || {}) };
+  let cacheChanged = false;
+  const cur = doc && (doc.current || (doc.videoUrl ? doc : null));
+  if (!doc || doc.on === false || !cur || !cur.videoUrl || !(+cur.dur > 0) || !(+cur.producedAt > 0)) return { anch: null, cache, cacheChanged };
+  const it = { id: "anchor-edition", kind: "show", src: "file", url: String(cur.videoUrl), title: "Meechie's World News — Anchor Edition", show: "MW TV News", dur: +cur.dur, rights: (cur.rights && typeof cur.rights === "object") ? cur.rights : { basis: "own", evidence: "Anchor news edition produced in-house by the site news producer from attributed public sources (Herald-Standard headlines, PennDOT 511PA traffic, NWS alerts); Malik is the publisher and rights holder of the produced segment", clearedBy: "owner", at: +cur.producedAt, simulcast: true } };
+  if (!tvCleared(it)) return { anch: null, cache, cacheChanged };
+  const c = cache[it.url];
+  if (c && now - c.at < TV_PREM_PROBE_MS) { if (!c.ok) return { anch: null, cache, cacheChanged }; }
+  else {
+    let ok = false;
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      ok = r.status === 200 || r.status === 206;
+    } catch (_) { ok = false; }
+    cache[it.url] = { ok, at: now }; cacheChanged = true;
+    if (!ok) return { anch: null, cache, cacheChanged };
+  }
+  return { anch: { slots: TV_ANCHOR_SLOTS, item: it, slotMinET: +cur.slotMinET, producedAt: +cur.producedAt, dur: +cur.dur }, cache, cacheChanged };
+}
+/* When a NEW anchor edition lands (a producedAt the laid window has
+ * never seen), segments already generated past the slot would play
+ * music through it. Cut them at the slot start (or at now, if the
+ * slot is already open) so the normal generation re-lays from there
+ * with the edition known; the program cursor re-anchors by cycle math
+ * at the cut — the cold-start rule the held-item path relies on.
+ * Returns null when nothing laid reaches the slot yet. */
+function tvAnchorCut(chan, segs, cursor, anch, now) {
+  const w = tvAnchorWin(now, anch);
+  if (!w || !cursor || !isFinite(cursor.at)) return null;
+  const cutAt = Math.max(now, w.start);
+  if (cutAt >= cursor.at) return null;
+  const kept = (segs || []).filter((sg) => sg.start < cutAt && sg.start + sg.dur * 1000 <= cutAt);
+  const cp = tvCyclePos(chan, cutAt);
+  if (!cp) return null;
+  return { segs: kept, cursor: { at: cutAt, ix: cp.ix, off: cp.off, run: 0 } };
+}
+/* The movie block's standing state, from the tv/movieblock doc and
+ * tonight's premiere state: the block starts when the premiere chain
+ * actually ends (slot start + its live duration), or — when the
+ * premiere airs nothing — TV_MOVIE_FALLBACK_MIN after the slot start
+ * (20:15 ET), so the movies never wait on a missing episode. Items
+ * pass the same rights gate as the whole channel (tvCleared). */
+function tvMovieState(doc, premDoc, premState) {
+  if (!doc || doc.on === false || !Array.isArray(doc.items)) return null;
+  const items = doc.items.filter(tvCleared);
+  if (!items.length) return null;
+  const totalDur = items.reduce((a, i) => a + (+i.dur || 0), 0);
+  if (!(totalDur > 0)) return null;
+  const startMinET = premDoc && +premDoc.startMinET ? +premDoc.startMinET : 1200;
+  const offMs = premState && premState.prem && premState.prem.liveDurSec > 0 ? premState.prem.liveDurSec * 1000 : TV_MOVIE_FALLBACK_MIN * 60e3;
+  return { items, startMinET, offMs, totalDur };
+}
+/* The movie-block window containing ms (inside: true) or the next
+ * one: anchored to the day's premiere slot start plus the block
+ * offset, repeating daily — the block re-arms every night. Same
+ * whole-hour ET offset arithmetic as tvPremWin. */
+function tvMovieWin(ms, mov) {
+  if (!mov || !(mov.totalDur > 0)) return null;
+  const et = tvEtParts(ms), sec = Math.floor((ms % 60000) / 1000);
+  const mins = et.hour * 60 + et.minute;
+  let start = ms - ((mins - mov.startMinET) * 60 + sec) * 1000;
+  if (start > ms) start -= 86400e3;
+  start += mov.offMs;
+  const end = start + mov.totalDur * 1000;
+  if (ms >= start && ms < end) return { start, end, inside: true };
+  if (ms < start) return { start, end, inside: false };
+  const nstart = start + 86400e3;
+  return { start: nstart, end: nstart + mov.totalDur * 1000, inside: false };
 }
 /* Boundary re-check (SPEC §1.4): embedding can be switched off after
  * an item is added, so when the on-air segment rolls over, verify the
@@ -859,8 +1033,26 @@ async function tvTick(env, S, now, origin) {
   if (!pool || !Array.isArray(pool.items) || !pool.items.length || (+pool.progV || 0) < TV_PROGRAM_V) { pool = tvSeedPool(now); await writeDoc(env, "tv/breakpool", "tv", pool); }
   let prem = await readDoc(env, "tv/premiere");
   if (!prem || !Array.isArray(prem.items) || !prem.items.length || (+prem.progV || 0) < TV_PREM_V) { prem = tvSeedPremiere(now); await writeDoc(env, "tv/premiere", "tv", prem); }
+  let movies = await readDoc(env, "tv/movieblock");
+  if (!movies || !Array.isArray(movies.items) || !movies.items.length || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
   const newsDoc = await readDoc(env, "tv/news");
+  const luDoc = await readDoc(env, "tv/localupdate");
+  const anchorDoc = await readDoc(env, "tv/anchor");
   const decision = tvRadioDecision(S, newsDoc, now);
+  // Uniontown Local Update hold-by-age: the break spot is only as
+  // fresh as its producer stamp (tv/localupdate, written hourly by
+  // the news producer). Past TV_LOCAL_HOLD_MS — or with no stamp at
+  // all — the item is held out of rotation through the same `held`
+  // flag tvCleared already enforces everywhere: zero client change.
+  const luItem = (pool.items || []).find((x) => x.id === "brk-local-update");
+  if (luItem) {
+    const luHeld = !(luDoc && +luDoc.at > 0) || now - (+luDoc.at) > TV_LOCAL_HOLD_MS;
+    if (!!luItem.held !== luHeld) {
+      if (luHeld) luItem.held = true; else delete luItem.held;
+      pool.updatedAt = now;
+      await writeDoc(env, "tv/breakpool", "tv", pool);
+    }
+  }
   if (chan.on === false) {
     const nw0 = await readDoc(env, "tv/now");
     if (!nw0 || !nw0.off) await writeDoc(env, "tv/now", "tv", { off: true, segs: [], updatedAt: now });
@@ -874,6 +1066,7 @@ async function tvTick(env, S, now, origin) {
   let nw = await readDoc(env, "tv/now");
   const premState = await tvPremLive(prem, nw, now, origin);
   chan._prem = premState.prem;
+  chan._movies = tvMovieState(movies, prem, premState);
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
   let dirty = false;
@@ -885,6 +1078,21 @@ async function tvTick(env, S, now, origin) {
     cursor = { at: now - Math.round(cp.off * 1000), ix: cp.ix, off: cp.off, run: 0 };
     segs = [];
     dirty = true;
+  }
+  // Anchor editions: resolve the current edition (rights gate + media
+  // probe) and, when a NEW edition has landed since the laid window
+  // was generated, cut the laid segments at its slot so this tick's
+  // generation re-lays through the slot with the edition on air.
+  const anchorState = await tvAnchorLive(anchorDoc, nw, now, origin);
+  chan._anchor = anchorState.anch;
+  const anchStamp = anchorState.anch ? anchorState.anch.producedAt : 0;
+  if (anchorState.cacheChanged) dirty = true;
+  if ((+((nw || {}).anchAt) || 0) !== anchStamp) {
+    dirty = true; // persist the new stamp in this tick's tv/now write
+    if (anchorState.anch && segs && cursor) {
+      const cut = tvAnchorCut(chan, segs, cursor, anchorState.anch, now);
+      if (cut) { segs = cut.segs; cursor = cut.cursor; }
+    }
   }
   const genTo = now + TV_HORIZON;
   if (cursor.at < genTo) {
@@ -914,8 +1122,10 @@ async function tvTick(env, S, now, origin) {
   }
   if (premState.cacheChanged) dirty = true;
   delete chan._prem;
+  delete chan._anchor;
+  delete chan._movies;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, genAt: now, updatedAt: now });
   }
   return decision;
 }
