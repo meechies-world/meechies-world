@@ -29,15 +29,9 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
 <label>payloads.json
 <input type="file" id="payloadsFile" accept=".json,application/json">
 </label>
-<label>local-update.mp4
-<input type="file" id="file-local-update" data-expect="local-update.mp4" accept="video/mp4">
-</label>
-<label>news-2026-11-03-0713.mp4
-<input type="file" id="file-news-mp4" data-expect="news-2026-11-03-0713.mp4" accept="video/mp4">
-</label>
-<label>news-2026-11-03-0713-radio.mp3
-<input type="file" id="file-news-radio" data-expect="news-2026-11-03-0713-radio.mp3" accept="audio/mpeg">
-</label>
+<!-- Upload inputs are built from payloads.json's uploads array once it
+     parses, so ANY edition stamp publishes — never hard-coded filenames. -->
+<div id="uploadInputs"></div>
 <button type="button" class="btn" id="publishBtn" disabled>Publish</button>
 </div>
 <pre id="log"></pre>
@@ -50,11 +44,11 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
   var logEl = document.getElementById("log");
   var publishBtn = document.getElementById("publishBtn");
   var payloadsInput = document.getElementById("payloadsFile");
-  var fileInputs = [
-    document.getElementById("file-local-update"),
-    document.getElementById("file-news-mp4"),
-    document.getElementById("file-news-radio")
-  ];
+  var uploadInputsEl = document.getElementById("uploadInputs");
+  /* Dynamic: rebuilt from payloads.json's uploads array on every parse,
+   * so the page accepts whatever filenames the current edition carries.
+   * Before a payload parses, there are no upload inputs at all. */
+  var fileInputs = [];
   function print(line) { logEl.textContent += line + "\n"; }
   function printJSON(label, obj) { print(label + " " + JSON.stringify(obj)); }
 
@@ -126,21 +120,60 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
   }
 
   function selectedFileFor(up) {
+    /* A file counts ONLY when its actual name matches the upload entry
+     * exactly — a wrong file in the right-labeled input must never be
+     * uploaded under the wrong path. */
     for (var i = 0; i < fileInputs.length; i++) {
       if (fileInputs[i].getAttribute("data-expect") === up.file) {
-        return fileInputs[i].files && fileInputs[i].files[0];
+        var f0 = fileInputs[i].files && fileInputs[i].files[0];
+        if (f0 && f0.name === up.file) return f0;
+        /* Matched input is empty or holds a different file — fall through
+         * to the name fallback below instead of returning the wrong file. */
+      }
+    }
+    /* Fallback: a file selected into any input whose actual name matches
+     * the upload entry still counts — the browser agent may have picked a
+     * file before its label rendered. Name must match exactly. */
+    for (var j = 0; j < fileInputs.length; j++) {
+      var list = fileInputs[j].files || [];
+      for (var k = 0; k < list.length; k++) {
+        if (list[k].name === up.file) return list[k];
       }
     }
     return null;
   }
   function updatePublishEnabled() {
-    var allFiles = fileInputs.every(function (inp) { return inp.files && inp.files.length > 0; });
+    var uploads = (payloads && payloads.uploads) || [];
+    var allFiles = fileInputs.length === uploads.length && fileInputs.every(function (inp) { return inp.files && inp.files.length > 0; });
     publishBtn.disabled = !(ownerVerified && payloads && allFiles);
+  }
+  function renderUploadInputs() {
+    uploadInputsEl.innerHTML = "";
+    fileInputs = [];
+    var uploads = (payloads && payloads.uploads) || [];
+    uploads.forEach(function (up) {
+      var label = document.createElement("label");
+      label.textContent = up.file;
+      var inp = document.createElement("input");
+      inp.type = "file";
+      inp.setAttribute("data-expect", up.file);
+      if (up.contentType) inp.accept = up.contentType;
+      inp.addEventListener("change", function () {
+        var f = inp.files && inp.files[0];
+        print("file selected for " + inp.getAttribute("data-expect") + ": " + (f ? f.name + " (" + f.size + " bytes)" : "none"));
+        updatePublishEnabled();
+      });
+      label.appendChild(inp);
+      uploadInputsEl.appendChild(label);
+      fileInputs.push(inp);
+    });
+    if (uploads.length) print("upload inputs ready: " + uploads.map(function (u) { return u.file; }).join(", "));
+    updatePublishEnabled();
   }
 
   payloadsInput.addEventListener("change", function () {
     payloads = null;
-    updatePublishEnabled();
+    renderUploadInputs();
     var f = payloadsInput.files && payloadsInput.files[0];
     if (!f) { print("payloads.json: no file selected"); return; }
     var reader = new FileReader();
@@ -152,17 +185,10 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
         payloads = null;
         print("payloads.json parse FAILED: " + (e && e.message ? e.message : e));
       }
-      updatePublishEnabled();
+      renderUploadInputs();
     };
-    reader.onerror = function () { print("payloads.json read FAILED"); updatePublishEnabled(); };
+    reader.onerror = function () { print("payloads.json read FAILED"); renderUploadInputs(); };
     reader.readAsText(f);
-  });
-  fileInputs.forEach(function (inp) {
-    inp.addEventListener("change", function () {
-      var f = inp.files && inp.files[0];
-      print("file selected for " + inp.getAttribute("data-expect") + ": " + (f ? f.name + " (" + f.size + " bytes)" : "none"));
-      updatePublishEnabled();
-    });
   });
 
   publishBtn.addEventListener("click", async function () {
