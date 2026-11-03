@@ -83,12 +83,17 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
     return true;
   }
   async function who() { const me = await (await fetch("/api/brain/me", { headers: H })).json().catch(() => null); return me; }
-  function isOwner(me) {
-    if (!me) return false;
-    if (me.role === "owner" || me.owner === true || me.isOwner === true || me.is_owner === true) return true;
-    if (me.user && (me.user.role === "owner" || me.user.owner === true)) return true;
-    if (me.data && (me.data.role === "owner" || me.data.owner === true)) return true;
-    return false;
+  /* Owner test: the same one the site itself uses (js/platform.js) — the
+   * signed-in user's id must have a row in the `admins` table, checked
+   * server-side through /api/cf/rest. /api/brain/me returns only the
+   * member-memory summary ({ok,has,name,visits,...}) and carries no
+   * role/owner field, so it can never prove ownership on its own. */
+  async function checkOwner() {
+    const uid = ses && ses.user && ses.user.id;
+    if (!uid) return false;
+    const r = await fetch("/api/cf/rest", { method: "POST", headers: { "Content-Type": "application/json", ...H }, body: JSON.stringify({ table: "admins", op: "select", select: "user_id", filters: [["user_id", "eq", uid]] }) });
+    const j = await r.json().catch(() => null);
+    return !!(j && !j.error && Array.isArray(j.data) && j.data.length > 0);
   }
   async function publishDocs(payloads) {
     const out = [];
@@ -186,10 +191,13 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
     }
   });
 
-  /* Owner gate: identical who() call to publish-page.js. */
-  who().then(function (me) {
+  /* Owner gate: identical who() call to publish-page.js, plus the
+   * site's own admins-table owner check above. */
+  who().then(async function (me) {
     printJSON("who /api/brain/me:", me);
-    if (!isOwner(me)) {
+    const owner = await checkOwner().catch(() => false);
+    printJSON("owner check /api/cf/rest admins:", { owner: owner });
+    if (!owner) {
       gate.textContent = "Owner sign-in required";
       controls.hidden = true;
       ownerVerified = false;
