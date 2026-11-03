@@ -493,10 +493,10 @@ function mwVmixRescue(S, now, obs) {
  * that the break cuts in even during his own live booth sets, so
  * there is no booth exception. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 6;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool)
+const TV_PROGRAM_V = 7;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the 2026-11-03 schedule build: stand-up comedy, TV One Unsung episodes, Opry Live and WildBrain family clusters join the cycle)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
-const TV_MOVIE_V = 1;                // post-premiere movie block doc generation (tv/movieblock)
-const TV_INSERT_V = 2;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy)
+const TV_MOVIE_V = 2;                // post-premiere movie block doc generation (tv/movieblock)
+const TV_INSERT_V = 3;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy; v3 = tonight's Comedy Hour Thanksgiving movie, 2026-11-03)
 const TV_MOVIE_FALLBACK_MIN = 15;    // when the premiere slot airs nothing, the movie block starts this many minutes after the slot start (20:15 ET)
 const TV_PREM_PROBE_MS = 600e3;      // premiere slot file-existence probes are cached this long in tv/now
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
@@ -862,7 +862,18 @@ function tvSeedChannel(now) {
       { id: "mv-xf3eab4l38y", kind: "show", src: "yt", yt: "xf3eAb4l38Y", title: "FIVIO FOREIGN - BIG DRIP (OFFICIAL VIDEO)", show: "MW Late Night", dur: 169, block: "latenight", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader Fivio Foreign (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
       { id: "mv-kmhaqjqoaiy", kind: "show", src: "yt", yt: "KmhAQJqOaIY", title: "BossMan Dlow - Get In With Me (Official Video)", show: "MW Late Night", dur: 125, block: "latenight", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader BossMan Dlow (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
       { id: "mv-r9vpqobes2s", kind: "show", src: "yt", yt: "r9vPqobEs2s", title: "Cash Cobain, Ice Spice, Bay Swag - Fisherrr (Remix)", show: "MW Late Night", dur: 249, block: "latenight", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader IceSpiceVEVO (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
-      { id: "mv-cuj2awejnwq", kind: "show", src: "yt", yt: "CUj2AWEJnwQ", title: "Nicki Minaj & Ice Spice – Barbie World (with Aqua) [Official Music Video]", show: "MW Late Night", dur: 130, block: "latenight", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader Nicki Minaj (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed") }
+      { id: "mv-cuj2awejnwq", kind: "show", src: "yt", yt: "CUj2AWEJnwQ", title: "Nicki Minaj & Ice Spice – Barbie World (with Aqua) [Official Music Video]", show: "MW Late Night", dur: 130, block: "latenight", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader Nicki Minaj (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "cmd-gary-owen", kind: "show", src: "yt", yt: "GGQpv-4k3II", title: "Gary Owen | No Hard Feelings (Full Comedy Special)", show: "MW Comedy", dur: 3509, block: "comedy", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader 800 Pound Gorilla Media (the releasing label's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "cmd-brian-simpson", kind: "show", src: "yt", yt: "NqK1gyTYt8M", title: "Brian Simpson | Live From The Mothership (Full Comedy Special)", show: "MW Comedy", dur: 4112, block: "comedy", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader 800 Pound Gorilla Media (the releasing label's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "cmd-joe-mande", kind: "show", src: "yt", yt: "0GlbHTqDizQ", title: "Joe Mande | Chill (Full Comedy Special)", show: "MW Comedy", dur: 4276, block: "comedy", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader 800 Pound Gorilla Media (the releasing label's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "cmd-nish-kumar", kind: "show", src: "yt", yt: "uomLlydZpNU", title: "Nish Kumar | Nish, Don't Kill My Vibe (Full Comedy Special)", show: "MW Comedy", dur: 5829, block: "comedy", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader 800 Pound Gorilla Comedy Exports (the releasing label's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "cmd-kellen-erskine", kind: "show", src: "yt", yt: "VbOALuHrK_M", title: "Dry Humor Has Never Been This Funny | Kellen Erskine FULL SPECIAL", show: "MW Comedy", dur: 2354, block: "comedy", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader Dry Bar Comedy (the releasing label's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "cmd-dan-mcgowan", kind: "show", src: "yt", yt: "jlm3L_Qnze4", title: "The Hardest Part of Losing Weight | Dan McGowan FULL SPECIAL", show: "MW Comedy", dur: 1516, block: "comedy", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader Dry Bar Comedy (the releasing label's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "show-unsung-debarge", kind: "show", src: "yt", yt: "uCrlKJLl_xU", title: "FULL EPISODE: #Unsung 102 - Debarge", show: "MW TV Shows", dur: 2517, block: "shows", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader TV One TV (the network's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "show-unsung-winbush", kind: "show", src: "yt", yt: "hKItRtGaZUs", title: "FULL EPISODE: #Unsung 309 - Angela Winbush", show: "MW TV Shows", dur: 2644, block: "shows", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader TV One TV (the network's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "show-opry-live", kind: "show", src: "yt", yt: "CYHTE0Wsl-M", title: "Opry Live - Chris Young, Gary Sinise & Lt. Dan Band, and Sara Evans", show: "MW Country Live", dur: 3277, block: "country", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader Grand Ole Opry (the venue's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "show-paw-patrol", kind: "show", src: "yt", yt: "x9CdSgXnp-Q", title: "PAW Patrol - Assemble! | Season 1 Full Episodes | WildBrain Zoo | Kids Cartoons", show: "MW Family", dur: 1968, block: "family", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader WildBrain Zoo (the distributor's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") },
+      { id: "show-johnny-test", kind: "show", src: "yt", yt: "EqEyFCgQXtA", title: "1 Hour of Johnny Test: The Lost Web Series | Full Episodes | Cartoons For Kids", show: "MW Family", dur: 3603, block: "family", rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at schedule build time (2026-11-03): embeddable, uploader Johnny Test - WildBrain (the distributor's official channel); keeper-recheck simulation (gate search by exact title returns this id) passed") }
     ],
     updatedAt: now, by: "keeper-seed"
   };
@@ -919,49 +930,67 @@ function tvSeedPremiere(now) {
 }
 function tvSeedMovieBlock(now) {
   const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
-  // Post-MY EMPIRE movie block (owner order 2026-11-02): all nine
-  // cleared hood movies chain in this order every night after the
-  // premiere slot. Every title is a full-length upload on the
-  // distributor's own channel (Maverick Movies / Shout! Studios),
-  // embedding verified per title (YouTube oEmbed HTTP 200, 2026-11-02);
-  // durations pinned from the actual uploads through the site embed
-  // gate relay (/api/ytsearch, id-matched). Research record:
-  // mwtv-reprogram-2026-11-02/HOOD-MOVIES.md.
+  // MW Movie Night (schedule build v2, 2026-11-03; owner orders
+  // 2026-11-02: hood movie after the show + NEWEST movies possible):
+  // the chain runs newest-first — the 2025/2024 official uploads lead,
+  // the Thanksgiving title rides mid-chain in season, The Harder They
+  // Come stays (Malik's keeper), and the remaining marathon titles
+  // close the chain. Every title is a full-length upload on the
+  // distributor's own channel (Maverick Movies / Breaking Glass
+  // Pictures / Shout! Studios), embedding verified per title (YouTube
+  // oEmbed HTTP 200); durations pinned from the actual uploads through
+  // the site embed-gate relay (/api/ytsearch, id-matched). Research
+  // records: mwtv-reprogram-2026-11-02/HOOD-MOVIES.md and
+  // NEWEST-MOVIES.md; schedule: mwtv-channel/SCHEDULE.md.
   const MV = (id, yt, title, dur, evidence) => ({ id, kind: "show", src: "yt", yt, title, show: "MW Movie Night", dur, rights: R(evidence) });
   return { on: true, progV: TV_MOVIE_V, items: [
-    MV("mov-harder-they-come", "TWe60ZC6icc", "The Harder They Come", 6168, "Full-length upload by the authorized distributor (Shout! Studios, presented by Radial Entertainment) on its official free-movies channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6168s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-curfew", "HziWdpePIhw", "Curfew: Sins of the Father", 4829, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 4829s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-grit", "fdb6ofP2ViM", "GRIT", 6636, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6636s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-conflict-of-interest", "VAP2TpkjrF4", "Conflict of Interest", 6888, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6888s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-the-hills", "zxE0GGl-tJA", "The Hills", 5041, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 5041s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-lady-thug", "bIfQnBzEggk", "Lady Thug", 6333, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6333s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-blood-4-blood", "rvph5KLOPBk", "Blood 4 Blood", 4701, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 4701s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-the-next-day", "okLDf_ge2oQ", "The Next Day", 4522, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 4522s pinned from the actual upload via the site embed-gate relay"),
-    MV("mov-night-in-compton", "uo6GRLmhgms", "A Night in Compton", 6780, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6780s pinned from the actual upload via the site embed-gate relay")
+    MV("mov-kitty-hallow-killer", "ttUoIcWUUUw", "The Kitty Hallow Killer", 5554, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 5554 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-nowhere-to-be-found", "pSaGCWffxy4", "Nowhere to Be Found", 6291, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6291 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-inthralled", "3oFzMFPV7Rk", "Inthralled", 6777, "Full-length upload on Breaking Glass Pictures (official free-movie channel), the distributor Breaking Glass Pictures' official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6777 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-bad-visitor-2", "FPnOXPSqJ4c", "The Bad Visitor 2", 5420, "Full-length upload on Breaking Glass Pictures (official free-movie channel), the distributor Breaking Glass Pictures' official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 5420 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-curfew", "HziWdpePIhw", "Curfew: Sins of the Father", 4829, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 4829 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-ebony-hustle-2", "4IuRIKoWwPY", "Ebony Hustle 2: Ballistic Protection", 5729, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 5729 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-nothing-even-matters", "eRrvpe0S_I0", "Nothing Even Matters", 6781, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6781 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-grit", "fdb6ofP2ViM", "GRIT", 6636, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6636 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-lady-thug", "bIfQnBzEggk", "Lady Thug", 6333, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6333 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-fist-of-vengence", "yIK9eyZUqcI", "Fist of Vengence", 4986, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 4986 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-american-girl", "FqKqowcTESY", "American Girl", 6003, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6003 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-judge-knott", "3tqGJ67GzwY", "Judge Knott", 4527, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 4527 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-giving-thanks", "8-ngS-WjqJw", "Giving Thanks", 4233, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 4233 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-night-in-compton", "uo6GRLmhgms", "A Night in Compton", 6780, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6780 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-harder-they-come", "TWe60ZC6icc", "The Harder They Come", 6168, "Full-length upload on Shout! Studios, the distributor Shout! Studios' official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6168 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-blood-4-blood", "rvph5KLOPBk", "Blood 4 Blood", 4701, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 4701 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-conflict-of-interest", "VAP2TpkjrF4", "Conflict of Interest", 6888, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 6888 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-the-hills", "zxE0GGl-tJA", "The Hills", 5041, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 5041 pinned from the actual upload via the site embed-gate relay (2026-11-03)"),
+    MV("mov-the-next-day", "okLDf_ge2oQ", "The Next Day", 4522, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02, NEWEST-MOVIES.md / HOOD-MOVIES.md) and re-verified 2026-11-03; duration 4522 pinned from the actual upload via the site embed-gate relay (2026-11-03)")
   ], updatedAt: now, by: "keeper-seed" };
 }
 function tvSeedInsert(now) {
-  // One-shot owner-ordered insert, v2: a short playlist (Malik,
-  // 2026-11-02 ~20:55 ET: "Play youtube hood pranks next"). The
-  // order carries an explicit startAt — tonight 21:00 ET, the
-  // segment boundary at the end of the 20:50 news window — and a
-  // hard endBy (22:00 ET): the 10 PM MY EMPIRE premiere keeps the
-  // late hour, so a block that can no longer finish before endBy
-  // never fires late across the line (the firing rule in tvTick).
-  // Every pick passed the channel gates at build time (2026-11-02):
-  // YouTube oEmbed HTTP 200 with the author being the creator's own
-  // channel, and the site embed gate (/api/ytsearch) returning the
-  // id (embeddable, not age-gated) with the duration pinned from
-  // the actual upload. Total 1301s.
+  // One-shot owner-ordered insert, v3: TONIGHT'S Comedy Hour
+  // (Tue 2026-11-03). Malik's standing orders: the 7 PM hour is the
+  // Comedy Hour, and for Tue Nov 3 it plays Thanksgiving movies under
+  // the official-embed rights rule. Of the three Thanksgiving titles
+  // that exist on the official-free side (NEWEST-MOVIES.md), Giving
+  // Thanks (2023, Maverick Movies) is the newest and the only one
+  // whose duration could be pinned from the actual upload, so it
+  // carries the hour alone; the other two are held, never guessed
+  // (schedule record: mwtv-channel/SCHEDULE.md). The order carries an
+  // explicit startAt — tonight 19:00 ET — and a hard endBy exactly at
+  // the feature's end, so the firing rule (the block must be able to
+  // finish before endBy) passes. The recurring nightly Comedy Hour
+  // window is a separate staged build; this seed is tonight only.
+  // The feature passed the channel gates at build time (2026-11-03):
+  // YouTube oEmbed HTTP 200 with the author being the distributor's
+  // own channel (Maverick Movies), and the duration pinned from the
+  // actual upload via the site embed gate (/api/ytsearch, id-matched).
   const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
-  const PK = (id, yt, title, dur, evidence) => ({ id, kind: "show", src: "yt", yt, title, show: "MW Hood Pranks", dur, rights: R(evidence) });
+  const PK = (id, yt, title, dur, evidence) => ({ id, kind: "show", src: "yt", yt, title, show: "MW Comedy Hour", dur, rights: R(evidence) });
   const et = tvEtParts(now), sec = Math.floor((now % 60000) / 1000);
   const mins = et.hour * 60 + et.minute;
-  const startAt = now - ((mins - 1260) * 60 + sec) * 1000; // today 21:00 ET (whole-hour ET offset arithmetic, as tvPremWin)
-  return { progV: TV_INSERT_V, at: now, show: "MW Hood Pranks", startAt, endBy: startAt + 3600e3, items: [
-    PK("prank-staring-thugs", "E6QyZG74-nQ", "Aggressively Staring at THUGS in the Hood GONE WRONG! (MUST WATCH) Part 2", 530, "Upload on TopNotch Idiots, the creators own channel; embedding verified via YouTube oEmbed (HTTP 200, author TopNotch Idiots) and the site embed gate (/api/ytsearch, id-matched) at build time (2026-11-02); duration 530s pinned from the actual upload via the embed gate relay"),
-    PK("prank-2piece-combo", "ZI3Qrijjh84", "Thugs Catching 2 PIECE COMBO in the Hood! (MUST WATCH)", 498, "Upload on TopNotch Idiots, the creators own channel; embedding verified via YouTube oEmbed (HTTP 200, author TopNotch Idiots) and the site embed gate (/api/ytsearch, id-matched) at build time (2026-11-02); duration 498s pinned from the actual upload via the embed gate relay"),
-    PK("prank-license-plates", "HDiQEdWE2pg", "Stealing License Plates In The Hood Prank!", 273, "Upload on VitalyzdTv, the creators own channel; embedding verified via YouTube oEmbed (HTTP 200, author VitalyzdTv) and the site embed gate (/api/ytsearch, id-matched) at build time (2026-11-02); duration 273s pinned from the actual upload via the embed gate relay")
+  const startAt = now - ((mins - 1140) * 60 + sec) * 1000; // today 19:00 ET (whole-hour ET offset arithmetic, as tvPremWin)
+  const total = 4233;
+  return { progV: TV_INSERT_V, at: now, show: "MW Comedy Hour", startAt, endBy: startAt + total * 1000, items: [
+    PK("thx-giving-thanks", "8-ngS-WjqJw", "Giving Thanks — Thanksgiving Movie Night", total, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200, author Maverick Movies) at research time (2026-11-02, NEWEST-MOVIES.md) and re-verified 2026-11-03; duration 4233s pinned from the actual upload via the site embed-gate relay (2026-11-03)")
   ], updatedAt: now, by: "keeper-seed" };
 }
 /* The insert doc as a lineup: v2 docs carry an items array (a
