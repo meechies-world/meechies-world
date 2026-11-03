@@ -28,7 +28,7 @@
   css.textContent =
     ".mw-ad{margin:0 0 20px;border:1px solid rgba(212,175,55,.5);border-radius:14px;min-height:76px;box-sizing:border-box;" +
     "background:linear-gradient(90deg,rgba(212,175,55,.16),rgba(212,175,55,.05));padding:10px 14px;position:relative}" +
-    ".mw-ad a{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;padding-right:22px}" +
+    ".mw-ad a{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;padding-right:42px}" +
     ".mw-ad img{width:54px;height:54px;object-fit:cover;border-radius:10px;flex:0 0 auto;background:#141414}" +
     ".mw-ad .mw-ad-mid{flex:1;min-width:0}" +
     ".mw-ad .mw-ad-tag{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#d4af37;font-weight:700}" +
