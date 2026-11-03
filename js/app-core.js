@@ -9,7 +9,7 @@ function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTim
 function ago(ms){if(!ms)return"just now";const s=(Date.now()-ms)/1000;if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";return new Date(ms).toLocaleDateString()}
 
 /* ---------- Tabs ---------- */
-const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","tv","mwtv","watch","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact","showstudio"];
+const VIEWS=["live","predict","jobs","connect","fans","home","services","shop","community","radio","tv","mwtv","watch","dj","clips","studio","books","friends","dating","videos","preach","markets","coin","legal","world","games","creators","exclusives","chat","messages","ads","promote","contact","showstudio","amani"];
 const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"]};
 /* ---------- Lazy feature scripts ----------
    Standalone feature files load once, the first time their view opens (any entry
@@ -55,6 +55,10 @@ const LAZY_SRC={
    * double-loading. */
   mwtv:["js/show-studio.js?v=1793740702"],
   showstudio:["js/show-studio.js?v=1793740702"],
+  /* Amani (2026-11-03): the manager's own view — her face, her lanes and
+   * her chat (persona:"amani" on /api/ai). Loads on first open, like the
+   * other feature views. */
+  amani:["js/amani.js?v=1793744769"],
   watch:["js/soul-greet.js?v=1793653007"],
   /* Profile bundle (max-speed Lever 2, 2026-11-02): profile-setup.js and
    * profile-page.js load once, the first time a profile surface is needed

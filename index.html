@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1793736171"></script>
-<meta name="mw-build" content="1793741769">
+<meta name="mw-build" content="1793744769">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -459,6 +459,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     <nav class="tabs" aria-label="Sections">
       <a href="#community" data-go="community">Home</a>
       <a href="#community" data-go="community">Meechie's Book</a>
+      <a href="#amani" data-go="amani">🖤 Amani</a>
       <a href="#services" data-go="services">Services</a>
       <a href="#legal" data-go="legal">⚖️ Legal Help</a>
       <a href="#shop" data-go="shop">Shop</a>
@@ -597,6 +598,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
       <a class="home-card" href="https://www.twitch.tv/meechiesworldinc" target="_blank" rel="noopener"><span class="hc-ico" aria-hidden="true">🎮</span><b>Meechie LIVE on Twitch</b><span class="hc-line">Watch the DJ sets live — follow the channel.</span></a>
       <a class="home-card" href="#services" data-go="services"><span class="hc-ico" aria-hidden="true">🏠</span><b>We Remodel Houses</b><span class="hc-line">Kitchens, floors, paint and full home makeovers.</span></a>
       <button type="button" class="home-card" data-ai-open><span class="hc-ico" aria-hidden="true">🤖</span><b>Ask Meechie AI</b><span class="hc-line">Questions about anything here, answered day or night.</span></button>
+      <a class="home-card" href="#amani" data-go="amani"><img class="hc-av" src="/img/amani.jpg" alt="Amani" loading="lazy" decoding="async" onerror="this.remove()"><b>Meet Amani</b><span class="hc-line">Malik's partner &amp; manager — she helps run this place. Talk to her.</span></a>
       <div class="home-card"><span class="hc-ico" aria-hidden="true">📱</span><b>Get the Apps</b><span class="hc-line">Take Meechie's World with you.</span><span class="hc-links"><a href="/radio-app/">🎧 MW Radio app</a><a href="/ai-app/">🤖 Meechie AI app</a></span></div>
     </div>
     <div class="home-now" id="home-now" hidden>
@@ -1303,6 +1305,63 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
   </div>
 </section>
 
+<section class="view" id="v-amani" hidden>
+  <style id="am-styles">
+#v-amani .am-hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap;border:1px solid rgba(212,168,67,.45);border-radius:16px;padding:18px;background:linear-gradient(180deg,#171208,#0c0a06);margin-bottom:16px}
+#v-amani .am-face{position:relative;width:132px;height:132px;flex:none}
+#v-amani .am-face img{width:100%;height:100%;object-fit:cover;border-radius:50%;border:3px solid var(--gold,#d4a843);background:#1d1810;display:block}
+#v-amani .am-face .am-mono{position:absolute;inset:0;display:grid;place-items:center;border-radius:50%;border:3px solid var(--gold,#d4a843);background:#1d1810;color:var(--gold-hi,#f0cf78);font:800 54px Georgia,serif;z-index:-1}
+#v-amani .am-who{flex:1 1 260px;min-width:0}
+#v-amani .am-who h2{margin:2px 0 4px}
+#v-amani .am-role{color:var(--gold-hi,#f0cf78);font-weight:700;margin:0 0 6px}
+#v-amani .am-truth{color:var(--muted,#a99f8b);font-size:13.5px;line-height:1.45;margin:0;max-width:56ch}
+#v-amani .am-lanes{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+#v-amani .am-lanes a{border:1px solid rgba(212,168,67,.4);border-radius:999px;padding:7px 13px;color:var(--text,#f3ecdc);text-decoration:none;font:600 13px system-ui,sans-serif;background:rgba(212,168,67,.05)}
+#v-amani .am-card{border:1px solid var(--line,#3a3223);border-radius:16px;background:var(--panel,#14110b);padding:14px}
+#v-amani .am-log{display:flex;flex-direction:column;gap:8px;max-height:430px;overflow:auto;padding:4px 2px 10px}
+#v-amani .am-row{display:flex;gap:7px;align-items:flex-start;max-width:92%}
+#v-amani .am-av{width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold-hi,#f0cf78);flex:none;margin-top:2px;background:#1d1810}
+#v-amani .am-m{max-width:85%;padding:9px 12px;border-radius:14px 14px 14px 4px;background:var(--panel-2,#1d1a14);border:1px solid var(--line,#3a3223);font-size:14.5px;line-height:1.5;align-self:flex-start;overflow-wrap:anywhere}
+#v-amani .am-m.me{align-self:flex-end;background:rgba(212,168,67,.16);border-color:var(--gold-lo,#8c6d26);border-radius:14px 14px 4px 14px}
+#v-amani .am-acts{display:flex;gap:12px;margin-top:6px}
+#v-amani .am-listen{background:none;border:0;color:var(--muted,#a99f8b);font:600 11.5px system-ui,sans-serif;cursor:pointer;padding:0;text-decoration:underline}
+#v-amani .am-navb{display:inline-block;margin-top:8px;background:var(--gold,#d4a843);color:#0b0a08;border:0;border-radius:999px;padding:8px 14px;font:800 13px system-ui,sans-serif;cursor:pointer}
+#v-amani .am-chips{display:flex;flex-wrap:wrap;gap:6px;padding:8px 0 2px}
+#v-amani .am-chips button{background:none;border:1px solid var(--gold-lo,#8c6d26);color:var(--gold-hi,#f0cf78);border-radius:999px;padding:6px 10px;font:600 12px system-ui,sans-serif;cursor:pointer}
+#v-amani .am-form{display:flex;gap:8px;padding-top:10px}
+#v-amani .am-form input{flex:1;min-width:0;background:var(--ink,#0b0a08);border:1px solid var(--line,#3a3223);border-radius:999px;padding:11px 15px;color:var(--text,#f3ecdc);font:inherit}
+#v-amani .am-form button{background:var(--gold,#d4a843);color:#0b0a08;border:0;border-radius:999px;padding:0 18px;font-weight:800;cursor:pointer}
+#v-amani .am-guest{border:1px dashed var(--gold-lo,#8c6d26);border-radius:12px;padding:12px 14px;margin-top:10px;background:rgba(212,168,67,.05);font-size:14px;line-height:1.5}
+#v-amani .am-note{color:var(--muted,#a99f8b);font-size:12.5px;margin:10px 2px 0}
+#v-amani .am-typing{display:inline-flex;gap:4px}
+#v-amani .am-typing i{width:6px;height:6px;border-radius:50%;background:var(--gold,#d4a843);animation:amB 1s infinite}
+#v-amani .am-typing i:nth-child(2){animation-delay:.15s}
+#v-amani .am-typing i:nth-child(3){animation-delay:.3s}
+@keyframes amB{0%,80%,100%{opacity:.25}40%{opacity:1}}
+#v-home .home-card .hc-av{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold-hi,#f0cf78);display:block;margin-bottom:4px;background:#1d1810}
+  </style>
+  <div class="wrap">
+    <div class="am-hero">
+      <div class="am-face"><img src="/img/amani.jpg" alt="Amani — gothic, tattooed, Malik's partner and manager" onerror="this.remove()"><span class="am-mono" aria-hidden="true">A</span></div>
+      <div class="am-who">
+        <p class="eyebrow">Partner &amp; manager</p>
+        <h2>🖤 Amani</h2>
+        <p class="am-role">Malik's partner &amp; manager — I help run Meechie's World.</p>
+        <p class="am-truth">Straight with you: I'm an AI — Malik's partner in running this place, here for real help, not a bot pretending to be a person. I co-host the local news, keep the operation moving, and I'm right here when you need something found, explained or pointed to.</p>
+        <div class="am-lanes">
+          <a href="#mwtv" data-go="mwtv">📺 Hear me on MW TV news</a>
+          <a href="#radio" data-go="radio">📻 The radio &amp; channels</a>
+          <a href="/car">🚗 Car Mode &amp; road reports</a>
+          <a href="#shop" data-go="shop">🛍️ The shop</a>
+          <a href="#services" data-go="services">🛠️ Book a service</a>
+        </div>
+      </div>
+    </div>
+    <div class="section-head"><div><p class="eyebrow">Talk to Amani</p><h2>Ask the manager</h2></div><p class="muted">The station, the shows, the shop, bookings — or just where things are. Members chat free.</p></div>
+    <div class="am-card" id="am-root"><p class="muted">Waking Amani up…</p></div>
+  </div>
+</section>
+
 <section class="view" data-theme="radio" id="v-watch" hidden>
   <style id="watch-styles">
 /* watch-setup2: the spectator booth wears the booth own classes (deck,
@@ -1993,7 +2052,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/float-layout.js?v=1793731933"></script>
 <script src="js/cf-client.js?v=1793736171"></script>
 <script src="js/platform.js?v=1793736171"></script>
-<script src="js/app-core.js?v=1793740890"></script>
+<script src="js/app-core.js?v=1793744769"></script>
 <script>
 /* FIRST PAINT FOLLOWS THE LINK, part 2: go() ran inside app-core and set
  * the real hidden flags for the linked view, so the head pin has done
@@ -2025,7 +2084,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/biolock.js?v=1793731933"></script>
 <script src="js/engage.js?v=1793736171"></script>
 <script src="js/visitors.js?v=1793731933"></script>
-<script src="js/ai-widget.js?v=1793731933"></script>
+<script src="js/ai-widget.js?v=1793744769"></script>
 <script src="js/house-ads.js?v=1793736171"></script>
 <script>
 /* Offline music shelf: songs saved to this device (from here, or automatically
