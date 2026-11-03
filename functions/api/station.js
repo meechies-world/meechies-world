@@ -978,7 +978,7 @@ function tvInsertWin(ms, ins) {
  * an error, never dead air. */
 function tvAdCadItems(pool) {
   const items = [];
-  for (const id of ["brk-my-empire-ad", "brk-my-empire-by10"]) {
+  for (const id of ["brk-my-empire-ad", "brk-my-empire-8oclock"]) {
     const it = ((pool && pool.items) || []).find((x) => x.id === id);
     if (it && tvCleared(it)) items.push(it);
   }
