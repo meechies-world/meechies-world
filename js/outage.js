@@ -1,6 +1,7 @@
 /* Outage mode (owner's rule): if the account system is down or blocked, the website still opens.
  * Visitors can look around (videos, books, shop, pages); only signed-in features and saved data wait.
- * Checks the sign-in service once on load (and again if a sign-in attempt fails to reach it). */
+ * Checks the sign-in service once on load (and again if a sign-in attempt fails to reach it).
+ * While the notice is up it keeps re-checking, so a false alarm clears itself once sign-in answers again. */
 (function () {
   "use strict";
   const c = window.MW_CONFIG || {};
@@ -18,6 +19,7 @@
       document.body.insertBefore(b, document.body.firstChild); /* sits above the menu bar, never on top of it */
     };
     if (document.body) add(); else document.addEventListener("DOMContentLoaded", add);
+    watchRecovery();
     try { console.warn("[MW] outage mode:", reason); } catch (_) {}
   }
   window.MW_guestMode = guest;
@@ -29,6 +31,27 @@
       return !!(r.ok && j && j.ok === true);
     } catch (e) { return false; }
     finally { clearTimeout(t); }
+  }
+  let watchTimer = null, watchHits = 0;
+  function recovered() {
+    /* Sign-in answers again: take the notice down and hand the session back to the
+       normal rules. The page itself is left exactly as the visitor has it — no gate
+       yank mid-browse; full gating resumes on the next load, and the 30-minute
+       sign-in wall reads MW_OUTAGE when it fires, so it works again from here. */
+    if (watchTimer) { clearInterval(watchTimer); watchTimer = null; }
+    watchHits = 0;
+    const b = document.getElementById("mw-outage"); if (b) b.remove();
+    window.MW_OUTAGE = false; shown = false;
+    try { console.info("[MW] outage over: sign-in is answering again"); } catch (_) {}
+  }
+  function watchRecovery() {
+    if (watchTimer) return;
+    /* Same standard as declaring the outage: two healthy answers in a row,
+       30s apart, before the notice clears — one lucky answer doesn't end it. */
+    watchTimer = setInterval(async () => {
+      if (await healthy()) { watchHits++; if (watchHits >= 2) recovered(); }
+      else watchHits = 0;
+    }, 30000);
   }
   async function probe() {
     if (c.BACKEND !== "cf") return;
