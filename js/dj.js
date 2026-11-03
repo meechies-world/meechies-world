@@ -6950,12 +6950,12 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793737687;
+  const MW_DJ_BUILD = 1793738781;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
     const shareLive = () => { try { return !!vsPub || vsBroadcast(); } catch (_) { return false; } }; // SHARE GATE (2026-11-01): this tab is publishing a share, or a share is live on the station
-    const isListening = () => { try { return !!((window.MW_DJ && typeof window.MW_DJ.listening === "function" && window.MW_DJ.listening()) || (typeof window.MW_recentSound === "function" && window.MW_recentSound())); } catch (_) { return false; } };
+    const isListening = () => { try { return !!((window.MW_DJ && typeof window.MW_DJ.listening === "function" && window.MW_DJ.listening()) || (typeof window.MW_recentSound === "function" && window.MW_recentSound()) || (window.MW_CHAN && typeof window.MW_CHAN.playing === "function" && window.MW_CHAN.playing())); } catch (_) { return false; } };
     const guardDone = () => { try { return sessionStorage.getItem("mw-guard-" + updBuild) === "1"; } catch (_) { return false; } };
     const showUpdNote = (playing) => {
       let n = document.getElementById("dj-upd-note");
