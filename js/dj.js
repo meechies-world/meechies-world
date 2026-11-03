@@ -1174,6 +1174,15 @@ html.popdj #dj-mini{display:none!important}
 #dj-livealert .la-btns{gap:6px;width:100%}
 #dj-livealert .la-btns .btn{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-left:4px;padding-right:4px;font-size:12px}
 #dj-livealert .la-btns #la-x{flex:0 0 auto}}
+/* LIVE ALERT PHONE FIT (owner screenshot, 2026-11-02): at phone widths the
+   single equal-flex row elided Watch the setup mid-word and jammed Tune in
+   against the card edge. On phones the pills now take their natural width
+   and wrap onto a second row, and the card sizes border-box so its 94vw is
+   the true outer width. The tablet row and the desktop pill are unchanged. */
+@media (max-width:560px){#dj-livealert{box-sizing:border-box}
+#dj-livealert .la-btns{flex-wrap:wrap;justify-content:center}
+#dj-livealert .la-btns .btn{flex:0 1 auto;overflow:visible;text-overflow:clip;padding-left:10px;padding-right:10px}
+#dj-livealert .la-btns #la-x{flex:0 0 auto}}
 /* ===== SETUP UPGRADE (owner: "Upgrade my set up", 2026-10-26) — pro-size jog
    wheels on desktop/tablet, a true performance-pad grid in the cue section with
    deck-colored glow, stronger spin glow, and a metal finish for the setups row.
@@ -6861,7 +6870,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793664600;
+  const MW_DJ_BUILD = 1793675904;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
