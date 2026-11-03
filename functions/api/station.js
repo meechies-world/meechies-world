@@ -1937,12 +1937,33 @@ async function tvAnchorLive(env, doc, nw, now, origin) {
  * with the edition known; the program cursor re-anchors by cycle math
  * at the cut — the cold-start rule the held-item path relies on.
  * Returns null when nothing laid reaches the slot yet. */
+/* Cut the laid window at cutAt WITHOUT opening a hole: segments
+ * starting at/after cutAt drop, and the segment STRADDLING cutAt is
+ * TRIMMED to end at cutAt instead of being dropped whole. The old
+ * filter (sg.start < cutAt && end <= cutAt) dropped the straddler
+ * too, and since generation resumes AT cutAt, the span between the
+ * previous segment's end and cutAt was never laid — a hole the
+ * client could only park on (poster + a connecting slate) for up
+ * to a full re-lay grid step after nearly every quarter break, and
+ * a re-lay landing mid-segment tore a playing segment's picture
+ * down while its sound ran on. Trimming keeps the laid coverage
+ * continuous up to the cut; the re-lay from cutAt is unchanged. */
+function tvTrimAt(segs, cutAt) {
+  const out = [];
+  for (const sg of (segs || [])) {
+    if (sg.start >= cutAt) continue;
+    if (sg.start + sg.dur * 1000 <= cutAt) { out.push(sg); continue; }
+    const d = Math.round((cutAt - sg.start) / 100) / 10;
+    if (d > 0.05) out.push({ ...sg, dur: d });
+  }
+  return out;
+}
 function tvAnchorCut(chan, segs, cursor, anch, now) {
   const w = tvAnchorWin(now, anch);
   if (!w || !cursor || !isFinite(cursor.at)) return null;
   const cutAt = Math.max(now, w.start);
   if (cutAt >= cursor.at) return null;
-  const kept = (segs || []).filter((sg) => sg.start < cutAt && sg.start + sg.dur * 1000 <= cutAt);
+  const kept = tvTrimAt(segs, cutAt);
   const cp = tvCyclePos(chan, cutAt);
   if (!cp) return null;
   return { segs: kept, cursor: { at: cutAt, ix: cp.ix, off: cp.off, run: 0 } };
@@ -2015,7 +2036,7 @@ async function tvQuarterLive(env, doc, nw, now, origin) {
 function tvCharCut(chan, segs, cursor, cutAt) {
   if (!cursor || !isFinite(cursor.at) || !isFinite(cutAt)) return null;
   if (cutAt >= cursor.at) return null;
-  const kept = (segs || []).filter((sg) => sg.start < cutAt && sg.start + sg.dur * 1000 <= cutAt);
+  const kept = tvTrimAt(segs, cutAt);
   const cp = tvCyclePos(chan, cutAt);
   if (!cp) return null;
   return { segs: kept, cursor: { at: cutAt, ix: cp.ix, off: cp.off, run: 0 } };
@@ -2464,7 +2485,7 @@ async function tvTick(env, S, now, origin, online) {
       if (!skipFire) {
         if (segs && cursor && cursor.at > cutAt) {
           const cp = tvCyclePos(chan, cutAt);
-          if (cp) { segs = segs.filter((sg) => sg.start < cutAt && sg.start + sg.dur * 1000 <= cutAt); cursor = { at: cutAt, ix: cp.ix, off: cp.off, run: 0 }; fired = true; }
+          if (cp) { segs = tvTrimAt(segs, cutAt); cursor = { at: cutAt, ix: cp.ix, off: cp.off, run: 0 }; fired = true; }
         } else if (cursor) fired = true; // nothing laid past the boundary: the window edge in tvGen makes the cut
       }
       if (fired) {
