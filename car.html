@@ -50,8 +50,13 @@
   .mapwrap #map{ width:100%; height:100%; min-height:300px; display:block; background:#0d0d0d; }
   .leaflet-container{ font:inherit; }
   .rr-pinwrap{ background:none; border:none; }
-  .rr-pin{ width:46px; height:46px; border-radius:50%; background:#141414; border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 2px 10px rgba(0,0,0,.55); }
-  .rr-pin-owner{ border-color:var(--gold2); box-shadow:0 0 0 3px rgba(255,207,94,.4), 0 2px 10px rgba(0,0,0,.55); }
+  .rr-pin{ width:46px; height:46px; border-radius:50%; background:#141414; border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 2px 10px rgba(0,0,0,.65); }
+  .rr-pin-owner{ border-color:var(--gold2); box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 0 0 5px rgba(255,207,94,.55), 0 2px 10px rgba(0,0,0,.65); }
+  .rr-layers{ display:flex; flex-direction:column; gap:8px; }
+  .rr-layer-btn{ min-height:52px; min-width:136px; padding:8px 14px; border-radius:12px; border:2px solid var(--gold); background:rgba(13,13,13,.88); color:var(--txt); font-size:17px; font-weight:900; cursor:pointer; }
+  .rr-layer-btn.on{ background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; }
+  .maplinks{ display:flex; gap:10px; flex-wrap:wrap; padding:0 14px; }
+  .maplinks .bigbtn{ flex:1 1 230px; margin:12px 0 4px; }
   .rr-pin-drop{ border-style:dashed; }
   .rr-open{ margin:12px 14px 0; min-height:64px; width:calc(100% - 28px); border-radius:14px; border:2px solid var(--gold); background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; font-size:clamp(17px,2.8vw,24px); font-weight:900; letter-spacing:.03em; cursor:pointer; }
   .rr-count{ color:var(--dim); font-size:clamp(13px,2vw,16px); padding:10px 16px 0; line-height:1.4; }
@@ -121,6 +126,10 @@
     <h2 id="map-h">Map — road reports</h2>
     <div class="mapwrap"><div id="map" role="application" aria-label="Map with community road reports"></div></div>
     <div id="rr-ui"></div>
+    <div class="maplinks">
+      <a class="bigbtn" id="earthlink" href="https://earth.google.com/web/@39.82380,-79.58840,900a,2600d" target="_blank" rel="noopener">🌍 Open in Google Earth</a>
+      <a class="bigbtn" id="kmlink" href="/api/road-reports.kml?dl=1" download="meechies-road-reports.kml">📌 Pins for Earth (.kml)</a>
+    </div>
     <a class="bigbtn" id="dirs" href="https://www.openstreetmap.org/directions" target="_blank" rel="noopener">🧭 Directions</a>
     <p class="note">The map shows where you are and hands directions to real navigation. Video in a moving car is the carmaker's call — parked is the viewing case, the radio is the driving case.</p>
   </section>
@@ -480,6 +489,6 @@
 })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="js/road-reports.js?v=1793740870"></script>
+<script src="js/road-reports.js?v=1793741919"></script>
 </body>
 </html>
