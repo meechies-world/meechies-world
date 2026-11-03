@@ -1529,7 +1529,7 @@ async function tvPremLive(env, prem, nw, now, origin) {
  * the radio decision only picks spots in the set — so a spot whose
  * media has not been uploaded yet can never lay a dead segment or
  * a silent deck, and joins rotation by itself once the file lands. */
-async function tvSpotGate(nw, now, origin) {
+async function tvSpotGate(env, nw, now, origin) {
   const cache = { ...((nw && nw.spotProbe) || {}) };
   let cacheChanged = false;
   const urls = ["/media/my-empire-commercial-v2.mp4", "/media/my-empire-shop-station-family.mp4", "/media/my-empire-family-foundation.mp4", "/media/my-empire-12-shirts.mp4"].concat(RADIO_SPOTS.map((sp) => sp.src));
@@ -1537,12 +1537,7 @@ async function tvSpotGate(nw, now, origin) {
   for (const url of urls) {
     const c = cache[url];
     if (c && now - c.at < TV_PREM_PROBE_MS) { if (c.ok) ok.add(url); continue; }
-    let good = false;
-    try {
-      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
-      good = r.status === 200 || r.status === 206;
-    } catch (_) { good = false; }
+    const good = await tvMediaExists(env, origin, url);
     cache[url] = { ok: good, at: now }; cacheChanged = true;
     if (good) ok.add(url);
   }
@@ -1606,7 +1601,7 @@ async function tvTick(env, S, now, origin) {
   // radio spot decision attached to this tick's decision, so the
   // radio lane works even while the TV channel is off or down.
   const nwEarly = await readDoc(env, "tv/now");
-  const spotState = await tvSpotGate(nwEarly, now, origin);
+  const spotState = await tvSpotGate(env, nwEarly, now, origin);
   for (const it of (pool.items || [])) {
     if (!TV_SPOT_GATE_IDS.includes(it.id)) continue;
     const held = !spotState.ok.has(it.url);
