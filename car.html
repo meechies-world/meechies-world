@@ -336,7 +336,7 @@
   function checkGate(){ fetch("/api/bgsgate", { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){ var v = j && typeof j.live === "boolean" ? j.live : null; var was = gateLive; gateLive = v; gateFalseN = v === false ? gateFalseN + 1 : 0; if(S && v === true && was !== true) syncAll(); }).catch(function(){ gateLive = null; }); }
   function streamWanted(anyPlayable){ return tuned && !shareHolds() && !anyPlayable && gateLive === true; }
   function syncStream(anyPlayable){
-    if(streamWanted(anyPlayable)){ if(!streamEl){ streamEl = new Audio(); streamEl.preload = "none"; streamEl.src = STREAM; } streamEl.volume = masterVol; var pr = streamEl.play(); if(pr && pr.catch) pr.catch(function(){}); }
+    if(streamWanted(anyPlayable)){ if(!streamEl){ streamEl = new Audio(); streamEl.preload = "none"; } if(!streamEl.src) streamEl.src = STREAM; streamEl.volume = masterVol; var pr = streamEl.play(); if(pr && pr.catch) pr.catch(function(){}); }
     else if(streamEl && (tuned === false || anyPlayable || shareHolds() || gateFalseN >= 2)){ try { streamEl.pause(); } catch(_){} }
   }
 
@@ -398,7 +398,7 @@
     var key = a.i + "@" + a.cycle;
     if(schedKey !== key){
       schedKey = key;
-      schedEl.src = "/_blob/" + tr.assetId;
+      schedEl.src = "/m/assets/" + tr.assetId; // the site media route (cf-client getPublicUrl) — "/_blob/" was a dead route: the clock player loaded nothing and every failure was swallowed
       var off = a.offset;
       if(schedEl._sk) schedEl.removeEventListener("loadedmetadata", schedEl._sk);
       schedEl._sk = function(){ try { schedEl.currentTime = off; } catch(_){} };
@@ -409,6 +409,80 @@
     }
     var pr = schedEl.play(); if(pr && pr.catch) pr.catch(function(){});
   }
+
+  /* ---------- gesture priming + the honest sound guard ----------
+     Why this page claimed ON AIR over silence (ear tests, 2026-11-03:
+     TUNE IN tapped, countdown moving, total silence — twice, on a
+     single clean tab, while the radio seat in the same browser
+     played fine): the playlist clock's player pointed at a dead
+     route ("/_blob/" — see the sched src note above; the real media
+     route is /m/assets/). The load failed, play() rejected, and the
+     rejection was swallowed like every other play() on this page,
+     so the failure was invisible and permanent. The src is fixed;
+     this guard is the second layer, so no future player failure can
+     ever again wear an ON AIR claim:
+     (1) primeAudio() creates the two persistent elements inside the
+     TUNE IN tap and plays them once — strict autoplay policies
+     (iOS Safari, car browsers) only bless elements played from
+     inside a tap, and the poll-driven syncs that later fill these
+     elements inherit the blessing.
+     (2) The guard samples the position of whichever player should
+     be sounding; 5 seconds with zero advancement earns ONE rebuild
+     + replay, and a second silent 5 seconds drops the button back
+     to TUNE IN with a plain note — the next tap then runs syncAll()
+     inside the tap itself, where play() may sound.
+     This page reads no cross-tab lock and never did; the mirror
+     lease on the main site neither appears here nor blocked the
+     radio seat (clean-slate probe, 2026-11-03). Its silence was
+     its own player path failing invisibly. */
+  function primeAudio(){
+    if(!schedEl){ schedEl = new Audio(); schedEl.preload = "auto"; schedEl.addEventListener("ended", function(){ schedKey = null; syncAll(); }); try { var pp = schedEl.play(); if(pp && pp.catch) pp.catch(function(){}); } catch(_){} }
+    if(!streamEl){ streamEl = new Audio(); streamEl.preload = "none"; try { var sp = streamEl.play(); if(sp && sp.catch) sp.catch(function(){}); } catch(_){} }
+  }
+  var guardPrevPos = -1, guardMoveAt = 0, guardStrikes = 0;
+  var guardAsyncPos = {};
+  function guardReset(){ guardPrevPos = -1; guardMoveAt = 0; guardStrikes = 0; guardAsyncPos = {}; }
+  function guardExpected(){
+    if(!tuned || !S) return false;
+    var anyPlayable = false;
+    DECKS.forEach(function(k){ if(sounding(k) && sourceOf(k)) anyPlayable = true; });
+    return anyPlayable || streamWanted(anyPlayable) || schedWanted(anyPlayable);
+  }
+  function guardSample(){
+    var pos = -1;
+    DECKS.forEach(function(k){ deckPos(k, function(t){ if(t >= 0) guardAsyncPos[k] = t; }); var ap = guardAsyncPos[k]; if(ap != null && ap > pos) pos = ap; });
+    if(streamEl && isFinite(streamEl.currentTime) && streamEl.currentTime > pos) pos = streamEl.currentTime;
+    if(schedEl && isFinite(schedEl.currentTime) && schedEl.currentTime > pos) pos = schedEl.currentTime;
+    return pos;
+  }
+  function guardRetry(){
+    DECKS.forEach(function(k){ if(P[k] && sounding(k)) killPlayer(k); });
+    if(schedEl){ try { schedEl.pause(); } catch(_){} schedEl = null; schedKey = null; }
+    if(streamEl){ try { streamEl.pause(); } catch(_){} streamEl = null; }
+    syncAll();
+  }
+  function guardGiveUp(){
+    tuned = false; stopAll();
+    btn.textContent = "\u25b6 TUNE IN \u2014 CH 1 LIVE"; btn.classList.remove("playing");
+    metaEl.textContent = "The sound didn\u2019t start \u2014 tap TUNE IN to try again.";
+    guardReset();
+    try { navigator.mediaSession.playbackState = "paused"; } catch(_){}
+  }
+  setInterval(function(){
+    if(!guardExpected()){ guardReset(); return; }
+    var now = Date.now(), pos = guardSample();
+    if(guardMoveAt === 0){ guardMoveAt = now; guardPrevPos = pos; return; }
+    /* Advancement means PLAYBACK: the position crept forward roughly
+       with the clock since the last sample. A jump (a drift-correction
+       reseek, or the guard's own retry landing on the live offset) is
+       not advancement — counting it would let a frozen player pass
+       forever, reseeked 5 seconds at a time by its own retries. */
+    if(guardPrevPos >= 0 && pos > guardPrevPos + 0.3 && pos < guardPrevPos + 4) guardMoveAt = now;
+    guardPrevPos = pos;
+    if(now - guardMoveAt < 5000) return;
+    guardStrikes++; guardMoveAt = now;
+    if(guardStrikes >= 2) guardGiveUp(); else guardRetry();
+  }, 1000);
 
   /* ---------- the sync cycle ---------- */
   var domKey = "";
@@ -435,7 +509,7 @@
     if(tuned && !anyPlayable && !shareHolds() && gateLive !== true) checkGate();
     var nk = best || ""; if(nk !== domKey){ domKey = nk; mediaMeta(); }
   }
-  function stopAll(){ DECKS.forEach(function(k){ pauseDeck(k); var m = mount(k); if(m) m.classList.remove("on"); }); if(streamEl){ try { streamEl.pause(); } catch(_){} } }
+  function stopAll(){ DECKS.forEach(function(k){ pauseDeck(k); var m = mount(k); if(m) m.classList.remove("on"); }); if(streamEl){ try { streamEl.pause(); } catch(_){} } if(schedEl){ try { schedEl.pause(); } catch(_){} } }
 
   /* ---------- now playing paint ---------- */
   function paintNow(){
@@ -471,8 +545,8 @@
 
   /* ---------- the one big button ---------- */
   function toggle(){
-    if(!tuned){ tuned = true; btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); gateFalseN = 0; pollStation(); pollSchedule(); checkGate(); syncAll(); try { navigator.mediaSession.playbackState = "playing"; } catch(_){} }
-    else { tuned = false; stopAll(); btn.textContent = "▶ TUNE IN — CH 1 LIVE"; btn.classList.remove("playing"); try { navigator.mediaSession.playbackState = "paused"; } catch(_){} }
+    if(!tuned){ tuned = true; btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); gateFalseN = 0; guardReset(); primeAudio(); pollStation(); pollSchedule(); checkGate(); syncAll(); try { navigator.mediaSession.playbackState = "playing"; } catch(_){} }
+    else { tuned = false; stopAll(); guardReset(); btn.textContent = "▶ TUNE IN — CH 1 LIVE"; btn.classList.remove("playing"); try { navigator.mediaSession.playbackState = "paused"; } catch(_){} }
   }
   btn.addEventListener("click", toggle);
   volEl.addEventListener("input", function(){ masterVol = volEl.value / 100; DECKS.forEach(applyDeck); if(streamEl) streamEl.volume = masterVol; if(schedEl) schedEl.volume = masterVol; });

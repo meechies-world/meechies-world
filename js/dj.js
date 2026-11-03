@@ -7083,7 +7083,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793747670;
+  const MW_DJ_BUILD = 1793748670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7267,6 +7267,22 @@ html.popdj #dj-mini{display:none!important}
     if (boothLead && !was && OWNER()) setTimeout(() => save(true), 400);
     if (!boothLead && was) DECKS.forEach((k) => { try { decks[k]?.stop(); } catch (_) {} });
   }
+  /* SOUND RECLAIM (2026-11-03): Listen is a hand on the sound. The
+   * badge tap has always pulled the sound to its window (lease steal +
+   * driveWant); startListening never did — so an owner pressing TUNE IN
+   * / Listen in a mirror window followed decks that another window (or
+   * a zombie booth tab in the same browser, renewing its lease without
+   * ever playing a sound) was left owning, and sat in silence while the
+   * badge blamed the other window. startListening now reclaims first,
+   * with the badge's exact steps and gates: owner only, never the
+   * sandbox, never a server mirror (TAKE CONTROL owns that door), and
+   * a no-op when this window already holds the sound. */
+  function reclaimSound() {
+    if (!OWNER() || SANDBOX || boothLead || serverMirror()) return;
+    driveWant = Date.now();
+    try { localStorage.setItem(leaseKey, JSON.stringify({ id: tabId, at: Date.now() })); } catch (_) {}
+    leaseBeat();
+  }
   /* TAKE CONTROL (2026-10-28): a mirror seizes the lead claim with one
    * takeover save — base is the updatedAt this tab last adopted, so the
    * server can tell a true handoff from a stale tab guessing — and it
@@ -7328,6 +7344,7 @@ html.popdj #dj-mini{display:none!important}
   function checkStuck() { if (listening && decksStuck()) say("👆 Your phone held the sound back — tap anywhere on the page and the radio starts."); }
   function startListening() {
     if (OWNER()) boothPlayHeld = false; // AUTO-STOP LAW: his Listen tap is a play press — the booth may sound from here
+    reclaimSound(); // SOUND RECLAIM: the Listen tap pulls the sound to THIS window, exactly like the badge tap
     try { sessionStorage.removeItem("mw_mini_off"); } catch (_) {}
     listening = true; djKeepSet(true); actx(); wakeForListening(true);
     try { if (typeof media !== "undefined") media.pause(); if (typeof mode !== "undefined") mode = "dj"; } catch (_) {}
