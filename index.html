@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1793736171"></script>
-<meta name="mw-build" content="1793738057">
+<meta name="mw-build" content="1793738781">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -888,6 +888,51 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
         <div class="req-list" id="req-list"><p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p></div>
         <form class="reply-form" id="req-form"><input type="text" id="req-text" aria-label="Request a song or shoutout" maxlength="160" placeholder="Play my song! / Shoutout to..." autocomplete="off"><button class="btn sm" type="submit">Send</button></form>
       </div>
+    </div>
+
+    <div class="card" id="chan-card" style="margin:18px 0">
+      <style>
+#chan-card .chan-tuner{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:linear-gradient(180deg,#171307,#0b0906);border:1px solid rgba(216,180,90,.55);border-radius:14px;padding:14px 16px;margin:12px 0}
+#chan-card .chan-tmeta{min-width:0;flex:1}
+#chan-card .chan-tname{font-size:clamp(20px,3.4vw,30px);font-weight:800;letter-spacing:.5px;color:#f4d98a;line-height:1.15}
+#chan-card .chan-ttrack{font-size:14px;color:#e8e2d2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#chan-card .chan-btns{display:flex;gap:8px;align-items:center}
+#chan-card .chan-tbtn{min-width:52px;min-height:52px;border-radius:50%;border:1px solid rgba(216,180,90,.7);background:#241c0c;color:#f4d98a;font-size:19px;cursor:pointer}
+#chan-card .chan-tbtn:disabled{opacity:.35;cursor:default}
+#chan-card .chan-screenwrap{position:relative;border-radius:14px;overflow:hidden;background:#000;border:1px solid rgba(216,180,90,.35);aspect-ratio:16/9;margin:0 0 12px}
+#chan-card .chan-screenwrap img.chan-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#chan-card .chan-screenwrap #chan-yt, #chan-card .chan-screenwrap #chan-yt iframe{position:absolute;inset:0;width:100%;height:100%}
+#chan-card #chan-resume{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;background:#d4a843;color:#0b0a08;border:0;font:800 16px system-ui,sans-serif;padding:12px 22px;border-radius:999px;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.55)}
+#chan-card .chan-guide{display:flex;flex-direction:column;gap:8px}
+#chan-card .chan-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#141109;border:1px solid rgba(216,180,90,.28);border-radius:12px;padding:11px 13px;cursor:pointer;color:#f2ead6}
+#chan-card .chan-row.chan-sel{border-color:#d4a843;background:#1d1709}
+#chan-card .chan-num{flex:none;width:30px;height:30px;border-radius:50%;background:#241c0c;border:1px solid rgba(216,180,90,.7);color:#f4d98a;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+#chan-card .chan-meta{min-width:0;flex:1}
+#chan-card .chan-meta b{display:block;font-size:15px;letter-spacing:.3px}
+#chan-card .chan-meta small{display:block;color:#b9b09a;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#chan-card .chan-on{flex:none;background:#c00d14;color:#fff;font-size:11px;font-weight:800;letter-spacing:.6px;padding:4px 9px;border-radius:999px}
+      </style>
+      <p class="eyebrow">Meechie's World Radio · Channels</p>
+      <h3 style="margin-top:0">📡 Channels — like satellite radio</h3>
+      <p class="muted" style="margin:6px 0 0">Ride the <b>live station</b> with everybody else, or pick a channel and it's <b>yours alone</b> — an endless stream picked just for you. Your pick never changes what anybody else hears, and the master screen up top stays with you either way.</p>
+      <div class="chan-tuner">
+        <div class="chan-tmeta">
+          <div class="chan-tname" id="chan-tname">CHANNELS</div>
+          <div class="chan-ttrack" id="chan-ttrack">Pick a channel — or ride the live station.</div>
+        </div>
+        <div class="chan-btns">
+          <button class="chan-tbtn" type="button" id="chan-prev" aria-label="Previous song on your channel">⏮</button>
+          <button class="chan-tbtn" type="button" id="chan-toggle" aria-label="Play or pause">▶</button>
+          <button class="chan-tbtn" type="button" id="chan-next" aria-label="Next song on your channel">⏭</button>
+        </div>
+      </div>
+      <div class="chan-screenwrap">
+        <img class="chan-poster" id="chan-poster" src="/img/tv-poster.jpg?v=1793655457" srcset="/img/tv-poster-640.webp 640w, /img/tv-poster-1080.webp 1080w" sizes="100vw" alt="Meechie's World" loading="lazy" decoding="async">
+        <div id="chan-yt"></div>
+        <button type="button" id="chan-resume" hidden>▶ Tap to play</button>
+      </div>
+      <div class="chan-guide" id="chan-guide" role="list"></div>
+      <small class="muted" id="chan-note" style="display:block;margin-top:10px">Channel 1 is the live station — the same Tune In as always. Every other channel plays only for you.</small>
     </div>
 
     <div class="card" id="apps-card" style="margin:18px 0">
@@ -1912,7 +1957,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/float-layout.js?v=1793731933"></script>
 <script src="js/cf-client.js?v=1793736171"></script>
 <script src="js/platform.js?v=1793736171"></script>
-<script src="js/app-core.js?v=1793731933"></script>
+<script src="js/app-core.js?v=1793738781"></script>
 <script>
 /* FIRST PAINT FOLLOWS THE LINK, part 2: go() ran inside app-core and set
  * the real hidden flags for the linked view, so the head pin has done
@@ -1924,7 +1969,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/owner.js?v=1793736171"></script>
 <script src="js/messages.js?v=1793736171"></script>
 <script src="js/videos.js?v=1793736171"></script>
-<script src="js/dj.js?v=1793737687"></script>
+<script src="js/dj.js?v=1793738781"></script>
 <script src="js/live.js?v=1793736171"></script>
 <script src="js/friends.js?v=1793736171"></script>
 <script src="js/social.js?v=1793731933"></script>

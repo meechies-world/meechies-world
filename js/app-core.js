@@ -47,7 +47,7 @@ const LAZY_SRC={
    * or community views and paints one recognition line on each of those
    * surfaces from the member's own /api/brain/me summary. One module,
    * three doors — it guards itself against double-loading. */
-  radio:["js/soul-greet.js?v=1793653007"],
+  radio:["js/soul-greet.js?v=1793653007","js/channels.js?v=1793738781"],
   watch:["js/soul-greet.js?v=1793653007"],
   /* Profile bundle (max-speed Lever 2, 2026-11-02): profile-setup.js and
    * profile-page.js load once, the first time a profile surface is needed
@@ -1700,7 +1700,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793706841;
+const MW_SHELL_BUILD = 1793738781;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
@@ -1713,6 +1713,7 @@ const MW_SHELL_BUILD = 1793706841;
     try { if (typeof media !== "undefined" && media && !media.paused && !media.ended && media.readyState >= 2) return true; } catch (_) {}
     try { if (typeof xfPlayer !== "undefined" && xfActive && xfPlayer && !xfPlayer.paused && !xfPlayer.ended) return true; } catch (_) {}
     try { for (const v of document.querySelectorAll("video")) if (!v.paused && !v.ended && !v.muted) return true; } catch (_) {}
+    try { if (window.MW_CHAN && typeof MW_CHAN.playing === "function" && MW_CHAN.playing()) return true; } catch (_) {} // a genre channel sounding on this tab holds refreshes too (no-skip law)
     return false;
   };
   /* SOUND GATE between songs (2026-11-01): on a locked phone the shell
