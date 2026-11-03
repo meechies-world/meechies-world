@@ -1586,7 +1586,7 @@ html.popdj #dj-mini{display:none!important}
   // fallback for a stale cached shell that predates the static
   // markup; either way there is exactly one #dj-mini in the page.
   if (SANDBOX) { const gl = document.querySelector("#dj-golive"); if (gl && gl.closest(".dj-live")) gl.closest(".dj-live").lastChild.textContent = " Practice set (never on air)"; const sbMn = document.getElementById("dj-mini"); if (sbMn) sbMn.hidden = true; }
-  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-tv'>📺 MW TV</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { try { sessionStorage.setItem("mw-la-dismiss", la.dataset.set || "x"); } catch (_) {} la.hidden = true; }; la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { try { v.pause(); } catch (_) {} }); startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); la.querySelector("#la-tv").addEventListener("click", () => { la.hidden = true; if (typeof go === "function") go("mwtv"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
+  if (!SANDBOX && !document.getElementById("dj-livealert")) { const la = document.createElement("div"); la.id = "dj-livealert"; la.hidden = true; la.innerHTML = "<span class='la-txt'>🔴 LIVE NOW</span><span class='la-btns'><button type='button' class='btn sm' id='la-tune'>🎧 Tune in</button><button type='button' class='btn ghost sm' id='la-watch'>👀 Watch the setup</button><button type='button' class='btn ghost sm' id='la-tv'>📺 MW TV</button><button type='button' class='btn ghost sm' id='la-shop'>🛍️ Shop</button><button type='button' class='btn ghost sm' id='la-x' aria-label='Dismiss'>✕</button></span>"; document.body.appendChild(la); const laDismiss = () => { laSetOff(); la.hidden = true; }; /* session flag (2026-11-03): stays down until a deliberate listen action or a new visit */ la.querySelector("#la-x").addEventListener("click", laDismiss); la.querySelector("#la-shop").addEventListener("click", () => { laDismiss(); if (typeof go === "function") go("shop"); }); la.querySelector("#la-tune").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { if ((v.closest && v.closest(".tvchan")) || (v.classList && v.classList.contains("tvwarm"))) return; try { v.pause(); } catch (_) {} }); /* THE WALL (2026-11-03): the channel's own players are never paused by radio controls */ startListening(); la.hidden = true; if (typeof go === "function") go("radio"); }); la.querySelector("#la-watch").addEventListener("click", () => { try { cutOtherAudio(); } catch (_) {} document.querySelectorAll("video").forEach((v) => { if ((v.closest && v.closest(".tvchan")) || (v.classList && v.classList.contains("tvwarm"))) return; try { v.pause(); } catch (_) {} }); /* THE WALL (2026-11-03): the channel's own players are never paused by radio controls */ startListening(); la.hidden = true; if (typeof go === "function") go("watch"); }); la.querySelector("#la-tv").addEventListener("click", () => { la.hidden = true; if (typeof go === "function") go("mwtv"); }); setInterval(() => { try { paintLiveAlert(); } catch (_) {} }, 20000); }
   if (!SANDBOX) { let mn = document.getElementById("dj-mini"); if (!mn) { mn = document.createElement("div"); mn.id = "dj-mini"; mn.hidden = true; mn.innerHTML = "<div class='mn-bar'><span>📺 MASTER — LIVE VIDEO</span><button type='button' id='mn-pop' aria-label='Pop the master screen out big on MW TV'>📺 MW TV</button></div><div class='mn-row'><aside class='mn-chip mn-chip-l' id='mn-chip-l' hidden></aside><div class='vstage'><div class='vslot' id='mn-vs1'></div><div class='vslot' id='mn-vs2'></div><div class='mw-camov' id='mw-camov' hidden><img id='mw-camov-img' alt='' draggable='false'><span class='mw-camov-tag'>📷 MEECHIE</span><button type='button' id='mw-camov-x' aria-label='Hide the camera square'>✕</button></div></div><aside class='mn-chipcol'><button type='button' class='mn-rqbtn' data-rqopen='mn' aria-label='Request a song — Meechie AI finds the video'>🎤</button><div class='mn-chip mn-chip-p' id='mn-chip-p' hidden></div></aside></div><div class='mn-rqwrap'><span class='rq-mystat' id='mn-mystat'></span><div class='rq-form2' id='mn-rqform' hidden><div class='dj-search'><input type='text' id='mn-rq-song' maxlength='100' placeholder='Type a song — Meechie AI finds the video' aria-label='Song to request'><input type='text' id='mn-rq-shout' maxlength='140' placeholder='Shout-out (optional) — it shows when your song plays' aria-label='Shout-out'></div><div style='display:flex;gap:8px;align-items:center;flex-wrap:wrap'><button class='btn sm' type='button' data-rqgo='mn'>🎵 Request it</button><small class='muted'>One request at a time. It joins the DJ queue and plays right after the current song — and its video takes the screen.</small></div><div class='rq-results' id='mn-rqres'></div></div></div>"; const mnBand = document.getElementById("dj-band"); (mnBand || document.body).appendChild(mn); } mn.querySelector("#mn-pop").addEventListener("click", () => { if (typeof go === "function") go("mwtv"); });
     // MANDATORY SCREEN package: the mini lives in the shell's band
     // slot (#dj-band, above <main>), outside the <main> delegation (onMain only fires inside #dj-root /
@@ -2642,7 +2642,15 @@ html.popdj #dj-mini{display:none!important}
   }
   function levels() {
     const duck = (S.duck || (voiceEl && !voiceEl.paused) || micHot > 0.04 || Date.now() < dropDuckUntil) ? 0.28 : 1;
-    const mix = listening && !OWNER() ? mixVol : 1;
+    /* THE WALL (owner, 2026-11-03): while THIS seat is on the MW TV
+     * view, its radio output is muted at the gain stage — never
+     * stopped, never re-tuned. listening stays exactly as the radio
+     * left it, the decks keep their positions, and the station sound
+     * returns by itself the moment the seat leaves the TV view. TV
+     * code never touches radio state; radio code never runs on the
+     * TV surface. (tvInView is the TV block's own view flag, kept
+     * current by tvEntryCheck.) */
+    const mix = (listening && !OWNER() ? mixVol : 1) * (tvInView ? 0 : 1);
     DECKS.forEach((k) => { if (decks[k]) { const cd = k === "C" || k === "D", x = cd ? (S.xf2 ?? 0.5) : S.xf, side = k === "B" || k === "D" ? "B" : "A", py = S.panY || 0, pairG = cd ? (py < 0 ? 1 + py : 1) : (py > 0 ? 1 - py : 1); decks[k].vol((S[k].vol ?? 0.9) * xfGain(x, side) * pairG * pairXGain(S.panX, cd) * duck * mix); } });
     stageApply(mix, duck);
   }
@@ -4357,13 +4365,15 @@ html.popdj #dj-mini{display:none!important}
     if (!t || !t.closest) return;
     if (t.closest("#tw-sound")) {
       if (elOpen("v-mwtv")) {
-        /* on the MW TV page this button is the TV sound switch, not the
-         * radio toggle: flip the seat-local TV flag; turning TV sound ON
-         * stops the radio on this seat (local only, no state write) so
-         * the seat hears one station — the TV. chanSync() runs inside
-         * the tap so the unmute lands on the gesture itself. */
+        /* on the MW TV page this button is the TV sound switch, not
+         * the radio toggle: flip the seat-local TV flag and nothing
+         * else. THE WALL (2026-11-03): turning TV sound on used to
+         * stopListening() here — it doesn't anymore. The seat hears
+         * one station on this surface because the TV view mutes the
+         * radio's OUTPUT (levels / vmixSndScr), never because TV code
+         * stopped the radio. chanSync() runs inside the tap so the
+         * unmute lands on the gesture itself. */
         tvSndOn = !tvSndOn;
-        if (tvSndOn && listening) { try { stopListening(); } catch (_) {} }
         try { chanSync(); } catch (_) {}
       } else if (window.MW_DJ) window.MW_DJ.toggle();
       tvSig = ""; try { tvPaint(); } catch (_) {} return;
@@ -4716,7 +4726,12 @@ html.popdj #dj-mini{display:none!important}
     if (vsBroadcast() && !(S.vstream || {}).hidden) return null;
     if (msvActive()) return null; // SCREEN VIDEO (owner, 2026-10-30): an uploaded video holding the master screen outranks the mix for sound as well as picture — no mix screen sounds under it; msvSync hands the file sound to exactly one surface on this same ladder (share > screen video > mix)
     if (SANDBOX) return scrView;
-    const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return scrTV;
+    /* THE WALL (2026-11-03): the MW TV surface sounds the TV channel
+     * only — the booth mix NEVER sounds there, so this ladder returns
+     * no sounding screen while the TV view is open. (Before the wall
+     * this rung returned scrTV and radio audio played on the TV
+     * page whenever the channel was parked or muted.) */
+    const tv = document.getElementById("v-mwtv"); if (tv && !tv.hidden) return null;
     const wa = document.getElementById("v-watch"); if (wa && !wa.hidden) return scrWatch;
     /* IN-FLOW MASTER BAND (owner, 2026-10-30 11:50: "every tab has
      * the master screen and plays the sound on the live radio"): the
@@ -5151,7 +5166,12 @@ html.popdj #dj-mini{display:none!important}
     return bk ? "audio" : "video";
   }
   function bandLabelSync() {
-    const txt = chanBandText() || (bandKind() === "audio" ? bandAudioLabel : bandVideoLabel);
+    /* THE WALL (2026-11-03): the shell band label no longer borrows
+     * the TV channel's title — TV words belong on the TV page. The
+     * band names the radio (or the master share/screen video, which
+     * is what chanBandText's first branches described and bandKind
+     * already covers through the deck state). */
+    const txt = bandKind() === "audio" ? bandAudioLabel : bandVideoLabel;
     if (txt === bandLabelCur) return; bandLabelCur = txt;
     const sp = document.querySelector("#dj-mini .mn-bar span"); if (sp) sp.textContent = txt;
   }
@@ -5237,7 +5257,11 @@ html.popdj #dj-mini{display:none!important}
         if (scrView.slots.some((sl) => sl.deck)) scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       }
       else {
-        const has = vmixTargets().length > 0 || !!((S.vstream || {}).on && (S.vstream || {}).meeting) || chanHolds(), box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
+        /* THE WALL (2026-11-03): chanHolds() no longer unhides the
+         * radio stage's player box — TV state never opens radio
+         * furniture. The box shows for the mix, a share, or a live
+         * station, exactly as the radio's own state dictates. */
+        const has = vmixTargets().length > 0 || !!((S.vstream || {}).on && (S.vstream || {}).meeting), box = $("#st-ytbox"); if (box) box.hidden = !(has || S.live);
         if (has) { const sndV = vmixSndScr(); await renderScreen(scrView, sndV !== scrView, sndV === scrView ? mix : 1, duck); }
         else if (S.live) { const sb = $("#st-vstandby"); if (sb) sb.textContent = stSlate(); await renderScreen(scrView, true, 1, 1); }
         else scrView.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
@@ -5248,7 +5272,10 @@ html.popdj #dj-mini{display:none!important}
       try { vsSync(); } catch (_) {}
       try { msvSync(); } catch (_) {}
       try { scStageSync(mix, duck); } catch (_) {}
-      try { chanSync(); } catch (_) {}
+      /* THE WALL (2026-11-03): no chanSync() here anymore — radio
+       * paints used to drive the TV channel's sync on every stage
+       * pass. The channel runs on its own 1s cadence (below) and its
+       * own entry/arm paths only. */
     } catch (_) {}
     stageBusy = false;
   }
@@ -5273,21 +5300,37 @@ html.popdj #dj-mini{display:none!important}
     let mode = "", label = "";
     if (vs.on && vs.meeting && !vs.hidden) { mode = "live"; label = vs.kind === "cam" ? "Meechie — live camera" : "Meechie — live screen"; }
     else if (msvHolds()) { mode = "mix"; label = "📤 Screen video" + ((S.msvideo || {}).title ? " — " + S.msvideo.title : ""); }
-    else { const tg = vmixTargets(); if (tg.length) { mode = "mix"; label = "The video mix" + (S[tg[0].k] && S[tg[0].k].title ? " — " + S[tg[0].k].title : ""); } else { const scPk = scPictureK(); if (scPk) { mode = "mix"; label = "🎧 SoundCloud" + (S[scPk].title ? " — " + S[scPk].title : ""); } } }
+    /* THE WALL (2026-11-03): the booth-mix and SoundCloud-picture
+     * branches are gone from this badge — they announced RADIO
+     * content on the TV page. What remains on the TV page is the
+     * master's own share / screen video (the master law) and, owned
+     * by chanGuidePaint below, the channel itself. */
     const sig = mode + "|" + label + "|" + (listening ? 1 : 0) + "|" + (tvSndOn ? 1 : 0);
     if (sig === tvSig) return; tvSig = sig;
     const bd = $("#tw-live"), wt = $("#tw-what"), sb = $("#tw-sound");
-    if (bd) { bd.hidden = !mode; bd.classList.toggle("mix", mode === "mix"); bd.textContent = mode === "live" ? "🔴 LIVE" : "ON AIR"; }
-    if (wt) wt.textContent = label;
+    /* While the channel is up, chanGuidePaint owns the badge words —
+     * don't blank them from this paint. */
+    const chanOwns = elOpen("v-mwtv") && chanReady();
+    if (bd && !chanOwns) { bd.hidden = !mode; bd.classList.toggle("mix", mode === "mix"); bd.textContent = mode === "live" ? "🔴 LIVE" : "ON AIR"; }
+    if (wt && !chanOwns) wt.textContent = label;
     if (sb) sb.textContent = elOpen("v-mwtv") ? (tvSndOn ? "🔊 TV sound on — tap to mute" : "🔇 TV sound off — tap for sound") : (listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound");
   }
-  /* MW TV ENTRY = SOUND ON, RADIO OFF (owner, 2026-11-02: "Make sure
-   * if they click on MW TV it comes on with the sound on and the radio
-   * cuts off"): entering the MW TV view IS the sound tap now — the
-   * seat-local intent (tvSndOn) goes on, this seat's radio listening
-   * stops (the exact #530 switch semantics, local only, nothing
-   * written), and chanSync runs so an entry that rides a real tap
-   * unmutes inside that tap's own gesture. Detection is the router's
+  /* MW TV ENTRY = SOUND ON (owner, 2026-11-02: "Make sure if they
+   * click on MW TV it comes on with the sound on and the radio cuts
+   * off") — REBUILT BY THE WALL (2026-11-03): entering the MW TV view
+   * IS the sound tap for the TV — the seat-local intent (tvSndOn)
+   * goes on and chanSync runs so an entry that rides a real tap
+   * unmutes inside that tap's own gesture. What entry does NOT do
+   * anymore: stop the radio. The old code called stopListening()
+   * here, which tore down this seat's radio session (and, in the
+   * owner's booth tab, stopped his deck players) every time he
+   * opened the TV page — the interference he ordered walled off.
+   * The radio "cutting off" on this screen is now a pure OUTPUT
+   * effect with zero state change: while this view is open, levels()
+   * gains this seat's decks to 0 and vmixSndScr() returns no
+   * sounding screen, so the seat hears the TV and only the TV; the
+   * moment the view closes, the radio is audible again exactly as
+   * it was left — no re-tune, no restart, nothing written. Detection is the router's
    * own signal: go() stamps body[data-view] on every navigation, so a
    * MutationObserver on that one attribute sees EVERY entry path —
    * header link, home card, appnav, the station-card MW TV button,
@@ -5304,14 +5347,16 @@ html.popdj #dj-mini{display:none!important}
   let tvInView = false, tvSndArm = false, tvLastGesture = 0;
   function tvEnterApply() {
     tvSndOn = true;
-    if (listening) { try { stopListening(); } catch (_) {} }
+    /* THE WALL: no stopListening() — TV entry never touches the
+     * radio. This seat's radio output mutes for as long as the TV
+     * view is open (levels / vmixSndScr) and returns on exit. */
     try { chanSync(); } catch (_) {}
     tvSig = ""; try { tvPaint(); } catch (_) {}
   }
   function tvEnter() {
     if (Date.now() - tvLastGesture < 1500) { tvSndArm = false; tvEnterApply(); return; }
     tvSndOn = true;
-    if (listening) { try { stopListening(); } catch (_) {} }
+    /* THE WALL: no stopListening() here either — see tvEnterApply. */
     tvSndArm = true;
     tvSig = ""; try { tvPaint(); } catch (_) {}
   }
@@ -5353,7 +5398,18 @@ html.popdj #dj-mini{display:none!important}
       if (scrTV.slots.some((sl) => sl.deck)) scrTV.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
       return;
     }
-    const sndT = vmixSndScr(); await renderScreen(scrTV, sndT !== scrTV, sndT === scrTV ? mix : 1, duck);
+    /* THE WALL (2026-11-03): the booth video mix NO LONGER RENDERS on
+     * the MW TV stage. Before the wall, renderScreen(scrTV) put the
+     * radio's video decks under (and, with the TV sound ladder, ON)
+     * this page whenever there was no share/screen video — the TV
+     * page carried radio picture and radio sound. Now the stage
+     * belongs to the channel overlay, the master's own share /
+     * screen video, and the standby slate below: the mix's slots
+     * park exactly as they do while the view is closed, the slate
+     * shows through, and the mix chip clears. Radio surfaces render
+     * the mix on their own stages, untouched by this. */
+    if (scrTV.slots.some((sl) => sl.deck)) scrTV.slots.forEach((sl) => { sl.deck = ""; if (sl.p) { try { sl.p.pauseVideo(); } catch (_) {} } });
+    { const sb = document.getElementById("tw-vstandby"); if (sb) sb.style.display = "grid"; const cp = document.getElementById("tw-vchip"); if (cp) cp.hidden = true; }
     // leaving any view pauses its <video> elements (go() in app-core) — if
     // that caught the live stream on the way out, set it playing again here
     const lv = document.querySelector("#tw-stage video.vslive");
@@ -5462,11 +5518,19 @@ html.popdj #dj-mini{display:none!important}
     return cur ? "📺 MW TV — " + cur.title : "";
   }
   const TV_SURFS = [
-    { id: "TW", slot: "#tw-vs1", warm: true, on: () => elOpen("v-mwtv"), aud: () => tvSndOn || (!!listening && !(S.live && DECKS.some((k) => S[k] && S[k].playing))) },
-    { id: "ST", slot: "#st-vs1", warm: true, on: () => { const b = $("#st-ytbox"); return elOpen("v-radio") && !!b && !b.hidden; }, aud: () => false },
-    { id: "MN", slot: "#mn-vs1", warm: false, on: () => !!$("#dj-mini"), aud: () => false },
-    { id: "WB", slot: "#wb-vs1", warm: true, on: () => elOpen("v-watch"), aud: () => false },
-    { id: "BO", slot: "#dj-vs1", warm: true, on: () => OWNER() && elOpen("v-djbooth"), aud: () => false }
+    /* THE WALL (2026-11-03): TW is the ONLY channel surface, and its
+     * sound is the TV's own flag and nothing else — the old aud()
+     * also keyed off the radio's listening flag, which let radio
+     * state decide whether the TV could be heard. */
+    { id: "TW", slot: "#tw-vs1", warm: true, on: () => elOpen("v-mwtv"), aud: () => tvSndOn }
+    /* THE WALL (2026-11-03): the channel used to ALSO mount, muted,
+     * inside the radio stage (ST), the mini band (MN), the Watch
+     * stage (WB) and the booth stage (BO) whenever chanHolds() was
+     * true — so TV picture sat inside radio surfaces and the two
+     * stations shared stages, slots and paint paths. Those surfaces
+     * are gone: channel code renders on the MW TV surface ONLY. The
+     * #st-vs1 / #mn-vs1 / #wb-vs1 / #dj-vs1 slots in the markup are
+     * simply never mounted again. */
   ];
   TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; });
   function chanOverlay(su) {
@@ -5656,11 +5720,11 @@ html.popdj #dj-mini{display:none!important}
         }
       }
     }
+    /* THE WALL (2026-11-03): the channel guide painted its title
+     * onto the radio mini band's #mn-tvprog line on every page. TV
+     * words stay on the TV page now — the line is kept hidden. */
     const tp = $("#mn-tvprog");
-    if (tp) {
-      if (cur) { tp.hidden = false; tp.textContent = "📺 MW TV · " + cur.title; }
-      else tp.hidden = true;
-    }
+    if (tp) tp.hidden = true;
   }
   function chanSync() {
     const cur = tvChanCur();
@@ -6950,7 +7014,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793738781;
+  const MW_DJ_BUILD = 1793739543;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7215,7 +7279,7 @@ html.popdj #dj-mini{display:none!important}
   } catch (_) {}
   let autoMoved = false;
   function endSet() { stopListening(); if (autoMoved) { autoMoved = false; try { if (typeof tuneIn === "function") tuneIn(); } catch (_) {} } }
-  window.MW_DJ = { start: () => { if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, sharing: () => { try { return !!vsPub || vsBroadcast(); } catch (_) { return false; } }, bubble: () => { if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
+  window.MW_DJ = { start: () => { laRearm(); if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }, stop: stopListening, toggle: () => { laRearm(); if (listening) stopListening(); else if (isLive() || OWNER()) startListening(); const ti = document.getElementById("tune-in"); if (ti) ti.textContent = listening ? "❚❚ Stop the radio" : "▶ Tune in"; }, listening: () => listening, sharing: () => { try { return !!vsPub || vsBroadcast(); } catch (_) { return false; } }, bubble: () => { laRearm(); if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }, setMixVol: (v) => { mixVol = Math.max(0, Math.min(1, +v || 0)); if (listening) levels(); } };
   window.MW_DJ_LIVE = () => isLive();
   // the top MWR card reads the tables: whatever is on the decks is what the station says is on air
   window.MW_AIRNOW = () => {
@@ -7466,7 +7530,7 @@ html.popdj #dj-mini{display:none!important}
     // hero, lock-screen controls, radio-keep) hands over to the deck mix, not the playlist.
     if (!OWNER() && isLive() && typeof mode !== "undefined" && mode === "radio") { autoMoved = true; startListening(); }
   });
-  $("#dj-listen").addEventListener("click", () => (listening ? stopListening() : isLive() || OWNER() ? startListening() : (typeof tuneIn === "function" && tuneIn())));
+  $("#dj-listen").addEventListener("click", () => { if (listening) { stopListening(); return; } laRearm(); if (isLive() || OWNER()) startListening(); else if (typeof tuneIn === "function") tuneIn(); }); /* a deliberate listen tap is the one thing that may re-arm the live alert (2026-11-03) */
   document.querySelectorAll("[data-bobtn]").forEach((b) => b.addEventListener("click", () => { if (!listening && (isLive() || OWNER())) startListening(); blackout(true); }));
   document.querySelectorAll("[data-bubbtn]").forEach((b) => b.addEventListener("click", () => { if (bubOn) return; bubOn = true; if (!listening && (isLive() || OWNER())) startListening(); bubbleOpen(); }));
 
@@ -7517,7 +7581,23 @@ html.popdj #dj-mini{display:none!important}
   // tune-in that mutes everything else and lands them on the radio
   const gName = (g) => { const n = ((g && g.name) || "").trim(); return n ? (n.includes("@") ? n.split("@")[0] : n) : "Guest DJ"; }; // a DJ is never shown as a raw email address
   function guestLiveOn() { try { return sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) { return false; } } // hoisted: the lamp paints before this line runs
-  function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const hostDeck = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const tv = !guest && vsBroadcast() && !(S.vstream || {}).hidden; const host = hostDeck || tv; const setId = guest ? ("g" + (S.djGuest.uid || "")) : tv && !hostDeck ? ("tv" + ((S.vstream || {}).meeting || "")) : String(S.liveSince || S.boothAt || ""); let dismissed = ""; try { dismissed = sessionStorage.getItem("mw-la-dismiss") || ""; } catch (_) {} const show = !listening && (guest || host) && dismissed !== setId && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : tv && !hostDeck ? "🔴 LIVE NOW — Meechie is live on MW TV" : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
+  /* TUNE-IN GATE STAYS DOWN (owner, 2026-11-03: "The Tune In button
+   * keeps popping up after you close it out"): the live alert's
+   * dismiss used to be keyed to a set id built from S.liveSince /
+   * S.boothAt — stamps the keeper rewrites on every booth save and
+   * heartbeat — so seconds after the ✕ was tapped, the next 20s poll
+   * (or any onState repaint) computed a NEW set id, the stored
+   * dismiss no longer matched, and the bar re-popped. The dismiss is
+   * now a plain session flag: once closed, the gate stays closed for
+   * the whole session no matter what the station state does. Nothing
+   * in any paint path may clear it. It re-arms ONLY on a deliberate
+   * listen action — the #dj-listen button and the MW_DJ start /
+   * toggle / bubble entry points call laRearm() — or on a genuinely
+   * new visit (a new session starts with empty sessionStorage). */
+  const laOff = () => { try { return sessionStorage.getItem("mw-la-off") === "1"; } catch (_) { return false; } };
+  const laSetOff = () => { try { sessionStorage.setItem("mw-la-off", "1"); } catch (_) {} };
+  const laRearm = () => { try { sessionStorage.removeItem("mw-la-off"); } catch (_) {} };
+  function paintLiveAlert() { const el = document.getElementById("dj-livealert"); if (!el || SANDBOX) return; const now = Date.now(); const guest = S.djGuest && S.djGuest.until > now && (now - (S.djGuest.lastWrite || 0) < 45000); const hostDeck = !guest && (now - (S.boothAt || 0) < 150000) && DECKS.some((k) => S[k] && S[k].playing); const tv = !guest && vsBroadcast() && !(S.vstream || {}).hidden; const host = hostDeck || tv; const setId = guest ? ("g" + (S.djGuest.uid || "")) : tv && !hostDeck ? ("tv" + ((S.vstream || {}).meeting || "")) : String(S.liveSince || S.boothAt || ""); const show = !listening && (guest || host) && !laOff() && !document.body.classList.contains("dj-on") && !document.documentElement.classList.contains("popdj"); el.hidden = !show; if (show) { el.dataset.set = setId; const t = el.querySelector(".la-txt"); if (t) t.textContent = guest ? ("🔴 LIVE NOW — " + gName(S.djGuest) + " is DJing on Meechie's World Radio") : tv && !hostDeck ? "🔴 LIVE NOW — Meechie is live on MW TV" : "🔴 LIVE NOW — Meechie is DJing on the radio"; } }
   /* ---------- WATCH THE SETUP (owner ask 2026-10-29) ----------
    * Guests and members watch the booth live and hear the station while
    * they watch. READ-ONLY BY CONSTRUCTION: this block only ever reads S
