@@ -1540,7 +1540,7 @@ async function tvSpotGate(nw, now, origin) {
     let good = false;
     try {
       const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
-      const r = await fetch(origin + url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      const r = await fetch(origin + url, { headers: { Range: "bytes=0-0", "User-Agent": TV_PROBE_UA, Accept: "*/*" }, ...ctl });
       good = r.status === 200 || r.status === 206;
     } catch (_) { good = false; }
     cache[url] = { ok: good, at: now }; cacheChanged = true;
