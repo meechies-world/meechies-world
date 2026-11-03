@@ -495,6 +495,7 @@ const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 1
 const TV_PROGRAM_V = 4;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
 const TV_MOVIE_V = 1;                // post-premiere movie block doc generation (tv/movieblock)
+const TV_INSERT_V = 1;               // one-shot owner-ordered movie insert doc generation (tv/insert)
 const TV_MOVIE_FALLBACK_MIN = 15;    // when the premiere slot airs nothing, the movie block starts this many minutes after the slot start (20:15 ET)
 const TV_PREM_PROBE_MS = 600e3;      // premiere slot file-existence probes are cached this long in tv/now
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
@@ -559,6 +560,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const pwin = tvPremWin(t, chan._prem);
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
+    const iwin = tvInsertWin(t, chan._insert);
     if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
@@ -578,6 +580,24 @@ function tvGen(chan, pool, cursor, horizonMs) {
       const d = Math.min(Math.round((+ait.dur - aoff) * 10) / 10, Math.round((awin.end - t) / 100) / 10);
       if (d > 0.05) { segs.push(tvProgSeg(ait, t, d, aoff)); t += Math.round(d * 1000); skips = 0; continue; }
       t = awin.end; continue;
+    }
+    if (iwin && iwin.inside) {
+      // One-shot owner-ordered insert (tv/insert): the movie plays
+      // exactly once, wall-clock like the movie-block chain — news,
+      // premiere and anchor windows keep precedence and pass over
+      // the span they cover. The movie-block window start is NOT a
+      // cap: the insert takes the place of the block head tonight,
+      // and the block chain resumes on its own wall-clock once the
+      // insert ends (by then the block position has passed this
+      // item, so it never plays twice).
+      let cap = iwin.end;
+      if (win.start > t && win.start < cap) cap = win.start;
+      if (pwin && !pwin.inside && pwin.start > t && pwin.start < cap) cap = pwin.start;
+      if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
+      const ioff = (t - iwin.start) / 1000;
+      const d = Math.min(Math.round((+chan._insert.item.dur - ioff) * 10) / 10, Math.round((cap - t) / 100) / 10);
+      if (d > 0.05) { segs.push(tvProgSeg(chan._insert.item, t, d, ioff)); t += Math.round(d * 1000); skips = 0; continue; }
+      t = cap; continue;
     }
     if (mwin && mwin.inside) {
       // Post-premiere movie block: chain tonight's movies in order;
@@ -608,6 +628,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (pwin && !pwin.inside && pwin.start > t && pwin.start < boundary) boundary = pwin.start;
     if (awin && !awin.inside && awin.start > t && awin.start < boundary) boundary = awin.start;
     if (mwin && !mwin.inside && mwin.start > t && mwin.start < boundary) boundary = mwin.start;
+    if (iwin && !iwin.inside && iwin.start > t && iwin.start < boundary) boundary = iwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
@@ -624,7 +645,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
+        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
         if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
@@ -839,6 +860,39 @@ function tvSeedMovieBlock(now) {
     MV("mov-night-in-compton", "uo6GRLmhgms", "A Night in Compton", 6780, "Full-length upload on Maverick Movies, the distributor Maverick Entertainment's official channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6780s pinned from the actual upload via the site embed-gate relay")
   ], updatedAt: now, by: "keeper-seed" };
 }
+function tvSeedInsert(now) {
+  // One-shot owner-ordered movie insert (Malik, 2026-11-02 ~20:00 ET:
+  // "put a movie on after the next song" — the MY EMPIRE episode is
+  // still finishing, so a movie fills the night NOW instead of
+  // waiting for the movie block clock). The first tick that sees
+  // this doc stamps its window at the end of the segment playing at
+  // that moment, marks the doc consumed, and it can never fire
+  // twice. Duration 6168s pinned from the actual upload (the site
+  // embed-gate relay, id-matched to TWe60ZC6icc; watch page: "The
+  // Harder They Come | FULL MOVIE | Jimmy Cliff Reggae Crime
+  // Classic", FULL MOVIES | Shout! Studios).
+  return { progV: TV_INSERT_V, at: now, kind: "yt", yt: "TWe60ZC6icc", title: "The Harder They Come", dur: 6168, basis: "embed", show: "MW Movie Night", evidence: "Full-length upload by the authorized distributor (Shout! Studios, presented by Radial Entertainment) on its official free-movies channel; embedding verified via YouTube oEmbed (HTTP 200) at research time (2026-11-02); duration 6168s pinned from the actual upload via the site embed-gate relay (id-matched)", updatedAt: now, by: "keeper-seed" };
+}
+/* The insert doc as a lineup item, gated by the same rights rule as
+ * every other item on the channel (tvCleared). Returns null when the
+ * doc is missing, already consumed, or its record is incomplete —
+ * an incomplete insert never airs. */
+function tvInsertItem(doc) {
+  if (!doc || doc.consumedAt) return null;
+  const it = { id: "insert-movie", kind: "show", src: doc.kind === "file" ? "file" : "yt", yt: doc.yt || "", url: doc.url || "", iaId: "", title: doc.title || "", show: doc.show || "MW Movie Night", dur: +doc.dur || 0, rights: { basis: doc.basis || "", evidence: doc.evidence || "", clearedBy: "owner", at: +doc.at || 0, simulcast: false } };
+  return tvCleared(it) ? it : null;
+}
+/* The one-shot insert window: a single fixed span [start, start+dur]
+ * stamped into tv/now when the insert fired. Unlike the daily
+ * windows it never repeats — once ms is past the end there is no
+ * next one. */
+function tvInsertWin(ms, ins) {
+  if (!ins || !(ins.dur > 0) || !isFinite(ins.start)) return null;
+  const start = ins.start, end = start + ins.dur * 1000;
+  if (ms >= start && ms < end) return { start, end, inside: true };
+  if (ms < start) return { start, end, inside: false };
+  return null;
+}
 /* The MY EMPIRE premiere window containing ms (inside: true) or the
  * next one. prem = { startMinET, liveDurSec } as built by tvPremLive.
  * Same whole-hour ET offset arithmetic as tvNewsWin; 20:00 ET exists
@@ -1035,6 +1089,8 @@ async function tvTick(env, S, now, origin) {
   if (!prem || !Array.isArray(prem.items) || !prem.items.length || (+prem.progV || 0) < TV_PREM_V) { prem = tvSeedPremiere(now); await writeDoc(env, "tv/premiere", "tv", prem); }
   let movies = await readDoc(env, "tv/movieblock");
   if (!movies || !Array.isArray(movies.items) || !movies.items.length || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
+  let insDoc = await readDoc(env, "tv/insert");
+  if (!insDoc || (+insDoc.progV || 0) < TV_INSERT_V) { insDoc = tvSeedInsert(now); await writeDoc(env, "tv/insert", "tv", insDoc); }
   const newsDoc = await readDoc(env, "tv/news");
   const luDoc = await readDoc(env, "tv/localupdate");
   const anchorDoc = await readDoc(env, "tv/anchor");
@@ -1094,6 +1150,38 @@ async function tvTick(env, S, now, origin) {
       if (cut) { segs = cut.segs; cursor = cut.cursor; }
     }
   }
+  // One-shot insert: when a fresh, unconsumed, cleared tv/insert
+  // doc appears, stamp its window at the end of the segment playing
+  // right now (owner: "after the next song"), cut the laid timeline
+  // there — the anchor-cut discipline: the program cursor
+  // re-anchors by cycle math at the cut — and mark the doc consumed
+  // in the same tick, so the movie lays exactly once. If the very
+  // movie ordered is already on air (the movie block got there
+  // first), the order is satisfied as-is: consume without a window.
+  let insWin = nw && nw.insWin && nw.insWin.item ? nw.insWin : null;
+  const insItem = tvInsertItem(insDoc);
+  if (insItem && (!insWin || insWin.at !== (+insDoc.at || 0))) {
+    const cur = segs ? tvSegAt(segs, now) : null;
+    if (cur && cur.yt && cur.yt === insItem.yt) {
+      insDoc = { ...insDoc, consumedAt: now, consumedNote: "already-on-air", updatedAt: now };
+      await writeDoc(env, "tv/insert", "tv", insDoc);
+    } else {
+      let cutAt = cur ? cur.start + Math.round(cur.dur * 1000) : 0;
+      if (!(cutAt > now)) { const cp0 = tvCyclePos(chan, now); const it0 = cp0 ? (chan.items || [])[cp0.ix] : null; cutAt = it0 ? now + Math.round((+it0.dur - cp0.off) * 1000) : now; }
+      let fired = false;
+      if (segs && cursor && cursor.at > cutAt) {
+        const cp = tvCyclePos(chan, cutAt);
+        if (cp) { segs = segs.filter((sg) => sg.start < cutAt && sg.start + sg.dur * 1000 <= cutAt); cursor = { at: cutAt, ix: cp.ix, off: cp.off, run: 0 }; fired = true; }
+      } else if (cursor) fired = true; // nothing laid past the boundary: the window edge in tvGen makes the cut
+      if (fired) {
+        insWin = { at: +insDoc.at || 0, start: cutAt, dur: insItem.dur, item: insItem };
+        insDoc = { ...insDoc, consumedAt: now, consumedStart: cutAt, updatedAt: now };
+        await writeDoc(env, "tv/insert", "tv", insDoc);
+        dirty = true;
+      }
+    }
+  }
+  chan._insert = insWin;
   const genTo = now + TV_HORIZON;
   if (cursor.at < genTo) {
     const gen = tvGen(chan, pool, cursor, genTo);
@@ -1124,8 +1212,9 @@ async function tvTick(env, S, now, origin) {
   delete chan._prem;
   delete chan._anchor;
   delete chan._movies;
+  delete chan._insert;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, insWin: insWin || null, genAt: now, updatedAt: now });
   }
   return decision;
 }
