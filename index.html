@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1793736171"></script>
-<meta name="mw-build" content="1793740284">
+<meta name="mw-build" content="1793740702">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -1263,8 +1263,43 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
       <button type="button" class="btn ghost sm" id="tw-sound">🔇 Radio off — tap for sound</button>
       <button type="button" class="btn ghost sm" id="tw-watch">👀 Watch the setup</button>
       <button type="button" class="btn ghost sm" id="tw-fs" aria-label="Full screen">⛶</button>
+      <a class="btn ghost sm" id="tw-studio-btn" href="#showstudio" data-go="showstudio" hidden>🎬 Studio</a>
       <a class="btn ghost sm" href="#home" data-go="home">← Meechie's World</a>
     </div>
+  </div>
+</section>
+
+<section class="view" data-theme="live" id="v-showstudio" hidden>
+  <style id="ss-styles">
+#v-showstudio .ss-card{margin-bottom:18px}
+#v-showstudio .ss-ep{border:1px solid rgba(212,168,67,.35);border-radius:12px;padding:12px 14px;margin:12px 0;background:rgba(255,255,255,.02)}
+#v-showstudio .ss-ep-head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+#v-showstudio .ss-held{background:#5a1618;color:#ffb3ab;border:1px solid #a33;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+#v-showstudio .ss-ok{background:#14351c;color:#9fe6ae;border:1px solid #2e7d43;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+#v-showstudio .ss-steps{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:10px 0}
+#v-showstudio .ss-step{border:1px solid rgba(212,168,67,.4);border-radius:999px;padding:2px 9px;font-size:12px;color:#b9ac8d}
+#v-showstudio .ss-step.on{background:#d4a843;color:#171106;font-weight:800;border-color:#d4a843}
+#v-showstudio .ss-step.done{color:#8fd6a8;border-color:rgba(80,160,100,.5)}
+#v-showstudio .ss-arrow{color:#8a7a52;font-size:11px}
+#v-showstudio .ss-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+#v-showstudio .ss-table{width:100%;border-collapse:collapse;margin:10px 0}
+#v-showstudio .ss-table td,#v-showstudio .ss-table th{border-bottom:1px solid rgba(212,168,67,.18);padding:6px 8px;text-align:left;font-size:14px}
+#v-showstudio .ss-list{margin:6px 0 12px;padding-left:20px}
+#v-showstudio .ss-list li{margin:4px 0}
+#v-showstudio .ss-seg{margin:14px 0;border-top:1px dashed rgba(212,168,67,.25);padding-top:12px}
+#v-showstudio .ss-text{width:100%;box-sizing:border-box;background:#0d0b08;color:#f3ecdc;border:1px solid rgba(212,168,67,.35);border-radius:10px;padding:10px;font:13px/1.5 ui-monospace,Menlo,monospace}
+#v-showstudio .ss-lab{display:block;margin:10px 0}
+#v-showstudio .ss-lab input,#v-showstudio .ss-lab textarea{width:100%;box-sizing:border-box;margin-top:4px}
+#v-showstudio .ss-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:10px 0}
+#v-showstudio .ss-grid label{display:block}
+#v-showstudio .ss-grid .ss-wide{grid-column:1/-1}
+#v-showstudio .ss-grid input,#v-showstudio .ss-grid textarea{width:100%;box-sizing:border-box;margin-top:4px}
+#v-showstudio .ss-shots{max-height:300px;overflow:auto;font-size:13px;line-height:1.55;border:1px solid rgba(212,168,67,.2);border-radius:10px;padding:10px 12px}
+#v-showstudio h4{margin:14px 0 6px}
+  </style>
+  <div class="wrap">
+    <div class="section-head"><div><p class="eyebrow">Owner only · Meechie AI producer's desk</p><h2>🎬 Show Studio</h2></div><p class="muted">MY EMPIRE is produced here: the bible, the scripts, the board, the handoffs and the 8 PM slot. Meechie AI runs the desk — the camera (filming) stays with Amani.</p></div>
+    <div id="ss-root"><p class="muted">Opening the studio…</p></div>
   </div>
 </section>
 
@@ -1958,7 +1993,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/float-layout.js?v=1793731933"></script>
 <script src="js/cf-client.js?v=1793736171"></script>
 <script src="js/platform.js?v=1793736171"></script>
-<script src="js/app-core.js?v=1793738781"></script>
+<script src="js/app-core.js?v=1793740702"></script>
 <script>
 /* FIRST PAINT FOLLOWS THE LINK, part 2: go() ran inside app-core and set
  * the real hidden flags for the linked view, so the head pin has done
