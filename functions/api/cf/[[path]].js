@@ -1,5 +1,5 @@
 /* /api/cf/* — Meechie's World's own free sign-in + database (Cloudflare D1 + KV). See lib/cf.js for the rules. */
-import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, checkInsert, checkUpdate, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
+import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, checkInsert, checkUpdate, hasProfilePhoto, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
 
 // Google "Sign in with Google" client id (public; the Google Cloud project the site already uses)
 const GOOGLE_CLIENT_ID = (env) => env.GOOGLE_CLIENT_ID || "";
@@ -310,6 +310,18 @@ const DOC_COLS = ["path", "coll", "owner", "data", "created_at", "updated_at"];
  * row to receive the owner's doorbell alerts, or seed the brain docs. Admins keep
  * the door for repairs. */
 const SERVER_COLLS = ["gifts", "battlegifts", "battlelikes", "battlevotes", "pushsubs", "brain"];
+/* PROFILE PHOTO LAW (Malik, 2026-11-02): posting and commenting are for
+ * members with a real profile photo. Profile create/update enforcement lives
+ * in lib/cf.js (checkInsert / checkUpdate); this gate covers the content
+ * doors for members whose profile predates the law — their account and old
+ * content stay untouched, they just add a photo before the next post. */
+const POST_COLL = (coll) => coll === "posts" || /^posts\/[^/]+\/replies$/.test(coll);
+async function photoGate(env, coll, uid, admin) {
+  if (admin || !uid || !POST_COLL(coll)) return;
+  const row = await env.DB.prepare("select data from docs where path = ?").bind("members/" + uid).first();
+  let photo = ""; try { photo = JSON.parse((row && row.data) || "{}").photo || ""; } catch (_) {}
+  if (!hasProfilePhoto(photo)) { const e = new RuleError("Add your profile photo before you post — no blank profile pictures on Meechie's World."); e.code = "photo_required"; throw e; }
+}
 async function rest(request, env) {
   const q = await request.json().catch(() => null);
   if (!q || typeof q !== "object") return err("Bad request");
@@ -342,7 +354,9 @@ async function rest(request, env) {
       const r = rows[0] || {}, path = String(r.path || ""), coll = String(r.coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins. Update the page and try again."); // gifts only come from /api/coins/gift (paid)
       if (SERVER_COLLS.includes(coll) && !(await isAdmin(env, uid))) throw new RuleError("That isn't allowed.");
-      checkInsert(path, coll, r.data, uid, await isAdmin(env, uid));
+      const insAdmin = await isAdmin(env, uid);
+      checkInsert(path, coll, r.data, uid, insAdmin);
+      await photoGate(env, coll, uid, insAdmin);
       r.data = await leadLock(env, path, r.data); /* mwLeadLock */
       r.data = await corpseGuard(env, path, r.data); /* mwCorpseGuard */
       const now = new Date().toISOString();
@@ -433,6 +447,7 @@ async function rpc(request, env) {
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins.");
       if (SERVER_COLLS.includes(coll) && !admin) throw new RuleError("That isn't allowed.");
       checkInsert(path, coll, args.p_data, uid, admin);
+      await photoGate(env, coll, uid, admin);
       let freshData = await leadLock(env, path, args.p_data); /* mwLeadLock */
       freshData = await corpseGuard(env, path, freshData); /* mwCorpseGuard */
       await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)]);

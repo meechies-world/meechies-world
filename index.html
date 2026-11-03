@@ -777,6 +777,7 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
             <form id="join-form" class="gate">
               <div class="field"><label for="j-handle">Handle</label><input type="text" id="j-handle" maxlength="30" placeholder="e.g. KingOfFayette" required></div>
               <div class="field"><label for="j-bio">What do you do? (optional)</label><input type="text" id="j-bio" maxlength="90" placeholder="Barber, artist, cook, small business..."></div>
+              <div class="field"><label for="j-photo">Profile photo (required — no blank profile pictures here)</label><span class="btn ghost sm file-btn">📷 Add your photo<input type="file" id="j-photo" accept="image/*" aria-label="Add your profile photo"></span> <img id="j-preview" class="preview-img" alt="Your profile photo" hidden></div>
               <button class="btn" type="submit">Join free</button>
             </form>
           </div>
@@ -1874,7 +1875,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/float-layout.js?v=1793655457"></script>
 <script src="js/cf-client.js?v=1793655457"></script>
 <script src="js/platform.js?v=1793655457"></script>
-<script src="js/app-core.js?v=1793655457"></script>
+<script src="js/app-core.js?v=1793672039"></script>
 <script>
 /* FIRST PAINT FOLLOWS THE LINK, part 2: go() ran inside app-core and set
  * the real hidden flags for the linked view, so the head pin has done

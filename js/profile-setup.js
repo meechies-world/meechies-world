@@ -241,6 +241,8 @@
       document.body.appendChild(d);
       d._paint = picStrip(d.querySelector("#pq-pics"), () => qPics, (a) => { qPics = a; });
       d.querySelector("#pq-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_pq_later", "1"); localStorage.setItem("mw_pq_later_at", String(Date.now())); } catch (_) {} d.close(); });
+      // PROFILE PHOTO LAW (2026-11-02): while no picture is added, Esc can't dismiss this card either
+      d.addEventListener("cancel", (e) => { if (!qPics.length) e.preventDefault(); });
       d.querySelector("#pq-form").addEventListener("submit", async (e) => {
         e.preventDefault(); if (qBusy || !DB() || !ME()) return;
         const phone = d.querySelector("#pq-phone").value.trim().replace(/[^\d+()\-.\s]/g, "").slice(0, 20);
@@ -260,6 +262,13 @@
     }
     const p = P() || {}; qPics = picsOf(p);
     d.querySelector("#pq-phone").value = p.phone || privPhone(); d.querySelector("#pq-pub").checked = !!p.phonePublic;
+    /* PROFILE PHOTO LAW (2026-11-02): with no photo at all this card is
+     * REQUIRED — no Skip until a picture is added, and it says the law
+     * plainly. (A member who has a photo but no phone keeps the Skip.) */
+    const needPic = !qPics.length;
+    d.querySelector("#pq-later").hidden = needPic;
+    d.querySelector("#pq-form h3").textContent = needPic ? "📸 Add your profile photo" : "📸 Finish your profile";
+    d.querySelector("#pq-form p").textContent = needPic ? "Meechie's World law: every profile has a real photo — no blank profile pictures. Add yours to keep posting and commenting." : "Add your profile pictures and phone number so friends know it's really you.";
     d._paint(); if (!d.open) d.showModal();
   }
   window.MW_profileSetup = { open, quick };
@@ -305,11 +314,17 @@
     if (++tries > 300) return clearInterval(t);
     const p = P(); if (!ME() || !p) return;
     if (sflag("mw_ps_shown")) return clearInterval(t);
+    /* PROFILE PHOTO LAW (2026-11-02): no photo at all outranks every "later"
+     * hold — the photo card is needed-right-away and returns until the
+     * member adds one. Phone-only missing stays dismissible below. */
+    const photoMissing = !picsOf(p).length;
     const missing = !p.photo || !(p.phone || privPhone());
-    const which = !p.setupDone ? "full" : (missing ? "quick" : null);
+    const which = photoMissing ? "quick" : (!p.setupDone ? "full" : (missing ? "quick" : null));
     if (!which) return clearInterval(t);
-    if (sflag(which === "full" ? "mw_ps_later" : "mw_pq_later")) return clearInterval(t);
-    if (Date.now() - laterAt(which === "full" ? "mw_ps_later_at" : "mw_pq_later_at") < DAY30) return clearInterval(t);
+    if (!photoMissing) {
+      if (sflag(which === "full" ? "mw_ps_later" : "mw_pq_later")) return clearInterval(t);
+      if (Date.now() - laterAt(which === "full" ? "mw_ps_later_at" : "mw_pq_later_at") < DAY30) return clearInterval(t);
+    }
     if (document.documentElement.classList.contains("gated")) return;
     clearInterval(t);
     try { sessionStorage.setItem("mw_ps_shown", "1"); } catch (_) {}

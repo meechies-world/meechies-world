@@ -41,7 +41,7 @@ const LAZY_SRC={
    * view). fb-feed-plus and book-plus are unchanged files, so their pins
    * keep their last-change stamp; stories.js changed in this build (it
    * clears MW_STORIES_PENDING), so its pin tracks this build stamp. */
-  community:["js/fb-feed-plus.js?v=1793645289","js/stories.js?v=1793647500","js/book-plus.js?v=1793645289","js/soul-greet.js?v=1793653007"],
+  community:["js/fb-feed-plus.js?v=1793672039","js/stories.js?v=1793647500","js/book-plus.js?v=1793645289","js/soul-greet.js?v=1793653007"],
   /* SOUL S1 — "He Knows Your Name" (2026-11-02): the host brain's member
    * greeting (js/soul-greet.js) rides the first open of the radio, Watch
    * or community views and paints one recognition line on each of those
@@ -56,7 +56,7 @@ const LAZY_SRC={
    * first-paint duties until they land; MW_socUrl is carved out eager in
    * the same section because friends.js paints social links through it.
    * Both files changed in this build, so both pins track this stamp. */
-  profile:["js/profile-setup.js?v=1793649510","js/profile-page.js?v=1793649510"],
+  profile:["js/profile-setup.js?v=1793672039","js/profile-page.js?v=1793649510"],
   /* C1 split: dj.js's booth continuation pack. The B5 idle prefetcher warms
    * these bytes for everyone (fetch only, never executed); dj.js fetches the
    * text itself and evals it inside its closure. NEVER lazyKick("djbooth").
@@ -300,11 +300,17 @@ const mwPsT = setInterval(() => {
   if(++mwPsTries > 300) return clearInterval(mwPsT);
   const p = profileMe; if(!me || !p) return;
   if(mwPsSflag("mw_ps_shown")) return clearInterval(mwPsT);
-  const missing = !p.photo || !(p.phone || mwPsPrivPhone());
-  const which = !p.setupDone ? "full" : (missing ? "quick" : null);
+  /* PROFILE PHOTO LAW (2026-11-02): no photo at all outranks every "later"
+   * hold — the quick photo card is needed-right-away and comes back until
+   * the member adds one. Phone-only missing keeps the holds below. */
+  const photoMissing = !p.photo;
+  const missing = photoMissing || !(p.phone || mwPsPrivPhone());
+  const which = photoMissing ? "quick" : (!p.setupDone ? "full" : (missing ? "quick" : null));
   if(!which) return clearInterval(mwPsT);
-  if(mwPsSflag(which === "full" ? "mw_ps_later" : "mw_pq_later")) return clearInterval(mwPsT);
-  if(Date.now() - mwPsLaterAt(which === "full" ? "mw_ps_later_at" : "mw_pq_later_at") < MW_PS_DAY30) return clearInterval(mwPsT);
+  if(!photoMissing){
+    if(mwPsSflag(which === "full" ? "mw_ps_later" : "mw_pq_later")) return clearInterval(mwPsT);
+    if(Date.now() - mwPsLaterAt(which === "full" ? "mw_ps_later_at" : "mw_pq_later_at") < MW_PS_DAY30) return clearInterval(mwPsT);
+  }
   if(document.documentElement.classList.contains("gated")) return;
   clearInterval(mwPsT);
   lazyKick("profile");
@@ -358,7 +364,7 @@ async function boot(){
   db.collection("members").orderBy("joinedAt","desc").limit(500).onSnapshot(window._membersSnap=snap=>{
     window._lastMembersSnap=snap; members={}; snap.docs.forEach(d=>members[d.id]=d.data()); if(myDoc) members[me]=myDoc;
     profileMe = members[me] || null;
-    if(me && !profileMe && !window._autoJoined){ let nm=""; try{ nm=localStorage.getItem("mw_join_name")||""; }catch(_){} if(nm){ window._autoJoined=true; db.collection("members").doc(me).set({handle:nm, bio:"", joinedAt:Date.now()}).then(()=>{ try{ localStorage.removeItem("mw_join_name"); }catch(_){} toast("Welcome to Meechie's World, "+nm); }).catch(()=>{ window._autoJoined=false; }); } }
+    if(me && !profileMe && !window._autoJoined){ let nm=""; try{ nm=localStorage.getItem("mw_join_name")||""; }catch(_){} const ajMeta=window.MW?.session?.()?.user?.user_metadata||{}; const ajPh=ajMeta.avatar_url||ajMeta.picture||""; if(nm && /^https:\/\//.test(ajPh)){ window._autoJoined=true; db.collection("members").doc(me).set({handle:nm, bio:"", joinedAt:Date.now(), photo:ajPh}).then(()=>{ try{ localStorage.removeItem("mw_join_name"); }catch(_){} toast("Welcome to Meechie's World, "+nm); }).catch(()=>{ window._autoJoined=false; }); } }
     $("#join-card").hidden = !me || !!profileMe; $("#composer").hidden = !profileMe; $("#me-card").hidden = !profileMe;
     if(profileMe){ $("#me-handle").textContent=profileMe.handle; $("#me-av").textContent=profileMe.photo?"":initial(profileMe.handle); $("#me-av").style.background=safeImg(profileMe.photo)?`url("${safeImg(profileMe.photo)}") center/cover`:""; { const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture; if(ph && !profileMe.photo && /^https:\/\//.test(ph)) db.doc("members/"+me).update({photo:ph}).catch(()=>{}); } $("#me-gifts").textContent=(profileMe.giftsReceived||0)+" gifts received"; if(!window._lookLoaded){ window._lookLoaded=true; if(profileMe.look) look={...look,...profileMe.look}; if(profileMe.face) myFace=profileMe.face; drawBuilder(); setMine({look:{...look}}); } }
     renderShops(); renderLive(); renderGifts();
@@ -1319,11 +1325,30 @@ $("#ai-form").addEventListener("submit",async e=>{
 });
 function needMember(){ if(!db){toast("The site is still being set up.");return false;} if(!me){openAuth("signup");return false;} if(!profileMe){go("community");toast("Join free first. Pick a handle.");return false;} return true; }
 
-/* Join */
+/* PROFILE PHOTO LAW (Malik, 2026-11-02 — "Thats law"): posting and commenting
+ * need a real profile photo. The server enforces it too (photo_required);
+ * this is the friendly door — it opens the photo card instead of letting the
+ * post fail. */
+const photoOK = p => { const v=(p&&p.photo)||""; return !!safeImg(v) || /^data:image\/(png|jpe?g|webp);base64,/.test(v); };
+function needPhoto(){ if(!profileMe || photoOK(profileMe)) return true; toast("Add your profile photo first — no blank profile pictures on Meechie's World."); if(window.MW_profileSetup) MW_profileSetup.quick(); else lazyKick("profile"); return false; }
+
+/* Join — PROFILE PHOTO LAW: a profile is created WITH a real photo or not at
+ * all (the server rejects a photo-less create too). The Google/Facebook
+ * account photo counts; everyone else picks one here and it uploads first. */
+let joinPhoto=""; // data: URL of the picked photo, uploaded on submit
+$("#j-photo").addEventListener("change",async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return; try{ joinPhoto=await compress(f,600); const pv=$("#j-preview"); pv.src=joinPhoto; pv.hidden=false; }catch(err){ toast(err.message); } });
 $("#join-form").addEventListener("submit",async e=>{
   e.preventDefault(); if(!db) return;
   const handle=$("#j-handle").value.trim(); if(!handle) return;
-  try{ const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture; await db.collection("members").doc(me).set({handle, bio:$("#j-bio").value.trim(), joinedAt:Date.now(), ...(ph&&/^https:\/\//.test(ph)?{photo:ph}:{})}); toast("Welcome to Meechie's World, "+handle); }
+  const meta=window.MW?.session?.()?.user?.user_metadata||{}; const ph=meta.avatar_url||meta.picture;
+  let photo=(ph&&/^https:\/\//.test(ph))?ph:"";
+  if(!photo && !joinPhoto){ toast("Add your profile photo to join — no blank profile pictures on Meechie's World."); $("#j-photo").click(); return; }
+  try{
+    if(!photo){ const up=await MW.uploadMedia(await (await fetch(joinPhoto)).blob(),{type:"image/jpeg",ext:"jpg"}); photo=(up&&/^https:\/\//.test(up.url))?up.url:joinPhoto; }
+    await db.collection("members").doc(me).set({handle, bio:$("#j-bio").value.trim(), joinedAt:Date.now(), photo});
+    try{ localStorage.removeItem("mw_join_name"); }catch(_){}
+    toast("Welcome to Meechie's World, "+handle);
+  }
   catch(err){ toast("Couldn't join: "+(err.message||err.code)); }
 });
 
@@ -1337,6 +1362,7 @@ $("#p-vclear").addEventListener("click",()=>{ pendingVideo=null; const v=$("#p-v
 $("#p-photo").addEventListener("change",async e=>{const f=e.target.files[0]; if(!f) return; try{pendingPhoto=await compress(f); $("#p-preview").src=pendingPhoto; $("#p-preview").hidden=false;}catch(err){toast(err.message);} });
 $("#p-post").addEventListener("click",async()=>{
   if(!needMember()) return;
+  if(!needPhoto()) return;
   const text=$("#p-text").value.trim(); if(!text && !pendingPhoto && !pendingVideo){toast("Write something or add a photo or video.");return;}
   const b=$("#p-post"); b.disabled=true;
   const announce = isOwner && $("#p-announce").checked;
@@ -1408,7 +1434,7 @@ function drawReplies(id){
   list.innerHTML=(replyCache[id]||[]).map(r=>`<div class="reply">${avatarOf(r.authorId)}<div class="r-main"><div class="r-bub"><b>${esc(handleOf(r.authorId))}</b><span>${esc(r.text||"")}</span>${/^https:\/\//.test(r.photo||"")?`<img class="r-img" src="${esc(r.photo)}" alt="" loading="lazy">`:""}</div><small class="r-time">${ago(r.createdAt)}</small></div></div>`).join("");
 }
 $("#feed").addEventListener("submit",async e=>{
-  const f=e.target.closest("[data-rform]"); if(!f) return; e.preventDefault(); if(!needMember()) return;
+  const f=e.target.closest("[data-rform]"); if(!f) return; e.preventDefault(); if(!needMember()) return; if(!needPhoto()) return;
   const id=f.dataset.rform, inp=f.querySelector('input[type="text"]'), text=inp.value.trim(), photo=f._photo||""; if(!text&&!photo) return; inp.value=""; f._photo=""; const pv=f.nextElementSibling; if(pv&&pv.classList.contains("r-prev")){ pv.hidden=true; pv.innerHTML=""; }
   try{ const r={authorId:me,text,createdAt:Date.now()}; if(photo) r.photo=photo; await db.collection("posts/"+id+"/replies").add(r);
     const p=posts.find(x=>x.id===id); db.doc("posts/"+id).update({replyCount:(p?.replyCount||0)+1}).catch(()=>{}); }
