@@ -394,7 +394,10 @@ function selfEtParts(now) {
 async function selfSeedNote(env, rows, playedQs) {
   if (!env || !env.DB) return;
   let doc = null;
-  try { const r = await env.DB.prepare("select data from docs where path = 'brain/seedstats'").first(); if (r && r.data) doc = JSON.parse(r.data); } catch (_) {}
+  try {
+    if (typeof readDoc === "function") doc = await readDoc(env, "brain/seedstats");
+    if (!doc) { const r = await env.DB.prepare("select data from docs where path = 'brain/seedstats'").first(); if (r && r.data) doc = JSON.parse(r.data); }
+  } catch (_) {}
   if (!doc || typeof doc !== "object" || Array.isArray(doc)) doc = { v: 1, seeds: {} };
   if (!doc.seeds || typeof doc.seeds !== "object" || Array.isArray(doc.seeds)) doc.seeds = {};
   const now = Date.now();
@@ -404,10 +407,17 @@ async function selfSeedNote(env, rows, playedQs) {
   const keys = Object.keys(doc.seeds);
   if (keys.length > 80) { keys.sort((a, b) => (doc.seeds[a].lastAt || 0) - (doc.seeds[b].lastAt || 0)); for (const k of keys.slice(0, keys.length - 80)) delete doc.seeds[k]; }
   doc.updatedAt = now;
-  const data = JSON.stringify(doc);
+  // Persist through the station's own writeDoc (the docs table's full
+  // column shape — path, coll, owner, data, created_at, updated_at —
+  // is carried there; a hand-rolled insert in the lib's shorter shape
+  // silently failed on this table, found live 2026-11-03). Raw SQL in
+  // the same full shape remains only as a fallback for extracted-code
+  // harnesses where writeDoc is out of scope.
+  try { if (typeof writeDoc === "function") { await writeDoc(env, "brain/seedstats", "brain", doc); return; } } catch (_) {}
   try {
-    const u = await env.DB.prepare("update docs set data = ?, updated_at = ? where path = 'brain/seedstats'").bind(data, now).run();
-    if (!u || !u.meta || !u.meta.changes) await env.DB.prepare("insert or ignore into docs (path, data, coll, updated_at) values ('brain/seedstats', ?, 'brain', ?)").bind(data, now).run();
+    const data = JSON.stringify(doc), iso = new Date(now).toISOString();
+    const u = await env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(data, iso, "brain/seedstats").run();
+    if (!u || !u.meta || !u.meta.changes) await env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind("brain/seedstats", "brain", null, data, iso, iso).run();
   } catch (_) {}
 }
 /* The requests-playlist weighting the loop maintains: an item asked for
@@ -452,6 +462,12 @@ async function selfReviewPass(deps, S, now) {
     try { const st = await deps.readDoc(deps.env, "brain/seedstats"); if (!st) await selfSeedNote(deps.env, []); } catch (_) {}
     return { ran: "baseline" };
   }
+  // Seedstats repair: the first shipped baseline's raw-SQL insert could
+  // not create this doc on the live table shape (see selfSeedNote) — if
+  // it is still missing, establish it now. Empty counters are
+  // bookkeeping, not a judgment change, so this is not gated on the
+  // quiet window; once the doc exists this costs one read per check.
+  try { const st0 = await deps.readDoc(deps.env, "brain/seedstats"); if (!st0) await selfSeedNote(deps.env, []); } catch (_) {}
   // Regular review gates: quiet hours, once per ET day, and the owner's
   // kill switch stands Meechie down entirely.
   if (S && S.aiDj === false) return { ran: false, note: "kill switch" };
