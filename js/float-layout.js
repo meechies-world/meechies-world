@@ -13,6 +13,43 @@
     return true;
   };
 
+  /* Pop-up spacing (owner, 2026-11-02, after a visitor said there were
+   * still a lot of pop-ups: "limit all that, space them out more — only
+   * pop up the things they need right away"). MW_screenClear alone only
+   * stopped cards OVERLAPPING; they could still arrive back-to-back for
+   * minutes. So every NON-ESSENTIAL auto card (install ask, section app
+   * offer, AI hello, push ask, contact ask, Face ID offer) now claims
+   * this one shared gate before it shows:
+   *  - nothing non-essential in the first POP_QUIET_MS of a visit —
+   *    let people land and look around first;
+   *  - at least POP_GAP_MS between non-essential pop-ups, with the stamp
+   *    kept on the device (localStorage), so the gap holds across pages
+   *    and visits — never two in a row, never a pile-up;
+   *  - the screen must also be clear (the rule above), and never in app
+   *    mode (the standing rule — the consumers check it too).
+   * ESSENTIAL surfaces never come here: the sign-in dialog and the
+   * 30-minute guest wall, any dialog a tap asked for, the age/ID check,
+   * the Face ID lock, the camera-permission ask, and the real-event
+   * cards (a message arriving, the live-now banner). The first-visit
+   * welcome chain keeps its own rules and only STAMPS the gate when it
+   * starts (MW_popStamp), so nothing piles on behind it either.
+   * Callers use it exactly like MW_screenClear: claim, or wait and retry
+   * inside their own existing loops. A claim stamps immediately, so two
+   * callers in the same tick can never both get through. */
+  const POP_GAP_MS = 10 * 60 * 1000; // min gap between non-essential pop-ups
+  const POP_QUIET_MS = 90 * 1000; // opening quiet window on every page load
+  const popT0 = Date.now();
+  const popRead = () => { try { return +localStorage.getItem("mw_pop_last") || 0; } catch (_) { return 0; } };
+  window.MW_popStamp = function () { try { localStorage.setItem("mw_pop_last", String(Date.now())); } catch (_) {} };
+  window.MW_popGate = function () {
+    try { if (document.documentElement.classList.contains("appmode")) return false; } catch (_) {}
+    if (Date.now() - popT0 < POP_QUIET_MS) return false;
+    if (Date.now() - popRead() < POP_GAP_MS) return false;
+    if (!window.MW_screenClear()) return false;
+    window.MW_popStamp();
+    return true;
+  };
+
   const FLOATS = ["ai-fab", "mx-fab", "mw-fab", "vz-pill", "mw-show", "mw-show-pill"];
   const KEY = "mw_float_pos";
   let pos = {}; try { pos = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (_) {}

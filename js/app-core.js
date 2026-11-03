@@ -122,7 +122,7 @@ window.addEventListener("load", () => { if("requestIdleCallback" in window) requ
    load + idle (the same trigger as the prefetch above, but executing),
    app-list first. app-offer reads MW_APP_LIST lazily per tick, so order is
    belt-and-braces rather than load-critical. */
-const IDLE_SRC=["js/app-list.js?v=1793642290","js/app-offer.js?v=1793642290"];
+const IDLE_SRC=["js/app-list.js?v=1793642290","js/app-offer.js?v=1793731933"];
 let mwIdleDone = false;
 function mwIdleExec(){
   if(mwIdleDone) return; mwIdleDone = true;
