@@ -557,7 +557,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
   // The movie block freezes for the cadence spots laid inside it
   // (the insert freeze rule): tvMovieWin runs the window long by
   // the spot time inside it, which it computes from this state.
-  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert };
+  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char };
   const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
@@ -567,7 +567,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
     const iwin = tvInsertWin(t, chan._insert);
-    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert);
+    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char);
     if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
@@ -595,7 +595,18 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // music program's generator cursor does not move here (the
       // news-window split rule), and the movie block subtracts the
       // spot time from its wall-clock position (the insert freeze
-      // rule, tvAdTimeIn in the movie branch).
+      // rule, tvAdTimeIn in the movie branch). When the span carries
+      // a chained character news update (cadwin.upd, tvAdSpans), the
+      // update plays immediately after the spot inside the same
+      // span: whichever part of the span contains t is laid here.
+      const spotEnd = cadwin.start + (+cadwin.item.dur || 0) * 1000;
+      if (cadwin.upd && t >= spotEnd) {
+        const upit = cadwin.upd;
+        const upoff = (t - spotEnd) / 1000;
+        const d = Math.min(Math.round((+upit.dur - upoff) * 10) / 10, Math.round((cadwin.end - t) / 100) / 10);
+        if (d > 0.05) { segs.push(tvProgSeg(upit, t, d, upoff)); t += Math.round(d * 1000); skips = 0; continue; }
+        t = cadwin.end; continue;
+      }
       const adit = cadwin.item;
       const adoff = (t - cadwin.start) / 1000;
       const d = Math.min(Math.round((+adit.dur - adoff) * 10) / 10, Math.round((cadwin.end - t) / 100) / 10);
@@ -648,7 +659,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // The ad cadence froze the block at every spot inside it:
       // positions likewise sit behind the wall clock by the spot
       // time laid between the window start and here.
-      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t);
+      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char);
       for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
@@ -682,7 +693,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
+        for (const w of [tvPremWin(t, chan._prem), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }
         if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: b.kind === "house" ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
@@ -996,37 +1007,51 @@ function tvAdCadItems(pool) {
  * The chain is computed from 2h before fromMs: no combination of
  * the higher windows can displace an occurrence further than that,
  * so the carry-in is exact. */
-function tvAdSpans(cad, prem, anch, ins, fromMs, toMs) {
+function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char) {
   if (!cad || !cad.length) return [];
   const spans = [];
   let prevEnd = -Infinity;
   const kFirst = Math.floor((fromMs - 2 * 3600e3) / TV_AD_EVERY_MS);
   const kLast = Math.floor(toMs / TV_AD_EVERY_MS) + 1;
+  // Character news update chaining (Malik, 2026-11-03): when a fresh
+  // character update exists (char, built by tvCharLive from the
+  // producer-owned tv/charnews doc), it plays immediately after the
+  // spot in the same occurrence. The pair is gated at the
+  // occurrence's own start — the update must already exist by then
+  // (producedAt <= start) and still be fresh then (start -
+  // producedAt < TV_NEWS_STALE) — and the pair slides as ONE span:
+  // the window-slide loop and the prevEnd chain both use the
+  // combined duration, so the update never stacks on a news,
+  // premiere, anchor or insert window either.
+  const charDur = char && char.item ? (+char.dur || +char.item.dur || 0) : 0;
+  const updAt = (st) => (char && char.item && charDur > 0 && +char.producedAt > 0 && char.producedAt <= st && st - char.producedAt < TV_NEWS_STALE) ? char.item : null;
   for (let k = kFirst; k <= kLast; k++) {
     const it = cad[((k % cad.length) + cad.length) % cad.length];
     const dur = +it.dur || 0;
     if (!(dur > 0)) continue;
     let s = k * TV_AD_EVERY_MS;
     for (let i = 0; i < 8; i++) {
-      const e = s + dur * 1000;
+      const e = s + (dur + (updAt(s) ? charDur : 0)) * 1000;
       let slid = false;
       for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins)]) {
         if (w && s < w.end && e > w.start) { s = w.end; slid = true; break; }
       }
       if (!slid) break;
     }
-    const start = Math.max(s, prevEnd), end = start + dur * 1000;
+    const start = Math.max(s, prevEnd);
+    const upd = updAt(start);
+    const end = start + (dur + (upd ? charDur : 0)) * 1000;
     prevEnd = end;
-    if (end > fromMs && start < toMs) spans.push({ start, end, item: it });
+    if (end > fromMs && start < toMs) spans.push({ start, end, item: it, upd });
   }
   return spans;
 }
 /* The cadence window containing ms (inside: true) or the next one. */
-function tvAdWin(ms, cad, prem, anch, ins) {
+function tvAdWin(ms, cad, prem, anch, ins, char) {
   if (!cad || !cad.length) return null;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON)) {
-    if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, item: sp.item };
-    if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, item: sp.item };
+  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON, char)) {
+    if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, item: sp.item, upd: sp.upd || null };
+    if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, item: sp.item, upd: sp.upd || null };
   }
   return null;
 }
@@ -1034,9 +1059,9 @@ function tvAdWin(ms, cad, prem, anch, ins) {
  * movie block freezes for the spots laid inside it (the insert
  * freeze rule — the block resumes from the offset it reached and
  * its window runs long by this much). */
-function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs) {
+function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs, char) {
   let sec = 0;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;
+  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;
   return Math.round(sec * 10) / 10;
 }
 /* The MY EMPIRE premiere window containing ms (inside: true) or the
@@ -1125,6 +1150,55 @@ function tvAnchorCut(chan, segs, cursor, anch, now) {
   if (!cp) return null;
   return { segs: kept, cursor: { at: cutAt, ix: cp.ix, off: cp.off, run: 0 } };
 }
+/* Which character news update can air: the tv/charnews doc's current
+ * update, gated by the same rights rule as every lineup item
+ * (tvCleared over a synthesized house item) and by the media actually
+ * existing — the file is probed exactly like anchor edition files,
+ * verdict cached in tv/now as charProbe, so a missing file means the
+ * cadence plays the spot alone, never dead air. The doc is
+ * producer-owned (the keeper never seeds or writes it):
+ * { on, current: { producedAt, videoUrl, dur } }, published by the
+ * site news producer alongside each fresh edition. The returned char
+ * state — { item, producedAt, dur } — chains onto every cadence
+ * occurrence whose start it is still fresh at (tvAdSpans). */
+async function tvCharLive(doc, nw, now, origin) {
+  const cache = { ...((nw && nw.charProbe) || {}) };
+  let cacheChanged = false;
+  const cur = doc && (doc.current || (doc.videoUrl ? doc : null));
+  if (!doc || doc.on === false || !cur || !cur.videoUrl || !(+cur.dur > 0) || !(+cur.producedAt > 0)) return { char: null, cache, cacheChanged };
+  const it = { id: "charnews-update", kind: "house", src: "file", url: String(cur.videoUrl), title: "MW TV News Update", show: "MW TV News", dur: +cur.dur, rights: (cur.rights && typeof cur.rights === "object") ? cur.rights : { basis: "own", evidence: "Character news update produced in-house by the site news producer from the current published edition's attributed sources (Herald-Standard headlines, PennDOT 511PA traffic, NWS alerts); Malik is the publisher and rights holder of the produced segment", clearedBy: "owner", at: +cur.producedAt, simulcast: true } };
+  if (!tvCleared(it)) return { char: null, cache, cacheChanged };
+  const c = cache[it.url];
+  if (c && now - c.at < TV_PREM_PROBE_MS) { if (!c.ok) return { char: null, cache, cacheChanged }; }
+  else {
+    let ok = false;
+    try {
+      const ctl = typeof AbortSignal !== "undefined" && AbortSignal.timeout ? { signal: AbortSignal.timeout(5000) } : {};
+      const r = await fetch(origin + it.url, { headers: { Range: "bytes=0-0" }, ...ctl });
+      ok = r.status === 200 || r.status === 206;
+    } catch (_) { ok = false; }
+    cache[it.url] = { ok, at: now }; cacheChanged = true;
+    if (!ok) return { char: null, cache, cacheChanged };
+  }
+  return { char: { item: it, producedAt: +cur.producedAt, dur: +cur.dur }, cache, cacheChanged };
+}
+/* When a NEW character update lands (a producedAt the laid window
+ * has never seen), occurrences already generated would play the
+ * spot alone. Cut them at cutAt — the first cadence occurrence
+ * start after now, computed by tvTick from the NEW char state — so
+ * the normal generation re-lays from there with the update chained;
+ * the program cursor re-anchors by cycle math at the cut (the
+ * tvAnchorCut discipline). Returns null when nothing laid reaches
+ * the cut yet. Expiry needs no cut: tvAdSpans gates the update at
+ * each occurrence's own start, so a stale update never lays. */
+function tvCharCut(chan, segs, cursor, cutAt) {
+  if (!cursor || !isFinite(cursor.at) || !isFinite(cutAt)) return null;
+  if (cutAt >= cursor.at) return null;
+  const kept = (segs || []).filter((sg) => sg.start < cutAt && sg.start + sg.dur * 1000 <= cutAt);
+  const cp = tvCyclePos(chan, cutAt);
+  if (!cp) return null;
+  return { segs: kept, cursor: { at: cutAt, ix: cp.ix, off: cp.off, run: 0 } };
+}
 /* The movie block's standing state, from the tv/movieblock doc and
  * tonight's premiere state: the block starts when the premiere chain
  * actually ends (slot start + its live duration), or — when the
@@ -1165,7 +1239,7 @@ function tvMovieWin(ms, mov) {
   // absent (the calls tvTick makes itself) nothing changes.
   if (mov._cad) {
     let e2 = end;
-    for (let i = 0; i < 4; i++) { const ext = tvAdTimeIn(mov._cad.cad, mov._cad.prem, mov._cad.anch, mov._cad.ins, start, e2); const ne = end + ext * 1000; if (!(ne > e2)) break; e2 = ne; }
+    for (let i = 0; i < 4; i++) { const ext = tvAdTimeIn(mov._cad.cad, mov._cad.prem, mov._cad.anch, mov._cad.ins, start, e2, mov._cad.char); const ne = end + ext * 1000; if (!(ne > e2)) break; e2 = ne; }
     end = e2;
   }
   if (ms >= start && ms < end) return { start, end, inside: true };
@@ -1255,6 +1329,7 @@ async function tvTick(env, S, now, origin) {
   const newsDoc = await readDoc(env, "tv/news");
   const luDoc = await readDoc(env, "tv/localupdate");
   const anchorDoc = await readDoc(env, "tv/anchor");
+  const charDoc = await readDoc(env, "tv/charnews");
   const decision = tvRadioDecision(S, newsDoc, now);
   // Uniontown Local Update hold-by-age: the break spot is only as
   // fresh as its producer stamp (tv/localupdate, written hourly by
@@ -1309,6 +1384,28 @@ async function tvTick(env, S, now, origin) {
     if (anchorState.anch && segs && cursor) {
       const cut = tvAnchorCut(chan, segs, cursor, anchorState.anch, now);
       if (cut) { segs = cut.segs; cursor = cut.cursor; }
+    }
+  }
+  // Character news updates: resolve the current update (rights gate
+  // + media probe) and, when a NEW update has landed since the laid
+  // window was generated (charStamp in tv/now differs), cut the laid
+  // segments at the first cadence occurrence start after now —
+  // computed with the NEW state — so this tick's generation re-lays
+  // the upcoming occurrences with the update chained after the spot.
+  const charState = await tvCharLive(charDoc, nw, now, origin);
+  chan._char = charState.char;
+  const charStamp = charState.char ? charState.char.producedAt : 0;
+  if (charState.cacheChanged) dirty = true;
+  if ((+((nw || {}).charStamp) || 0) !== charStamp) {
+    dirty = true; // persist the new stamp in this tick's tv/now write
+    if (segs && cursor) {
+      const cadCut = tvAdCadItems(pool);
+      const spansCut = cadCut ? tvAdSpans(cadCut, chan._prem, chan._anchor, chan._insert, now, now + TV_HORIZON, charState.char) : [];
+      const nextOcc = spansCut.find((sp) => sp.start > now);
+      if (nextOcc) {
+        const cut = tvCharCut(chan, segs, cursor, nextOcc.start);
+        if (cut) { segs = cut.segs; cursor = cut.cursor; }
+      }
     }
   }
   // One-shot insert: when a fresh, unconsumed, cleared tv/insert
@@ -1396,10 +1493,11 @@ async function tvTick(env, S, now, origin) {
   if (premState.cacheChanged) dirty = true;
   delete chan._prem;
   delete chan._anchor;
+  delete chan._char;
   delete chan._movies;
   delete chan._insert;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, insWin: insWin || null, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, insWin: insWin || null, genAt: now, updatedAt: now });
   }
   return decision;
 }
