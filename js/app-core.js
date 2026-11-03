@@ -47,7 +47,7 @@ const LAZY_SRC={
    * or community views and paints one recognition line on each of those
    * surfaces from the member's own /api/brain/me summary. One module,
    * three doors — it guards itself against double-loading. */
-  radio:["js/soul-greet.js?v=1793653007","js/channels.js?v=1793738781"],
+  radio:["js/soul-greet.js?v=1793653007","js/channels.js?v=1793740214"],
   watch:["js/soul-greet.js?v=1793653007"],
   /* Profile bundle (max-speed Lever 2, 2026-11-02): profile-setup.js and
    * profile-page.js load once, the first time a profile surface is needed
