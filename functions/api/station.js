@@ -1829,6 +1829,23 @@ async function tvTick(env, S, now, origin) {
       }
     }
   }
+  // Outage self-heal (2026-11-03): a tick that consumed an insert
+  // wrote consumedAt/consumedStart to tv/insert, but if that tick
+  // died before this tick's tv/now write — the CPU outage did
+  // exactly that — the doc stays consumed with no window stamped
+  // here, and tvInsertItems returns null for a consumed doc, so
+  // the window would never be laid. When the doc's consumed
+  // window is still ahead and the window held here is not that
+  // doc's, re-stamp it from the doc (same cleared items, same
+  // total): the decision was made and recorded; only its second
+  // write was lost.
+  if (!insList && insDoc && insDoc.consumedAt && (+insDoc.consumedStart || 0) > now && Array.isArray(insDoc.items) && insDoc.items.length && (!insWin || insWin.at !== (+insDoc.at || 0))) {
+    const recItems = insDoc.items.filter(tvCleared);
+    if (recItems.length) {
+      insWin = { at: +insDoc.at || 0, start: +insDoc.consumedStart, dur: recItems.reduce((a, x) => a + (+x.dur || 0), 0), item: recItems[0], items: recItems };
+      dirty = true;
+    }
+  }
   chan._insert = insWin;
   // An insert window stamped inside the movie block freezes the
   // block for the span it covers: stamp the frozen span on the
