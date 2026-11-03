@@ -72,6 +72,7 @@ function ensurePingsSchema(env) {
  * "Listener Requests" with Load / Add / schedule, like any playlist. */
 const RQPL_PATH = "station/rqplaylist", RQPL_CAP = 200, RQPL_SEEN = 400;
 let rqHvAt = 0;
+let selfRevCheckAt = 0; // SELF-REVIEW: per-isolate check throttle for the daily pass in the GET handler
 const rqKeyOf = (d) => (d && d.yt ? "yt:" + d.yt : d && d.src ? "s:" + d.src : d && d.iaId ? "ia:" + d.iaId : "");
 async function rqRecOf(d) {
   const rec = { k: rqKeyOf(d), yt: /^[A-Za-z0-9_-]{11}$/.test(String(d.yt || "")) ? String(d.yt) : "", src: String(d.src || ""), iaId: String(d.iaId || ""), title: String(d.title || "").slice(0, 120), cover: String(d.cover || "").slice(0, 300), dur: Math.max(0, Math.min(3600, +d.dur || 0)), by: String(d.by || (d.guest ? "Guest" : "")).slice(0, 40), at: +d.at || Date.now(), n: 1 };
@@ -315,6 +316,9 @@ async function aiDjPass(deps, S, now) {
   const logTitles = new Set((S.log || []).map((x) => aiDjNorm(x && x.t)));
   const libTitles = new Set((deps.lib || []).map((t) => aiDjNorm(t && t.title)));
   const survivors = aiDjSurvivors(merged, { bannedIds, logTitles, libTitles, cap: AIDJ_MAX - S.aiQ.length });
+  // Seed bookkeeping for the daily self-review: how each search phrase
+  // did on this pass (results back, picks landed). Best-effort.
+  try { await selfSeedNote(deps.env, queries.map((x, i) => ({ q: x.q, returned: (lists[i] || []).length, landed: survivors.reduce((n, s) => n + (s.q === x.q ? 1 : 0), 0) }))); } catch (_) {}
   const events = [];
   for (const sv of survivors) {
     S.aiQ.push({ yt: sv.id, title: String(sv.title || "").slice(0, 120), cover: "", dur: sv.dur, ai: 1, q: sv.q, at: now });
@@ -324,6 +328,246 @@ async function aiDjPass(deps, S, now) {
   return { changed: true, events, note: "stocked " + survivors.length };
 }
 /* AIDJ-END */
+
+/* SELF-REVIEW-BEGIN — MEECHIE'S SELF-UPGRADE LOOP (Malik, 2026-11-03:
+ * "I want him to be able to upgrade himself").
+ *
+ * Once a day, in the quiet hours (03:10–04:50 America/New_York), Meechie
+ * reviews his own last day on the station — plays, completions, skips,
+ * listener requests, and what became of the picks the Auto-DJ stocked —
+ * and improves his JUDGMENT DATA: the brain/taste counters behind his
+ * weights, the seed rotation inside the daypart blocks, and the saved
+ * requests playlist. Every change is written to brain/selflog with a
+ * before/after and a reason, so the owner can always read what Meechie
+ * changed about himself and why. Self-upgrades are never silent.
+ *
+ * THE BOUNDARY, IN CODE: this loop tunes data, never code. When the
+ * review spots something only a code change can fix, it files a
+ * proposal in brain/proposals (what + why) for Amani to review and ship
+ * through the normal PR flow — Meechie may NOT rewrite his own code,
+ * and nothing in this block can reach a code path.
+ *
+ * HARD RAILS (asserted by the harness, not just promised here):
+ *  - writes go ONLY through selfWrite(), whose allowlist is brain/taste,
+ *    brain/dayparts, brain/seedstats, brain/selflog, brain/proposals
+ *    and station/rqplaylist (prune/decay only). The booth doc, Malik's
+ *    queues, money/entitlement docs and every tv/* doc are unreachable.
+ *  - the daypart CLOCK is Malik's law: seed edits rebuild each block
+ *    with its start/end/name copied verbatim, and the result must pass
+ *    aiDjValidBlocks with an identical clock before it is written.
+ *  - taste counters move at most +1 per track per review, at most 8
+ *    tracks per direction, and the weights themselves stay inside the
+ *    lib's [0.5, 3] clamp by construction.
+ *  - owner supremacy: the AI-DJ kill switch (radio/dj aiDj === false)
+ *    stands the review down too; the playability filter still gates
+ *    every pick the tuned data ever produces (this loop stocks nothing
+ *    itself — it only sharpens what the existing passes already do).
+ *  - free tier only: brain_events + docs reads and doc writes on the
+ *    existing D1 — no model calls, no new infrastructure. */
+const SELF_QUIET_START = 3 * 60 + 10; // 03:10 ET
+const SELF_QUIET_END = 4 * 60 + 50; // 04:50 ET
+const SELF_DAY = 864e5;
+const SELF_WRITE_OK = { "brain/taste": "brain", "brain/dayparts": "brain", "brain/seedstats": "brain", "brain/selflog": "brain", "brain/proposals": "brain", "station/rqplaylist": "station" };
+const SELF_TASTE_MAX = 8; // tracks adjusted per direction per review
+const SELF_SEED_MIN_PASSES = 8; // a seed needs this much evidence before it can be retired
+/* The ONLY write door for the self-review. Anything outside the
+ * allowlist throws, so a future edit cannot quietly widen the loop's
+ * reach — the harness asserts every write in a run lands in this set. */
+async function selfWrite(deps, path, data) {
+  const coll = SELF_WRITE_OK[path];
+  if (!coll) throw new Error("self-review write outside allowlist: " + path);
+  return deps.writeDoc(deps.env, path, coll, data);
+}
+function selfEtParts(now) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(now));
+    const g = (t) => { const p = parts.find((x) => x.type === t); return p ? p.value : ""; };
+    return { day: g("year") + "-" + g("month") + "-" + g("day"), minutes: (+g("hour") || 0) * 60 + (+g("minute") || 0) };
+  } catch (_) { return { day: "", minutes: -1 }; }
+}
+/* Seed bookkeeping (brain/seedstats): per search phrase, how many
+ * Auto-DJ passes ran it, how many results came back, how many picks
+ * landed in aiQ, and how many of those actually played. Written
+ * directly on the docs table WITHOUT a changes-feed row — keeper-
+ * internal counters, the same precedent as brain_events. Best-effort:
+ * stats may never break a pass or a tick. */
+async function selfSeedNote(env, rows, playedQs) {
+  if (!env || !env.DB) return;
+  let doc = null;
+  try { const r = await env.DB.prepare("select data from docs where path = 'brain/seedstats'").first(); if (r && r.data) doc = JSON.parse(r.data); } catch (_) {}
+  if (!doc || typeof doc !== "object" || Array.isArray(doc)) doc = { v: 1, seeds: {} };
+  if (!doc.seeds || typeof doc.seeds !== "object" || Array.isArray(doc.seeds)) doc.seeds = {};
+  const now = Date.now();
+  const bump = (q) => { const k = String(q || "").slice(0, 80); if (!k) return null; const s = doc.seeds[k] || (doc.seeds[k] = { passes: 0, returned: 0, landed: 0, played: 0, firstAt: now, lastAt: 0 }); s.lastAt = now; return s; };
+  if (Array.isArray(rows)) for (const r of rows) { const s = r && bump(r.q); if (s) { s.passes += 1; s.returned += Math.max(0, +r.returned || 0); s.landed += Math.max(0, +r.landed || 0); } }
+  if (Array.isArray(playedQs)) for (const q of playedQs) { const s = bump(q); if (s) s.played += 1; }
+  const keys = Object.keys(doc.seeds);
+  if (keys.length > 80) { keys.sort((a, b) => (doc.seeds[a].lastAt || 0) - (doc.seeds[b].lastAt || 0)); for (const k of keys.slice(0, keys.length - 80)) delete doc.seeds[k]; }
+  doc.updatedAt = now;
+  const data = JSON.stringify(doc);
+  try {
+    const u = await env.DB.prepare("update docs set data = ?, updated_at = ? where path = 'brain/seedstats'").bind(data, now).run();
+    if (!u || !u.meta || !u.meta.changes) await env.DB.prepare("insert or ignore into docs (path, data, coll, updated_at) values ('brain/seedstats', ?, 'brain', ?)").bind(data, now).run();
+  } catch (_) {}
+}
+/* The requests-playlist weighting the loop maintains: an item asked for
+ * n times weighs 1 + min(2, log2(n)) — a song three people asked for
+ * surfaces about twice as fast as a one-off, and the draw stays a
+ * no-repeat permutation (Efraimidis–Spirakis, the same construction as
+ * the keeper's weightedBagOrder), so every saved request still plays
+ * each cycle; weight only changes WHO COMES UP SOONER. Pure + exported
+ * for the harness; the requests lane refills its bag through here. */
+function rqWeightOf(n) { return 1 + Math.min(2, Math.log2(Math.max(1, +n || 1))); }
+function rqWeightedOrder(items, rand) {
+  const rnd = typeof rand === "function" ? rand : Math.random;
+  return (Array.isArray(items) ? items : []).map((r) => ({ k: r.k, t: -Math.log(1 - rnd()) / rqWeightOf(r && r.n) })).sort((a, b) => a.t - b.t).map((x) => x.k);
+}
+/* The daily self-review. deps = { env, readDoc, writeDoc, readTaste,
+ * tasteScore, aiDjValidBlocks, aiDjDefaultDayparts }; S is the station
+ * doc, READ-ONLY here (kill switch + queue lengths for the summary) —
+ * the pass never mutates or writes it. Returns a small status object;
+ * the caller ignores it. Fully self-gating; first sight establishes the
+ * baseline (the what-Meechie-knows readout) as selflog entry #1. */
+async function selfReviewPass(deps, S, now) {
+  const et = selfEtParts(now);
+  let selflog = null;
+  try { selflog = await deps.readDoc(deps.env, "brain/selflog"); } catch (_) {}
+  if (!selflog || !Array.isArray(selflog.entries)) {
+    // BASELINE: no selflog yet — establish the loop's own docs and put
+    // the readout summary in as the first entry. The baseline runs at
+    // any hour (it changes no judgment data — it only records what
+    // Meechie knows today) and stamps the day, so the first true review
+    // is the next quiet window.
+    let taste = null; try { taste = await deps.readTaste(deps.env); } catch (_) {}
+    let blocks = deps.aiDjDefaultDayparts(), daySrc = "code fallback (no brain/dayparts doc)";
+    try { const doc = await deps.readDoc(deps.env, "brain/dayparts"); const valid = deps.aiDjValidBlocks(doc); if (valid) { blocks = valid; daySrc = "brain/dayparts doc"; } } catch (_) {}
+    let ban = 0; try { const b = await deps.readDoc(deps.env, "brain/ytblock"); if (b && Array.isArray(b.ids)) ban = b.ids.length; } catch (_) {}
+    let rq = null; try { rq = await deps.readDoc(deps.env, "station/rqplaylist"); } catch (_) {}
+    let topName = "", topScore = 0, anchors = 0;
+    if (taste && taste.artists) for (const [name, c] of Object.entries(taste.artists)) { const sc = deps.tasteScore(c); if (sc > 0) anchors++; if (sc > topScore) { topScore = sc; topName = name; } }
+    const summary = "Baseline — what Meechie knows today: taste has folded " + (taste ? taste.plays || 0 : 0) + " plays, " + (taste ? taste.ends || 0 : 0) + " completions, " + (taste ? taste.skips || 0 : 0) + " skips across " + (taste ? Object.keys(taste.tracks || {}).length : 0) + " tracks and " + (taste ? Object.keys(taste.artists || {}).length : 0) + " artists; strongest artist " + (topName || "none yet") + " (score " + topScore.toFixed(1) + "); " + anchors + " artists score above zero and can anchor picks; ban list holds " + ban + " video ids; dayparts run from the " + daySrc + " (" + blocks.map((b) => b.name).join(" / ") + "); requests playlist " + (rq && Array.isArray(rq.items) && rq.items.length ? "holds " + rq.items.length + " saved requests" : "has not been created yet — no song requests folded in so far") + "; station at baseline: Malik's queue " + (S && Array.isArray(S.queue) ? S.queue.length : 0) + " songs, AI stock " + (S && Array.isArray(S.aiQ) ? S.aiQ.length : 0) + ".";
+    const doc = { v: 1, createdAt: now, lastRunDay: et.day, lastRunAt: now, entries: [{ at: now, kind: "baseline", summary, changes: [], notes: ["Self-upgrade loop established. From here the daily review tunes judgment data only — taste counters, daypart seeds, requests-playlist hygiene — and files code ideas as proposals in brain/proposals for Amani's review. Meechie never edits his own code."] }] };
+    await selfWrite(deps, "brain/selflog", doc);
+    try { const p = await deps.readDoc(deps.env, "brain/proposals"); if (!p) await selfWrite(deps, "brain/proposals", { v: 1, items: [] }); } catch (_) {}
+    try { const st = await deps.readDoc(deps.env, "brain/seedstats"); if (!st) await selfSeedNote(deps.env, []); } catch (_) {}
+    return { ran: "baseline" };
+  }
+  // Regular review gates: quiet hours, once per ET day, and the owner's
+  // kill switch stands Meechie down entirely.
+  if (S && S.aiDj === false) return { ran: false, note: "kill switch" };
+  if (et.minutes < SELF_QUIET_START || et.minutes > SELF_QUIET_END) return { ran: false, note: "outside quiet hours" };
+  if (selflog.lastRunDay === et.day) return { ran: false, note: "already ran today" };
+  const changes = [], notes = [];
+  const metrics = { plays24: 0, ends24: 0, skips24: 0, requests24: 0, plays7: 0, skips7: 0, draws7: 0, drawnPlayed7: 0 };
+  let key7 = new Map();
+  try {
+    const c24 = await deps.env.DB.prepare("select type, count(*) as c from brain_events where at > ? group by type").bind(now - SELF_DAY).all();
+    for (const r of (c24.results || [])) { if (r.type === "play") metrics.plays24 = +r.c || 0; else if (r.type === "end") metrics.ends24 = +r.c || 0; else if (r.type === "skip") metrics.skips24 = +r.c || 0; else if (r.type === "request") metrics.requests24 = +r.c || 0; }
+    const k7 = await deps.env.DB.prepare("select key, type, count(*) as c from brain_events where at > ? and key != '' group by key, type").bind(now - 7 * SELF_DAY).all();
+    for (const r of (k7.results || [])) { if (!r.key) continue; const m = key7.get(r.key) || { p: 0, e: 0, s: 0 }; if (r.type === "play") { m.p += +r.c || 0; metrics.plays7 += +r.c || 0; } else if (r.type === "end") m.e += +r.c || 0; else if (r.type === "skip") { m.s += +r.c || 0; metrics.skips7 += +r.c || 0; } key7.set(r.key, m); }
+    const d7 = await deps.env.DB.prepare("select count(*) as c from brain_events where at > ? and actor = 'aidj' and type = 'draw'").bind(now - 7 * SELF_DAY).all();
+    metrics.draws7 = +(((d7.results || [])[0] || {}).c) || 0;
+    const drawn = await deps.env.DB.prepare("select distinct key from brain_events where at > ? and actor = 'aidj' and type = 'draw' and key != ''").bind(now - 7 * SELF_DAY).all();
+    for (const r of (drawn.results || [])) { const m = key7.get(r.key); if (m && m.p > 0) metrics.drawnPlayed7++; }
+  } catch (_) { notes.push("Station activity read failed this run — judgment changes limited to playlist hygiene."); }
+  // 1) TASTE SHARPENING — bounded counter nudges from the trailing 7
+  // days: a track the room keeps skipping earns one more skip on its
+  // record; a track that keeps playing to the end earns one more end.
+  // The fold's weights are clamped in the lib, so a nudge can sharpen a
+  // preference but never run away with it.
+  let taste = null; try { taste = await deps.readTaste(deps.env); } catch (_) {}
+  let tasteDirty = false;
+  if (taste && taste.tracks) {
+    let skipN = 0, endN = 0;
+    for (const [key, m] of key7) {
+      const tr = taste.tracks[key]; if (!tr) continue;
+      const ar = tr.artist && taste.artists ? taste.artists[tr.artist] : null;
+      if (skipN < SELF_TASTE_MAX && m.p >= 3 && m.e === 0 && m.s * 2 >= m.p) { const before = +tr.s || 0; tr.s = before + 1; if (ar) ar.s = (+ar.s || 0) + 1; changes.push("taste: \"" + String(tr.title || key).slice(0, 60) + "\" skips " + before + " → " + tr.s + " (last 7d: " + m.p + " plays, " + m.s + " skips, 0 completions)"); skipN++; tasteDirty = true; continue; }
+      if (endN < SELF_TASTE_MAX && m.e >= 3 && m.s === 0) { const before = +tr.e || 0; tr.e = before + 1; if (ar) ar.e = (+ar.e || 0) + 1; changes.push("taste: \"" + String(tr.title || key).slice(0, 60) + "\" completions " + before + " → " + tr.e + " (last 7d: " + m.e + " full plays, 0 skips)"); endN++; tasteDirty = true; }
+    }
+    if (tasteDirty) { taste.updatedAt = now; await selfWrite(deps, "brain/taste", taste); }
+    else notes.push("Taste: no track crossed the sharpen thresholds in the last 7 days — weights unchanged.");
+  } else notes.push("Taste: no brain/taste doc yet — nothing to sharpen.");
+  // 2) DAYPART SEED ROTATION — inside the blocks only; hours and names
+  // are copied verbatim and re-validated before any write.
+  let seedDocDirty = false, retiredThisRun = [];
+  let seedstats = null; try { seedstats = await deps.readDoc(deps.env, "brain/seedstats"); } catch (_) {}
+  const stats = seedstats && seedstats.seeds && typeof seedstats.seeds === "object" ? seedstats.seeds : {};
+  let blocks = deps.aiDjDefaultDayparts(), hadDoc = false;
+  try { const doc = await deps.readDoc(deps.env, "brain/dayparts"); const valid = deps.aiDjValidBlocks(doc); if (valid) { blocks = valid; hadDoc = true; } } catch (_) {}
+  let anchors = [];
+  if (taste && taste.artists) anchors = Object.entries(taste.artists).map(([name, c]) => ({ name, sc: deps.tasteScore(c) })).filter((a) => a.sc > 0).sort((a, b) => b.sc - a.sc || (a.name < b.name ? -1 : 1));
+  const FALLBACK_SEED = { traplove: "trap soul mix", weed: "chill rap mix", mixed: "throwback hits mix" };
+  const newBlocks = blocks.map((b) => ({ start: b.start, end: b.end, name: b.name, seeds: b.seeds.slice() }));
+  let totalPasses = 0; for (const s of Object.values(stats)) totalPasses += +s.passes || 0;
+  if (totalPasses < SELF_SEED_MIN_PASSES) notes.push("Seeds: still gathering evidence (" + totalPasses + " Auto-DJ passes recorded) — no seed changes yet.");
+  else for (let bi = 0; bi < newBlocks.length; bi++) {
+    const b = newBlocks[bi];
+    // retire at most one dead seed per block per review
+    const dry = b.seeds.map((q) => ({ q, s: stats[q] || null })).filter((x) => x.s && (+x.s.passes || 0) >= SELF_SEED_MIN_PASSES && (+x.s.landed || 0) === 0);
+    const weak = b.seeds.map((q) => ({ q, s: stats[q] || null })).filter((x) => x.s && (+x.s.passes || 0) >= SELF_SEED_MIN_PASSES && (+x.s.landed || 0) >= 3 && (+x.s.played || 0) === 0);
+    const victim = dry[0] || weak[0] || null;
+    if (victim && b.seeds.length > 2) {
+      const inBlock = (cand) => b.seeds.some((q) => aiDjNorm(q).includes(aiDjNorm(cand)) || aiDjNorm(cand).includes(aiDjNorm(q)));
+      let repl = "";
+      for (const a of anchors) { const cand = (a.name + " mix").slice(0, 60); if (cand !== victim.q && !inBlock(a.name)) { repl = cand; break; } }
+      if (!repl) { const fb = FALLBACK_SEED[b.name] || "new music mix"; if (fb !== victim.q && !b.seeds.includes(fb)) repl = fb; }
+      if (repl) { b.seeds[b.seeds.indexOf(victim.q)] = repl; seedDocDirty = true; retiredThisRun.push({ block: b.name, seed: victim.q }); changes.push("seeds[" + b.name + "]: retired \"" + victim.q + "\" (" + (+victim.s.passes || 0) + " passes, " + (+victim.s.landed || 0) + " landed, " + (+victim.s.played || 0) + " played) → \"" + repl + "\""); }
+      else notes.push("Seeds[" + b.name + "]: \"" + victim.q + "\" is dead but no fresh replacement is available — left in place.");
+    }
+    // promotion: best-yield seed first (stable; unrated seeds keep place)
+    const rated = b.seeds.filter((q) => stats[q] && (+stats[q].played || 0) > 0);
+    if (rated.length >= 2) {
+      const sorted = b.seeds.slice().sort((x, y) => ((+((stats[y] || {}).played) || 0) - (+((stats[x] || {}).played) || 0)));
+      if (sorted.join("\n") !== b.seeds.join("\n")) { b.seeds = sorted; seedDocDirty = true; changes.push("seeds[" + b.name + "]: reordered best-yield first — \"" + sorted[0] + "\" now leads (" + (+((stats[sorted[0]] || {}).played) || 0) + " plays from Auto-DJ stock)"); }
+    }
+  }
+  if (seedDocDirty) {
+    const v = deps.aiDjValidBlocks({ blocks: newBlocks });
+    const clockOk = !!v && v.length === blocks.length && v.every((b, i) => b.start === blocks[i].start && b.end === blocks[i].end && b.name === blocks[i].name);
+    if (clockOk) { await selfWrite(deps, "brain/dayparts", { blocks: v, updatedAt: now, by: "meechie-self" }); if (!hadDoc) notes.push("brain/dayparts doc created from the live program so future seed rotations have a document to tune — hours and names identical to the code fallback."); }
+    else { notes.push("Seeds: rebuilt dayparts failed clock validation — seed changes aborted, nothing written."); seedDocDirty = false; }
+  }
+  // 3) REQUESTS PLAYLIST HYGIENE — prune what can never legally play
+  // (ban-listed ids) and decay stale repeat counts so last month's
+  // requests stop outweighing this week's. The weighting itself lives
+  // in rqWeightedOrder, used by the lane at refill.
+  let rq = null; try { rq = await deps.readDoc(deps.env, "station/rqplaylist"); } catch (_) {}
+  if (rq && Array.isArray(rq.items) && rq.items.length) {
+    let banIds = new Set(); try { const bdoc = await deps.readDoc(deps.env, "brain/ytblock"); if (bdoc && Array.isArray(bdoc.ids)) banIds = new Set(bdoc.ids.map(String)); } catch (_) {}
+    const before = rq.items.length;
+    const pruned = rq.items.filter((r) => r && r.yt && banIds.has(String(r.yt)));
+    if (pruned.length) { rq.items = rq.items.filter((r) => !(r && r.yt && banIds.has(String(r.yt)))); for (const r of pruned) changes.push("requests: pruned \"" + String(r.title || r.yt).slice(0, 60) + "\" — its video is on the ban list and can never play"); }
+    let decayed = 0;
+    for (const r of rq.items) { if (r && +r.at > 0 && now - +r.at > 14 * SELF_DAY && (+r.n || 1) > 1) { const beforeN = +r.n; r.n = Math.max(1, Math.ceil(beforeN / 2)); decayed++; if (decayed <= 3) changes.push("requests: \"" + String(r.title || r.k).slice(0, 60) + "\" repeat count " + beforeN + " → " + r.n + " (no fresh requests in 14+ days)"); } }
+    if (decayed > 3) changes.push("requests: repeat counts decayed on " + decayed + " stale items (halved, floor 1)");
+    if (pruned.length || decayed) { rq.updatedAt = now; await selfWrite(deps, "station/rqplaylist", rq); }
+    else notes.push("Requests: playlist of " + before + " items is clean — nothing banned, nothing stale.");
+  } else notes.push("Requests: no saved requests playlist yet — nothing to tune.");
+  // 4) PROPOSALS — patterns data can't fix become documents for Amani.
+  // One per review, never a duplicate inside 7 days. Meechie files
+  // these; he does not act on them. Code is changed by people, through
+  // pull requests — that boundary is the design, not a limitation.
+  try {
+    let props = await deps.readDoc(deps.env, "brain/proposals");
+    if (!props || !Array.isArray(props.items)) props = { v: 1, items: [] };
+    const recent = (id) => props.items.some((p) => p && p.id === id && now - (+p.at || 0) < 7 * SELF_DAY);
+    const cands = [];
+    for (const r of retiredThisRun) { const prev = selflog.entries.some((e) => e && now - (+e.at || 0) < 7 * SELF_DAY && Array.isArray(e.changes) && e.changes.some((c) => String(c).includes("seeds[" + r.block + "]") && String(c).includes("retired"))); if (prev) cands.push({ id: "dry-lane-" + r.block, title: "Lane '" + r.block + "' keeps eating dead seeds", why: "A seed in this block was retired for returning nothing in two reviews inside a week (latest: \"" + r.seed + "\"). The seed well for this lane is running dry — a code-level look at new sources or search shapes for the lane would beat more seed swaps." }); }
+    if (metrics.plays7 >= 100 && metrics.skips7 * 20 >= metrics.plays7 * 7) cands.push({ id: "high-skip-rate", title: "Station skip rate is high", why: "Last 7 days: " + metrics.skips7 + " skips on " + metrics.plays7 + " plays (≥35%). Taste nudges alone won't fix a rate like that — worth a human look at lane mixes and pool sources." });
+    if (taste && Object.keys(taste.tracks || {}).length >= 395) cands.push({ id: "taste-at-cap", title: "Taste profile is at its cap", why: "brain/taste holds " + Object.keys(taste.tracks || {}).length + " of 400 tracks; the fold evicts the coldest on every write. If the cap should grow, that's a code change in lib/brain-taste.js." });
+    if (taste && anchors.length === 0) cands.push({ id: "no-taste-anchors", title: "No positive taste anchors", why: "No artist currently scores above zero, so Auto-DJ picks fall back to library frequency. If that persists, the anchor rule itself may need a human look." });
+    const fresh = cands.find((c) => !recent(c.id));
+    if (fresh) { props.items.push({ at: now, id: fresh.id, title: fresh.title, why: fresh.why, status: "open" }); props.items = props.items.slice(-20); await selfWrite(deps, "brain/proposals", props); changes.push("proposal filed: \"" + fresh.title + "\" (brain/proposals — for Amani's review; Meechie does not edit his own code)"); }
+  } catch (_) {}
+  const summary = "Daily self-review: last 24h " + metrics.plays24 + " plays, " + metrics.ends24 + " completions, " + metrics.skips24 + " skips, " + metrics.requests24 + " requests; Auto-DJ stocked picks that went on to play: " + metrics.drawnPlayed7 + " of the distinct videos drawn in 7d. " + changes.length + " change(s) made, all logged below.";
+  selflog.entries.push({ at: now, kind: "review", summary, changes, notes, metrics });
+  selflog.entries = selflog.entries.slice(-90);
+  selflog.lastRunDay = et.day; selflog.lastRunAt = now;
+  await selfWrite(deps, "brain/selflog", selflog);
+  return { ran: "review", changes: changes.length };
+}
+/* SELF-REVIEW-END */
 
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
 const BELL_WINDOW = 120000; // at most one doorbell push per two minutes
@@ -1956,6 +2200,18 @@ export async function onRequestGet({ request, env }) {
     } catch (_) {}
   }
 
+  // MEECHIE SELF-REVIEW (daily, quiet hours ET): judgment-data
+  // bookkeeping only — see the SELF-REVIEW block. Checked at most every
+  // 10 minutes per isolate; the pass itself gates on the quiet window,
+  // one run per ET day, the owner's kill switch, and establishes its
+  // baseline docs on first sight. It receives S read-only and writes
+  // only its allowlisted brain docs. Wrapped like the doorbell: it may
+  // never break the station ping.
+  if (now - selfRevCheckAt > 600000) {
+    selfRevCheckAt = now;
+    try { await selfReviewPass({ env, readDoc, writeDoc, readTaste, tasteScore, aiDjValidBlocks, aiDjDefaultDayparts }, S, now); } catch (_) {}
+  }
+
   // MW TV (Stage 1): the channel tick rides the same ping — it keeps
   // tv/now's segment window ahead of the clock and decides the hourly
   // radio news break. It runs BEFORE the booth stand-down on purpose:
@@ -2049,6 +2305,7 @@ export async function onRequestGet({ request, env }) {
   // brain_events rows + the brain/taste fold). Best-effort like the
   // doorbell — a brain failure may never break the station ping.
   const brainEvts = [];
+  const seedPlays = []; // SELF-REVIEW: aiQ seed phrases whose picks actually played this tick, flushed with the brain events below
   const brainPlay = (k, item) => {
     let artist = "";
     if (!item.yt && item.src) { const t = lib.find((x) => String(item.src).includes(x.assetId)); if (t && t.artist) artist = String(t.artist).slice(0, 80); }
@@ -2141,8 +2398,10 @@ export async function onRequestGet({ request, env }) {
   }
   // LISTENER REQUESTS LANE: draws from the saved requests playlist
   // (station/rqplaylist) with a no-repeat bag — S.rqBag holds the keys
-  // not yet drawn this cycle and refills shuffled when it empties, the
-  // same bag discipline as the library rotation. Unattended rules
+  // not yet drawn this cycle and refills WEIGHTED when it empties
+  // (rqWeightedOrder: a request asked for more often surfaces sooner;
+  // the bag stays a permutation, so every request still plays each
+  // cycle — the weighting the daily self-review maintains). Unattended rules
   // match the rest of the tail: a video needs a known length, dead
   // file hosts never play.
   const rqLaneItem = async () => {
@@ -2151,7 +2410,7 @@ export async function onRequestGet({ request, env }) {
     if (!items.length) return null;
     const playable = (r) => !!r && ((r.yt && +r.dur > 0) || (r.src && !/supabase/i.test(r.src)) || !!r.iaId);
     let bag = Array.isArray(S.rqBag) ? S.rqBag.filter((k) => items.some((r) => r.k === k)) : [];
-    if (!bag.length) { bag = items.filter(playable).map((r) => r.k); for (let i = bag.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; const t = bag[i]; bag[i] = bag[j]; bag[j] = t; } }
+    if (!bag.length) { bag = rqWeightedOrder(items.filter(playable), Math.random); }
     while (bag.length) {
       const k = bag.shift(); const r = items.find((x) => x.k === k);
       if (!r || !playable(r)) continue;
@@ -2200,6 +2459,7 @@ export async function onRequestGet({ request, env }) {
       while (S.aiQ.length) {
         const it = S.aiQ.shift(); changed = true;
         if (!it) continue;
+        if (it.q) seedPlays.push(String(it.q).slice(0, 80));
         if (it.yt && +it.dur > 0) return { src: "", yt: String(it.yt), title: String(it.title || "").slice(0, 120), cover: String(it.cover || "").slice(0, 300), dur: +it.dur };
       }
     }
@@ -2386,6 +2646,7 @@ export async function onRequestGet({ request, env }) {
   // consumed (brain_events rows + the brain/taste fold). Best-effort — the
   // station answers the same whether or not the brain remembers.
   if (brainEvts.length) { try { await recordBrainEvents(env, brainEvts); } catch (_) {} }
+  if (seedPlays.length) { try { await selfSeedNote(env, null, seedPlays); } catch (_) {} }
   if (changed) { S.by = "keeper"; /* mwFlapFix: keeper writes carry their own stamp, so a booth tab never mistakes a rescue for its own save echo */ await writeDoc(env, "radio/dj", "radio", S); }
   return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
 }
