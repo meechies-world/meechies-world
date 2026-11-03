@@ -148,10 +148,12 @@
      feeder is the source — never handed to a driver as the station
      on doubt, and never while a share holds the master sound. A
      share holds only while genuinely live (the keeper's rule:
-     fresh proof stamp, not source-gone). Under the decks and the
-     stream sits the playlist clock — the main site's own radio
-     mode (library + epoch, airNow math) — so a dark booth still
-     sounds, exactly like every other seat.
+     fresh proof stamp, not source-gone), and even a genuine share
+     never silences the radio here — it withholds only the feeder
+     stream. Under the decks and the stream sits the playlist
+     clock — the main site's own radio mode (library + epoch,
+     airNow math) — so a dark booth still sounds, exactly like
+     every other seat.
      Nothing on this page autoplays: TUNE IN is the deliberate act,
      and this page's own button is the only control of its sound —
      no scroll, touch or timer may touch the music (Law 22).
@@ -352,7 +354,19 @@
     }).catch(function(){});
   }
   var schedEl = null, schedKey = null;
-  function schedWanted(anyPlayable){ return tuned && !anyPlayable && !shareHolds() && gateLive !== true; }
+  /* The sound ladder, mirroring a radio-view seat in every state:
+     decks first; then the playlist clock; the gated stream only
+     when no share holds and the gate says the feeder carries the
+     station. A share — genuine or ghost — NEVER silences this
+     page: on the main site a share holds the master SCREEN while
+     the radio seat keeps sounding the station's program (proven
+     by the owner's two-tab test, 2026-11-03: share up, radio
+     TUNE IN played the program). So during a genuine share with
+     the decks parked, the clock is what the radio seat serves,
+     and it plays here too; the share's only powers on this page
+     are withholding the feeder stream (whose content a share
+     makes ambiguous) and carrying its note on the meta line. */
+  function schedWanted(anyPlayable){ return tuned && !anyPlayable && (shareHolds() || gateLive !== true); }
   function syncSched(anyPlayable){
     if(!schedWanted(anyPlayable)){ if(schedEl){ try { schedEl.pause(); } catch(_){} } return; }
     var a = airNow(); if(!a) return;
