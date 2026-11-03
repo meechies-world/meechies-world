@@ -1830,6 +1830,38 @@ html.popdj #dj-mini{display:none!important}
    * rides the owner session and /api/brain/events refuses everyone else. */
   /* AIDJ-C2-BEGIN */
   let aiDjRows = []; // recent draw + play rows, newest first per kind
+  /* HANDS (2026-11-03): the kill switch + Meechie's action readout.
+   * State comes from the public docs (brain/control, brain/selflog —
+   * the same read the taste panel uses); the flip goes through the
+   * owner-only POST /api/station "handsctl" door, because brain docs
+   * are server-write-only by design. */
+  let handsCtlState = null, handsLogRows = [];
+  function handsSectionHtml() {
+    const hon = !handsCtlState || handsCtlState.hands !== false;
+    let h = "<b style=\"font-size:15px;letter-spacing:.1em;display:block;margin-top:12px\">🖐️ MEECHIE'S HANDS</b>";
+    h += "<label style=\"display:flex;gap:8px;align-items:center;font-size:15px;margin:4px 0\"><input type=\"checkbox\" id=\"hands-on\" style=\"width:auto\"" + (hon ? " checked" : "") + "> Kill switch — Meechie AI runs the radio, TV, Book & Show Studio</label>";
+    if (!hon) h += "<small class=\"muted\">Hands are OFF — Meechie can talk and think, but he can't touch anything until you flip this back on.</small>";
+    if (handsCtlState && handsCtlState.aiHold) h += "<small class=\"muted\" style=\"display:block\">⏸️ AI stocking is on hold — ask Meechie in chat to resume it.</small>";
+    if (handsLogRows.length) h += "<div style=\"margin-top:4px\">" + handsLogRows.map((e) => "<small class=\"muted\" style=\"display:block\">🖐️ " + E(new Date(+e.at || 0).toLocaleTimeString()) + " · " + E(e.action || "") + " — " + E(String(e.summary || "").slice(0, 110)) + "</small>").join("") + "</div>";
+    return h;
+  }
+  function handsFetch() {
+    try {
+      const d = DBF(); if (!d) return;
+      d.doc("brain/control").get().then((snap) => { handsCtlState = snap && snap.exists && snap.data ? snap.data() : { hands: true }; if (document.getElementById("brain-body")) brainPaint(brainLastTaste); }).catch(() => {});
+      d.doc("brain/selflog").get().then((snap) => { const doc = snap && snap.exists && snap.data ? snap.data() : null; const es = doc && Array.isArray(doc.entries) ? doc.entries.filter((e) => e && e.kind === "action") : []; handsLogRows = es.slice(-5).reverse(); if (document.getElementById("brain-body")) brainPaint(brainLastTaste); }).catch(() => {});
+    } catch (_) {}
+  }
+  document.addEventListener("change", (e) => {
+    if (!e.target || e.target.id !== "hands-on") return;
+    if (SANDBOX || !OWNER()) return;
+    const ses = mySess(); const hdrs = { "content-type": "application/json" };
+    if (ses && ses.access_token) hdrs.authorization = "Bearer " + ses.access_token;
+    fetch("/api/station", { method: "POST", headers: hdrs, body: JSON.stringify({ kind: "handsctl", hands: !!e.target.checked }) })
+      .then((r) => r.json().catch(() => null))
+      .then((j) => { if (j && j.ok && j.control) handsCtlState = { ...(handsCtlState || {}), hands: j.control.hands, aiHold: j.control.aiHold }; handsFetch(); })
+      .catch(() => handsFetch());
+  });
   function aiDjSectionHtml(S2, taste, rows) {
     const on = !S2 || S2.aiDj !== false;
     const stock = S2 && Array.isArray(S2.aiQ) ? S2.aiQ.filter((it) => it && (it.title || it.yt)) : [];
@@ -1841,12 +1873,12 @@ html.popdj #dj-mini{display:none!important}
     const topArtist = Object.keys(artists).sort((a, b) => brainScore(artists[b]) - brainScore(artists[a]))[0] || "";
     let h = "<b style=\"font-size:15px;letter-spacing:.1em;display:block;margin-top:10px\">🤖 AI-DJ</b>";
     h += "<label style=\"display:flex;gap:8px;align-items:center;font-size:15px;margin:4px 0\"><input type=\"checkbox\" id=\"aidj-on\" style=\"width:auto\"" + (on ? " checked" : "") + "> Meechie AI stocks the queue while you are away</label>";
-    if (!on) { h += "<small class=\"muted\">AI-DJ is off — your queue and the library rotation still run the station.</small>"; return h; }
+    if (!on) { h += "<small class=\"muted\">AI-DJ is off — your queue and the library rotation still run the station.</small>"; return h + handsSectionHtml(); }
     if (!stock.length) h += "<small class=\"muted\">Nothing stocked right now — Meechie digs while the booth is quiet and keeps a few picks ready.</small>";
     else h += stock.map((it) => { const anchor = anchorByKey["yt:" + it.yt] || topArtist; return "<div class=\"dj-item\"><span>" + E(it.title || it.yt) + "</span><small class=\"muted\">queued by Meechie AI" + (anchor ? " — because you play " + E(anchor) : "") + "</small></div>"; }).join("");
     const recent = draws.slice(0, 5);
     if (recent.length) h += "<div style=\"margin-top:6px\">" + recent.map((r) => "<small class=\"muted\" style=\"display:block\">🎧 " + E(r.title || r.key || "") + (r.artist ? " — dug for your " + E(r.artist) + " plays" : "") + (playedKeys.has(r.key) ? " · ▶ played" : " · stocked") + "</small>").join("") + "</div>";
-    return h;
+    return h + handsSectionHtml();
   }
   function aiDjFetch() {
     if (SANDBOX || !OWNER()) return;
@@ -1858,6 +1890,7 @@ html.popdj #dj-mini{display:none!important}
         const rows = [...((d && d.rows) || []), ...((p && p.rows) || [])];
         if (rows.length) { aiDjRows = rows; if (document.getElementById("brain-body")) brainPaint(brainLastTaste); }
       }).catch(() => {});
+      handsFetch();
     } catch (_) {}
   }
   /* AIDJ-C2-END */
