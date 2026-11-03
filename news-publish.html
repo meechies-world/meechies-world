@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MW TV News Publisher · Meechie's World</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0a08">
+<style>
+body{margin:0;background:#0b0a08;color:#f3ecdc;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 48px}
+h1{font:800 24px Georgia,serif;color:#f0cf78;margin:0 0 16px}
+.card{background:#15130f;border:1px solid #3a3223;border-radius:16px;padding:18px;display:grid;gap:14px}
+label{display:grid;gap:6px;font-size:14px;color:#a99f8b}
+input[type=file]{color:#f3ecdc;font:inherit}
+.btn{display:block;width:100%;border:0;border-radius:999px;padding:14px;background:#d4a843;color:#0b0a08;font:800 16px system-ui,sans-serif;cursor:pointer}
+.btn[disabled]{opacity:.5;cursor:default}
+#gate{font-weight:700;color:#f0cf78}
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px solid #3a3223;border-radius:10px;padding:12px;min-height:120px;font-size:13px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MW TV News Publisher</h1>
+<div class="card">
+<div id="gate">Owner sign-in required</div>
+<div id="controls" hidden>
+<label>payloads.json
+<input type="file" id="payloadsFile" accept=".json,application/json">
+</label>
+<label>local-update.mp4
+<input type="file" id="file-local-update" data-expect="local-update.mp4" accept="video/mp4">
+</label>
+<label>news-2026-11-03-0713.mp4
+<input type="file" id="file-news-mp4" data-expect="news-2026-11-03-0713.mp4" accept="video/mp4">
+</label>
+<label>news-2026-11-03-0713-radio.mp3
+<input type="file" id="file-news-radio" data-expect="news-2026-11-03-0713-radio.mp3" accept="audio/mpeg">
+</label>
+<button type="button" class="btn" id="publishBtn" disabled>Publish</button>
+</div>
+<pre id="log"></pre>
+</div>
+</div>
+<script>
+(function () {
+  var gate = document.getElementById("gate");
+  var controls = document.getElementById("controls");
+  var logEl = document.getElementById("log");
+  var publishBtn = document.getElementById("publishBtn");
+  var payloadsInput = document.getElementById("payloadsFile");
+  var fileInputs = [
+    document.getElementById("file-local-update"),
+    document.getElementById("file-news-mp4"),
+    document.getElementById("file-news-radio")
+  ];
+  function print(line) { logEl.textContent += line + "\n"; }
+  function printJSON(label, obj) { print(label + " " + JSON.stringify(obj)); }
+
+  var ownerVerified = false;
+  var payloads = null;
+
+  /* Session + helpers: same logic as publish-page.js (bundle), verbatim
+   * wherever possible. The token is used ONLY as the Authorization
+   * Bearer for same-origin /api/cf calls. It is never printed. */
+  var ses = null;
+  try { ses = JSON.parse(localStorage.getItem("mw-cf-session") || "null"); } catch (e) { ses = null; }
+  var tok = ses && ses.access_token;
+  if (!tok) { gate.textContent = "Owner sign-in required"; return; }
+  var H = { Authorization: "Bearer " + tok };
+
+  async function readDoc(path) {
+    const r = await fetch("/api/cf/rest", { method: "POST", headers: { "Content-Type": "application/json", ...H }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", filters: [["path", "eq", path]] }) });
+    const j = await r.json();
+    const row = (j.data || [])[0];
+    return row ? row.data : null;
+  }
+  async function setDoc(path, coll, data) {
+    const r = await fetch("/api/cf/rpc", { method: "POST", headers: { "Content-Type": "application/json", ...H }, body: JSON.stringify({ name: "set_doc", args: { p_path: path, p_coll: coll, p_data: data } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error("set_doc " + path + " failed: " + r.status + " " + JSON.stringify(j.error || j).slice(0, 200));
+    return true;
+  }
+  async function who() { const me = await (await fetch("/api/brain/me", { headers: H })).json().catch(() => null); return me; }
+  function isOwner(me) {
+    if (!me) return false;
+    if (me.role === "owner" || me.owner === true || me.isOwner === true || me.is_owner === true) return true;
+    if (me.user && (me.user.role === "owner" || me.user.owner === true)) return true;
+    if (me.data && (me.data.role === "owner" || me.data.owner === true)) return true;
+    return false;
+  }
+  async function publishDocs(payloads) {
+    const out = [];
+    for (const d of payloads.docs) {
+      let data = d.data;
+      if (d.mergePrevious) {
+        const cur = await readDoc(d.path);
+        data = { current: d.data.current, previous: cur && cur.current ? cur.current : null };
+      }
+      await setDoc(d.path, d.coll, data);
+      out.push({ path: d.path, written: true });
+      printJSON("publishDocs doc:", { path: d.path, written: true });
+    }
+    return { ok: true, out };
+  }
+  async function verify(payloads) {
+    const media = [];
+    for (const v of payloads.verify.filter((x) => x.url)) {
+      const r = await fetch(v.url, { headers: { Range: "bytes=0-0" } });
+      const cr = r.headers.get("content-range") || "";
+      const total = cr.includes("/") ? +cr.split("/")[1] : +r.headers.get("content-length") || 0;
+      media.push({ url: v.url, status: r.status, bytes: total, expectBytes: v.expectBytes, match: total === v.expectBytes });
+    }
+    const docs = {};
+    for (const v of payloads.verify.filter((x) => x.doc)) {
+      const d = await readDoc(v.doc);
+      docs[v.doc] = d ? { at: d.at || (d.current && d.current.at) || null, dur: d.dur || (d.current && d.current.dur) || null, videoUrl: (d.current && d.current.videoUrl) || d.url || null } : null;
+    }
+    return { ok: media.every((m) => m.status === 200 || m.status === 206), media, docs };
+  }
+
+  function selectedFileFor(up) {
+    for (var i = 0; i < fileInputs.length; i++) {
+      if (fileInputs[i].getAttribute("data-expect") === up.file) {
+        return fileInputs[i].files && fileInputs[i].files[0];
+      }
+    }
+    return null;
+  }
+  function updatePublishEnabled() {
+    var allFiles = fileInputs.every(function (inp) { return inp.files && inp.files.length > 0; });
+    publishBtn.disabled = !(ownerVerified && payloads && allFiles);
+  }
+
+  payloadsInput.addEventListener("change", function () {
+    payloads = null;
+    updatePublishEnabled();
+    var f = payloadsInput.files && payloadsInput.files[0];
+    if (!f) { print("payloads.json: no file selected"); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        payloads = JSON.parse(String(reader.result));
+        printJSON("payloads.json parsed:", { ok: true, stamp: payloads.stamp || null, uploads: (payloads.uploads || []).map(function (u) { return u.file; }), docs: (payloads.docs || []).map(function (d) { return d.path; }) });
+      } catch (e) {
+        payloads = null;
+        print("payloads.json parse FAILED: " + (e && e.message ? e.message : e));
+      }
+      updatePublishEnabled();
+    };
+    reader.onerror = function () { print("payloads.json read FAILED"); updatePublishEnabled(); };
+    reader.readAsText(f);
+  });
+  fileInputs.forEach(function (inp) {
+    inp.addEventListener("change", function () {
+      var f = inp.files && inp.files[0];
+      print("file selected for " + inp.getAttribute("data-expect") + ": " + (f ? f.name + " (" + f.size + " bytes)" : "none"));
+      updatePublishEnabled();
+    });
+  });
+
+  publishBtn.addEventListener("click", async function () {
+    publishBtn.disabled = true;
+    try {
+      if (!payloads) throw new Error("payloads.json not parsed");
+      /* Uploads: same endpoint/headers/contentType as publish-page.js
+       * finishUpload, with a Blob built from the selected File. */
+      for (const up of payloads.uploads || []) {
+        const file = selectedFileFor(up);
+        if (!file) throw new Error("no file selected for upload " + up.file);
+        const blob = new Blob([file], { type: up.contentType });
+        const r = await fetch("/api/cf/upload/media/" + up.path, { method: "POST", headers: { ...H, "Content-Type": up.contentType }, body: blob });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j.error) throw new Error("upload " + up.file + " failed: " + r.status + " " + JSON.stringify(j.error || j).slice(0, 200));
+        printJSON("upload:", { ok: true, file: up.file, key: j.Key, bytes: blob.size });
+      }
+      const docsResult = await publishDocs(payloads);
+      printJSON("publishDocs:", docsResult);
+      const verifyResult = await verify(payloads);
+      print("FINAL VERIFY: " + JSON.stringify(verifyResult));
+      print(verifyResult.ok ? "PUBLISH RESULT: SUCCESS" : "PUBLISH RESULT: verify ok=false — see FINAL VERIFY above");
+    } catch (e) {
+      print("ERROR — stopped, no retries: " + (e && e.message ? e.message : e));
+      print("PUBLISH RESULT: FAILED");
+    }
+  });
+
+  /* Owner gate: identical who() call to publish-page.js. */
+  who().then(function (me) {
+    printJSON("who /api/brain/me:", me);
+    if (!isOwner(me)) {
+      gate.textContent = "Owner sign-in required";
+      controls.hidden = true;
+      ownerVerified = false;
+      updatePublishEnabled();
+      return;
+    }
+    ownerVerified = true;
+    gate.textContent = "Owner verified";
+    controls.hidden = false;
+    updatePublishEnabled();
+  }).catch(function (e) {
+    gate.textContent = "Owner sign-in required";
+    print("owner check FAILED: " + (e && e.message ? e.message : e));
+  });
+})();
+</script>
+</body>
+</html>
