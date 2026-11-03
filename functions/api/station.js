@@ -26,6 +26,12 @@ async function readDoc(env, path) {
   try { return JSON.parse(row.data); } catch (_) { return null; }
 }
 async function writeDoc(env, path, coll, data) {
+  /* SETTINGS CLEANUP (2026-11-03): PR #600's reverted TV-as-radio merge
+     persisted an inert radioSrc key in the radio/dj doc; nothing has read
+     it since the #603 revert. Strip it here — the site's own write path —
+     so the stored doc is clean from the next keeper write on. Same shape
+     as the vcam.frame precedent in dj.js mergeState. */
+  if (path === "radio/dj" && data && typeof data === "object") delete data.radioSrc;
   const nowIso = new Date().toISOString();
   const r = await env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(data), nowIso, path).run();
   if (!r.meta || !r.meta.changes) {

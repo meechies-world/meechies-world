@@ -762,7 +762,7 @@ border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffe9a8,var(--gol
    the right, make the song pick and mixer in the middle"): the deck bank unwraps so
    its pieces place straight into the booth grid — A/B left, C/D right, and the middle
    column stacks main mixer, SONG PICKER, C/D mixer. */
-@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}}
+@media(min-width:1500px){#dj-owner{display:grid;grid-template-columns:1fr 1fr 500px 1fr 1fr;gap:14px;align-items:start}#dj-owner>.dj-top{grid-column:1/-1}#dj-owner>.dj-setups{grid-column:1/-1;grid-row:2;margin-bottom:0}#dj-owner>.dj-decks{display:contents}#dj-owner .deck[data-deck="A"]{grid-column:1;grid-row:3/span 3}#dj-owner .deck[data-deck="B"]{grid-column:2;grid-row:3/span 3}#dj-owner .deck[data-deck="C"]{grid-column:4;grid-row:3/span 3}#dj-owner .deck[data-deck="D"]{grid-column:5;grid-row:3/span 3}#dj-owner .mixer.m1{grid-column:3;grid-row:4}#dj-owner #dj-browser{grid-column:3;grid-row:3;margin-top:0!important}#dj-owner .mixer.m2{grid-column:3;grid-row:5}#dj-owner>.dj-grid2{grid-column:1/-1}#dj-owner .swapbar{display:none}#dj-owner #dj-yt{flex:1 1 100%!important}}
 html.popdj .popdj-hint{display:block}
 .dj-rotate{display:none}
 @media (orientation:portrait) and (max-width:900px){.dj-rotate{display:flex;align-items:center;gap:8px;background:linear-gradient(180deg,#2a2112,#15110a);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:9px 12px;font:600 17px var(--body);margin-bottom:10px}}
@@ -1207,20 +1207,20 @@ html.popdj #dj-mini{display:none!important}
 @media(min-width:761px) and (min-height:560px){#dj-booth-root #dj-owner .deck .wave{height:66px}}
 #dj-booth-root #dj-owner .dj-top{box-shadow:0 1px 0 rgba(240,207,120,.35)}
 #dj-station h3{background:linear-gradient(180deg,#1d1e21,#101012);border:1px solid #2b2b30;border-radius:8px;padding:6px 9px}
-#dj-mini .mn-row{display:flex;align-items:stretch;justify-content:center;max-width:780px;margin:0 auto;padding:0 6px}
+#dj-mini .mn-row{display:flex;align-items:stretch;justify-content:center;max-width:1080px;margin:0 auto;padding:0 6px}
 #dj-mini .mn-row .vstage{flex:0 1 640px;width:100%;min-width:0}
-#dj-mini .mn-chip-l{display:block;width:54px;flex:none;margin:4px 4px 4px 0}
-#dj-mini .mn-chipcol{display:flex;flex-direction:column;gap:4px;width:54px;flex:none;padding:4px 4px 4px 0}
+#dj-mini .mn-chip-l{display:block;width:168px;flex:none;margin:4px 4px 4px 0}
+#dj-mini .mn-chipcol{display:flex;flex-direction:column;gap:4px;width:168px;flex:none;padding:4px 4px 4px 0}
 #dj-mini .mn-rqbtn{background:linear-gradient(180deg,#2a2110,#171106);border:1px solid var(--gold-lo);color:var(--gold-hi,#f0cf78);border-radius:8px;font-size:17px;line-height:1;padding:7px 0;cursor:pointer}
 #dj-mini .mn-chip{overflow:hidden;border-radius:6px;background:#100d07}
 #dj-mini .mn-chip a{display:block;color:var(--gold-hi,#f0cf78);text-decoration:none}
-#dj-mini .mn-chip img{width:100%;height:46px;object-fit:cover;display:block}
-#dj-mini .mn-chip-n{display:block;font:600 8.5px var(--body);line-height:1.25;padding:3px 4px;overflow:hidden}
-#dj-mini .mn-chip-p2{display:block;font:700 8.5px var(--body);color:#ffe9b0;padding:0 4px 3px}
-#dj-mini .mn-chip-t{display:block;font:700 7.5px var(--body);letter-spacing:.08em;color:var(--muted);padding:3px 4px 0}
+#dj-mini .mn-chip img{width:100%;height:72px;object-fit:cover;display:block}
+#dj-mini .mn-chip-n{display:block;font:600 11.5px var(--body);line-height:1.25;padding:3px 4px;overflow:hidden}
+#dj-mini .mn-chip-p2{display:block;font:700 11.5px var(--body);color:#ffe9b0;padding:0 4px 3px}
+#dj-mini .mn-chip-t{display:block;font:700 9.5px var(--body);letter-spacing:.08em;color:var(--muted);padding:3px 4px 0}
 #dj-mini .mn-chip-p{flex:1 1 auto}
 #dj-mini .mn-chip-p .mn-chip-n{max-height:64px}
-#dj-mini .mn-rqwrap{padding:0 6px;max-width:780px;margin:0 auto}
+#dj-mini .mn-rqwrap{padding:0 6px;max-width:1080px;margin:0 auto}
 #dj-mini .rq-mystat{display:block;font-size:10px;color:var(--gold-hi,#f0cf78);padding:2px 0}
 #dj-mini .rq-mystat:empty{display:none}
 #dj-mini .rq-form2{padding:2px 0 6px}
@@ -5836,7 +5836,7 @@ html.popdj #dj-mini{display:none!important}
    * the keeper fires it at the next segment boundary, so the pick
    * plays NEXT on MW TV for everyone watching. Nothing here touches
    * a player, the sound switch or the channel tuner itself. */
-  const twsCss = "#tw-search{position:absolute;right:14px;bottom:14px;z-index:11;width:min(332px,88vw);background:rgba(8,8,10,.93);border:1px solid #c9a227;border-radius:12px;padding:10px 11px;color:#f3ead2;box-shadow:0 10px 34px rgba(0,0,0,.6);transition:opacity .35s ease}"
+  const twsCss = "#tw-search{position:absolute;right:14px;bottom:14px;z-index:11;width:min(384px,88vw);background:rgba(8,8,10,.93);border:1px solid #c9a227;border-radius:12px;padding:10px 11px;color:#f3ead2;box-shadow:0 10px 34px rgba(0,0,0,.6);transition:opacity .35s ease}"
     + "body[data-view=\"mwtv\"].tw-immersive #tw-search{opacity:0!important;pointer-events:none!important;visibility:hidden}"
     + "#tw-search .tws-h{font-size:11px;letter-spacing:.12em;color:#c9a227;margin:0 0 7px;font-weight:700}"
     + "#tw-search .tws-row{display:flex;gap:6px}"
@@ -5847,7 +5847,8 @@ html.popdj #dj-mini{display:none!important}
     + "#tw-search .tws-item{display:flex;gap:8px;align-items:center;text-align:left;background:#151410;border:1px solid #38341f;border-radius:8px;padding:5px;cursor:pointer;width:100%;color:#f3ead2}"
     + "#tw-search .tws-item img{width:84px;height:47px;object-fit:cover;border-radius:5px;flex:none;background:#000}"
     + "#tw-search .tws-t{font-size:12.5px;line-height:1.3;display:block}"
-    + "#tw-search .tws-d{color:#c9a227;font-size:11.5px;display:block;margin-top:2px}";
+    + "#tw-search .tws-d{color:#c9a227;font-size:11.5px;display:block;margin-top:2px}"
+    + "#tw-shell:has(> .mw-adbar) #tw-search{bottom:56px}@media(max-width:640px){#tw-shell:has(> .mw-adbar) #tw-search{bottom:118px}}";
   let twsCache = [], twsBusy = false;
   const twsDur = (s) => { s = Math.max(0, Math.round(+s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0"); };
   function twsEnsure() {
@@ -7047,7 +7048,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793739543;
+  const MW_DJ_BUILD = 1793746670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -7575,7 +7576,7 @@ html.popdj #dj-mini{display:none!important}
     if (["cut", "fade", "wipe", "slide", "zoom", "blur", "flash", "glitch"].indexOf(m.vmix.tr) < 0) m.vmix.tr = "fade";
     m.vmix.trMs = Math.max(250, Math.min(1600, +m.vmix.trMs || 650)); m.vmix.at = +m.vmix.at || 0;
     m.vfx = Object.assign({ kind: "", at: 0 }, m.vfx || {});
-    m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0; /* BOOTH OPTIMIZATION (2026-10-29): the broadcast frame no longer rides inside radio/dj — it lives in its own radio/camframe doc (camFrameTick writes it, camOvSync reads it), so every booth save and every listener poll of this doc stays small. A stale frame/frameAt still sitting in the stored doc is ignored, never normalized in. */ delete m.vcam.frame; delete m.vcam.frameAt;
+    m.vcam = Object.assign({ on: false, at: 0 }, m.vcam || {}); m.vcam.on = !!m.vcam.on; m.vcam.at = +m.vcam.at || 0; /* BOOTH OPTIMIZATION (2026-10-29): the broadcast frame no longer rides inside radio/dj — it lives in its own radio/camframe doc (camFrameTick writes it, camOvSync reads it), so every booth save and every listener poll of this doc stays small. A stale frame/frameAt still sitting in the stored doc is ignored, never normalized in. */ delete m.vcam.frame; delete m.vcam.frameAt; delete m.radioSrc; /* #600 ORPHAN (cleanup 2026-11-03): the reverted TV-as-radio merge persisted a radioSrc key in radio/dj; nothing has read it since the #603 revert — dropped on every merge here, and the keeper strips it from the stored doc itself (station.js writeDoc). */
     // GO LIVE STUDIO (2026-10-29): S.vstream is the master-screen stream
     // switch — {on, kind:"cam"|"screen", at, by, meeting}. Screen outranks
     // camera stream, camera stream outranks the vmix deck videos; the
