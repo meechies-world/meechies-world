@@ -438,7 +438,17 @@
     if (prevBtn) prevBtn.disabled = !def;
     if (resumeBtn) resumeBtn.hidden = !(def && wantPlay && !sounding && curItem);
     if (posterEl) posterEl.style.display = def ? "none" : "";
-    if (noteEl && typeof note === "string") noteEl.textContent = note;
+    if (noteEl) {
+      if (typeof note === "string") noteEl.textContent = note;
+      /* A "Tuning…" note is only honest while actually tuning: once the
+       * channel is sounding with a current item, the note is stale and
+       * clears, so the card shows its real state. Both players set
+       * sounding=true and call paint() the moment sound starts (the
+       * file player's "playing" handler on the baked fallback, the YT
+       * player's PLAYING state on the primary path), so both paths
+       * drive this transition identically. */
+      else if (sounding && curItem && (noteEl.textContent || "").indexOf("Tuning") === 0) noteEl.textContent = "";
+    }
     DEFS.forEach((d) => {
       const on = card.querySelector(`[data-chan-on="${d.id}"]`);
       const row = card.querySelector(`[data-chan="${d.id}"]`);
