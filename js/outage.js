@@ -54,7 +54,11 @@
       document.body.insertBefore(b, document.body.firstChild); /* sits above the menu bar, never on top of it */
     };
     if (document.body) add(); else document.addEventListener("DOMContentLoaded", add);
-    showDown();
+    /* The full-screen poster is for a CONFIRMED outage only. probe() already confirmed it twice;
+       the other doors (one sign-in error such as a 429 rate limit, one stray failed fetch) ask
+       the health route first, so a single hiccup never blacks out the whole site. */
+    if (reason === "auth check failed twice") showDown();
+    else healthy().then((ok) => { if (!ok && shown) showDown(); }, () => {});
     watchRecovery();
     try { console.warn("[MW] outage mode:", reason); } catch (_) {}
   }

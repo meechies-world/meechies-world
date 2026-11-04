@@ -56,9 +56,9 @@ async function readDoc(env, path) {
 async function writeDocAs(env, owner, path, coll, doc) {
   const nowIso = new Date().toISOString();
   const data = JSON.stringify(doc);
-  const r = await env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(data, nowIso, path).run();
+  const r = await env.DB.prepare("update docs set data = ?, updated_at = ?, owner = null where path = ?").bind(data, nowIso, path).run();
   if (!r.meta || !r.meta.changes) {
-    await env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, owner, data, nowIso, nowIso).run();
+    await env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, null, data, nowIso, nowIso).run();
   }
   await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", path, coll, null, null, Date.now()).run();
 }
