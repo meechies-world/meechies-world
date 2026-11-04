@@ -1105,8 +1105,60 @@ async function playIntro(){
 })();
 async function setEpoch(ms){ try{ await db.doc("radio/state").set({epoch:ms}); }catch(err){ toast(err.message||err.code); } }
 $("#restart-station").addEventListener("click",async()=>{ await setEpoch(Date.now()); toast("Station restarted from track 1"); if(mode==="radio") tuneIn(); });
+/* ---------- Radio LIFELINE (owner, 2026-11-04 ~00:13 EST: "why isnt
+ * meechie djing the radio… make that not need to be logged in") ----------
+ * The station the listener hears is already a clock: tracks[] +
+ * radioEpoch + airNow() pick the song and the offset, and Tune In
+ * plays it — no login involved. The only Cloudflare dependency is
+ * the library itself, which arrives over the database. When that
+ * snapshot never lands (database down), the station reads OFF AIR
+ * and Meechie is silent. The lifeline fills tracks[] from a static
+ * file (/lifeline/radio-dayparts.json — Meechie's own catalog, split
+ * into the station's daypart lanes) and sets radioEpoch to the
+ * current daypart's start, so every listener's clock lands on the
+ * same song at the same offset, exactly like the live station. It
+ * writes nothing and needs no session. The moment a real library
+ * snapshot arrives, subRadio's own callback replaces the list and
+ * the lifeline stands down (the radio/state snapshot likewise takes
+ * the epoch back). Daypart boundaries while engaged swap the lane
+ * and re-tune a playing radio, the way the keeper hands over. */
+let libSeen=false, llRadioOn=false, llPlaylists=null, llDaypart="";
+function llEtPartsR(ms){ const parts=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",hour12:false,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date(ms)); const p={}; parts.forEach(x=>{ p[x.type]=+x.value; }); return p; }
+function llEtOffsetMsR(ms){ const p=llEtPartsR(ms); return Date.UTC(p.year,p.month-1,p.day,p.hour%24,p.minute,p.second)-Math.floor(ms/1000)*1000; }
+function llEtWallToMsR(y,m,d,h){ const guess=Date.UTC(y,m-1,d,h,0,0); const once=guess-llEtOffsetMsR(guess); return guess-llEtOffsetMsR(once); }
+/* Which daypart lane is on at ms, and the exact ms it started —
+ * 21:00–06:00 traplove, 06:00–12:00 weed wake-up, 12:00–21:00 mixed
+ * (the shipped daypart clock, PR #604). Wall-clock exact on DST days. */
+function llDaypartStart(ms){
+  const p=llEtPartsR(ms), h=p.hour%24;
+  if(h>=21) return { name:"traplove", start:llEtWallToMsR(p.year,p.month,p.day,21) };
+  if(h<6){ const prev=new Date(Date.UTC(p.year,p.month-1,p.day)-86400e3); return { name:"traplove", start:llEtWallToMsR(prev.getUTCFullYear(),prev.getUTCMonth()+1,prev.getUTCDate(),21) }; }
+  if(h<12) return { name:"weed", start:llEtWallToMsR(p.year,p.month,p.day,6) };
+  return { name:"mixed", start:llEtWallToMsR(p.year,p.month,p.day,12) };
+}
+function llRadioApply(first){
+  if(!llRadioOn || !llPlaylists) return;
+  const dp=llDaypartStart(Date.now()), list=llPlaylists[dp.name];
+  if(!Array.isArray(list) || !list.length) return;
+  const changed=dp.name!==llDaypart; llDaypart=dp.name;
+  if(!changed && !first && radioEpoch===dp.start){ paintAir(); return; } // same lane, same clock: nothing to re-lay
+  tracks=list.map(t=>({ id:t.id, title:t.title, artist:t.artist, duration:t.duration, assetId:t.assetId }));
+  radioEpoch=dp.start;
+  renderTracks(); paintAir();
+  if(changed && !first && mode==="radio"){ try{ tuneIn(); }catch(_){} }
+  if(first && !autoTried) setTimeout(autoRadio,400);
+}
+function llRadioEngage(){
+  if(llRadioOn || libSeen) return;
+  fetch("/lifeline/radio-dayparts.json",{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{
+    if(!j || libSeen) return; // a real library snapshot beat the lifeline to it
+    llPlaylists=j; llRadioOn=true; window.MW_LIFELINE_RADIO=true; llRadioApply(true);
+  }).catch(()=>{});
+}
+setTimeout(()=>{ if(!libSeen && !tracks.length) llRadioEngage(); },6000);
+setInterval(()=>{ if(llRadioOn) llRadioApply(false); },30000);
 function subRadio(){
-  db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); if(window._introPending && !window._welcomeOn){ window._introPending=false; playIntro().then(ok=>{ if(!ok && !autoTried) autoRadio(); }); } else if(!autoTried) setTimeout(autoRadio,400); }, e=>console.warn(e));
+  db.collection("tracks").orderBy("addedAt","asc").limit(500).onSnapshot(s=>{ libSeen=true; if(llRadioOn){ llRadioOn=false; window.MW_LIFELINE_RADIO=false; } tracks=s.docs.map(d=>({id:d.id,...d.data()})); renderTracks(); if(window._introPending && !window._welcomeOn){ window._introPending=false; playIntro().then(ok=>{ if(!ok && !autoTried) autoRadio(); }); } else if(!autoTried) setTimeout(autoRadio,400); }, e=>console.warn(e));
   db.doc("radio/state").onSnapshot(d=>{ radioEpoch=d.exists?(d.data().epoch||DEFAULT_EPOCH):DEFAULT_EPOCH; paintAir(); }, e=>console.warn(e));
   db.collection("requests").orderBy("createdAt","desc").limit(25).onSnapshot(s=>{
     const rows = s.docs.map(d=>d.data()).filter(r=>String(r.text||"").trim()); $("#req-list").innerHTML = !rows.length ? '<p class="muted" style="margin:0;font-size:14px">Request a song or send a shoutout to the station.</p>' : rows.map(r=>`<div><b>${esc(handleOf(r.authorId))}</b>${esc(r.text)} <small class="muted">${ago(r.createdAt)}</small></div>`).join("");
