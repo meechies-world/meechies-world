@@ -5926,6 +5926,126 @@ html.popdj #dj-mini{display:none!important}
     if (!twImmOn && Date.now() - twLastAct >= TW_IDLE_MS) twImmSet(true);
   }
   setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} }, 1000);
+  /* ================= MW TV LIFELINE (owner, 2026-11-04 ~00:13 EST:
+   * "Make it so my tv station can play without cloudflare… dont have
+   * to log in to see mwtv") =================
+   * When the channel's live docs (tv/channel + tv/now) never arrive —
+   * the backend database is down — the tuner above sits on
+   * "TV: connecting…" forever and the station is dark. The lifeline
+   * is a backup feed laid entirely from a static file
+   * (/lifeline/tv-lineup.json — the cleared Movie Night pool) by
+   * clock math every viewer shares: the lineup order rotates by the
+   * ET date and segments are laid from ET midnight, so every seat
+   * lands on the same moment of the same movie with NO backend call
+   * and NO login. It feeds the SAME tvChanDoc / tvNowDoc the keeper's
+   * snapshots feed, so the existing surfs, poster rules, guide and
+   * sound rules paint it unchanged.
+   * ENGAGE: the live docs are absent, or a once-live window runs out
+   * under the viewer (the keeper stopped laying) — after a short
+   * persistence window so a one-tick re-lay never flips the feed.
+   * It never engages over a real doc that says the channel is off,
+   * and it never overrides an owner action: the owner's controls all
+   * ride the live docs, which the lifeline only replaces while they
+   * are missing.
+   * HANDBACK: real snapshots arriving while the lifeline runs are
+   * stashed by the subscription handlers (they check LL_TV.on) and
+   * promoted at the current lifeline segment's end — the live
+   * channel takes over at a boundary, never mid-scene. The facade's
+   * own changes poll keeps re-probing the backend every few seconds,
+   * so recovery is noticed without any extra traffic. */
+  const LL_TV = { on: false, lineup: null, loading: false, realChan: undefined, realNow: undefined, laidUntil: 0, dayKey: "", deadSince: 0, bootAt: Date.now() };
+  function llEtParts(ms) {
+    const parts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date(ms));
+    const p = {}; parts.forEach((x) => { p[x.type] = +x.value; }); return p;
+  }
+  function llEtOffsetMs(ms) { const p = llEtParts(ms); return Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second) - Math.floor(ms / 1000) * 1000; }
+  function llEtMidnightMs(ms) { const p = llEtParts(ms); const dayUTC = Date.UTC(p.year, p.month - 1, p.day); let mid = dayUTC - llEtOffsetMs(ms); mid = dayUTC - llEtOffsetMs(mid); return mid; }
+  function llEtDayKey(ms) { const p = llEtParts(ms); return p.year + "-" + String(p.month).padStart(2, "0") + "-" + String(p.day).padStart(2, "0"); }
+  /* Pure schedule math (harnessed): the segments covering
+   * [now, horizonMs) for the lifeline lineup at instant now. The
+   * current segment's start is absolute — a function of ET midnight
+   * and the day's rotation only — so any two viewers computing at
+   * different moments get identical segment starts. */
+  function llTvSegsAt(items, now, horizonMs) {
+    if (!Array.isArray(items) || !items.length) return { segs: [], until: 0, dayKey: "" };
+    const key = llEtDayKey(now);
+    let h = 0; for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+    const rot = items.length > 1 ? h % items.length : 0;
+    const ordered = items.slice(rot).concat(items.slice(0, rot));
+    const total = ordered.reduce((a, x) => a + (+x.durSec || 0), 0);
+    if (!(total > 0)) return { segs: [], until: 0, dayKey: key };
+    const dayStart = llEtMidnightMs(now);
+    const horizon = Math.min(horizonMs, llEtMidnightMs(dayStart + 36 * 3600e3)); // never lay across an ET midnight: the rotation changes there
+    let pos = ((now - dayStart) / 1000) % total; if (pos < 0) pos += total;
+    let idx = 0, acc = 0;
+    while (idx < ordered.length - 1 && acc + (+ordered[idx].durSec || 0) <= pos) { acc += +ordered[idx].durSec || 0; idx++; }
+    let s = now - (pos - acc) * 1000;
+    const segs = [];
+    let i = idx, guard = 0;
+    while (s < horizon && segs.length < 64 && guard++ < 200) {
+      const it = ordered[i % ordered.length];
+      if (!(+it.durSec > 0)) { i++; continue; }
+      segs.push({ id: "ll-" + it.yt, k: "movie", src: "yt", yt: it.yt, url: "", title: it.title || "", show: it.show || "Movie Night", start: Math.round(s), dur: +it.durSec, off: 0 });
+      s += it.durSec * 1000; i++;
+    }
+    return { segs, until: s, dayKey: key };
+  }
+  function llTvLabel() { const lab = document.getElementById("tw-lifeline"); if (lab) lab.hidden = !LL_TV.on; }
+  function llTvLoad() {
+    if (LL_TV.lineup || LL_TV.loading) return;
+    LL_TV.loading = true;
+    fetch("/lifeline/tv-lineup.json", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => {
+      LL_TV.loading = false;
+      if (j && Array.isArray(j.segments) && j.segments.length) LL_TV.lineup = j.segments.filter((x) => x && x.yt && +x.durSec > 0);
+    }).catch(() => { LL_TV.loading = false; });
+  }
+  function llTvLay(now) {
+    const laid = llTvSegsAt(LL_TV.lineup, now, now + 3 * 3600e3);
+    if (!laid.segs.length) return;
+    tvNowDoc = { __ll: true, segs: laid.segs };
+    if (!tvChanDoc || tvChanDoc.__ll) tvChanDoc = { on: true, __ll: true };
+    tvArrChan = true; tvArrNow = true; tvMarkArrive();
+    LL_TV.laidUntil = laid.until; LL_TV.dayKey = laid.dayKey;
+  }
+  function llTvTick() {
+    if (SANDBOX) return;
+    const now = serverNow();
+    const realChan = tvChanDoc && !tvChanDoc.__ll ? tvChanDoc : null;
+    const realNow = tvNowDoc && !tvNowDoc.__ll ? tvNowDoc : null;
+    const liveSeg = realNow && Array.isArray(realNow.segs) ? tvSegAtC(realNow.segs, now) : null;
+    if (!LL_TV.on) {
+      if (liveSeg || (realChan && realChan.on === false)) { LL_TV.deadSince = 0; return; } // live channel is playing, or the owner turned it off: never engage
+      /* the channel cannot play from live docs. Docs absent entirely
+       * engage after ~6s of persistence; a laid window that merely
+       * ran out gets ~15s (the keeper may just be re-laying). */
+      const absent = !realNow && !realChan;
+      if (!LL_TV.deadSince) LL_TV.deadSince = Date.now();
+      if (Date.now() - LL_TV.deadSince < (absent ? 6000 : 15000)) return;
+      if (Date.now() - LL_TV.bootAt < 6000) return;
+      LL_TV.on = true; LL_TV.realChan = undefined; LL_TV.realNow = undefined; LL_TV.laidUntil = 0;
+      llTvLabel();
+    }
+    /* HANDBACK: a real tv/now stashed by the handlers, with a real
+     * tv/channel either stashed or already in place from before the
+     * outage (that doc rarely changes, so its snapshot may never
+     * re-fire — waiting for a fresh copy would trap the handback),
+     * promotes at the current lifeline segment's end. */
+    if (LL_TV.realNow && Array.isArray(LL_TV.realNow.segs) && LL_TV.realNow.segs.length && (LL_TV.realChan || realChan)) {
+      const cur = tvNowDoc && tvNowDoc.__ll && Array.isArray(tvNowDoc.segs) ? tvSegAtC(tvNowDoc.segs, now) : null;
+      if (!cur || now >= cur.start + cur.dur * 1000) {
+        if (LL_TV.realChan) tvChanDoc = LL_TV.realChan;
+        tvNowDoc = LL_TV.realNow;
+        LL_TV.realChan = undefined; LL_TV.realNow = undefined;
+        LL_TV.on = false; LL_TV.deadSince = 0; llTvLabel();
+        return;
+      }
+    }
+    if (!LL_TV.lineup) { llTvLoad(); return; }
+    if (!tvNowDoc || tvNowDoc.__ll) {
+      if (LL_TV.laidUntil < now + 3600e3 || LL_TV.dayKey !== llEtDayKey(now)) llTvLay(now);
+    }
+  }
+  if (!SANDBOX) setInterval(() => { try { llTvTick(); } catch (_) {} }, 1000);
   /* MW TV OWNER SEARCH (Malik, 2026-11-02 ~20:56: "Make it so i can
    * search what i want to play on my tv channel" — "Give just me a
    * search box somewhere" — "Bottom right corner"): a compact search
@@ -7438,7 +7558,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793793623;
+  const MW_DJ_BUILD = 1793793906;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
@@ -8836,7 +8956,7 @@ html.popdj #dj-mini{display:none!important}
     if (!window.claude) { if (initTries++ < 40) setTimeout(init, 750); return; }
     const d = await claude.use("db"); if (!d) { if (initTries++ < 40) setTimeout(init, 750); return; }
     if (!SANDBOX) d.doc("radio/camframe").onSnapshot((snap) => { camFrameDoc = snap.exists ? snap.data() : null; camOvSync(); }, () => {});
-    if (!SANDBOX) { d.doc("tv/channel").onSnapshot((snap) => { tvChanDoc = snap.exists ? snap.data() : null; tvArrChan = true; tvMarkArrive(); }, () => {}); d.doc("tv/breakpool").onSnapshot((snap) => { tvPoolDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/now").onSnapshot((snap) => { tvNowDoc = snap.exists ? snap.data() : null; tvArrNow = true; tvMarkArrive(); }, () => {}); d.doc("tv/news").onSnapshot((snap) => { tvNewsDoc = snap.exists ? snap.data() : null; }, () => {}); } // MW TV channel docs (Stage 1) - the keeper writes tv/now, this layer only tunes in; same facade + changes feed, fail-silent, sandbox never subscribes // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
+    if (!SANDBOX) { d.doc("tv/channel").onSnapshot((snap) => { const doc = snap.exists ? snap.data() : null; if (LL_TV.on) LL_TV.realChan = doc; else tvChanDoc = doc; tvArrChan = true; tvMarkArrive(); }, () => {}); d.doc("tv/breakpool").onSnapshot((snap) => { tvPoolDoc = snap.exists ? snap.data() : null; }, () => {}); d.doc("tv/now").onSnapshot((snap) => { const doc = snap.exists ? snap.data() : null; if (LL_TV.on) LL_TV.realNow = doc; else tvNowDoc = doc; tvArrNow = true; tvMarkArrive(); }, () => {}); d.doc("tv/news").onSnapshot((snap) => { tvNewsDoc = snap.exists ? snap.data() : null; }, () => {}); } // MW TV channel docs (Stage 1) - the keeper writes tv/now, this layer only tunes in; same facade + changes feed, fail-silent, sandbox never subscribes // the viewer camera square's frame source (BOOTH OPTIMIZATION Job A) — same doc facade + changes feed as radio/dj, fail-silent; the sandbox never subscribes, it never touches the frame doc
     if (!SANDBOX) d.doc("radio/dj").onSnapshot((snap) => onState(snap.exists ? snap.data() : null), () => {});
     else { try { const s0 = JSON.parse(sessionStorage.getItem("mw-playdj") || "null"); if (s0) S = mergeState(s0); } catch (_) {} setTimeout(() => { paintOwner(); DECKS.forEach((k) => { if (S[k] && (S[k].src || S[k].yt || S[k].scUrl)) follow(k); }); }, 600); }
     if (SANDBOX) setInterval(async () => { let on = false; try { on = sessionStorage.getItem("mw-guestlive") === "1"; } catch (_) {} if (!on) return; try { const r = await fetch("/api/cf/rest", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", limit: 1, filters: [["path", "eq", "radio/dj"]] }) }); const j = await r.json(); const row = (j.data || [])[0]; const d = row && (typeof row.data === "string" ? JSON.parse(row.data) : row.data); const ses = (window.MW && MW.session && MW.session()) || null; const uid = ses && ses.user && ses.user.id; const g = d && d.djGuest; if (!g || !uid || g.uid !== uid || !(g.until > Date.now())) { try { sessionStorage.removeItem("mw-guestlive"); } catch (_) {} say("Your live slot has ended 🎧"); } } catch (_) {} }, 15000);
