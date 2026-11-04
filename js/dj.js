@@ -4406,11 +4406,20 @@ html.popdj #dj-mini{display:none!important}
          * radio's OUTPUT (levels / vmixSndScr), never because TV code
          * stopped the radio. chanSync() runs inside the tap so the
          * unmute lands on the gesture itself. */
-        tvSndOn = !tvSndOn;
+        /* SOUND-CATCH (2026-11-04): this tap's own pointerdown already
+         * unlocked the seat with intent ON — the tap means sound-on,
+         * so hold the intent instead of toggling it off. Any other
+         * seat toggles exactly as before. */
+        if (tvUnlockFromTap) tvUnlockFromTap = false;
+        else tvSndOn = !tvSndOn;
         try { chanSync(); } catch (_) {}
       } else if (window.MW_DJ) window.MW_DJ.toggle();
       tvSig = ""; try { tvPaint(); } catch (_) {} return;
     }
+    /* A click anywhere else consumes a pending unlock tap: the tap
+     * that unlocked the seat was not on the sound button, so the next
+     * sound-button tap is a real toggle again. */
+    tvUnlockFromTap = false;
     if (t.closest("#tw-watch") || t.closest("#st-watch")) { try { cutOtherAudio(); } catch (_) {} try { startListening(); } catch (_) {} if (typeof go === "function") go("watch"); return; }
     if (t.closest("#wb-sound")) { if (window.MW_DJ) window.MW_DJ.toggle(); return; }
     if (t.closest(".wsu-x")) { wsModal("ws-upsell", false); return; }
@@ -5338,7 +5347,7 @@ html.popdj #dj-mini{display:none!important}
      * content on the TV page. What remains on the TV page is the
      * master's own share / screen video (the master law) and, owned
      * by chanGuidePaint below, the channel itself. */
-    const sig = mode + "|" + label + "|" + (listening ? 1 : 0) + "|" + (tvSndOn ? 1 : 0);
+    const sig = mode + "|" + label + "|" + (listening ? 1 : 0) + "|" + (tvSndOn ? 1 : 0) + "|" + (tvSeatAct ? 1 : 0);
     if (sig === tvSig) return; tvSig = sig;
     const bd = $("#tw-live"), wt = $("#tw-what"), sb = $("#tw-sound");
     /* While the channel is up, chanGuidePaint owns the badge words —
@@ -5346,7 +5355,14 @@ html.popdj #dj-mini{display:none!important}
     const chanOwns = elOpen("v-mwtv") && chanReady();
     if (bd && !chanOwns) { bd.hidden = !mode; bd.classList.toggle("mix", mode === "mix"); bd.textContent = mode === "live" ? "🔴 LIVE" : "ON AIR"; }
     if (wt && !chanOwns) wt.textContent = label;
-    if (sb) sb.textContent = elOpen("v-mwtv") ? (tvSndOn ? "🔊 TV sound on — tap to mute" : "🔇 TV sound off — tap for sound") : (listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound");
+    /* SOUND LABEL = REALITY (2026-11-04, guest seat 09:51 ET): on the TV
+     * page the button used to paint the intent flag (tvSndOn) while the
+     * player was still actually muted — the armed-but-not-yet-gestured
+     * window read "TV sound on" over silence. Sound is really on only
+     * when intent is on AND a seat gesture has unlocked it (the tick
+     * unmutes exactly under that condition), so the label paints that
+     * conjunction. The radio branch is untouched. */
+    if (sb) sb.textContent = elOpen("v-mwtv") ? ((tvSndOn && tvSeatAct) ? "🔊 TV sound on — tap to mute" : "🔇 TV sound off — tap for sound") : (listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound");
   }
   /* MW TV ENTRY = SOUND ON (owner, 2026-11-02: "Make sure if they
    * click on MW TV it comes on with the sound on and the radio cuts
@@ -5384,6 +5400,15 @@ html.popdj #dj-mini{display:none!important}
    * sound joins on the first tap anywhere — tvEntryGesture hears
    * every pointerdown/keydown on the document, capture phase). */
   let tvSeatAct = false;
+  /* SOUND-CATCH (2026-11-04, guest seat 09:51 ET): the unlocking tap's
+   * pointerdown fires before its click, so a first tap on #tw-sound in
+   * the armed-but-muted window would unlock the seat and then toggle
+   * the intent OFF — the button would read "tap for sound" and answer
+   * with silence. This flag remembers that the seat was unlocked by
+   * this very tap so the button handler can hold the intent instead
+   * of flipping it. Pointer taps only: a keypress unlock leaves no
+   * pending button tap behind, and any other click clears it. */
+  let tvUnlockFromTap = false;
   function tvEnterApply() {
     tvSndOn = true;
     /* THE WALL: no stopListening() — TV entry never touches the
@@ -5406,7 +5431,8 @@ html.popdj #dj-mini{display:none!important}
     if (on && !tvInView) { tvInView = true; tvEnter(); }
     else if (!on && tvInView) { tvInView = false; tvSndArm = false; }
   }
-  function tvEntryGesture() {
+  function tvEntryGesture(e) {
+    if (!tvSeatAct && e && e.type === "pointerdown" && tvSndOn) tvUnlockFromTap = true;
     tvSeatAct = true;
     tvLastGesture = Date.now();
     if (tvSndArm && tvInView) { tvSndArm = false; try { chanSync(); } catch (_) {} tvSig = ""; try { tvPaint(); } catch (_) {} }
@@ -5940,7 +5966,25 @@ html.popdj #dj-mini{display:none!important}
     if (!twLastAct) { twLastAct = Date.now(); return; }
     if (!twImmOn && Date.now() - twLastAct >= TW_IDLE_MS) twImmSet(true);
   }
-  setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} }, 1000);
+  /* SOUND-CATCH layer (2026-11-04, guest seat 09:51 ET): the YouTube
+   * iframe swallows every pointer event over the picture — the
+   * immersive comment above already says so — so a centre-tap on the
+   * player can never reach the document gesture listener that unlocks
+   * sound, and the tap is dead. While the TV view is open, intent is
+   * on, no seat gesture has landed yet, and a channel player is
+   * mounted, a transparent layer over the stage (same geometry as
+   * #tw-summon, below the chrome) takes pointer events, so that first
+   * tap lands on a page element and the existing capture-phase
+   * gesture listener fires: sound joins on the tap, and the next tick
+   * drops the layer again so later taps reach the player exactly as
+   * before. Taps on the poster (no player yet) already reach the page
+   * and need no layer; taps on the bar/guide/progress ride above it. */
+  function twSndCatchTick() {
+    let want = false;
+    try { const tw = TV_SURFS[0]; want = elOpen("v-mwtv") && tvSndOn && !tvSeatAct && !!(tw && (tw.p || tw.v)); } catch (_) { want = false; }
+    try { document.body.classList.toggle("tw-sndcatch", want); } catch (_) {}
+  }
+  setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} try { twSndCatchTick(); } catch (_) {} }, 1000);
   /* ================= MW TV LIFELINE (owner, 2026-11-04 ~00:13 EST:
    * "Make it so my tv station can play without cloudflare… dont have
    * to log in to see mwtv") =================

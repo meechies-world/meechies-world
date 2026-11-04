@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1793793623"></script>
-<meta name="mw-build" content="1793798808">
+<meta name="mw-build" content="1793805364">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -1250,6 +1250,14 @@ body[data-view="mwtv"].tw-immersive #tw-bar,body[data-view="mwtv"].tw-immersive 
    controls behind it to preserve. */
 #tw-summon{position:absolute;inset:0;z-index:7;pointer-events:none;background:transparent}
 body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
+/* SOUND-CATCH layer (2026-11-04, guest seat 09:51 ET): same geometry as
+   #tw-summon, inert until dj.js adds tw-sndcatch to the body while the
+   TV view is open, sound intent is on, no seat gesture has landed yet
+   and a channel player is mounted — then a first tap on the picture
+   lands on a page element instead of being swallowed by the YouTube
+   iframe, so the gesture listener unlocks sound on that tap. */
+#tw-sndcatch{position:absolute;inset:0;z-index:7;pointer-events:none;background:transparent}
+body[data-view="mwtv"].tw-sndcatch #tw-sndcatch{pointer-events:auto}
 /* Once the channel layer is on, the standby slate's words (the giant
    MW TV wordmark + the status line) must never peek above or below the
    playing picture — the poster art itself stays: it is the never-blank
@@ -1282,6 +1290,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <div id="tw-guide" hidden><div class="tw-g-row" id="tw-g-now"></div><div class="tw-g-row" id="tw-g-next1"></div><div class="tw-g-row" id="tw-g-next2"></div><div class="tw-g-note" id="tw-g-note"></div></div>
 <div id="tw-share" hidden><div class="twshr-h">🔗 Share MW TV</div><div class="twshr-txt" id="tw-share-txt"></div><div class="twshr-row"><a class="btn ghost sm" id="tw-sh-fb" target="_blank" rel="noopener">📘 Facebook</a><a class="btn ghost sm" id="tw-sh-x" target="_blank" rel="noopener">X</a><a class="btn ghost sm" id="tw-sh-wa" target="_blank" rel="noopener">💬 WhatsApp</a><a class="btn ghost sm" id="tw-sh-tg" target="_blank" rel="noopener">✈️ Telegram</a><button type="button" class="btn ghost sm" id="tw-sh-copy">📋 Copy link</button><button type="button" class="btn ghost sm" id="tw-sh-close" aria-label="Close share panel">✕ Close</button></div><div class="twshr-note" id="tw-share-note"></div></div>
         <div id="tw-summon" aria-hidden="true"></div>
+        <div id="tw-sndcatch" aria-hidden="true"></div>
       </div>
     </div>
     <div id="tw-bar">
@@ -2095,7 +2104,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/owner.js?v=1793793623"></script>
 <script src="js/messages.js?v=1793793623"></script>
 <script src="js/videos.js?v=1793793623"></script>
-<script src="js/dj.js?v=1793798808"></script>
+<script src="js/dj.js?v=1793805364"></script>
 <script src="js/live.js?v=1793793623"></script>
 <script src="js/friends.js?v=1793793623"></script>
 <script src="js/social.js?v=1793793623"></script>
