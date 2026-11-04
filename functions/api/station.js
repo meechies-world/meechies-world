@@ -1093,7 +1093,21 @@ function tvSponsorItemFromClaim(c, now) {
 function tvProgSeg(it, start, dur, off) {
   return { k: (it.kind === "house" || it.kind === "sponsor") ? "house" : "prog", id: it.id, src: it.src, yt: it.yt || "", url: it.url || "", iaId: it.iaId || "", title: it.title || "", show: it.show || "", start, dur, off };
 }
-function tvDrawBreak(pool) {
+/* Viewer-vote weighting for the pool bag (Malik, 2026-11-03
+ * 19:11 ET: votes feed the picks). voteNet maps a program id to
+ * its net tally (likes − dislikes, summed over aired instances
+ * from tv/votes by tvVoteNetMap). The adjustment is deliberately
+ * modest and mirrors the Featured sponsor's own precedent below:
+ * a strongly liked item earns ONE extra copy in the bag (it comes
+ * up about twice as often); a strongly disliked item keeps its
+ * one copy but sinks to the END of the bag (drawn last this
+ * cycle — never starved out entirely). Sponsors are exempt both
+ * ways: their placement is a paid contract, not a popularity
+ * ranking. Votes rank the POOL only — the hard schedule (news
+ * windows, premiere/rerun, owner queue/insert) never reads them. */
+const TV_VOTE_BOOST_NET = 10;
+const TV_VOTE_SINK_NET = -10;
+function tvDrawBreak(pool, voteNet) {
   const cleared = (pool.items || []).filter(tvCleared);
   if (!cleared.length) return null;
   if (!Array.isArray(pool.bag) || !(pool.bagIx >= 0) || pool.bagIx >= pool.bag.length) {
@@ -1102,7 +1116,13 @@ function tvDrawBreak(pool) {
     // weights it the same way, tvAdCadItems).
     pool.bag = [];
     for (const x of cleared) { pool.bag.push(x.id); if (x.kind === "sponsor" && x.sponsor && x.sponsor.tier === "featured") pool.bag.push(x.id); }
+    if (voteNet) for (const x of cleared) { if (x.kind !== "sponsor" && (voteNet[x.id] || 0) >= TV_VOTE_BOOST_NET) pool.bag.push(x.id); }
     for (let i = pool.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool.bag[i]; pool.bag[i] = pool.bag[j]; pool.bag[j] = t; }
+    if (voteNet) {
+      const sunk = (id) => { const it = cleared.find((x) => x.id === id); return !!it && it.kind !== "sponsor" && (voteNet[id] || 0) <= TV_VOTE_SINK_NET; };
+      const keep = pool.bag.filter((id) => !sunk(id)), tail = pool.bag.filter((id) => sunk(id));
+      if (tail.length) pool.bag = keep.concat(tail);
+    }
     pool.bagIx = 0; pool._dirty = true;
   }
   let id = pool.bag[pool.bagIx];
@@ -1125,6 +1145,101 @@ function tvDrawBreak(pool) {
   pool.bagIx++; pool._dirty = true;
   pool.recentBreaks = [...recent.slice(-1), !!(item && item.kind === "sponsor")];
   return item;
+}
+/* Net tallies per program id from the tv/votes doc the vote
+ * endpoint writes: sum (likes − dislikes) over every aired
+ * instance of the id. Read fresh each tick in tvTick and carried
+ * on the chan object as chan._voteNet (transient — deleted before
+ * the tv/now write, like the window states). */
+function tvVoteNetMap(votesDoc) {
+  const net = {};
+  const inst = votesDoc && votesDoc.inst && typeof votesDoc.inst === "object" ? votesDoc.inst : {};
+  for (const k of Object.keys(inst)) {
+    const r = inst[k];
+    if (!r || !r.id) continue;
+    net[r.id] = (net[r.id] || 0) + ((r.up | 0) - (r.down | 0));
+  }
+  return net;
+}
+/* CROWD-SKIP GATE (Malik, 2026-11-03 19:13 ET: "If 5 people vote
+ * no i want it to get skipped" — with the carve-outs specced back
+ * to him the same minute). The vote endpoint records the 5th
+ * distinct 👎 as a tv/skip request; THIS gate is the only place
+ * that decides whether the request may cut the segment on air.
+ * It applies to CROWD requests only — an OWNER skip (by:"owner",
+ * the same tv/skip doc) cuts anything: owner supremacy. Every
+ * protected class is one line here, so Malik can flip any of them
+ * with one word:
+ *   - news segments and the :50 news window (his news law)
+ *   - the 8 PM premiere slot and the 10 PM rerun slot
+ *   - owner-queued / owner-ordered items (the insert window —
+ *     the parallel owner queue rides the same protection)
+ *   - the anchor (local update edition) window
+ *   - the produced news updates that chain after cadence spots
+ * Everything else on the channel — cycle programs, break-pool
+ * picks, the movie block — is pool programming and may be
+ * crowd-skipped. */
+const TV_CROWD_PROTECTED_IDS = ["charnews-update", "quarter-update", "brk-local-update-5"];
+function tvSkipGate(seg, chan, now, by) {
+  if (by === "owner") return { ok: true };
+  if (!seg) return { ok: false, why: "no-seg" };
+  if (seg.k === "news") return { ok: false, why: "news" };
+  if (TV_CROWD_PROTECTED_IDS.includes(seg.id)) return { ok: false, why: "news-update" };
+  if (tvNewsWin(now).inside) return { ok: false, why: "news-window" };
+  if (chan._prem) { const w = tvPremWin(now, chan._prem); if (w && w.inside) return { ok: false, why: "premiere" }; }
+  if (chan._rerun) { const w = tvPremWin(now, chan._rerun); if (w && w.inside) return { ok: false, why: "rerun" }; }
+  if (chan._insert) { const w = tvInsertWin(now, chan._insert); if (w && w.inside) return { ok: false, why: "owner-queue" }; }
+  if (chan._anchor) { const w = tvAnchorWin(now, chan._anchor); if (w && w.inside) return { ok: false, why: "news" }; }
+  return { ok: true };
+}
+/* THE ADVANCE (one shared path for the owner skip and the crowd
+ * skip — nothing else in the keeper cuts a playing segment on
+ * request). Trims the laid window at now (the tvTrimAt discipline:
+ * no hole, the current segment ends cleanly at now) and returns
+ * the resume cursor the normal generation continues from:
+ *   - movie-block item: the chain itself must jump — returns a
+ *     movieCut stamp for the tv/movieblock doc (the remaining
+ *     seconds of the skipped movie, accumulated per window);
+ *     tvMovieState/tvMovieWin/tvGen honor it, so the NEXT movie
+ *     starts at now and the block ends earlier by the cut. The
+ *     generator cursor rewinds to now with its parked ix/off.
+ *   - cycle program: resume at the NEXT cycle item — read from
+ *     the laid window when it is already laid, else the item
+ *     after the skipped one.
+ *   - break-pool pick: resume the interrupted cycle program from
+ *     the laid window (its id + offset), else cycle math.
+ * Returns null when no sane resume exists (the caller consumes
+ * the request without cutting rather than tearing the channel). */
+function tvAdvanceSkip(chan, segs, cursor, curSeg, now) {
+  if (!curSeg || !cursor || !isFinite(cursor.at)) return null;
+  const items = Array.isArray(chan.items) ? chan.items : [];
+  const kept = tvTrimAt(segs, now);
+  const mov = chan._movies;
+  if (mov && Array.isArray(mov.items) && mov.items.some((x) => x.id === curSeg.id) && !items.some((x) => x.id === curSeg.id)) {
+    const win = tvMovieWin(now, mov);
+    const it = mov.items.find((x) => x.id === curSeg.id);
+    if (win && win.inside && it) {
+      const into = Math.max(0, (now - curSeg.start) / 1000);
+      const rem = Math.max(0, (+it.dur || 0) - ((+curSeg.off || 0) + into));
+      const prev = mov.skip && mov.skip.winStart === win.start ? (+mov.skip.cutSec || 0) : 0;
+      return { segs: kept, cursor: { at: now, ix: cursor.ix || 0, off: +cursor.off || 0, run: +cursor.run || 0 }, movieCut: { winStart: win.start, cutSec: Math.round((prev + rem) * 10) / 10, at: now, id: curSeg.id } };
+    }
+    return null;
+  }
+  const after = (segs || []).filter((sg) => sg.start > curSeg.start);
+  const isCycle = (sg) => (sg.k === "prog" || sg.k === "house") && items.some((x) => x.id === sg.id);
+  let nxt = null;
+  if (items.some((x) => x.id === curSeg.id)) nxt = after.find((sg) => isCycle(sg) && sg.id !== curSeg.id) || null;
+  else nxt = after.find(isCycle) || null;
+  if (nxt) {
+    const ix = items.findIndex((x) => x.id === nxt.id);
+    if (ix >= 0) return { segs: kept, cursor: { at: now, ix, off: +nxt.off || 0, run: 0 } };
+  }
+  const ixHere = items.findIndex((x) => x.id === curSeg.id);
+  if (ixHere >= 0 && items.length) return { segs: kept, cursor: { at: now, ix: (ixHere + 1) % items.length, off: 0, run: 0 } };
+  const cp = tvCyclePos(chan, now);
+  if (cp) return { segs: kept, cursor: { at: now, ix: cp.ix, off: cp.off, run: 0 } };
+  return null;
 }
 /* Lay segments from the cursor (at = next segment start ms, ix/off =
  * where the cycle's current program resumes, run = seconds of
@@ -1252,7 +1367,12 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // The ad cadence froze the block at every spot inside it:
       // positions likewise sit behind the wall clock by the spot
       // time laid between the window start and here.
-      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu, chan._rerun, chan._qtr);      for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
+      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu, chan._rerun, chan._qtr);
+      // A skipped movie pushes the chain position past the cut:
+      // every position in this window sits ahead by the skipped
+      // remainder (stamped on the state by the advance path).
+      if (chan._movies.skip && chan._movies.skip.winStart === mwin.start) slotOff += +chan._movies.skip.cutSec || 0;
+      for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
     }
@@ -1278,7 +1398,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     }
     segs.push(tvProgSeg(it, t, remain, off)); run += remain; t = progEnd; ix = (ix + 1) % items.length; off = 0;
     if (run >= (chan.chainSec > 0 ? +chan.chainSec : TV_CHAIN_SEC)) {
-      const b = tvDrawBreak(pool);
+      const b = tvDrawBreak(pool, chan._voteNet);
       if (b) {
         // A break never overruns a slot start: premiere, anchor and
         // movie-block windows begin on time, so a break that would
@@ -2082,7 +2202,13 @@ function tvMovieState(doc, premDoc, premState) {
   if (!(totalDur > 0)) return null;
   const startMinET = premDoc && +premDoc.startMinET ? +premDoc.startMinET : 1200;
   const offMs = premState && premState.prem && premState.prem.liveDurSec > 0 ? premState.prem.liveDurSec * 1000 : TV_MOVIE_FALLBACK_MIN * 60e3;
-  return { items, startMinET, offMs, totalDur };
+  // A skip stamp (written by the keeper's advance path when a
+  // movie is skipped): the chain seconds cut out of ONE window.
+  // Carried on the state; tvMovieWin + tvGen honor it only for
+  // the window whose start it names, so it can never leak into
+  // another night.
+  const skip = doc.skip && +doc.skip.cutSec > 0 && +doc.skip.winStart > 0 ? { winStart: +doc.skip.winStart, cutSec: +doc.skip.cutSec, at: +doc.skip.at || 0, id: doc.skip.id || "" } : null;
+  return { items, startMinET, offMs, totalDur, skip };
 }
 /* The movie-block window containing ms (inside: true) or the next
  * one: anchored to the day's premiere slot start plus the block
@@ -2101,6 +2227,10 @@ function tvMovieWin(ms, mov) {
   // long by exactly that frozen span (stamped on the state in
   // tvTick as insShift/insStart; absent = the standing behaviour).
   if (mov.insShift > 0 && mov.insStart >= start && mov.insStart < end) end += mov.insShift * 1000;
+  // A skipped movie SHORTENS this window by the cut: the rest of
+  // the chain plays earlier and the block ends earlier (the cycle
+  // fills the tail). Only the named window shrinks.
+  if (mov.skip && mov.skip.winStart === start && +mov.skip.cutSec > 0) end -= Math.round(mov.skip.cutSec * 1000);
   // The ad cadence freezes the block at every spot inside it (the
   // insert freeze rule), so the window runs long by the spot time
   // laid inside it — fixed-pointed, because a longer window can
@@ -2320,6 +2450,13 @@ async function tvTick(env, S, now, origin, online) {
   const anchorDoc = await readDoc(env, "tv/anchor");
   const charDoc = await readDoc(env, "tv/charnews");
   const qDoc = await readDoc(env, "tv/quarternews");
+  // Viewer voting (2026-11-03): the tallies doc the vote endpoint
+  // writes (pool weighting below) and the skip-request doc — the
+  // ONE advance path's inbox, written by the vote endpoint when 5
+  // distinct viewers vote 👎 on the current segment, and available
+  // to the owner skip on the same contract (by: "owner").
+  const votesDoc = await readDoc(env, "tv/votes");
+  let skipDoc = await readDoc(env, "tv/skip");
   const decision = tvRadioDecision(S, qDoc, now);
   // Uniontown Local Update hold-by-age: the break spot is only as
   // fresh as its producer stamp (tv/localupdate, written hourly by
@@ -2384,6 +2521,7 @@ async function tvTick(env, S, now, origin, online) {
   chan._qtr = qtrState.qtr;
   const qStampSeen = qtrState.qtr ? qtrState.qtr.forQuarter : 0;
   chan._movies = tvMovieState(movies, prem, premState);
+  chan._voteNet = tvVoteNetMap(votesDoc);
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
   let dirty = false;
@@ -2549,6 +2687,53 @@ async function tvTick(env, S, now, origin, online) {
       dirty = true;
     }
   }
+  // SKIP REQUESTS — the one advance path (owner skip + crowd
+  // skip). A fresh, unconsumed tv/skip naming the segment on air
+  // RIGHT NOW is executed here and only here: the crowd gate
+  // (tvSkipGate) refuses protected classes, tvAdvanceSkip cuts
+  // the segment for every viewer and computes the resume, and
+  // the normal generation re-lays from there — the same recheck
+  // discipline above. The request is consumed either way, so a
+  // refused or stale request can never fire late, and the skip
+  // lands in tv/now's skipNote (the client paints "Skipped by
+  // viewer vote 👎×5" for by:"crowd") plus the tv/votes audit log.
+  if (skipDoc && !skipDoc.consumedAt && now - (+skipDoc.at || 0) < 180e3 && curSeg && curSeg.start === (+skipDoc.segStart || 0) && curSeg.id === skipDoc.id) {
+    const gate = tvSkipGate(curSeg, chan, now, skipDoc.by);
+    if (!gate.ok) {
+      skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "protected:" + gate.why, updatedAt: now };
+      await writeDoc(env, "tv/skip", "tv", skipDoc);
+    } else {
+      const adv = tvAdvanceSkip(chan, segs, cursor, curSeg, now);
+      if (adv) {
+        const skippedTitle = curSeg.title || curSeg.id;
+        segs = adv.segs; cursor = adv.cursor;
+        if (adv.movieCut) {
+          movies = { ...movies, skip: adv.movieCut, updatedAt: now };
+          await writeDoc(env, "tv/movieblock", "tv", movies);
+          chan._movies = tvMovieState(movies, prem, premState);
+          if (insWin && chan._movies) {
+            const mw1 = tvMovieWin(insWin.start, chan._movies);
+            if (mw1 && insWin.start >= mw1.start && insWin.start < mw1.end) { chan._movies.insShift = tvInsertFrozen(insWin, chan); chan._movies.insStart = insWin.start; chan._movies.insEnd = insWin.start + insWin.dur * 1000; }
+          }
+        }
+        const gen = tvGen(chan, pool, cursor, genTo);
+        if (gen.segs.length) segs = segs.concat(gen.segs);
+        cursor = gen.cursor;
+        if (pool._dirty) { delete pool._dirty; pool.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", pool); }
+        curSeg = tvSegAt(segs, now);
+        skipNote = { id: skipDoc.id, title: skippedTitle, at: now, by: skipDoc.by === "owner" ? "owner" : "crowd" };
+        skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "advanced", updatedAt: now };
+        await writeDoc(env, "tv/skip", "tv", skipDoc);
+        dirty = true;
+      } else {
+        skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "no-advance", updatedAt: now };
+        await writeDoc(env, "tv/skip", "tv", skipDoc);
+      }
+    }
+  } else if (skipDoc && !skipDoc.consumedAt && now - (+skipDoc.at || 0) >= 180e3) {
+    skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "stale", updatedAt: now };
+    await writeDoc(env, "tv/skip", "tv", skipDoc);
+  }
   if (premState.cacheChanged) dirty = true;
   if (rerunState.cacheChanged) dirty = true;
   if (luState.cacheChanged) dirty = true;
@@ -2560,6 +2745,7 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._lu;
   delete chan._movies;
   delete chan._insert;
+  delete chan._voteNet;
   if (dirty) {
     await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, genAt: now, updatedAt: now });
   }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1793736171"></script>
-<meta name="mw-build" content="1793750670">
+<meta name="mw-build" content="1793751670">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -1184,6 +1184,11 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 .tw-live{background:#e5484d;color:#fff;border-radius:999px;padding:3px 10px;font:800 11.5px var(--body,system-ui);letter-spacing:.08em;white-space:nowrap}
 .tw-live.mix{background:#241d10;color:#f0cf78;border:1px solid #8a6a2a}
 .tw-what{color:#e9e2cf;font:600 13px var(--body,system-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tw-vote{display:inline-flex;gap:5px;align-items:center}
+#tw-vote[hidden]{display:none}
+#tw-vote .btn.on{background:#c9a227;color:#111;border-color:#c9a227;font-weight:800}
+#tw-vote-n{color:#e9e2cf;font:600 12px var(--body,system-ui);white-space:nowrap}
+#tw-vote-note{color:#f5c451;font:600 12px var(--body,system-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
 #tw-progwrap{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.18);z-index:8}
 #tw-prog{height:100%;width:0;background:linear-gradient(90deg,#f5c451,#ffe9a8)}
 #tw-guide{position:absolute;left:10px;right:10px;bottom:12px;z-index:9;background:rgba(8,8,14,.88);border:1px solid rgba(245,196,81,.45);border-radius:12px;padding:10px 12px;color:#fff;font-size:13px;line-height:1.5}
@@ -1261,6 +1266,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
       <span id="tw-live" class="tw-live" hidden>🔴 LIVE</span>
       <span id="tw-what" class="tw-what"></span>
       <button type="button" class="btn ghost sm" id="tw-guidebtn">📋 Guide</button>
+      <span id="tw-vote" hidden><button type="button" class="btn ghost sm" id="tw-vote-up" aria-label="Like what is playing on MW TV">👍</button><button type="button" class="btn ghost sm" id="tw-vote-dn" aria-label="Dislike what is playing on MW TV">👎</button><span id="tw-vote-n"></span><span id="tw-vote-note"></span></span>
       <span class="tw-sp"></span>
       <button type="button" class="btn ghost sm" id="tw-sound">🔇 Radio off — tap for sound</button>
       <button type="button" class="btn ghost sm" id="tw-watch">👀 Watch the setup</button>
@@ -2064,7 +2070,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/owner.js?v=1793736171"></script>
 <script src="js/messages.js?v=1793736171"></script>
 <script src="js/videos.js?v=1793736171"></script>
-<script src="js/dj.js?v=1793750670"></script>
+<script src="js/dj.js?v=1793751670"></script>
 <script src="js/live.js?v=1793736171"></script>
 <script src="js/friends.js?v=1793736171"></script>
 <script src="js/social.js?v=1793731933"></script>
