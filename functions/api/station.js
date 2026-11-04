@@ -1093,7 +1093,21 @@ function tvSponsorItemFromClaim(c, now) {
 function tvProgSeg(it, start, dur, off) {
   return { k: (it.kind === "house" || it.kind === "sponsor") ? "house" : "prog", id: it.id, src: it.src, yt: it.yt || "", url: it.url || "", iaId: it.iaId || "", title: it.title || "", show: it.show || "", start, dur, off };
 }
-function tvDrawBreak(pool) {
+/* Viewer-vote weighting for the pool bag (Malik, 2026-11-03
+ * 19:11 ET: votes feed the picks). voteNet maps a program id to
+ * its net tally (likes − dislikes, summed over aired instances
+ * from tv/votes by tvVoteNetMap). The adjustment is deliberately
+ * modest and mirrors the Featured sponsor's own precedent below:
+ * a strongly liked item earns ONE extra copy in the bag (it comes
+ * up about twice as often); a strongly disliked item keeps its
+ * one copy but sinks to the END of the bag (drawn last this
+ * cycle — never starved out entirely). Sponsors are exempt both
+ * ways: their placement is a paid contract, not a popularity
+ * ranking. Votes rank the POOL only — the hard schedule (news
+ * windows, premiere/rerun, owner queue/insert) never reads them. */
+const TV_VOTE_BOOST_NET = 10;
+const TV_VOTE_SINK_NET = -10;
+function tvDrawBreak(pool, voteNet) {
   const cleared = (pool.items || []).filter(tvCleared);
   if (!cleared.length) return null;
   if (!Array.isArray(pool.bag) || !(pool.bagIx >= 0) || pool.bagIx >= pool.bag.length) {
@@ -1102,7 +1116,13 @@ function tvDrawBreak(pool) {
     // weights it the same way, tvAdCadItems).
     pool.bag = [];
     for (const x of cleared) { pool.bag.push(x.id); if (x.kind === "sponsor" && x.sponsor && x.sponsor.tier === "featured") pool.bag.push(x.id); }
+    if (voteNet) for (const x of cleared) { if (x.kind !== "sponsor" && (voteNet[x.id] || 0) >= TV_VOTE_BOOST_NET) pool.bag.push(x.id); }
     for (let i = pool.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool.bag[i]; pool.bag[i] = pool.bag[j]; pool.bag[j] = t; }
+    if (voteNet) {
+      const sunk = (id) => { const it = cleared.find((x) => x.id === id); return !!it && it.kind !== "sponsor" && (voteNet[id] || 0) <= TV_VOTE_SINK_NET; };
+      const keep = pool.bag.filter((id) => !sunk(id)), tail = pool.bag.filter((id) => sunk(id));
+      if (tail.length) pool.bag = keep.concat(tail);
+    }
     pool.bagIx = 0; pool._dirty = true;
   }
   let id = pool.bag[pool.bagIx];
@@ -1125,6 +1145,56 @@ function tvDrawBreak(pool) {
   pool.bagIx++; pool._dirty = true;
   pool.recentBreaks = [...recent.slice(-1), !!(item && item.kind === "sponsor")];
   return item;
+}
+/* Net tallies per program id from the tv/votes doc the vote
+ * endpoint writes: sum (likes − dislikes) over every aired
+ * instance of the id. Read fresh each tick in tvTick and carried
+ * on the chan object as chan._voteNet (transient — deleted before
+ * the tv/now write, like the window states). */
+function tvVoteNetMap(votesDoc) {
+  const net = {};
+  const inst = votesDoc && votesDoc.inst && typeof votesDoc.inst === "object" ? votesDoc.inst : {};
+  for (const k of Object.keys(inst)) {
+    const r = inst[k];
+    if (!r || !r.id) continue;
+    net[r.id] = (net[r.id] || 0) + ((r.up | 0) - (r.down | 0));
+  }
+  return net;
+}
+/* CROWD-SKIP GATE (Malik, 2026-11-03 19:13 ET: "If 5 people vote
+ * no i want it to get skipped" — carve-outs confirmed by Malik
+ * 19:22 ET: his queue and the news stay protected; the crowd
+ * kills Amani's picks only). The vote endpoint records the 5th
+ * distinct 👎 as a tv/skip request; THIS gate is the only place
+ * that decides whether the request may cut the segment on air,
+ * and the cut itself runs through tvAdvanceChannel — THE shared
+ * advancer the owner skip uses. The gate applies to CROWD
+ * requests only: an owner skip (tv/queue.skipAt) never passes
+ * here and cuts anything — owner supremacy. Every protected
+ * class is one line, so Malik can flip any of them with one word:
+ *   - news segments and the :50 news window (his news law)
+ *   - the produced news updates chained after cadence spots
+ *   - the 8 PM premiere slot and the 10 PM rerun slot
+ *   - owner-queued items (segments carrying a qid) and the
+ *     one-shot owner insert window
+ *   - the anchor (local update edition) window
+ * Everything else on the channel — cycle programs, break-pool
+ * picks, the movie block — is the keeper's own pool programming
+ * and may be crowd-skipped. */
+const TV_CROWD_PROTECTED_IDS = ["charnews-update", "quarter-update", "brk-local-update-5"];
+function tvSkipGate(seg, chan, now, by, cadNow) {
+  if (by === "owner") return { ok: true };
+  if (!seg) return { ok: false, why: "no-seg" };
+  if (seg.k === "news") return { ok: false, why: "news" };
+  if (seg.qid) return { ok: false, why: "owner-queue" };
+  if (TV_CROWD_PROTECTED_IDS.includes(seg.id)) return { ok: false, why: "news-update" };
+  if (cadNow && cadNow.inside && cadNow.upd && seg.id === cadNow.upd.id) return { ok: false, why: "news-update" };
+  if (tvNewsWin(now).inside) return { ok: false, why: "news-window" };
+  if (chan._prem) { const w = tvPremWin(now, chan._prem); if (w && w.inside) return { ok: false, why: "premiere" }; }
+  if (chan._rerun) { const w = tvPremWin(now, chan._rerun); if (w && w.inside) return { ok: false, why: "rerun" }; }
+  if (chan._insert) { const w = tvInsertWin(now, chan._insert); if (w && w.inside) return { ok: false, why: "owner-queue" }; }
+  if (chan._anchor) { const w = tvAnchorWin(now, chan._anchor); if (w && w.inside) return { ok: false, why: "news" }; }
+  return { ok: true };
 }
 /* Lay segments from the cursor (at = next segment start ms, ix/off =
  * where the cycle's current program resumes, run = seconds of
@@ -1306,7 +1376,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     }
     segs.push(tvProgSeg(it, t, remain, off)); run += remain; t = progEnd; ix = (ix + 1) % items.length; off = 0;
     if (run >= (chan.chainSec > 0 ? +chan.chainSec : TV_CHAIN_SEC)) {
-      const b = tvDrawBreak(pool);
+      const b = tvDrawBreak(pool, chan._voteNet);
       if (b) {
         // A break never overruns a slot start: premiere, anchor and
         // movie-block windows begin on time, so a break that would
@@ -2543,6 +2613,13 @@ async function tvTick(env, S, now, origin, online) {
   const charDoc = await readDoc(env, "tv/charnews");
   const qDoc = await readDoc(env, "tv/quarternews");
   const quDoc0 = await readDoc(env, "tv/queue");
+  // Viewer voting (2026-11-03): the tallies doc the vote endpoint
+  // writes (pool weighting via chan._voteNet below) and the
+  // crowd-skip request doc — the vote endpoint files a request
+  // when 5 distinct viewers vote 👎 on the segment on air; the
+  // gated block further down answers it through tvAdvanceChannel.
+  const votesDoc = await readDoc(env, "tv/votes");
+  let skipDoc = await readDoc(env, "tv/skip");
   const decision = tvRadioDecision(S, qDoc, now);
   // Uniontown Local Update hold-by-age: the break spot is only as
   // fresh as its producer stamp (tv/localupdate, written hourly by
@@ -2607,6 +2684,7 @@ async function tvTick(env, S, now, origin, online) {
   chan._qtr = qtrState.qtr;
   const qStampSeen = qtrState.qtr ? qtrState.qtr.forQuarter : 0;
   chan._movies = tvMovieState(movies, prem, premState);
+  chan._voteNet = tvVoteNetMap(votesDoc);
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
   let dirty = false;
@@ -2835,6 +2913,59 @@ async function tvTick(env, S, now, origin, online) {
     }
   }
 
+  // CROWD SKIP (Malik, 2026-11-03 19:13 ET: "If 5 people vote no
+  // i want it to get skipped"): a fresh, unconsumed tv/skip
+  // request from the vote endpoint naming the segment on air
+  // RIGHT NOW is answered here — through the gate (tvSkipGate:
+  // news, premiere, rerun, anchor and owner-queued programming
+  // are protected; Malik confirmed 19:22 ET) and through
+  // tvAdvanceChannel, THE same advancer the owner skip above
+  // uses, with the same stamp persistence, so what plays next
+  // follows the standing precedence (queue head → hard schedule
+  // → pool picks). The request is consumed exactly once either
+  // way, so it can never fire late or twice; the fired skip
+  // lands in tv/now's skipNote with by:"crowd" (clients paint
+  // "Skipped by viewer vote 👎×5") and in the tv/votes audit log.
+  let crowdNote = null;
+  if (skipDoc && !skipDoc.consumedAt && now - (+skipDoc.at || 0) < 180e3 && segs) {
+    const cur0 = tvSegAt(segs, now);
+    if (cur0 && cur0.start === (+skipDoc.segStart || 0) && cur0.id === skipDoc.id) {
+      const cadNow = tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
+      const gate = tvSkipGate(cur0, chan, now, "crowd", cadNow);
+      if (!gate.ok) {
+        skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "protected:" + gate.why, updatedAt: now };
+        await writeDoc(env, "tv/skip", "tv", skipDoc);
+      } else {
+        const adv = tvAdvanceChannel(chan, segs, cursor, now, cadNow);
+        if (adv.applied) {
+          segs = adv.segs; cursor = adv.cursor; dirty = true;
+          if (adv.qCut) { qCut = { ...qCut, ...adv.qCut }; chan._qCut = qCut; }
+          if (adv.insTrunc && insWin) { insWin = { ...insWin, dur: adv.insTrunc.dur }; chan._insert = insWin; }
+          if (adv.movSkip) { movSkipState = adv.movSkip; if (chan._movies) { const mwS = tvMovieWin(now, chan._movies); chan._movies.skipShift = adv.movSkip.shift; chan._movies.skipAt = adv.movSkip.at; chan._movies.skipStart = mwS ? mwS.start : 0; } }
+          if (adv.qJump && quDoc) {
+            quDoc = { ...quDoc, anchor: adv.qJump.anchor, updatedAt: now };
+            await writeDoc(env, "tv/queue", "tv", quDoc);
+            qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+          }
+          if (!adv.qJump && qState && qState.anchor > now && quDoc) {
+            quDoc = { ...quDoc, anchor: now, updatedAt: now };
+            await writeDoc(env, "tv/queue", "tv", quDoc);
+            qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+          }
+          crowdNote = { id: skipDoc.id, title: skipDoc.title || String(skipDoc.id), at: now, by: "crowd" };
+          skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "advanced", updatedAt: now };
+          await writeDoc(env, "tv/skip", "tv", skipDoc);
+        } else {
+          skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "no-advance:" + String(adv.note || "").slice(0, 60), updatedAt: now };
+          await writeDoc(env, "tv/skip", "tv", skipDoc);
+        }
+      }
+    } else if (now - (+skipDoc.at || 0) >= 60e3) {
+      skipDoc = { ...skipDoc, consumedAt: now, consumedNote: "stale", updatedAt: now };
+      await writeDoc(env, "tv/skip", "tv", skipDoc);
+    }
+  }
+
   const genTo = now + TV_HORIZON;
   if (cursor.at < genTo) {
     const gen = tvGen(chan, pool, cursor, genTo);
@@ -2844,6 +2975,7 @@ async function tvTick(env, S, now, origin, online) {
   }
   let curSeg = tvSegAt(segs, now);
   let skipNote = nw && nw.skipNote && now - nw.skipNote.at < 3600e3 ? nw.skipNote : null;
+  if (crowdNote) skipNote = crowdNote;
   if (nw && nw.curStart && curSeg && curSeg.start !== nw.curStart) {
     const heldId = await tvRecheckNext(env, chan, segs, now, origin, nw || {});
     if (heldId) {
@@ -2873,6 +3005,7 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._movies;
   delete chan._insert;
   delete chan._queue;
+  delete chan._voteNet;
   delete chan._qCut;
   if (dirty) {
     await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now });

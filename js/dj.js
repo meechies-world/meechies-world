@@ -5796,7 +5796,8 @@ html.popdj #dj-mini{display:none!important}
           set("#tw-g-now", "ON NOW · " + (curTv ? (curTv.show ? curTv.show + " — " : "") + curTv.title : lbl(seg)) + " · ends " + ends);
           set("#tw-g-next1", segs[ix + 1] ? "UP NEXT · " + lbl(segs[ix + 1]) + " · " + new Date(segs[ix + 1].start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
           set("#tw-g-next2", segs[ix + 2] ? "THEN · " + lbl(segs[ix + 2]) + " · " + new Date(segs[ix + 2].start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
-          const note = tvNowDoc.skipNote && Date.now() - tvNowDoc.skipNote.at < 3600e3 ? "Skipped “" + tvNowDoc.skipNote.title + "” — no longer cleared to air; the lineup adjusted." : (curTv && curTv.note ? curTv.note : "");
+          const sn = tvNowDoc.skipNote;
+          const note = sn && Date.now() - sn.at < 3600e3 ? (sn.by === "crowd" ? "⏭ Skipped by viewer vote 👎×5 — “" + sn.title + "” is off; the lineup adjusted." : sn.by === "owner" ? "⏭ Skipped “" + sn.title + "” — Malik moved the channel on." : "Skipped “" + sn.title + "” — no longer cleared to air; the lineup adjusted.") : (curTv && curTv.note ? curTv.note : "");
           set("#tw-g-note", note);
         }
       }
@@ -6012,6 +6013,88 @@ html.popdj #dj-mini{display:none!important}
   }
   setInterval(() => { try { if (document.getElementById("tws-queue")) twsQueueFetch(); } catch (_) {} }, 15000);
   setInterval(() => { try { twsEnsure(); } catch (_) {} }, 1000);
+  /* MW TV VIEWER VOTING (Malik, 2026-11-03 19:11 ET: "Make it so
+   * people can vote if they like what their watching" + 19:13 ET:
+   * "If 5 people vote no i want it to get skipped"). The 👍/👎 in
+   * the TV bar (#tw-vote in index.html) vote on the segment on air
+   * right now, keyed by segment id + start from tv/now — a vote
+   * cast in a program's last seconds still lands on THAT program.
+   * State and tallies live server-side (POST/GET /api/tv/vote, the
+   * tv/votes doc): members vote by session, guests by the device
+   * token kept below ("mw-vid", the site's mw-* device-key
+   * pattern). One vote per person per program; tapping the other
+   * side changes it, tapping your lit side clears it. Counts
+   * under 25 stay hidden (Malik's like-count law) — the server
+   * only sends them past the threshold, and always to the owner.
+   * This block NEVER touches a player, the channel tuner or the
+   * radio: voting cannot seek, stall, speed or stop anything by
+   * itself. The crowd-skip is the keeper's call; this surface
+   * only paints it after the fact from tv/now's skipNote. */
+  let twvKey = "", twvMine = 0, twvCounts = null, twvBusy = false, twvNoteUntil = 0;
+  const twvTok = () => { try { let t = localStorage.getItem("mw-vid") || ""; if (t.length < 8) { t = "v" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem("mw-vid", t); } return t; } catch (_) { return ""; } };
+  function twvSeg() {
+    try {
+      if (!elOpen("v-mwtv")) return null;
+      const c = tvChanCurTv();
+      if (c && c.seg && c.seg.id) return c.seg;
+    } catch (_) {}
+    return null;
+  }
+  function twvPaint() {
+    const wrap = document.getElementById("tw-vote"); if (!wrap) return;
+    const seg = twvSeg();
+    wrap.hidden = !seg;
+    if (!seg) return;
+    const up = document.getElementById("tw-vote-up"), dn = document.getElementById("tw-vote-dn"), n = document.getElementById("tw-vote-n"), note = document.getElementById("tw-vote-note");
+    if (up) up.classList.toggle("on", twvMine === 1);
+    if (dn) dn.classList.toggle("on", twvMine === -1);
+    if (n) n.textContent = twvCounts && twvCounts.countsVisible ? "👍 " + (twvCounts.up | 0) + " · 👎 " + (twvCounts.down | 0) : "";
+    if (note) {
+      const sn = tvNowDoc && tvNowDoc.skipNote;
+      if (sn && sn.by === "crowd" && Date.now() - sn.at < 90000) { note.textContent = "⏭ Skipped by viewer vote 👎×5"; twvNoteUntil = +sn.at + 90000; }
+      else if (Date.now() >= twvNoteUntil) note.textContent = "";
+    }
+  }
+  async function twvFetch(seg) {
+    try {
+      const ses = mySess(); const tok = ses && ses.access_token;
+      const hdrs = tok ? { authorization: "Bearer " + tok } : {};
+      const r = await fetch("/api/tv/vote?id=" + encodeURIComponent(seg.id) + "&start=" + (+seg.start || 0) + "&g=" + encodeURIComponent(twvTok()), { headers: hdrs, cache: "no-store" });
+      const j = await r.json().catch(() => null);
+      if (j && j.ok && twvKey === seg.id + "@" + seg.start) { twvMine = j.mine | 0; twvCounts = j; twvPaint(); }
+    } catch (_) {}
+  }
+  async function twvCast(side) {
+    const seg = twvSeg(); if (!seg || twvBusy) return;
+    const key = seg.id + "@" + seg.start;
+    if (key !== twvKey) { twvKey = key; twvMine = 0; twvCounts = null; }
+    const vote = twvMine === side ? 0 : side;
+    twvMine = vote; twvBusy = true; twvPaint();
+    try {
+      const ses = mySess(); const tok = ses && ses.access_token;
+      const hdrs = { "content-type": "application/json" }; if (tok) hdrs.authorization = "Bearer " + tok;
+      const r = await fetch("/api/tv/vote", { method: "POST", headers: hdrs, body: JSON.stringify({ id: seg.id, start: +seg.start || 0, vote, g: twvTok() }) });
+      const j = await r.json().catch(() => null);
+      if (j && j.ok && twvKey === key) {
+        twvMine = j.mine | 0; twvCounts = j; twvPaint();
+        if (j.skip === "requested") { const note = document.getElementById("tw-vote-note"); if (note) note.textContent = "👎×5 — skipping by viewer vote…"; twvNoteUntil = Date.now() + 30000; }
+      } else if (twvKey === key) twvFetch(seg);
+    } catch (_) { if (twvKey === key) twvFetch(seg); }
+    finally { twvBusy = false; }
+  }
+  (function twvWire() {
+    const up = document.getElementById("tw-vote-up"), dn = document.getElementById("tw-vote-dn");
+    if (up && !up.dataset.mw) { up.dataset.mw = "1"; up.addEventListener("click", () => { twvCast(1); }); }
+    if (dn && !dn.dataset.mw) { dn.dataset.mw = "1"; dn.addEventListener("click", () => { twvCast(-1); }); }
+  })();
+  setInterval(() => {
+    try {
+      const seg = twvSeg();
+      const key = seg ? seg.id + "@" + seg.start : "";
+      if (key !== twvKey) { twvKey = key; twvMine = 0; twvCounts = null; twvPaint(); if (seg) twvFetch(seg); }
+      else twvPaint();
+    } catch (_) {}
+  }, 1000);
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
    * screen is one more screen in the same system — the live stream
    * overlays it through vsStageEls and this paints the SAME video mix
@@ -7163,7 +7246,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793751670;
+  const MW_DJ_BUILD = 1793752670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
