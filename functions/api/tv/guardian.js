@@ -142,20 +142,28 @@ export function applyFaultToDoc(doc, instKey, meta, seatKey, rep, now) {
   return rec;
 }
 
-/* Bounded eyes read: six plain-text observation fields, each
+/* Bounded eyes read: seven plain-text observation fields, each
  * capped; anything missing becomes "". A read with NO content
  * at all is refused — an empty description is an invented one
  * waiting to happen; a failed vision read must be logged as a
- * miss by the filer, never filed blank. */
+ * miss by the filer, never filed blank. TRACEABILITY (Malik's
+ * RealVision rule, 2026-11-03 20:03 ET: "no frame, no claim"):
+ * every read must carry the frameId of the actual sampled frame
+ * it describes (the entry's `at` is its timestamp); a read with
+ * no frame id is refused — a visual fact that cannot be traced
+ * to a frame does not enter Meechie's brain. */
 export function cleanEyesRead(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const f = (v) => clampStr(v == null ? "" : String(v).replace(/\s+/g, " ").trim(), 220);
   const read = {
+    frameId: f(raw.frameId),
     setting: f(raw.setting), people: f(raw.people), wardrobe: f(raw.wardrobe),
     screenText: f(raw.screenText), colors: f(raw.colors), objects: f(raw.objects),
     faults: f(raw.faults),
   };
-  return Object.values(read).some((s) => s.length >= 3) ? read : null;
+  if (!read.frameId) return null;
+  const { frameId, ...fields } = read;
+  return Object.values(fields).some((s) => s.length >= 3) ? read : null;
 }
 
 /* Keep the doc bounded: stale faults out, oldest first past the
