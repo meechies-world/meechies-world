@@ -1329,11 +1329,13 @@ function tvSkipGate(seg, chan, now, by, cadNow) {
   if (!seg) return { ok: false, why: "no-seg" };
   if (seg.k === "news") return { ok: false, why: "news" };
   if (seg.qid) return { ok: false, why: "owner-queue" };
+  if (seg.fam) return { ok: false, why: "family-time" };
   if (TV_CROWD_PROTECTED_IDS.includes(seg.id)) return { ok: false, why: "news-update" };
   if (cadNow && cadNow.inside && cadNow.upd && seg.id === cadNow.upd.id) return { ok: false, why: "news-update" };
   if (tvNewsWin(now).inside) return { ok: false, why: "news-window" };
   if (chan._prem) { const w = tvPremWin(now, chan._prem); if (w && w.inside) return { ok: false, why: "premiere" }; }
   if (chan._rerun) { const w = tvPremWin(now, chan._rerun); if (w && w.inside) return { ok: false, why: "rerun" }; }
+  if (chan._family) { const w = tvFamilyWin(now, chan._family); if (w && w.inside) return { ok: false, why: "family-time" }; }
   if (chan._insert) { const w = tvInsertWin(now, chan._insert); if (w && w.inside) return { ok: false, why: "owner-queue" }; }
   if (chan._anchor) { const w = tvAnchorWin(now, chan._anchor); if (w && w.inside) return { ok: false, why: "news" }; }
   return { ok: true };
@@ -1350,7 +1352,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
   // (the insert freeze rule): tvMovieWin runs the window long by
   // the spot time inside it, which it computes from this state.
   if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rer: chan._rerun, qtr: chan._qtr };
-  if (chan._queue) chan._queue._st = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr };
+  if (chan._queue) chan._queue._st = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr, family: chan._family };
   const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
@@ -1358,6 +1360,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const win = tvNewsWin(t);
     const pwin = tvPremWin(t, chan._prem);
     const rwin = tvPremWin(t, chan._rerun);
+    const fwin = tvFamilyWin(t, chan._family);
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
     const iwin = tvInsertWin(t, chan._insert);
@@ -1383,6 +1386,21 @@ function tvGen(chan, pool, cursor, horizonMs) {
       for (const sit of chan._rerun.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((rwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = rwin.end; continue;
+    }
+    if (fwin && fwin.inside && !(chan._qCut && chan._qCut.family === fwin.start)) {
+      // FAMILY TIME (Malik, 2026-11-03 20:38 ET): tonight's family
+      // movie chains inside its window exactly like the premiere
+      // chain — the program cursor freezes and the interrupted
+      // program resumes after the block from the offset it
+      // reached. The branch sits ahead of the anchor and the ad
+      // cadence, so quarter breaks never chop the movie (the
+      // premiere rule); the news windows above still pass over
+      // the span they cover (the standing doctrine).
+      const fit = chan._family.item;
+      const foff = (t - fwin.start) / 1000;
+      const d = Math.min(Math.round((+fit.dur - foff) * 10) / 10, Math.round((fwin.end - t) / 100) / 10);
+      if (d > 0.05) { const sg = tvProgSeg(fit, t, d, foff); sg.fam = 1; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; }
+      t = fwin.end; continue;
     }
     if (awin && awin.inside && !(chan._qCut && chan._qCut.anchor === awin.start)) {
       // Anchor news slot: the current anchor edition plays as one
@@ -1437,6 +1455,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
       if (qwin && !qwin.inside && qwin.start > t && qwin.start < cap) cap = qwin.start;
+      if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       const list = Array.isArray(chan._insert.items) && chan._insert.items.length ? chan._insert.items : [chan._insert.item];
       let slotOff = (t - iwin.start) / 1000, segIt = null, segOff = 0;
       for (const sit of list) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
@@ -1459,6 +1478,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (iwin && !iwin.inside && iwin.start > t && iwin.start < cap) cap = iwin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
       if (mwin && !mwin.inside && mwin.start > t && mwin.start < cap) cap = mwin.start;
+      if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       const qat = tvQueueAt(chan._queue, tvQueueElapsed(chan._queue, t));
       if (qat) { const d = Math.min(Math.round((+qat.it.dur - qat.off) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { const sg = tvProgSeg(qat.it, t, d, qat.off); sg.qid = qat.it.qid; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
@@ -1480,6 +1500,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (iwin && !iwin.inside && iwin.start > t && iwin.start < cap) cap = iwin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
       if (qwin && !qwin.inside && qwin.start > t && qwin.start < cap) cap = qwin.start;
+      if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       let slotOff = (t - mwin.start) / 1000, segIt = null, segOff = 0;
       // An insert that cut into this block froze it: once the
       // insert window has run, positions sit behind the wall clock
@@ -1510,6 +1531,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (iwin && !iwin.inside && iwin.start > t && iwin.start < boundary) boundary = iwin.start;
     if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < boundary) boundary = cadwin.start;
     if (qwin && !qwin.inside && qwin.start > t && qwin.start < boundary) boundary = qwin.start;
+    if (fwin && !fwin.inside && fwin.start > t && fwin.start < boundary) boundary = fwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
@@ -1526,7 +1548,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr), tvQueueWin(t, chan._queue)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
+        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr), tvQueueWin(t, chan._queue), tvFamilyWin(t, chan._family)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: (b.kind === "house" || b.kind === "sponsor") ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
       run = 0;
@@ -1966,6 +1988,12 @@ function tvQueueFrozen(q, fromMs, toMs) {
   for (let ws = nw0.start; ws < toMs; ws += 3600e3) sub(ws, ws + TV_NEWS_LEN * 1000);
   const walk = (winFn, stt) => { let t2 = fromMs; for (let i = 0; i < 4; i++) { const w = winFn(t2, stt); if (!w || w.start >= toMs) break; sub(w.start, w.end); t2 = w.end; } };
   walk(tvPremWin, st.prem); walk(tvPremWin, st.rerun); walk(tvAnchorWin, st.anchor);
+  // Family Time freezes the queue for its whole span — minus the
+  // news windows that pass over it and the cadence time inside it,
+  // which the lines above/below already count (the tvInsertFrozen
+  // overlap rule: a span counted twice would make the queue
+  // replay content it already aired).
+  if (st.family) { let t3 = fromMs; for (let i = 0; i < 4; i++) { const w = tvFamilyWin(t3, st.family); if (!w || w.start >= toMs) break; const a = Math.max(fromMs, w.start), b = Math.min(toMs, w.end); if (b > a) { let ov = 0; const nw1 = tvNewsWin(a); for (let ws = nw1.start; ws < b; ws += 3600e3) { const o = Math.min(b, ws + TV_NEWS_LEN * 1000) - Math.max(a, ws); if (o > 0) ov += o / 1000; } if (st.cad) ov += tvAdTimeIn(st.cad, st.prem, st.anchor, st.insert, a, b, st.char, st.lu, st.rerun, st.qtr); froz += Math.max(0, (b - a) / 1000 - ov); } t3 = w.end; } }
   if (st.insert && isFinite(st.insert.start) && (st.insert.dur || 0) > 0) sub(st.insert.start, st.insert.start + st.insert.dur * 1000);
   if (st.cad) froz += tvAdTimeIn(st.cad, st.prem, st.anchor, st.insert, fromMs, toMs, st.char, st.lu, st.rerun, st.qtr);
   return Math.max(0, Math.min((toMs - fromMs) / 1000, Math.round(froz * 10) / 10));
@@ -2064,6 +2092,7 @@ function tvAdvanceChannel(chan, segs, cursor, now, cadNow) {
   let sc = null;
   if ((sc = slotCut(tvPremWin(now, chan._prem), chan._prem && chan._prem.items, "prem", "premiere"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvPremWin(now, chan._rerun), chan._rerun && chan._rerun.items, "rerun", "rerun"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if ((sc = slotCut(tvFamilyWin(now, chan._family), chan._family && chan._family.items, "family", "Family Time"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvAnchorWin(now, chan._anchor), chan._anchor ? [chan._anchor.item] : null, "anchor", "anchor edition"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if (cadNow && cadNow.inside && cur.start >= cadNow.start && cur.start < cadNow.end && ((cadNow.item && cur.id === cadNow.item.id) || (cadNow.upd && cur.id === cadNow.upd.id))) { out.qCut = { cad: cadNow.start }; out.note = "cut the break short — back to the program"; return out; }
   // The owner's queue: jump the anchor past the item on air, so
@@ -2374,6 +2403,135 @@ function tvPremWin(ms, prem) {
   if (ms >= start && ms < end) return { start, end, inside: true };
   const nstart = start + 86400e3;
   return { start: nstart, end: nstart + prem.liveDurSec * 1000, inside: false };
+}
+/* FAMILY TIME (Malik, 2026-11-03 20:38 ET: "I want family time
+ * to start at 8" / "A family movie for younger teens ect every
+ * night at 8"): a standing nightly HARD window at 20:00 ET
+ * carrying ONE cleared family movie suitable for younger teens
+ * (animation / family / adventure / comedy class — no horror, no
+ * R-rated, no adult titles). It is built exactly like the premiere
+ * window it shares the hour with:
+ *   - Precedence in tvGen: a LIVE premiere, then the rerun, then
+ *     FAMILY TIME — all ahead of the anchor, the ad cadence
+ *     (quarter breaks never chop it, the premiere rule), inserts,
+ *     the owner queue and the movie chain, which yield and resume
+ *     after it (the queue freezes across it, tvQueueFrozen, with
+ *     the in-span news/cadence overlap netted so nothing is
+ *     double-frozen). Like the premiere/rerun chains it mirrors,
+ *     the movie is wall-clock: a news window falling inside its
+ *     span does not chop it.
+ *   - PREMIERE YIELD: while the MY EMPIRE premiere is HELD (no
+ *     episode file on site media, tvPremLive resolves null) Family
+ *     Time owns 20:00. The night a premiere is actually LIVE
+ *     (premState.prem non-null) the premiere wins the slot and
+ *     Family Time does not lay and does not consume a pick — the
+ *     two are reconciled by that one state, never a code fight.
+ *   - FIRST AIRING: windows starting before TV_FAMILY_FROM_MS
+ *     (Wed 2026-11-04 20:00 ET) never lay — tonight's 8 PM had
+ *     already passed when the order landed.
+ *   - Eligibility is an ALLOWLIST resolved at tick time from the
+ *     docs the keeper already lays from (tv/channel cycle +
+ *     tv/movieblock): an item qualifies only when it is cleared
+ *     (tvCleared — the standing rights rail; the ban gate has
+ *     already stripped banned ids from both docs), runs
+ *     TV_FAMILY_MIN_SEC..TV_FAMILY_MAX_SEC (a real feature that
+ *     ends by the 22:00 rerun; episode-length pieces never fill
+ *     the block), and is family-tagged (block "family" / show
+ *     "MW Family") or matches the family-feature title registry
+ *     below (the features the current lineup already schedules).
+ *     Adult chain titles can never match an allowlist, so an
+ *     unsuitable title is unpickable by construction; this build
+ *     adds no new titles.
+ *   - Rotation lives in tv/familytime (keeper-owned): a shuffled
+ *     pick bag like the break pool's; a night's pick is locked on
+ *     the first tick that resolves it and never re-drawn mid-night;
+ *     the same title never plays two nights running, and the bag
+ *     draw skips anything played inside the last 7 days while the
+ *     eligible pool allows (history kept on the doc).
+ *   - Protection: a scheduled window — tvSkipGate refuses crowd
+ *     AND Guardian cuts inside it (log + report only, the
+ *     premiere/rerun class); votes still collect; the OWNER skip
+ *     still cuts it (tvAdvanceChannel slot cut, qCut "family").
+ * Segments carry fam:1 and the item's show is stamped
+ * "👨‍👩‍👧 Family Time", so the Guide and TV bar paint the block. */
+const TV_FAMILY_V = 1;              // familytime doc generation (tv/familytime)
+const TV_FAMILY_START_MIN = 1200;   // 20:00 ET, every night
+const TV_FAMILY_FROM_MS = 1793840400000; // first airing: Wed 2026-11-04 20:00 ET — earlier windows never lay
+const TV_FAMILY_MIN_SEC = 2400;     // a real feature, not an episode-length piece
+const TV_FAMILY_MAX_SEC = 7200;     // at most ~120 min: the block ends by the 22:00 rerun window
+const TV_FAMILY_TITLE_KEYS = ["kung fu panda", "lion king", "karate kid", "the mask", "grinch", "ice age", "wild robot", "the wild", "the lost world", "giving thanks", "johnny test", "madeline"];
+function tvSeedFamilyTime(now) {
+  return { progV: TV_FAMILY_V, on: true, startMinET: TV_FAMILY_START_MIN, bag: [], night: "", itemId: "", hist: [], updatedAt: now, by: "keeper-seed" };
+}
+function tvFamilySuitable(it) {
+  if (!it) return false;
+  if (it.block === "family" || it.show === "MW Family") return true;
+  const t = String(it.title || "").toLowerCase();
+  return TV_FAMILY_TITLE_KEYS.some((k) => t.includes(k));
+}
+function tvFamilyEligible(chan, movies) {
+  const out = [], seen = new Set();
+  for (const src of [chan && chan.items, movies && movies.items]) {
+    for (const it of (src || [])) {
+      if (!it || seen.has(it.id)) continue;
+      if (!tvCleared(it)) continue;
+      if (!(+it.dur >= TV_FAMILY_MIN_SEC && +it.dur <= TV_FAMILY_MAX_SEC)) continue;
+      if (!tvFamilySuitable(it)) continue;
+      seen.add(it.id); out.push(it);
+    }
+  }
+  return out;
+}
+/* The Family Time window containing ms (inside: true) or the next
+ * one — tvPremWin's arithmetic over the resolved family state
+ * ({ startMinET, liveDurSec } built by tvFamilyResolve). */
+function tvFamilyWin(ms, fam) {
+  if (!fam || !fam.item || !(fam.liveDurSec > 0)) return null;
+  return tvPremWin(ms, { startMinET: fam.startMinET || TV_FAMILY_START_MIN, liveDurSec: fam.liveDurSec });
+}
+/* Resolve tonight's Family Time state from the rotation doc.
+ * Pure: returns { state, doc, changed } — tvTick persists the doc
+ * when a pick was locked. state is null when the block is off,
+ * when a live premiere owns the night, when the window predates
+ * the first airing, or when nothing eligible exists (the channel
+ * simply plays its standing lineup — never dead air). The night a
+ * window belongs to is its 20:00 ET start's ET day, so the pick is
+ * the same at 18:00 (when generation first reaches the window) and
+ * at 21:00 (mid-window) — locked once, never re-drawn. */
+function tvFamilyResolve(famDoc, chan, movies, premState, now) {
+  const doc = famDoc && typeof famDoc === "object" ? famDoc : tvSeedFamilyTime(now);
+  if (doc.on === false) return { state: null, doc, changed: false };
+  if (premState && premState.prem) return { state: null, doc, changed: false }; // a LIVE premiere wins 8 PM — Family Time yields, no pick consumed
+  const et0 = tvEtParts(now), sec0 = Math.floor((now % 60000) / 1000);
+  const winStart = now - ((et0.hour * 60 + et0.minute - TV_FAMILY_START_MIN) * 60 + sec0) * 1000;
+  if (winStart < TV_FAMILY_FROM_MS) return { state: null, doc, changed: false };
+  const dayKey = tvEtParts(winStart).dayKey;
+  const eligible = tvFamilyEligible(chan, movies);
+  if (!eligible.length) return { state: null, doc, changed: false };
+  let changed = false;
+  let it = null;
+  if (doc.night === dayKey && doc.itemId) it = eligible.find((x) => x.id === doc.itemId) || null;
+  if (!it) {
+    const ids = new Set(eligible.map((x) => x.id));
+    let bag = (Array.isArray(doc.bag) ? doc.bag : []).filter((id) => ids.has(id));
+    if (!bag.length) { bag = eligible.map((x) => x.id); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t2 = bag[i]; bag[i] = bag[j]; bag[j] = t2; } }
+    const hist = Array.isArray(doc.hist) ? doc.hist : [];
+    const cutMs = Date.parse(dayKey) - 7 * 86400e3;
+    const recent = new Set(hist.filter((h) => h && Date.parse(h.day || "") >= cutMs).map((h) => h.id));
+    const lastNight = hist.length ? hist[hist.length - 1].id : "";
+    const pick = bag.find((id) => !recent.has(id) && id !== lastNight) || bag.find((id) => id !== lastNight) || bag[0];
+    bag = bag.filter((id) => id !== pick);
+    it = eligible.find((x) => x.id === pick) || null;
+    if (it) {
+      doc.bag = bag; doc.night = dayKey; doc.itemId = pick;
+      doc.hist = [...hist, { day: dayKey, id: pick }].slice(-14);
+      doc.updatedAt = now; doc.by = "keeper";
+      changed = true;
+    }
+  }
+  if (!it) return { state: null, doc, changed };
+  const item = { ...it, show: "👨‍👩‍👧 Family Time" };
+  return { state: { startMinET: TV_FAMILY_START_MIN, item, items: [item], liveDurSec: +it.dur, night: dayKey }, doc, changed };
 }
 /* The anchor news window containing ms (inside: true) or the next one,
  * over the fixed daily slots (TV_ANCHOR_SLOTS, minutes ET). anch is the
@@ -2955,6 +3113,8 @@ async function tvTick(env, S, now, origin, online) {
   if (!prem || !Array.isArray(prem.items) || !prem.items.length || (+prem.progV || 0) < TV_PREM_V) { prem = tvSeedPremiere(now); await writeDoc(env, "tv/premiere", "tv", prem); }
   let rerun = await readDoc(env, "tv/rerun");
   if (!rerun || !Array.isArray(rerun.items) || !rerun.items.length || (+rerun.progV || 0) < TV_RERUN_V) { rerun = tvSeedRerun(now); await writeDoc(env, "tv/rerun", "tv", rerun); }
+  let famDoc = await readDoc(env, "tv/familytime");
+  if (!famDoc || (+famDoc.progV || 0) < TV_FAMILY_V) { famDoc = tvSeedFamilyTime(now); await writeDoc(env, "tv/familytime", "tv", famDoc); }
   let movies = await readDoc(env, "tv/movieblock");
   if (!movies || !Array.isArray(movies.items) || !movies.items.length || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
   let insDoc = await readDoc(env, "tv/insert");
@@ -3048,6 +3208,12 @@ async function tvTick(env, S, now, origin, online) {
   chan._qtr = qtrState.qtr;
   const qStampSeen = qtrState.qtr ? qtrState.qtr.forQuarter : 0;
   chan._movies = tvMovieState(movies, prem, premState);
+  // FAMILY TIME: resolve tonight's state (premiere yield + the
+  // night's locked pick) from the post-ban-gate docs; persist the
+  // rotation doc only when a new pick was locked.
+  const famRes = tvFamilyResolve(famDoc, chan, movies, premState, now);
+  chan._family = famRes.state;
+  if (famRes.changed) { famDoc = famRes.doc; await writeDoc(env, "tv/familytime", "tv", famDoc); }
   chan._voteNet = tvVoteNetMap(votesDoc);
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
@@ -3212,7 +3378,7 @@ async function tvTick(env, S, now, origin, online) {
   // (tvAdvanceChannel), and retire the items that have aired.
   let quDoc = quDocP && (+quDocP.progV || 0) >= TV_QUEUE_V ? quDocP : null;
   let qState = tvQueueState(quDoc);
-  const qSt = { cad: tvAdCadItems(pool), prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr };
+  const qSt = { cad: tvAdCadItems(pool), prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr, family: chan._family };
   if (qState) qState._st = qSt;
   chan._queue = qState;
   let qCut = nw && nw.qCut && typeof nw.qCut === "object" ? { ...nw.qCut } : {};
@@ -3689,6 +3855,7 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._movies;
   delete chan._insert;
   delete chan._queue;
+  delete chan._family;
   delete chan._voteNet;
   delete chan._qCut;
   if (dirty) {
