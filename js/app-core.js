@@ -47,7 +47,7 @@ const LAZY_SRC={
    * or community views and paints one recognition line on each of those
    * surfaces from the member's own /api/brain/me summary. One module,
    * three doors — it guards itself against double-loading. */
-  radio:["js/soul-greet.js?v=1793653007","js/channels.js?v=1793814717"],
+  radio:["js/soul-greet.js?v=1793653007","js/channels.js?v=1793821071"],
   /* Show Studio (2026-11-03): Meechie AI's producer's desk for MY EMPIRE.
    * Owner-only. The same module rides two doors: it loads with MW TV (to
    * reveal the owner-only Studio button in the TV bar) and with the desk

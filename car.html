@@ -186,7 +186,7 @@
   var titleEl = document.getElementById("np-title"), metaEl = document.getElementById("np-meta"),
       barEl = document.getElementById("np-bar"), badge = document.getElementById("livebadge"),
       artEl = document.getElementById("stage-art");
-  var masterVol = 0.9, tuned = false;
+  var masterVol = 0.9, tuned = false, tunedAt = 0;
   var S = null;               /* radio/dj doc data */
   var clockOff = 0, clockSamples = [];
   function serverNow(){ return Date.now() + clockOff; }
@@ -410,6 +410,80 @@
     var pr = schedEl.play(); if(pr && pr.catch) pr.catch(function(){});
   }
 
+  /* ---------- the radio LIFELINE (static — no backend at all) ----------
+     Malik's law: radio listening must work with NO login and must NOT
+     depend on the backend. When the backend is down, every rung above
+     is dark: the decks need the radio/dj doc, the playlist clock
+     needs the tracks doc and its player rides the /m media relay,
+     the gate needs /api/bgsgate — so TUNE IN flipped to ON AIR over
+     silence and stayed there (guest seat test, 2026-11-04). The
+     lifeline fills the playlist clock's slot from static files only:
+     /lifeline/radio-dayparts.json (Meechie's own catalog in the
+     station's daypart lanes) plus the baked songs at
+     /lifeline/audio/<assetId>.mp3, walked with the exact clock math
+     the main radio's lifeline runs (app-core's llDaypartStart: the
+     lane is chosen by the Eastern wall clock — 21:00–06:00 trap
+     love, 06:00–12:00 weed wake-up, 12:00–21:00 mixed — the epoch
+     is the lane's start, each song's slot trimmed by the 4s
+     crossfade), so the car hears — and names — the same song at the
+     same offset as every other lifeline seat. It engages only while
+     no deck is playable and the backend clock has nothing; the
+     moment a deck sounds or the clock's own tracks land it stands
+     down (the handback), and the healthy-backend ladder above stays
+     exactly as it was. */
+  var llData = null, llTried = false;
+  function llEtParts(ms){ var parts = new Intl.DateTimeFormat("en-US",{ timeZone:"America/New_York", hour12:false, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit" }).formatToParts(new Date(ms)); var p = {}; parts.forEach(function(x){ p[x.type] = +x.value; }); return p; }
+  function llEtOffsetMs(ms){ var p = llEtParts(ms); return Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second) - Math.floor(ms / 1000) * 1000; }
+  function llEtWallToMs(y, m, d, h){ var guess = Date.UTC(y, m - 1, d, h, 0, 0); var once = guess - llEtOffsetMs(guess); return guess - llEtOffsetMs(once); }
+  function llDaypartStart(ms){
+    var p = llEtParts(ms), h = p.hour % 24;
+    if(h >= 21) return { name:"traplove", start: llEtWallToMs(p.year, p.month, p.day, 21) };
+    if(h < 6){ var prev = new Date(Date.UTC(p.year, p.month - 1, p.day) - 86400e3); return { name:"traplove", start: llEtWallToMs(prev.getUTCFullYear(), prev.getUTCMonth() + 1, prev.getUTCDate(), 21) }; }
+    if(h < 12) return { name:"weed", start: llEtWallToMs(p.year, p.month, p.day, 6) };
+    return { name:"mixed", start: llEtWallToMs(p.year, p.month, p.day, 12) };
+  }
+  function llNow(){
+    if(!llData) return null;
+    var dp = llDaypartStart(serverNow()), list = llData[dp.name];
+    if(!Array.isArray(list) || !list.length) return null;
+    var total = 0, i; for(i = 0; i < list.length; i++) total += slotOf(list[i]);
+    if(!total) return null;
+    var t = ((serverNow() - dp.start) / 1000) % total; if(t < 0) t += total;
+    for(i = 0; i < list.length; i++){ var d = slotOf(list[i]); if(t < d) return { tr: list[i], offset: t, left: d - t, slot: d, lane: dp.name }; t -= d; }
+    return { tr: list[0], offset: 0, left: slotOf(list[0]), slot: slotOf(list[0]), lane: dp.name };
+  }
+  function llFetch(){
+    if(llTried) return; llTried = true;
+    fetch("/lifeline/radio-dayparts.json", { cache:"no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ if(j){ llData = j; if(tuned) syncAll(); paintNow(); } }).catch(function(){});
+  }
+  var llEl = null, llKey = null;
+  function ensureLlEl(){ if(!llEl){ llEl = new Audio(); llEl.preload = "auto"; llEl.addEventListener("ended", function(){ llKey = null; syncAll(); }); } return llEl; }
+  /* Same slot, same yield rules as the playlist clock (schedWanted):
+   * no deck playable, and it stands down for the gated feeder stream
+   * exactly when the clock does. Its extra condition is the clock
+   * having nothing — the moment the backend clock's tracks land,
+   * airNow() answers and the lifeline hands the slot back. */
+  function llWanted(anyPlayable){ return tuned && !anyPlayable && !airNow() && (shareHolds() || gateLive !== true); }
+  function syncLifeline(anyPlayable){
+    if(!llWanted(anyPlayable)){ if(llEl){ try { llEl.pause(); } catch(_){} } return; }
+    var a = llNow(); if(!a || !a.tr.assetId) return;
+    var el = ensureLlEl();
+    el.volume = masterVol;
+    var key = a.lane + ":" + a.tr.assetId;
+    if(llKey !== key){
+      llKey = key;
+      el.src = "/lifeline/audio/" + a.tr.assetId + ".mp3";
+      var off = a.offset;
+      if(el._sk) el.removeEventListener("loadedmetadata", el._sk);
+      el._sk = function(){ try { el.currentTime = off; } catch(_){} };
+      el.addEventListener("loadedmetadata", el._sk);
+      try { el.currentTime = off; } catch(_){}
+    } else if(isFinite(el.currentTime) && Math.abs(el.currentTime - a.offset) > 4){
+      try { el.currentTime = a.offset; } catch(_){}
+    }
+    var pr = el.play(); if(pr && pr.catch) pr.catch(function(){});
+  }
+
   /* ---------- gesture priming + the honest sound guard ----------
      Why this page claimed ON AIR over silence (ear tests, 2026-11-03:
      TUNE IN tapped, countdown moving, total silence — twice, on a
@@ -438,38 +512,52 @@
   function primeAudio(){
     if(!schedEl){ schedEl = new Audio(); schedEl.preload = "auto"; schedEl.addEventListener("ended", function(){ schedKey = null; syncAll(); }); try { var pp = schedEl.play(); if(pp && pp.catch) pp.catch(function(){}); } catch(_){} }
     if(!streamEl){ streamEl = new Audio(); streamEl.preload = "none"; try { var sp = streamEl.play(); if(sp && sp.catch) sp.catch(function(){}); } catch(_){} }
+    ensureLlEl(); try { var lp = llEl.play(); if(lp && lp.catch) lp.catch(function(){}); } catch(_){}
   }
   var guardPrevPos = -1, guardMoveAt = 0, guardStrikes = 0;
   var guardAsyncPos = {};
   function guardReset(){ guardPrevPos = -1; guardMoveAt = 0; guardStrikes = 0; guardAsyncPos = {}; }
   function guardExpected(){
-    if(!tuned || !S) return false;
+    if(!tuned) return false;
     var anyPlayable = false;
-    DECKS.forEach(function(k){ if(sounding(k) && sourceOf(k)) anyPlayable = true; });
-    return anyPlayable || streamWanted(anyPlayable) || schedWanted(anyPlayable);
+    if(S) DECKS.forEach(function(k){ if(sounding(k) && sourceOf(k)) anyPlayable = true; });
+    return anyPlayable || streamWanted(anyPlayable) || schedWanted(anyPlayable) || llWanted(anyPlayable);
   }
   function guardSample(){
     var pos = -1;
     DECKS.forEach(function(k){ deckPos(k, function(t){ if(t >= 0) guardAsyncPos[k] = t; }); var ap = guardAsyncPos[k]; if(ap != null && ap > pos) pos = ap; });
     if(streamEl && isFinite(streamEl.currentTime) && streamEl.currentTime > pos) pos = streamEl.currentTime;
     if(schedEl && isFinite(schedEl.currentTime) && schedEl.currentTime > pos) pos = schedEl.currentTime;
+    if(llEl && isFinite(llEl.currentTime) && llEl.currentTime > pos) pos = llEl.currentTime;
     return pos;
   }
   function guardRetry(){
     DECKS.forEach(function(k){ if(P[k] && sounding(k)) killPlayer(k); });
     if(schedEl){ try { schedEl.pause(); } catch(_){} schedEl = null; schedKey = null; }
+    if(llEl){ try { llEl.pause(); } catch(_){} llEl = null; llKey = null; }
     if(streamEl){ try { streamEl.pause(); } catch(_){} streamEl = null; }
     syncAll();
   }
   function guardGiveUp(){
-    tuned = false; stopAll();
+    tuned = false; tunedAt = 0; stopAll();
     btn.textContent = "\u25b6 TUNE IN \u2014 CH 1 LIVE"; btn.classList.remove("playing");
     metaEl.textContent = "The sound didn\u2019t start \u2014 tap TUNE IN to try again.";
     guardReset();
     try { navigator.mediaSession.playbackState = "paused"; } catch(_){}
   }
   setInterval(function(){
-    if(!guardExpected()){ guardReset(); return; }
+    if(!guardExpected()){
+      /* Nothing is even expected to sound. If the listener has been
+       * tuned in a while with no source at all — every feed dark,
+       * nothing playing — the ON AIR claim is a lie: drop the button
+       * back to TUNE IN honestly instead of wearing it over silence.
+       * (Before the lifeline, this was the ONLY state a dead backend
+       * produced, and the guard never even ran: guardExpected()
+       * demanded the station doc, so /car sat ON AIR silent forever.) */
+      if(tuned && tunedAt && Date.now() - tunedAt > 12000 && !(schedEl && !schedEl.paused) && !(llEl && !llEl.paused) && !(streamEl && !streamEl.paused)) guardGiveUp();
+      else guardReset();
+      return;
+    }
     var now = Date.now(), pos = guardSample();
     if(guardMoveAt === 0){ guardMoveAt = now; guardPrevPos = pos; return; }
     /* Advancement means PLAYBACK: the position crept forward roughly
@@ -487,7 +575,7 @@
   /* ---------- the sync cycle ---------- */
   var domKey = "";
   function syncAll(){
-    if(!S) return;
+    if(!S){ syncStream(false); syncSched(false); syncLifeline(false); return; }
     var anyPlayable = false, best = null, bestGain = -1;
     DECKS.forEach(function(k){
       var on = sounding(k), src = on ? sourceOf(k) : null;
@@ -506,30 +594,40 @@
     if(!best && artEl.getAttribute("src") !== "/img/tv-poster.jpg") artEl.src = "/img/tv-poster.jpg";
     syncStream(anyPlayable);
     syncSched(anyPlayable);
+    syncLifeline(anyPlayable);
     if(tuned && !anyPlayable && !shareHolds() && gateLive !== true) checkGate();
     var nk = best || ""; if(nk !== domKey){ domKey = nk; mediaMeta(); }
   }
-  function stopAll(){ DECKS.forEach(function(k){ pauseDeck(k); var m = mount(k); if(m) m.classList.remove("on"); }); if(streamEl){ try { streamEl.pause(); } catch(_){} } if(schedEl){ try { schedEl.pause(); } catch(_){} } }
+  function stopAll(){ DECKS.forEach(function(k){ pauseDeck(k); var m = mount(k); if(m) m.classList.remove("on"); }); if(streamEl){ try { streamEl.pause(); } catch(_){} } if(schedEl){ try { schedEl.pause(); } catch(_){} } if(llEl){ try { llEl.pause(); } catch(_){} } }
 
   /* ---------- now playing paint ---------- */
   function paintNow(){
-    if(!S){ return; }
+    if(!S){
+      var la = tuned ? llNow() : null;
+      if(la){ titleEl.textContent = la.tr.title; metaEl.textContent = (la.tr.artist || "Meechie") + " · " + fmt(la.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; }
+      return;
+    }
     badge.classList.toggle("on", isLive());
     var on = DECKS.filter(sounding);
     var best = null, bg = -1; on.forEach(function(k){ if(deckGain(k) > bg){ bg = deckGain(k); best = k; } });
     if(shareHolds() && !on.length){ var sa = airNow(); if(sa){ var st = sched.tracks[sa.i]; titleEl.textContent = st.title; metaEl.textContent = (st.artist || "Meechie") + " · " + fmt(sa.left) + " left · Live share on the master screen — the share carries its own sound on the main site"; } else { titleEl.textContent = "Live share on the master screen"; metaEl.textContent = "The share carries its own sound on the main site — the decks come back when it ends."; } barEl.style.width = "0%"; return; }
-    if(!on.length){ var sa2 = airNow(); if(tuned && sa2){ var st2 = sched.tracks[sa2.i]; titleEl.textContent = st2.title; metaEl.textContent = (st2.artist || "Meechie") + " · " + fmt(sa2.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; } else { titleEl.textContent = isLive() ? "Live — the tables are between songs" : "The station is on — tap TUNE IN"; metaEl.textContent = "One station, one sound — the same radio every seat hears."; } barEl.style.width = "0%"; return; }
+    if(!on.length){ var sa2 = airNow(); if(tuned && sa2){ var st2 = sched.tracks[sa2.i]; titleEl.textContent = st2.title; metaEl.textContent = (st2.artist || "Meechie") + " · " + fmt(sa2.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; } else if(tuned && llNow()){ var lt2 = llNow(); titleEl.textContent = lt2.tr.title; metaEl.textContent = (lt2.tr.artist || "Meechie") + " · " + fmt(lt2.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; } else { titleEl.textContent = isLive() ? "Live — the tables are between songs" : "The station is on — tap TUNE IN"; metaEl.textContent = "One station, one sound — the same radio every seat hears."; } barEl.style.width = "0%"; return; }
     var d = S[best], g = S.djGuest, fresh = S.boothAt && serverNow() - S.boothAt < 90000;
     var gOn = !!(g && g.until > serverNow() && fresh);
     var left = d.dur && d.start ? Math.max(0, Math.round(d.dur - (serverNow() - d.start) / 1000)) : 0;
     titleEl.textContent = on.length > 1 ? d.title + " × " + S[on.find(function(k){ return k !== best; })].title : d.title;
     metaEl.textContent = (gOn ? "🎧 " + (g.name || "Guest DJ") + " live" : fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : "") + " · the same sound on every seat";
   }
+  var tickLlKey = "";
   function tick(){
-    if(!S) return;
+    if(!S){
+      if(llEl && !llEl.paused){ var a6 = llNow(); if(a6 && a6.slot > 0) barEl.style.width = Math.min(100, a6.offset / a6.slot * 100) + "%"; var lk6 = a6 ? a6.lane + ":" + a6.tr.assetId : ""; if(lk6 !== tickLlKey){ tickLlKey = lk6; paintNow(); } }
+      return;
+    }
     var on = DECKS.filter(sounding), best = null, bg = -1; on.forEach(function(k){ if(deckGain(k) > bg){ bg = deckGain(k); best = k; } });
     if(best){ var d = S[best], el = bcastPos(best); if(d.dur > 0) barEl.style.width = Math.min(100, el / d.dur * 100) + "%"; }
     else if(schedEl && !schedEl.paused){ var a3 = airNow(); if(a3 && a3.slot > 0) barEl.style.width = Math.min(100, a3.offset / a3.slot * 100) + "%"; }
+    else if(llEl && !llEl.paused){ var a5 = llNow(); if(a5 && a5.slot > 0) barEl.style.width = Math.min(100, a5.offset / a5.slot * 100) + "%"; }
   }
   setInterval(tick, 1000);
 
@@ -545,14 +643,15 @@
 
   /* ---------- the one big button ---------- */
   function toggle(){
-    if(!tuned){ tuned = true; btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); gateFalseN = 0; guardReset(); primeAudio(); pollStation(); pollSchedule(); checkGate(); syncAll(); try { navigator.mediaSession.playbackState = "playing"; } catch(_){} }
-    else { tuned = false; stopAll(); guardReset(); btn.textContent = "▶ TUNE IN — CH 1 LIVE"; btn.classList.remove("playing"); try { navigator.mediaSession.playbackState = "paused"; } catch(_){} }
+    if(!tuned){ tuned = true; tunedAt = Date.now(); btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); gateFalseN = 0; guardReset(); primeAudio(); pollStation(); pollSchedule(); llFetch(); checkGate(); syncAll(); paintNow(); try { navigator.mediaSession.playbackState = "playing"; } catch(_){} }
+    else { tuned = false; tunedAt = 0; stopAll(); guardReset(); btn.textContent = "▶ TUNE IN — CH 1 LIVE"; btn.classList.remove("playing"); try { navigator.mediaSession.playbackState = "paused"; } catch(_){} }
   }
   btn.addEventListener("click", toggle);
-  volEl.addEventListener("input", function(){ masterVol = volEl.value / 100; DECKS.forEach(applyDeck); if(streamEl) streamEl.volume = masterVol; if(schedEl) schedEl.volume = masterVol; });
+  volEl.addEventListener("input", function(){ masterVol = volEl.value / 100; DECKS.forEach(applyDeck); if(streamEl) streamEl.volume = masterVol; if(schedEl) schedEl.volume = masterVol; if(llEl) llEl.volume = masterVol; });
 
   pollStation(); setInterval(pollStation, 12000);
   pollSchedule(); setInterval(pollSchedule, 300000);
+  llFetch(); setInterval(function(){ if(!llData){ llTried = false; llFetch(); } }, 30000);
 
   /* Program guide — Malik's dayparts (Eastern), 2026-11-03 grid */
   var BLOCKS = [
