@@ -15,6 +15,7 @@ import { userFrom, isAdmin } from "../../lib/cf.js";
 import * as HANDS from "../../lib/meechie-hands.js";
 import { encrypt, vapid } from "./push.js";
 import { cleanBrainEvent, recordBrainEvents, readTaste, tasteScore, weightedBagOrder } from "../../lib/brain-taste.js";
+import { tvGuardHardSeats, TV_GUARD_CONFIRM_SEATS } from "./tv/guardian.js";
 
 const XF = 5; // crossfade lead in seconds: the next song starts this long before the current one ends, so the two are audibly playing together with no pause (Malik, 2026-10-28: widened from 3.5; the booth lead in dj.js matches)
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
@@ -501,7 +502,46 @@ async function selfReviewPass(deps, S, now) {
     metrics.draws7 = +(((d7.results || [])[0] || {}).c) || 0;
     const drawn = await deps.env.DB.prepare("select distinct key from brain_events where at > ? and actor = 'aidj' and type = 'draw' and key != ''").bind(now - 7 * SELF_DAY).all();
     for (const r of (drawn.results || [])) { const m = key7.get(r.key); if (m && m.p > 0) metrics.drawnPlayed7++; }
-  } catch (_) { notes.push("Station activity read failed this run — judgment changes limited to playlist hygiene."); }
+    } catch (_) { notes.push("Station activity read failed this run — judgment changes limited to playlist hygiene."); }
+  // 3b) TV WATCH (Guardian, 2026-11-03): what the channel aired and
+  // how the room met it — completions, skips, crowd kills, Guardian
+  // interventions — plus the Eyes LOOK-BOOK digest (sampled-frame
+  // vision reads of what actually aired). Read-only here: the
+  // keeper writes brain/tvwatch; this review cites it in metrics,
+  // notes and proposals. TV evidence never widens the write
+  // allowlist and never touches the daypart clock.
+  let tvAgg = null; const tvCands = [];
+  try {
+    const tw = await deps.readDoc(deps.env, "brain/tvwatch");
+    if (tw && tw.days && typeof tw.days === "object") {
+      const agg = { aired: 0, completed: 0, ownerSkip: 0, crowdSkip: 0, guardian: 0, cut: 0, cutWindow: 0, byId: {} };
+      const dayKeys = Object.keys(tw.days).sort().slice(-7);
+      for (const dk of dayKeys) {
+        const d = tw.days[dk]; if (!d) continue;
+        for (const f of ["aired", "completed", "ownerSkip", "crowdSkip", "guardian", "cut", "cutWindow"]) agg[f] += +d[f] || 0;
+        for (const [id, b] of Object.entries(d.byId || {})) {
+          const t = agg.byId[id] || (agg.byId[id] = { title: (b && b.title) || id, aired: 0, completed: 0, kills: 0, up: 0, down: 0 });
+          t.aired += +b.aired || 0; t.completed += +b.completed || 0; t.kills += +b.kills || 0; t.up += +b.up || 0; t.down += +b.down || 0;
+        }
+      }
+      if (agg.aired > 0) {
+        tvAgg = agg;
+        metrics.tv = { aired7: agg.aired, completed7: agg.completed, crowdKills7: agg.crowdSkip, guardianAdv7: agg.guardian, ownerSkips7: agg.ownerSkip };
+        const pct = Math.round(100 * agg.completed / Math.max(1, agg.aired));
+        notes.push("TV: last 7 days MW TV aired " + agg.aired + " recorded programs; " + agg.completed + " ran to completion (" + pct + "%), the crowd killed " + agg.crowdSkip + ", the Guardian advanced " + agg.guardian + " confirmed-dead picks and Malik skipped " + agg.ownerSkip + " himself.");
+        const loved = Object.entries(agg.byId).map(([id, b]) => ({ id, ...b })).filter((b) => b.aired >= 2 && b.completed >= 2).sort((a, b2) => (b2.completed / Math.max(1, b2.aired)) - (b.completed / Math.max(1, b.aired)) || b2.completed - b.completed).slice(0, 3);
+        for (const b of loved) notes.push("TV loved: “" + String(b.title).slice(0, 60) + "” finished " + b.completed + " of " + b.aired + " airings (votes +" + b.up + "/−" + b.down + ").");
+        const killed = Object.entries(agg.byId).map(([id, b]) => ({ id, ...b })).filter((b) => b.kills >= 2).sort((a, b2) => b2.kills - a.kills).slice(0, 3);
+        for (const b of killed) { notes.push("TV killed: “" + String(b.title).slice(0, 60) + "” was crowd-killed or Guardian-advanced " + b.kills + " times across " + b.aired + " airings."); tvCands.push({ id: "tv-repeat-kill-" + b.id, title: "MW TV keeps losing “" + String(b.title).slice(0, 50) + "”", why: "In the last 7 days this title aired " + b.aired + " times and was crowd-skipped or Guardian-advanced as unplayable " + b.kills + " times (brain/tvwatch). The Guardian quarantines a video only after 2 confirmed-dead airings; repeated CROWD kills are a taste verdict, not a fault — a human should decide whether it leaves the pool or the crowd is wrong." }); }
+        const stars = Object.entries(agg.byId).map(([id, b]) => ({ id, ...b })).filter((b) => b.aired >= 3 && b.completed / Math.max(1, b.aired) >= 0.8 && (b.up - b.down) > 0 && !loved.some((l) => l.id === b.id)).slice(0, 1);
+        for (const b of stars) tvCands.push({ id: "tv-crowd-star-" + b.id, title: "MW TV crowd star: “" + String(b.title).slice(0, 50) + "”", why: "brain/tvwatch: " + b.aired + " airings in 7 days, " + b.completed + " completions, net votes +" + (b.up - b.down) + ". Vote weighting already lifts it in the bag; featuring it (a named slot, a promo) is a human programming call." });
+      } else notes.push("TV: brain/tvwatch exists but no program records yet — the Guardian's watch records are still gathering.");
+      if (tw && Array.isArray(tw.eyes) && tw.eyes.length) {
+        const latest = tw.eyes.slice(-3).reverse();
+        for (const e of latest) { const r = (e && e.read) || {}; notes.push("Eyes (sampled frame, " + (e.src || "seat") + "): “" + String((e && e.title) || "").slice(0, 50) + "” — " + String(r.setting || "—").slice(0, 90) + (r.screenText ? "; on-screen text: “" + String(r.screenText).slice(0, 80) + "”" : "") + (r.faults ? "; visible fault noted: " + String(r.faults).slice(0, 80) : "") + "."); }
+      }
+    } else notes.push("TV: no brain/tvwatch doc yet — the Guardian's first watch records land as programs roll off the air.");
+  } catch (_) { notes.push("TV: brain/tvwatch read failed this run — TV evidence skipped, nothing else affected."); }
   // 1) TASTE SHARPENING — bounded counter nudges from the trailing 7
   // days: a track the room keeps skipping earns one more skip on its
   // record; a track that keeps playing to the end earns one more end.
@@ -589,10 +629,11 @@ async function selfReviewPass(deps, S, now) {
     if (metrics.plays7 >= 100 && metrics.skips7 * 20 >= metrics.plays7 * 7) cands.push({ id: "high-skip-rate", title: "Station skip rate is high", why: "Last 7 days: " + metrics.skips7 + " skips on " + metrics.plays7 + " plays (≥35%). Taste nudges alone won't fix a rate like that — worth a human look at lane mixes and pool sources." });
     if (taste && Object.keys(taste.tracks || {}).length >= 395) cands.push({ id: "taste-at-cap", title: "Taste profile is at its cap", why: "brain/taste holds " + Object.keys(taste.tracks || {}).length + " of 400 tracks; the fold evicts the coldest on every write. If the cap should grow, that's a code change in lib/brain-taste.js." });
     if (taste && anchors.length === 0) cands.push({ id: "no-taste-anchors", title: "No positive taste anchors", why: "No artist currently scores above zero, so Auto-DJ picks fall back to library frequency. If that persists, the anchor rule itself may need a human look." });
+    for (const c of tvCands) cands.push(c);
     const fresh = cands.find((c) => !recent(c.id));
     if (fresh) { props.items.push({ at: now, id: fresh.id, title: fresh.title, why: fresh.why, status: "open" }); props.items = props.items.slice(-20); await selfWrite(deps, "brain/proposals", props); changes.push("proposal filed: \"" + fresh.title + "\" (brain/proposals — for Amani's review; Meechie does not edit his own code)"); }
   } catch (_) {}
-  const summary = "Daily self-review: last 24h " + metrics.plays24 + " plays, " + metrics.ends24 + " completions, " + metrics.skips24 + " skips, " + metrics.requests24 + " requests; Auto-DJ stocked picks that went on to play: " + metrics.drawnPlayed7 + " of the distinct videos drawn in 7d. " + changes.length + " change(s) made, all logged below.";
+  const summary = "Daily self-review: last 24h " + metrics.plays24 + " plays, " + metrics.ends24 + " completions, " + metrics.skips24 + " skips, " + metrics.requests24 + " requests; Auto-DJ stocked picks that went on to play: " + metrics.drawnPlayed7 + " of the distinct videos drawn in 7d." + (tvAgg ? " MW TV: " + tvAgg.aired + " programs aired in 7d, " + Math.round(100 * tvAgg.completed / Math.max(1, tvAgg.aired)) + "% ran to completion, " + (tvAgg.crowdSkip + tvAgg.guardian) + " killed by crowd/Guardian, " + tvAgg.ownerSkip + " owner skips." : "") + " " + changes.length + " change(s) made, all logged below.";
   selflog.entries.push({ at: now, kind: "review", summary, changes, notes, metrics });
   selflog.entries = selflog.entries.slice(-90);
   selflog.lastRunDay = et.day; selflog.lastRunAt = now;
@@ -2588,6 +2629,155 @@ async function tvSponsorTally(env, pool, segs, now, online) {
   }
   if (changed) { pool.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", pool); }
 }
+/* MWTV-GUARDIAN-BEGIN — THE GUARDIAN (Malik, 2026-11-03 19:51 ET:
+ * "put a bot that watches the tv chanel for meechie to fix it",
+ * 19:56 ET "Give meechie eyes", and the quality mandate the same
+ * night: MW TV must be THE BEST CHANNEL IN THE WORLD — "its
+ * meechies world" — so the defect bar is ZERO TOLERANCE: dead air,
+ * a dead/unplayable title occupying the channel, a stuck or
+ * looping segment, or a stale piece airing are all defects.)
+ *
+ * WHAT THE GUARDIAN IS: a permanent watcher that lives in two
+ * places. (1) HERE, inside the keeper: every tick it reads the
+ * fault reports real seats filed through /api/tv/guardian (the
+ * dj.js channel surface reports its own player errors; the
+ * watcher seat's client does too), keeps the per-program watch
+ * records Meechie learns from (brain/tvwatch), and applies the
+ * SAFE FIXES below. (2) A goal-owned cron (mwtv-guardian, every
+ * ~10 min) does independent doc checks + an hourly browser-seat
+ * check WITH SCREENSHOTS (Meechie Eyes) and reports defects to
+ * Malik — the keeper half never talks to chat itself.
+ *
+ * THE ONLY HANDS (everything else is detect + log + report):
+ *  (a) ADVANCE a segment CONFIRMED unplayable from real seats
+ *      (>= TV_GUARD_CONFIRM_SEATS distinct seats with hard player
+ *      errors on the instance on air) through tvAdvanceChannel —
+ *      and only when tvSkipGate (called with by:"guardian", the
+ *      crowd protections) lets it: news, premiere, rerun, anchor,
+ *      insert and owner-queue segments are NEVER guardian-cut;
+ *      they are logged + reported instead. Owner actions are
+ *      never second-guessed: an owner skip/queue is a decision,
+ *      not a fault.
+ *  (b) QUARANTINE a title on its 2nd confirmed-dead airing:
+ *      its yt id joins brain/ytblock (the shared ban list the
+ *      insert/queue doors already respect) and the item itself
+ *      is held (it.held — the disable tvCleared enforces on
+ *      every pick path) in whichever lineup doc carries it.
+ *  (c) BANNED-ON-AIR: a segment whose yt id is on brain/ytblock
+ *      or the permanent watchlist below must never occupy the
+ *      channel, whatever doc laid it (seed, stored lineup doc or
+ *      owner insert — the _Tu_SAqNinU incident, 2026-11-03, came
+ *      from a STORED doc while no seed contained it). Laid banned
+ *      segments are logged once per instance; the one on air NOW
+ *      is cut through the same gate + advancer when its class is
+ *      unprotected (a ban is a house decision, stronger evidence
+ *      than a fault report); protected classes are log + report
+ *      only, exactly like a confirmed-dead refusal.
+ * Holes and stalls are detected and logged (the re-lay is the
+ * generation code's own job); a hole that persists is the cron's
+ * report to make. Code fixes are NEVER the Guardian's: they
+ * become brain/proposals through the nightly self-review.
+ * The Guardian never touches the radio (the wall), never touches
+ * money or member data, and every observation, fix and refusal
+ * is written to brain/selflog through the hands log (actor
+ * "Meechie"), where Malik can read it.
+ *
+ * WATCH RECORDS (TV LEARNING): when a program segment rolls off
+ * the air, the pass finalizes its record into brain/tvwatch —
+ * what aired (title, source/channel strand, kind), how long it
+ * held vs its full length, how it ended (completed / owner-skip /
+ * crowd-skip / guardian-advance / cut / cut-window) and the
+ * final vote tallies from tv/votes. Eyes reads (sampled-frame
+ * vision descriptions filed through the endpoint) fold in here
+ * too. The nightly self-review READS brain/tvwatch: its metrics,
+ * notes, look-book digest and proposals now cite TV evidence —
+ * what the crowd finishes, loves, skips fast and kills. */
+const TV_WATCH_MIN_DUR = 45;   // shorter laid pieces (spots/idents) are not watch-recorded
+const TV_WATCH_RECENT_CAP = 80;
+const TV_WATCH_EYES_CAP = 40;
+const TV_GUARD_LOG_CAP = 120;
+/* Permanent Guardian watchlist: ids that are defects on sight,
+ * forever, whatever doc lays them. _Tu_SAqNinU = "THE OLD
+ * BODYGUARD" (uploader "Vid Evolution Action Movies", an
+ * aggregator, NOT cleared): the player region check proved it
+ * UNPLAYABLE for US viewers (availability list covers 239
+ * countries, US absent; explicit country subreason) while
+ * oEmbed answered 200 — oEmbed can NEVER clear this class; the
+ * region/availability evidence is the detector. Deliberately
+ * NOT listed: xv-70a6yXfM (Bring Me The Horizon "LosT") — its
+ * probe said LOGIN_REQUIRED (age-gate); a bare probe status is
+ * not evidence (the same probe called all 117 lineup ids
+ * UNPLAYABLE, including titles airing fine), so that one is a
+ * seat-decides watch item for the cron, never an auto-action. */
+const TV_GUARD_WATCHLIST = ["_Tu_SAqNinU"];
+
+function tvGuardEmptyWatch() { return { v: 1, updatedAt: 0, recent: [], days: {}, eyes: [] }; }
+
+/* Fold one finished program record into brain/tvwatch (pure doc
+ * mutation; the caller persists). Deduped by instance key — a
+ * record the Guardian wrote at advance time is never doubled by
+ * the rollover finalizer. */
+function tvWatchFold(doc, rec, dayKey) {
+  if (!doc || !rec || !rec.key) return false;
+  if (!Array.isArray(doc.recent)) doc.recent = [];
+  if (doc.recent.some((r) => r && r.key === rec.key)) return false;
+  doc.recent.push(rec);
+  if (doc.recent.length > TV_WATCH_RECENT_CAP) doc.recent = doc.recent.slice(-TV_WATCH_RECENT_CAP);
+  if (!doc.days || typeof doc.days !== "object") doc.days = {};
+  const d = doc.days[dayKey] || (doc.days[dayKey] = { aired: 0, completed: 0, ownerSkip: 0, crowdSkip: 0, guardian: 0, cut: 0, cutWindow: 0, byId: {} });
+  d.aired += 1;
+  if (rec.outcome === "completed") d.completed += 1;
+  else if (rec.outcome === "owner-skip") d.ownerSkip += 1;
+  else if (rec.outcome === "crowd-skip") d.crowdSkip += 1;
+  else if (rec.outcome === "guardian-advance") d.guardian += 1;
+  else if (rec.outcome === "cut-window") d.cutWindow += 1;
+  else d.cut += 1;
+  if (!d.byId || typeof d.byId !== "object") d.byId = {};
+  const b = d.byId[rec.id] || (d.byId[rec.id] = { title: rec.title || "", aired: 0, completed: 0, kills: 0, up: 0, down: 0 });
+  b.title = rec.title || b.title;
+  b.aired += 1;
+  if (rec.outcome === "completed") b.completed += 1;
+  if (rec.outcome === "crowd-skip" || rec.outcome === "guardian-advance") b.kills += 1;
+  b.up += rec.up | 0; b.down += rec.down | 0;
+  const idKeys = Object.keys(d.byId);
+  if (idKeys.length > 80) for (const k of idKeys.slice(0, idKeys.length - 80)) delete d.byId[k];
+  const cutoff = tvEtParts(Math.max(0, (rec.at || 0) - 8 * 864e5)).dayKey;
+  for (const k of Object.keys(doc.days)) if (k < cutoff) delete doc.days[k];
+  doc.updatedAt = rec.at || Date.now();
+  return true;
+}
+
+/* Guardian log line inside tv/guardian (the cron reads these to
+ * report defects) + the matching brain/selflog entry through the
+ * hands log, so Meechie's own record carries it too. The selflog
+ * write is fire-and-forget: the log must never break the tick. */
+function tvGuardLog(env, gDoc, entry) {
+  if (!Array.isArray(gDoc.log)) gDoc.log = [];
+  gDoc.log.push(entry);
+  if (gDoc.log.length > TV_GUARD_LOG_CAP) gDoc.log = gDoc.log.slice(-TV_GUARD_LOG_CAP);
+  try {
+    const p = HANDS.handsLog(env, { action: "tv.guardian." + (entry.kind || "note"), target: entry.target || "tv/now", summary: entry.summary || "", by: "guardian", role: "system" });
+    if (p && p.catch) p.catch(() => {});
+  } catch (_) {}
+}
+
+/* Continuity scan of the laid timeline: holes between consecutive
+ * segments (the #628 law is zero holes). Returns the holes whose
+ * END is past the watermark, so each distinct hole is counted
+ * once even though every tick re-lays the same window. */
+function tvGuardHoles(segs, watermark) {
+  const out = [];
+  if (!Array.isArray(segs)) return out;
+  for (let i = 1; i < segs.length; i++) {
+    const prev = segs[i - 1], cur = segs[i];
+    if (!prev || !cur) continue;
+    const prevEnd = prev.start + (+prev.dur || 0) * 1000;
+    const gap = cur.start - prevEnd;
+    if (gap > 150 && prevEnd > (watermark || 0)) out.push({ at: prevEnd, gapMs: gap, before: cur.id || "", beforeTitle: cur.title || "" });
+  }
+  return out;
+}
+/* MWTV-GUARDIAN-HELPERS-END */
 async function tvTick(env, S, now, origin, online) {
   let chan = await readDoc(env, "tv/channel");
   if (!chan || !Array.isArray(chan.items) || !chan.items.length || (+chan.progV || 0) < TV_PROGRAM_V) { chan = tvSeedChannel(now); await writeDoc(env, "tv/channel", "tv", chan); }
@@ -2619,6 +2809,7 @@ async function tvTick(env, S, now, origin, online) {
   // when 5 distinct viewers vote 👎 on the segment on air; the
   // gated block further down answers it through tvAdvanceChannel.
   const votesDoc = await readDoc(env, "tv/votes");
+  const guardDoc0 = await readDoc(env, "tv/guardian");
   let skipDoc = await readDoc(env, "tv/skip");
   const decision = tvRadioDecision(S, qDoc, now);
   // Uniontown Local Update hold-by-age: the break spot is only as
@@ -2975,6 +3166,7 @@ async function tvTick(env, S, now, origin, online) {
   }
   let curSeg = tvSegAt(segs, now);
   let skipNote = nw && nw.skipNote && now - nw.skipNote.at < 3600e3 ? nw.skipNote : null;
+  let gNote = nw && nw.gNote && now - nw.gNote.at < 3600e3 ? nw.gNote : null;
   if (crowdNote) skipNote = crowdNote;
   if (nw && nw.curStart && curSeg && curSeg.start !== nw.curStart) {
     const heldId = await tvRecheckNext(env, chan, segs, now, origin, nw || {});
@@ -2993,6 +3185,195 @@ async function tvTick(env, S, now, origin, online) {
       dirty = true;
     }
   }
+  // MW TV GUARDIAN PASS (see MWTV-GUARDIAN-BEGIN above): finalize
+  // the departed program's watch record, act on confirmed-dead
+  // segments, scan the laid timeline, fold Eyes reads into
+  // brain/tvwatch. Fully self-contained and failure-silent: a
+  // guardian fault can never hurt the channel it watches.
+  try {
+    const gDoc = (guardDoc0 && typeof guardDoc0 === "object" && !Array.isArray(guardDoc0)) ? guardDoc0 : { v: 1, faults: {}, strikes: {}, eyes: [], log: [], health: { advances: 0, quarantines: 0, refusals: 0, holes: 0, lastFaultAt: 0, lastAdvanceAt: 0, lastQuarantineAt: 0 } };
+    if (!gDoc.faults || typeof gDoc.faults !== "object") gDoc.faults = {};
+    if (!gDoc.strikes || typeof gDoc.strikes !== "object") gDoc.strikes = {};
+    if (!gDoc.health || typeof gDoc.health !== "object") gDoc.health = { advances: 0, quarantines: 0, refusals: 0, holes: 0, lastFaultAt: 0, lastAdvanceAt: 0, lastQuarantineAt: 0 };
+    let gDirty = false;
+    let watchDoc = null, watchDirty = false;
+    const loadWatch = async () => { if (!watchDoc) { const w = await readDoc(env, "brain/tvwatch"); watchDoc = (w && typeof w === "object" && !Array.isArray(w)) ? w : tvGuardEmptyWatch(); if (!Array.isArray(watchDoc.recent)) watchDoc.recent = []; if (!watchDoc.days || typeof watchDoc.days !== "object") watchDoc.days = {}; if (!Array.isArray(watchDoc.eyes)) watchDoc.eyes = []; } return watchDoc; };
+    const findItem = (id) => {
+      const lists = [(chan && chan.items) || [], (pool && pool.items) || [], (movies && movies.items) || [], (chan._prem && chan._prem.items) || [], (chan._rerun && chan._rerun.items) || [], (insWin && insWin.items) || [], (qState && qState.items) || []];
+      for (const L of lists) { const it = (L || []).find((x) => x && x.id === id); if (it) return it; }
+      return null;
+    };
+    const dayKey = tvEtParts(now).dayKey;
+    // (1) FINALIZE the departed program (the previous tv/now's
+    // current segment, gone from the air on this tick).
+    if (nw && nw.curStart && curSeg && curSeg.start !== nw.curStart && Array.isArray(nw.segs)) {
+      const dep = nw.segs.find((sg) => sg && sg.start === nw.curStart);
+      if (dep && (dep.k === "prog" || dep.k === "house")) {
+        const it = findItem(dep.id);
+        const fullDur = it && +it.dur > 0 ? +it.dur : (+dep.dur || 0);
+        if (fullDur >= TV_WATCH_MIN_DUR) {
+          const laidEnd = dep.start + (+dep.dur || 0) * 1000;
+          const airedSec = Math.max(0, Math.round((Math.min(now, laidEnd) - dep.start) / 100) / 10);
+          const frac = fullDur > 0 ? Math.round(Math.min(1, airedSec / fullDur) * 100) / 100 : 0;
+          const cutShort = now < dep.start + fullDur * 1000 - 2000;
+          let outcome = "completed";
+          if (cutShort) {
+            if (nw.skipNote && nw.skipNote.id === dep.id && nw.skipNote.by === "crowd" && (+nw.skipNote.at || 0) >= dep.start) outcome = "crowd-skip";
+            else if (nw.qSkipNote && (+nw.qSkipNote.at || 0) >= dep.start) outcome = "owner-skip";
+            else if (curSeg.k === "news" || (nw.skipNote && nw.skipNote.id === dep.id)) outcome = "cut";
+            else if (frac >= 0.9) outcome = "completed";
+            else outcome = "cut";
+            if (outcome === "cut" && curSeg.k === "news") outcome = "cut-window";
+          }
+          const vrec = votesDoc && votesDoc.inst ? votesDoc.inst[dep.id + "@" + dep.start] : null;
+          const wd = await loadWatch();
+          if (tvWatchFold(wd, { key: dep.id + "@" + dep.start, id: dep.id, yt: dep.yt || (it && it.yt) || "", title: dep.title || (it && it.title) || String(dep.id), show: dep.show || (it && it.show) || "", kind: dep.qid ? "queue" : dep.k, start: dep.start, dur: fullDur, aired: airedSec, frac, outcome, up: vrec ? (vrec.up | 0) : 0, down: vrec ? (vrec.down | 0) : 0, at: now }, dayKey)) watchDirty = true;
+        }
+      }
+    }
+    // (2) CONFIRMED-DEAD segment on air right now?
+    if (curSeg && (curSeg.k === "prog" || curSeg.k === "house")) {
+      const curKey = curSeg.id + "@" + curSeg.start;
+      const frec = gDoc.faults[curKey];
+      const hardSeats = frec ? tvGuardHardSeats(frec) : 0;
+      if (hardSeats >= TV_GUARD_CONFIRM_SEATS) {
+        const cadNow = tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
+        const gate = tvSkipGate(curSeg, chan, now, "guardian", cadNow);
+        if (!gate.ok) {
+          if (!gDoc.refusedKeys || typeof gDoc.refusedKeys !== "object") gDoc.refusedKeys = {};
+          if (!gDoc.refusedKeys[curKey]) {
+            gDoc.refusedKeys[curKey] = now;
+            const rk = Object.keys(gDoc.refusedKeys); if (rk.length > 60) for (const k of rk.slice(0, rk.length - 60)) delete gDoc.refusedKeys[k];
+            gDoc.health.refusals += 1; gDirty = true;
+            tvGuardLog(env, gDoc, { at: now, kind: "refusal", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/guardian", summary: "Guardian: “" + String(curSeg.title || curSeg.id).slice(0, 80) + "” is CONFIRMED unplayable by " + hardSeats + " viewer seats (hard player errors) but it is a protected class (" + gate.why + ") — NOT cut. Logged for Malik/Amani: the piece needs a human decision or a replacement edition." });
+          }
+        } else {
+          const adv = tvAdvanceChannel(chan, segs, cursor, now, cadNow);
+          if (adv.applied) {
+            segs = adv.segs; cursor = adv.cursor; dirty = true;
+            if (adv.qCut) { qCut = { ...qCut, ...adv.qCut }; chan._qCut = qCut; }
+            if (adv.insTrunc && insWin) { insWin = { ...insWin, dur: adv.insTrunc.dur }; chan._insert = insWin; }
+            if (adv.movSkip) { movSkipState = adv.movSkip; if (chan._movies) { const mwS = tvMovieWin(now, chan._movies); chan._movies.skipShift = adv.movSkip.shift; chan._movies.skipAt = adv.movSkip.at; chan._movies.skipStart = mwS ? mwS.start : 0; } }
+            if (adv.qJump && quDoc) { quDoc = { ...quDoc, anchor: adv.qJump.anchor, updatedAt: now }; await writeDoc(env, "tv/queue", "tv", quDoc); qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState; }
+            if (!adv.qJump && qState && qState.anchor > now && quDoc) { quDoc = { ...quDoc, anchor: now, updatedAt: now }; await writeDoc(env, "tv/queue", "tv", quDoc); qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState; }
+            const airedSec = Math.max(0, Math.round((now - curSeg.start) / 100) / 10);
+            const itA = findItem(curSeg.id);
+            const fullDurA = itA && +itA.dur > 0 ? +itA.dur : (+curSeg.dur || 0);
+            const vrecA = votesDoc && votesDoc.inst ? votesDoc.inst[curKey] : null;
+            const wd = await loadWatch();
+            if (tvWatchFold(wd, { key: curKey, id: curSeg.id, yt: curSeg.yt || "", title: curSeg.title || String(curSeg.id), show: curSeg.show || (itA && itA.show) || "", kind: curSeg.qid ? "queue" : curSeg.k, start: curSeg.start, dur: fullDurA, aired: airedSec, frac: fullDurA > 0 ? Math.round(Math.min(1, airedSec / fullDurA) * 100) / 100 : 0, outcome: "guardian-advance", up: vrecA ? (vrecA.up | 0) : 0, down: vrecA ? (vrecA.down | 0) : 0, at: now }, dayKey)) watchDirty = true;
+            gNote = { id: curSeg.id, title: curSeg.title || String(curSeg.id), at: now, by: "guardian" };
+            gDoc.health.advances += 1; gDoc.health.lastAdvanceAt = now; gDirty = true;
+            tvGuardLog(env, gDoc, { at: now, kind: "advance", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/now", summary: "Guardian ADVANCED a confirmed-dead segment: “" + String(curSeg.title || curSeg.id).slice(0, 80) + "” was unplayable (" + hardSeats + " seats reported hard player errors; on air " + airedSec + "s of " + fullDurA + "s). The channel moved to the next piece through the shared advancer. Zero-tolerance bar: a dead title never occupies MW TV." });
+            delete gDoc.faults[curKey];
+            // Strike + quarantine on the 2nd confirmed-dead airing.
+            const yt = curSeg.yt || "";
+            if (yt) {
+              const st = gDoc.strikes[yt] || { title: curSeg.title || "", segs: [], at: 0 };
+              if (!st.segs.includes(curSeg.start)) st.segs.push(curSeg.start);
+              st.at = now; st.title = curSeg.title || st.title;
+              gDoc.strikes[yt] = st;
+              if (st.segs.length >= 2 && !st.quarantinedAt) {
+                st.quarantinedAt = now;
+                try { const blk = (await readDoc(env, "brain/ytblock")) || { ids: [] }; if (Array.isArray(blk.ids) && !blk.ids.includes(yt)) { blk.ids.push(yt); await writeDoc(env, "brain/ytblock", "brain", blk); } } catch (_) {}
+                const holdIt = async (docObj, path, coll) => { let hit = false; for (const x of (docObj && docObj.items) || []) { if (x && x.yt === yt && !x.held) { x.held = "guardian: confirmed unplayable on 2 separate airings"; x.heldAt = now; hit = true; } } if (hit) { docObj.updatedAt = now; if (docObj === chan) docObj.by = "keeper"; await writeDoc(env, path, coll, docObj); } };
+                try { await holdIt(chan, "tv/channel", "tv"); } catch (_) {}
+                try { await holdIt(pool, "tv/breakpool", "tv"); } catch (_) {}
+                try { await holdIt(movies, "tv/movieblock", "tv"); } catch (_) {}
+                gDoc.health.quarantines += 1; gDoc.health.lastQuarantineAt = now;
+                tvGuardLog(env, gDoc, { at: now, kind: "quarantine", id: curSeg.id, title: curSeg.title || "", yt, target: "brain/ytblock", summary: "Guardian QUARANTINED “" + String(curSeg.title || yt).slice(0, 80) + "”: confirmed unplayable on 2 separate airings. Its video id is on the shared ban list (brain/ytblock) and the item is held in every lineup doc — it can never be picked again. Re-adding it takes a human with a working copy." });
+              }
+            }
+            curSeg = tvSegAt(segs, now);
+          }
+        }
+      }
+    }
+    // (2b) BANNED-ON-AIR: scan the whole laid timeline for a
+    // banned yt id (brain/ytblock + the permanent watchlist).
+    // Doc-level and lineage-blind on purpose: the reference
+    // incident reached the air from a stored doc, not a seed.
+    try {
+      const blkDoc = await readDoc(env, "brain/ytblock");
+      const banSet = new Set([...((blkDoc && Array.isArray(blkDoc.ids)) ? blkDoc.ids.map(String) : []), ...TV_GUARD_WATCHLIST]);
+      if (banSet.size) {
+        if (!gDoc.banKeys || typeof gDoc.banKeys !== "object") gDoc.banKeys = {};
+        for (const sg of (segs || [])) {
+          if (!sg || !sg.yt || !banSet.has(String(sg.yt))) continue;
+          const bKey = sg.id + "@" + sg.start;
+          if (gDoc.banKeys[bKey]) continue;
+          gDoc.banKeys[bKey] = now;
+          const bk = Object.keys(gDoc.banKeys); if (bk.length > 60) for (const k of bk.slice(0, bk.length - 60)) delete gDoc.banKeys[k];
+          gDirty = true;
+          tvGuardLog(env, gDoc, { at: now, kind: "banned-on-air", id: sg.id, title: sg.title || "", yt: String(sg.yt), segStart: sg.start, target: "tv/now", summary: "Guardian DEFECT: banned video id " + String(sg.yt) + " (\u201C" + String(sg.title || sg.id).slice(0, 80) + "\u201D) is laid in the MW TV timeline. A banned id never occupies this channel, whatever doc laid it. If it is on air now and its class is unprotected, the Guardian cuts it through the shared advancer; protected classes are reported for a human call." });
+        }
+        if (curSeg && curSeg.yt && banSet.has(String(curSeg.yt)) && (curSeg.k === "prog" || curSeg.k === "house")) {
+          const cadNowB = tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
+          const gateB = tvSkipGate(curSeg, chan, now, "guardian", cadNowB);
+          if (!gateB.ok) {
+            if (!gDoc.refusedKeys || typeof gDoc.refusedKeys !== "object") gDoc.refusedKeys = {};
+            const curKeyB = curSeg.id + "@" + curSeg.start;
+            if (!gDoc.refusedKeys[curKeyB]) {
+              gDoc.refusedKeys[curKeyB] = now;
+              const rk = Object.keys(gDoc.refusedKeys); if (rk.length > 60) for (const k of rk.slice(0, rk.length - 60)) delete gDoc.refusedKeys[k];
+              gDoc.health.refusals += 1; gDirty = true;
+              tvGuardLog(env, gDoc, { at: now, kind: "refusal", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/guardian", summary: "Guardian: banned video \u201C" + String(curSeg.title || curSeg.id).slice(0, 80) + "\u201D is ON AIR but it is a protected class (" + gateB.why + ") \u2014 NOT cut by the Guardian. Logged for Malik/Amani: it needs a human hand or the laying doc fixed." });
+            }
+          } else {
+            const advB = tvAdvanceChannel(chan, segs, cursor, now, cadNowB);
+            if (advB.applied) {
+              segs = advB.segs; cursor = advB.cursor; dirty = true;
+              if (advB.qCut) { qCut = { ...qCut, ...advB.qCut }; chan._qCut = qCut; }
+              if (advB.insTrunc && insWin) { insWin = { ...insWin, dur: advB.insTrunc.dur }; chan._insert = insWin; }
+              if (advB.movSkip) { movSkipState = advB.movSkip; if (chan._movies) { const mwS = tvMovieWin(now, chan._movies); chan._movies.skipShift = advB.movSkip.shift; chan._movies.skipAt = advB.movSkip.at; chan._movies.skipStart = mwS ? mwS.start : 0; } }
+              if (advB.qJump && quDoc) { quDoc = { ...quDoc, anchor: advB.qJump.anchor, updatedAt: now }; await writeDoc(env, "tv/queue", "tv", quDoc); qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState; }
+              if (!advB.qJump && qState && qState.anchor > now && quDoc) { quDoc = { ...quDoc, anchor: now, updatedAt: now }; await writeDoc(env, "tv/queue", "tv", quDoc); qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState; }
+              const airedSecB = Math.max(0, Math.round((now - curSeg.start) / 100) / 10);
+              const itB = findItem(curSeg.id);
+              const fullDurB = itB && +itB.dur > 0 ? +itB.dur : (+curSeg.dur || 0);
+              const curKeyB2 = curSeg.id + "@" + curSeg.start;
+              const vrecB = votesDoc && votesDoc.inst ? votesDoc.inst[curKeyB2] : null;
+              const wdB = await loadWatch();
+              if (tvWatchFold(wdB, { key: curKeyB2, id: curSeg.id, yt: curSeg.yt || "", title: curSeg.title || String(curSeg.id), show: curSeg.show || (itB && itB.show) || "", kind: curSeg.qid ? "queue" : curSeg.k, start: curSeg.start, dur: fullDurB, aired: airedSecB, frac: fullDurB > 0 ? Math.round(Math.min(1, airedSecB / fullDurB) * 100) / 100 : 0, outcome: "guardian-advance", up: vrecB ? (vrecB.up | 0) : 0, down: vrecB ? (vrecB.down | 0) : 0, at: now }, dayKey)) watchDirty = true;
+              gNote = { id: curSeg.id, title: curSeg.title || String(curSeg.id), at: now, by: "guardian" };
+              gDoc.health.advances += 1; gDoc.health.lastAdvanceAt = now; gDirty = true;
+              tvGuardLog(env, gDoc, { at: now, kind: "advance", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/now", summary: "Guardian ADVANCED a BANNED segment: \u201C" + String(curSeg.title || curSeg.id).slice(0, 80) + "\u201D (video id " + String(curSeg.yt) + ") was on air " + airedSecB + "s. Its id is on the ban list / permanent watchlist \u2014 a banned title never occupies MW TV, whatever doc laid it. The channel moved to the next piece through the shared advancer." });
+              curSeg = tvSegAt(segs, now);
+            }
+          }
+        }
+      }
+    } catch (_) { /* banned-scan failure can never hurt the tick */ }
+    // (3) HEALTH SCAN: holes in the laid timeline + a stalled
+    // current segment (past its end, still laid as current).
+    const holes = tvGuardHoles(segs, gDoc.health.lastHoleEnd || 0);
+    if (holes.length) {
+      for (const h of holes) { gDoc.health.holes += 1; gDoc.health.lastHoleEnd = Math.max(gDoc.health.lastHoleEnd || 0, h.at + h.gapMs); tvGuardLog(env, gDoc, { at: now, kind: "hole", target: "tv/now", gapMs: h.gapMs, summary: "Guardian saw a HOLE in the laid MW TV timeline: " + Math.round(h.gapMs / 100) / 10 + "s of nothing laid before “" + String(h.beforeTitle || h.before).slice(0, 60) + "”. The keeper re-lays every tick; a hole that persists across checks is a defect for Malik's report." }); }
+      gDirty = true;
+    }
+    if (nw && nw.curStart && curSeg && curSeg.start === nw.curStart) {
+      const pseg = Array.isArray(nw.segs) ? nw.segs.find((sg) => sg && sg.start === nw.curStart) : null;
+      if (pseg && now > pseg.start + (+pseg.dur || 0) * 1000 + 60e3) {
+        if (gDoc.health.lastStallKey !== nw.curStart) {
+          gDoc.health.lastStallKey = nw.curStart; gDirty = true;
+          tvGuardLog(env, gDoc, { at: now, kind: "stall", id: pseg.id, title: pseg.title || "", segStart: pseg.start, target: "tv/now", summary: "Guardian saw a STALLED segment: “" + String(pseg.title || pseg.id).slice(0, 80) + "” is still laid as current " + Math.round((now - (pseg.start + (+pseg.dur || 0) * 1000)) / 1000) + "s past its end. Detect + log only — if it persists, it is a defect for Malik's report." });
+        }
+      }
+    }
+    // (4) EYES fold-in: sampled-frame vision reads filed through
+    // the endpoint move into brain/tvwatch (the keeper is the
+    // only writer of that doc, so reads can never be clobbered).
+    if (Array.isArray(gDoc.eyes) && gDoc.eyes.length) {
+      const wd = await loadWatch();
+      for (const e of gDoc.eyes) { if (e && e.segKey && !wd.eyes.some((x) => x && x.segKey === e.segKey && x.at === e.at)) wd.eyes.push(e); }
+      if (wd.eyes.length > TV_WATCH_EYES_CAP) wd.eyes = wd.eyes.slice(-TV_WATCH_EYES_CAP);
+      watchDirty = true;
+      gDoc.eyes = [];
+      gDirty = true;
+    }
+    if (gDirty) { gDoc.updatedAt = now; await writeDoc(env, "tv/guardian", "tv", gDoc); }
+    if (watchDirty && watchDoc) { watchDoc.updatedAt = now; await writeDoc(env, "brain/tvwatch", "brain", watchDoc); }
+  } catch (_) { /* the Guardian must never break the tick */ }
   if (premState.cacheChanged) dirty = true;
   if (rerunState.cacheChanged) dirty = true;
   if (luState.cacheChanged) dirty = true;
@@ -3008,7 +3389,7 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._voteNet;
   delete chan._qCut;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, gNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now });
   }
   // Play tally for sponsor spots (segments that aired this tick).
   try { await tvSponsorTally(env, pool, segs, now, online); } catch (_) {}
