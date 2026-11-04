@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1793736171"></script>
-<meta name="mw-build" content="1793764670">
+<meta name="mw-build" content="1793770004">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -443,7 +443,17 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     /* MW TV is a viewing channel: no sign-in wall while someone is watching it.
        If the 30 minutes run out on the channel, the wall waits and lands the
        moment they step back into the site proper. */
-    if(document.body && document.body.dataset && document.body.dataset.view==="mwtv"){ var iv=setInterval(function(){ if(!(document.body && document.body.dataset && document.body.dataset.view==="mwtv")){ clearInterval(iv); gate(); } },30000); return; }
+    /* Radio listening is public the same way (owner, 2026-11-04: watching
+       MW TV and hearing the radio never need a login): while the station
+       is sounding — the radio/library player running, or the booth
+       listen stream up — the wall waits exactly as it does on MW TV,
+       and lands when the music stops and the visitor is back in the
+       site proper. Join prompts still guard posting and chat. */
+    var radioOn=function(){ try{ if(window.MW_DJ && MW_DJ.listening && MW_DJ.listening()) return true; }catch(_){}
+      try{ if(typeof media!=="undefined" && media && !media.paused && typeof mode!=="undefined" && (mode==="radio"||mode==="library"||mode==="intro"||mode==="dj")) return true; }catch(_){}
+      return false; };
+    var busy=function(){ return (document.body && document.body.dataset && document.body.dataset.view==="mwtv") || radioOn(); };
+    if(busy()){ var iv=setInterval(function(){ if(!busy()){ clearInterval(iv); gate(); } },30000); return; }
     gate();
   }, 30*60*1000);
 })();
@@ -1189,6 +1199,7 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 #tw-vote .btn.on{background:#c9a227;color:#111;border-color:#c9a227;font-weight:800}
 #tw-vote-n{color:#e9e2cf;font:600 12px var(--body,system-ui);white-space:nowrap}
 #tw-vote-note{color:#f5c451;font:600 12px var(--body,system-ui);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+#tw-lifeline{color:#8fd0ff;font:700 12px var(--body,system-ui);white-space:nowrap}
 #tw-progwrap{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.18);z-index:8}
 #tw-prog{height:100%;width:0;background:linear-gradient(90deg,#f5c451,#ffe9a8)}
 #tw-guide{position:absolute;left:10px;right:10px;bottom:12px;z-index:9;background:rgba(8,8,14,.88);border:1px solid rgba(245,196,81,.45);border-radius:12px;padding:10px 12px;color:#fff;font-size:13px;line-height:1.5}
@@ -1276,6 +1287,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
     <div id="tw-bar">
       <span class="tw-mark">📺 MW TV</span>
       <span id="tw-live" class="tw-live" hidden>🔴 LIVE</span>
+      <span id="tw-lifeline" hidden>📡 Lifeline — station backup feed</span>
       <span id="tw-what" class="tw-what"></span>
       <button type="button" class="btn ghost sm" id="tw-guidebtn">📋 Guide</button>
       <span id="tw-vote" hidden><button type="button" class="btn ghost sm" id="tw-vote-up" aria-label="Like what is playing on MW TV">👍</button><button type="button" class="btn ghost sm" id="tw-vote-dn" aria-label="Dislike what is playing on MW TV">👎</button><span id="tw-vote-n"></span><span id="tw-vote-note"></span></span>
@@ -2083,7 +2095,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/owner.js?v=1793736171"></script>
 <script src="js/messages.js?v=1793736171"></script>
 <script src="js/videos.js?v=1793736171"></script>
-<script src="js/dj.js?v=1793761670"></script>
+<script src="js/dj.js?v=1793770004"></script>
 <script src="js/live.js?v=1793736171"></script>
 <script src="js/friends.js?v=1793736171"></script>
 <script src="js/social.js?v=1793731933"></script>
