@@ -5707,9 +5707,22 @@ html.popdj #dj-mini{display:none!important}
     if (su.v) {
       const wantMuted = !audible;
       if (su.v.muted !== wantMuted) { try { su.v.muted = wantMuted; } catch (_) {} }
-      if (su.v.paused) { const pr = su.v.play(); if (pr && pr.catch) pr.catch(() => {}); }
-      const drift = su.v.currentTime - cur.pos;
-      if (isFinite(drift) && Math.abs(drift) > 2.5 && su.v.readyState >= 2 && !su.v.seeking) { try { su.v.currentTime = Math.max(0, cur.pos); } catch (_) {} }
+      /* Ended inside a still-running window (2026-11-03): a news
+       * edition (94s) laid in a longer window (600s) leaves the pick's
+       * position CLAMPED at the media's real end for the remainder of
+       * the window. An ended element reports paused, so the old tick
+       * restarted it with play() (back to the opener) and the drift
+       * seek then slammed it to the clamped end (the closer) — the
+       * opener↔closer loop that aired in the 18:50 window. An ended
+       * element now HOLDS its last frame until the segment key
+       * changes: never restarted, never seeked against the clamp.
+       * The mute line above still runs, so a held frame stays as
+       * audible/in-audible as the seat's TV sound flag says. */
+      if (!su.v.ended) {
+        if (su.v.paused) { const pr = su.v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        const drift = su.v.currentTime - cur.pos;
+        if (isFinite(drift) && Math.abs(drift) > 2.5 && su.v.readyState >= 2 && !su.v.seeking) { try { su.v.currentTime = Math.max(0, cur.pos); } catch (_) {} }
+      }
     } else if (su.p && su.p.getPlayerState) {
       try {
         /* Kick every stuck non-playing state (2026-11-02), throttled to
@@ -7083,7 +7096,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793749670;
+  const MW_DJ_BUILD = 1793750670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
