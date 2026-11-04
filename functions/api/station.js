@@ -1137,7 +1137,9 @@ function tvGen(chan, pool, cursor, horizonMs) {
   // The movie block freezes for the cadence spots laid inside it
   // (the insert freeze rule): tvMovieWin runs the window long by
   // the spot time inside it, which it computes from this state.
-  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rer: chan._rerun, qtr: chan._qtr };  const segs = [];
+  if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rer: chan._rerun, qtr: chan._qtr };
+  if (chan._queue) chan._queue._st = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr };
+  const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
   while (t < horizonMs && guard++ < 600) {
@@ -1148,8 +1150,9 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const mwin = tvMovieWin(t, chan._movies);
     const iwin = tvInsertWin(t, chan._insert);
     const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
-    if (win.inside) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
-    if (pwin && pwin.inside) {
+    const qwin = tvQueueWin(t, chan._queue);
+    if (win.inside && !(chan._qCut && chan._qCut.news === win.start)) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
+    if (pwin && pwin.inside && !(chan._qCut && chan._qCut.prem === pwin.start)) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
       // cursor freezes and the interrupted program resumes after the
       // slot from the offset it reached (same split rule as news).
@@ -1158,7 +1161,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((pwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = pwin.end; continue;
     }
-    if (rwin && rwin.inside) {
+    if (rwin && rwin.inside && !(chan._qCut && chan._qCut.rerun === rwin.start)) {
       // MY EMPIRE 10 PM rerun slot: the premiere chain replayed at
       // 22:00 ET (tvPremLive over tv/rerun, same window arithmetic):
       // the slot items chain in order, the program cursor freezes
@@ -1169,7 +1172,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((rwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = rwin.end; continue;
     }
-    if (awin && awin.inside) {
+    if (awin && awin.inside && !(chan._qCut && chan._qCut.anchor === awin.start)) {
       // Anchor news slot: the current anchor edition plays as one
       // program segment; the interrupted program freezes and resumes
       // after the slot from the offset it reached (premiere split rule).
@@ -1179,7 +1182,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (d > 0.05) { segs.push(tvProgSeg(ait, t, d, aoff)); t += Math.round(d * 1000); skips = 0; continue; }
       t = awin.end; continue;
     }
-    if (cadwin && cadwin.inside) {
+    if (cadwin && cadwin.inside && !(chan._qCut && chan._qCut.cad === cadwin.start)) {
       // MY EMPIRE ad cadence: the spot interrupts whatever is
       // playing — music program, movie chain or insert alike — and
       // what it interrupts resumes from the offset it reached: the
@@ -1221,6 +1224,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (rwin && !rwin.inside && rwin.start > t && rwin.start < cap) cap = rwin.start;
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
+      if (qwin && !qwin.inside && qwin.start > t && qwin.start < cap) cap = qwin.start;
       const list = Array.isArray(chan._insert.items) && chan._insert.items.length ? chan._insert.items : [chan._insert.item];
       let slotOff = (t - iwin.start) / 1000, segIt = null, segOff = 0;
       for (const sit of list) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
@@ -1228,6 +1232,25 @@ function tvGen(chan, pool, cursor, horizonMs) {
       t = cap; continue;
     }
 
+    if (qwin && qwin.inside) {
+      // MW TV OWNER QUEUE: the owner's list plays here — after
+      // the hard schedule and the one-shot insert, ahead of the
+      // movie block and the cycle. Position is content time
+      // (tvQueueElapsed), so a preemption never eats the list;
+      // items chain in list order from the offset reached, cut
+      // at the next hard boundary like every chain on the channel.
+      let cap = qwin.end;
+      if (win.start > t && win.start < cap) cap = win.start;
+      if (pwin && !pwin.inside && pwin.start > t && pwin.start < cap) cap = pwin.start;
+      if (rwin && !rwin.inside && rwin.start > t && rwin.start < cap) cap = rwin.start;
+      if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
+      if (iwin && !iwin.inside && iwin.start > t && iwin.start < cap) cap = iwin.start;
+      if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
+      if (mwin && !mwin.inside && mwin.start > t && mwin.start < cap) cap = mwin.start;
+      const qat = tvQueueAt(chan._queue, tvQueueElapsed(chan._queue, t));
+      if (qat) { const d = Math.min(Math.round((+qat.it.dur - qat.off) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { const sg = tvProgSeg(qat.it, t, d, qat.off); sg.qid = qat.it.qid; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; } }
+      t = cap; continue;
+    }
     if (mwin && mwin.inside) {
       // Post-premiere movie block: chain tonight's movies in order;
       // the music program freezes and resumes after the block (same
@@ -1244,15 +1267,19 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (awin && !awin.inside && awin.start > t && awin.start < cap) cap = awin.start;
       if (iwin && !iwin.inside && iwin.start > t && iwin.start < cap) cap = iwin.start;
       if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < cap) cap = cadwin.start;
+      if (qwin && !qwin.inside && qwin.start > t && qwin.start < cap) cap = qwin.start;
       let slotOff = (t - mwin.start) / 1000, segIt = null, segOff = 0;
       // An insert that cut into this block froze it: once the
       // insert window has run, positions sit behind the wall clock
       // by the frozen span (tvInsertFrozen, stamped in tvTick).
       if (chan._movies.insShift > 0 && isFinite(chan._movies.insEnd) && t >= chan._movies.insEnd) slotOff -= chan._movies.insShift;
+      if (chan._movies.qShift > 0 && isFinite(chan._movies.qEnd) && t >= chan._movies.qEnd) slotOff -= chan._movies.qShift;
       // The ad cadence froze the block at every spot inside it:
       // positions likewise sit behind the wall clock by the spot
       // time laid between the window start and here.
-      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu, chan._rerun, chan._qtr);      for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
+      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu, chan._rerun, chan._qtr);
+      if (chan._movies.skipShift > 0 && t >= chan._movies.skipAt) slotOff += chan._movies.skipShift;
+      for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
     }
@@ -1270,6 +1297,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (mwin && !mwin.inside && mwin.start > t && mwin.start < boundary) boundary = mwin.start;
     if (iwin && !iwin.inside && iwin.start > t && iwin.start < boundary) boundary = iwin.start;
     if (cadwin && !cadwin.inside && cadwin.start > t && cadwin.start < boundary) boundary = cadwin.start;
+    if (qwin && !qwin.inside && qwin.start > t && qwin.start < boundary) boundary = qwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
@@ -1286,7 +1314,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
+        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr), tvQueueWin(t, chan._queue)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: (b.kind === "house" || b.kind === "sponsor") ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
       run = 0;
@@ -1619,6 +1647,198 @@ function tvInsertFrozen(ins, chan) {
   const rw = tvPremWin(i0, chan._rerun); if (rw && rw.start < i1 && rw.end > i0) froz -= (Math.min(i1, rw.end) - Math.max(i0, rw.start)) / 1000;
   return Math.max(0, Math.round(froz * 10) / 10);
 }
+/* MW TV OWNER QUEUE + SKIP (Malik, 2026-11-03 19:09 ET: "Make it so
+ * i can skip the movies on mw tv and que a list and if nothings qued
+ * you pick stuff"). The owner builds a list — tv/queue, written
+ * only by /api/tv/queue behind the owner gate — and the keeper
+ * plays it as one more standing window on the channel. Playback
+ * precedence, stated once and enforced in tvGen: the piece on air
+ * finishes (or the owner skips) → QUEUE items in order → the
+ * channel's own picks (cycle / movie block), exactly as before.
+ * The HARD schedule still preempts the queue — quarter news
+ * windows, the :50 windows, anchor editions, the premiere slot,
+ * the 10 PM rerun, one-shot inserts and the ad cadence — and the
+ * queue FREEZES across every preemption (tvQueueFrozen): an item
+ * is consumed only by the seconds it actually aired, so after a
+ * preemption the list resumes where it left off. An empty queue
+ * changes nothing at all: the keeper fills from the cleared pool
+ * and the lineup exactly as it always has. The queue accepts
+ * exactly what the owner insert accepts — the same embed gate,
+ * the same evidence line (functions/api/tv/queue.js) — no new
+ * sourcing, no scraping, no lineup changes.
+ * SKIP: the owner's skip asks ride tv/queue.skipAt; tvTick answers
+ * them through tvAdvanceChannel — THE shared channel advancer
+ * (the crowd-skip trigger calls the same routine; do not grow a
+ * second one). The owner's skip cuts anything on air: where the
+ * channel's state carries a cursor (cycle, queue, movie chain,
+ * insert) the advance is a real content advance, and where the
+ * piece rides a wall-clock window (news, premiere, rerun, anchor,
+ * ad cadence) the advancer stamps a one-instance suppression
+ * (nw.qCut) so that window's airing ends here while its docs,
+ * probes and schedule machinery stay untouched. */
+const TV_QUEUE_V = 1;               // owner queue doc generation (tv/queue)
+const TV_QUEUE_EVIDENCE = "Owner pick from the MW TV owner search box (owner seat only, functions/api/tv/queue.js); passed the site embed gate at order time: /api/ytsearch age/embed relay (id-matched) plus the brain/ytblock learned-ban check";
+function tvQueueItem(raw) {
+  if (!raw || !raw.qid) return null;
+  return { id: "q-" + raw.qid, qid: String(raw.qid), kind: "show", src: "yt", yt: String(raw.yt || ""), url: "", iaId: "", title: String(raw.title || ""), show: "Owner Queue", dur: +raw.dur || 0, rights: { basis: "embed", evidence: TV_QUEUE_EVIDENCE, clearedBy: "owner", at: +raw.at || 0, simulcast: false } };
+}
+/* The queue doc as a window state: cleared items in list order
+ * and the anchor the window opens at. Items whose record no
+ * longer clears drop out here (tvCleared — the channel's rule),
+ * so a pick banned after it was queued can never air. */
+function tvQueueState(doc) {
+  if (!doc || !Array.isArray(doc.items)) return null;
+  const items = [];
+  for (const raw of doc.items) { const it = tvQueueItem(raw); if (it && tvCleared(it)) items.push(it); }
+  if (!items.length) return null;
+  const anchor = +doc.anchor || 0;
+  if (!(anchor > 0)) return null;
+  return { items, anchor, total: items.reduce((a, x) => a + (+x.dur || 0), 0) };
+}
+/* How much of [fromMs, toMs) the queue does NOT own: the hard
+ * windows (news, premiere, rerun, anchor — each walked forward),
+ * the one-shot insert span and the ad-cadence spans. The owner's
+ * list freezes across all of it: position inside the queue is
+ * content time, never wall time. q._st carries the window states
+ * (attached in tvTick and again in tvGen, like _movies._cad). */
+function tvQueueFrozen(q, fromMs, toMs) {
+  if (!q || !(toMs > fromMs)) return 0;
+  const st = q._st || {};
+  let froz = 0;
+  const sub = (a, b) => { const o = Math.min(toMs, b) - Math.max(fromMs, a); if (o > 0) froz += o / 1000; };
+  const nw0 = tvNewsWin(fromMs);
+  for (let ws = nw0.start; ws < toMs; ws += 3600e3) sub(ws, ws + TV_NEWS_LEN * 1000);
+  const walk = (winFn, stt) => { let t2 = fromMs; for (let i = 0; i < 4; i++) { const w = winFn(t2, stt); if (!w || w.start >= toMs) break; sub(w.start, w.end); t2 = w.end; } };
+  walk(tvPremWin, st.prem); walk(tvPremWin, st.rerun); walk(tvAnchorWin, st.anchor);
+  if (st.insert && isFinite(st.insert.start) && (st.insert.dur || 0) > 0) sub(st.insert.start, st.insert.start + st.insert.dur * 1000);
+  if (st.cad) froz += tvAdTimeIn(st.cad, st.prem, st.anchor, st.insert, fromMs, toMs, st.char, st.lu, st.rerun, st.qtr);
+  return Math.max(0, Math.min((toMs - fromMs) / 1000, Math.round(froz * 10) / 10));
+}
+/* The queue window's full span: the anchor plus the list's total
+ * content, stretched by every frozen span inside it (fixed-point,
+ * like the movie block's cadence extension). */
+function tvQueueSpan(q) {
+  if (!q || !(q.total > 0) || !(q.anchor > 0)) return null;
+  const start = q.anchor;
+  let end = start + q.total * 1000;
+  for (let i = 0; i < 4; i++) { const ne = start + (q.total + tvQueueFrozen(q, start, end)) * 1000; if (!(ne > end)) break; end = ne; }
+  return { start, end };
+}
+function tvQueueWin(ms, q) {
+  const sp = tvQueueSpan(q);
+  if (!sp) return null;
+  if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true };
+  if (ms < sp.start) return { start: sp.start, end: sp.end, inside: false };
+  return null;
+}
+/* Content seconds of the list that have actually aired by ms:
+ * wall time since the anchor minus the frozen spans — an item
+ * is consumed exactly when this passes its end. */
+function tvQueueElapsed(q, ms) {
+  if (!q || !(q.anchor > 0) || ms <= q.anchor) return 0;
+  return Math.max(0, Math.round(((ms - q.anchor) / 1000 - tvQueueFrozen(q, q.anchor, ms)) * 10) / 10);
+}
+/* Which queue item a content position falls in (and its offset):
+ * shared by generation, consumption and the advancer's jump. */
+function tvQueueAt(q, pos) {
+  let acc = 0;
+  for (let i = 0; i < (q ? q.items.length : 0); i++) { const it = q.items[i]; if (pos < acc + (+it.dur || 0)) return { ix: i, it, off: Math.round((pos - acc) * 10) / 10, before: acc }; acc += +it.dur || 0; }
+  return null;
+}
+/* The movie chain's content position at t, measured with exactly
+ * the movie branch's own accounting (insert freeze, queue freeze,
+ * cadence freeze, skip shift) — the advancer measures the current
+ * movie with the same ruler generation lays it by. */
+function tvMoviePosAt(chan, t) {
+  const mov = chan._movies;
+  if (!mov) return null;
+  const mwin = tvMovieWin(t, mov);
+  if (!mwin || !mwin.inside) return null;
+  let slotOff = (t - mwin.start) / 1000;
+  if (mov.insShift > 0 && isFinite(mov.insEnd) && t >= mov.insEnd) slotOff -= mov.insShift;
+  if (mov.qShift > 0 && isFinite(mov.qEnd) && t >= mov.qEnd) slotOff -= mov.qShift;
+  const cad = chan._queue && chan._queue._st ? chan._queue._st.cad : (mov._cad ? mov._cad.cad : null);
+  if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu, chan._rerun, chan._qtr);
+  if (mov.skipShift > 0 && t >= mov.skipAt) slotOff += mov.skipShift;
+  let acc = 0;
+  for (const sit of mov.items) { if (slotOff < acc + (+sit.dur || 0)) return { win: mwin, it: sit, off: Math.round((slotOff - acc) * 10) / 10, end: acc + (+sit.dur || 0) }; acc += +sit.dur || 0; }
+  return null;
+}
+/* tvAdvanceChannel — THE channel advancer (owner skip today;
+ * the crowd-skip trigger calls this same routine — one advance
+ * path, never two). Ends the segment on air at now (tvTrimAt —
+ * no hole) and re-anchors the program cursor by cycle math; the
+ * caller (tvTick) then re-lays forward, so what plays next is
+ * decided by the standing precedence: queue head → hard schedule
+ * → the channel's own picks. The side-effect stamps are RETURNED,
+ * not written — the caller persists them (into tv/now, and into
+ * tv/queue for a queue jump) in its own write:
+ *   qCut:    { news|prem|rerun|anchor|cad: windowStart } — the
+ *            wall-clock window on air ends with this cut; only
+ *            its laid airing ends, never its docs or schedule.
+ *   qJump:   { anchor } — the queue item on air is skipped: the
+ *            caller rewrites tv/queue's anchor so the item's
+ *            content end is exactly now; consumption then retires
+ *            it and the list continues with the next item.
+ *   movSkip: { at, shift } — the movie on air is skipped:
+ *            tonight's chain position shifts by the movie's
+ *            remaining seconds (the freeze-ruler inverse).
+ *   insTrunc:{ dur } — the one-shot insert on air is cut: its
+ *            stamped window ends at now.
+ * chan must carry the tick's resolved states (_prem, _rerun,
+ * _anchor, _insert, _movies, _queue); cadNow is the ad-cadence
+ * window containing now (tvAdWin) or null. Returns
+ * { segs, cursor, applied, note, qCut, qJump, movSkip, insTrunc }. */
+function tvAdvanceChannel(chan, segs, cursor, now, cadNow) {
+  const cur = segs ? tvSegAt(segs, now) : null;
+  if (!cur) return { segs, cursor, applied: false, note: "nothing on air this second", qCut: null, qJump: null, movSkip: null, insTrunc: null };
+  const out = { segs: tvTrimAt(segs, now), cursor, applied: true, note: "", qCut: null, qJump: null, movSkip: null, insTrunc: null };
+  const cp = tvCyclePos(chan, now);
+  if (cp) out.cursor = { at: now, ix: cp.ix, off: cp.off, run: 0 };
+  const title = String(cur.title || cur.id || "the current piece").slice(0, 80);
+  // Wall-clock windows: cut the airing, keep the machinery.
+  const nWin = tvNewsWin(now);
+  if (cur.k === "news" || (nWin.inside && cur.start >= nWin.start && cur.start < nWin.end)) { out.qCut = { news: nWin.start }; out.note = "cut the news window short — the channel moves on; the schedule itself is untouched"; return out; }
+  const slotCut = (win, items, kind, label) => {
+    if (!win || !win.inside || !Array.isArray(items)) return null;
+    if (!items.some((x) => x && x.id === cur.id)) return null;
+    const qq = {}; qq[kind] = win.start;
+    return { qCut: qq, note: "cut the " + label + " short — the channel moves on; the slot itself is untouched" };
+  };
+  let sc = null;
+  if ((sc = slotCut(tvPremWin(now, chan._prem), chan._prem && chan._prem.items, "prem", "premiere"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if ((sc = slotCut(tvPremWin(now, chan._rerun), chan._rerun && chan._rerun.items, "rerun", "rerun"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if ((sc = slotCut(tvAnchorWin(now, chan._anchor), chan._anchor ? [chan._anchor.item] : null, "anchor", "anchor edition"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if (cadNow && cadNow.inside && cur.start >= cadNow.start && cur.start < cadNow.end && ((cadNow.item && cur.id === cadNow.item.id) || (cadNow.upd && cur.id === cadNow.upd.id))) { out.qCut = { cad: cadNow.start }; out.note = "cut the break short — back to the program"; return out; }
+  // The owner's queue: jump the anchor past the item on air, so
+  // the next item in the list starts at the cut.
+  if (cur.qid && chan._queue) {
+    const el = tvQueueElapsed(chan._queue, now);
+    const at = tvQueueAt(chan._queue, el);
+    if (at && at.it.qid === cur.qid) {
+      out.qJump = { anchor: Math.round(chan._queue.anchor + (at.before + (+at.it.dur || 0) - el) * 1000) };
+      out.note = "skipped the queued \u201c" + title + "\u201d — the list moves to the next one";
+      return out;
+    }
+  }
+  // The one-shot insert: end its stamped window at now.
+  if (chan._insert && isFinite(chan._insert.start) && now >= chan._insert.start && now < chan._insert.start + (chan._insert.dur || 0) * 1000 && Array.isArray(chan._insert.items) && chan._insert.items.some((x) => x && x.id === cur.id)) {
+    out.insTrunc = { dur: Math.max(0.1, Math.round((now - chan._insert.start) / 100) / 10) };
+    out.note = "cut \u201c" + title + "\u201d short — the channel moves on";
+    return out;
+  }
+  // The movie chain: shift tonight's chain past this movie.
+  if (chan._movies && (chan._movies.items || []).some((x) => x && x.id === cur.id)) {
+    const mp = tvMoviePosAt(chan, now);
+    if (mp && mp.it.id === cur.id) {
+      const rem = Math.round(((+mp.it.dur || 0) - mp.off) * 10) / 10;
+      if (rem > 0.05) { out.movSkip = { at: now, shift: rem }; out.note = "skipped the movie \u201c" + title + "\u201d — the next one starts now"; return out; }
+    }
+  }
+  out.note = "skipped \u201c" + title + "\u201d — the channel picks what's next";
+  return out;
+}
+
 /* The one-shot insert window: a single fixed span [start, start+dur]
  * stamped into tv/now when the insert fired. Unlike the daily
  * windows it never repeats — once ms is past the end there is no
@@ -2101,6 +2321,8 @@ function tvMovieWin(ms, mov) {
   // long by exactly that frozen span (stamped on the state in
   // tvTick as insShift/insStart; absent = the standing behaviour).
   if (mov.insShift > 0 && mov.insStart >= start && mov.insStart < end) end += mov.insShift * 1000;
+  if (mov.qShift > 0 && mov.qStart >= start && mov.qStart < end) end += mov.qShift * 1000;
+  if (mov.skipShift > 0 && mov.skipStart === start) end -= mov.skipShift * 1000;
   // The ad cadence freezes the block at every spot inside it (the
   // insert freeze rule), so the window runs long by the spot time
   // laid inside it — fixed-pointed, because a longer window can
@@ -2320,6 +2542,7 @@ async function tvTick(env, S, now, origin, online) {
   const anchorDoc = await readDoc(env, "tv/anchor");
   const charDoc = await readDoc(env, "tv/charnews");
   const qDoc = await readDoc(env, "tv/quarternews");
+  const quDoc0 = await readDoc(env, "tv/queue");
   const decision = tvRadioDecision(S, qDoc, now);
   // Uniontown Local Update hold-by-age: the break spot is only as
   // fresh as its producer stamp (tv/localupdate, written hourly by
@@ -2523,6 +2746,95 @@ async function tvTick(env, S, now, origin, online) {
     const mw0 = tvMovieWin(insWin.start, chan._movies);
     if (mw0 && insWin.start >= mw0.start && insWin.start < mw0.end) { chan._movies.insShift = tvInsertFrozen(insWin, chan); chan._movies.insStart = insWin.start; chan._movies.insEnd = insWin.start + insWin.dur * 1000; }
   }
+  // MW TV OWNER QUEUE + SKIP (see the queue block above
+  // tvQueueItem): resolve the list, attach its window states,
+  // stamp tonight's movie block with the queue freeze and any
+  // standing skip shift, re-anchor a queue that never got to air,
+  // answer a fresh owner skip through the shared advancer
+  // (tvAdvanceChannel), and retire the items that have aired.
+  let quDoc = quDoc0 && (+quDoc0.progV || 0) >= TV_QUEUE_V ? quDoc0 : null;
+  let qState = tvQueueState(quDoc);
+  const qSt = { cad: tvAdCadItems(pool), prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr };
+  if (qState) qState._st = qSt;
+  chan._queue = qState;
+  let qCut = nw && nw.qCut && typeof nw.qCut === "object" ? { ...nw.qCut } : {};
+  chan._qCut = qCut;
+  let qSkipAtDone = (nw && +nw.qSkipAt) || 0;
+  let qSkipNote = nw && nw.qSkipNote && now - nw.qSkipNote.at < 3600e3 ? nw.qSkipNote : null;
+  let movSkipState = nw && nw.movSkip && (+nw.movSkip.shift || 0) > 0 ? nw.movSkip : null;
+  if (chan._movies) {
+    if (movSkipState) {
+      const mwN = tvMovieWin(now, chan._movies);
+      if (mwN && movSkipState.at >= mwN.start && movSkipState.at < mwN.end) { chan._movies.skipShift = movSkipState.shift; chan._movies.skipAt = movSkipState.at; chan._movies.skipStart = mwN.start; }
+    }
+    if (qState) {
+      const qSpan0 = tvQueueSpan(qState);
+      if (qSpan0) {
+        const mwQ = tvMovieWin(qSpan0.start, chan._movies);
+        if (mwQ && qSpan0.start >= mwQ.start && qSpan0.start < mwQ.end) {
+          let froz = tvInsertFrozen({ start: qSpan0.start, dur: (qSpan0.end - qSpan0.start) / 1000 }, chan);
+          froz = Math.max(0, Math.round((froz - tvAdTimeIn(qSt.cad, chan._prem, chan._anchor, chan._insert, qSpan0.start, qSpan0.end, chan._char, chan._lu, chan._rerun, chan._qtr)) * 10) / 10);
+          if (froz > 0) { chan._movies.qShift = froz; chan._movies.qStart = qSpan0.start; chan._movies.qEnd = qSpan0.end; }
+        }
+      }
+    }
+  }
+  // A queue whose window passed without ever airing (the channel
+  // was dark, or nothing of it was ever laid) is re-anchored at
+  // the end of the piece on air — never silently eaten.
+  if (qState && segs) {
+    const qSpan1 = tvQueueSpan(qState);
+    const qTouched0 = !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid));
+    if (qSpan1 && now >= qSpan1.end && !qTouched0) {
+      const cs = tvSegAt(segs, now);
+      quDoc = { ...quDoc, anchor: cs ? cs.start + Math.round(cs.dur * 1000) : now, updatedAt: now };
+      await writeDoc(env, "tv/queue", "tv", quDoc);
+      qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+    }
+  }
+  // Owner skip: a fresh skipAt the laid window has not answered.
+  if (quDoc && (+quDoc.skipAt || 0) > qSkipAtDone) {
+    const cadNow = tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
+    const adv = tvAdvanceChannel(chan, segs, cursor, now, cadNow);
+    qSkipAtDone = +quDoc.skipAt || 0;
+    qSkipNote = { at: now, note: adv.note };
+    if (adv.applied) {
+      segs = adv.segs; cursor = adv.cursor; dirty = true;
+      if (adv.qCut) { qCut = { ...qCut, ...adv.qCut }; chan._qCut = qCut; }
+      if (adv.insTrunc && insWin) { insWin = { ...insWin, dur: adv.insTrunc.dur }; chan._insert = insWin; }
+      if (adv.movSkip) { movSkipState = adv.movSkip; if (chan._movies) { const mwS = tvMovieWin(now, chan._movies); chan._movies.skipShift = adv.movSkip.shift; chan._movies.skipAt = adv.movSkip.at; chan._movies.skipStart = mwS ? mwS.start : 0; } }
+      if (adv.qJump) {
+        quDoc = { ...quDoc, anchor: adv.qJump.anchor, updatedAt: now };
+        await writeDoc(env, "tv/queue", "tv", quDoc);
+        qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+      }
+      // A skip with a list still waiting pulls the list to the
+      // cut: the queue head starts at the skip moment, not at
+      // the end of the piece that was just cut. (A list already
+      // inside its window keeps its anchor — it resumes by the
+      // freeze math, never replays.)
+      if (!adv.qJump && qState && qState.anchor > now) {
+        quDoc = { ...quDoc, anchor: now, updatedAt: now };
+        await writeDoc(env, "tv/queue", "tv", quDoc);
+        qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+      }
+    }
+  }
+  // Consumption: retire the items whose content has fully aired
+  // (position is content time — a preemption never consumes).
+  if (qState && quDoc) {
+    const el = tvQueueElapsed(qState, now);
+    let cum = 0; const gone = new Set();
+    for (const it of qState.items) { cum += +it.dur || 0; if (cum <= el + 0.05) gone.add(it.qid); }
+    if (gone.size) {
+      const keptItems = (quDoc.items || []).filter((r) => !(r && gone.has(String(r.qid))));
+      quDoc = { ...quDoc, items: keptItems, updatedAt: now };
+      if (!keptItems.length) quDoc = { ...quDoc, anchor: 0 };
+      await writeDoc(env, "tv/queue", "tv", quDoc);
+      qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+    }
+  }
+
   const genTo = now + TV_HORIZON;
   if (cursor.at < genTo) {
     const gen = tvGen(chan, pool, cursor, genTo);
@@ -2560,8 +2872,10 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._lu;
   delete chan._movies;
   delete chan._insert;
+  delete chan._queue;
+  delete chan._qCut;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now });
   }
   // Play tally for sponsor spots (segments that aired this tick).
   try { await tvSponsorTally(env, pool, segs, now, online); } catch (_) {}
