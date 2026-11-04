@@ -1322,15 +1322,38 @@ function tvVoteNetMap(votesDoc) {
  *   - the anchor (local update edition) window
  * Everything else on the channel — cycle programs, break-pool
  * picks, the movie block — is the keeper's own pool programming
- * and may be crowd-skipped. */
+ * and may be crowd-skipped.
+ * GUARDIAN AMENDMENT (Malik, 2026-11-03 20:39 ET: "Guardian can
+ * skip a proven-dead item even in my queue/news"): this gate also
+ * serves the Guardian (by:"guardian"). A guardian call carrying
+ * proven-dead proof (see tvSkipGate) may pass the queue and news
+ * lines ONLY. The crowd lines stay absolute for crowd calls, and
+ * premiere / rerun / anchor / insert stay refused for everyone
+ * but the owner. */
 const TV_CROWD_PROTECTED_IDS = ["charnews-update", "quarter-update", "brk-local-update-5"];
-function tvSkipGate(seg, chan, now, by, cadNow) {
+function tvSkipGate(seg, chan, now, by, cadNow, proof) {
   if (by === "owner") return { ok: true };
   if (!seg) return { ok: false, why: "no-seg" };
-  if (seg.k === "news") return { ok: false, why: "news" };
-  if (seg.qid) return { ok: false, why: "owner-queue" };
-  if (TV_CROWD_PROTECTED_IDS.includes(seg.id)) return { ok: false, why: "news-update" };
-  if (cadNow && cadNow.inside && cadNow.upd && seg.id === cadNow.upd.id) return { ok: false, why: "news-update" };
+  /* Guardian proven-dead proof (amendment in the gate comment
+   * above): proof.seats >= TV_GUARD_CONFIRM_SEATS distinct seats'
+   * hard-error confirmation for this exact segment instance, or
+   * proof.banned (the segment's yt id is on brain/ytblock — a ban
+   * is a house conviction). Only a by:"guardian" call can carry
+   * proof; crowd calls never do, so the queue/news refusals below
+   * stay absolute for the crowd, and a single seat, a bare probe
+   * or an inconclusive check never fires a protected-class skip.
+   * Precedence is the original one — the FIRST line that matches
+   * decides: with proof it passes, marked (prot/proof/seats) so
+   * the caller logs an owner-authorized proven-dead skip, counted
+   * apart; without proof it refuses with the original why. The
+   * window lines and premiere / rerun / insert / anchor below are
+   * never proof-passed. */
+  const gProof = (by === "guardian" && proof && (proof.banned === true || (proof.seats | 0) >= TV_GUARD_CONFIRM_SEATS)) ? proof : null;
+  const pass = (cls) => ({ ok: true, prot: cls, proof: gProof.banned === true ? "ban" : "seats", seats: gProof.seats | 0 });
+  if (seg.k === "news") return gProof ? pass("news") : { ok: false, why: "news" };
+  if (seg.qid) return gProof ? pass("owner-queue") : { ok: false, why: "owner-queue" };
+  if (TV_CROWD_PROTECTED_IDS.includes(seg.id)) return gProof ? pass("news-update") : { ok: false, why: "news-update" };
+  if (cadNow && cadNow.inside && cadNow.upd && seg.id === cadNow.upd.id) return gProof ? pass("news-update") : { ok: false, why: "news-update" };
   if (tvNewsWin(now).inside) return { ok: false, why: "news-window" };
   if (chan._prem) { const w = tvPremWin(now, chan._prem); if (w && w.inside) return { ok: false, why: "premiere" }; }
   if (chan._rerun) { const w = tvPremWin(now, chan._rerun); if (w && w.inside) return { ok: false, why: "rerun" }; }
@@ -3405,10 +3428,10 @@ async function tvTick(env, S, now, origin, online) {
   // brain/tvwatch. Fully self-contained and failure-silent: a
   // guardian fault can never hurt the channel it watches.
   try {
-    const gDoc = (guardDoc0 && typeof guardDoc0 === "object" && !Array.isArray(guardDoc0)) ? guardDoc0 : { v: 1, faults: {}, strikes: {}, eyes: [], log: [], health: { advances: 0, quarantines: 0, refusals: 0, holes: 0, lastFaultAt: 0, lastAdvanceAt: 0, lastQuarantineAt: 0 } };
+    const gDoc = (guardDoc0 && typeof guardDoc0 === "object" && !Array.isArray(guardDoc0)) ? guardDoc0 : { v: 1, faults: {}, strikes: {}, eyes: [], log: [], health: { advances: 0, protAdvances: 0, quarantines: 0, refusals: 0, holes: 0, lastFaultAt: 0, lastAdvanceAt: 0, lastQuarantineAt: 0 } };
     if (!gDoc.faults || typeof gDoc.faults !== "object") gDoc.faults = {};
     if (!gDoc.strikes || typeof gDoc.strikes !== "object") gDoc.strikes = {};
-    if (!gDoc.health || typeof gDoc.health !== "object") gDoc.health = { advances: 0, quarantines: 0, refusals: 0, holes: 0, lastFaultAt: 0, lastAdvanceAt: 0, lastQuarantineAt: 0 };
+    if (!gDoc.health || typeof gDoc.health !== "object") gDoc.health = { advances: 0, protAdvances: 0, quarantines: 0, refusals: 0, holes: 0, lastFaultAt: 0, lastAdvanceAt: 0, lastQuarantineAt: 0 };
     let gDirty = false;
     let watchDoc = null, watchDirty = false;
     const loadWatch = async () => { if (!watchDoc) { const w = await readDoc(env, "brain/tvwatch"); watchDoc = (w && typeof w === "object" && !Array.isArray(w)) ? w : tvGuardEmptyWatch(); if (!Array.isArray(watchDoc.recent)) watchDoc.recent = []; if (!watchDoc.days || typeof watchDoc.days !== "object") watchDoc.days = {}; if (!Array.isArray(watchDoc.eyes)) watchDoc.eyes = []; } return watchDoc; };
@@ -3452,7 +3475,7 @@ async function tvTick(env, S, now, origin, online) {
       const hardSeats = frec ? tvGuardHardSeats(frec) : 0;
       if (hardSeats >= TV_GUARD_CONFIRM_SEATS) {
         const cadNow = tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
-        const gate = tvSkipGate(curSeg, chan, now, "guardian", cadNow);
+        const gate = tvSkipGate(curSeg, chan, now, "guardian", cadNow, { seats: hardSeats });
         // SELF-REMOVE LAW (Malik, 2026-11-03 20:29 ET: "It should
         // remove itself if it cant play") — checked BEFORE the
         // gate branches below, on this section's own evidence
@@ -3523,7 +3546,12 @@ async function tvTick(env, S, now, origin, online) {
             if (tvWatchFold(wd, { key: curKey, id: curSeg.id, yt: curSeg.yt || "", title: curSeg.title || String(curSeg.id), show: curSeg.show || (itA && itA.show) || "", kind: curSeg.qid ? "queue" : curSeg.k, start: curSeg.start, dur: fullDurA, aired: airedSec, frac: fullDurA > 0 ? Math.round(Math.min(1, airedSec / fullDurA) * 100) / 100 : 0, outcome: "guardian-advance", up: vrecA ? (vrecA.up | 0) : 0, down: vrecA ? (vrecA.down | 0) : 0, at: now }, dayKey)) watchDirty = true;
             gNote = { id: curSeg.id, title: curSeg.title || String(curSeg.id), at: now, by: "guardian" };
             gDoc.health.advances += 1; gDoc.health.lastAdvanceAt = now; gDirty = true;
+            if (gate.prot) {
+              gDoc.health.protAdvances = (gDoc.health.protAdvances | 0) + 1;
+              tvGuardLog(env, gDoc, { at: now, kind: "advance", prot: gate.prot, proof: gate.proof, seats: hardSeats, id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/now", summary: "Guardian ADVANCED a PROVEN-DEAD protected segment (OWNER-AUTHORIZED \u2014 Malik, 2026-11-03 20:39: the Guardian can skip a proven-dead item even in his queue/news): \u201C" + String(curSeg.title || curSeg.id).slice(0, 80) + "\u201D is protected class " + gate.prot + " but proven dead \u2014 " + hardSeats + " distinct viewer seats reported hard player errors on this exact instance (on air " + airedSec + "s of " + fullDurA + "s). The channel moved to the next piece through the shared advancer. Counted separately in health.protAdvances." });
+            } else {
             tvGuardLog(env, gDoc, { at: now, kind: "advance", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/now", summary: "Guardian ADVANCED a confirmed-dead segment: “" + String(curSeg.title || curSeg.id).slice(0, 80) + "” was unplayable (" + hardSeats + " seats reported hard player errors; on air " + airedSec + "s of " + fullDurA + "s). The channel moved to the next piece through the shared advancer. Zero-tolerance bar: a dead title never occupies MW TV." });
+            }
             delete gDoc.faults[curKey];
             // Strike + quarantine on the 2nd confirmed-dead airing.
             const yt = curSeg.yt || "";
@@ -3568,7 +3596,9 @@ async function tvTick(env, S, now, origin, online) {
         }
         if (curSeg && curSeg.yt && banSet.has(String(curSeg.yt)) && (curSeg.k === "prog" || curSeg.k === "house")) {
           const cadNowB = tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
-          const gateB = tvSkipGate(curSeg, chan, now, "guardian", cadNowB);
+          const inBanList = !!(blkDoc && Array.isArray(blkDoc.ids) && blkDoc.ids.map(String).includes(String(curSeg.yt)));
+          const frecB = gDoc.faults[curSeg.id + "@" + curSeg.start];
+          const gateB = tvSkipGate(curSeg, chan, now, "guardian", cadNowB, { seats: frecB ? tvGuardHardSeats(frecB) : 0, banned: inBanList });
           if (!gateB.ok) {
             if (!gDoc.refusedKeys || typeof gDoc.refusedKeys !== "object") gDoc.refusedKeys = {};
             const curKeyB = curSeg.id + "@" + curSeg.start;
@@ -3596,7 +3626,12 @@ async function tvTick(env, S, now, origin, online) {
               if (tvWatchFold(wdB, { key: curKeyB2, id: curSeg.id, yt: curSeg.yt || "", title: curSeg.title || String(curSeg.id), show: curSeg.show || (itB && itB.show) || "", kind: curSeg.qid ? "queue" : curSeg.k, start: curSeg.start, dur: fullDurB, aired: airedSecB, frac: fullDurB > 0 ? Math.round(Math.min(1, airedSecB / fullDurB) * 100) / 100 : 0, outcome: "guardian-advance", up: vrecB ? (vrecB.up | 0) : 0, down: vrecB ? (vrecB.down | 0) : 0, at: now }, dayKey)) watchDirty = true;
               gNote = { id: curSeg.id, title: curSeg.title || String(curSeg.id), at: now, by: "guardian" };
               gDoc.health.advances += 1; gDoc.health.lastAdvanceAt = now; gDirty = true;
+              if (gateB.prot) {
+                gDoc.health.protAdvances = (gDoc.health.protAdvances | 0) + 1;
+                tvGuardLog(env, gDoc, { at: now, kind: "advance", prot: gateB.prot, proof: gateB.proof, seats: frecB ? tvGuardHardSeats(frecB) : 0, id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/now", summary: "Guardian ADVANCED a PROVEN-DEAD protected segment (OWNER-AUTHORIZED \u2014 Malik, 2026-11-03 20:39: the Guardian can skip a proven-dead item even in his queue/news): \u201C" + String(curSeg.title || curSeg.id).slice(0, 80) + "\u201D is protected class " + gateB.prot + " but proven dead \u2014 proof: " + (gateB.proof === "ban" ? "its video id " + String(curSeg.yt) + " is on brain/ytblock (a house conviction)" : (frecB ? tvGuardHardSeats(frecB) : 0) + " distinct viewer seats reported hard player errors on this exact instance") + " (on air " + airedSecB + "s). The channel moved to the next piece through the shared advancer. Counted separately in health.protAdvances." });
+              } else {
               tvGuardLog(env, gDoc, { at: now, kind: "advance", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/now", summary: "Guardian ADVANCED a BANNED segment: \u201C" + String(curSeg.title || curSeg.id).slice(0, 80) + "\u201D (video id " + String(curSeg.yt) + ") was on air " + airedSecB + "s. Its id is on the ban list / permanent watchlist \u2014 a banned title never occupies MW TV, whatever doc laid it. The channel moved to the next piece through the shared advancer." });
+              }
               curSeg = tvSegAt(segs, now);
             }
           }
