@@ -5896,7 +5896,19 @@ html.popdj #dj-mini{display:none!important}
     + "#tw-search .tws-item img{width:84px;height:47px;object-fit:cover;border-radius:5px;flex:none;background:#000}"
     + "#tw-search .tws-t{font-size:12.5px;line-height:1.3;display:block}"
     + "#tw-search .tws-d{color:#c9a227;font-size:11.5px;display:block;margin-top:2px}"
-    + "#tw-shell:has(> .mw-adbar) #tw-search{bottom:56px}@media(max-width:640px){#tw-shell:has(> .mw-adbar) #tw-search{bottom:118px}}";
+    + "#tw-shell:has(> .mw-adbar) #tw-search{bottom:56px}@media(max-width:640px){#tw-shell:has(> .mw-adbar) #tw-search{bottom:118px}}"
+    + "#tw-search .tws-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}"
+    + "#tw-search .tws-top .tws-h{margin:0}"
+    + "#tw-search .tws-skip{flex:none;background:#8c1f28;color:#fff;border:0;border-radius:8px;padding:6px 11px;font-weight:700;cursor:pointer;font-size:13px}"
+    + "#tw-search .tws-play{flex:1;min-width:0;display:flex;gap:8px;align-items:center;background:none;border:0;color:#f3ead2;text-align:left;cursor:pointer;padding:0;font:inherit}"
+    + "#tw-search .tws-qbtn{flex:none;background:#2a2a1a;color:#c9a227;border:1px solid #554a22;border-radius:7px;padding:7px 8px;font-weight:700;cursor:pointer;font-size:12px}"
+    + "#tw-search .tws-queue{margin-top:9px;border-top:1px solid #38341f;padding-top:8px}"
+    + "#tw-search .tws-qh{font-size:11px;letter-spacing:.12em;color:#c9a227;font-weight:700;margin:0 0 2px}"
+    + "#tw-search .tws-qitem{display:flex;gap:6px;align-items:center;background:#151410;border:1px solid #38341f;border-radius:8px;padding:5px 7px;margin-top:5px}"
+    + "#tw-search .tws-qt{flex:1;min-width:0;font-size:12.5px;line-height:1.3}"
+    + "#tw-search .tws-qt .tws-d{display:inline}"
+    + "#tw-search .tws-qb{flex:none;background:#222;color:#f3ead2;border:1px solid #38341f;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px}"
+    + "#tw-search .tws-qempty{font-size:12.5px;color:#e8dfc8;margin-top:4px}";
   let twsCache = [], twsBusy = false;
   const twsDur = (s) => { s = Math.max(0, Math.round(+s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0"); };
   function twsEnsure() {
@@ -5907,11 +5919,15 @@ html.popdj #dj-mini{display:none!important}
     const shell = document.getElementById("tw-shell"); if (!shell) return;
     if (!document.getElementById("tw-search-css")) { const st = document.createElement("style"); st.id = "tw-search-css"; st.textContent = twsCss; document.head.appendChild(st); }
     box = document.createElement("div"); box.id = "tw-search";
-    box.innerHTML = "<div class=\"tws-h\">📺 PLAY NEXT ON MW TV — OWNER SEARCH</div><div class=\"tws-row\"><input type=\"text\" id=\"tws-q\" maxlength=\"100\" placeholder=\"Search YouTube — plays next on MW TV\" aria-label=\"Search YouTube to play next on MW TV\"><button type=\"button\" class=\"tws-go\" id=\"tws-go\">Search</button></div><div class=\"tws-res\" id=\"tws-res\"></div><div class=\"tws-stat\" id=\"tws-stat\"></div>";
+    box.innerHTML = "<div class=\"tws-top\"><div class=\"tws-h\">📺 PLAY NEXT ON MW TV — OWNER SEARCH</div><button type=\"button\" class=\"tws-skip\" id=\"tws-skip\" title=\"End what is playing on MW TV right now and move the channel on\">⏭ SKIP</button></div><div class=\"tws-row\"><input type=\"text\" id=\"tws-q\" maxlength=\"100\" placeholder=\"Search YouTube — plays next on MW TV\" aria-label=\"Search YouTube to play next on MW TV\"><button type=\"button\" class=\"tws-go\" id=\"tws-go\">Search</button></div><div class=\"tws-res\" id=\"tws-res\"></div><div class=\"tws-stat\" id=\"tws-stat\"></div><div class=\"tws-queue\" id=\"tws-queue\"></div>";
     shell.appendChild(box);
     box.querySelector("#tws-go").addEventListener("click", () => { twsRun(); });
     box.querySelector("#tws-q").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); twsRun(); } });
     box.querySelector("#tws-res").addEventListener("click", (e) => { const b = e.target.closest("[data-tws]"); if (!b) return; const it = twsCache[+b.dataset.tws]; if (it) twsPlay(it); });
+    box.querySelector("#tws-res").addEventListener("click", (e) => { const b = e.target.closest("[data-twsq]"); if (!b) return; const it = twsCache[+b.dataset.twsq]; if (it) twsQueueAdd(it); });
+    box.querySelector("#tws-skip").addEventListener("click", () => { twsSkip(); });
+    box.querySelector("#tws-queue").addEventListener("click", (e) => { const rm = e.target.closest("[data-qrm]"); if (rm) { twsQueueAct("remove", +rm.dataset.qrm, 0); return; } const mv = e.target.closest("[data-qmv]"); if (mv) twsQueueAct("move", +mv.dataset.qix, +mv.dataset.qmv); });
+    twsQueueFetch();
   }
   async function twsRun() {
     if (twsBusy) return;
@@ -5923,7 +5939,7 @@ html.popdj #dj-mini{display:none!important}
       const res = await ytSearch(q);
       if (!res || !res.length) { if (stEl) stEl.textContent = "No playable video found — try the title another way."; twsCache = []; return; }
       twsCache = res.slice(0, 8);
-      if (resEl) resEl.innerHTML = twsCache.map((it, i) => "<button type=\"button\" class=\"tws-item\" data-tws=\"" + i + "\"><img src=\"https://i.ytimg.com/vi/" + E(it.id) + "/hqdefault.jpg\" alt=\"\" loading=\"lazy\"><span><span class=\"tws-t\">" + E(it.title || "YouTube video") + "</span><span class=\"tws-d\">" + twsDur(it.dur) + " · tap to play next</span></span></button>").join("");
+      if (resEl) resEl.innerHTML = twsCache.map((it, i) => "<div class=\"tws-item\"><button type=\"button\" class=\"tws-play\" data-tws=\"" + i + "\"><img src=\"https://i.ytimg.com/vi/" + E(it.id) + "/hqdefault.jpg\" alt=\"\" loading=\"lazy\"><span><span class=\"tws-t\">" + E(it.title || "YouTube video") + "</span><span class=\"tws-d\">" + twsDur(it.dur) + " · tap to play next</span></span></button><button type=\"button\" class=\"tws-qbtn\" data-twsq=\"" + i + "\" title=\"Add to your MW TV queue\">＋ Queue</button></div>").join("");
       if (stEl) stEl.textContent = "Tap one — it plays next on MW TV.";
     } catch (_) { if (stEl) stEl.textContent = "Search is busy — try again in a moment."; }
     finally { twsBusy = false; }
@@ -5944,6 +5960,57 @@ html.popdj #dj-mini{display:none!important}
       const qEl = box.querySelector("#tws-q"); if (qEl) qEl.value = "";
     } catch (_) { if (stEl) stEl.textContent = "That did not go through — try again."; }
   }
+  /* MW TV OWNER QUEUE + SKIP (Malik, 2026-11-03 19:09 ET): the
+   * queue half of the owner search box — build a list with
+   * ＋ Queue, watch it in order under the search box, remove or
+   * reorder items, and ⏭ SKIP whatever is on air. Everything
+   * rides /api/tv/queue behind the same owner gate as the
+   * play-next door, and the box itself only ever exists on the
+   * owner seat, so no other seat ever sees any of this. The
+   * keeper plays the list after the current piece and freezes it
+   * across the hard schedule (station.js: tvQueueState,
+   * tvAdvanceChannel). */
+  let twsQueue = [];
+  function twsQPaint() {
+    const qEl = document.getElementById("tws-queue"); if (!qEl) return;
+    if (!twsQueue.length) { qEl.innerHTML = "<div class=\"tws-qh\">📋 UP NEXT — YOUR QUEUE</div><div class=\"tws-qempty\">Queue is empty — the channel picks for you.</div>"; return; }
+    qEl.innerHTML = "<div class=\"tws-qh\">📋 UP NEXT — YOUR QUEUE</div>" + twsQueue.map((q, i) => "<div class=\"tws-qitem\"><span class=\"tws-qt\">" + (i + 1) + ". " + E(q.title || "YouTube video") + " <span class=\"tws-d\">" + twsDur(q.dur) + "</span></span><button type=\"button\" class=\"tws-qb\" data-qmv=\"-1\" data-qix=\"" + i + "\" title=\"Move up\">↑</button><button type=\"button\" class=\"tws-qb\" data-qmv=\"1\" data-qix=\"" + i + "\" title=\"Move down\">↓</button><button type=\"button\" class=\"tws-qb\" data-qrm=\"" + i + "\" title=\"Remove from the queue\">✕</button></div>").join("");
+  }
+  async function twsQReq(method, body) {
+    const ses = mySess(); const tok = ses && ses.access_token;
+    if (!tok) return null;
+    try {
+      const opt = { headers: { authorization: "Bearer " + tok } };
+      if (method === "POST") { opt.method = "POST"; opt.headers["content-type"] = "application/json"; opt.body = JSON.stringify(body || {}); }
+      const r = await fetch("/api/tv/queue", opt);
+      return await r.json().catch(() => null);
+    } catch (_) { return null; }
+  }
+  async function twsQueueFetch() { const j = await twsQReq("GET"); if (j && j.ok && Array.isArray(j.items)) twsQueue = j.items; twsQPaint(); }
+  async function twsQueueAdd(it) {
+    const box = document.getElementById("tw-search"); if (!box) return;
+    const stEl = box.querySelector("#tws-stat");
+    if (stEl) stEl.textContent = "Adding to your queue…";
+    const j = await twsQReq("POST", { action: "add", yt: String(it.id), title: String(it.title || "YouTube video").slice(0, 200), dur: Math.round(+it.dur || 0) });
+    if (!j || !j.ok) { if (stEl) stEl.textContent = "That one could not be queued — pick another."; return; }
+    if (Array.isArray(j.items)) { twsQueue = j.items; twsQPaint(); }
+    if (stEl) stEl.textContent = "📋 Queued: " + (j.title || it.title) + " — it plays in order on MW TV.";
+    say("📋 Queued on MW TV: " + (j.title || it.title));
+  }
+  async function twsQueueAct(action, ix, dir) {
+    const q = twsQueue[ix]; if (!q) return;
+    const j = await twsQReq("POST", action === "remove" ? { action: "remove", qid: q.qid } : { action: "move", qid: q.qid, dir });
+    if (j && j.ok && Array.isArray(j.items)) { twsQueue = j.items; twsQPaint(); }
+  }
+  async function twsSkip() {
+    const box = document.getElementById("tw-search"); if (!box) return;
+    const stEl = box.querySelector("#tws-stat");
+    if (stEl) stEl.textContent = "Skipping…";
+    const j = await twsQReq("POST", { action: "skip" });
+    if (stEl) stEl.textContent = j && j.ok ? "⏭ Skip sent — MW TV moves on in a few seconds." : "The skip did not go through — try again.";
+    if (j && j.ok) say("⏭ Skipped — MW TV is moving on.");
+  }
+  setInterval(() => { try { if (document.getElementById("tws-queue")) twsQueueFetch(); } catch (_) {} }, 15000);
   setInterval(() => { try { twsEnsure(); } catch (_) {} }, 1000);
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
    * screen is one more screen in the same system — the live stream
@@ -7096,7 +7163,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793750670;
+  const MW_DJ_BUILD = 1793751670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
