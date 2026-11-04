@@ -5903,14 +5903,16 @@ html.popdj #dj-mini{display:none!important}
     + "#tw-search .tws-skip{flex:none;background:#8c1f28;color:#fff;border:0;border-radius:8px;padding:6px 11px;font-weight:700;cursor:pointer;font-size:13px}"
     + "#tw-search .tws-play{flex:1;min-width:0;display:flex;gap:8px;align-items:center;background:none;border:0;color:#f3ead2;text-align:left;cursor:pointer;padding:0;font:inherit}"
     + "#tw-search .tws-qbtn{flex:none;background:#2a2a1a;color:#c9a227;border:1px solid #554a22;border-radius:7px;padding:7px 8px;font-weight:700;cursor:pointer;font-size:12px}"
-    + "#tw-search .tws-queue{margin-top:9px;border-top:1px solid #38341f;padding-top:8px}"
+    + "#tw-search .tws-queue{margin-top:9px;border-top:1px solid #38341f;padding-top:8px;max-height:38vh;overflow:auto}"
     + "#tw-search .tws-qh{font-size:11px;letter-spacing:.12em;color:#c9a227;font-weight:700;margin:0 0 2px}"
     + "#tw-search .tws-qitem{display:flex;gap:6px;align-items:center;background:#151410;border:1px solid #38341f;border-radius:8px;padding:5px 7px;margin-top:5px}"
     + "#tw-search .tws-qt{flex:1;min-width:0;font-size:12.5px;line-height:1.3}"
     + "#tw-search .tws-qt .tws-d{display:inline}"
     + "#tw-search .tws-qb{flex:none;background:#222;color:#f3ead2;border:1px solid #38341f;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px}"
-    + "#tw-search .tws-qempty{font-size:12.5px;color:#e8dfc8;margin-top:4px}";
-  let twsCache = [], twsBusy = false;
+    + "#tw-search .tws-qempty{font-size:12.5px;color:#e8dfc8;margin-top:4px}"
+    + "#tw-search .tws-more{width:100%;background:#2a2a1a;color:#c9a227;border:1px solid #554a22;border-radius:8px;padding:8px;font-weight:700;cursor:pointer;font-size:12.5px}"
+    + "#tw-search .tws-end{font-size:12px;color:#c9bfa5;text-align:center;padding:4px 0}";
+  let twsCache = [], twsBusy = false, twsShown = 0, twsQuery = "", twsPage = 2, twsDone = false, twsMoreBusy = false;
   const twsDur = (s) => { s = Math.max(0, Math.round(+s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0"); };
   function twsEnsure() {
     const on = elOpen("v-mwtv") && typeof isOwner !== "undefined" && !!isOwner;
@@ -5926,6 +5928,7 @@ html.popdj #dj-mini{display:none!important}
     box.querySelector("#tws-q").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); twsRun(); } });
     box.querySelector("#tws-res").addEventListener("click", (e) => { const b = e.target.closest("[data-tws]"); if (!b) return; const it = twsCache[+b.dataset.tws]; if (it) twsPlay(it); });
     box.querySelector("#tws-res").addEventListener("click", (e) => { const b = e.target.closest("[data-twsq]"); if (!b) return; const it = twsCache[+b.dataset.twsq]; if (it) twsQueueAdd(it); });
+    box.querySelector("#tws-res").addEventListener("click", (e) => { const b = e.target.closest("[data-twsmore]"); if (!b) return; twsMore(); });
     box.querySelector("#tws-skip").addEventListener("click", () => { twsSkip(); });
     box.querySelector("#tws-queue").addEventListener("click", (e) => { const rm = e.target.closest("[data-qrm]"); if (rm) { twsQueueAct("remove", +rm.dataset.qrm, 0); return; } const mv = e.target.closest("[data-qmv]"); if (mv) twsQueueAct("move", +mv.dataset.qix, +mv.dataset.qmv); });
     twsQueueFetch();
@@ -5938,12 +5941,53 @@ html.popdj #dj-mini{display:none!important}
     twsBusy = true; if (stEl) stEl.textContent = "Searching…"; if (resEl) resEl.innerHTML = "";
     try {
       const res = await ytSearch(q);
-      if (!res || !res.length) { if (stEl) stEl.textContent = "No playable video found — try the title another way."; twsCache = []; return; }
-      twsCache = res.slice(0, 8);
-      if (resEl) resEl.innerHTML = twsCache.map((it, i) => "<div class=\"tws-item\"><button type=\"button\" class=\"tws-play\" data-tws=\"" + i + "\"><img src=\"https://i.ytimg.com/vi/" + E(it.id) + "/hqdefault.jpg\" alt=\"\" loading=\"lazy\"><span><span class=\"tws-t\">" + E(it.title || "YouTube video") + "</span><span class=\"tws-d\">" + twsDur(it.dur) + " · tap to play next</span></span></button><button type=\"button\" class=\"tws-qbtn\" data-twsq=\"" + i + "\" title=\"Add to your MW TV queue\">＋ Queue</button></div>").join("");
-      if (stEl) stEl.textContent = "Tap one — it plays next on MW TV.";
+      if (!res || !res.length) { if (stEl) stEl.textContent = "No playable video found — try the title another way."; twsCache = []; twsShown = 0; return; }
+      /* QUEUEFIX (2026-11-03 late): keep EVERYTHING the search
+       * brought back — the booth search already merged relay
+       * pages 1+2 (up to 30) and the box used to throw away all
+       * but 8 (Malik: "i want to be able to serch more results
+       * if i dont like whats showing"). Eight show first; the
+       * More results button reveals more of the cache, then
+       * pulls deeper relay pages (twsMore) until they genuinely
+       * run out. */
+      twsCache = res.slice(0, 30); twsQuery = q; twsPage = 2; twsShown = Math.min(8, twsCache.length); twsDone = false;
+      twsPaintRes();
+      if (stEl) stEl.textContent = "Tap one — it plays next on MW TV. ＋ Queue stacks it on your list.";
     } catch (_) { if (stEl) stEl.textContent = "Search is busy — try again in a moment."; }
     finally { twsBusy = false; }
+  }
+  function twsItemHtml(it, i) { return "<div class=\"tws-item\"><button type=\"button\" class=\"tws-play\" data-tws=\"" + i + "\"><img src=\"https://i.ytimg.com/vi/" + E(it.id) + "/hqdefault.jpg\" alt=\"\" loading=\"lazy\"><span><span class=\"tws-t\">" + E(it.title || "YouTube video") + "</span><span class=\"tws-d\">" + twsDur(it.dur) + " · tap to play next</span></span></button><button type=\"button\" class=\"tws-qbtn\" data-twsq=\"" + i + "\" title=\"Add to your MW TV queue\">＋ Queue</button></div>"; }
+  /* Pure merge: append page items whose ids are not already in
+   * the cache — relay pages can overlap when a different mirror
+   * answers a deeper page. Unit-tested by the queuefix harness. */
+  function twsMergePage(cache, items) {
+    const seen = new Set((cache || []).map((x) => x && x.id));
+    const out = (cache || []).slice(); let added = 0;
+    for (const it of items || []) { if (it && it.id && !seen.has(it.id)) { seen.add(it.id); out.push(it); added++; } }
+    return { cache: out, added };
+  }
+  function twsPaintRes() {
+    const box = document.getElementById("tw-search"); if (!box) return;
+    const resEl = box.querySelector("#tws-res"); if (!resEl) return;
+    let h = twsCache.slice(0, twsShown).map((it, i) => twsItemHtml(it, i)).join("");
+    if (twsMoreBusy) h += "<button type=\"button\" class=\"tws-more\" data-twsmore=\"1\" disabled>Searching for more…</button>";
+    else if (!twsDone) h += "<button type=\"button\" class=\"tws-more\" data-twsmore=\"1\">More results ▾</button>";
+    else if (twsCache.length > 8) h += "<div class=\"tws-end\">That's everything for this search.</div>";
+    resEl.innerHTML = h;
+  }
+  async function twsMore() {
+    if (twsMoreBusy || twsBusy) return;
+    if (twsShown < twsCache.length) { twsShown = Math.min(twsCache.length, twsShown + 8); twsPaintRes(); return; }
+    if (twsDone || !twsQuery) return;
+    twsMoreBusy = true; twsPaintRes();
+    try {
+      twsPage += 1;
+      const r = await ytPage(twsQuery, twsPage);
+      const m = twsMergePage(twsCache, Array.isArray(r) ? r : []);
+      twsCache = m.cache;
+      if (!m.added) twsDone = true; else twsShown = Math.min(twsCache.length, twsShown + 8);
+    } catch (_) { twsDone = true; }
+    finally { twsMoreBusy = false; twsPaintRes(); }
   }
   async function twsPlay(it) {
     const box = document.getElementById("tw-search"); if (!box) return;
@@ -5954,7 +5998,7 @@ html.popdj #dj-mini{display:none!important}
     try {
       const r = await fetch("/api/tv/insert", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok }, body: JSON.stringify({ yt: String(it.id), title: String(it.title || "YouTube video").slice(0, 200), dur: Math.round(+it.dur || 0) }) });
       const j = await r.json().catch(() => null);
-      if (!r.ok || !j || !j.ok) { if (stEl) stEl.textContent = "That one could not be lined up — pick another."; return; }
+      if (!r.ok || !j || !j.ok) { if (stEl) stEl.textContent = j && (j.error === "blocked" || j.error === "not_playable") ? "That one is on the can't-play list — it already failed in a player. Pick another." : (j && j.error === "bad_dur" ? "That one has no usable runtime — pick another." : "That one could not be lined up — pick another."); return; }
       if (stEl) stEl.textContent = "▶ Playing next on MW TV: " + (j.title || it.title);
       say("▶ Playing next on MW TV: " + (j.title || it.title));
       if (resEl) resEl.innerHTML = "";
@@ -5993,7 +6037,7 @@ html.popdj #dj-mini{display:none!important}
     const stEl = box.querySelector("#tws-stat");
     if (stEl) stEl.textContent = "Adding to your queue…";
     const j = await twsQReq("POST", { action: "add", yt: String(it.id), title: String(it.title || "YouTube video").slice(0, 200), dur: Math.round(+it.dur || 0) });
-    if (!j || !j.ok) { if (stEl) stEl.textContent = "That one could not be queued — pick another."; return; }
+    if (!j || !j.ok) { if (stEl) stEl.textContent = j && j.error === "queue_full" ? "Your queue is full — take something off the list first." : (j && j.error === "not_playable" ? "That one is on the can't-play list — it already failed in a player. Pick another." : (j && j.error === "bad_duration" ? "That one has no usable runtime — pick another." : "That one could not be queued — pick another.")); return; }
     if (Array.isArray(j.items)) { twsQueue = j.items; twsQPaint(); }
     if (stEl) stEl.textContent = "📋 Queued: " + (j.title || it.title) + " — it plays in order on MW TV.";
     say("📋 Queued on MW TV: " + (j.title || it.title));
@@ -7246,7 +7290,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793752670;
+  const MW_DJ_BUILD = 1793753670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
