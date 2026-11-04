@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1793736171"></script>
-<meta name="mw-build" content="1793760670">
+<meta name="mw-build" content="1793761670">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -1193,6 +1193,17 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 #tw-prog{height:100%;width:0;background:linear-gradient(90deg,#f5c451,#ffe9a8)}
 #tw-guide{position:absolute;left:10px;right:10px;bottom:12px;z-index:9;background:rgba(8,8,14,.88);border:1px solid rgba(245,196,81,.45);border-radius:12px;padding:10px 12px;color:#fff;font-size:13px;line-height:1.5}
 #tw-guide .tw-g-note{color:#f5c451;font-size:12px}
+#tw-share{position:absolute;left:10px;right:10px;bottom:12px;z-index:10;background:rgba(8,8,14,.92);border:1px solid rgba(245,196,81,.45);border-radius:12px;padding:12px;color:#fff}
+#tw-share[hidden]{display:none}
+#tw-share .twshr-h{font:700 13px var(--body,system-ui);margin-bottom:4px}
+#tw-share .twshr-txt{color:#e9e2cf;font:600 12.5px var(--body,system-ui);margin-bottom:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tw-share .twshr-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#tw-share .twshr-row .btn{text-decoration:none}
+#tw-share .twshr-note{color:#f5c451;font:600 12px var(--body,system-ui);margin-top:8px;min-height:14px}
+body[data-view="mwtv"] #tw-share{transition:opacity .35s ease}
+body[data-view="mwtv"].tw-immersive #tw-share{opacity:0!important;pointer-events:none!important;visibility:hidden}
+#tw-shell:has(> .mw-adbar) #tw-share{bottom:48px}
+@media(max-width:640px){#tw-shell:has(> .mw-adbar) #tw-share{bottom:116px}}
 #mn-tvprog{position:absolute;left:0;right:0;bottom:0;z-index:6;background:rgba(0,0,0,.55);color:#ffe9a8;font-size:11px;padding:2px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tw-sp{flex:1}
 #tw-bar .btn{white-space:nowrap;text-decoration:none}
@@ -1258,6 +1269,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
         <div class="vchip" id="tw-vchip" hidden></div>
 <div id="tw-progwrap" hidden><div id="tw-prog"></div></div>
 <div id="tw-guide" hidden><div class="tw-g-row" id="tw-g-now"></div><div class="tw-g-row" id="tw-g-next1"></div><div class="tw-g-row" id="tw-g-next2"></div><div class="tw-g-note" id="tw-g-note"></div></div>
+<div id="tw-share" hidden><div class="twshr-h">🔗 Share MW TV</div><div class="twshr-txt" id="tw-share-txt"></div><div class="twshr-row"><a class="btn ghost sm" id="tw-sh-fb" target="_blank" rel="noopener">📘 Facebook</a><a class="btn ghost sm" id="tw-sh-x" target="_blank" rel="noopener">X</a><a class="btn ghost sm" id="tw-sh-wa" target="_blank" rel="noopener">💬 WhatsApp</a><a class="btn ghost sm" id="tw-sh-tg" target="_blank" rel="noopener">✈️ Telegram</a><button type="button" class="btn ghost sm" id="tw-sh-copy">📋 Copy link</button><button type="button" class="btn ghost sm" id="tw-sh-close" aria-label="Close share panel">✕ Close</button></div><div class="twshr-note" id="tw-share-note"></div></div>
         <div id="tw-summon" aria-hidden="true"></div>
       </div>
     </div>
@@ -1267,6 +1279,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
       <span id="tw-what" class="tw-what"></span>
       <button type="button" class="btn ghost sm" id="tw-guidebtn">📋 Guide</button>
       <span id="tw-vote" hidden><button type="button" class="btn ghost sm" id="tw-vote-up" aria-label="Like what is playing on MW TV">👍</button><button type="button" class="btn ghost sm" id="tw-vote-dn" aria-label="Dislike what is playing on MW TV">👎</button><span id="tw-vote-n"></span><span id="tw-vote-note"></span></span>
+      <button type="button" class="btn ghost sm" id="tw-sharebtn" aria-label="Share MW TV with social media and your contacts">🔗 Share</button>
       <span class="tw-sp"></span>
       <button type="button" class="btn ghost sm" id="tw-sound">🔇 Radio off — tap for sound</button>
       <button type="button" class="btn ghost sm" id="tw-watch">👀 Watch the setup</button>
@@ -2070,7 +2083,7 @@ body[data-view="mwtv"].tw-immersive #tw-summon{pointer-events:auto}
 <script src="js/owner.js?v=1793736171"></script>
 <script src="js/messages.js?v=1793736171"></script>
 <script src="js/videos.js?v=1793736171"></script>
-<script src="js/dj.js?v=1793760670"></script>
+<script src="js/dj.js?v=1793761670"></script>
 <script src="js/live.js?v=1793736171"></script>
 <script src="js/friends.js?v=1793736171"></script>
 <script src="js/social.js?v=1793731933"></script>

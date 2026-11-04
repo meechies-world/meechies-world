@@ -6203,6 +6203,90 @@ html.popdj #dj-mini{display:none!important}
       else twvPaint();
     } catch (_) {}
   }, 1000);
+  /* MW TV SHARE (Malik, 2026-11-03 20:52 ET: "Make it so people can
+   * share MW TV with social media and their contacts"). A 🔗 Share
+   * button in the TV bar (#tw-sharebtn in index.html), open to members
+   * AND guests — a growth feature, no sign-in wall, no gating by seat.
+   * The native device share sheet (navigator.share) goes FIRST where
+   * the browser has it: that sheet is what reaches the viewer's own
+   * CONTACTS and installed apps (WhatsApp, Messages, Messenger…).
+   * Browsers without it get the #tw-share panel in the stage: Facebook
+   * / X / WhatsApp / Telegram web intents (target=_blank, so this page
+   * itself never navigates) plus Copy link. Messenger has no web
+   * intent that works without an app_id (dialog/send demands one and
+   * this site carries none), so Messenger rides the native sheet only.
+   * The shared text names the program on air RIGHT NOW, read fresh at
+   * tap time from tvChanCurTv() — the same live tv/now source the TV
+   * bar's own title (#tw-what) and the vote key read — and falls back
+   * to a generic line when no title can be read; a stale or guessed
+   * title is never shared. The link is the router's own deep link
+   * (#mwtv — the same hash pattern battleShare uses for #radio, and
+   * app-core's go() reads the hash on a cold load), so a recipient
+   * lands ON MW TV, not the front door.
+   * NO-SKIP: this block never touches a player, the channel tuner or
+   * the radio — there are no pause/play/seek calls here at all; the
+   * panel only flips its own hidden flag, and the OS sheet overlays
+   * above the page. No backend writes, no share counting: a pure
+   * client feature. */
+  function twShareUrl() { return location.origin + location.pathname + "#mwtv"; }
+  function twShareText() {
+    let title = "";
+    try { const c = tvChanCurTv(); if (c && c.title) title = String(c.title).trim(); } catch (_) {}
+    return title ? "Watching " + title + " on MW TV 📺 Meechie's World" : "MW TV is live — Meechie's World";
+  }
+  function twSharePanel(open) {
+    const p = document.getElementById("tw-share"); if (!p) return;
+    if (open) {
+      const url = twShareUrl(), text = twShareText(), eu = encodeURIComponent(url), et = encodeURIComponent(text);
+      const set = (id, href) => { const a = document.getElementById(id); if (a) a.href = href; };
+      set("tw-sh-fb", "https://www.facebook.com/sharer/sharer.php?u=" + eu + "&quote=" + et);
+      set("tw-sh-x", "https://twitter.com/intent/tweet?text=" + et + "&url=" + eu);
+      set("tw-sh-wa", "https://wa.me/?text=" + encodeURIComponent(text + " " + url));
+      set("tw-sh-tg", "https://t.me/share/url?url=" + eu + "&text=" + et);
+      const t = document.getElementById("tw-share-txt"); if (t) t.textContent = text;
+      const n = document.getElementById("tw-share-note"); if (n) n.textContent = "";
+      const cp = document.getElementById("tw-sh-copy"); if (cp) cp.textContent = "📋 Copy link";
+    }
+    p.hidden = !open;
+  }
+  async function twShareGo() {
+    const url = twShareUrl(), text = twShareText();
+    if (navigator.share) {
+      const data = { title: "MW TV 📺 Meechie's World", text, url };
+      if (!navigator.canShare || navigator.canShare(data)) {
+        try { await navigator.share(data); return; }
+        catch (e) { if (e && e.name === "AbortError") return; }
+      }
+    }
+    twSharePanel(true);
+  }
+  (function twShareWire() {
+    const b = document.getElementById("tw-sharebtn");
+    if (b && !b.dataset.mw) { b.dataset.mw = "1"; b.addEventListener("click", () => { twShareGo(); }); }
+    const x = document.getElementById("tw-sh-close");
+    if (x && !x.dataset.mw) { x.dataset.mw = "1"; x.addEventListener("click", () => { twSharePanel(false); }); }
+    const cp = document.getElementById("tw-sh-copy");
+    if (cp && !cp.dataset.mw) {
+      cp.dataset.mw = "1";
+      cp.addEventListener("click", async () => {
+        const url = twShareUrl();
+        let ok = false;
+        try { await navigator.clipboard.writeText(url); ok = true; }
+        catch (_) {
+          try {
+            const ta = document.createElement("textarea");
+            ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+            document.body.appendChild(ta); ta.select();
+            ok = !!document.execCommand("copy"); ta.remove();
+          } catch (_) {}
+        }
+        const n = document.getElementById("tw-share-note");
+        if (n) n.textContent = ok ? "✓ Link copied — paste it anywhere." : "Copy this link: " + url;
+        if (ok) cp.textContent = "✓ Copied";
+      });
+    }
+  })();
+  /* ——— end MW TV SHARE ——— */
   /* WATCH THE SETUP screen (watch-setup2): the spectator booth master
    * screen is one more screen in the same system — the live stream
    * overlays it through vsStageEls and this paints the SAME video mix
@@ -7354,7 +7438,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793760670;
+  const MW_DJ_BUILD = 1793761670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
