@@ -152,6 +152,12 @@
 // Per-page scan stats (checked / removed / inconclusive) are
 // console-logged so over- and under-removal stay visible.
 import { userFrom } from "../../lib/cf.js";
+import { makePlayability } from "../../lib/ytverify.js";
+// The relay's own playability judge (strong scan + verdict cache),
+// instantiated from the shared code path in lib/ytverify.js — the
+// same trio verifyOne below has always used, with the same
+// per-instance cache semantics it had when it lived in this file.
+const { strongCheck, cachedVerdict, cacheVerdict } = makePlayability();
 const json = (o, age = 60) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json", "access-control-allow-origin": "*", "cache-control": "public, max-age=" + age } });
 // --- Setup-plan gate (owner directive 2026-10-30, the DJ setup ladder:
 // 7 days free, then Tables $10/mo, +YouTube search $15, +Save sessions
@@ -270,31 +276,8 @@ function candidates(invHosts) {
   return out;
 }
 // --- Age / embed verification (see the fix-search-filter note above) ---
-// Verdict cache: id -> { v, why, at }, insertion-ordered Map, FIFO-
-// capped so a long-lived isolate cannot grow it without bound.
-// Verdicts now EXPIRE (mwtv-scan): a "bad" verdict holds 6h, a "good"
-// verdict 2h — long enough that repeat searches for the same songs
-// (the common case in a DJ booth) skip re-checking, short enough
-// that a video whose region/embed state changes is re-judged the
-// same day. Only evidence-backed verdicts are cached at all: a
-// "good" requires the strong scan's two-system acquittal (below);
-// a video the scan could not judge is kept but NEVER cached good —
-// the old rule survives for it (an unproven keep must not acquit
-// forever, and companions rotate; see the correction above).
-const verdictCache = new Map();
-const VERDICT_CAP = 1000;
-const BAD_TTL_MS = 6 * 3600 * 1000, GOOD_TTL_MS = 2 * 3600 * 1000;
-function cacheVerdict(id, v, why) {
-  if (verdictCache.has(id)) verdictCache.delete(id);
-  verdictCache.set(id, { v, why: why || "", at: Date.now() });
-  while (verdictCache.size > VERDICT_CAP) verdictCache.delete(verdictCache.keys().next().value);
-}
-function cachedVerdict(id) {
-  const e = verdictCache.get(id);
-  if (!e) return null;
-  if (Date.now() - e.at > (e.v === "bad" ? BAD_TTL_MS : GOOD_TTL_MS)) { verdictCache.delete(id); return null; }
-  return e;
-}
+/* The verdict cache moved to lib/ytverify.js (queuecheck,
+ * 2026-11-03), shared with the MW TV queue door — imported above. */
 // YouTube's age / safety gate as surfaced in an Invidious error object.
 // Deliberately NO bare "sign in to confirm" branch: Piped's bot-wall
 // error literally reads "Sign in to confirm that you're not a bot", and
@@ -317,69 +300,11 @@ async function checkInvDetail(base, id, ms) {
   } catch (_) {}
   return "";
 }
-// --- Strong playability scan (mwtv-scan; see the header note) ---
-// The public WEB-client key youtube.com's own pages ship; the player
-// endpoint it unlocks is the same one the dead-movie investigation
-// used to convict _Tu_SAqNinU from this VM.
-const YT_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW";
-const YT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
-// Conviction text classes, matched against the playabilityStatus
-// JSON so reason and error-screen subreason are both covered. These
-// name a concrete state of the VIDEO (its region list, its age
-// gate, its removal) — never a state of the PROBE. Bot-wall and
-// reload text ("Sign in to confirm you're not a bot", "The page
-// needs to be reloaded") matches none of them, by construction.
-const REGION_TEXT = /not made this video available in your country|not available in your country|not available in your region|blocked in your country|has blocked it in your country/i;
-const AGE_TEXT = /confirm your age|age[\s-]?restrict/i;
-const GONE_TEXT = /removed by the uploader|this video has been removed|account associated with this video has been terminated|blocked it on copyright|video is private/i;
-// One candidate against YouTube's own systems. Returns
-// { v: "bad", why } on affirmative can't-play evidence,
-// { v: "good" } when the player says OK and oEmbed confirms, and
-// { v: "" } when the evidence is inconclusive (bot wall, generic
-// UNPLAYABLE, timeout, unparseable) — inconclusive is never a
-// conviction and never an acquittal.
-async function strongCheck(id, ms) {
-  let j = null;
-  try {
-    const r = await fetch("https://www.youtube.com/youtubei/v1/player?key=" + YT_KEY, {
-      method: "POST",
-      headers: { "content-type": "application/json", "user-agent": YT_UA },
-      body: JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: "2.20240726.00.00", hl: "en", gl: "US" } }, videoId: id, contentCheckOk: true, racyCheckOk: true }),
-      ...sig(ms),
-    });
-    if (r && r.ok) j = await r.json().catch(() => null);
-  } catch (_) {}
-  let acquit = false;
-  if (j && typeof j === "object") {
-    const ps = j.playabilityStatus || {};
-    const mf = (j.microformat && j.microformat.playerMicroformatRenderer) || {};
-    const ac = mf.availableCountries;
-    const text = JSON.stringify(ps);
-    // The region list is a data field of the video itself: US absent
-    // convicts even inside an otherwise bot-walled response (the
-    // Old Bodyguard response was exactly that shape).
-    if (Array.isArray(ac) && ac.length && !ac.includes("US")) return { v: "bad", why: "region" };
-    if (REGION_TEXT.test(text)) return { v: "bad", why: "region" };
-    if (ps.playableInEmbed === false) return { v: "bad", why: "embed" };
-    if (AGE_TEXT.test(text) && (ps.status === "LOGIN_REQUIRED" || ps.status === "UNPLAYABLE")) return { v: "bad", why: "age" };
-    if (GONE_TEXT.test(text)) return { v: "bad", why: "gone" };
-    if (ps.status === "OK") acquit = true;
-  }
-  // oEmbed is the embed authority: 401 = embedding disabled by the
-  // owner, 404 = gone or private, 400/403 = YouTube refusing the
-  // embed record. A real HTTP answer in that set convicts even when
-  // the player call failed outright; a 200 confirms embeddability
-  // but never acquits region/age on its own (it answered 200 for
-  // the geo-blocked Old Bodyguard). Timeouts and 5xx say nothing.
-  let oe = 0;
-  try {
-    const r = await fetch("https://www.youtube.com/oembed?url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id) + "&format=json", { headers: { "user-agent": YT_UA }, ...sig(Math.min(ms, 1200)) });
-    oe = r ? r.status : 0;
-  } catch (_) {}
-  if (oe === 400 || oe === 401 || oe === 403 || oe === 404) return { v: "bad", why: "embed" };
-  if (acquit && oe === 200) return { v: "good", why: "player" };
-  return { v: "", why: "" };
-}
+/* The strong scan itself (strongCheck, its evidence text classes
+ * and the player/oEmbed calls) moved to lib/ytverify.js (queuecheck,
+ * 2026-11-03), shared with the MW TV queue door so both judge a
+ * video with the SAME code — imported above. The doctrine is
+ * unchanged and stated in full in that file and the header note. */
 // Resolve one candidate: { keep, inc } — inc marks an inconclusive
 // scan (kept, but proven neither way; counted for the scan stats).
 // Order: verdict cache, then the strong scan, then — only for the
