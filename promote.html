@@ -232,6 +232,7 @@
   var claim = null;
   try { claim = JSON.parse(localStorage.getItem("mw-sponsor-claim") || "null"); } catch (e) { claim = null; }
 
+  function esc(t) { return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function show(msg, err) { box.style.display = "block"; box.className = "statusbox" + (err ? " err" : ""); box.innerHTML = msg; box.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
   function api(path, opts) {
     return fetch("/api/sponsors/" + path, opts).then(function (r) {
@@ -272,7 +273,7 @@
   function pollStatus(done) {
     if (!claim) return;
     api("status?claim=" + encodeURIComponent(claim.claimId) + "&token=" + encodeURIComponent(claim.token)).then(function (s) {
-      show("<b>" + (s.business || "Your claim") + "</b> — " + (STATUS_TEXT[s.status] || ("Status: " + s.status)));
+      show("<b>" + esc(s.business || "Your claim") + "</b> — " + (STATUS_TEXT[s.status] || esc("Status: " + s.status)));
       if (done) done(s);
     }).catch(function () {});
   }
