@@ -47,7 +47,7 @@ const LAZY_SRC={
    * or community views and paints one recognition line on each of those
    * surfaces from the member's own /api/brain/me summary. One module,
    * three doors — it guards itself against double-loading. */
-  radio:["js/soul-greet.js?v=1793653007","js/channels.js?v=1793740890"],
+  radio:["js/soul-greet.js?v=1793653007","js/channels.js?v=1793814717"],
   /* Show Studio (2026-11-03): Meechie AI's producer's desk for MY EMPIRE.
    * Owner-only. The same module rides two doors: it loads with MW TV (to
    * reveal the owner-only Studio button in the TV bar) and with the desk
@@ -845,9 +845,13 @@ function showBar(t,sub){ lockScreen(t,sub); $("#player-bar").hidden=false; docum
 // Start playing right away (play() in the same moment the last song ends), then jump to the right spot.
 // Waiting for the file to load first fails when the phone screen is off, because phones hold back loading for hidden pages.
 function load(t,offset,autoplay){ return new Promise(res=>{ let done=false; const fin=()=>{ if(!done){ done=true; res(); } };
+  /* Lifeline tracks carry their own baked file (src): if the media relay cannot
+   * serve the track, the same song plays from the static file instead — the
+   * radio never dies on a dead relay (owner law: listening needs no backend). */
+  const altSrc=(t&&t.src)?t.src:null; let altTried=false;
   media.onloadedmetadata=media.onerror=null; media.preload="auto"; media.src=trackUrl(t);
   media.onloadedmetadata=()=>{ if(offset) try{media.currentTime=Math.min(offset,(media.duration||offset)-0.5);}catch(e){} fin(); };
-  media.onerror=()=>{ if(!document.hidden) toast("This track couldn't load."); fin(); };
+  media.onerror=()=>{ if(altSrc && !altTried){ altTried=true; media.src=altSrc; if(autoplay) media.play().catch(()=>{}); else media.load(); return; } if(!document.hidden) toast("This track couldn't load."); fin(); };
   if(autoplay) media.play().catch(()=>{}); else media.load(); setTimeout(fin,4000); }); }
 let playTok=0;
 async function tuneIn(afterEnd){ const tok=++playTok;
@@ -1142,7 +1146,7 @@ function llRadioApply(first){
   if(!Array.isArray(list) || !list.length) return;
   const changed=dp.name!==llDaypart; llDaypart=dp.name;
   if(!changed && !first && radioEpoch===dp.start){ paintAir(); return; } // same lane, same clock: nothing to re-lay
-  tracks=list.map(t=>({ id:t.id, title:t.title, artist:t.artist, duration:t.duration, assetId:t.assetId }));
+  tracks=list.map(t=>({ id:t.id, title:t.title, artist:t.artist, duration:t.duration, assetId:t.assetId, src:"/lifeline/audio/"+t.assetId+".mp3" }));
   radioEpoch=dp.start;
   renderTracks(); paintAir();
   if(changed && !first && mode==="radio"){ try{ tuneIn(); }catch(_){} }

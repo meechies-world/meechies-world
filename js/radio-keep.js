@@ -96,6 +96,7 @@
       const a = mediaEl(); if (!a || !a.paused || extHold) return;
       if (Date.now() - inPagePauseAt < 2000) return;                    // the listener's own pause tap
       try { if (window.MW_videoSound && MW_videoSound.holding()) return; } catch (_) {} // a video has the sound on purpose
+      try { if (a.error || a.networkState === 3) return; } catch (_) {} // the station's own dead source (a track that failed to load) is not an outside interruption — heal() may keep retrying it
       if (window._welcomeOn) return;                                    // the welcome video gets its moment
       const m = musicMode(); if (m !== "radio" && m !== "library" && m !== "intro") return; // live/DJ rooms run their own audio
       if (!want()) return;                                               // the watchdog would not run anyway
