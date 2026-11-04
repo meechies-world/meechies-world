@@ -6057,7 +6057,23 @@ html.popdj #dj-mini{display:none!important}
       return await r.json().catch(() => null);
     } catch (_) { return null; }
   }
-  async function twsQueueFetch() { const j = await twsQReq("GET"); if (j && j.ok && Array.isArray(j.items)) twsQueue = j.items; twsQPaint(); }
+  let twsLastRemAt = 0;
+  async function twsQueueFetch() {
+    const j = await twsQReq("GET");
+    if (j && j.ok && Array.isArray(j.items)) twsQueue = j.items;
+    twsQPaint();
+    // SELF-REMOVE note: when the keeper removes a queued item
+    // that couldn't play, the queue GET carries the latest
+    // removal — say why the item vanished, once per removal.
+    if (j && j.ok && j.lastRemoved && (+j.lastRemoved.at || 0) > twsLastRemAt) {
+      twsLastRemAt = +j.lastRemoved.at || 0;
+      if (Date.now() - twsLastRemAt < 3600e3) {
+        const box = document.getElementById("tw-search");
+        const stEl = box ? box.querySelector("#tws-stat") : null;
+        if (stEl) stEl.textContent = "🗑 Removed — couldn't play: " + (j.lastRemoved.title || "a queued video");
+      }
+    }
+  }
   async function twsQueueAdd(it) {
     const box = document.getElementById("tw-search"); if (!box) return;
     const stEl = box.querySelector("#tws-stat");
@@ -7316,7 +7332,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793757670;
+  const MW_DJ_BUILD = 1793758670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };

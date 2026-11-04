@@ -168,7 +168,8 @@ export async function onRequestGet({ request, env }) {
     const row = await env.DB.prepare("select data from docs where path = ?").bind("tv/now").first();
     if (row && row.data) { const nw = JSON.parse(row.data); if (nw && nw.qSkipNote && Date.now() - nw.qSkipNote.at < 3600e3) skipNote = { at: nw.qSkipNote.at, note: String(nw.qSkipNote.note || "") }; }
   } catch (_) {}
-  return json({ ok: true, items: doc && (+doc.progV || 0) >= TV_QUEUE_V ? publicItems(doc) : [], anchor: doc ? +doc.anchor || 0 : 0, skipNote });
+  const lastRemoved = doc && Array.isArray(doc.removed) && doc.removed.length ? doc.removed[doc.removed.length - 1] : null;
+  return json({ ok: true, items: doc && (+doc.progV || 0) >= TV_QUEUE_V ? publicItems(doc) : [], anchor: doc ? +doc.anchor || 0 : 0, skipNote, lastRemoved });
 }
 
 export async function onRequestPost({ request, env }) {
