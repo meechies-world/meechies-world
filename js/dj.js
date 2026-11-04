@@ -5932,8 +5932,9 @@ html.popdj #dj-mini{display:none!important}
     + "#tw-search .tws-qb{flex:none;background:#222;color:#f3ead2;border:1px solid #38341f;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:12px}"
     + "#tw-search .tws-qempty{font-size:12.5px;color:#e8dfc8;margin-top:4px}"
     + "#tw-search .tws-more{width:100%;background:#2a2a1a;color:#c9a227;border:1px solid #554a22;border-radius:8px;padding:8px;font-weight:700;cursor:pointer;font-size:12.5px}"
-    + "#tw-search .tws-end{font-size:12px;color:#c9bfa5;text-align:center;padding:4px 0}";
-  let twsCache = [], twsBusy = false, twsShown = 0, twsQuery = "", twsPage = 2, twsDone = false, twsMoreBusy = false;
+    + "#tw-search .tws-end{font-size:12px;color:#c9bfa5;text-align:center;padding:4px 0}"
+    + "#tw-search .tws-hidden{font-size:11.5px;color:#c9bfa5;padding:2px 2px 0}";
+  let twsCache = [], twsBusy = false, twsShown = 0, twsQuery = "", twsPage = 2, twsDone = false, twsMoreBusy = false, twsHidden = 0;
   const twsDur = (s) => { s = Math.max(0, Math.round(+s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0"); };
   function twsEnsure() {
     const on = elOpen("v-mwtv") && typeof isOwner !== "undefined" && !!isOwner;
@@ -5962,7 +5963,7 @@ html.popdj #dj-mini{display:none!important}
     twsBusy = true; if (stEl) stEl.textContent = "Searching…"; if (resEl) resEl.innerHTML = "";
     try {
       const res = await ytSearch(q);
-      if (!res || !res.length) { if (stEl) stEl.textContent = "No playable video found — try the title another way."; twsCache = []; twsShown = 0; return; }
+      if (!res || !res.length) { if (stEl) stEl.textContent = "No playable video found — try the title another way."; twsCache = []; twsShown = 0; twsHidden = 0; return; }
       /* QUEUEFIX (2026-11-03 late): keep EVERYTHING the search
        * brought back — the booth search already merged relay
        * pages 1+2 (up to 30) and the box used to throw away all
@@ -5971,7 +5972,7 @@ html.popdj #dj-mini{display:none!important}
        * More results button reveals more of the cache, then
        * pulls deeper relay pages (twsMore) until they genuinely
        * run out. */
-      twsCache = res.slice(0, 30); twsQuery = q; twsPage = 2; twsShown = Math.min(8, twsCache.length); twsDone = false;
+      twsCache = res.slice(0, 30); twsQuery = q; twsPage = 2; twsShown = Math.min(8, twsCache.length); twsDone = false; twsHidden = +BOOTH.ytHiddenLast || 0;
       twsPaintRes();
       if (stEl) stEl.textContent = "Tap one — it plays next on MW TV. ＋ Queue stacks it on your list.";
     } catch (_) { if (stEl) stEl.textContent = "Search is busy — try again in a moment."; }
@@ -5994,6 +5995,9 @@ html.popdj #dj-mini{display:none!important}
     if (twsMoreBusy) h += "<button type=\"button\" class=\"tws-more\" data-twsmore=\"1\" disabled>Searching for more…</button>";
     else if (!twsDone) h += "<button type=\"button\" class=\"tws-more\" data-twsmore=\"1\">More results ▾</button>";
     else if (twsCache.length > 8) h += "<div class=\"tws-end\">That's everything for this search.</div>";
+    // Playability scan note (mwtv-scan, Malik 2026-11-03): when the
+    // relay hid results that can't play here, say so under the list.
+    if (twsHidden > 0) h += "<div class=\"tws-hidden\">" + twsHidden + " hidden — can't play here</div>";
     resEl.innerHTML = h;
   }
   async function twsMore() {
@@ -6004,6 +6008,7 @@ html.popdj #dj-mini{display:none!important}
     try {
       twsPage += 1;
       const r = await ytPage(twsQuery, twsPage);
+      twsHidden += (+BOOTH.ytHiddenLast || 0);
       const m = twsMergePage(twsCache, Array.isArray(r) ? r : []);
       twsCache = m.cache;
       if (!m.added) twsDone = true; else twsShown = Math.min(twsCache.length, twsShown + 8);
@@ -7311,7 +7316,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793755670;
+  const MW_DJ_BUILD = 1793757670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
