@@ -1093,6 +1093,85 @@ function tvCleared(it) {
   if (it.src === "ia" || it.src === "file") return !!String(it.url || "");
   return false;
 }
+/* SHARED BAN GATE AT LAY TIME (2026-11-03 — the Old Bodyguard fix):
+ * brain/ytblock is the channel's shared ban list, but before tonight
+ * it bound only PICK time (the search / queue / insert doors and the
+ * Auto-DJ stocker check it) and ONE lay path (tvRecheckNext, and
+ * only for the next CYCLE item). Every other source the keeper lays
+ * — the stored movie chain, a stored owner insert and its stamped
+ * window, the owner queue, the break pool, the premiere / rerun
+ * chains — was filtered by tvCleared alone, and tvCleared reads the
+ * item's RECORD, not the ban: an item carrying a complete-looking
+ * rights record laid even with its video on the ban list. That is
+ * how "_Tu_SAqNinU" ("THE OLD BODYGUARD", an aggregator upload US
+ * viewers cannot play — 239 countries in its region list, the US
+ * not among them; NOT cleared, no recorded legal basis) occupied
+ * the channel on 2026-11-03: it is in no code seed, so it rode a
+ * stored doc past a gate that never asked the list. The Guardian
+ * (MWTV-GUARDIAN-BEGIN) watches for exactly this and logs it, but
+ * its hands stop at protected classes — an owner insert or queue
+ * segment is never guardian-cut — and it never edits the source
+ * docs, so a banned title in a stored doc just gets re-laid every
+ * tick. This gate is the doc-level half the Guardian waits on: it
+ * runs once per tick, right after the lineup docs load, seeds the
+ * confirmed id into brain/ytblock through the keeper's own write
+ * path (so the pick doors, which read the DOC, refuse it too —
+ * the Guardian's watchlist alone is code-side), strips every
+ * banned yt out of every doc the keeper lays from (writing the
+ * cleaned doc back through the same path, so the purge is
+ * permanent, not per-tick), and the tick then cuts any banned
+ * segment already sitting in the laid window (tvBanInWindow +
+ * the tvTrimAt re-lay in tvTick) — including the protected
+ * classes, because a ban is a house decision, not a fault call.
+ * tvCleared is unchanged: the record gate AND the ban gate now
+ * both bind, at lay time, on every source. */
+const TV_BAN_SEED = ["_Tu_SAqNinU"]; // confirmed US-unplayable aggregator upload (see above); the keeper seeds it into brain/ytblock itself so the ban lives in the shared list every surface reads
+function tvBanInWindow(segs, banSet, now) {
+  if (!banSet || !banSet.size || !Array.isArray(segs)) return false;
+  return segs.some((sg) => sg && sg.yt && banSet.has(String(sg.yt)) && sg.start + (+sg.dur || 0) * 1000 > now);
+}
+async function tvBanGate(env, now, D) {
+  let blk = null;
+  try { blk = await readDoc(env, "brain/ytblock"); } catch (_) {}
+  const ids = blk && Array.isArray(blk.ids) ? blk.ids.map(String) : [];
+  const banSet = new Set(ids);
+  const purged = [];
+  let seedDirty = false;
+  for (const id of TV_BAN_SEED) if (!banSet.has(id)) { banSet.add(id); ids.push(id); seedDirty = true; }
+  if (seedDirty) { try { await writeDoc(env, "brain/ytblock", "brain", { ...(blk && typeof blk === "object" && !Array.isArray(blk) ? blk : {}), ids }); } catch (_) {} }
+  const strip = async (doc, path, coll, from) => {
+    if (!doc || !Array.isArray(doc.items)) return doc;
+    const kept = doc.items.filter((it) => { const hit = !!(it && it.yt && banSet.has(String(it.yt))); if (hit) purged.push({ yt: String(it.yt), from }); return !hit; });
+    if (kept.length === doc.items.length) return doc;
+    const out = { ...doc, items: kept, updatedAt: now, by: "keeper-bangate" };
+    if (path) { try { await writeDoc(env, path, coll, out); } catch (_) {} }
+    return out;
+  };
+  D.chan = await strip(D.chan, "tv/channel", "tv", "channel");
+  // Break pool: a purge also retires the draw bag, so a banned id
+  // can never be drawn from a bag built before the ban landed.
+  if (D.pool && Array.isArray(D.pool.items)) {
+    const before = D.pool.items.length;
+    D.pool = await strip(D.pool, null, "tv", "breakpool");
+    if (D.pool.items.length !== before) { D.pool = { ...D.pool, bag: [], bagIx: 0 }; try { await writeDoc(env, "tv/breakpool", "tv", D.pool); } catch (_) {} }
+  }
+  // Premiere / rerun docs are the show's own records: stripped in
+  // memory every tick (never laid), never rewritten from here.
+  D.prem = await strip(D.prem, null, "tv", "premiere");
+  D.rerun = await strip(D.rerun, null, "tv", "rerun");
+  D.movies = await strip(D.movies, "tv/movieblock", "tv", "movieblock");
+  if (D.insDoc && Array.isArray(D.insDoc.items)) D.insDoc = await strip(D.insDoc, "tv/insert", "tv", "insert");
+  else if (D.insDoc && D.insDoc.yt && banSet.has(String(D.insDoc.yt))) {
+    // v1 top-level insert shape (the owner play-next door's doc):
+    // a banned pick is consumed on the spot, with the reason on the
+    // doc, so the firing rule can never stamp its window.
+    purged.push({ yt: String(D.insDoc.yt), from: "insert" });
+    D.insDoc = { ...D.insDoc, consumedAt: now, consumedNote: "banned (shared ban list)", updatedAt: now };
+    try { await writeDoc(env, "tv/insert", "tv", D.insDoc); } catch (_) {}
+  }
+  if (D.quDoc) D.quDoc = await strip(D.quDoc, "tv/queue", "tv", "queue");
+  return { banSet, purged };
+}
 /* PAID SPONSOR SPOTS (Malik, 2026-11-03: "put paid commercials on my
  * TV channel — I get paid every time people see commercials"): a pool
  * item with kind "sponsor" is a paying business's commercial, sold on
@@ -2811,6 +2890,17 @@ async function tvTick(env, S, now, origin, online) {
   const votesDoc = await readDoc(env, "tv/votes");
   const guardDoc0 = await readDoc(env, "tv/guardian");
   let skipDoc = await readDoc(env, "tv/skip");
+  // SHARED BAN GATE (see tvBanGate above): seed the confirmed ban
+  // into brain/ytblock and purge every banned yt from every doc
+  // this tick lays from, BEFORE any window state is built — so no
+  // source (seed, stored doc, cycle, insert, queue, pool,
+  // premiere, rerun) can lay a banned video from this tick on.
+  // banSet rides forward to the laid-window cut below.
+  const banDocs = { chan, pool, prem, rerun, movies, insDoc, quDoc: quDoc0 };
+  const banGate = await tvBanGate(env, now, banDocs);
+  chan = banDocs.chan; pool = banDocs.pool; prem = banDocs.prem; rerun = banDocs.rerun; movies = banDocs.movies; insDoc = banDocs.insDoc;
+  const quDocP = banDocs.quDoc;
+  const banSet = banGate.banSet;
   const decision = tvRadioDecision(S, qDoc, now);
   // Uniontown Local Update hold-by-age: the break spot is only as
   // fresh as its producer stamp (tv/localupdate, written hourly by
@@ -2888,6 +2978,17 @@ async function tvTick(env, S, now, origin, online) {
     segs = [];
     dirty = true;
   }
+  // BAN GATE — laid window: a segment laid before the ban landed
+  // (or from a doc purged above) can still be sitting in tv/now,
+  // possibly ON AIR right now. Cut the window at now and re-anchor
+  // the cursor by cycle math — the insert-fire discipline — so
+  // this tick's generation re-lays from here with the banned video
+  // gone. The movie chain needs no cursor help: its positions are
+  // wall-clock, recomputed from the purged doc on the same pass.
+  if (segs && cursor && tvBanInWindow(segs, banSet, now)) {
+    const cpB = tvCyclePos(chan, now);
+    if (cpB) { segs = tvTrimAt(segs, now); cursor = { at: now, ix: cpB.ix, off: cpB.off, run: 0 }; dirty = true; }
+  }
   // Anchor editions: resolve the current edition (rights gate + media
   // probe) and, when a NEW edition has landed since the laid window
   // was generated, cut the laid segments at its slot so this tick's
@@ -2957,6 +3058,11 @@ async function tvTick(env, S, now, origin, online) {
   // ordered is already on air (the movie block got there first),
   // the order is satisfied as-is: consume without a window.
   let insWin = nw && nw.insWin && nw.insWin.item ? nw.insWin : null;
+  // BAN GATE — a stamped insert window carrying a banned video
+  // dies with the ban: the window state rides tv/now, so dropping
+  // it here ends the insert on this tick's write (and the
+  // laid-window cut above has already cut its segments).
+  if (insWin && banSet.size && ((insWin.item && insWin.item.yt && banSet.has(String(insWin.item.yt))) || (Array.isArray(insWin.items) && insWin.items.some((x) => x && x.yt && banSet.has(String(x.yt)))))) insWin = null;
   const insList = tvInsertItems(insDoc);
   if (insList && (!insWin || insWin.at !== (+insDoc.at || 0))) {
     const cur = segs ? tvSegAt(segs, now) : null;
@@ -3021,7 +3127,7 @@ async function tvTick(env, S, now, origin, online) {
   // standing skip shift, re-anchor a queue that never got to air,
   // answer a fresh owner skip through the shared advancer
   // (tvAdvanceChannel), and retire the items that have aired.
-  let quDoc = quDoc0 && (+quDoc0.progV || 0) >= TV_QUEUE_V ? quDoc0 : null;
+  let quDoc = quDocP && (+quDocP.progV || 0) >= TV_QUEUE_V ? quDocP : null;
   let qState = tvQueueState(quDoc);
   const qSt = { cad: tvAdCadItems(pool), prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr };
   if (qState) qState._st = qSt;
