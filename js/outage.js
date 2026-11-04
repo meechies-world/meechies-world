@@ -8,13 +8,45 @@
  * touches any player, so radio sounding on the device keeps sounding (the poster itself
  * tells people to tune in to the radio). No dismiss control: the recovery watch clears it
  * the moment the service answers again. The poster is a static file, so it still loads on
- * the nights the API layer is the thing that's down. */
+ * the nights the API layer is the thing that's down.
+ * Lifeline coexistence (owner's law, 2026-11-04 ~00:13 EST: MW TV viewing and radio
+ * listening must work with NO login and must NOT depend on the database): on exactly
+ * those nights the lifelines carry the station from static files — TV from
+ * /lifeline/tv-lineup.json (js/dj.js paints the #tw-lifeline label while it runs),
+ * radio from /lifeline/radio-dayparts.json (js/app-core.js sets MW_LIFELINE_RADIO).
+ * While either lifeline is live, the full-screen poster STANDS DOWN — the slim
+ * #mw-outage banner still tells the truth up top, but the picture and the radio
+ * controls stay reachable. If the lifeline stands down while the outage is still
+ * declared, the poster comes back; when the service recovers, everything clears
+ * exactly as before. The poster itself — art, wording, no-dismiss — is unchanged. */
 (function () {
   "use strict";
   const c = window.MW_CONFIG || {};
   let shown = false;
   const DOWN_IMG = "/img/website-down.jpg";
+  /* Is a lifeline carrying the station right now? Radio publishes its flag on
+   * window; TV paints its label exactly while LL_TV.on (hidden = !on). Either
+   * one live means the screen is NOT broken — it is the station, playing from
+   * static files with no database — so the poster must not cover it. */
+  function lifelineLive() {
+    try {
+      if (window.MW_LIFELINE_RADIO === true) return true;
+      const lab = document.getElementById("tw-lifeline");
+      if (lab && !lab.hidden) return true;
+    } catch (_) {}
+    return false;
+  }
+  let downWatch = null;
+  function reconcileDown() {
+    if (!shown) return;
+    if (lifelineLive()) hideDown();
+    else if (!document.getElementById("mw-down")) paintDown();
+  }
   function showDown() {
+    if (!lifelineLive()) paintDown();
+    if (!downWatch) downWatch = setInterval(reconcileDown, 2000);
+  }
+  function paintDown() {
     const add = () => {
       if (document.getElementById("mw-down")) return;
       const o = document.createElement("div"); o.id = "mw-down"; o.setAttribute("role", "alertdialog"); o.setAttribute("aria-label", "Website down — we're currently upgrading the website");
@@ -79,6 +111,7 @@
        yank mid-browse; full gating resumes on the next load, and the 30-minute
        sign-in wall reads MW_OUTAGE when it fires, so it works again from here. */
     if (watchTimer) { clearInterval(watchTimer); watchTimer = null; }
+    if (downWatch) { clearInterval(downWatch); downWatch = null; }
     watchHits = 0;
     const b = document.getElementById("mw-outage"); if (b) b.remove();
     hideDown();
