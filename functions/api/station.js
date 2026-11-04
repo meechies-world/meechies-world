@@ -21,7 +21,39 @@ const XF = 5; // crossfade lead in seconds: the next song starts this long befor
 const BOOTH_FRESH = 90000; // booth heartbeat window — while it's fresh the TABLES own the radio, the keeper never touches a deck
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
 
+/* D1 READ FIX (2026-11-03): tonight the free-tier daily row-read
+ * limit died under the site's own read pattern — every station ping
+ * re-read the same read-mostly TV docs from D1, several of them two
+ * or three times in one tick, and the whole track library on every
+ * keeper pass. The docs on DOC_MEMO_PATHS are programming state the
+ * tick lays from snapshot-style, so readDoc serves them from a
+ * short in-isolate memo (4s): the memo keeps the raw stored JSON
+ * and every hit re-parses it, so callers still get a fresh object
+ * they may mutate exactly as before. writeDoc refreshes the memo
+ * in the same breath, so this isolate always reads its own writes.
+ * A write from another door can take up to the memo window to
+ * reach a warm isolate's tick — never that door's own response —
+ * and the doors whose freshness IS an owner action stay unmemoized
+ * and are read from D1 on every pass, exactly as before:
+ * radio/dj (the booth's live state), tv/queue, tv/skip and
+ * brain/commands (see the drain memo below). */
+const DOC_MEMO_TTL = 4000;
+const DOC_MEMO_PATHS = new Set(["tv/channel", "tv/breakpool", "tv/premiere", "tv/rerun", "tv/familytime", "tv/movieblock", "tv/insert", "tv/news", "tv/localupdate", "tv/anchor", "tv/charnews", "tv/quarternews", "tv/votes", "tv/guardian", "tv/now", "brain/ytblock", "brain/tvwatch", "station/schedule", "station/rqplaylist"]);
+const docMemo = new Map(); // path -> { at, raw } — raw is the stored JSON string, or null
+const rqMemo = { at: 0, rows: null }; // D1 READ FIX: listener-request rows, shared by the harvest + takePick (loader above onRequestGet)
+const libMemo = { at: 0, lib: null, byAsset: null }; // D1 READ FIX: the parsed track library (loader above onRequestGet)
 async function readDoc(env, path) {
+  if (DOC_MEMO_PATHS.has(path)) {
+    const m = docMemo.get(path);
+    if (m && Date.now() - m.at < DOC_MEMO_TTL) {
+      if (m.raw === null) return null;
+      try { return JSON.parse(m.raw); } catch (_) { return null; }
+    }
+    const row = await env.DB.prepare("select data from docs where path = ?").bind(path).first();
+    docMemo.set(path, { at: Date.now(), raw: row ? row.data : null });
+    if (!row) return null;
+    try { return JSON.parse(row.data); } catch (_) { return null; }
+  }
   const row = await env.DB.prepare("select data from docs where path = ?").bind(path).first();
   if (!row) return null;
   try { return JSON.parse(row.data); } catch (_) { return null; }
@@ -41,6 +73,11 @@ async function writeDoc(env, path, coll, data) {
   // clients learn about doc changes from the changes feed — without this row the
   // new state would sit in the table unseen
   await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", path, coll, null, null, Date.now()).run();
+  /* D1 READ FIX: this isolate reads its own writes — refresh the
+     doc memo with the bytes just written, and drop the cached
+     request rows when a request doc lands through this door. */
+  if (DOC_MEMO_PATHS.has(path)) docMemo.set(path, { at: Date.now(), raw: JSON.stringify(data) });
+  if (coll === "requests") rqMemo.at = 0;
 }
 
 /* Pings-table schema, run ONCE per isolate (P1, 2026-11-01): the schema
@@ -58,6 +95,12 @@ function ensurePingsSchema(env) {
       try { await env.DB.prepare("alter table pings add column uid text").run(); } catch (_) {}
       try { await env.DB.prepare("alter table pings add column name text").run(); } catch (_) {}
       try { await env.DB.prepare("alter table pings add column first integer").run(); } catch (_) {}
+      /* D1 READ FIX: the ping path's five per-ping queries filter on
+         at / uid, which had no index — each one scanned the whole
+         pings table on every 12s ping from every tab. Indexed, they
+         touch only the live window's rows. */
+      try { await env.DB.prepare("create index if not exists pings_at on pings(at)").run(); } catch (_) {}
+      try { await env.DB.prepare("create index if not exists pings_uid on pings(uid, at)").run(); } catch (_) {}
     })();
     pingsSchemaP.catch(() => { pingsSchemaP = null; });
   }
@@ -80,6 +123,7 @@ function ensurePingsSchema(env) {
  * "Listener Requests" with Load / Add / schedule, like any playlist. */
 const RQPL_PATH = "station/rqplaylist", RQPL_CAP = 200, RQPL_SEEN = 400;
 let rqHvAt = 0;
+let tvTickAt = 0; // D1 READ FIX: per-isolate tvTick throttle stamp (see the call site in onRequestGet)
 let selfRevCheckAt = 0; // SELF-REVIEW: per-isolate check throttle for the daily pass in the GET handler
 const rqKeyOf = (d) => (d && d.yt ? "yt:" + d.yt : d && d.src ? "s:" + d.src : d && d.iaId ? "ia:" + d.iaId : "");
 async function rqRecOf(d) {
@@ -680,17 +724,39 @@ async function handsActivate(env) {
   } catch (_) {}
 }
 
+/* D1 READ FIX: the commands-doc memo for the drain below. The
+ * drain runs twice per station ping and used to read brain/control
+ * + brain/commands from D1 both times; in the common case (nothing
+ * queued) a warm memo now answers with zero D1 reads. */
+let handsCmdMemo = { at: 0, doc: null };
+let handsCtlSeen = false; // this isolate has confirmed the control doc exists at least once
+
 /* K = { S, now, tvOnly, deps, startDeckItem, cur, brainEvts }.
  * Returns { changed, cur } for the tick to fold in. */
 async function handsDrain(env, K) {
   const S = K.S, now = K.now;
   let changed = false, cur = K.cur || null;
   try {
+    /* D1 READ FIX: commands first, through the memo (deep-copied —
+       the drain mutates the doc). Nothing queued + control already
+       seen on this isolate = return before the control read. The
+       kill switch is still read fresh from D1 on every drain that
+       has work, and a cold isolate runs the original control +
+       activation path below, unchanged. */
+    let doc;
+    if (handsCmdMemo.doc && now - handsCmdMemo.at < DOC_MEMO_TTL) doc = JSON.parse(JSON.stringify(handsCmdMemo.doc));
+    else { doc = await HANDS.handsCommandsRead(env); handsCmdMemo = { at: now, doc: JSON.parse(JSON.stringify(doc || { items: [] })) }; }
+    const items = Array.isArray(doc.items) ? doc.items : [];
+    if (!items.some((c) => c && c.status === "queued")) {
+      if (handsCtlSeen) return { changed, cur };
+      const ctl0 = await HANDS.handsControl(env);
+      if (!ctl0.exists) { await handsActivate(env); handsCmdMemo.at = 0; return { changed, cur }; }
+      handsCtlSeen = true;
+      return { changed, cur };
+    }
     let ctl = await HANDS.handsControl(env);
     if (!ctl.exists) { await handsActivate(env); ctl = await HANDS.handsControl(env); }
-    const doc = await HANDS.handsCommandsRead(env);
-    const items = Array.isArray(doc.items) ? doc.items : [];
-    if (!items.some((c) => c && c.status === "queued")) return { changed, cur };
+    handsCtlSeen = true;
     const boothFresh = !!(S.boothAt && now - S.boothAt < BOOTH_FRESH);
     let dirty = false;
     for (const cmd of items) {
@@ -799,7 +865,7 @@ async function handsDrain(env, K) {
         await logIt("Failed mid-action: " + String((e && e.message) || e).slice(0, 160) + " — the station kept its state.", true);
       }
     }
-    if (dirty) { try { await HANDS.handsCommandsWrite(env, doc); } catch (_) {} }
+    if (dirty) { try { await HANDS.handsCommandsWrite(env, doc); handsCmdMemo = { at: now, doc: JSON.parse(JSON.stringify(doc)) }; } catch (_) {} }
   } catch (_) {}
   return { changed, cur };
 }
@@ -3902,6 +3968,33 @@ async function tvTick(env, S, now, origin, online) {
 }
 /* MWTV-END */
 
+/* D1 READ FIX loaders (2026-11-03): the two collection reads the
+ * keeper ran against D1 on every pass. The track library and the
+ * waiting listener requests both change rarely next to the 12s
+ * ping cadence, so each is read once per isolate per window and
+ * the parsed rows are shared by every pass inside it. A new track
+ * or a fresh pick can take up to the window to enter the rotation
+ * — picks already waited for the next song boundary, and the
+ * library is a rotation pool, so nothing a listener hears changes
+ * shape; the station response itself is never cached. This
+ * module's own writes and deletes invalidate the request rows at
+ * once (writeDoc above, takePick below). */
+const LIB_TTL = 60000, RQ_TTL = 15000;
+async function loadLib(env, now) {
+  if (libMemo.lib && now - libMemo.at < LIB_TTL) return libMemo;
+  const { results } = await env.DB.prepare("select data from docs where coll = 'tracks'").all();
+  const lib = (results || []).map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
+    .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
+  libMemo.at = now; libMemo.lib = lib; libMemo.byAsset = new Map(lib.map((t) => [t.assetId, t]));
+  return libMemo;
+}
+async function loadRequests(env, now) {
+  if (rqMemo.rows && now - rqMemo.at < RQ_TTL) return rqMemo.rows;
+  const { results } = await env.DB.prepare("select path, data from docs where coll = 'requests'").all();
+  rqMemo.at = now; rqMemo.rows = results || [];
+  return rqMemo.rows;
+}
+
 export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const now = Date.now();
@@ -3994,9 +4087,9 @@ export async function onRequestGet({ request, env }) {
   if (now - rqHvAt > 45000) {
     rqHvAt = now;
     try {
-      const rr = await env.DB.prepare("select path, data from docs where coll = 'requests'").all();
+      const rr = await loadRequests(env, now);
       const picks = [];
-      for (const r of rr.results || []) { let d = null; try { d = JSON.parse(r.data || "null"); } catch (_) {} if (d && d.kind === "pick" && !d.played) picks.push({ d, path: r.path }); }
+      for (const r of rr) { let d = null; try { d = JSON.parse(r.data || "null"); } catch (_) {} if (d && d.kind === "pick" && !d.played) picks.push({ d, path: r.path }); }
       if (picks.length) await rqPlaylistAdd(env, picks);
     } catch (_) {}
   }
@@ -4022,7 +4115,19 @@ export async function onRequestGet({ request, env }) {
   // the doorbell: a channel failure may never break the station ping.
   let tvNewsFire = null;
   let tvSpotItem = null;
-  try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
+  /* D1 READ FIX: the tick lays a ~2h window and every decision it
+     makes (news windows, quarter cadence, spot cadence, Guardian
+     confirmations) lives on a minute scale, but it used to run —
+     and re-read its ~20 docs — on every station ping from every
+     tab. Per isolate it now runs at most once per 5s; a decision
+     can land up to 5s later than the old every-ping tick, inside
+     the jitter the 12s ping cadence already carries. The ping
+     itself is never throttled: presence, the booth stand-down and
+     the rotation below run on every request, on fresh radio/dj. */
+  if (now - tvTickAt >= 5000) {
+    tvTickAt = now;
+    try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
+  }
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
   // 2026-10-28): unless a deck is impossibly past its end — flagged playing
@@ -4098,11 +4203,8 @@ export async function onRequestGet({ request, env }) {
     return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   }
 
-  const { results } = await env.DB.prepare("select data from docs where coll = 'tracks'").all();
-  const lib = (results || []).map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
-    .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
+  const { lib, byAsset } = await loadLib(env, now);
   if (!lib.length) return json({ ok: true, mode: "empty-lib", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
-  const byAsset = new Map(lib.map((t) => [t.assetId, t]));
   const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
 
@@ -4150,7 +4252,7 @@ export async function onRequestGet({ request, env }) {
      whether or not its file resolves, so a dead pick can never jam the station. */
   const takePick = async () => {
     let rows = [];
-    try { rows = (await env.DB.prepare("select path, data from docs where coll = 'requests'").all()).results || []; } catch (_) { return null; }
+    try { rows = await loadRequests(env, now); } catch (_) { return null; }
     const picks = [];
     for (const r of rows) { try { const d = JSON.parse(r.data); if (d && d.kind === "pick" && !d.played) picks.push({ path: r.path, d }); } catch (_) {} }
     picks.sort((a, b) => (a.d.at || 0) - (b.d.at || 0));
@@ -4173,7 +4275,7 @@ export async function onRequestGet({ request, env }) {
       if (!src && p.d.iaId) {
         try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); iaDur = +f.length || 0; } } catch (_) {}
       }
-      try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); } catch (_) {}
+      try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); rqMemo.at = 0; } catch (_) {}
       if (ytItem) { const ev = cleanBrainEvent({ type: "request", yt: ytItem.yt, title: ytItem.title, at: now, live: !!S.live }, "keeper"); if (ev) brainEvts.push(ev); const sh = shoutOf(p.d, ytItem.title); if (sh) ytItem.shout = sh; try { await rqPlaylistAdd(env, [{ d: p.d, path: p.path }]); } catch (_) {} return ytItem; }
       if (src) { const ev = cleanBrainEvent({ type: "request", src, title: p.d.title || "", at: now, live: !!S.live }, "keeper"); if (ev) brainEvts.push(ev); const item = { src, title: p.d.title || "", cover: p.d.cover || "", dur: iaDur || (+p.d.dur || 0) }; const sh = shoutOf(p.d, item.title); if (sh) item.shout = sh; try { await rqPlaylistAdd(env, [{ d: p.d, path: p.path }]); } catch (_) {} return item; }
     }
