@@ -126,10 +126,73 @@
         for (const it of got) { q.seen.add(it.id); q.list.push(it); }
         if (!got.length) tries++; // a dry well costs a try; a wet one refills free
       }
+      // Relay dry (or down): TRAP LOVE and WEED WAKE-UP fall back to the
+      // station's own baked catalog, so the channel still plays with no
+      // backend at all. The relay is retried first on every fill, so a
+      // recovered relay takes the channel back on its own.
+      if (q.list.length < (min || 4)) {
+        const baked = await bakedItems(def);
+        if (baked.length) {
+          if (q.bakedAt == null) q.bakedAt = 0;
+          let want = (min || 4) - q.list.length;
+          while (want-- > 0) { q.list.push(baked[q.bakedAt % baked.length]); q.bakedAt++; }
+        }
+      }
     } catch (_) {}
     q.loading = false;
     return q;
   }
+
+  /* ---------- baked fallback: the station's own catalog, no backend ----------
+   * Malik's law: radio listening must not depend on the backend — channels
+   * are radio. Two channels map to lanes of Meechie's own library, baked
+   * into /lifeline/radio-dayparts.json (the radio lifeline's own file),
+   * with the songs as static files under /lifeline/audio/. The other
+   * channels are other-genre YouTube mixes; there is no owned catalog to
+   * bake for them, so they keep digging at the relay and say so honestly. */
+  const BAKED_BLOCK = { traplove: "traplove", weed: "weed" };
+  let bakedCache = null, bakedTried = false;
+  async function bakedItems(def) {
+    const block = BAKED_BLOCK[def.id];
+    if (!block) return [];
+    if (!bakedCache) {
+      if (bakedTried) return [];
+      bakedTried = true;
+      try { const r = await fetch("/lifeline/radio-dayparts.json", { cache: "no-store" }); bakedCache = r.ok ? await r.json() : null; } catch (_) { bakedCache = null; }
+    }
+    const list = (bakedCache && bakedCache[block]) || [];
+    return list.map((t) => ({ id: "ll:" + t.assetId, title: t.title, dur: t.duration || 0, thumb: "", src: "/lifeline/audio/" + t.assetId + ".mp3" }));
+  }
+  /* Baked picks are files, not videos: they play on this file's own audio
+   * element, driven by the same state machine (curItem / sounding / advance). */
+  let filePlayer = null, fileErrN = 0;
+  function ensureFilePlayer() {
+    if (filePlayer) return filePlayer;
+    const fp = new Audio();
+    fp.preload = "auto";
+    try { fp.setAttribute("playsinline", ""); } catch (_) {}
+    fp.addEventListener("playing", () => { fileErrN = 0; sounding = true; stallAt = 0; paint(); mediaSessionPaint(); });
+    fp.addEventListener("pause", () => { sounding = false; paint(); });
+    fp.addEventListener("waiting", () => { if (!stallAt) stallAt = Date.now(); });
+    fp.addEventListener("ended", () => { sounding = false; advance(); });
+    fp.addEventListener("error", () => {
+      sounding = false;
+      fileErrN++;
+      const def = curChan; if (!def || !wantPlay) return;
+      if (fileErrN >= 3) { // the baked files themselves are unreachable: say so, and slow-dig like a dry well
+        fileErrN = 0; dryN = Math.max(dryN, 2);
+        paint(def.name + " is quiet right now — no playable picks are coming up. Staying on this channel and still digging.");
+        setTimeout(() => { if (curChan === def && wantPlay) advance(); }, 20000);
+      } else advance();
+    });
+    filePlayer = fp;
+    return fp;
+  }
+  const curIsFile = () => !!(curItem && curItem.src);
+  function playActive() { try { if (curIsFile()) { if (filePlayer) { const p = filePlayer.play(); if (p && p.catch) p.catch(() => {}); } } else if (player) player.playVideo(); } catch (_) {} }
+  function pauseActive() { try { if (curIsFile()) { if (filePlayer) filePlayer.pause(); } else if (player) player.pauseVideo(); } catch (_) {} }
+  function seekActive(t) { try { if (curIsFile()) { if (filePlayer) filePlayer.currentTime = t; } else if (player) player.seekTo(t, true); } catch (_) {} }
+  function activeTime() { try { if (curIsFile()) return filePlayer ? filePlayer.currentTime || 0 : 0; return player && player.getCurrentTime ? player.getCurrentTime() : 0; } catch (_) { return 0; } }
 
   /* ---------- the one genre player (this file's own) ---------- */
   let player = null, playerReady = false, ytP = null;
@@ -168,7 +231,7 @@
     player = new YT.Player("chan-yt", {
       playerVars: { autoplay: 1, controls: 1, rel: 0, playsinline: 1, modestbranding: 1 },
       events: {
-        onReady: () => { playerReady = true; if (wantPlay && curItem) { try { player.loadVideoById(curItem.id); } catch (_) {} } },
+        onReady: () => { playerReady = true; if (wantPlay && curItem && !curItem.src) { try { player.loadVideoById(curItem.id); } catch (_) {} } },
         onStateChange: onPlayerState,
         onError: onPlayerError,
       },
@@ -188,6 +251,7 @@
     }
   }
   function onPlayerError() {
+    if (curItem && curItem.src) return; // a baked file owns the sound right now; this error is not its
     // YouTube's wall (embed-restricted / age-locked / gone): mark it
     // in the shared ban list so no surface picks it again, roll on.
     if (curItem) chanBanId(curItem.id);
@@ -200,6 +264,15 @@
     const q = queueOf(def);
     q.hist.push(item); if (q.hist.length > 24) q.hist.shift();
     wantPlay = true; // set before the player exists, so a fast onReady loads this item
+    if (item.src) { // baked file pick: this file's audio element plays it; the video player stands down
+      if (player) { try { player.stopVideo(); } catch (_) {} }
+      const fp = ensureFilePlayer();
+      try { fp.src = item.src; const p = fp.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {}
+      paint();
+      ensureQueue(def, 4);
+      return;
+    }
+    if (filePlayer) { try { filePlayer.pause(); } catch (_) {} }
     await ytApi();
     if (curChan !== def) return; // listener changed their mind mid-tune
     ensurePlayer();
@@ -224,6 +297,7 @@
   function stopGenre() {
     wantPlay = false; sounding = false; stallAt = 0;
     if (player) { try { player.stopVideo(); } catch (_) {} }
+    if (filePlayer) { try { filePlayer.pause(); } catch (_) {} }
     curItem = null;
     paint();
   }
@@ -271,6 +345,11 @@
     wantPlay = true; dryN = 0; fightN = 0;
     try { localStorage.setItem("mw-chan-last", def.id); } catch (_) {}
     silenceStationHere();
+    // The pick owns this tab's sound: whatever genre player was sounding
+    // stands down now, even if the new channel's first fill comes up dry.
+    if (player) { try { player.stopVideo(); } catch (_) {} }
+    if (filePlayer) { try { filePlayer.pause(); } catch (_) {} }
+    sounding = false;
     paint("Tuning " + def.name + "…");
     (async () => {
       const q = await ensureQueue(def, 4);
@@ -287,8 +366,8 @@
       return;
     }
     if (curChan) {
-      if (sounding || wantPlay) { wantPlay = false; try { player && player.pauseVideo(); } catch (_) {} sounding = false; paint(); }
-      else if (curItem && player) { wantPlay = true; try { player.playVideo(); } catch (_) {} paint(); }
+      if (sounding || wantPlay) { wantPlay = false; pauseActive(); sounding = false; paint(); }
+      else if (curItem && (player || filePlayer)) { wantPlay = true; playActive(); paint(); }
       else selectGenre(curChan);
     }
   }
@@ -296,12 +375,12 @@
     if (curChan && curItem) { wantPlay = true; advance(); }
   }
   function prevCurrent() {
-    if (!curChan || !player) return;
+    if (!curChan || (!player && !filePlayer)) return;
     try {
-      const t = player.getCurrentTime ? player.getCurrentTime() : 0;
+      const t = activeTime();
       const q = queueOf(curChan);
       if (t < 4 && q.hist.length > 1) { const prev = q.hist[q.hist.length - 2]; q.hist = q.hist.slice(0, -1); playItem(curChan, prev); return; }
-      player.seekTo(0, true); if (wantPlay) player.playVideo();
+      seekActive(0); if (wantPlay) playActive();
     } catch (_) {}
   }
 
@@ -317,8 +396,8 @@
       });
       navigator.mediaSession.playbackState = sounding ? "playing" : "paused";
       const H = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch (_) {} };
-      H("play", () => { if (curChan) { wantPlay = true; try { player && player.playVideo(); } catch (_) {} } });
-      H("pause", () => { if (curChan) { wantPlay = false; try { player && player.pauseVideo(); } catch (_) {} } });
+      H("play", () => { if (curChan) { wantPlay = true; playActive(); } });
+      H("pause", () => { if (curChan) { wantPlay = false; pauseActive(); } });
       H("nexttrack", () => { if (curChan) nextCurrent(); });
       H("previoustrack", () => { if (curChan) prevCurrent(); });
     } catch (_) {}
@@ -435,7 +514,7 @@
   if (toggleBtn) toggleBtn.addEventListener("click", toggleCurrent);
   if (nextBtn) nextBtn.addEventListener("click", nextCurrent);
   if (prevBtn) prevBtn.addEventListener("click", prevCurrent);
-  if (resumeBtn) resumeBtn.addEventListener("click", () => { wantPlay = true; try { player && player.playVideo(); } catch (_) {} paint(); });
+  if (resumeBtn) resumeBtn.addEventListener("click", () => { wantPlay = true; playActive(); paint(); });
   buildGuide();
   try { const last = localStorage.getItem("mw-chan-last"); if (last && defOf(last)) { selected = last; curChan = defOf(last); } } catch (_) {}
   if (!selected) selected = "live";
