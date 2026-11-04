@@ -1169,7 +1169,29 @@ async function tvBanGate(env, now, D) {
     D.insDoc = { ...D.insDoc, consumedAt: now, consumedNote: "banned (shared ban list)", updatedAt: now };
     try { await writeDoc(env, "tv/insert", "tv", D.insDoc); } catch (_) {}
   }
-  if (D.quDoc) D.quDoc = await strip(D.quDoc, "tv/queue", "tv", "queue");
+  if (D.quDoc) {
+    const qBefore = Array.isArray(D.quDoc.items) ? D.quDoc.items : null;
+    D.quDoc = await strip(D.quDoc, "tv/queue", "tv", "queue");
+    if (qBefore && Array.isArray(D.quDoc.items) && D.quDoc.items.length !== qBefore.length) {
+      // SELF-REMOVE LAW (queue side): a queued item this gate
+      // purged as banned leaves its reason on the doc, so the
+      // owner's list can say why it vanished ("removed —
+      // couldn't play"). Matching is count-based per yt:
+      // duplicate adds of one id each earn their own entry.
+      const keptCount = {};
+      for (const r of D.quDoc.items) { const y = String((r && r.yt) || ""); keptCount[y] = (keptCount[y] || 0) + 1; }
+      const remEntries = [];
+      for (const r of qBefore) {
+        const y = String((r && r.yt) || "");
+        if (keptCount[y] > 0) { keptCount[y] -= 1; continue; }
+        remEntries.push({ qid: String((r && r.qid) || ""), yt: y, title: String((r && r.title) || ""), at: now, why: "couldn't play" });
+      }
+      if (remEntries.length) {
+        D.quDoc = { ...D.quDoc, removed: [...(Array.isArray(D.quDoc.removed) ? D.quDoc.removed : []), ...remEntries].slice(-10) };
+        try { await writeDoc(env, "tv/queue", "tv", D.quDoc); } catch (_) {}
+      }
+    }
+  }
   return { banSet, purged };
 }
 /* PAID SPONSOR SPOTS (Malik, 2026-11-03: "put paid commercials on my
@@ -2006,7 +2028,24 @@ function tvAdvanceChannel(chan, segs, cursor, now, cadNow) {
     const el = tvQueueElapsed(chan._queue, now);
     const at = tvQueueAt(chan._queue, el);
     if (at && at.it.qid === cur.qid) {
-      out.qJump = { anchor: Math.round(chan._queue.anchor + (at.before + (+at.it.dur || 0) - el) * 1000) };
+      // The jump moves the anchor BACKWARD by the item's remaining
+      // content seconds, so the item's content end lands exactly at
+      // now: consumption retires it and generation lays the NEXT
+      // item at the cut. (The pre-fix code moved the anchor FORWARD
+      // by the remaining seconds instead — the skipped item was
+      // deferred, never retired, and replayed in full later; the
+      // comment above this function always stated the backward
+      // intent.) The shift is stretched by any frozen (hard-window)
+      // time the moved anchor crosses — fixed-point, like
+      // tvQueueSpan.
+      let dJump = (at.before + (+at.it.dur || 0)) - el;
+      for (let i = 0; i < 10; i++) {
+        const nd = (at.before + (+at.it.dur || 0)) - el + tvQueueFrozen(chan._queue, chan._queue.anchor - dJump * 1000, chan._queue.anchor);
+        const done = Math.abs(nd - dJump) < 0.05;
+        dJump = nd;
+        if (done) break;
+      }
+      out.qJump = { anchor: Math.round(chan._queue.anchor - dJump * 1000) };
       out.note = "skipped the queued \u201c" + title + "\u201d — the list moves to the next one";
       return out;
     }
@@ -3195,16 +3234,85 @@ async function tvTick(env, S, now, origin, online) {
       }
     }
   }
+  // QUEUE WINDOW CUT (the skip→queue fix, 2026-11-03): tvGen only
+  // ever APPENDS from cursor.at (≈ now + TV_HORIZON), and every
+  // other standing window — insert, anchor, character editions —
+  // CUTS the already-laid window when it appears so generation
+  // re-lays into it. The queue never had such a cut: a list added
+  // while the keeper was already running sat behind ~2h of laid
+  // pool picks, its anchor passed inside them, and its items were
+  // then silently eaten by wall-clock consumption
+  // (tvQueueElapsed) without ever airing — the owner's "skip
+  // doesn't go to what I queued". Heal both shapes here, after
+  // the skip block (so a same-tick skip is answered first):
+  //   (a) window still ahead but past the laid cursor → trim the
+  //       laid window at the window start and re-anchor the
+  //       cursor there, so this tick's generation lays the queue
+  //       from its head;
+  //   (b) window start already passed with nothing of the queue
+  //       laid inside it (missed window) and no hard window owns
+  //       this second → restart the list at now: re-anchor the
+  //       doc at now, trim at now, cursor by cycle math. The
+  //       list then plays from its head instead of mid-item or
+  //       never. (A window that FULLY passed unaired is the
+  //       re-anchor block above's case, unchanged.)
+  if (qState && quDoc && segs && cursor) {
+    const spQ = tvQueueSpan(qState);
+    if (spQ && spQ.end > now) {
+      const qids = new Set(qState.items.map((x) => String(x.qid)));
+      const laidQ = (segs || []).some((s) => s && s.qid && qids.has(String(s.qid)) && s.start >= spQ.start - 1000 && s.start < spQ.end);
+      if (!laidQ) {
+        if (spQ.start > now && cursor.at > spQ.start) {
+          const cpQ = tvCyclePos(chan, spQ.start);
+          if (cpQ) { segs = tvTrimAt(segs, spQ.start); cursor = { at: spQ.start, ix: cpQ.ix, off: cpQ.off, run: 0 }; dirty = true; }
+        } else if (spQ.start <= now && tvQueueElapsed(qState, cursor.at) > 0.05 && tvQueueElapsed(qState, cursor.at) < qState.total) {
+          // The missed-window signature: at the generation
+          // pointer, the list's content position is already
+          // INSIDE the list — generation would lay the head
+          // mid-item (or, with the pointer hours deep, never in
+          // time). A healthy awaiting-re-lay state (cursor
+          // stored at the anchor by a Guardian trim or by the
+          // advancer's own pull) sits at elapsed 0 and is left
+          // alone: generation lays the head from its start.
+          const nwW = tvNewsWin(now);
+          const frozenNow = !!((nwW && nwW.inside) || (tvPremWin(now, chan._prem) && tvPremWin(now, chan._prem).inside) || (tvPremWin(now, chan._rerun) && tvPremWin(now, chan._rerun).inside) || (tvAnchorWin(now, chan._anchor) && tvAnchorWin(now, chan._anchor).inside) || (tvInsertWin(now, chan._insert) && tvInsertWin(now, chan._insert).inside) || (tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr) || {}).inside);
+          if (!frozenNow) {
+            quDoc = { ...quDoc, anchor: now, updatedAt: now };
+            await writeDoc(env, "tv/queue", "tv", quDoc);
+            qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+            segs = tvTrimAt(segs, now);
+            const cpQ = tvCyclePos(chan, now);
+            if (cpQ) cursor = { at: now, ix: cpQ.ix, off: cpQ.off, run: 0 };
+            dirty = true;
+          }
+        }
+      }
+    }
+  }
   // Consumption: retire the items whose content has fully aired
   // (position is content time — a preemption never consumes).
+  // When items retire and the list goes on, the anchor shifts
+  // forward by the retired content seconds (stretched by the
+  // frozen time inside the shifted span, fixed-point like
+  // tvQueueSpan): elapsed is measured from the anchor over the
+  // CURRENT list, so without the shift the next item would
+  // inherit the retired items' seconds and be consumed early —
+  // after ~one tick of airtime instead of its full run.
   if (qState && quDoc) {
     const el = tvQueueElapsed(qState, now);
     let cum = 0; const gone = new Set();
     for (const it of qState.items) { cum += +it.dur || 0; if (cum <= el + 0.05) gone.add(it.qid); }
     if (gone.size) {
       const keptItems = (quDoc.items || []).filter((r) => !(r && gone.has(String(r.qid))));
+      let retiredSec = 0;
+      for (const it of qState.items) if (gone.has(it.qid)) retiredSec += +it.dur || 0;
       quDoc = { ...quDoc, items: keptItems, updatedAt: now };
       if (!keptItems.length) quDoc = { ...quDoc, anchor: 0 };
+      else if (retiredSec > 0) {
+        let dA = retiredSec;
+        for (let i = 0; i < 10; i++) { const nd = retiredSec + tvQueueFrozen(qState, qState.anchor, qState.anchor + dA * 1000); const doneA = Math.abs(nd - dA) < 0.05; dA = nd; if (doneA) break; }
+        quDoc = { ...quDoc, anchor: Math.round(qState.anchor + dA * 1000) };
+      }
       await writeDoc(env, "tv/queue", "tv", quDoc);
       qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
     }
@@ -3345,7 +3453,52 @@ async function tvTick(env, S, now, origin, online) {
       if (hardSeats >= TV_GUARD_CONFIRM_SEATS) {
         const cadNow = tvAdWin(now, qSt.cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
         const gate = tvSkipGate(curSeg, chan, now, "guardian", cadNow);
-        if (!gate.ok) {
+        // SELF-REMOVE LAW (Malik, 2026-11-03 20:29 ET: "It should
+        // remove itself if it cant play") — checked BEFORE the
+        // gate branches below, on this section's own evidence
+        // standard: this block only runs when hardSeats >=
+        // TV_GUARD_CONFIRM_SEATS (a ≥2-seat HARD-error conviction
+        // — never a single seat, never a bare probe). The owner's
+        // own rule retires the convicted item from his list
+        // itself (tv/queue), records why it vanished, joins its
+        // id to the shared ban list (ban-class conviction), and
+        // ends its laid airing by trim + cursor re-anchor (the
+        // next tick re-lays whatever stands next — queue head or
+        // pool). SEAM NOTE (Malik, 2026-11-03 20:39 ET; separate
+        // crew): the Guardian amendment lets a guardian advance
+        // PASS tvSkipGate for proven-dead queue/news segments —
+        // the on-air advance gate is theirs, the tv/queue doc
+        // removal is THIS build's, so this check sits ahead of
+        // the gate outcome and fires identically whether the
+        // gate refuses (pre-amendment shape) or passes
+        // (post-amendment). Crowd protection is untouched:
+        // tvSkipGate's crowd refusals for queue + news stand
+        // exactly as they were, and this path is keeper-only.
+        // News docs/pieces are never touched here: a news
+        // segment carries no qid, so it can never enter this
+        // branch.
+        let qSelfRemoved = false;
+        if (curSeg.qid && quDoc && Array.isArray(quDoc.items) && quDoc.items.some((r) => r && String(r.qid) === String(curSeg.qid))) {
+            const deadRaw = quDoc.items.find((r) => r && String(r.qid) === String(curSeg.qid)) || {};
+            const deadYt = String(curSeg.yt || deadRaw.yt || "");
+            const keptQ = quDoc.items.filter((r) => !(r && String(r.qid) === String(curSeg.qid)));
+            const removedQ = [...(Array.isArray(quDoc.removed) ? quDoc.removed : []), { qid: String(curSeg.qid), yt: deadYt, title: String(curSeg.title || deadRaw.title || ""), at: now, why: "couldn't play" }].slice(-10);
+            quDoc = { ...quDoc, items: keptQ, removed: removedQ, anchor: keptQ.length ? now : 0, updatedAt: now };
+            await writeDoc(env, "tv/queue", "tv", quDoc);
+            qState = tvQueueState(quDoc); if (qState) qState._st = qSt; chan._queue = qState;
+            if (deadYt) { try { const blk = (await readDoc(env, "brain/ytblock")) || { ids: [] }; if (Array.isArray(blk.ids) && !blk.ids.includes(deadYt)) { blk.ids.push(deadYt); await writeDoc(env, "brain/ytblock", "brain", blk); } } catch (_) {} }
+            segs = tvTrimAt(segs, now);
+            const cpR = tvCyclePos(chan, now);
+            if (cpR) cursor = { at: now, ix: cpR.ix, off: cpR.off, run: 0 };
+            dirty = true;
+            gNote = { id: curSeg.id, title: curSeg.title || String(curSeg.id), at: now, by: "guardian" };
+            gDirty = true;
+            tvGuardLog(env, gDoc, { at: now, kind: "queue-remove", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/queue", summary: "SELF-REMOVE: queued “" + String(curSeg.title || curSeg.id).slice(0, 80) + "” was CONFIRMED unplayable at its turn by " + hardSeats + " viewer seats (hard player errors) and removed ITSELF from the owner's queue (reason recorded on tv/queue: couldn't play); its video id joined brain/ytblock and the channel moves on. The doc removal is the owner's self-remove rule (not a crowd power, and independent of the Guardian advance gate's answer). Malik can re-add it any time; it stays until it fails again at its turn." });
+            delete gDoc.faults[curKey];
+            qSelfRemoved = true;
+            curSeg = tvSegAt(segs, now);
+        }
+        if (!qSelfRemoved && !gate.ok) {
           if (!gDoc.refusedKeys || typeof gDoc.refusedKeys !== "object") gDoc.refusedKeys = {};
           if (!gDoc.refusedKeys[curKey]) {
             gDoc.refusedKeys[curKey] = now;
@@ -3353,7 +3506,7 @@ async function tvTick(env, S, now, origin, online) {
             gDoc.health.refusals += 1; gDirty = true;
             tvGuardLog(env, gDoc, { at: now, kind: "refusal", id: curSeg.id, title: curSeg.title || "", segStart: curSeg.start, target: "tv/guardian", summary: "Guardian: “" + String(curSeg.title || curSeg.id).slice(0, 80) + "” is CONFIRMED unplayable by " + hardSeats + " viewer seats (hard player errors) but it is a protected class (" + gate.why + ") — NOT cut. Logged for Malik/Amani: the piece needs a human decision or a replacement edition." });
           }
-        } else {
+        } else if (!qSelfRemoved) {
           const adv = tvAdvanceChannel(chan, segs, cursor, now, cadNow);
           if (adv.applied) {
             segs = adv.segs; cursor = adv.cursor; dirty = true;
