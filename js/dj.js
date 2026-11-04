@@ -5849,7 +5849,7 @@ html.popdj #dj-mini{display:none!important}
         g.hidden = !open;
         if (open) {
           const segs = tvNowDoc.segs, ix = segs.indexOf(seg);
-          const lbl = (sg) => sg.k === "news" ? "📰 Meechie's World News" : (sg.k === "break" ? "🎵 " : "") + (sg.title || "MW TV");
+          const lbl = (sg) => sg.k === "news" ? "📰 Meechie's World News" : sg.fam ? "👨‍👩‍👧 Family Time — " + (sg.title || "MW TV") : (sg.k === "break" ? "🎵 " : "") + (sg.title || "MW TV");
           const ends = new Date(seg.start + seg.dur * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           const set = (id, txt) => { const e = $(id); if (e) e.textContent = txt; };
           set("#tw-g-now", "ON NOW · " + (curTv ? (curTv.show ? curTv.show + " — " : "") + curTv.title : lbl(seg)) + " · ends " + ends);
@@ -7354,7 +7354,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793759670;
+  const MW_DJ_BUILD = 1793760670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
