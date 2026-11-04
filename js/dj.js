@@ -5612,7 +5612,7 @@ html.popdj #dj-mini{display:none!important}
         su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
           onReady: (e) => { try { e.target.mute(); } catch (_) {} try { const fp = freshPos(); e.target.seekTo(Math.max(0, fp != null ? fp : startAt), true); } catch (_) {} try { e.target.playVideo(); } catch (_) {} try { if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
           onStateChange: (e) => { try { if (e.data === YT.PlayerState.PLAYING && su.el) { const fr = su.el.querySelector("iframe"); if (fr) fr.classList.add("playing"); } } catch (_) {} },
-          onError: () => { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } catch (_) {} }
+          onError: (e) => { su.err = true; su.errCode = (e && e.data) || 0; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } catch (_) {} }
         } });
         su.mounting = false;
       } catch (_) { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; }
@@ -5623,7 +5623,7 @@ html.popdj #dj-mini{display:none!important}
     if (!elOpt) { v.src = url; v.playsInline = true; v.preload = "auto"; su.el.appendChild(v); }
     v.muted = !!muted;
     v.addEventListener("playing", () => { v.classList.add("playing"); });
-    v.addEventListener("error", () => { su.err = true; v.classList.remove("playing"); }, { once: true });
+    v.addEventListener("error", () => { su.err = true; su.errAt = Date.now(); su.errFile = true; v.classList.remove("playing"); }, { once: true });
     const go = () => { try { v.currentTime = Math.max(0, startAt); } catch (_) {} const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); };
     if (v.readyState >= 1) go(); else v.addEventListener("loadedmetadata", go, { once: true });
     su.v = v;
@@ -5660,6 +5660,26 @@ html.popdj #dj-mini{display:none!important}
     if (!(end - now > 300)) return null;
     return { ...su.lastCur, pos: Math.max(0, (seg.off || 0) + (now - seg.start) / 1000) };
   }
+  /* MW TV GUARDIAN beacons (Malik, 2026-11-03: "put a bot that
+   * watches the tv chanel for meechie to fix it"): when THIS seat's
+   * channel player hits a hard error on the segment on air, tell
+   * the Guardian (/api/tv/guardian). The keeper confirms across
+   * seats before it ever acts — one seat's bad network cuts
+   * nothing. One report per segment instance per seat, filed with
+   * the same "mw-vid" device token the vote surface uses;
+   * fire-and-forget: this surface never waits on it and it never
+   * touches playback, the tuner or the radio. */
+  function tvGuardTok() { try { let t = localStorage.getItem("mw-vid") || ""; if (t.length < 8) { t = "v" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem("mw-vid", t); } return t; } catch (_) { return ""; } }
+  function tvGuardReport(cur, su) {
+    try {
+      if (!cur || !cur.seg || !cur.seg.id || su._gKey === cur.key) return;
+      if (cur.src !== "yt" && !su.errFile) return;
+      su._gKey = cur.key;
+      const ses = (typeof mySess === "function") ? mySess() : null; const tok = ses && ses.access_token;
+      const hdrs = { "content-type": "application/json" }; if (tok) hdrs.authorization = "Bearer " + tok;
+      fetch("/api/tv/guardian", { method: "POST", headers: hdrs, body: JSON.stringify({ kind: "fault", id: cur.seg.id, start: +cur.seg.start || 0, err: cur.src === "yt" ? (su.errCode || 0) : 0, fkind: cur.src === "yt" ? "yt-error" : "file-error", g: tvGuardTok() }) }).catch(() => {});
+    } catch (_) {}
+  }
   function chanSyncSurf(su, cur) {
     const el = chanOverlay(su); su.el = el;
     if (!el || !su.on()) { chanPark(su); return; }
@@ -5678,7 +5698,7 @@ html.popdj #dj-mini{display:none!important}
       const w = su.warmEnt && su.warmEnt.key === cur.key ? su.warmEnt : null;
       chanTeardown(su, w ? w.v : null);
       if (w) su.warmEnt = null;
-      su.key = cur.key; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0;
+      su.key = cur.key; su.err = false; su.errCode = 0; su.errFile = false; su._gKey = ""; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0;
       if (w && (cur.src === "file" || cur.src === "ia")) { w.v.classList.remove("tvwarm"); chanFileMount(su, cur.url, cur.pos, !audible, w.v); }
       else if (cur.src === "yt") chanYtMount(su, cur.yt, cur.pos, !audible);
       else chanFileMount(su, cur.url, cur.pos, !audible, null);
@@ -5686,6 +5706,7 @@ html.popdj #dj-mini{display:none!important}
       return;
     }
     if (su.err) {
+      tvGuardReport(cur, su);
       /* Bounded remount on real YT errors (2026-11-02): a transient
        * construction throw or onError heals itself with a fresh mount
        * ~15s later instead of parking the segment; the cap (errN
@@ -7290,7 +7311,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793753670;
+  const MW_DJ_BUILD = 1793754670;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
