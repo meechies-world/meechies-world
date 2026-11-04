@@ -5705,6 +5705,23 @@ html.popdj #dj-mini{display:none!important}
       chanWarmNext(su, cur);
       return;
     }
+    /* Reveal reconciliation (2026-11-03, Malik: "my commercials audio
+     * are playing but not the video"): the file reveal is a one-shot
+     * latch — chanFileMount adds the "playing" class (the CSS opacity
+     * 0→1 gate) from the element's "playing" event only, and the
+     * {once} error listener strips it again. A late error event on a
+     * spot whose short file is already fully buffered leaves the
+     * element PLAYING — sound running — with the class gone and no
+     * path ever re-adding it: the seat hears the whole commercial
+     * under the poster. The YT path re-fires its reveal from
+     * onStateChange; the file path never re-checks. So every tick, a
+     * file element that is demonstrably playing (not paused, not
+     * ended, a frame available) gets its reveal re-asserted.
+     * One-directional on purpose: a stall keeps its last frame (the
+     * class is never removed here), the poster still holds until the
+     * first frame exists (readyState < 2 never reveals — never-blank
+     * unchanged), and the ended-hold below is untouched. */
+    if (su.v && !su.v.paused && !su.v.ended && su.v.readyState >= 2) su.v.classList.add("playing");
     if (su.err) {
       tvGuardReport(cur, su);
       /* Bounded remount on real YT errors (2026-11-02): a transient
@@ -5718,6 +5735,27 @@ html.popdj #dj-mini{display:none!important}
         if (su.el) su.el.innerHTML = "";
         su.err = false;
         chanYtMount(su, cur.yt, cur.pos, !audible);
+      }
+      /* Bounded remount on real FILE errors (2026-11-03): file
+       * surfaces used to keep the old latch — one dead load parked
+       * the segment on the poster for its whole remainder while the
+       * YT path above heals itself. A file element that is genuinely
+       * dead (a real media error on it, or wedged paused with
+       * nothing loaded past the grace) now earns the same
+       * discipline: a fresh element mounted at the tape position,
+       * capped (errN reaches 3), the first retry at 5s instead of
+       * YT's 15s because file segments are short — a 10s spot is
+       * gone inside one 15s wait. A file element that is still
+       * playing is NOT dead and never remounts; the reveal
+       * reconciliation above owns that case. Never-blank holds:
+       * the poster shows across the remount gap. */
+      if (cur.src !== "yt" && su.v && (su.errN || 0) < 3 && Date.now() - (su.errAt || 0) > 5000 && (su.v.error || (su.v.paused && su.v.readyState < 2))) {
+        su.errN = (su.errN || 0) + 1;
+        chanTeardown(su, null);
+        su.key = cur.key;
+        su.err = false; su.errFile = false;
+        chanFileMount(su, cur.url, cur.pos, !audible, null);
+        chanWarmNext(su, cur);
       }
       return;
     }
@@ -6057,23 +6095,7 @@ html.popdj #dj-mini{display:none!important}
       return await r.json().catch(() => null);
     } catch (_) { return null; }
   }
-  let twsLastRemAt = 0;
-  async function twsQueueFetch() {
-    const j = await twsQReq("GET");
-    if (j && j.ok && Array.isArray(j.items)) twsQueue = j.items;
-    twsQPaint();
-    // SELF-REMOVE note: when the keeper removes a queued item
-    // that couldn't play, the queue GET carries the latest
-    // removal — say why the item vanished, once per removal.
-    if (j && j.ok && j.lastRemoved && (+j.lastRemoved.at || 0) > twsLastRemAt) {
-      twsLastRemAt = +j.lastRemoved.at || 0;
-      if (Date.now() - twsLastRemAt < 3600e3) {
-        const box = document.getElementById("tw-search");
-        const stEl = box ? box.querySelector("#tws-stat") : null;
-        if (stEl) stEl.textContent = "🗑 Removed — couldn't play: " + (j.lastRemoved.title || "a queued video");
-      }
-    }
-  }
+  async function twsQueueFetch() { const j = await twsQReq("GET"); if (j && j.ok && Array.isArray(j.items)) twsQueue = j.items; twsQPaint(); }
   async function twsQueueAdd(it) {
     const box = document.getElementById("tw-search"); if (!box) return;
     const stEl = box.querySelector("#tws-stat");
