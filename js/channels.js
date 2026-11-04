@@ -35,6 +35,19 @@
  * "mw-dj-ageskip" — the playability filter the booth keeps).
  * A video that still dies on YouTube's wall here is added to that
  * same list and the channel rolls on — no dead air, no skips.
+ *
+ * BACKEND DOWN (owner order, 2026-11-04: "Those buttons play my
+ * music — I want it to play others"): when the relay cannot fill
+ * a genre channel, the channel plays from its baked pool in
+ * /lifeline/channel-pools.json — OTHER artists' music, official
+ * uploads only, every id verified US-embeddable before it went
+ * in, titles/artists baked in so the labels paint with no
+ * backend at all. The relay is retried first on every fill, so
+ * a recovered relay takes each channel back on its own. (This
+ * replaces the emergency design from earlier the same day that
+ * filled TRAP LOVE and WEED WAKE-UP from the owner's own
+ * catalog; his station — the LIVE channel and the main radio
+ * lifeline — is untouched by it.)
  * ================================================================ */
 (() => {
   "use strict";
@@ -126,16 +139,16 @@
         for (const it of got) { q.seen.add(it.id); q.list.push(it); }
         if (!got.length) tries++; // a dry well costs a try; a wet one refills free
       }
-      // Relay dry (or down): TRAP LOVE and WEED WAKE-UP fall back to the
-      // station's own baked catalog, so the channel still plays with no
-      // backend at all. The relay is retried first on every fill, so a
-      // recovered relay takes the channel back on its own.
+      // Relay dry (or down): the channel falls back to its baked
+      // pool of other artists' music, so it still plays with no
+      // backend at all. The relay is retried first on every fill,
+      // so a recovered relay takes the channel back on its own.
       if (q.list.length < (min || 4)) {
-        const baked = await bakedItems(def);
-        if (baked.length) {
-          if (q.bakedAt == null) q.bakedAt = 0;
-          let want = (min || 4) - q.list.length;
-          while (want-- > 0) { q.list.push(baked[q.bakedAt % baked.length]); q.bakedAt++; }
+        let want = (min || 4) - q.list.length;
+        while (want-- > 0) {
+          const it = await poolNext(def);
+          if (!it) break;
+          q.list.push(it);
         }
       }
     } catch (_) {}
@@ -143,28 +156,64 @@
     return q;
   }
 
-  /* ---------- baked fallback: the station's own catalog, no backend ----------
-   * Malik's law: radio listening must not depend on the backend — channels
-   * are radio. Two channels map to lanes of Meechie's own library, baked
-   * into /lifeline/radio-dayparts.json (the radio lifeline's own file),
-   * with the songs as static files under /lifeline/audio/. The other
-   * channels are other-genre YouTube mixes; there is no owned catalog to
-   * bake for them, so they keep digging at the relay and say so honestly. */
-  const BAKED_BLOCK = { traplove: "traplove", weed: "weed" };
-  let bakedCache = null, bakedTried = false;
-  async function bakedItems(def) {
-    const block = BAKED_BLOCK[def.id];
-    if (!block) return [];
-    if (!bakedCache) {
-      if (bakedTried) return [];
-      bakedTried = true;
-      try { const r = await fetch("/lifeline/radio-dayparts.json", { cache: "no-store" }); bakedCache = r.ok ? await r.json() : null; } catch (_) { bakedCache = null; }
-    }
-    const list = (bakedCache && bakedCache[block]) || [];
-    return list.map((t) => ({ id: "ll:" + t.assetId, title: t.title, dur: t.duration || 0, thumb: "", src: "/lifeline/audio/" + t.assetId + ".mp3" }));
+  /* ---------- baked pools: other artists' music, no backend ----------
+   * Malik's law: radio listening must not depend on the backend —
+   * channels are radio. And his order (2026-11-04): the genre
+   * channels play OTHER artists, not his own catalog. Each genre's
+   * pool is baked into /lifeline/channel-pools.json — official
+   * uploads only, every id verified US-embeddable before it went
+   * in, title/artist/duration baked in so the tuner name, the
+   * track line and the guide "Now:" paint with no backend at all.
+   * A pool plays through this file's YouTube player in a shuffled
+   * rotation — a fresh shuffle each pass through the pool, never
+   * the same song twice in a row — so the channel feels endless.
+   * Pool picks are YouTube videos, never files: they are never
+   * handed to the file player below (that element only ever plays
+   * picks that carry a src, and pool picks never do). A pool id
+   * this device has seen die on YouTube's wall (the shared
+   * age-lock list) is skipped at fill time, and the player error
+   * path bans a dying pool pick exactly like a relay pick. */
+  let poolsCache = null, poolsTried = false;
+  async function poolsData() {
+    if (poolsCache) return poolsCache;
+    if (poolsTried) return null;
+    poolsTried = true;
+    try { const r = await fetch("/lifeline/channel-pools.json", { cache: "no-store" }); poolsCache = r.ok ? await r.json() : null; } catch (_) { poolsCache = null; }
+    return poolsCache;
   }
-  /* Baked picks are files, not videos: they play on this file's own audio
-   * element, driven by the same state machine (curItem / sounding / advance). */
+  function shuffledPool(list, lastId) {
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+    if (a.length > 1 && lastId && a[0] && a[0].id === lastId) { const t = a[0]; a[0] = a[1]; a[1] = t; }
+    return a;
+  }
+  /* Next pool pick for a channel: walks the channel's shuffled
+   * deck, reshuffling the whole pool when the deck runs out.
+   * Returns null when the pool is missing or every entry in it is
+   * on this device's ban list — the caller then digs as before. */
+  async function poolNext(def) {
+    const data = await poolsData();
+    const pool = (data && data.pools && data.pools[def.id]) || [];
+    if (!pool.length) return null;
+    const q = queueOf(def);
+    if (!q.poolDeck || !q.poolDeck.length) q.poolDeck = shuffledPool(pool, q.poolLast || null);
+    const banned = chanBanned();
+    let guard = pool.length * 2;
+    while (guard-- > 0) {
+      if (!q.poolDeck.length) q.poolDeck = shuffledPool(pool, q.poolLast || null);
+      const e = q.poolDeck.shift();
+      if (!e || !e.id) continue;
+      if (banned.has(e.id)) continue;
+      q.poolLast = e.id;
+      return { id: e.id, title: e.artist ? e.artist + " — " + e.title : e.title, dur: e.dur || 0, thumb: "https://i.ytimg.com/vi/" + e.id + "/hqdefault.jpg" };
+    }
+    return null;
+  }
+  /* File picks (a pick carrying a src) play on this file's own audio
+   * element, driven by the same state machine (curItem / sounding /
+   * advance). No current feed produces file picks — relay and pool
+   * picks are both YouTube videos — but the door stays wired so the
+   * state machine keeps one shape for every kind of pick. */
   let filePlayer = null, fileErrN = 0;
   function ensureFilePlayer() {
     if (filePlayer) return filePlayer;
@@ -179,7 +228,7 @@
       sounding = false;
       fileErrN++;
       const def = curChan; if (!def || !wantPlay) return;
-      if (fileErrN >= 3) { // the baked files themselves are unreachable: say so, and slow-dig like a dry well
+      if (fileErrN >= 3) { // the files themselves are unreachable: say so, and slow-dig like a dry well
         fileErrN = 0; dryN = Math.max(dryN, 2);
         paint(def.name + " is quiet right now — no playable picks are coming up. Staying on this channel and still digging.");
         setTimeout(() => { if (curChan === def && wantPlay) advance(); }, 20000);
@@ -251,7 +300,7 @@
     }
   }
   function onPlayerError() {
-    if (curItem && curItem.src) return; // a baked file owns the sound right now; this error is not its
+    if (curItem && curItem.src) return; // a file pick owns the sound right now; this error is not its
     // YouTube's wall (embed-restricted / age-locked / gone): mark it
     // in the shared ban list so no surface picks it again, roll on.
     if (curItem) chanBanId(curItem.id);
@@ -264,7 +313,7 @@
     const q = queueOf(def);
     q.hist.push(item); if (q.hist.length > 24) q.hist.shift();
     wantPlay = true; // set before the player exists, so a fast onReady loads this item
-    if (item.src) { // baked file pick: this file's audio element plays it; the video player stands down
+    if (item.src) { // file pick: this file's audio element plays it; the video player stands down
       if (player) { try { player.stopVideo(); } catch (_) {} }
       const fp = ensureFilePlayer();
       try { fp.src = item.src; const p = fp.play(); if (p && p.catch) p.catch(() => {}); } catch (_) {}
@@ -444,7 +493,7 @@
        * channel is sounding with a current item, the note is stale and
        * clears, so the card shows its real state. Both players set
        * sounding=true and call paint() the moment sound starts (the
-       * file player's "playing" handler on the baked fallback, the YT
+       * file player's "playing" handler on a file pick, the YT
        * player's PLAYING state on the primary path), so both paths
        * drive this transition identically. */
       else if (sounding && curItem && (noteEl.textContent || "").indexOf("Tuning") === 0) noteEl.textContent = "";
