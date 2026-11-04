@@ -5,8 +5,9 @@
  *
  *   POST { yt, title, dur }   (owner session Bearer)
  *     Validates the pick through the same embed gate the channel
- *     trusts (the /api/ytsearch age/embed relay, id-matched, plus
- *     the brain/ytblock learned-ban list), then REPLACES the
+ *     trusts (the brain/ytblock learned-ban list, plus the
+ *     /api/ytsearch relay as a duration pin — pin-only since the
+ *     2026-11-03 QUEUEFIX, see relayGate), then REPLACES the
  *     tv/insert doc. The keeper (functions/api/station.js, PR #559)
  *     fires a fresh, unconsumed, cleared tv/insert at the next
  *     segment boundary — so the pick plays NEXT on MW TV for
@@ -69,18 +70,27 @@ async function ytBanned(env, yt) {
   return false;
 }
 
-/* The relay half of the embed gate, id-matched exactly the way the
- * movie insert was verified (MOVIE-INSERT.md): ask the site's own
- * /api/ytsearch for the title and require the picked id to come back
- * in its playability-filtered results. The relay CONVICTS only on a
- * positive answer — when it answers ok with results and the id is
- * not among them, the video is not playable and the order is refused.
- * When the relay is down, slow or empty for the query, this check
- * cannot convict: the pick on the owner's screen came out of this
- * same relay seconds earlier, so the order proceeds (fail open) and
- * the channel player's own error path remains the last net.
- * Returns { blocked: boolean, dur: number } — dur is the relay's own
- * duration for the id when it answered, 0 when it could not speak. */
+/* The relay half of the embed gate, PIN-ONLY since the QUEUEFIX
+ * (2026-11-03 late): ask the site's own /api/ytsearch for the
+ * title, and when the picked id comes back in its playability-
+ * filtered results, the relay's own duration pins the pick.
+ * Absence NO LONGER convicts. The old rule — answers ok with
+ * results and the id not among them, refuse the order — treated
+ * a re-search as the same search, but the relay fans out over
+ * rotating mirrors: a re-search by title is a different search
+ * on possibly a different mirror. Live probing on 2026-11-03
+ * found 3 of 24 ordinary full-movie picks absent from their own
+ * title re-search minutes after the relay itself had served
+ * them, and every absence read to the owner as "pick another"
+ * (Malik, 2026-11-03 19:57 ET: "It keeps telling me to pick
+ * another"). The hard refusal is the learned-ban list above —
+ * ids a real player already convicted; a pick that truly
+ * cannot play is caught by the channel player's own error path
+ * and joins that list, the designed learning loop. The pick on
+ * the owner's screen also came out of this same relay seconds
+ * earlier, already playability-filtered there.
+ * Returns the relay's own duration for the id when it answered
+ * with the id present, 0 when it could not speak to it. */
 async function relayGate(request, yt, title) {
   try {
     const u = new URL("/api/ytsearch", request.url);
@@ -89,11 +99,10 @@ async function relayGate(request, yt, title) {
     const j = await r.json().catch(() => null);
     if (j && j.ok && Array.isArray(j.results) && j.results.length) {
       const hit = j.results.find((x) => x && x.id === yt);
-      if (!hit) return { blocked: true, dur: 0 };
-      return { blocked: false, dur: Math.round(+hit.dur || 0) };
+      if (hit) return Math.round(+hit.dur || 0);
     }
   } catch (_) {}
-  return { blocked: false, dur: 0 };
+  return 0;
 }
 
 /* Same write shape as lib/brain-member.js writeMember via
@@ -125,11 +134,13 @@ export async function onRequestPost({ request, env }) {
   const title = clampStr(body.title, 200).trim();
   if (!title) return json({ ok: false, error: "bad_title" }, 400);
   let dur = Math.round(+body.dur || 0);
-  if (!(dur >= 15 && dur <= 21600)) return json({ ok: false, error: "bad_dur" }, 400);
   if (await ytBanned(env, yt)) return json({ ok: false, error: "blocked" }, 422);
-  const relay = await relayGate(request, yt, title);
-  if (relay.blocked) return json({ ok: false, error: "not_playable" }, 422);
-  if (relay.dur >= 15 && relay.dur <= 21600) dur = relay.dur; // the relay's own pin beats the client's copy
+  const relayDur = await relayGate(request, yt, title);
+  if (relayDur >= 15 && relayDur <= 21600) dur = relayDur; // the relay's own pin beats the client's copy
+  // The range judges the EFFECTIVE duration — after the relay
+  // pin — so a zero/garbled client runtime is rescued by the
+  // relay's own number instead of refused (QUEUEFIX).
+  if (!(dur >= 15 && dur <= 21600)) return json({ ok: false, error: "bad_dur" }, 400);
   const now = Date.now();
   const doc = { progV: TV_INSERT_V, at: now, kind: "yt", yt, title, dur, basis: "embed", show: "MW TV", evidence: EVIDENCE, by: "owner-search", updatedAt: now };
   await writeInsert(env, me.id, doc);

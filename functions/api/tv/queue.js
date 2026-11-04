@@ -15,6 +15,24 @@
 // An empty list changes nothing — the keeper fills the channel
 // from the cleared pool and the lineup, as it always has.
 //
+// QUEUEFIX (2026-11-03 late): the shipped writeQueue inserted
+// the changes row with a column set that does not exist in the
+// production changes table (ts/actor/kind/summary instead of
+// tbl/path/coll/a/b/at), so EVERY write action — add, remove,
+// move, clear, skip — threw inside the handler and the owner's
+// browser got a 500: "The serch wont let me que the movies."
+// The #634 endpoint harness stubbed the DB permissively and
+// never saw it. writeQueue below now uses the canonical
+// writeDoc shape (station.js / insert.js), ownerOnly calls
+// isAdmin(env, me.id) awaited — the shipped call was swapped
+// and un-awaited, passing only by a truthy-Promise accident —
+// and the cap is 500, not 20 (Malik: "que more then one movie
+// as many as i want"; a queue doc of 500 items is ~150KB of
+// JSON, far inside the doc limits, and the keeper prunes it as
+// items air). The relay gate is pin-only now — absence from a
+// re-search no longer convicts (see relayGate for the live
+// probe evidence); insert.js got the same gate fix.
+//
 // The doc (tv/queue): { progV: 1, items: [{ qid, yt, title, dur,
 // at }], anchor, skipAt, updatedAt, by }.
 //   anchor — when the list's window opens: stamped at the end of
@@ -36,12 +54,12 @@ const TV_QUEUE_V = 1;
 // The evidence line itself lives in station.js (TV_QUEUE_EVIDENCE):
 // the keeper attaches it to every queued item it lays, exactly as
 // the insert's evidence rides its doc.
-const MAX_ITEMS = 20;
+const MAX_ITEMS = 500;
 
 async function ownerOnly(request, env) {
   const me = await userFrom(request, env).catch(() => null);
   if (!me) return { err: json({ ok: false, error: "sign_in" }, 401) };
-  if (!(isAdmin(me, env) && String(me.id) === OWNER_ID)) return { err: json({ ok: false, error: "owner_only" }, 403) };
+  if (!(await isAdmin(env, me.id).catch(() => false)) || String(me.id) !== OWNER_ID) return { err: json({ ok: false, error: "owner_only" }, 403) };
   return { me };
 }
 
@@ -55,10 +73,22 @@ async function ytBanned(env, id) {
 }
 
 /* Asks the site's own search relay (/api/ytsearch — the deployed
- * search route) whether this exact video id comes back clean for
- * the title. CONVICTS ONLY on a positive answer: status ok, a
- * result list present, and the id not among them. Anything else
- * (relay missing, network hiccup, empty scrape) fails open. */
+ * search route) about this exact video id under its title. The
+ * answer is a PIN ONLY: when the id comes back, the relay's own
+ * duration/title beat the client's copies. Absence NEVER
+ * convicts (QUEUEFIX, 2026-11-03 late): the relay fans out over
+ * rotating mirrors, so a re-search by title is a different
+ * search on possibly a different mirror — live probing on
+ * 2026-11-03 found 3 of 24 ordinary full-movie picks ABSENT
+ * from their own title re-search minutes after the relay itself
+ * served them, and every absence read to the owner as "pick
+ * another" (Malik, 2026-11-03 19:57 ET: "It keeps telling me to
+ * pick another"). The hard refusal is the learned-ban list
+ * above — ids a real player already convicted. A pick that
+ * truly cannot play is caught by the channel player's own
+ * error path and joins that list: the designed learning loop.
+ * Anything else (relay missing, network hiccup, empty scrape,
+ * id absent) fails open and the pick proceeds unpinned. */
 async function relayGate(request, id, title) {
   try {
     const u = new URL("/api/ytsearch", request.url);
@@ -71,7 +101,7 @@ async function relayGate(request, id, title) {
     const j = await r.json().catch(() => null);
     if (!j || j.ok === false || !Array.isArray(j.results) || !j.results.length) return null;
     const hit = j.results.find((x) => x && String(x.id) === id);
-    if (!hit) return false;
+    if (!hit) return null;
     return { dur: +hit.dur || 0, title: String(hit.title || title || "YouTube video").slice(0, 200) };
   } catch (_) { return null; }
 }
@@ -85,18 +115,25 @@ async function readQueue(env) {
   } catch (_) { return null; }
 }
 
+/* The canonical doc-write shape — the same one station.js's
+ * writeDoc and insert.js's writeInsert use: update, insert with
+ * created_at when the row is new, and ALWAYS the changes row in
+ * the production column set (tbl, path, coll, a, b, at), without
+ * which open pages never learn the doc moved. */
 async function writeQueue(env, owner, doc) {
   const data = JSON.stringify(doc);
-  const now = Date.now();
-  await env.DB.prepare(
+  const nowIso = new Date().toISOString();
+  const r = await env.DB.prepare(
     "update docs set data = ?, updated_at = ? where path = ?"
-  ).bind(data, now, "tv/queue").run();
+  ).bind(data, nowIso, "tv/queue").run();
+  if (!r.meta || !r.meta.changes) {
+    await env.DB.prepare(
+      "insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)"
+    ).bind("tv/queue", "tv", owner, data, nowIso, nowIso).run();
+  }
   await env.DB.prepare(
-    "insert or ignore into docs (path, coll, data, updated_at, owner) values (?, 'tv', ?, ?, ?)"
-  ).bind("tv/queue", data, now, owner).run();
-  await env.DB.prepare(
-    "insert into changes (ts, actor, kind, path, coll, summary) values (?, ?, 'update', 'tv/queue', 'tv', ?)"
-  ).bind(now, owner, "MW TV owner queue: " + (Array.isArray(doc.items) ? doc.items.length : 0) + " item(s)").run();
+    "insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)"
+  ).bind("docs", "tv/queue", "tv", null, null, Date.now()).run();
 }
 
 /* When does the list's window open if it starts now? The end of
@@ -157,12 +194,15 @@ export async function onRequestPost({ request, env }) {
     let title = String(body.title || "").replace(/\s+/g, " ").trim().slice(0, 200);
     let dur = Math.round(+body.dur || 0);
     if (!/^[A-Za-z0-9_-]{11}$/.test(yt) || !title) return json({ ok: false, error: "bad_video" }, 400);
-    if (!(dur >= 15 && dur <= 21600)) return json({ ok: false, error: "bad_duration" }, 400);
     if (doc.items.length >= MAX_ITEMS) return json({ ok: false, error: "queue_full" }, 422);
     if (await ytBanned(env, yt)) return json({ ok: false, error: "not_playable" }, 422);
     const gate2 = await relayGate(request, yt, title);
-    if (gate2 === false) return json({ ok: false, error: "not_playable" }, 422);
     if (gate2) { if (gate2.dur > 0) dur = gate2.dur; if (gate2.title) title = gate2.title; }
+    // The duration range judges the EFFECTIVE duration — after
+    // the relay pin — so a result the relay served with a zero
+    // or garbled client-side runtime is rescued by the relay's
+    // own number instead of refused.
+    if (!(dur >= 15 && dur <= 21600)) return json({ ok: false, error: "bad_duration" }, 400);
     const qid = now.toString(36) + Math.floor(Math.random() * 46656).toString(36);
     const items = [...doc.items, { qid, yt, title, dur, at: now }];
     // First item on an empty list opens the window at the end of
