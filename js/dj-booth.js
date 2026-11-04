@@ -847,7 +847,17 @@
     } catch (_) {}
     return out.slice(0, 5);
   }
+  // Playability-scan transparency (mwtv-scan, 2026-11-03): the relay
+  // answers each page with "hidden" — how many results its scan
+  // removed as unplayable before the page ever reached the booth.
+  // ytPage records the latest page's count here and mirrors it to
+  // BOOTH.ytHiddenLast; ytSearch replaces it with the two-page sum.
+  // The direct-path fallback scans nothing, so its pages honestly
+  // count 0. The MW TV owner box reads the total to paint
+  // "N hidden — can't play here" under its results.
+  let ytHiddenPage = 0;
   async function ytPage(q, page) {
+    ytHiddenPage = 0; BOOTH.ytHiddenLast = 0;
     // Same-origin relay first (functions/api/ytsearch.js): the server fans
     // out over the full Invidious API pool from Cloudflare's network, so a
     // dead or unreachable mirror can no longer kill booth search the way
@@ -866,7 +876,7 @@
       if (r.ok) {
         const j = await r.json();
         if (j && j.tier) return "TIER"; // plan gate: a hard stop, never the direct-path fallback
-        if (j && j.ok && Array.isArray(j.results) && j.results.length) return ytUnblocked(j.results);
+        if (j && j.ok && Array.isArray(j.results) && j.results.length) { ytHiddenPage = (typeof j.hidden === "number" && j.hidden > 0) ? Math.floor(j.hidden) : 0; BOOTH.ytHiddenLast = ytHiddenPage; return ytUnblocked(j.results); }
       }
     } catch (_) {}
     const hosts = await ytHosts();
@@ -885,7 +895,9 @@
     const a = await ytPage(q, 1);
     if (!a) return null;
     if (a === "TIER") return "TIER";
+    const h1 = ytHiddenPage;
     const b = await ytPage(q, 2);
+    BOOTH.ytHiddenLast = h1 + ytHiddenPage;
     const seen = new Set(), out = [];
     for (const it of a.concat(b && b !== "TIER" ? b : [])) { if (!seen.has(it.id)) { seen.add(it.id); out.push(it); } }
     return out.slice(0, 30);

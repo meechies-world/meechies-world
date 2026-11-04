@@ -112,6 +112,45 @@
 // deadline from request start — the booth client gives the relay ~8s
 // before falling back to its direct path, so the relay must answer
 // inside that window instead of grinding through every dead host.
+//
+// Strong playability scan (mwtv-scan, 2026-11-03): Malik, the same
+// evening as the queuefix: "I want somthing to scan and remove what
+// cant be played when searching." The verify phase this file shipped
+// with convicted ONLY on an Invidious age-gate error — it had no
+// region check at all, and the dead-movie investigation that evening
+// proved what that misses: _Tu_SAqNinU ("THE OLD BODYGUARD", an
+// aggregator upload) sat at position 1 of this relay's own results
+// for "the old bodyguard full movie" while its uploader blocks the
+// US outright — and oEmbed answers 200 for it, so an oEmbed-only
+// gate cannot catch it either. The scan in verifyOne below therefore
+// asks YouTube's own player API (WEB client) for the DATA fields
+// that discriminate, plus oEmbed for the embed verdict, and convicts
+// ONLY on affirmative evidence:
+//   - microformat availableCountries present and US absent -> region
+//   - an explicit blocker subreason (country block, copyright
+//     country block) -> region; removed / private / terminated /
+//     copyright text -> gone
+//   - LOGIN_REQUIRED or UNPLAYABLE carrying age text ("confirm
+//     your age") -> age gate
+//   - playableInEmbed === false, or oEmbed answering 400/401/403/404
+//     (401 is YouTube's embed-disabled answer, 404 gone/private)
+//     -> embed
+// A video is acquitted ("good") only when the player says OK *and*
+// oEmbed confirms — two of YouTube's own systems agreeing — and even
+// then the verdict is cached for just 2h (bad verdicts 6h), never
+// forever. EVERYTHING else is inconclusive and the video is KEPT:
+// the dead-movie report's probe caveat is law here — playback status
+// from datacenter egress bot-walls normal videos (Rick Astley read
+// UNPLAYABLE with a "page needs to be reloaded" subreason), so a
+// bare status NEVER convicts; bot/reload text matches no conviction
+// pattern above, by construction. Inconclusive videos still face
+// the Invidious gate-error net below exactly as before (any host's
+// age-gate error convicts), and the learned brain/ytblock bans
+// still run first. The response now carries "hidden": how many
+// results the bans + scan removed from THIS page, so the MW TV
+// owner box can say "N hidden — can't play here" under its results.
+// Per-page scan stats (checked / removed / inconclusive) are
+// console-logged so over- and under-removal stay visible.
 import { userFrom } from "../../lib/cf.js";
 const json = (o, age = 60) => new Response(JSON.stringify(o), { headers: { "content-type": "application/json", "access-control-allow-origin": "*", "cache-control": "public, max-age=" + age } });
 // --- Setup-plan gate (owner directive 2026-10-30, the DJ setup ladder:
@@ -231,18 +270,30 @@ function candidates(invHosts) {
   return out;
 }
 // --- Age / embed verification (see the fix-search-filter note above) ---
-// Verdict cache: id -> "bad" for gate-convicted ids only, insertion-
-// ordered Map, FIFO-capped so a long-lived isolate cannot grow it
-// without bound. Repeat searches for the same songs (the common case
-// in a DJ booth) skip re-checking known-gated ids instantly. Kept
-// videos are deliberately NOT cached: a payload-based "good" would
-// acquit forever, and companions rotate (see the correction above).
+// Verdict cache: id -> { v, why, at }, insertion-ordered Map, FIFO-
+// capped so a long-lived isolate cannot grow it without bound.
+// Verdicts now EXPIRE (mwtv-scan): a "bad" verdict holds 6h, a "good"
+// verdict 2h — long enough that repeat searches for the same songs
+// (the common case in a DJ booth) skip re-checking, short enough
+// that a video whose region/embed state changes is re-judged the
+// same day. Only evidence-backed verdicts are cached at all: a
+// "good" requires the strong scan's two-system acquittal (below);
+// a video the scan could not judge is kept but NEVER cached good —
+// the old rule survives for it (an unproven keep must not acquit
+// forever, and companions rotate; see the correction above).
 const verdictCache = new Map();
-const VERDICT_CAP = 500;
-function cacheVerdict(id, v) {
+const VERDICT_CAP = 1000;
+const BAD_TTL_MS = 6 * 3600 * 1000, GOOD_TTL_MS = 2 * 3600 * 1000;
+function cacheVerdict(id, v, why) {
   if (verdictCache.has(id)) verdictCache.delete(id);
-  verdictCache.set(id, v);
+  verdictCache.set(id, { v, why: why || "", at: Date.now() });
   while (verdictCache.size > VERDICT_CAP) verdictCache.delete(verdictCache.keys().next().value);
+}
+function cachedVerdict(id) {
+  const e = verdictCache.get(id);
+  if (!e) return null;
+  if (Date.now() - e.at > (e.v === "bad" ? BAD_TTL_MS : GOOD_TTL_MS)) { verdictCache.delete(id); return null; }
+  return e;
 }
 // YouTube's age / safety gate as surfaced in an Invidious error object.
 // Deliberately NO bare "sign in to confirm" branch: Piped's bot-wall
@@ -266,28 +317,107 @@ async function checkInvDetail(base, id, ms) {
   } catch (_) {}
   return "";
 }
-// Resolve one candidate: true = keep, false = drop. An age-gate error
-// from ANY checked Invidious host convicts, period — payloads served
-// by other hosts do NOT acquit, because companions rotate behind a
-// host and metadata availability is not embeddability
-// (yt.chocolatemoo53.com gate-errored PTFwQP86BRs, then served its
-// full payload minutes later, and the old acquittal rule shipped the
-// gated video at position 1). Piped is not consulted here at all:
-// under gate-wins its payloads cannot acquit, so the calls were pure
-// latency. With no gate error anywhere the video is kept (fail open):
-// timeouts, generic errors and dead hosts say nothing about the video.
-// Cloudflare's free plan allows 50 outgoing fetches per request. The
-// registry + search tries use a few, so the verify phase is held to
-// VERIFY_TOP x VERIFY_HOSTS = 36: past the cap fetches throw, fail
-// open, and the lower results were silently never checked.
-const VERIFY_HOSTS = 3, VERIFY_TOP = 12;
-async function verifyOne(id, invHosts, ms) {
-  if (verdictCache.get(id) === "bad") return false;
-  const checks = [];
-  invHosts.slice(0, VERIFY_HOSTS).forEach((b) => checks.push(checkInvDetail(b, id, ms)));
-  const vs = await Promise.all(checks);
-  if (vs.includes("bad")) { cacheVerdict(id, "bad"); return false; }
-  return true; // fail open
+// --- Strong playability scan (mwtv-scan; see the header note) ---
+// The public WEB-client key youtube.com's own pages ship; the player
+// endpoint it unlocks is the same one the dead-movie investigation
+// used to convict _Tu_SAqNinU from this VM.
+const YT_KEY = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW";
+const YT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+// Conviction text classes, matched against the playabilityStatus
+// JSON so reason and error-screen subreason are both covered. These
+// name a concrete state of the VIDEO (its region list, its age
+// gate, its removal) — never a state of the PROBE. Bot-wall and
+// reload text ("Sign in to confirm you're not a bot", "The page
+// needs to be reloaded") matches none of them, by construction.
+const REGION_TEXT = /not made this video available in your country|not available in your country|not available in your region|blocked in your country|has blocked it in your country/i;
+const AGE_TEXT = /confirm your age|age[\s-]?restrict/i;
+const GONE_TEXT = /removed by the uploader|this video has been removed|account associated with this video has been terminated|blocked it on copyright|video is private/i;
+// One candidate against YouTube's own systems. Returns
+// { v: "bad", why } on affirmative can't-play evidence,
+// { v: "good" } when the player says OK and oEmbed confirms, and
+// { v: "" } when the evidence is inconclusive (bot wall, generic
+// UNPLAYABLE, timeout, unparseable) — inconclusive is never a
+// conviction and never an acquittal.
+async function strongCheck(id, ms) {
+  let j = null;
+  try {
+    const r = await fetch("https://www.youtube.com/youtubei/v1/player?key=" + YT_KEY, {
+      method: "POST",
+      headers: { "content-type": "application/json", "user-agent": YT_UA },
+      body: JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: "2.20240726.00.00", hl: "en", gl: "US" } }, videoId: id, contentCheckOk: true, racyCheckOk: true }),
+      ...sig(ms),
+    });
+    if (r && r.ok) j = await r.json().catch(() => null);
+  } catch (_) {}
+  let acquit = false;
+  if (j && typeof j === "object") {
+    const ps = j.playabilityStatus || {};
+    const mf = (j.microformat && j.microformat.playerMicroformatRenderer) || {};
+    const ac = mf.availableCountries;
+    const text = JSON.stringify(ps);
+    // The region list is a data field of the video itself: US absent
+    // convicts even inside an otherwise bot-walled response (the
+    // Old Bodyguard response was exactly that shape).
+    if (Array.isArray(ac) && ac.length && !ac.includes("US")) return { v: "bad", why: "region" };
+    if (REGION_TEXT.test(text)) return { v: "bad", why: "region" };
+    if (ps.playableInEmbed === false) return { v: "bad", why: "embed" };
+    if (AGE_TEXT.test(text) && (ps.status === "LOGIN_REQUIRED" || ps.status === "UNPLAYABLE")) return { v: "bad", why: "age" };
+    if (GONE_TEXT.test(text)) return { v: "bad", why: "gone" };
+    if (ps.status === "OK") acquit = true;
+  }
+  // oEmbed is the embed authority: 401 = embedding disabled by the
+  // owner, 404 = gone or private, 400/403 = YouTube refusing the
+  // embed record. A real HTTP answer in that set convicts even when
+  // the player call failed outright; a 200 confirms embeddability
+  // but never acquits region/age on its own (it answered 200 for
+  // the geo-blocked Old Bodyguard). Timeouts and 5xx say nothing.
+  let oe = 0;
+  try {
+    const r = await fetch("https://www.youtube.com/oembed?url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id) + "&format=json", { headers: { "user-agent": YT_UA }, ...sig(Math.min(ms, 1200)) });
+    oe = r ? r.status : 0;
+  } catch (_) {}
+  if (oe === 400 || oe === 401 || oe === 403 || oe === 404) return { v: "bad", why: "embed" };
+  if (acquit && oe === 200) return { v: "good", why: "player" };
+  return { v: "", why: "" };
+}
+// Resolve one candidate: { keep, inc } — inc marks an inconclusive
+// scan (kept, but proven neither way; counted for the scan stats).
+// Order: verdict cache, then the strong scan, then — only for the
+// inconclusive — the Invidious gate-error net with its shipped rule
+// intact (an age-gate error from ANY checked host convicts, period;
+// payloads never acquit — companions rotate, see the correction
+// above; Piped is not consulted, its payloads cannot acquit either).
+// A strong-scan acquittal does NOT face the Invidious net: YouTube's
+// own player + oEmbed agreeing outranks a companion's mood, and a
+// stale gate error convicting a player-confirmed video would be
+// over-removal — the failure mode this scan exists to avoid.
+// Fetch budget: Cloudflare's free plan allows 50 outgoing fetches
+// per request. The strong scan costs at most 2 per video and ends
+// most checks there; only inconclusive videos spend the further
+// VERIFY_HOSTS detail calls, so a page's verify phase stays inside
+// the cap in practice — and past the cap fetches throw, fail open,
+// and the video is kept, exactly as before. The phase also runs in
+// waves of VERIFY_WAVE (see filterPlayable): a 12-wide stampede of
+// player POSTs demonstrably starves itself (every call timing out
+// at 1.6s from this VM while sequential calls answer in ~300ms),
+// where waves of 4 finish the dozen in ~2s with room to spare.
+const VERIFY_HOSTS = 3, VERIFY_TOP = 12, VERIFY_WAVE = 4;
+async function verifyOne(id, invHosts, t0) {
+  const c = cachedVerdict(id);
+  if (c) return { keep: c.v !== "bad", inc: false };
+  const leftA = DEADLINE_MS - (Date.now() - t0);
+  const s = await strongCheck(id, Math.max(250, Math.min(2200, Math.floor(leftA / 2))));
+  if (s.v === "bad") { cacheVerdict(id, "bad", s.why); return { keep: false, inc: false }; }
+  if (s.v === "good") { cacheVerdict(id, "good", s.why); return { keep: true, inc: false }; }
+  const leftB = DEADLINE_MS - (Date.now() - t0);
+  if (leftB >= 900) {
+    const ms = Math.max(250, Math.min(2200, leftB - 300));
+    const checks = [];
+    invHosts.slice(0, VERIFY_HOSTS).forEach((b) => checks.push(checkInvDetail(b, id, ms)));
+    const vs = await Promise.all(checks);
+    if (vs.includes("bad")) { cacheVerdict(id, "bad", "age-inv"); return { keep: false, inc: false }; }
+  }
+  return { keep: true, inc: true }; // fail open, unproven — never cached good
 }
 // --- Shared learned bans (fix-search-filter-3, see the header note) ---
 // The brain/ytblock doc ({ ids: [...] }) holds every video id a real
@@ -312,32 +442,47 @@ async function bannedIds(env) {
   blockCache = set; blockAt = Date.now();
   return set;
 }
-// Verify the top ~15 candidates in parallel inside whatever is left of
+// Verify the top candidates in parallel inside whatever is left of
 // the hard deadline: per-call timeouts are sized so the whole phase ends
 // before the deadline, and with too little time left the list goes back
 // unverified rather than late (the booth client falls back at ~8s).
+// Returns { list, hidden }: hidden counts what the bans + scan took
+// out of THIS page, for the owner box's "N hidden — can't play here"
+// line. When the empty-list guard fires nothing was actually taken
+// from the owner, so hidden honestly reads 0 there.
 async function filterPlayable(results, invHosts, t0, env) {
-  if (!results.length) return results;
+  if (!results.length) return { list: results, hidden: 0 };
   // Learned bans first (fix-3): deterministic, and they hold even
   // when no verify time is left — a banned id never reaches the
   // verify phase, so its budget goes to videos that are actually new.
   const banned = await bannedIds(env);
-  let list = results;
+  let list = results, hidden = 0;
   if (banned.size) {
     const kept = results.filter((it) => !banned.has(it.id));
     // The empty-list guard covers the bans too: if EVERY result is
     // banned, the unfiltered list still goes back (guard below).
-    if (kept.length) list = kept;
+    if (kept.length) { hidden = results.length - kept.length; list = kept; }
   }
   const leftMs = DEADLINE_MS - (Date.now() - t0);
-  if (leftMs < 800) return list;
-  const ms = Math.max(400, Math.min(2500, leftMs - 300));
+  if (leftMs < 800) return { list, hidden };
   const top = list.slice(0, VERIFY_TOP), rest = list.slice(VERIFY_TOP);
-  const keep = await Promise.all(top.map((it) => verifyOne(it.id, invHosts, ms)));
-  const out = top.filter((_, i) => keep[i]).concat(rest);
+  // Waves, not a stampede (see the budget note at verifyOne): the
+  // clock is re-read between waves, and if the deadline closes in,
+  // the remaining candidates go back unproven-kept rather than late.
+  const vs = new Array(top.length);
+  for (let i = 0; i < top.length; i += VERIFY_WAVE) {
+    if (DEADLINE_MS - (Date.now() - t0) < 700) { for (let k = i; k < top.length; k++) vs[k] = { keep: true, inc: true }; break; }
+    const part = await Promise.all(top.slice(i, i + VERIFY_WAVE).map((it) => verifyOne(it.id, invHosts, t0)));
+    part.forEach((v, k) => { vs[i + k] = v; });
+  }
+  const out = top.filter((_, i) => vs[i].keep).concat(rest);
+  const removed = top.length - (out.length - rest.length);
+  const inc = vs.reduce((n, x) => n + (x.inc ? 1 : 0), 0);
+  try { console.log("ytsearch-scan checked=" + top.length + " removed=" + removed + " inconclusive=" + inc + " banned=" + hidden); } catch (_) {}
   // If filtering would empty the list entirely, return the unfiltered
   // list instead: a bad result beats a dead search.
-  return out.length ? out : results;
+  if (!out.length) return { list: results, hidden: 0 };
+  return { list: out, hidden: hidden + removed };
 }
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -356,7 +501,7 @@ export async function onRequestGet({ request, env }) {
       if (budget <= 250) return json({ ok: false, results: [] }, 0); // out of time: stop starting tries
       try {
         const results = c.fam === "piped" ? await tryPiped(c.base, q, page, Math.min(TRY_MS, budget)) : await tryInv(c.base, q, page, Math.min(TRY_MS, budget));
-        if (results) return json({ ok: true, results: await filterPlayable(results, invHosts, t0, env) }, 120);
+        if (results) { const fp = await filterPlayable(results, invHosts, t0, env); return json({ ok: true, results: fp.list, hidden: fp.hidden }, 120); }
       } catch (_) {}
     }
   }
