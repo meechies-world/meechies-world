@@ -1,11 +1,46 @@
 /* Outage mode (owner's rule): if the account system is down or blocked, the website still opens.
  * Visitors can look around (videos, books, shop, pages); only signed-in features and saved data wait.
  * Checks the sign-in service once on load (and again if a sign-in attempt fails to reach it).
- * While the notice is up it keeps re-checking, so a false alarm clears itself once sign-in answers again. */
+ * While the notice is up it keeps re-checking, so a false alarm clears itself once sign-in answers again.
+ * Website-down poster (owner's order, 2026-11-03): while an outage is declared, the owner's
+ * WEBSITE DOWN poster covers the screen full-size — his exact art, whole picture visible,
+ * never cropped — instead of a stuck or broken screen. It is a visual layer only: it never
+ * touches any player, so radio sounding on the device keeps sounding (the poster itself
+ * tells people to tune in to the radio). No dismiss control: the recovery watch clears it
+ * the moment the service answers again. The poster is a static file, so it still loads on
+ * the nights the API layer is the thing that's down. */
 (function () {
   "use strict";
   const c = window.MW_CONFIG || {};
   let shown = false;
+  const DOWN_IMG = "/img/website-down.jpg";
+  function showDown() {
+    const add = () => {
+      if (document.getElementById("mw-down")) return;
+      const o = document.createElement("div"); o.id = "mw-down"; o.setAttribute("role", "alertdialog"); o.setAttribute("aria-label", "Website down — we're currently upgrading the website");
+      o.style.cssText = "position:fixed;inset:0;z-index:200000;background:#000;display:flex;align-items:center;justify-content:center";
+      const im = document.createElement("img"); im.src = DOWN_IMG;
+      im.alt = "WEBSITE DOWN — We're currently upgrading the website to bring you a better, faster, and more powerful experience! In the meantime, please tune in to our radio at MeechiesWorldInc.com. Sorry for the inconvenience!";
+      im.style.cssText = "max-width:100vw;max-height:100vh;width:auto;height:auto;object-fit:contain;display:block";
+      o.appendChild(im);
+      document.body.appendChild(o);
+    };
+    if (document.body) add(); else document.addEventListener("DOMContentLoaded", add);
+  }
+  function hideDown() { const o = document.getElementById("mw-down"); if (o) o.remove(); }
+  /* While the site is healthy, keep the poster on the device: the service worker's
+   * image cache picks the file up from a plain image load, so on a later visit with
+   * no signal at all the poster can still come up from the device copy. One load,
+   * only when no copy is cached yet, and never on the outage path itself. */
+  let downWarmed = false;
+  function warmDown() {
+    if (downWarmed) return; downWarmed = true;
+    const pull = () => { try { const im = new Image(); im.src = DOWN_IMG; } catch (_) {} };
+    try {
+      if (window.caches && caches.match) caches.match(DOWN_IMG).then((hit) => { if (!hit) pull(); }, () => {});
+      else pull();
+    } catch (_) {}
+  }
   function guest(reason) {
     if (shown) return; shown = true; window.MW_OUTAGE = reason || true;
     const html = document.documentElement; html.classList.remove("gated");
@@ -19,6 +54,7 @@
       document.body.insertBefore(b, document.body.firstChild); /* sits above the menu bar, never on top of it */
     };
     if (document.body) add(); else document.addEventListener("DOMContentLoaded", add);
+    showDown();
     watchRecovery();
     try { console.warn("[MW] outage mode:", reason); } catch (_) {}
   }
@@ -41,7 +77,9 @@
     if (watchTimer) { clearInterval(watchTimer); watchTimer = null; }
     watchHits = 0;
     const b = document.getElementById("mw-outage"); if (b) b.remove();
+    hideDown();
     window.MW_OUTAGE = false; shown = false;
+    warmDown();
     try { console.info("[MW] outage over: sign-in is answering again"); } catch (_) {}
   }
   function watchRecovery() {
@@ -55,7 +93,7 @@
   }
   async function probe() {
     if (c.BACKEND !== "cf") return;
-    if (await healthy()) return;
+    if (await healthy()) { warmDown(); return; }
     /* One failed probe is not an outage (verified 2026-10-29: the health route
        answers 200 {"ok":true}; a cold function, a slow network, an aborted
        fetch or a bot-blocked UA all fail once). Confirm with a second probe
