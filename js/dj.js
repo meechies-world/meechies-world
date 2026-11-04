@@ -5572,7 +5572,7 @@ html.popdj #dj-mini{display:none!important}
      * #st-vs1 / #mn-vs1 / #wb-vs1 / #dj-vs1 slots in the markup are
      * simply never mounted again. */
   ];
-  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.lastCur = null; });
+  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.bufAt = 0; su.lastCur = null; });
   function chanOverlay(su) {
     const slot = document.querySelector(su.slot); if (!slot) return null;
     const box = slot.closest(".vstage"); if (!box) return null;
@@ -5698,7 +5698,7 @@ html.popdj #dj-mini{display:none!important}
       const w = su.warmEnt && su.warmEnt.key === cur.key ? su.warmEnt : null;
       chanTeardown(su, w ? w.v : null);
       if (w) su.warmEnt = null;
-      su.key = cur.key; su.err = false; su.errCode = 0; su.errFile = false; su._gKey = ""; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0;
+      su.key = cur.key; su.err = false; su.errCode = 0; su.errFile = false; su._gKey = ""; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.bufAt = 0;
       if (w && (cur.src === "file" || cur.src === "ia")) { w.v.classList.remove("tvwarm"); chanFileMount(su, cur.url, cur.pos, !audible, w.v); }
       else if (cur.src === "yt") chanYtMount(su, cur.yt, cur.pos, !audible);
       else chanFileMount(su, cur.url, cur.pos, !audible, null);
@@ -5814,12 +5814,27 @@ html.popdj #dj-mini{display:none!important}
          * and the ~4s seekAt throttle are kept for that one seek. A
          * buffering player is left alone to resume; a brief dip clears
          * the stamp and self-recovers with no seek at all. */
+        if (pst === 3) su.bufAt = Date.now();
         const ct = su.p.getCurrentTime();
         const drifted = isFinite(ct) && Math.abs(ct - cur.pos) > 3;
         if (!drifted) su.driftAt = 0;
         else if (pst === 1) {
           if (!su.driftAt) su.driftAt = Date.now();
-          else if (!pastEnd && Date.now() - su.driftAt >= 3000 && Date.now() - (su.seekAt || 0) > 4000) { su.seekAt = Date.now(); su.driftAt = 0; su.p.seekTo(Math.max(0, cur.pos), true); }
+          /* Buffering-recovery guard (2026-11-04, Malik on the lifeline:
+           * the sound "is just skipping"): the wall-clock tape runs on
+           * through every stall, so the moment a stalled player resumes
+           * it sits >3s behind and the rule above fired its one
+           * corrective seek ~3s into the resumed playback — discarding
+           * the buffer that had just ended the stall. On a marginal
+           * phone connection the seek itself re-stalls the player, and
+           * the cycle (stall, resume, seek, stall) IS the skipping. The
+           * corrective seek now also waits until the player has run
+           * 12s clear of its last BUFFERING state: a viewer on a weak
+           * link rides a few seconds behind the tape and PLAYS, and
+           * the seek lands once, when playback is actually stable.
+           * Threshold, persistence and throttle are otherwise unchanged,
+           * and a player that never buffers is completely unaffected. */
+          else if (!pastEnd && Date.now() - su.driftAt >= 3000 && Date.now() - (su.seekAt || 0) > 4000 && Date.now() - (su.bufAt || 0) > 12000) { su.seekAt = Date.now(); su.driftAt = 0; su.p.seekTo(Math.max(0, cur.pos), true); }
         }
       } catch (_) {}
     }
@@ -7558,7 +7573,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793797269;
+  const MW_DJ_BUILD = 1793798808;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
