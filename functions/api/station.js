@@ -1049,19 +1049,63 @@ const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (
 const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 3;                // post-premiere movie block doc generation (tv/movieblock) (v3 = the 2026-11-03 pool expansion: the new-pool sweep's verified titles join the chain — see tvSeedMovieBlock)
 const TV_INSERT_V = 3;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy; v3 = tonight's Comedy Hour Thanksgiving movie, 2026-11-03)
-const TV_CARTOON_V = 1;              // hourly cartoon slot (Malik, 2026-11-05: his barbershop cartoon airs on MW TV once every hour, right after scheduled programming, AS IS) — two file parts form ONE logical piece, laid back-to-back with no gap inside a wall-clock span computed by tvCartoonSpans; v1 = the rules in the tvCartoonSpans header
-/* The pair itself (owner media, kind file — the ban gate scans YouTube
- * ids and never sees these, the self-remove proof needs player errors
- * this slot's own media gate prevents, and tvCartoonLive holds the
- * slot dark until both files actually exist on the site). Durations
- * ride the keeper's 0.1 s grid (probed 299.27 / 292.79) so the span's
- * wall-clock chain hands p1 to p2 at offset exactly 0. */
+const TV_CARTOON_V = 2;              // hourly cartoon slot (Malik, 2026-11-05: his barbershop cartoon airs on MW TV once every hour, right after scheduled programming, AS IS) — two file parts form ONE logical piece, laid back-to-back with no gap inside a wall-clock span computed by tvCartoonSpans; v1 = the rules in the tvCartoonSpans header; v2 = Episode 2 joins the slot (Malik, 2026-11-05 ~10:57: "Thats south park in meechies world episode 2 put iton after my other cartoon one after another looped in with my comercials") — each slot now plays Episode 1's pair, one of Malik's own show commercials, Episode 2's pair, one more commercial (tvCartoonSeq), and the media gate requires all FOUR episode files
+/* The episodes themselves (owner media, kind file — the ban gate
+ * scans YouTube ids and never sees these, the self-remove proof
+ * needs player errors this slot's own media gate prevents, and
+ * tvCartoonLive holds the slot dark until all four files actually
+ * exist on the site). Durations ride the keeper's 0.1 s grid
+ * (probed 299.27 / 292.79 and 301.07 / 301.45) so the span's
+ * wall-clock chain hands each part to the next at offset 0. */
 function tvCartoonItems(now) {
   const mk = () => ({ basis: "own", evidence: "Malik's own barbershop cartoon — sent by him on 2026-11-05 with his order to air it on MW TV once every hour, right after scheduled programming, as-is; owner media file hosted on the site itself", clearedBy: "owner", at: now, simulcast: true });
+  const mk2 = () => ({ basis: "own", evidence: "Malik's own cartoon — Episode 2 of South Park in Meechie's World (the DJ battle), sent by him on 2026-11-05 with his order to air it right after Episode 1, back-to-back, looped in with his commercials; owner media file hosted on the site itself", clearedBy: "owner", at: now, simulcast: true });
   return [
     { id: "cartoon-barbershop-p1", kind: "show", src: "file", yt: "", url: "/media/barbershop-cartoon-p1.mp4", iaId: "", title: "The Barbershop Cartoon — Part 1 of 2", show: "Meechie's World Cartoon", dur: 299.3, rights: mk() },
     { id: "cartoon-barbershop-p2", kind: "show", src: "file", yt: "", url: "/media/barbershop-cartoon-p2.mp4", iaId: "", title: "The Barbershop Cartoon — Part 2 of 2", show: "Meechie's World Cartoon", dur: 292.8, rights: mk() },
+    { id: "cartoon-djbattle-p1", kind: "show", src: "file", yt: "", url: "/media/dj-battle-cartoon-p1.mp4", iaId: "", title: "South Park in Meechie's World — Episode 2, Part 1 of 2", show: "Meechie's World Cartoon", dur: 301.1, rights: mk2() },
+    { id: "cartoon-djbattle-p2", kind: "show", src: "file", yt: "", url: "/media/dj-battle-cartoon-p2.mp4", iaId: "", title: "South Park in Meechie's World — Episode 2, Part 2 of 2", show: "Meechie's World Cartoon", dur: 301.5, rights: mk2() },
   ];
+}
+/* The in-slot commercial pool: Malik's OWN show spots only — the
+ * house items of the break pool under TV_SHOW_SPOT_IDS, resolved
+ * exactly as the ad cadence resolves them (tvAdCadItems' house
+ * loop), so a spot whose file is not on the site yet is already
+ * held out by the tick's spot gate (tvCleared drops held items)
+ * and joins by itself once uploaded. Paid sponsor spots are NOT
+ * drawn into the cartoon block: Malik's order was "looped in with
+ * MY commercials", and sponsors were never promised this slot. */
+function tvCartoonSpots(pool) {
+  const items = [];
+  for (const id of TV_SHOW_SPOT_IDS) {
+    const it = ((pool && pool.items) || []).find((x) => x.id === id);
+    if (it && tvCleared(it)) items.push(it);
+  }
+  return items;
+}
+/* The full sequence ONE hourly slot plays (Malik, 2026-11-05
+ * ~10:57: Episode 2 goes "after my other cartoon one after
+ * another looped in with my comercials"): Episode 1's pair, ONE
+ * show commercial, Episode 2's pair, ONE more show commercial —
+ * then the interrupted program resumes. Which spots fill the two
+ * breaks is the cadence rail's own seeded block shuffle
+ * (tvAdPick) keyed on the slot's hour — occurrences 2k and 2k+1
+ * of hour k — a pure function of the hour, so every keeper pass
+ * lays the same sequence for the same slot with no state to
+ * store, while the spots still rotate hour to hour like
+ * everywhere else on the channel. With no cleared spot in the
+ * pool the sequence is just the two episodes back-to-back —
+ * never dead air, never a foreign commercial. */
+function tvCartoonSeq(crt, hourMs) {
+  const items = (crt && crt.items) || [];
+  const spots = (crt && crt.spots) || [];
+  if (items.length < 4 || !spots.length) return items.slice();
+  const k = Math.round((+hourMs || 0) / 3600e3);
+  const a = tvAdPick(spots, 2 * k), b = tvAdPick(spots, 2 * k + 1);
+  return [items[0], items[1], a, items[2], items[3], b].filter(Boolean);
+}
+function tvCartoonSeqTotal(crt, hourMs) {
+  return tvCartoonSeq(crt, hourMs).reduce((x, it) => x + (+it.dur || 0), 0);
 }
 const TV_MOVIE_FALLBACK_MIN = 15;    // when the premiere slot airs nothing, the movie block starts this many minutes after the slot start (20:15 ET)
 const TV_PREM_PROBE_MS = 600e3;
@@ -1564,20 +1608,26 @@ function tvGen(chan, pool, cursor, horizonMs) {
       t = awin.end; continue;
     }
     if (cwin && cwin.inside && !(chan._qCut && chan._qCut.cartoon === cwin.start)) {
-      // HOURLY CARTOON (tvCartoonSpans): the pair chains inside its
-      // span by wall-clock offset exactly like the premiere chain —
-      // the program cursor frozen, the interrupted program resumes
-      // after the span from the offset it reached. The span never
-      // overlaps a hard window (tvCartoonSpans slid it past them
-      // all) and this branch sits ahead of the ad cadence, so no
-      // spot chops the pair: p1 and p2 lay back-to-back, no gap.
-      // An instance the owner (or the Guardian) cut is stamped in
-      // qCut by the shared advancer and never resumes — the check
-      // above reads qCut live, so a same-tick skip is honored.
-      // The pair is a normal auto-picked program for every skip
-      // rule: no protected id, no qid/fam flag.
+      // HOURLY CARTOON (tvCartoonSpans): the slot's sequence
+      // chains inside its span by wall-clock offset exactly like
+      // the premiere chain — the program cursor frozen, the
+      // interrupted program resumes after the span from the
+      // offset it reached. The span never overlaps a hard window
+      // (tvCartoonSpans slid it past them all) and this branch
+      // sits ahead of the ad cadence, so no OUTSIDE spot chops
+      // the block: since v2 the sequence itself (tvCartoonSeq
+      // for THIS span's hour) is Episode 1, one of Malik's show
+      // commercials, Episode 2, one more commercial — each part
+      // back-to-back, no gap. An instance the owner (or the
+      // Guardian) cut is stamped in qCut by the shared advancer
+      // and never resumes — the check above reads qCut live, so
+      // a same-tick skip is honored. The block is a normal
+      // auto-picked program for every skip rule: no protected
+      // id, no qid/fam flag.
+      const cspan = (chan._cartoon.spans || []).find((sp) => sp.start === cwin.start);
+      const cseq = tvCartoonSeq(chan._cartoon, cspan ? cspan.hour : cwin.start);
       let slotOff = (t - cwin.start) / 1000, segIt = null, segOff = 0;
-      for (const sit of chan._cartoon.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
+      for (const sit of cseq) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cwin.end; continue;
     }
@@ -2136,11 +2186,17 @@ function tvInsertFrozen(ins, chan) {
   return Math.max(0, Math.round(froz * 10) / 10);
 }
 /* ---------------------------------------------------------------
- * HOURLY CARTOON LIVE (the media gate): the pair counts as live
- * only when BOTH files actually exist on the site — probed here
- * with the premiere's cached verdicts (tv/now cartoonProbe), so a
- * slow upload can never lay a dead segment; the slot simply joins
- * by itself the first tick both files are really there. */
+ * HOURLY CARTOON LIVE (the media gate): the episodes count as
+ * live only when ALL FOUR files actually exist on the site —
+ * probed here with the premiere's cached verdicts (tv/now
+ * cartoonProbe), so a slow upload can never lay a dead segment;
+ * the slot simply joins by itself the first tick all four files
+ * are really there. (Since v2 the gate covers Episode 2's parts
+ * too: until they land, the whole slot — Episode 1 included —
+ * stays dark, exactly the gate discipline Malik's order was
+ * built under; the in-slot commercials need no probe here, the
+ * tick's spot gate already holds a spot whose file is missing
+ * out of the pool tvCartoonSpots resolves from.) */
 async function tvCartoonLive(env, nw, now, origin) {
   const cache = { ...((nw && nw.cartoonProbe) || {}) };
   let cacheChanged = false;
@@ -2181,15 +2237,21 @@ async function tvCartoonLive(env, nw, now, origin) {
  * the timeline cursor — are what make re-runs lay each hour's pair
  * exactly once. A span the owner (or the Guardian, through the
  * shared advancer) cut is suppressed by qCut exactly like the
- * premiere's: the wall-clock span never resumes. */
+ * premiere's: the wall-clock span never resumes.
+ * v2 (Episode 2 + commercials): a span's length is its hour's
+ * FULL sequence total (tvCartoonSeqTotal — both episodes plus
+ * the hour's two show spots), a pure function of the hour, so
+ * the slide past hard windows, the stacking guard and a pinned
+ * span's end all read the same total tvGen chains by; every v1
+ * placement rule above is unchanged, only the payload grew. */
 function tvCartoonSpans(chan, crt, fromMs, toMs, pins) {
   if (!crt || !Array.isArray(crt.items) || !(crt.total > 0)) return [];
-  const totalMs = crt.total * 1000;
   const laidAt = (ws) => !(chan._qCut && chan._qCut.news === ws) && tvNewsFreshFor(chan, ws) && !tvNewsOverlapsFamily({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, chan._family);
   const out = [];
   let lastEnd = -Infinity;
   const b0 = Math.floor((fromMs - 3600e3) / 3600e3) * 3600e3;
   for (let B = b0; B < toMs + 3600e3; B += 3600e3) {
+    const totalMs = tvCartoonSeqTotal(crt, B) * 1000;
     let fire = laidAt(B - TV_NEWS_LEN * 1000) ? B : B - 300e3;
     for (let i = 0; i < 10; i++) {
       const e = fire + totalMs;
@@ -2416,7 +2478,7 @@ function tvAdvanceChannel(chan, segs, cursor, now, cadNow) {
   if ((sc = slotCut(tvPremWin(now, chan._rerun), chan._rerun && chan._rerun.items, "rerun", "rerun"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvFamilyWin(now, chan._family), chan._family && chan._family.items, "family", "Family Time"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvAnchorWin(now, chan._anchor), chan._anchor ? [chan._anchor.item] : null, "anchor", "anchor edition"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
-  if ((sc = slotCut(tvCartoonWinAt(now, chan._cartoon), chan._cartoon && chan._cartoon.items, "cartoon", "the barbershop cartoon"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if ((sc = slotCut(tvCartoonWinAt(now, chan._cartoon), chan._cartoon ? chan._cartoon.items.concat(chan._cartoon.spots || []) : null, "cartoon", "the cartoon block"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if (cadNow && cadNow.inside && cur.start >= cadNow.start && cur.start < cadNow.end && ((cadNow.item && cur.id === cadNow.item.id) || (cadNow.upd && cur.id === cadNow.upd.id))) { out.qCut = { cad: cadNow.start }; out.note = "cut the break short — back to the program"; return out; }
   // The owner's queue: jump the anchor past the item on air, so
   // the next item in the list starts at the cut.
@@ -3716,12 +3778,14 @@ async function tvTick(env, S, now, origin, online) {
   let qCut = nw && nw.qCut && typeof nw.qCut === "object" ? { ...nw.qCut } : {};
   chan._qCut = qCut;
   // HOURLY CARTOON (tvCartoonSpans): attach the resolved state —
-  // the pair, when both files are on the site — and the spans this
-  // tick lays by. nw.crtWin pins the spans already laid, so a laid
+  // the episodes, when all four files are on the site, plus the
+  // in-slot commercial pool resolved from the (already
+  // spot-gated) break pool — and the spans this tick lays by.
+  // nw.crtWin pins the spans already laid, so a laid
   // slot's start never moves when a late edition flips the news
   // gate mid-hour. The queue's freeze states pick the spans up
-  // here too (qSt.crt), so queue content freezes across the pair.
-  chan._cartoon = cartoonState.crt ? { items: cartoonState.crt.items, total: cartoonState.crt.total, spans: [] } : null;
+  // here too (qSt.crt), so queue content freezes across the block.
+  chan._cartoon = cartoonState.crt ? { items: cartoonState.crt.items, total: cartoonState.crt.total, spots: tvCartoonSpots(pool), spans: [] } : null;
   if (chan._cartoon) chan._cartoon.spans = tvCartoonSpans(chan, chan._cartoon, now - 3600e3, now + TV_HORIZON + 3600e3, (nw && nw.crtWin) || []);
   qSt.crt = chan._cartoon;
   let qSkipAtDone = (nw && +nw.qSkipAt) || 0;
@@ -4212,9 +4276,10 @@ async function tvTick(env, S, now, origin, online) {
   // pinned start as authoritative (see its header).
   const crtPins = [];
   if (chan._cartoon && Array.isArray(chan._cartoon.spans)) {
+    const crtEpIds = (chan._cartoon.items || []).map((x) => x.id);
     for (const sp of chan._cartoon.spans) {
       if (sp.start <= now - 2 * 3600e3) continue;
-      if ((segs || []).some((s) => s && (s.id === "cartoon-barbershop-p1" || s.id === "cartoon-barbershop-p2") && s.start >= sp.start - 1500 && s.start < sp.end)) crtPins.push({ start: sp.start, hour: sp.hour });
+      if ((segs || []).some((s) => s && crtEpIds.includes(s.id) && s.start >= sp.start - 1500 && s.start < sp.end)) crtPins.push({ start: sp.start, hour: sp.hour });
     }
   }
   delete chan._prem;
