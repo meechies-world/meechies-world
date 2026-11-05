@@ -10,6 +10,7 @@
  *
  * 1 coin = 1 cent of value. Stripe's card fee comes out of Meechie's 60%. */
 import { json, userFrom, isAdmin, setup, take, change, uuid } from "../../../lib/cf.js";
+import { creditPurse, purseView, createProposal, decideProposal, setUsablePct, setFrozen } from "../../../lib/purse.js";
 
 export const PACKS = { p100: { coins: 100, cents: 100 }, p550: { coins: 550, cents: 500 }, p1150: { coins: 1150, cents: 1000 }, p3000: { coins: 3000, cents: 2500 }, p6250: { coins: 6250, cents: 5000 } };
 // Meechie's World gifts, smallest to biggest (1 coin = 1¢). "fx" gifts play a full-screen animation for everyone watching.
@@ -163,7 +164,14 @@ export async function onRequest({ request, env, params }) {
       if (uid && coins > 0 && s.payment_status === "paid") {
         const now = Date.now();
         const r = await env.DB.prepare("insert or ignore into coin_tx (id, uid, kind, coins, cents, at) values (?,?,?,?,?,?)").bind("cs:" + s.id, uid, "buy", coins, s.amount_total || 0, now).run();
-        if (r.meta.changes) await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(uid, coins, now).run();
+        if (r.meta.changes) {
+          await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(uid, coins, now).run();
+          // the purse IS this coin account (Malik, 2026-11-05): a confirmed
+          // site receipt lands in Meechie's purse at the coin system's own
+          // rate (1 coin = 1¢ of value), credited by dollar value received.
+          // Idempotent by the session id — a webhook replay never pays twice.
+          await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "coin-pack", ref: "cs:" + s.id, data: { uid, packCoins: coins } });
+        }
       }
     }
     return json({ received: true });
@@ -416,6 +424,37 @@ export async function onRequest({ request, env, params }) {
       change(env, "dms", null, null, me.id, OWNER_ID),
     ]);
     return json({ ok: true, cents: avail });
+  }
+
+  /* ---------------- Meechie's Purse (the coin account IS the purse) ----------------
+   * Owner-only doors onto lib/purse.js: the booth panel reads the whole
+   * purse (balance, the 40% usable share, the append-only log, the
+   * proposal queue), decides proposals, sets the usable percent and
+   * flips the freeze switch. Meechie's own proposal path is the same
+   * lib door his hands call server-side; this HTTP door is the owner's.
+   * NOTHING here executes a payment — approvals are ledger commitments. */
+  if (route === "purse" && method === "GET") {
+    if (!admin) return err("owner_only", 403);
+    return json(await purseView(env));
+  }
+  if (route === "purse/propose" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    const r = await createProposal(env, b, me.id);
+    return r.ok ? json({ ok: true, proposal: r.proposal }) : err(r.error, 422);
+  }
+  if (route === "purse/decide" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    const r = await decideProposal(env, String(b.id || ""), String(b.decision || ""), me.id);
+    return r.ok ? json(r) : err(r.error, r.code === "not_found" ? 404 : 422);
+  }
+  if (route === "purse/config" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    if (b.usablePct != null) { const r = await setUsablePct(env, b.usablePct, me.id); if (!r.ok) return err(r.error, 422); }
+    if (b.frozen != null) await setFrozen(env, !!b.frozen, me.id);
+    return json(await purseView(env));
   }
 
   // owner only: everything that's been bought and earned, and payouts to make

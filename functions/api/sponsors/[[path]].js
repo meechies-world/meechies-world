@@ -27,6 +27,7 @@
  *   25 MB, so uploads cap just under that.
  */
 import { json, userFrom, isAdmin, setup, take, uuid, randToken } from "../../../lib/cf.js";
+import { creditPurse } from "../../../lib/purse.js";
 
 const err = (m, s = 400) => json({ error: m }, s);
 export const SPONSOR_TIERS = {
@@ -92,6 +93,12 @@ async function verifyPayment(env, c) {
       c.paidAt = Date.now();
       c.amountTotal = +s.amount_total;
       if (c.status === "awaiting-payment") c.status = "awaiting-approval";
+      // the purse IS the coin account (Malik, 2026-11-05): this verified
+      // sponsor receipt lands in Meechie's purse (1 coin = 1¢ of value).
+      // Credited BEFORE the claim write, keyed by the claim id under
+      // insert-or-ignore — a retry can never credit the same week twice,
+      // and a failed claim write simply re-verifies next read.
+      await creditPurse(env, { coins: c.amountTotal, cents: c.amountTotal, source: "sponsor-" + c.tier, ref: "claim:" + c.id, data: { business: c.business, tier: c.tier } });
       await writeClaim(env, c);
     }
   } catch (_) {}
