@@ -1044,7 +1044,7 @@ function mwVmixRescue(S, now, obs) {
  * that the break cuts in even during his own live booth sets, so
  * there is no booth exception. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 14;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules; v11 = the news freshness + Family Time build (Malik, 2026-11-04 ~21:37: "Fix my news" / "8 oclock is supposed to be a kids family movie"): the :50 news window is laid ONLY when tv/news holds an edition produced within TV_NEWS_FRESH_MS before the window start — a stale edition is never laid, the program chain flows through the window instead — and a news window overlapping the Family Time window is never laid at all (Family Time is a hard window; the :50 news no longer passes over the family movie); the bump forces the one-time re-lay that clears stale-edition news windows and news segments inside the Family Time span already laid in tv/now); v12 = the ASAP Preach build (Malik, 2026-11-05 ~08:34 ET: "I want asap preach s music to get shuffled on my tv station"): 20 verified music videos from ASAP Preach's official YouTube channel (@OfficialASAPPreach, channel UCDG6YLw_vMVDRXKErys6EJQ) join the break pool as ordinary cleared auto-picks (kind break, lane "gospel") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/asap-preach-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v13 = the Deen Squad build (Malik, 2026-11-05 ~11:03 ET: "And deen squad" / "Music videos"): 24 verified music videos from Deen Squad's official YouTube channel (@deensquadmusic, channel UCh6MhPyvzCNz_VF5q9UcV1A) join the break pool as ordinary cleared auto-picks (kind break, lane "faith") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/deen-squad-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v14 = the ONLY build (Malik, 2026-11-05 12:25 ET: "I only want my 2 cartoons comercials and asap preech videos on my tv channel along with deen squad" — scope confirmed B, shuffle only): the auto-picked fill narrows to ASAP Preach + Deen Squad + the MY EMPIRE house show spots — the cycle seed gains the 44 gospel/faith videos as fill program items (fill: true), tvFillOk gates the chain walk, tvCyclePos and the break bag, and tvMovieState stands the movie chain down as fill (its seed stays: Family Time eligibility reads the shared seeds, which are NOT narrowed — tvFamilyEligible output is unchanged); the scheduled blocks (news window + quarter cadence, anchor, cartoon, Comedy Hour insert, Family Time, premiere/rerun, owner queue) are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now under the narrowed fill (build record: website/only-lineup-2026-11-05/PROGRESS.md)
+const TV_PROGRAM_V = 15;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules; v11 = the news freshness + Family Time build (Malik, 2026-11-04 ~21:37: "Fix my news" / "8 oclock is supposed to be a kids family movie"): the :50 news window is laid ONLY when tv/news holds an edition produced within TV_NEWS_FRESH_MS before the window start — a stale edition is never laid, the program chain flows through the window instead — and a news window overlapping the Family Time window is never laid at all (Family Time is a hard window; the :50 news no longer passes over the family movie); the bump forces the one-time re-lay that clears stale-edition news windows and news segments inside the Family Time span already laid in tv/now); v12 = the ASAP Preach build (Malik, 2026-11-05 ~08:34 ET: "I want asap preach s music to get shuffled on my tv station"): 20 verified music videos from ASAP Preach's official YouTube channel (@OfficialASAPPreach, channel UCDG6YLw_vMVDRXKErys6EJQ) join the break pool as ordinary cleared auto-picks (kind break, lane "gospel") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/asap-preach-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v13 = the Deen Squad build (Malik, 2026-11-05 ~11:03 ET: "And deen squad" / "Music videos"): 24 verified music videos from Deen Squad's official YouTube channel (@deensquadmusic, channel UCh6MhPyvzCNz_VF5q9UcV1A) join the break pool as ordinary cleared auto-picks (kind break, lane "faith") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/deen-squad-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v14 = the ONLY build (Malik, 2026-11-05 12:25 ET: "I only want my 2 cartoons comercials and asap preech videos on my tv channel along with deen squad" — scope confirmed B, shuffle only): the auto-picked fill narrows to ASAP Preach + Deen Squad + the MY EMPIRE house show spots — the cycle seed gains the 44 gospel/faith videos as fill program items (fill: true), tvFillOk gates the chain walk, tvCyclePos and the break bag, and tvMovieState stands the movie chain down as fill (its seed stays: Family Time eligibility reads the shared seeds, which are NOT narrowed — tvFamilyEligible output is unchanged); the scheduled blocks (news window + quarter cadence, anchor, cartoon, Comedy Hour insert, Family Time, premiere/rerun, owner queue) are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now under the narrowed fill (build record: website/only-lineup-2026-11-05/PROGRESS.md); v15 = the fill mix build (Malik, 2026-11-05 ~14:33 ET: "Wheres asap preach i dont see his videos shuffled into mwtv" — then ~14:38 ET: "And shuffle in my cartoons as well" / "All 3 asap deen and my cartoons"): the v14 membership was right but the ORDER played like blocks — the fill videos sat in the cycle seed as one ASAP Preach run followed by one Deen Squad run and the chain walk plays the seed in order, so ASAP Preach played straight through, then Deen Squad played alone for the better part of an hour. tvSeedChannel now weaves the fill into one shuffled cycle: the 44 ASAP Preach / Deen Squad videos interleave proportionally (each artist's videos keep their seeded order inside the weave; Deen Squad carries four more videos than ASAP Preach, so an extra Deen Squad video lands every so often and no artist plays more than two in a row), and Malik's two barbershop cartoons join the fill as WHOLE EPISODES — the same four files the hourly slot plays (tvCartoonItems), seeded here as fill and dealt into the weave as single units: Part 1 then Part 2 back-to-back, never split, each episode exactly once per pass, the two episodes landing half a cycle apart. The hourly cartoon block is NOT changed: it still plays on its own pinned span every hour (Episode 1, one show commercial, Episode 2, one more commercial), the span still cuts whatever fill is playing — a fill cartoon included — and the fill resumes from its exact offset after the span, exactly like every other fill program. Membership otherwise unchanged: the same 51-id fill set plus the 4 cartoon parts, every other seed item and every scheduled block exactly as before; the bump reseeds tv/channel and re-lays tv/now in the new mixed order (build record: website/fill-interleave-2026-11-05/PROGRESS.md)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
 const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 3;                // post-premiere movie block doc generation (tv/movieblock) (v3 = the 2026-11-03 pool expansion: the new-pool sweep's verified titles join the chain — see tvSeedMovieBlock)
@@ -1869,7 +1869,7 @@ function tvRadioDecision(S, qDoc, now) {
 function tvSeedChannel(now) {
   const R = (basis, evidence, simulcast) => ({ basis, evidence, clearedBy: basis === "own" ? "owner" : "keeper-check", at: now, simulcast: !!simulcast });
   const RE = (evidence) => R("embed", evidence, false);
-  return {
+  const chan = {
     on: true, epoch: now, breakEvery: 1, chainSec: TV_CHAIN_SEC,
     breakMix: { video: 3, house: 1, legal: 1 },
     progV: TV_PROGRAM_V,
@@ -2023,9 +2023,91 @@ function tvSeedChannel(now) {
       { id: "mv-7bdodtlgmlo", kind: "show", src: "yt", yt: "7bdoDTlGMLo", title: "Deen Squad — ALLAH'S PLAN", show: "Deen Squad", dur: 206, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 206 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement") },
       { id: "mv-f5c3lh33pie", kind: "show", src: "yt", yt: "F5c3LH33pIE", title: "Deen Squad — HALAL BOY", show: "Deen Squad", dur: 238, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 238 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement") },
       { id: "mv-zr4bztphc_u", kind: "show", src: "yt", yt: "ZR4bztPhc_U", title: "Deen Squad — LOOK ALIVE", show: "Deen Squad", dur: 186, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 186 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement") },
+      // v15: Malik's two barbershop cartoons join the fill as WHOLE
+      // EPISODES (Malik, 2026-11-05 ~14:38 ET: "And shuffle in my
+      // cartoons as well" / "All 3 asap deen and my cartoons") — the
+      // same items the hourly slot plays (tvCartoonItems: same ids,
+      // files, titles and durations), seeded here as fill so the
+      // weave below deals each episode into the shuffle as ONE unit
+      // (Part 1 → Part 2 back-to-back, never split). The hourly
+      // cartoon block itself is unchanged and still plays on its
+      // own pinned span every hour.
+      { id: "cartoon-barbershop-p1", kind: "show", src: "file", yt: "", url: "/media/barbershop-cartoon-p1.mp4", iaId: "", title: "The Barbershop Cartoon — Part 1 of 2", show: "Meechie's World Cartoon", dur: 299.3, block: "anytime", fill: true, rights: R("own", "Malik's own barbershop cartoon — sent by him on 2026-11-05 with his order to air it on MW TV once every hour, right after scheduled programming, as-is; owner media file hosted on the site itself", true) },
+      { id: "cartoon-barbershop-p2", kind: "show", src: "file", yt: "", url: "/media/barbershop-cartoon-p2.mp4", iaId: "", title: "The Barbershop Cartoon — Part 2 of 2", show: "Meechie's World Cartoon", dur: 292.8, block: "anytime", fill: true, rights: R("own", "Malik's own barbershop cartoon — sent by him on 2026-11-05 with his order to air it on MW TV once every hour, right after scheduled programming, as-is; owner media file hosted on the site itself", true) },
+      { id: "cartoon-djbattle-p1", kind: "show", src: "file", yt: "", url: "/media/dj-battle-cartoon-p1.mp4", iaId: "", title: "South Park in Meechie's World — Episode 2, Part 1 of 2", show: "Meechie's World Cartoon", dur: 301.1, block: "anytime", fill: true, rights: R("own", "Malik's own cartoon — Episode 2 of South Park in Meechie's World (the DJ battle), sent by him on 2026-11-05 with his order to air it right after Episode 1, back-to-back, looped in with his commercials; owner media file hosted on the site itself", true) },
+      { id: "cartoon-djbattle-p2", kind: "show", src: "file", yt: "", url: "/media/dj-battle-cartoon-p2.mp4", iaId: "", title: "South Park in Meechie's World — Episode 2, Part 2 of 2", show: "Meechie's World Cartoon", dur: 301.5, block: "anytime", fill: true, rights: R("own", "Malik's own cartoon — Episode 2 of South Park in Meechie's World (the DJ battle), sent by him on 2026-11-05 with his order to air it right after Episode 1, back-to-back, looped in with his commercials; owner media file hosted on the site itself", true) },
     ],
     updatedAt: now, by: "keeper-seed"
   };
+  // v15 FILL WEAVE: the fill items above are seeded grouped — the
+  // 44 music videos as one ASAP Preach run followed by one Deen
+  // Squad run, then the two cartoon episodes — and the program
+  // chain plays the seed in order, so grouped seeding plays as
+  // blocks, not a shuffle. Below, the fill items are re-dealt
+  // across their OWN positions in chan.items as one mixed cycle:
+  // the music videos interleave by artist, and each cartoon
+  // episode enters as a single whole unit. Membership is
+  // untouched: the same items in the same fill slots, only the
+  // order among those slots changes; every non-fill item stays
+  // exactly where it was, and the hourly cartoon span machinery
+  // (tvCartoonSpans) never reads this list — it plays from
+  // tvCartoonItems on its own pinned span, exactly as before.
+  const fillPos = [], fillItems = [];
+  chan.items.forEach((it, i) => { if (it && it.fill === true) { fillPos.push(i); fillItems.push(it); } });
+  if (fillPos.length > 1) {
+    // Episode units: a file-media fill item whose id ends in -p1,
+    // -p2, ... is one part of a whole episode — the parts are glued
+    // into a single unit here and the unit is dealt into the weave
+    // whole, so an episode's parts always play back-to-back in
+    // order and a lone part is never drawn.
+    const music = [], epParts = new Map();
+    for (const it of fillItems) {
+      const m = it.src === "file" ? /^(.*)-p(\d+)$/.exec(String(it.id || "")) : null;
+      if (m) { if (!epParts.has(m[1])) epParts.set(m[1], []); epParts.get(m[1]).push({ n: +m[2], it }); }
+      else music.push(it);
+    }
+    // Music weave: proportional interleave by artist — the picks
+    // track each artist's share of the music set, so the artists
+    // alternate (an extra video from the bigger catalog lands
+    // every so often; no artist plays more than two in a row), and
+    // each artist's videos keep their seeded order inside the
+    // weave.
+    const byArtist = new Map();
+    for (const it of music) { const k = String(it.show || ""); if (!byArtist.has(k)) byArtist.set(k, []); byArtist.get(k).push(it); }
+    const groups = [...byArtist.values()].map((items) => ({ items, taken: 0 }));
+    const units = [];
+    for (let n = 0; n < music.length; n++) {
+      let best = null, bestDeficit = -Infinity;
+      for (const g of groups) {
+        if (g.taken >= g.items.length) continue;
+        const deficit = (g.items.length / music.length) * (n + 1) - g.taken;
+        if (deficit > bestDeficit) { bestDeficit = deficit; best = g; }
+      }
+      units.push([best.items[best.taken++]]);
+    }
+    // Episodes woven in by time: the episodes divide the whole
+    // cycle (music + episodes) into equal shares — with two
+    // episodes, each lands half a cycle from the other, so a
+    // cartoon starts at a steady cadence all the way around the
+    // loop instead of bunching up in one stretch of it.
+    const eps = [...epParts.values()].map((parts) => parts.sort((a, b) => a.n - b.n).map((p) => p.it));
+    if (eps.length) {
+      const musicSec = music.reduce((a, it) => a + (+it.dur || 0), 0);
+      const totalSec = musicSec + eps.reduce((a, ep) => a + ep.reduce((b, it) => b + (+it.dur || 0), 0), 0);
+      const withEps = [];
+      let acc = 0, epSec = 0, ei = 0;
+      for (const u of units) {
+        withEps.push(u);
+        acc += +u[0].dur || 0;
+        while (ei < eps.length && acc + epSec >= (totalSec * (2 * ei + 1)) / (2 * eps.length)) { withEps.push(eps[ei]); epSec += eps[ei].reduce((b, it) => b + (+it.dur || 0), 0); ei++; }
+      }
+      while (ei < eps.length) withEps.push(eps[ei++]);
+      units.length = 0; units.push(...withEps);
+    }
+    const woven = units.flat();
+    fillPos.forEach((pos, n) => { chan.items[pos] = woven[n]; });
+  }
+  return chan;
 }
 function tvSeedPool(now) {
   const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
