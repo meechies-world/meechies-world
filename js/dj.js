@@ -1667,6 +1667,15 @@ html.popdj #dj-mini{display:none!important}
   // reports/index doc and the newest report docs through the docs REST
   // select (see reportsRead) and paints them; it never writes.
   { const doorR = document.getElementById("dj-door"); if (OWNER() && doorR && doorR.parentElement && !document.getElementById("dj-reports")) { const rp = document.createElement("div"); rp.className = "dj-panel"; rp.id = "dj-reports"; rp.innerHTML = "<h4>📋 REPORTS</h4><div style=\"display:flex;align-items:center;gap:8px;margin:2px 0 6px\"><button type=\"button\" class=\"btn sm\" id=\"reports-send\">📤 SEND TO AMANI</button><small class=\"muted\" id=\"reports-send-note\"></small></div><div id=\"reports-body\"><small class=\"muted\">Loading reports…</small></div>"; doorR.parentElement.appendChild(rp); } }
+  // PURSE panel (Meechie's purse, 2026-11-05): the coin account IS the
+  // purse — the owner's readout of Meechie's business money, created
+  // right after the REPORTS panel in the same grid, OWNER only. It
+  // paints the balance, Meechie's usable 40% share, the spend-proposal
+  // queue with approve/deny, the append-only log, the usable-% setting
+  // and the freeze switch (the purse's kill switch, same pattern as
+  // the BRAIN hands switch). Painted at runtime by purseRead() below
+  // from /api/coins/purse; nothing here executes a payment.
+  { const doorU = document.getElementById("dj-door"); if (OWNER() && doorU && doorU.parentElement && !document.getElementById("dj-purse")) { const pp = document.createElement("div"); pp.className = "dj-panel"; pp.id = "dj-purse"; pp.innerHTML = "<h4>👛 MEECHIE'S PURSE</h4><div id=\"purse-body\"><small class=\"muted\">Loading the purse…</small></div>"; doorU.parentElement.appendChild(pp); } }
   // DJ PLAN door (owner fix, 2026-11-02): the plans modal could only be
   // opened from the Watch mirror upsell, whose tap handler blocks the
   // owner — so the owner-only Stripe signal row inside the modal (the
@@ -1972,6 +1981,79 @@ html.popdj #dj-mini{display:none!important}
   { const sb0 = document.getElementById("reports-send"); if (sb0 && !sb0.dataset.wired) { sb0.dataset.wired = "1"; sb0.addEventListener("click", reportsSend); } }
   setTimeout(reportsRead, 1600);
   setInterval(() => { if (document.getElementById("dj-reports")) reportsRead(); }, 60000);
+  /* ---------- MEECHIE'S PURSE panel readout ----------
+   * Owner-only, same transport shape as the REPORTS panel (the session
+   * from mySess, the server checks the admins table). Paints from
+   * /api/coins/purse: the balance (coins at the coin system's own rate,
+   * 1 coin = 1¢ of value), Meechie's usable share under the 40% law,
+   * the proposal queue with approve/deny, the usable-% setting, the
+   * freeze switch, and the newest append-only log entries. Approving a
+   * proposal is a ledger commitment only — payment execution is fenced
+   * off, so no button in this panel can move real money out. */
+  function purseApi(path, body) {
+    const opt = { headers: reportsHdrs() };
+    if (body) { opt.method = "POST"; opt.body = JSON.stringify(body); }
+    return fetch("/api/coins/" + path, opt)
+      .then((r) => r.json().then((j) => ({ status: r.status, j: j || {} })).catch(() => ({ status: r.status, j: {} })))
+      .catch(() => ({ status: 0, j: {} }));
+  }
+  const purseMoney = (coins) => (Math.round(coins || 0)).toLocaleString() + " coins ($" + ((coins || 0) / 100).toFixed(2) + ")";
+  function pursePaint(j) {
+    const box = document.getElementById("purse-body"); if (!box) return;
+    const t = j.totals || {}, cfg = j.config || {};
+    const pend = (j.proposals || []).filter((p) => p.status === "pending");
+    const decided = (j.proposals || []).filter((p) => p.status !== "pending").slice(0, 5);
+    let h = "";
+    if (cfg.frozen) h += "<div class=\"dj-item\"><span>🧊 <b>FROZEN</b> — Meechie can't open new proposals. Your decisions still work.</span></div>";
+    h += "<div class=\"dj-item\"><span>💰 <b>" + purseMoney(t.balanceCoins) + "</b><br><small class=\"muted\">all-time in: " + purseMoney(t.incomeCoins) + " · spent: " + purseMoney(t.spendCoins) + "</small></span></div>";
+    h += "<div class=\"dj-item\"><span>🤖 Meechie can use <b>" + (+cfg.usablePct || 0) + "%</b> — cap " + purseMoney(t.usableCapCoins) + ", committed " + purseMoney(t.committedCoins) + ", <b>" + purseMoney(t.authorityCoins) + " left on his own word</b><br><small class=\"muted\">🔒 reserve (never moves without you): " + purseMoney(t.reserveCoins) + "</small></span></div>";
+    h += "<div style=\"display:flex;align-items:center;gap:8px;margin:2px 0 6px;flex-wrap:wrap\"><label><small class=\"muted\">Usable %</small> <input type=\"number\" id=\"purse-pct\" min=\"0\" max=\"100\" step=\"1\" value=\"" + (+cfg.usablePct || 0) + "\" style=\"width:64px\"></label><button type=\"button\" class=\"btn sm\" id=\"purse-pct-save\">Save %</button><button type=\"button\" class=\"btn sm\" id=\"purse-freeze\">" + (cfg.frozen ? "🔓 Unfreeze the purse" : "🧊 Freeze the purse") + "</button><small class=\"muted\" id=\"purse-note\"></small></div>";
+    h += "<h5 style=\"margin:8px 0 4px\">Spend proposals (" + pend.length + " waiting)</h5>";
+    if (!pend.length) h += "<small class=\"muted\">No proposals waiting. Meechie's spends land here before anything can be committed.</small>";
+    h += pend.map((p) => "<div class=\"dj-item\" style=\"align-items:flex-start\"><span style=\"white-space:normal\">" + (p.authority === "owner" ? "👑 <b>needs you</b>" : "🤖 within his share") + " · " + E(p.payee || "") + " — " + E(p.purpose || "") + "<br><small class=\"muted\">" + E(p.category || "") + " · costs " + purseMoney(p.cost_coins) + " · expects " + purseMoney(p.expected_coins) + " back · " + (p.at ? new Date(+p.at).toLocaleString() : "") + "</small><br><small class=\"muted\">evidence: " + E(p.evidence || "") + "</small></span><span class=\"door-acts\"><button type=\"button\" class=\"btn sm\" data-purse-decide=\"approve\" data-purse-id=\"" + E(p.id) + "\">✔ Approve</button><button type=\"button\" class=\"btn sm\" data-purse-decide=\"deny\" data-purse-id=\"" + E(p.id) + "\">✖ Deny</button></span></div>").join("");
+    if (decided.length) h += "<h5 style=\"margin:8px 0 4px\">Decided lately</h5>" + decided.map((p) => "<div class=\"dj-item\"><span style=\"white-space:normal\">" + (p.status === "approved" ? "✔ approved" : "✖ denied") + " · " + E(p.payee || "") + " — " + purseMoney(p.cost_coins) + "<br><small class=\"muted\">" + E(p.purpose || "") + "</small></span></div>").join("");
+    const log = (j.log || []).slice(0, 15);
+    if (log.length) h += "<h5 style=\"margin:8px 0 4px\">Purse log (append-only)</h5>" + log.map((r) => "<div class=\"dj-item\"><span style=\"white-space:normal\">" + (r.kind === "income" ? "💵 in" : r.kind === "spend" ? "💸 out" : r.kind === "proposal" ? "📝 proposal" : r.kind === "decision" ? "⚖️ decision" : r.kind === "freeze" ? "🧊 freeze" : r.kind === "unfreeze" ? "🔓 unfreeze" : "⚙️ " + E(r.kind)) + " · " + E(r.source || "") + (r.coins ? " · " + purseMoney(r.coins) : "") + "<br><small class=\"muted\">" + (r.at ? new Date(+r.at).toLocaleString() : "") + "</small></span></div>").join("");
+    box.innerHTML = h;
+    const sv = document.getElementById("purse-pct-save"); if (sv) sv.addEventListener("click", purseSavePct);
+    const fz = document.getElementById("purse-freeze"); if (fz) fz.addEventListener("click", () => purseFreeze(!cfg.frozen));
+    box.querySelectorAll("[data-purse-decide]").forEach((b) => b.addEventListener("click", () => purseDecide(b.dataset.purseId, b.dataset.purseDecide)));
+  }
+  function purseFailed() {
+    const box = document.getElementById("purse-body"); if (!box) return;
+    box.innerHTML = "<small class=\"muted\">The purse could not load just now — it refreshes on its own every minute.</small>";
+  }
+  function purseRead() {
+    if (SANDBOX || !OWNER()) return;
+    if (!document.getElementById("dj-purse")) return;
+    purseApi("purse").then((res) => {
+      if (!res.j || !res.j.ok) { purseFailed(); return; }
+      pursePaint(res.j);
+    });
+  }
+  function purseDecide(id, decision) {
+    if (!id) return;
+    purseApi("purse/decide", { id: id, decision: decision }).then((res) => {
+      if (!res.j || !res.j.ok) { const n = document.getElementById("purse-note"); if (n) n.textContent = "That decision didn't land — try again."; return; }
+      purseRead();
+    });
+  }
+  function purseSavePct() {
+    const inp = document.getElementById("purse-pct"); if (!inp) return;
+    const n = Math.round(+inp.value || 0);
+    purseApi("purse/config", { usablePct: n }).then((res) => {
+      if (!res.j || !res.j.ok) { const nt = document.getElementById("purse-note"); if (nt) nt.textContent = "The % didn't save."; return; }
+      pursePaint(res.j);
+    });
+  }
+  function purseFreeze(f) {
+    purseApi("purse/config", { frozen: !!f }).then((res) => {
+      if (!res.j || !res.j.ok) { const nt = document.getElementById("purse-note"); if (nt) nt.textContent = "The freeze didn't land."; return; }
+      pursePaint(res.j);
+    });
+  }
+  setTimeout(purseRead, 2000);
+  setInterval(() => { if (document.getElementById("dj-purse")) purseRead(); }, 60000);
   /* ---------- the REPORTS button (owner fix, 2026-10-30) ----------
    * He could not find the reports: the inbox panel sits deep in the
    * studio grid. So the booth top cluster gets a 📋 REPORTS button
