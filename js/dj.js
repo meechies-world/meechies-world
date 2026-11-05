@@ -5515,7 +5515,15 @@ html.popdj #dj-mini{display:none!important}
    * block off the break pool played as a wall-clock tape every viewer
    * shares; if none of those exist the window parks — never dead air
    * faked as news, never a stale edition presented as new. */
-  const TV_NEWS_STALE_C = 2 * 3600e3;
+  /* 70 minutes, tightened from 2 hours in the 2026-11-04 news
+   * freshness build to match the keeper's lay gate exactly
+   * (station.js TV_NEWS_FRESH_MS, progV 11): the keeper no longer
+   * stamps a :50 window unless an edition was produced within
+   * this span before the window start, and a window stamped
+   * before that build can never be filled here with an edition
+   * older than this either — it fills with the music-video tape
+   * or parks, never a stale edition presented as news. */
+  const TV_NEWS_STALE_C = 70 * 60e3;
   let tvChanDoc = null, tvPoolDoc = null, tvNowDoc = null, tvNewsDoc = null;
   /* TV-FIRST readiness (instant-on, 2026-11-02): the channel tunes off
    * its own docs alone. tvSeen turns true the moment the tv/channel AND
@@ -7617,7 +7625,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793805364;
+  const MW_DJ_BUILD = 1793847176;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
