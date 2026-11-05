@@ -1164,6 +1164,58 @@ function tvNewsOverlapsFamily(win, fam) {
   if (!fw) return false;
   return fw.start < win.end && win.start < fw.end;
 }
+/* NEWS WINDOW REFILL (2026-11-05): the lay above is a one-time
+ * decision — tvGen stamps the window only when a gate-fresh edition
+ * exists AT LAY TIME, and the laid lineup is never revisited, so an
+ * edition that lands after its window opens can never air: the
+ * 14:50 ET window on 2026-11-05 stayed program-filled even though a
+ * gate-fresh edition (produced 14:40:54) sat in tv/news from
+ * 14:52:30 — the freshness gate was never the problem, the missing
+ * refill was. This is the refill, in the tick's re-lay-cut
+ * discipline (tvCharCut, exactly like the anchor / character /
+ * cadence cuts): when the CURRENT window's span does not already
+ * carry this window's news from the next segment boundary, and
+ * tv/news NOW holds an edition that passes the EXISTING lay gate
+ * (tvNewsFreshFor — judged for this window, unmodified), cut the
+ * laid timeline at that boundary so this tick's generation re-lays
+ * the rest of the window as news. The rules, exactly:
+ *   - the gate is the gate: a stale edition never refills, a
+ *     missing edition leaves the window as laid (silence by
+ *     design), and an owner-cut window is never refilled;
+ *   - Family Time precedence is unchanged (tvNewsOverlapsFamily);
+ *   - the segment on air is never cut mid-play — the cut lands on
+ *     the NEXT segment boundary inside the window, and not inside
+ *     a cartoon span (tvCartoonCutGuard);
+ *   - at most ONE refill per window — the tick stamps the refill
+ *     in tv/now (newsRefill) and passes the stamped window back in
+ *     as refilledWin on later ticks;
+ *   - a span that already carries this window's news from the
+ *     next boundary is never touched.
+ * qCutNews is the owner-cut stamp for THIS window as of tick start
+ * (nw.qCut.news — chan._qCut attaches later in the tick; a same-
+ * tick owner cut is applied by the advancer itself and the gate
+ * check in tvGen still refuses the re-lay). Returns
+ * { segs, cursor, win, to } on a cut, else null. */
+function tvNewsRefillCut(chan, segs, cursor, now, qCutNews, refilledWin, cartoonSpans) {
+  if (!chan || !Array.isArray(segs) || !cursor) return null;
+  const win = tvNewsWin(now);
+  if (!win.inside) return null;
+  if (qCutNews === win.start) return null;
+  if (refilledWin === win.start) return null;
+  if (!tvNewsFreshFor(chan, win.start)) return null;
+  if (tvNewsOverlapsFamily(win, chan._family)) return null;
+  const cur = tvSegAt(segs, now);
+  if (!cur) return null;
+  const B = cur.start + (+cur.dur || 0) * 1000;
+  if (!(B > now) || B >= win.end) return null;
+  const atB = segs.find((sg) => sg && sg.start === B);
+  if (atB && atB.k === "news" && atB.edWin === win.start) return null;
+  const cutAt = tvCartoonCutGuard(cartoonSpans, B);
+  if (!(cutAt > now) || cutAt >= win.end) return null;
+  const cut = tvCharCut(chan, segs, cursor, cutAt);
+  if (!cut) return null;
+  return { segs: cut.segs, cursor: cut.cursor, win: win.start, to: cutAt };
+}
 const TV_LOCAL_HOLD_MS = 70 * 60e3; // Uniontown Local Update break spot: held out of rotation once the producer stamp (tv/localupdate) is older than this — the producer refreshes hourly, so a spot lives at most ~65 min on air and coverage stays continuous
 const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: fixed daily slots, minutes ET (12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM)
 const TV_ANCHOR_FRESH_MS = 6 * 3600e3; // an anchor edition airs only at its own slot and only when produced within the 6h before that slot (productions run ~30 min ahead of each slot)
@@ -3885,6 +3937,18 @@ async function tvTick(env, S, now, origin, online) {
       }
     }
   }
+  // NEWS WINDOW REFILL (2026-11-05 — see tvNewsRefillCut): the
+  // cadence re-lay above only re-chains the quarter rail; it does
+  // not guarantee the :50 window itself. When the window we are
+  // inside was laid before its edition landed, refill its span
+  // from the next segment boundary — at most once per window, the
+  // refill stamped in tv/now as newsRefill (alongside skipNote /
+  // gNote) so the Guardian can see it happened.
+  let newsRefill = nw && nw.newsRefill && now - (+nw.newsRefill.at || 0) < 3600e3 ? nw.newsRefill : null;
+  if (segs && cursor) {
+    const rf = tvNewsRefillCut(chan, segs, cursor, now, (nw && nw.qCut && nw.qCut.news) || 0, newsRefill ? newsRefill.win : 0, crtCutSpans);
+    if (rf) { segs = rf.segs; cursor = rf.cursor; newsRefill = { win: rf.win, at: now, to: rf.to }; dirty = true; }
+  }
   // One-shot insert: when a fresh, unconsumed, cleared tv/insert
   // doc appears, stamp its window, cut the laid timeline there —
   // the anchor-cut discipline: the program cursor re-anchors by
@@ -4497,7 +4561,7 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._qCut;
   delete chan._cartoon;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, gNote, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, crtWin: crtPins, cartoonProbe: cartoonState.cache, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now });
+    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, gNote, newsRefill, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, crtWin: crtPins, cartoonProbe: cartoonState.cache, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now });
   }
   // Play tally for sponsor spots (segments that aired this tick).
   try { await tvSponsorTally(env, pool, segs, now, online); } catch (_) {}
