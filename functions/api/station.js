@@ -1049,7 +1049,7 @@ const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (
 const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 3;                // post-premiere movie block doc generation (tv/movieblock) (v3 = the 2026-11-03 pool expansion: the new-pool sweep's verified titles join the chain — see tvSeedMovieBlock)
 const TV_INSERT_V = 3;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy; v3 = tonight's Comedy Hour Thanksgiving movie, 2026-11-03)
-const TV_CARTOON_V = 2;              // hourly cartoon slot (Malik, 2026-11-05: his barbershop cartoon airs on MW TV once every hour, right after scheduled programming, AS IS) — two file parts form ONE logical piece, laid back-to-back with no gap inside a wall-clock span computed by tvCartoonSpans; v1 = the rules in the tvCartoonSpans header; v2 = Episode 2 joins the slot (Malik, 2026-11-05 ~10:57: "Thats south park in meechies world episode 2 put iton after my other cartoon one after another looped in with my comercials") — each slot now plays Episode 1's pair, one of Malik's own show commercials, Episode 2's pair, one more commercial (tvCartoonSeq), and the media gate requires all FOUR episode files
+const TV_CARTOON_V = 3;              // hourly cartoon slot (Malik, 2026-11-05: his barbershop cartoon airs on MW TV once every hour, right after scheduled programming, AS IS) — two file parts form ONE logical piece, laid back-to-back with no gap inside a wall-clock span computed by tvCartoonSpans; v1 = the rules in the tvCartoonSpans header; v2 = Episode 2 joins the slot (Malik, 2026-11-05 ~10:57: "Thats south park in meechies world episode 2 put iton after my other cartoon one after another looped in with my comercials") — each slot now plays Episode 1's pair, one of Malik's own show commercials, Episode 2's pair, one more commercial (tvCartoonSeq), and the media gate requires all FOUR episode files; v3 = the 2026-11-05 sequence fix: a pinned span whose head has since been covered by a hard window laid over it re-slides AS A UNIT to the window's end (it is never amputated — the 12:00 failure, below in tvCartoonSpans), and re-lay cuts never land inside a span (tvCartoonCutGuard)
 /* The episodes themselves (owner media, kind file — the ban gate
  * scans YouTube ids and never sees these, the self-remove proof
  * needs player errors this slot's own media gate prevents, and
@@ -2286,7 +2286,21 @@ async function tvCartoonLive(env, nw, now, origin) {
  * the hour's two show spots), a pure function of the hour, so
  * the slide past hard windows, the stacking guard and a pinned
  * span's end all read the same total tvGen chains by; every v1
- * placement rule above is unchanged, only the payload grew. */
+ * placement rule above is unchanged, only the payload grew.
+ * v3 (2026-11-05 sequence fix): a pin is authoritative only
+ * while the block can still play AS A UNIT from the pinned
+ * start. The 12:00 failure: the hour-12 span was pinned at
+ * 11:55 while the 11:50 window's edition was not yet fresh
+ * (fire = B - 300e3, the pair laid from 11:55); when the fresh
+ * edition landed (produced 11:54:07), the next tick laid the
+ * news segment 11:55-12:00 over the span's head — and tvGen,
+ * entering the pinned span at wall-clock offset 300 s, landed
+ * 0.7 s into Part 2 (laid 292.1 of 292.8 s): Episode 1 Part 1
+ * never aired. A block never amputates: when a hard window
+ * laid this tick overlaps the pinned span, the span re-slides
+ * as a unit past the window (the same slide loop) and the full
+ * sequence plays from the new start; if it no longer fits the
+ * hour it drops under the normal guards, like any other span. */
 function tvCartoonSpans(chan, crt, fromMs, toMs, pins) {
   if (!crt || !Array.isArray(crt.items) || !(crt.total > 0)) return [];
   const laidAt = (ws) => !(chan._qCut && chan._qCut.news === ws) && tvNewsFreshFor(chan, ws) && !tvNewsOverlapsFamily({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, chan._family);
@@ -2295,25 +2309,41 @@ function tvCartoonSpans(chan, crt, fromMs, toMs, pins) {
   const b0 = Math.floor((fromMs - 3600e3) / 3600e3) * 3600e3;
   for (let B = b0; B < toMs + 3600e3; B += 3600e3) {
     const totalMs = tvCartoonSeqTotal(crt, B) * 1000;
-    let fire = laidAt(B - TV_NEWS_LEN * 1000) ? B : B - 300e3;
-    for (let i = 0; i < 10; i++) {
-      const e = fire + totalMs;
-      let push = 0;
-      const consider = (w, blocks) => { if (blocks && w && fire < w.end && e > w.start && w.end > push) push = w.end; };
-      const nw1 = tvNewsWin(fire);
-      for (let k = 0; k < 2; k++) { const ws = nw1.start + k * 3600e3; consider({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, laidAt(ws)); }
-      consider(tvPremWin(fire, chan._prem), true);
-      consider(tvPremWin(fire, chan._rerun), true);
-      consider(tvFamilyWin(fire, chan._family), true);
-      consider(tvAnchorWin(fire, chan._anchor), true);
-      consider(tvInsertWin(fire, chan._insert), true);
-      if (!(push > fire)) break;
-      fire = push;
-    }
+    // Slide a candidate start forward past every hard window the
+    // block would overlap (the v1 placement rule, factored out so
+    // the pinned-start validation below runs the identical loop).
+    const slideFrom = (f0) => {
+      let f = f0;
+      for (let i = 0; i < 10; i++) {
+        const e = f + totalMs;
+        let push = 0;
+        const consider = (w, blocks) => { if (blocks && w && f < w.end && e > w.start && w.end > push) push = w.end; };
+        const nw1 = tvNewsWin(f);
+        for (let k = 0; k < 2; k++) { const ws = nw1.start + k * 3600e3; consider({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, laidAt(ws)); }
+        consider(tvPremWin(f, chan._prem), true);
+        consider(tvPremWin(f, chan._rerun), true);
+        consider(tvFamilyWin(f, chan._family), true);
+        consider(tvAnchorWin(f, chan._anchor), true);
+        consider(tvInsertWin(f, chan._insert), true);
+        if (!(push > f)) break;
+        f = push;
+      }
+      return f;
+    };
+    let fire = slideFrom(laidAt(B - TV_NEWS_LEN * 1000) ? B : B - 300e3);
     const pin = (Array.isArray(pins) ? pins : []).find((p) => p && +p.hour === B && +p.start > 0);
-    const pinned = !!pin;
-    if (pinned) fire = +pin.start;
-    if (chan._qCut && chan._qCut.cartoon === fire) continue;
+    let pinned = false;
+    if (pin) {
+      // v3: the pin holds only if the block still plays as a unit
+      // from it. Re-slide the pinned start past any hard window
+      // laid since the pin was written; a start that moves was
+      // covered, so the span continues as an ordinary candidate
+      // (the drop/stack guards below decide its fate) — it is
+      // never entered mid-sequence.
+      fire = slideFrom(+pin.start);
+      pinned = fire === +pin.start;
+    }
+    if (chan._qCut && (chan._qCut.cartoon === fire || (pin && chan._qCut.cartoon === +pin.start))) continue;
     if (!pinned) {
       if (fire >= B + 3600e3) continue;
       if (fire < lastEnd + 600e3) continue;
@@ -2333,6 +2363,26 @@ function tvCartoonWinAt(ms, crt) {
     if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false };
   }
   return null;
+}
+/* A re-lay cut (tvCharCut — the character-stamp cut and the
+ * cadence-chain relay cut in tvTick) must never land INSIDE a
+ * cartoon span. The block is a unit, but the cuts are blind to
+ * it: on 2026-11-05 the relay-grid cut at 12:05 split the 12:00
+ * block's in-slot spot into two back-to-back segments of the
+ * same commercial (7.9 s + 7.1 s), and the cut at 12:15 trimmed
+ * Episode 2 Part 2 at the grid mark — after which generation,
+ * re-entering the span by wall-clock offset, re-laid its 9.7 s
+ * tail as a resume stub even though the episode had already
+ * been laid to completion. A cut that would land inside a span
+ * moves to the span's end instead: the block's laid segments
+ * stand untouched and the re-lay happens after the block. (If
+ * the span's end is at/past the generation cursor the cut is a
+ * no-op in tvCharCut anyway — generation has not reached the
+ * span's end yet and lays past it with the new state.) */
+function tvCartoonCutGuard(spans, cutAt) {
+  if (!Array.isArray(spans) || !isFinite(cutAt)) return cutAt;
+  for (const sp of spans) { if (sp && cutAt > sp.start && cutAt < sp.end) return sp.end; }
+  return cutAt;
 }
 /* MW TV OWNER QUEUE + SKIP (Malik, 2026-11-03 19:09 ET: "Make it so
  * i can skip the movies on mw tv and que a list and if nothings qued
@@ -3700,6 +3750,14 @@ async function tvTick(env, S, now, origin, online) {
   chan._char = charState.char;
   const charStamp = charState.char ? charState.char.producedAt : 0;
   if (charState.cacheChanged) dirty = true;
+  // CARTOON CUT GUARD (v3, 2026-11-05): the two re-lay cuts below
+  // (the character-stamp cut and the cadence-chain relay cut)
+  // must never land inside a cartoon span — see tvCartoonCutGuard.
+  // The tick's own spans are attached further down; this snapshot
+  // runs the same computation on the same attached states for
+  // cut placement only (the insert/queue states attach later and
+  // do not move cartoon spans laid this tick).
+  const crtCutSpans = cartoonState.crt ? tvCartoonSpans(chan, { items: cartoonState.crt.items, total: cartoonState.crt.total, spots: tvCartoonSpots(pool) }, now - 3600e3, now + TV_HORIZON + 3600e3, (nw && nw.crtWin) || []) : [];
   if ((+((nw || {}).charStamp) || 0) !== charStamp) {
     dirty = true; // persist the new stamp in this tick's tv/now write
     if (segs && cursor) {
@@ -3707,7 +3765,7 @@ async function tvTick(env, S, now, origin, online) {
       const spansCut = cadCut ? tvAdSpans(cadCut, chan._prem, chan._anchor, chan._insert, now, now + TV_HORIZON, charState.char, luState.lu, chan._rerun, qtrState.qtr) : [];
       const nextOcc = spansCut.find((sp) => sp.start > now);
       if (nextOcc) {
-        const cut = tvCharCut(chan, segs, cursor, nextOcc.start);
+        const cut = tvCharCut(chan, segs, cursor, tvCartoonCutGuard(crtCutSpans, nextOcc.start));
         if (cut) { segs = cut.segs; cursor = cut.cursor; }
       }
     }
@@ -3722,7 +3780,7 @@ async function tvTick(env, S, now, origin, online) {
   if ((+((nw || {}).luStamp) || 0) !== luStamp || (+((nw || {}).charStamp) || 0) !== charStamp || (+((nw || {}).qStamp) || 0) !== qStampSeen || qtrState.cacheChanged) {
     dirty = true; // persist the new stamps in this tick's tv/now write
     if (segs && cursor) {
-      const mark = (Math.floor(now / TV_RELAY_GRID_MS) + 1) * TV_RELAY_GRID_MS;
+      const mark = tvCartoonCutGuard(crtCutSpans, (Math.floor(now / TV_RELAY_GRID_MS) + 1) * TV_RELAY_GRID_MS);
       if (mark < cursor.at) {
         const cut = tvCharCut(chan, segs, cursor, mark);
         if (cut) { segs = cut.segs; cursor = cut.cursor; }
@@ -3826,7 +3884,10 @@ async function tvTick(env, S, now, origin, online) {
   // spot-gated) break pool — and the spans this tick lays by.
   // nw.crtWin pins the spans already laid, so a laid
   // slot's start never moves when a late edition flips the news
-  // gate mid-hour. The queue's freeze states pick the spans up
+  // gate mid-hour — unless the flipped gate lays a hard window
+  // over the pinned span's head, in which case the span re-slides
+  // as a unit (tvCartoonSpans v3) rather than amputating its
+  // opening parts. The queue's freeze states pick the spans up
   // here too (qSt.crt), so queue content freezes across the block.
   chan._cartoon = cartoonState.crt ? { items: cartoonState.crt.items, total: cartoonState.crt.total, spots: tvCartoonSpots(pool), spans: [] } : null;
   if (chan._cartoon) chan._cartoon.spans = tvCartoonSpans(chan, chan._cartoon, now - 3600e3, now + TV_HORIZON + 3600e3, (nw && nw.crtWin) || []);
