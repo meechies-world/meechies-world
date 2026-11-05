@@ -5510,8 +5510,8 @@ html.popdj #dj-mini{display:none!important}
     let on = false;
     try { on = !!(document.body && document.body.dataset && document.body.dataset.view === "mwtv"); } catch (_) {}
     if (!on) on = elOpen("v-mwtv");
-    if (on && !tvInView) { tvInView = true; tvEnter(); }
-    else if (!on && tvInView) { tvInView = false; tvSndArm = false; }
+    if (on && !tvInView) { tvInView = true; tvEnter(); try { levels(); } catch (_) {} /* THE WALL, re-asserted at the gain stage: levels() otherwise runs only on a deck event, so the radio could sound into the TV view until the next one */ }
+    else if (!on && tvInView) { tvInView = false; tvSndArm = false; try { levels(); } catch (_) {} /* and the station sound returns the moment the seat leaves, not at the next deck event */ }
   }
   function tvEntryGesture(e) {
     if (!tvSeatAct && e && e.type === "pointerdown" && tvSndOn) tvUnlockFromTap = true;
@@ -5703,7 +5703,7 @@ html.popdj #dj-mini{display:none!important}
     if (su.el && !keepEl) su.el.innerHTML = "";
     su.key = "";
   }
-  function chanPark(su) { if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; su.lastCur = null; }
+  function chanPark(su) { tvSndClaim(false); if (su.el) su.el.classList.remove("on"); if (su.key || su.p || su.v || su.warmEnt) chanTeardown(su, null); su.key = ""; su.lastCur = null; }
   function chanYtMount(su, yt, startAt, muted) {
     const kAtCall = su.key;
     /* Tape position at READY time (2026-11-02): startAt is the position
@@ -5796,6 +5796,29 @@ html.popdj #dj-mini{display:none!important}
       fetch("/api/tv/guardian", { method: "POST", headers: hdrs, body: JSON.stringify({ kind: "fault", id: cur.seg.id, start: +cur.seg.start || 0, err: cur.src === "yt" ? (su.errCode || 0) : 0, fkind: cur.src === "yt" ? "yt-error" : "file-error", g: tvGuardTok() }) }).catch(() => {});
     } catch (_) {}
   }
+  /* MW TV SOUND CLAIM (2026-11-05, two-seat A/V mismatch): the channel
+   * is the only sound on the MW TV page. A segment mounting here
+   * announces itself on the site's one-sound-at-a-time switch
+   * (MW_videoSound) — the same switch file videos already use through
+   * the document play listener, which a YouTube iframe can never trip
+   * (no DOM play event) and which the file path gates on the radio
+   * being audible. Without the claim, the entrance show's promo reel
+   * (MW_show, hidden by CSS on this view but still playing) kept
+   * sounding over the film, and the heal watchdog could bring the
+   * radio back over it. The claim pauses the show (its own step-aside
+   * wrapper), pauses the radio, and holds the watchdog off; parking
+   * the surface hands the sound back. One flag: start() is idempotent
+   * on the switch and clears a pending end, so segment changes never
+   * flutter the hold. */
+  let tvSndClaimed = false;
+  function tvSndClaim(on) {
+    try {
+      const vs = window.MW_videoSound;
+      if (!vs) return;
+      if (on) { if (!tvSndClaimed) { tvSndClaimed = true; if (typeof vs.start === "function") vs.start(); } }
+      else if (tvSndClaimed) { tvSndClaimed = false; if (typeof vs.end === "function") vs.end(); }
+    } catch (_) {}
+  }
   function chanSyncSurf(su, cur) {
     const el = chanOverlay(su); su.el = el;
     if (!el || !su.on()) { chanPark(su); return; }
@@ -5803,6 +5826,7 @@ html.popdj #dj-mini{display:none!important}
     if (!cur) { chanPark(su); return; }
     su.lastCur = cur;
     el.classList.add("on");
+    tvSndClaim(true); // the channel owns this page's sound while a segment shows — every tick, so a mount that predates the claim (restored tab) still engages it
     /* Players are audible only once the seat has gestured (see
      * tvSeatAct): before that they run muted, so an arrival segment
      * — file spots and news files above all — can actually START
@@ -7723,6 +7747,19 @@ html.popdj #dj-mini{display:none!important}
         n.querySelector(".dj-upd-btn").addEventListener("click", () => { try { sessionStorage.setItem("mw-guard-" + updBuild, "1"); } catch (_) {} location.reload(); });
         document.body.appendChild(n);
       }
+      /* MW TV (2026-11-05, 12:39 seat): the hold behind this notice
+       * never releases while the channel plays — a tuned-in listener's
+       * station never stops, and a sounding video keeps the recent-
+       * sound gate true — so the note sat bottom-centre over the
+       * film's subtitles for the whole seat. On the TV page it docks
+       * at the top instead; off TV it keeps its bottom-centre seat.
+       * Re-asserted on every showing (evaluate re-runs while the
+       * hold lasts), so it follows the view. */
+      try {
+        const onTv = !!(document.body && document.body.dataset && document.body.dataset.view === "mwtv");
+        n.style.top = onTv ? "calc(env(safe-area-inset-top,0px) + 64px)" : "auto";
+        n.style.bottom = onTv ? "auto" : "calc(env(safe-area-inset-bottom,0px) + 78px)";
+      } catch (_) {}
       const t = n.querySelector(".dj-upd-txt");
       if (t) t.textContent = playing ? "🔄 Booth update ready — this tab is running old DJ code. It refreshes itself when the music stops." : "🔄 Booth update ready — refreshing in a few seconds…";
     };
