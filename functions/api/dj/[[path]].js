@@ -47,6 +47,7 @@
  * (the status is recorded on the member doc); unpaid / canceled /
  * incomplete_expired / subscription deleted take the tier back to free. */
 import { json, userFrom, setup, take, change } from "../../../lib/cf.js";
+import { creditPurse } from "../../../lib/purse.js";
 
 export const DJ_TIERS = {
   10: { cents: 1000, name: "Meechie's World DJ Setup — Tables" },
@@ -130,6 +131,11 @@ async function processEvent(env, ev) {
       const uid = md.uid || obj.client_reference_id, tier = +md.tier || 0;
       if (uid && DJ_TIERS[tier] && (await ledger(env, "cs:" + obj.id, uid, "checkout"))) {
         await applySub(env, uid, { setup_tier: tier, dj_customer: obj.customer || null, dj_sub_id: obj.subscription || null, dj_sub_status: "active" });
+        // the purse IS the coin account (Malik, 2026-11-05): this setup
+        // sale is a confirmed site receipt and lands in Meechie's purse
+        // (1 coin = 1¢ of value). Inside the first-time ledger block and
+        // keyed by the session id, so a webhook replay never pays twice.
+        await creditPurse(env, { coins: +obj.amount_total || 0, cents: +obj.amount_total || 0, source: "dj-setup-" + tier, ref: "cs:" + obj.id, data: { uid, tier } });
       }
     }
     return json({ received: true });
