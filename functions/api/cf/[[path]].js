@@ -552,7 +552,7 @@ async function upload(parts, request, env) {
   const type = request.headers.get("content-type") || "application/octet-stream";
   if (bucket === "media" && (!/^(audio|image|video)\//i.test(type) || /svg|xml|html|javascript/i.test(type))) return err("That file type isn't supported."); // no SVG/HTML: they could run code on the site
   const len = +request.headers.get("content-length") || 0; if (len > MAX) return err("That file is over 25 MB. Post a shorter clip.", 413);
-  if (!(await take(env, "up:" + me.id, 86400, 60))) return err("Upload limit reached for today. Try again tomorrow.", 429, "rate_limited");
+  if (!admin && !(await take(env, "up:" + me.id, 86400, 60))) return err("Upload limit reached for today. Try again tomorrow.", 429, "rate_limited");
   const buf = await request.arrayBuffer(); if (buf.byteLength > MAX) return err("That file is over 25 MB. Post a shorter clip.", 413);
   await env.MEDIA.put(key, buf, { metadata: { type, size: buf.byteLength } });
   return json({ Key: key, error: null });
