@@ -1030,6 +1030,11 @@ function mwVmixRescue(S, now, obs) {
  * kind "news"; what fills it is resolved at air time from tv/news
  * (fresh edition, else the previous edition once, else a music-video
  * block) — that resolution is client-side; the keeper stamps windows.
+ * Since v11 the keeper stamps the window ONLY when a fresh edition
+ * exists for it (TV_NEWS_FRESH_MS, judged at the window start) and
+ * never over the Family Time span — a window with nothing fresh to
+ * serve is not stamped at all, so no client can fill it with a
+ * stale edition.
  * The RADIO interrupt is decided by tvRadioDecision: every quarter
  * hour (Malik, 2026-11-03: news+traffic on the radio every 15
  * minutes), a fresh edition (<= 2h old — the NEWS-BLOCK freshness
@@ -1039,7 +1044,7 @@ function mwVmixRescue(S, now, obs) {
  * that the break cuts in even during his own live booth sets, so
  * there is no booth exception. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 10;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules)
+const TV_PROGRAM_V = 11;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules; v11 = the news freshness + Family Time build (Malik, 2026-11-04 ~21:37: "Fix my news" / "8 oclock is supposed to be a kids family movie"): the :50 news window is laid ONLY when tv/news holds an edition produced within TV_NEWS_FRESH_MS before the window start — a stale edition is never laid, the program chain flows through the window instead — and a news window overlapping the Family Time window is never laid at all (Family Time is a hard window; the :50 news no longer passes over the family movie); the bump forces the one-time re-lay that clears stale-edition news windows and news segments inside the Family Time span already laid in tv/now)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
 const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 3;                // post-premiere movie block doc generation (tv/movieblock) (v3 = the 2026-11-03 pool expansion: the new-pool sweep's verified titles join the chain — see tvSeedMovieBlock)
@@ -1074,6 +1079,33 @@ async function tvMediaExists(env, origin, url) {
   } catch (_) { return false; }
 }
 const TV_NEWS_STALE = 2 * 3600e3;  // an edition older than 2 hours may not air as news (NEWS-BLOCK)
+const TV_NEWS_FRESH_MS = 70 * 60e3; // :50-window LAY gate (Malik, 2026-11-04 ~21:37: "Fix my news"): the keeper stamps the hourly news window ONLY when tv/news' current edition was produced within this span before the window start. The producer's hourly run lands ~:36-:50 for the :50 window, so a fresh edition is minutes old; the previous hour's edition is ~70+ minutes old at the next window and is NEVER laid. No fresh edition = no news segment at all — the program chain flows through the window (silence by design; a stale edition never airs as news). The client resolver's own staleness cap (js/dj.js TV_NEWS_STALE_C) is set to the same span, so an already-laid window can never be filled with a staler edition either.
+/* The :50 news window's lay decision, judged at the window's
+ * start: chan._newsEd is the tv/news current-edition stamp tvTick
+ * attached ({ at } or null). An edition stamped after the window
+ * start (beyond a 60 s clock-skew allowance) is not this window's
+ * edition either. */
+function tvNewsFreshFor(chan, winStart) {
+  const ed = chan && chan._newsEd;
+  if (!ed || !(+ed.at > 0)) return false;
+  if (+ed.at > winStart + 60000) return false;
+  return winStart - (+ed.at) < TV_NEWS_FRESH_MS;
+}
+/* A news window that overlaps the Family Time window is never
+ * laid (Malik, 2026-11-04 ~21:37: "8 oclock is supposed to be a
+ * kids family movie"): Family Time is a hard window — owner skip
+ * aside, nothing cuts the movie, and that now includes the :50
+ * news window, which used to pass over the span it covered. The
+ * resulting rule, exactly: inside the Family Time window the
+ * family movie plays wall-to-wall; the :50 news window inside
+ * that span does not exist on the channel that night. News
+ * windows outside the family span are untouched. */
+function tvNewsOverlapsFamily(win, fam) {
+  if (!win || !fam) return false;
+  const fw = tvFamilyWin(win.start, fam);
+  if (!fw) return false;
+  return fw.start < win.end && win.start < fw.end;
+}
 const TV_LOCAL_HOLD_MS = 70 * 60e3; // Uniontown Local Update break spot: held out of rotation once the producer stamp (tv/localupdate) is older than this — the producer refreshes hourly, so a spot lives at most ~65 min on air and coverage stays continuous
 const TV_ANCHOR_SLOTS = [0, 360, 720, 1080]; // MY EMPIRE anchor news editions: fixed daily slots, minutes ET (12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM)
 const TV_ANCHOR_FRESH_MS = 6 * 3600e3; // an anchor edition airs only at its own slot and only when produced within the 6h before that slot (productions run ~30 min ahead of each slot)
@@ -1455,7 +1487,20 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const iwin = tvInsertWin(t, chan._insert);
     const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
     const qwin = tvQueueWin(t, chan._queue);
-    if (win.inside && !(chan._qCut && chan._qCut.news === win.start)) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
+    // NEWS WINDOW — laid only under the v11 gates (see
+    // TV_NEWS_FRESH_MS / tvNewsOverlapsFamily): a FRESH edition
+    // must exist for this window, and the window must not overlap
+    // Family Time. newsLive is judged for the window `win` names
+    // (the one containing t, or the next one) and drives BOTH the
+    // lay below and the program branch's boundary: a window that
+    // will not be laid is no boundary at all, so the program
+    // chain plays straight through it — no news segment, no stale
+    // edition, no cut into the family movie, and no stall (the
+    // program branch used to cut every item at every window start
+    // and spin when the window then was not laid; an owner-cut
+    // window truncated generation the same way — both now flow).
+    const newsLive = !(chan._qCut && chan._qCut.news === win.start) && tvNewsFreshFor(chan, win.start) && !tvNewsOverlapsFamily(win, chan._family);
+    if (win.inside && newsLive) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside && !(chan._qCut && chan._qCut.prem === pwin.start)) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
       // cursor freezes and the interrupted program resumes after the
@@ -1483,8 +1528,10 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // program resumes after the block from the offset it
       // reached. The branch sits ahead of the anchor and the ad
       // cadence, so quarter breaks never chop the movie (the
-      // premiere rule); the news windows above still pass over
-      // the span they cover (the standing doctrine).
+      // premiere rule); and since the v11 build the news window
+      // no longer passes over the span either — its lay gate
+      // (tvNewsOverlapsFamily) refuses any window overlapping
+      // this one, so the movie plays wall-to-wall.
       const fit = chan._family.item;
       const foff = (t - fwin.start) / 1000;
       const d = Math.min(Math.round((+fit.dur - foff) * 10) / 10, Math.round((fwin.end - t) / 100) / 10);
@@ -1612,7 +1659,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const remain = Math.round((+it.dur - off) * 10) / 10;
     if (!(remain > 0)) { ix = (ix + 1) % items.length; off = 0; continue; }
     const progEnd = t + remain * 1000;
-    let boundary = win.start;
+    let boundary = newsLive ? win.start : Infinity;
     if (pwin && !pwin.inside && pwin.start > t && pwin.start < boundary) boundary = pwin.start;
     if (rwin && !rwin.inside && rwin.start > t && rwin.start < boundary) boundary = rwin.start;
     if (awin && !awin.inside && awin.start > t && awin.start < boundary) boundary = awin.start;
@@ -3295,6 +3342,10 @@ async function tvTick(env, S, now, origin, online) {
   const luStamp = luState.lu ? luState.lu.at : 0;
   const qtrState = await tvQuarterLive(env, qDoc, nw, now, origin);
   chan._qtr = qtrState.qtr;
+  // The :50 news window's lay gate (v11): the current edition's
+  // stamp off tv/news, in the same attached-state shape as _qtr —
+  // tvGen lays a news window only when this is fresh for it.
+  chan._newsEd = newsDoc && newsDoc.current && newsDoc.current.videoUrl ? { at: +newsDoc.current.at || 0 } : null;
   const qStampSeen = qtrState.qtr ? qtrState.qtr.forQuarter : 0;
   chan._movies = tvMovieState(movies, prem, premState);
   // FAMILY TIME: resolve tonight's state (premiere yield + the

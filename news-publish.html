@@ -61,8 +61,41 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
   var ses = null;
   try { ses = JSON.parse(localStorage.getItem("mw-cf-session") || "null"); } catch (e) { ses = null; }
   var tok = ses && ses.access_token;
-  if (!tok) { gate.textContent = "Owner sign-in required"; return; }
   var H = { Authorization: "Bearer " + tok };
+  /* NEWS-PUBLISH DOOR FIX (2026-11-04): this page used to dead-end
+   * at the token check — "Owner sign-in required" and a hard stop,
+   * with no sign-in control on the page at all (there is none; the
+   * site's Google button lives on the main site's sign-in screens),
+   * so any browser without a ready session — every automated
+   * publish run since 2026-11-03 21:36 ET — stared at a gate it
+   * could never open, and fresh editions stopped publishing. Two
+   * repairs, both the site's own patterns: (1) refresh the saved
+   * session first, through the same GET /api/cf/auth/session call
+   * js/cf-client.js makes on every main-site load — a stored
+   * session that is still good is renewed and saved back before
+   * the gate judges it (see refreshSession + the boot at the
+   * bottom); (2) when there is still no usable session, the gate
+   * names the door — the sponsors.html pattern: sign in on the
+   * main site, then come back. The gate itself is unchanged: only
+   * a session the server verifies as the owner's (the admins
+   * check below) ever opens the controls. */
+  function noSession() {
+    gate.innerHTML = "Owner sign-in required — <a href=\"/\" style=\"color:#f0cf78\">open the main site</a>, sign in as Meechie, then come back to this page.";
+  }
+  async function refreshSession() {
+    if (!tok) return false;
+    try {
+      const r = await fetch("/api/cf/auth/session", { headers: { Authorization: "Bearer " + tok }, cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      const s2 = (j.data && j.data.session) || j.session || null;
+      if (s2 && s2.access_token) {
+        try { localStorage.setItem("mw-cf-session", JSON.stringify(s2)); } catch (e) {}
+        ses = s2; tok = s2.access_token;
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
 
   async function readDoc(path) {
     const r = await fetch("/api/cf/rest", { method: "POST", headers: { "Content-Type": "application/json", ...H }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", filters: [["path", "eq", path]] }) });
@@ -218,13 +251,25 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
   });
 
   /* Owner gate: identical who() call to publish-page.js, plus the
-   * site's own admins-table owner check above. */
-  who().then(async function (me) {
+   * site's own admins-table owner check above. Booted through the
+   * session refresh first (the door fix above): a stored session
+   * gets its renewal chance before the gate judges it, and a
+   * browser with no session is told exactly where the door is
+   * instead of dead-ending. */
+  (async function boot() {
+    if (tok) await refreshSession();
+    if (!tok) {
+      noSession();
+      print("No saved owner session in this browser — sign in on the main site first (see the gate line above), then reload this page.");
+      return;
+    }
+    H = { Authorization: "Bearer " + tok };
+    const me = await who().catch((e) => { throw e; });
     printJSON("who /api/brain/me:", me);
     const owner = await checkOwner().catch(() => false);
     printJSON("owner check /api/cf/rest admins:", { owner: owner });
     if (!owner) {
-      gate.textContent = "Owner sign-in required";
+      noSession();
       controls.hidden = true;
       ownerVerified = false;
       updatePublishEnabled();
@@ -234,8 +279,8 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
     gate.textContent = "Owner verified";
     controls.hidden = false;
     updatePublishEnabled();
-  }).catch(function (e) {
-    gate.textContent = "Owner sign-in required";
+  })().catch(function (e) {
+    noSession();
     print("owner check FAILED: " + (e && e.message ? e.message : e));
   });
 })();
