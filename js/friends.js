@@ -94,7 +94,7 @@
   async function init() {
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) { render(); return; }
-    d.collection("friends").limit(2000).onSnapshot((s) => { lists = {}; s.docs.forEach((x) => { const v = x.data(); lists[x.id] = Array.isArray(v.list) ? v.list.filter((i) => typeof i === "string") : []; }); render(); }, () => {});
+    d.collection("friends").limit(1000).onSnapshot((s) => { lists = {}; s.docs.forEach((x) => { const v = x.data(); lists[x.id] = Array.isArray(v.list) ? v.list.filter((i) => typeof i === "string") : []; }); render(); }, () => {});
     document.addEventListener("mw-posts", () => { if (tab === "feed" && !view.hidden) render(); });
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     setTimeout(render, 1500);

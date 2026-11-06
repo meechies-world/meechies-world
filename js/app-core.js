@@ -17,7 +17,7 @@ const ALIAS={liveradio:["radio","world-radio"],livetv:["videos","live-tv"]};
    Everything with homepage or cross-page duties stays eager. */
 const LAZY_SRC={
   live:["js/golive.js?v=1793185302","js/obs.js?v=1793577075"],
-  predict:["js/predict.js?v=1793185302"],
+  predict:["js/predict.js?v=1794003691"],
   jobs:["js/jobs.js?v=1793185302"],
   connect:["js/connect.js?v=1793185302"],
   fans:["js/fans.js?v=1793185302"],
@@ -26,7 +26,7 @@ const LAZY_SRC={
   clips:["js/clips.js?v=1793185302"],
   studio:["js/autotune.js?v=1793185302","js/beatmaker.js?v=1793185302","js/beatlab.js?v=1793185302"],
   books:["js/books.js?v=1793750670"],
-  dating:["js/dating.js?v=1793185302"],
+  dating:["js/dating.js?v=1794003691"],
   preach:["js/preach.js?v=1793185302"],
   markets:["js/markets.js?v=1793185302"],
   coin:["js/coin.js?v=1793185302"],

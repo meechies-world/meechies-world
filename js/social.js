@@ -129,7 +129,7 @@ ${ios ? '<p class="mw-sub">On iPhone: tap an app above, then the Share button, t
   async function init() {
     if (!window.claude) return;
     const d = await claude.use("db"); if (!d) { countMembers(); return; }
-    d.collection("follows").limit(5000).onSnapshot((s) => {
+    d.collection("follows").limit(1000).onSnapshot((s) => {
       follows = {}; s.docs.forEach((x) => { const l = x.data().list; follows[x.id] = Array.isArray(l) ? l.filter((i) => typeof i === "string") : []; });
       window.MW_FOLLOWING = new Set(follows[ME()] || []); paintFollowButtons(); paintBar();
       try { renderFeed(); } catch (_) {}
