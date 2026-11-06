@@ -5931,8 +5931,46 @@ html.popdj #dj-mini{display:none!important}
      * first frame exists (readyState < 2 never reveals — never-blank
      * unchanged), and the ended-hold below is untouched. */
     if (su.v && !su.v.paused && !su.v.ended && su.v.readyState >= 2) su.v.classList.add("playing");
+    /* STALL + SOUND-RESET FIX (2026-11-06, watcher faults 50/51):
+     * a transient YT error strips the iframe's "playing" reveal in
+     * chanYtMount's onError even when the player itself keeps
+     * playing — the seat hears the film over the poster (fault 51) —
+     * and because the state never leaves PLAYING, no fresh
+     * onStateChange ever re-adds the class. The file path got its
+     * reveal reconciliation above for exactly this shape; the YT
+     * path gets the same here: a player demonstrably in state 1
+     * (PLAYING) has its reveal re-asserted. One-directional — a
+     * player that is not playing never gains the reveal, so the
+     * poster gate (poster until the first frame) is unchanged. A
+     * latched error on a player that is PLAYING again was
+     * transient: file the Guardian report as before, then clear
+     * the latch HERE instead of letting the err branch below
+     * destroy a healthy player at the 15 s mark and remount at
+     * the live edge — that remount is what ate the end of the
+     * scene in fault 50. Genuinely dead players (any other state,
+     * or a throwing getPlayerState) keep the old remount path,
+     * cap and grace unchanged. */
+    if (cur.src === "yt" && su.p && su.p.getPlayerState) {
+      let pst = -2;
+      try { pst = su.p.getPlayerState(); } catch (_) {}
+      if (pst === 1) {
+        try { const fr = su.el && su.el.querySelector("iframe"); if (fr && !fr.classList.contains("playing")) fr.classList.add("playing"); } catch (_) {}
+        if (su.err) { tvGuardReport(cur, su); su.err = false; su.errN = 0; }
+      }
+    }
     if (su.err) {
       tvGuardReport(cur, su);
+      /* Sound assertion runs even while an error is latched
+       * (fault 51): every mount — first, error remount, watchdog
+       * remount — creates the player muted-first, and the per-tick
+       * unMute further down sits BELOW this branch's return, so a
+       * re-latched error on a fresh player suspended it for good
+       * and the seat's sound choice (entry-sound law) never landed:
+       * the picture resumed and the sound stayed off until a
+       * manual tap. A remount is not a new entry — assert the
+       * seat's existing choice here too, for both player kinds. */
+      if (su.p && su.p.isMuted) { try { if (audible) { su.p.unMute(); su.p.setVolume(100); } else su.p.mute(); } catch (_) {} }
+      if (su.v) { try { const wantMuted = !audible; if (su.v.muted !== wantMuted) su.v.muted = wantMuted; if (audible && su.v.volume < 1) su.v.volume = 1; } catch (_) {} }
       /* Bounded remount on real YT errors (2026-11-02): a transient
        * construction throw or onError heals itself with a fresh mount
        * ~15s later instead of parking the segment; the cap (errN
@@ -7900,7 +7938,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793971821;
+  const MW_DJ_BUILD = 1793972229;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
