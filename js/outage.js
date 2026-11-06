@@ -36,14 +36,80 @@
     } catch (_) {}
     return false;
   }
+  // POSTER/STALL FIX 2026-11-06 (diagnosis §5, fixes 1+3): the outage probe
+  // measures the sign-in/database path (/api/cf/health) — a path playback
+  // never uses. A health transient must never paint the WEBSITE-DOWN poster
+  // over a live program, so the poster is gated on the channel itself being
+  // dead. channelPlaying() is true when a channel player is demonstrably
+  // playing: the lifeline is carrying the station, or a mounted TV player
+  // carries the .playing class (YT adds it on PLAYING and removes it only on
+  // error; file video adds it on its playing event, also removed only on
+  // error). The class is sticky after PLAYING — the right semantics here:
+  // once the channel has demonstrably started, a health hiccup must not
+  // paint over it. A truly dead site never mounts a player, so no .playing
+  // exists and the poster still paints exactly as before.
+  function channelPlaying() {
+    try { if (lifelineLive()) return true; } catch (_) {}
+    try {
+      const el = document.querySelector(".tvchan iframe.playing, .tvchan video.playing");
+      if (el) return true;
+    } catch (_) {}
+    return false;
+  }
+  // Last /api/cf/health outcome, kept so every guest() firing can say WHY
+  // the probe thought the site was down (fix 3 instrumentation).
+  let lastHealth = { ok: false, shape: "unknown", at: 0 };
+  function mwOutageLog(reason) {
+    const rec = { at: Date.now(), reason, healthy: lastHealth.ok, shape: lastHealth.shape, playing: channelPlaying() };
+    try {
+      window.MW_OUTAGE_LOG = window.MW_OUTAGE_LOG || [];
+      window.MW_OUTAGE_LOG.push(rec);
+      if (window.MW_OUTAGE_LOG.length > 20) window.MW_OUTAGE_LOG.splice(0, window.MW_OUTAGE_LOG.length - 20);
+    } catch (_) {}
+    try {
+      const prev = JSON.parse(localStorage.getItem("mw-outage-log") || "[]");
+      prev.push(rec);
+      localStorage.setItem("mw-outage-log", JSON.stringify(prev.slice(-20)));
+    } catch (_) {}
+    // Best-effort Guardian marker: filed, never a death confirmation.
+    // kind:"fault" + fkind:"outage-probe" + err:0 is recorded by the keeper
+    // but cannot confirm a segment dead (a hard confirm needs fkind
+    // file-error or a player err code, from >= 2 seats). Skipped when no
+    // segment is laid (page-load probe failure) or the id/token fail the
+    // endpoint's own shape checks.
+    try {
+      if (typeof window.MW_TV_SEG === "function") {
+        const seg = window.MW_TV_SEG();
+        if (seg && seg.id && +seg.start > 0 && /^[A-Za-z0-9_-]{1,80}$/.test(String(seg.id))) {
+          let g = "";
+          try {
+            g = localStorage.getItem("mw-vid") || "";
+            if (g.length < 8) { g = "v" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); localStorage.setItem("mw-vid", g); }
+          } catch (_) {}
+          if (/^[A-Za-z0-9_-]{8,64}$/.test(g)) {
+            fetch("/api/tv/guardian", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "fault", id: String(seg.id), start: +seg.start, err: 0, fkind: "outage-probe", g }), keepalive: true }).catch(function () {});
+          }
+        }
+      }
+    } catch (_) {}
+    try { console.warn("[MW outage]", rec); } catch (_) {}
+  }
   let downWatch = null;
   function reconcileDown() {
     if (!shown) return;
-    if (lifelineLive()) hideDown();
-    else if (!document.getElementById("mw-down")) paintDown();
+    // Poster gate (fix 1): a demonstrably playing channel means the site is,
+    // for the viewer, up — hide the poster; a false positive self-clears
+    // within 2 s of playback resuming. `shown` stays true and the slim banner
+    // stays up while sign-in is genuinely down; only the full-screen paint is
+    // gated. (lifelineLive() is subsumed: channelPlaying() includes it.)
+    if (channelPlaying()) { hideDown(); return; }
+    if (!document.getElementById("mw-down")) paintDown();
   }
   function showDown() {
-    if (!lifelineLive()) paintDown();
+    // Poster gate (fix 1): never paint over a demonstrably playing channel.
+    // The 2 s watcher still starts, exactly as before, so if the channel
+    // later stops playing while sign-in is still down, the poster paints then.
+    if (!channelPlaying()) paintDown();
     if (!downWatch) downWatch = setInterval(reconcileDown, 2000);
   }
   function paintDown() {
@@ -89,10 +155,9 @@
     /* The full-screen poster is for a CONFIRMED outage only. probe() already confirmed it twice;
        the other doors (one sign-in error such as a 429 rate limit, one stray failed fetch) ask
        the health route first, so a single hiccup never blacks out the whole site. */
-    if (reason === "auth check failed twice") showDown();
-    else healthy().then((ok) => { if (!ok && shown) showDown(); }, () => {});
+    if (reason === "auth check failed twice") { mwOutageLog(reason); showDown(); }
+    else healthy().then((ok) => { mwOutageLog(reason); if (!ok && shown) showDown(); }, () => { mwOutageLog(reason); });
     watchRecovery();
-    try { console.warn("[MW] outage mode:", reason); } catch (_) {}
   }
   window.MW_guestMode = guest;
   async function healthy() {
@@ -100,8 +165,14 @@
     try {
       const r = await fetch("/api/cf/health", { signal: ctl.signal, cache: "no-store" });
       const j = await r.json().catch(() => null);
-      return !!(r.ok && j && j.ok === true);
-    } catch (e) { return false; }
+      if (!r.ok) { lastHealth = { ok: false, shape: "http-" + r.status, at: Date.now() }; return false; }
+      const ok = !!(j && j.ok === true);
+      lastHealth = { ok, shape: ok ? "ok" : "not-ok", at: Date.now() };
+      return ok;
+    } catch (e) {
+      lastHealth = { ok: false, shape: (e && e.name === "AbortError") ? "timeout" : "thrown", at: Date.now() };
+      return false;
+    }
     finally { clearTimeout(t); }
   }
   let watchTimer = null, watchHits = 0;
