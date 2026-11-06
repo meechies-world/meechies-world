@@ -1049,22 +1049,25 @@ const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (
 const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 5;                // post-premiere movie block doc generation (tv/movieblock) (v3 = the 2026-11-03 pool expansion: the new-pool sweep's verified titles join the chain — see tvSeedMovieBlock; v4 = PR #704's single-title strike of Sugar Daddy Killer, superseded before merge; v5 = the B build, 2026-11-06: the Movie Night pool is removed on Malik's order (scope B) — the seed keeps only mov-giving-thanks, held solely as a Family Time eligibility source, see tvSeedMovieBlock)
 const TV_INSERT_V = 3;               // one-shot owner-ordered insert doc generation (tv/insert) (v2 = short playlist with an ordered startAt and a hard endBy; v3 = tonight's Comedy Hour Thanksgiving movie, 2026-11-03)
-const TV_CARTOON_V = 3;              // hourly cartoon slot (Malik, 2026-11-05: his barbershop cartoon airs on MW TV once every hour, right after scheduled programming, AS IS) — two file parts form ONE logical piece, laid back-to-back with no gap inside a wall-clock span computed by tvCartoonSpans; v1 = the rules in the tvCartoonSpans header; v2 = Episode 2 joins the slot (Malik, 2026-11-05 ~10:57: "Thats south park in meechies world episode 2 put iton after my other cartoon one after another looped in with my comercials") — each slot now plays Episode 1's pair, one of Malik's own show commercials, Episode 2's pair, one more commercial (tvCartoonSeq), and the media gate requires all FOUR episode files; v3 = the 2026-11-05 sequence fix: a pinned span whose head has since been covered by a hard window laid over it re-slides AS A UNIT to the window's end (it is never amputated — the 12:00 failure, below in tvCartoonSpans), and re-lay cuts never land inside a span (tvCartoonCutGuard)
+const TV_CARTOON_V = 4;              // hourly cartoon slot (Malik, 2026-11-05: his barbershop cartoon airs on MW TV once every hour, right after scheduled programming, AS IS) — two file parts form ONE logical piece, laid back-to-back with no gap inside a wall-clock span computed by tvCartoonSpans; v1 = the rules in the tvCartoonSpans header; v2 = Episode 2 joins the slot (Malik, 2026-11-05 ~10:57: "Thats south park in meechies world episode 2 put iton after my other cartoon one after another looped in with my comercials") — each slot now plays Episode 1's pair, one of Malik's own show commercials, Episode 2's pair, one more commercial (tvCartoonSeq), and the media gate requires all FOUR episode files; v3 = the 2026-11-05 sequence fix: a pinned span whose head has since been covered by a hard window laid over it re-slides AS A UNIT to the window's end (it is never amputated — the 12:00 failure, below in tvCartoonSpans), and re-lay cuts never land inside a span (tvCartoonCutGuard); v4 = Squishy Saga S1E1 joins the slot (Malik, 2026-11-06 15:09 ET: "Put om mwtv 8 min to every hour" — his ~8-minute cartoon, the read confirmed by his "Go" at 15:11): the episode rides in tvCartoonItems as a third whole episode — two file parts split at the C/D block boundary (media/squishy-saga-s1e1-p1.mp4 / -p2.mp4, encoded to the channel's ABR file standard) — and follows Episode 2's pair and the second commercial in tvCartoonSeq; the media gate now requires all SIX episode files before the slot lights (the v2 all-files discipline, unchanged), so this build must not go live before both Squishy files are on the site (media first, code second — the v2 precedent); TV_PROGRAM_V is NOT bumped: the fill seed is untouched and Squishy does not join the fill in this build (build record: website/squishy-mwtv-2026-11-06/PROGRESS.md)
 /* The episodes themselves (owner media, kind file — the ban gate
  * scans YouTube ids and never sees these, the self-remove proof
  * needs player errors this slot's own media gate prevents, and
- * tvCartoonLive holds the slot dark until all four files actually
- * exist on the site). Durations ride the keeper's 0.1 s grid
+ * tvCartoonLive holds the slot dark until all six files actually
+ * exist on the site — v4 adds the Squishy Saga pair to the gate). Durations ride the keeper's 0.1 s grid
  * (probed 299.27 / 292.79 and 301.07 / 301.45) so the span's
  * wall-clock chain hands each part to the next at offset 0. */
 function tvCartoonItems(now) {
   const mk = () => ({ basis: "own", evidence: "Malik's own barbershop cartoon — sent by him on 2026-11-05 with his order to air it on MW TV once every hour, right after scheduled programming, as-is; owner media file hosted on the site itself", clearedBy: "owner", at: now, simulcast: true });
   const mk2 = () => ({ basis: "own", evidence: "Malik's own cartoon — Episode 2 of South Park in Meechie's World (the DJ battle), sent by him on 2026-11-05 with his order to air it right after Episode 1, back-to-back, looped in with his commercials; owner media file hosted on the site itself", clearedBy: "owner", at: now, simulcast: true });
+  const mk3 = () => ({ basis: "own", evidence: "Malik's own anime — Squishy Saga S1E1 'The Fall', produced by his own crew from his own catalog and delivered to him finished on 2026-11-06; his order the same day ('Put om mwtv 8 min to every hour', read confirmed by his 'Go') puts it on MW TV once every hour in the cartoon block; owner media file hosted on the site itself", clearedBy: "owner", at: now, simulcast: true });
   return [
     { id: "cartoon-barbershop-p1", kind: "show", src: "file", yt: "", url: "/media/barbershop-cartoon-v2-p1.mp4", iaId: "", title: "South Park in Meechie's World — Episode 1, Part 1 of 2", show: "Meechie's World Cartoon", dur: 301.3, rights: mk() },
     { id: "cartoon-barbershop-p2", kind: "show", src: "file", yt: "", url: "/media/barbershop-cartoon-v2-p2.mp4", iaId: "", title: "South Park in Meechie's World — Episode 1, Part 2 of 2", show: "Meechie's World Cartoon", dur: 301.3, rights: mk() },
     { id: "cartoon-djbattle-p1", kind: "show", src: "file", yt: "", url: "/media/dj-battle-cartoon-p1.mp4", iaId: "", title: "South Park in Meechie's World — Episode 2, Part 1 of 2", show: "Meechie's World Cartoon", dur: 301.1, rights: mk2() },
     { id: "cartoon-djbattle-p2", kind: "show", src: "file", yt: "", url: "/media/dj-battle-cartoon-p2.mp4", iaId: "", title: "South Park in Meechie's World — Episode 2, Part 2 of 2", show: "Meechie's World Cartoon", dur: 301.5, rights: mk2() },
+    { id: "cartoon-squishy-p1", kind: "show", src: "file", yt: "", url: "/media/squishy-saga-s1e1-p1.mp4", iaId: "", title: "Squishy Saga — Episode 1: The Fall, Part 1 of 2", show: "Squishy Saga", dur: 236.6, rights: mk3() },
+    { id: "cartoon-squishy-p2", kind: "show", src: "file", yt: "", url: "/media/squishy-saga-s1e1-p2.mp4", iaId: "", title: "Squishy Saga — Episode 1: The Fall, Part 2 of 2", show: "Squishy Saga", dur: 206.3, rights: mk3() },
   ];
 }
 /* The in-slot commercial pool: Malik's OWN show spots only — the
@@ -1095,14 +1098,19 @@ function tvCartoonSpots(pool) {
  * store, while the spots still rotate hour to hour like
  * everywhere else on the channel. With no cleared spot in the
  * pool the sequence is just the two episodes back-to-back —
- * never dead air, never a foreign commercial. */
+ * never dead air, never a foreign commercial. Since v4 the
+ * slot can carry further whole episodes past Episode 2
+ * (Squishy Saga): they follow the second commercial in item
+ * order, back-to-back, and the two commercials keep their
+ * 2k / 2k+1 occurrences — the picks around the first two
+ * episodes are exactly what they were before v4. */
 function tvCartoonSeq(crt, hourMs) {
   const items = (crt && crt.items) || [];
   const spots = (crt && crt.spots) || [];
   if (items.length < 4 || !spots.length) return items.slice();
   const k = Math.round((+hourMs || 0) / 3600e3);
   const a = tvAdPick(spots, 2 * k), b = tvAdPick(spots, 2 * k + 1);
-  return [items[0], items[1], a, items[2], items[3], b].filter(Boolean);
+  return [items[0], items[1], a, items[2], items[3], b, ...items.slice(4)].filter(Boolean);
 }
 function tvCartoonSeqTotal(crt, hourMs) {
   return tvCartoonSeq(crt, hourMs).reduce((x, it) => x + (+it.dur || 0), 0);
@@ -1718,8 +1726,9 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // sits ahead of the ad cadence, so no OUTSIDE spot chops
       // the block: since v2 the sequence itself (tvCartoonSeq
       // for THIS span's hour) is Episode 1, one of Malik's show
-      // commercials, Episode 2, one more commercial — each part
-      // back-to-back, no gap. An instance the owner (or the
+      // commercials, Episode 2, one more commercial — and since
+      // TV_CARTOON_V 4 the Squishy Saga episode after it — each
+      // part back-to-back, no gap. An instance the owner (or the
       // Guardian) cut is stamped in qCut by the shared advancer
       // and never resumes — the check above reads qCut live, so
       // a same-tick skip is honored. The block is a normal
@@ -3031,14 +3040,17 @@ function tvInsertFrozen(ins, chan) {
 }
 /* ---------------------------------------------------------------
  * HOURLY CARTOON LIVE (the media gate): the episodes count as
- * live only when ALL FOUR files actually exist on the site —
+ * live only when ALL SIX files actually exist on the site —
  * probed here with the premiere's cached verdicts (tv/now
  * cartoonProbe), so a slow upload can never lay a dead segment;
- * the slot simply joins by itself the first tick all four files
+ * the slot simply joins by itself the first tick all six files
  * are really there. (Since v2 the gate covers Episode 2's parts
  * too: until they land, the whole slot — Episode 1 included —
  * stays dark, exactly the gate discipline Malik's order was
- * built under; the in-slot commercials need no probe here, the
+ * built under — v4 extends it to the Squishy Saga pair, so the
+ * v4 code must not go live before both Squishy files are on
+ * the site (media first, code second — the v2 precedent); the
+ * in-slot commercials need no probe here, the
  * tick's spot gate already holds a spot whose file is missing
  * out of the pool tvCartoonSpots resolves from.) */
 async function tvCartoonLive(env, nw, now, origin) {
@@ -4959,7 +4971,7 @@ async function tvTick(env, S, now, origin, online) {
   let qCut = nw && nw.qCut && typeof nw.qCut === "object" ? { ...nw.qCut } : {};
   chan._qCut = qCut;
   // HOURLY CARTOON (tvCartoonSpans): attach the resolved state —
-  // the episodes, when all four files are on the site, plus the
+  // the episodes, when all six files are on the site, plus the
   // in-slot commercial pool resolved from the (already
   // spot-gated) break pool — and the spans this tick lays by.
   // nw.crtWin pins the spans already laid, so a laid
