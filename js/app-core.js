@@ -1086,6 +1086,7 @@ async function playIntro(){
   btn.addEventListener("click",()=>{
     close();
     try{ sessionStorage.removeItem("mw_radio_off"); }catch(_){}
+    try{ sessionStorage.removeItem("mw_enter_muted"); }catch(_){}
     hideRadioNote();
     if(window.MW_SITE && window.MW_SITE.autoplay===false) return;
     // owner: the welcome video, then Meechie's videos keep playing; music only when people pick it
@@ -1104,7 +1105,14 @@ async function playIntro(){
       window._welcomeOn=true; MW_welcome(()=>{ window._welcomeOn=false; startAudio(); }); }
     else startAudio();
   });
-  mute.addEventListener("click",()=>{ snoozeRadio(); if(mode==="radio" && !media.paused) media.pause(); close(); });
+  /* "Enter without sound" also records the choice for MW TV
+   * (mw_enter_muted): dj.js's TV entry reads it and does not force
+   * the TV sound on over an explicit muted entry (2026-11-06,
+   * watcher faults 8/11/15). The radio half is unchanged. The
+   * WITH-sound button above removes the flag instead — the gate
+   * choice is the state, in both directions (owner's entry sound
+   * law, 2026-11-06). */
+  mute.addEventListener("click",()=>{ try{ sessionStorage.setItem("mw_enter_muted","1"); }catch(_){} snoozeRadio(); if(mode==="radio" && !media.paused) media.pause(); close(); });
   setTimeout(()=>{ if(!en.hidden) btn.focus({preventScroll:true}); },50);
 })();
 async function setEpoch(ms){ try{ await db.doc("radio/state").set({epoch:ms}); }catch(err){ toast(err.message||err.code); } }
@@ -1773,7 +1781,7 @@ boot();
    boot-heal reload already fired (mw-heal-tries) never stacks another.
    The soft nag stays where it already lives — dj.js's guardian note —
    as the fallback for a tab that never backgrounds and never idles. */
-const MW_SHELL_BUILD = 1793966597;
+const MW_SHELL_BUILD = 1793967723;
 (() => {
   const POLL_MS = 60000, EVAL_MS = 15000, IDLE_MS = 10 * 60e3;
   let target = 0, targetSong = null, lastAct = Date.now();
