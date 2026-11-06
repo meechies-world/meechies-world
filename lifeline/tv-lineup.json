@@ -1,6 +1,6 @@
 {
  "v": 1,
- "source": "Synced 2026-11-06 to the Cloudflare keeper lineup on repo main (TV_PROGRAM_V 18, build 1793967918): fill music pool 302 in keeper seed order, Islamic shorts 25, Movie Night pool 46, Friday khutbah sermons 10, Family Time eligible +1 (Johnny Test; Giving Thanks already inside Movie Night). File-only items (cartoon parts, premiere/rerun, house spots), the D1-timed adhan, fresh-only news, and dormant non-fill seed items cannot be expressed in this format - see website/lifeline-lineup-sync-2026-11-06/PROGRESS.md.",
+ "source": "B build 2026-11-06 (Malik's orders 2026-11-06 12:29 + 12:39 ET, scope B): his shows + the Muslim content take over everything in between; the scheduled blocks stay. This flat rotation is now ONLY: Deen Squad, ASAP Preach, their verified collaborators, the Muslim rap set, Islamic shorts (Mufti Menk / Yaqeen / Bayyinah / Deen Squad), the Friday khutbah sermons (Mufti Menk) and the Family Time titles. The Movie Night pool is OUT as movies: 45 of its 46 titles are removed here, Sugar Daddy Killer (7Mr0VALZ4K4) struck by name first; 'Giving Thanks' (8-ngS-WjqJw) remains ONLY as one of the two Family Time block titles (the 20:00 block Malik kept), its segment byte-identical to the 2026-11-06 sync. Scheduled-block pools stay woven exactly as that sync wove them (khutbah sermons, Family Time titles; the hourly cartoon block is file-only and cannot ride this format). File-only items (his shows/cartoons/spots), the D1-timed adhan and fresh-only news cannot be expressed in this format - see website/lineup-scope-2026-11-06/PROGRESS.md.",
  "segments": [
   {
    "yt": "rvrA29B1pqk",
@@ -43,12 +43,6 @@
    "title": "Essam — Runnin",
    "durSec": 264,
    "show": "Essam"
-  },
-  {
-   "yt": "O1qHR7g3jRc",
-   "title": "Holiday Heist",
-   "durSec": 4783,
-   "show": "Movie Night"
   },
   {
    "yt": "uwdyA5-kBWs",
@@ -99,12 +93,6 @@
    "show": "REDEEMED"
   },
   {
-   "yt": "9bKHCRU4m7Y",
-   "title": "Christmas for the Soul",
-   "durSec": 5120,
-   "show": "Movie Night"
-  },
-  {
    "yt": "jZ4LpOcyqCk",
    "title": "Lil Baliil — Royal",
    "durSec": 177,
@@ -145,12 +133,6 @@
    "title": "Jysa BP — Intermission",
    "durSec": 213,
    "show": "Jysa BP"
-  },
-  {
-   "yt": "OG1n91kBajI",
-   "title": "Love and Leftovers",
-   "durSec": 5426,
-   "show": "Movie Night"
   },
   {
    "yt": "wRipoaIGw5o",
@@ -201,12 +183,6 @@
    "show": "Adrion Butler"
   },
   {
-   "yt": "2VsNoZG6rn4",
-   "title": "Informal Crooks",
-   "durSec": 4743,
-   "show": "Movie Night"
-  },
-  {
    "yt": "GMVbovL033I",
    "title": "Brett Raio — Freedom",
    "durSec": 178,
@@ -253,12 +229,6 @@
    "title": "Justo Chalaire — Tell Em The Truth",
    "durSec": 184,
    "show": "Justo Chalaire"
-  },
-  {
-   "yt": "ukR3uclGwQI",
-   "title": "Demon Queen Pinball Machine",
-   "durSec": 5510,
-   "show": "Movie Night"
   },
   {
    "yt": "gcPVLVW9YVQ",
@@ -309,12 +279,6 @@
    "show": "Nicky Gracious"
   },
   {
-   "yt": "gDTYyfiMWXM",
-   "title": "Toxic Friendz",
-   "durSec": 4969,
-   "show": "Movie Night"
-  },
-  {
    "yt": "wLSYvUTMcZk",
    "title": "Karter Zaher — PALESTINE WILL BE",
    "durSec": 154,
@@ -363,12 +327,6 @@
    "show": "REDEEMED"
   },
   {
-   "yt": "63yCTQWEjxM",
-   "title": "OnlyFangs",
-   "durSec": 6875,
-   "show": "Movie Night"
-  },
-  {
    "yt": "O6JMfIYtzlQ",
    "title": "Lil Baliil — Bad Gal",
    "durSec": 207,
@@ -409,12 +367,6 @@
    "title": "REZUM — Get It Right",
    "durSec": 212,
    "show": "REZUM"
-  },
-  {
-   "yt": "Ekfn-RVo8XI",
-   "title": "Mortuary",
-   "durSec": 5576,
-   "show": "Movie Night"
   },
   {
    "yt": "SF8AnXZ5PRA",
@@ -471,12 +423,6 @@
    "show": "Nicky Gracious"
   },
   {
-   "yt": "Pdm6ONVUNno",
-   "title": "Hell Night",
-   "durSec": 6120,
-   "show": "Movie Night"
-  },
-  {
    "yt": "6NQp7TpRRfI",
    "title": "Karter Zaher — MUZZY SAUCE",
    "durSec": 218,
@@ -517,12 +463,6 @@
    "title": "Tyson James — Pride is the Devil 2",
    "durSec": 186,
    "show": "Tyson James"
-  },
-  {
-   "yt": "Ej3n_CbT_68",
-   "title": "#LIKE",
-   "durSec": 5518,
-   "show": "Movie Night"
   },
   {
    "yt": "ONqqu_y6_sE",
@@ -573,12 +513,6 @@
    "show": "#HERO"
   },
   {
-   "yt": "tp63qp6CtUo",
-   "title": "Thy Will Be Done",
-   "durSec": 5920,
-   "show": "Movie Night"
-  },
-  {
    "yt": "iXLnUeANLGQ",
    "title": "Native Deen — Shaded Seven",
    "durSec": 377,
@@ -625,12 +559,6 @@
    "title": "Mufti Menk — Ask Allah To Soften Hearts",
    "durSec": 78,
    "show": "Islamic Shorts"
-  },
-  {
-   "yt": "f0mQbdbVMfQ",
-   "title": "Bloodline of the Jewel",
-   "durSec": 7787,
-   "show": "Movie Night"
   },
   {
    "yt": "gh5cs-X7s0g",
@@ -681,12 +609,6 @@
    "show": "Karter Zaher"
   },
   {
-   "yt": "XIhlEgkDp1U",
-   "title": "Double Blended",
-   "durSec": 5254,
-   "show": "Movie Night"
-  },
-  {
    "yt": "V3wPauytt0Y",
    "title": "Justo Chalaire — Drop",
    "durSec": 176,
@@ -735,12 +657,6 @@
    "show": "ASAP Preach"
   },
   {
-   "yt": "7Mr0VALZ4K4",
-   "title": "Sugar Daddy Killer",
-   "durSec": 4545,
-   "show": "Movie Night"
-  },
-  {
    "yt": "SGojopSiEe0",
    "title": "Tyson James — Co-Sign",
    "durSec": 109,
@@ -781,12 +697,6 @@
    "title": "Ilyas Mao — Still A Muslim",
    "durSec": 187,
    "show": "Ilyas Mao"
-  },
-  {
-   "yt": "F0Ol7Hc6saw",
-   "title": "The Deponent",
-   "durSec": 6152,
-   "show": "Movie Night"
   },
   {
    "yt": "N9APtatNCg0",
@@ -837,12 +747,6 @@
    "show": "KHXLED"
   },
   {
-   "yt": "6Q-srq-8eG0",
-   "title": "Till Death Do Us 2",
-   "durSec": 5883,
-   "show": "Movie Night"
-  },
-  {
    "yt": "Pr2O2ZEpiK4",
    "title": "Essam — Morocco",
    "durSec": 145,
@@ -883,12 +787,6 @@
    "title": "REDEEMED — BIG HOMIE",
    "durSec": 214,
    "show": "REDEEMED"
-  },
-  {
-   "yt": "uDEGZwk_nOI",
-   "title": "Drive",
-   "durSec": 5987,
-   "show": "Movie Night"
   },
   {
    "yt": "J4q23BwTaMs",
@@ -945,12 +843,6 @@
    "show": "Brother Bo"
   },
   {
-   "yt": "lCwNX9B5044",
-   "title": "CLUTCH",
-   "durSec": 4997,
-   "show": "Movie Night"
-  },
-  {
    "yt": "a00d2uCScbQ",
    "title": "Kurtis Hoppie — MASTERPIECE",
    "durSec": 205,
@@ -999,12 +891,6 @@
    "show": "Deen Squad"
   },
   {
-   "yt": "ue7pvraHWNE",
-   "title": "Three Secrets",
-   "durSec": 5562,
-   "show": "Movie Night"
-  },
-  {
    "yt": "KMcaZMKeO88",
    "title": "Nino Salas — REMEMBER ME",
    "durSec": 172,
@@ -1045,12 +931,6 @@
    "title": "Karter Zaher — Beirut",
    "durSec": 211,
    "show": "Karter Zaher"
-  },
-  {
-   "yt": "JLxw29b5NKE",
-   "title": "Ratchet",
-   "durSec": 7007,
-   "show": "Movie Night"
   },
   {
    "yt": "1_E6ek6q6Gs",
@@ -1099,12 +979,6 @@
    "title": "Khalil Ismail — Sometimes",
    "durSec": 285,
    "show": "Khalil Ismail"
-  },
-  {
-   "yt": "36C74wcr9JI",
-   "title": "eXistenZ",
-   "durSec": 5842,
-   "show": "Movie Night"
   },
   {
    "yt": "yXElKR5KTrI",
@@ -1161,12 +1035,6 @@
    "show": "Lil Baliil"
   },
   {
-   "yt": "N7uOkzNt8ik",
-   "title": "Maniac Cop 2",
-   "durSec": 5270,
-   "show": "Movie Night"
-  },
-  {
    "yt": "E-x8VMY3_F4",
    "title": "Blizz — More Than Life",
    "durSec": 254,
@@ -1213,12 +1081,6 @@
    "title": "Brother Bo — WIN SOULS",
    "durSec": 231,
    "show": "Brother Bo"
-  },
-  {
-   "yt": "wgBnLO4Pnb0",
-   "title": "Saturn 3",
-   "durSec": 5231,
-   "show": "Movie Night"
   },
   {
    "yt": "YzbdSLIpsmQ",
@@ -1269,12 +1131,6 @@
    "show": "Islamic Shorts"
   },
   {
-   "yt": "ra0vF8YSvps",
-   "title": "Rendel: Dark Vengeance",
-   "durSec": 6325,
-   "show": "Movie Night"
-  },
-  {
    "yt": "e5axizhiQvw",
    "title": "Nino Salas — PAPER",
    "durSec": 144,
@@ -1315,12 +1171,6 @@
    "title": "REZUM — Landslide",
    "durSec": 170,
    "show": "REZUM"
-  },
-  {
-   "yt": "B7RsU9_DTfU",
-   "title": "Knightriders",
-   "durSec": 8792,
-   "show": "Movie Night"
   },
   {
    "yt": "-6mf14___F4",
@@ -1377,12 +1227,6 @@
    "show": "Deen Squad"
   },
   {
-   "yt": "eXPFCTYqCag",
-   "title": "Halo 4: Forward Unto Dawn",
-   "durSec": 5483,
-   "show": "Movie Night"
-  },
-  {
    "yt": "372BCWs22w4",
    "title": "#HERO — Brand New Name",
    "durSec": 193,
@@ -1423,12 +1267,6 @@
    "title": "ASAP Preach — FORGIVEN",
    "durSec": 244,
    "show": "ASAP Preach"
-  },
-  {
-   "yt": "U_HMNev_vvg",
-   "title": "Redemption",
-   "durSec": 9495,
-   "show": "Movie Night"
   },
   {
    "yt": "S-TKnLiylmg",
@@ -1479,12 +1317,6 @@
    "show": "Deen Squad"
   },
   {
-   "yt": "ttUoIcWUUUw",
-   "title": "The Kitty Hallow Killer",
-   "durSec": 5554,
-   "show": "Movie Night"
-  },
-  {
    "yt": "TJrr-qrEYJk",
    "title": "Jysa BP — There For You",
    "durSec": 158,
@@ -1525,12 +1357,6 @@
    "title": "Bryann T — Vent",
    "durSec": 324,
    "show": "Bryann T"
-  },
-  {
-   "yt": "pSaGCWffxy4",
-   "title": "Nowhere to Be Found",
-   "durSec": 6291,
-   "show": "Movie Night"
   },
   {
    "yt": "BQoTL5pQUn8",
@@ -1579,12 +1405,6 @@
    "title": "Brother Bo — Prodigal",
    "durSec": 237,
    "show": "Brother Bo"
-  },
-  {
-   "yt": "3oFzMFPV7Rk",
-   "title": "Inthralled",
-   "durSec": 6777,
-   "show": "Movie Night"
   },
   {
    "yt": "aHy26wN728g",
@@ -1641,12 +1461,6 @@
    "show": "Lil Baliil"
   },
   {
-   "yt": "FPnOXPSqJ4c",
-   "title": "The Bad Visitor 2",
-   "durSec": 5420,
-   "show": "Movie Night"
-  },
-  {
    "yt": "i3Z-eC7jxjQ",
    "title": "ASAP Preach — Get Right",
    "durSec": 185,
@@ -1687,12 +1501,6 @@
    "title": "Kurtis Hoppie — Eye of the Storm",
    "durSec": 202,
    "show": "Kurtis Hoppie"
-  },
-  {
-   "yt": "HziWdpePIhw",
-   "title": "Curfew: Sins of the Father",
-   "durSec": 4829,
-   "show": "Movie Night"
   },
   {
    "yt": "J8iYbDbDkZ4",
@@ -1743,12 +1551,6 @@
    "show": "Waheeb Nasan"
   },
   {
-   "yt": "4IuRIKoWwPY",
-   "title": "Ebony Hustle 2: Ballistic Protection",
-   "durSec": 5729,
-   "show": "Movie Night"
-  },
-  {
    "yt": "Vd6yzyWTWWg",
    "title": "Deen Squad — BELIEVER",
    "durSec": 174,
@@ -1789,12 +1591,6 @@
    "title": "Jysa BP — Way Out",
    "durSec": 239,
    "show": "Jysa BP"
-  },
-  {
-   "yt": "eRrvpe0S_I0",
-   "title": "Nothing Even Matters",
-   "durSec": 6781,
-   "show": "Movie Night"
   },
   {
    "yt": "DeS2Fq8LPE4",
@@ -1851,12 +1647,6 @@
    "show": "Karter Zaher"
   },
   {
-   "yt": "fdb6ofP2ViM",
-   "title": "GRIT",
-   "durSec": 6636,
-   "show": "Movie Night"
-  },
-  {
    "yt": "6u8_aJZdqwA",
    "title": "Brother Bo — Check Your Heart",
    "durSec": 212,
@@ -1905,12 +1695,6 @@
    "show": "Islamic Shorts"
   },
   {
-   "yt": "bIfQnBzEggk",
-   "title": "Lady Thug",
-   "durSec": 6333,
-   "show": "Movie Night"
-  },
-  {
    "yt": "30XPWq-HoeA",
    "title": "REDEEMED — Hear Me Now",
    "durSec": 180,
@@ -1951,12 +1735,6 @@
    "title": "Brother Bo — Aliens",
    "durSec": 209,
    "show": "Brother Bo"
-  },
-  {
-   "yt": "yIK9eyZUqcI",
-   "title": "Fist of Vengence",
-   "durSec": 4986,
-   "show": "Movie Night"
   },
   {
    "yt": "TnvRyQ2-1Do",
@@ -2007,12 +1785,6 @@
    "show": "Tyson James"
   },
   {
-   "yt": "FqKqowcTESY",
-   "title": "American Girl",
-   "durSec": 6003,
-   "show": "Movie Night"
-  },
-  {
    "yt": "_OT6a0c8Z6E",
    "title": "REZUM — Running to God",
    "durSec": 231,
@@ -2059,12 +1831,6 @@
    "title": "Kurtis Hoppie — Icy",
    "durSec": 207,
    "show": "Kurtis Hoppie"
-  },
-  {
-   "yt": "3tqGJ67GzwY",
-   "title": "Judge Knott",
-   "durSec": 4527,
-   "show": "Movie Night"
   },
   {
    "yt": "-bZEm7MsaX8",
@@ -2163,12 +1929,6 @@
    "show": "Nino Salas"
   },
   {
-   "yt": "uo6GRLmhgms",
-   "title": "A Night in Compton",
-   "durSec": 6780,
-   "show": "Movie Night"
-  },
-  {
    "yt": "kQU7gHQVGsQ",
    "title": "REDEEMED — 2 DA CHURCH",
    "durSec": 217,
@@ -2215,12 +1975,6 @@
    "title": "Muslim Belal — Palestine (Live at Conway Hall)",
    "durSec": 330,
    "show": "Muslim Belal"
-  },
-  {
-   "yt": "TWe60ZC6icc",
-   "title": "The Harder They Come",
-   "durSec": 6168,
-   "show": "Movie Night"
   },
   {
    "yt": "ZMO8v6P__Co",
@@ -2277,34 +2031,10 @@
    "show": "Tyson James"
   },
   {
-   "yt": "rvph5KLOPBk",
-   "title": "Blood 4 Blood",
-   "durSec": 4701,
-   "show": "Movie Night"
-  },
-  {
    "yt": "ZR4bztPhc_U",
    "title": "Deen Squad — LOOK ALIVE",
    "durSec": 186,
    "show": "Deen Squad"
-  },
-  {
-   "yt": "VAP2TpkjrF4",
-   "title": "Conflict of Interest",
-   "durSec": 6888,
-   "show": "Movie Night"
-  },
-  {
-   "yt": "zxE0GGl-tJA",
-   "title": "The Hills",
-   "durSec": 5041,
-   "show": "Movie Night"
-  },
-  {
-   "yt": "okLDf_ge2oQ",
-   "title": "The Next Day",
-   "durSec": 4522,
-   "show": "Movie Night"
   }
  ]
 }
