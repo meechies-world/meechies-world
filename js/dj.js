@@ -5856,7 +5856,7 @@ html.popdj #dj-mini{display:none!important}
         su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
           onReady: (e) => { try { e.target.mute(); } catch (_) {} try { const fp = freshPos(); e.target.seekTo(Math.max(0, fp != null ? fp : startAt), true); } catch (_) {} try { e.target.playVideo(); } catch (_) {} try { if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
           onStateChange: (e) => { try { if (e.data === YT.PlayerState.PLAYING && su.el) { const fr = su.el.querySelector("iframe"); if (fr) fr.classList.add("playing"); } } catch (_) {} },
-          onError: (e) => { /* STALL FOLLOW-UP (2026-11-06, watcher fault 52): an error from a player that is no longer the surface's player (a stale callback from a destroyed/remounted player) must not latch this surface — it would remount a healthy replacement. And a transient error on a player that is still PLAYING or BUFFERING (the tap's unMute rebuffer) must not blank the picture: the player is alive, its last frame stays up, and chanSyncSurf clears the latch on recovery. Strip the reveal only for a player already in a dead/stuck state — the poster is honest there, and the remount path still shows it across the gap. */ if (e && e.target && su.p && e.target !== su.p) return; su.err = true; su.errCode = (e && e.data) || 0; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { let pst = -2; try { pst = su.p ? su.p.getPlayerState() : -2; } catch (_) {} if (pst !== 1 && pst !== 3) { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } } catch (_) {} }
+          onError: (e) => { /* STALL FOLLOW-UP (2026-11-06, watcher fault 52): an error from a player that is no longer the surface's player (a stale callback from a destroyed/remounted player) must not latch this surface — it would remount a healthy replacement. And a transient error on a player that is still PLAYING or BUFFERING (the tap's unMute rebuffer) must not blank the picture: the player is alive, its last frame stays up, and chanSyncSurf clears the latch on recovery. Strip the reveal only for a player already in a dead/stuck state — the poster is honest there, and the remount path still shows it across the gap. CUTOUT #11 (2026-11-06, Guardian seat on build 1793985200 + watcher fault 67): an UNREADABLE state read is not a dead player — the -2 default (a throwing read, a null player, a half-built player returning nothing) used to strip too, but on these seats the state read fails precisely on players that are playing fine (fault 57), so in the startup window the strip landed on advancing video and the poster sat over it until a clean read happened to land. Only a readable dead/stuck state (0/2/-1/5) strips now; an unreadable read leaves the reveal to the reconciliation below, which judges the player by its advancing clock instead. */ if (e && e.target && su.p && e.target !== su.p) return; su.err = true; su.errCode = (e && e.data) || 0; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { let pst = -2; try { pst = su.p ? su.p.getPlayerState() : -2; } catch (_) {} if (pst === 0 || pst === 2 || pst === -1 || pst === 5) { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } } catch (_) {} }
         } });
         su.mounting = false;
       } catch (_) { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; }
@@ -5992,6 +5992,38 @@ html.popdj #dj-mini{display:none!important}
         su.lastPlayAt = Date.now();
         try { const fr = su.el && su.el.querySelector("iframe"); if (fr && !fr.classList.contains("playing")) fr.classList.add("playing"); } catch (_) {}
         if (su.err) { tvGuardReport(cur, su); su.err = false; su.errN = 0; }
+      }
+      /* CUTOUT #11 (2026-11-06): the state-1 witness above is blind
+       * exactly when this seat needs it — in the startup window the
+       * state read throws or sits transitional while the tape
+       * advances underneath (Guardian seat 12:59-13:08 on build
+       * 1793985200: captions progressed under the poster, and the
+       * sound bridge was alive — the tap's unMute applied and held;
+       * watcher fault 67 is the same signature at ~1 min). The latch
+       * then stays set, lastPlayAt never stamps, and the err branch
+       * below destroys an ADVANCING player at its 15 s deadline.
+       * Playback position is a second, independent witness: a
+       * currentTime that keeps advancing across ticks is a playing
+       * player whatever the state read says, so it earns the same
+       * reconciliation — stamp, reveal, latch clear (Guardian report
+       * filed first, exactly as the state-1 path). A frozen clock
+       * (paused, ended, buffering, dead bridge) advances nothing and
+       * changes nothing: the poster gate, the long-buffering poster
+       * rule and the remount discipline are all untouched. The
+       * sample is keyed to the segment so a stale sample from a
+       * previous segment can never pair with this one's clock. */
+      else if (su.p.getCurrentTime) {
+        let ct = NaN;
+        try { ct = +su.p.getCurrentTime(); } catch (_) {}
+        if (isFinite(ct)) {
+          const pv = su.ctPrev;
+          if (pv && su.ctKey === cur.key && ct - pv.ct >= 0.25 && Date.now() - pv.at <= 3500) {
+            su.lastPlayAt = Date.now();
+            try { const fr = su.el && su.el.querySelector("iframe"); if (fr && !fr.classList.contains("playing")) fr.classList.add("playing"); } catch (_) {}
+            if (su.err) { tvGuardReport(cur, su); su.err = false; su.errN = 0; }
+          }
+          su.ctPrev = { ct: ct, at: Date.now() }; su.ctKey = cur.key;
+        }
       }
     }
     if (su.err) {
@@ -8023,7 +8055,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793987449;
+  const MW_DJ_BUILD = 1793999951;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
