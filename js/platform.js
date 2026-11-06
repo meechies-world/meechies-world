@@ -99,9 +99,16 @@
       },
       onSnapshot(next, onErr) {
         let alive = true;
-        const run = () => q.get().then((s) => alive && next(s)).catch((e) => alive && onErr && onErr(e));
+        let lastRun = 0;
+        const run = () => q.get().then((s) => { lastRun = Date.now(); alive && next(s); }).catch((e) => alive && onErr && onErr(e));
         const later = debounce(run, 120);
-        const l = (row) => { if (row.coll === coll || (row.path && parentOf(row.path) === coll) || !row.path) later(); };
+        /* D1 BURN FIX (2026-11-06): the realtime layer fires one synthetic
+           pathless event when a tab's first poll lands; every listener had
+           just done its initial get(), so re-reading on that event doubled
+           the page-load burst. Pathless events inside 10s of a completed
+           read are that echo — skip them. Real changes always carry a
+           path and still re-read instantly. */
+        const l = (row) => { if (!row.path && Date.now() - lastRun < 10000) return; if (row.coll === coll || (row.path && parentOf(row.path) === coll) || !row.path) later(); };
         ensureChannel(); listeners.add(l); run();
         return () => { alive = false; listeners.delete(l); };
       },
@@ -141,9 +148,12 @@
       },
       onSnapshot(next, onErr) {
         let alive = true;
-        const run = () => ref.get().then((s) => alive && next(s)).catch((e) => alive && onErr && onErr(e));
+        let lastRun = 0;
+        const run = () => ref.get().then((s) => { lastRun = Date.now(); alive && next(s); }).catch((e) => alive && onErr && onErr(e));
         const later = debounce(run, 80);
-        const l = (row) => { if (!row.path || row.path === path) later(); };
+        /* D1 BURN FIX (2026-11-06): skip the synthetic first-poll echo
+           (pathless, just after the initial get) — see collection twin. */
+        const l = (row) => { if (!row.path && Date.now() - lastRun < 10000) return; if (!row.path || row.path === path) later(); };
         ensureChannel(); listeners.add(l); run();
         return () => { alive = false; listeners.delete(l); };
       },

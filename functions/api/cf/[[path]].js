@@ -322,6 +322,15 @@ async function photoGate(env, coll, uid, admin) {
   let photo = ""; try { photo = JSON.parse((row && row.data) || "{}").photo || ""; } catch (_) {}
   if (!hasProfilePhoto(photo)) { const e = new RuleError("Add your profile photo before you post — no blank profile pictures on Meechie's World."); e.code = "photo_required"; throw e; }
 }
+/* D1 BURN FIX (2026-11-06): per-isolate memo for the two hottest read-only
+ * aggregates — the plays counter table (a full scan with no possible
+ * filter, re-read every 5 min by every open tab) and docs count queries
+ * (the member counter, re-read every 2 min per tab). Counts may lag up to
+ * the TTL; nothing else changes. bump_play clears the memo on write. */
+const _qCache = new Map();
+function _qGet(k, ttl) { const e = _qCache.get(k); return e && Date.now() - e.at < ttl ? e.v : undefined; }
+function _qSet(k, v) { _qCache.set(k, { at: Date.now(), v }); return v; }
+
 async function rest(request, env) {
   const q = await request.json().catch(() => null);
   if (!q || typeof q !== "object") return err("Bad request");
@@ -338,7 +347,7 @@ async function rest(request, env) {
       // reports are private to the sender and Meechie; the phone-alert channel only to Meechie (same as the old database)
       if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'", "coll <> 'pushsubs'", "path not like 'brain/calls/%'", "path not like 'brain/texts/%'", "(path not like 'brain/member/%' or owner = ?)"); args.push(uid || "-", uid || "-"); }
       const W = where.length ? " where " + where.join(" and ") : "";
-      if (q.count && q.head) { const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: r ? r.n : 0, error: null }); }
+      if (q.count && q.head) { const ck = "count:" + W + "|" + args.join("|"); const cv = _qGet(ck, 60000); if (cv !== undefined) return json({ data: null, count: cv, error: null }); const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: _qSet(ck, r ? r.n : 0), error: null }); }
       let order = " order by created_at asc";
       if (q.order && q.order.col) {
         const m = /^data->([A-Za-z0-9_]{1,40})$/.exec(q.order.col), dir = q.order.asc === false ? "desc" : "asc";
@@ -427,8 +436,9 @@ async function rest(request, env) {
     return json({ data: results, error: null });
   }
   if (q.table === "plays" && q.op === "select") {
+    const ck = "plays:" + Math.min(limit, 2000); const cv = _qGet(ck, 120000); if (cv !== undefined) return json({ data: cv, error: null });
     const { results } = await env.DB.prepare("select id, n from plays limit ?").bind(Math.min(limit, 2000)).all();
-    return json({ data: results, error: null });
+    return json({ data: _qSet(ck, results), error: null });
   }
   return err("That isn't allowed.", 403, "permission_denied");
 }
@@ -485,7 +495,7 @@ async function rpc(request, env) {
     if (!uid || !/^[A-Za-z0-9:_-]{1,80}$/.test(id)) return json({ data: null, error: null });
     const day = new Date().toISOString().slice(0, 10);
     const r = await env.DB.prepare("insert or ignore into plays_seen (uid, id, day) values (?,?,?)").bind(uid, id, day).run();
-    if (r.meta.changes) await env.DB.prepare("insert into plays (id, n, updated_at) values (?, 1, ?) on conflict(id) do update set n = n + 1, updated_at = excluded.updated_at").bind(id, new Date().toISOString()).run();
+    if (r.meta.changes) { await env.DB.prepare("insert into plays (id, n, updated_at) values (?, 1, ?) on conflict(id) do update set n = n + 1, updated_at = excluded.updated_at").bind(id, new Date().toISOString()).run(); _qCache.clear(); }
     return json({ data: null, error: null });
   }
   return err("Unknown action", 404, "not_found");
