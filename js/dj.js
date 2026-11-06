@@ -4498,6 +4498,7 @@ html.popdj #dj-mini{display:none!important}
          * seat toggles exactly as before. */
         if (tvUnlockFromTap) tvUnlockFromTap = false;
         else tvSndOn = !tvSndOn;
+        try { tvSndPersist(); } catch (_) {}
         try { chanSync(); } catch (_) {}
       } else if (window.MW_DJ) window.MW_DJ.toggle();
       tvSig = ""; try { tvPaint(); } catch (_) {} return;
@@ -5418,7 +5419,8 @@ html.popdj #dj-mini{display:none!important}
    * tv station"): the channel used to be audible only through the radio
    * listening flag, so on the TV page — where the picture is the channel
    * alone — there was no way to hear the TV itself. tvSndOn is a plain
-   * seat-local flag, session-only (not persisted): while on, the TW
+   * seat-local flag, session-only, persisted per-visit (see
+   * tvSndPersist / the restore below): while on, the TW
    * surface counts as audible and the channel players unmute on this
    * seat only. It writes nothing to shared state. */
   let tvSndOn = false;
@@ -5550,6 +5552,34 @@ html.popdj #dj-mini{display:none!important}
    * sound joins on the first tap anywhere — tvEntryGesture hears
    * every pointerdown/keydown on the document, capture phase). */
   let tvSeatAct = false;
+  /* STALL FOLLOW-UP (2026-11-06, watcher fault 53): a reload (or any
+   * fresh JS context) used to wipe both sound flags — the seat's
+   * sound-on intent AND the fact that it had ever gestured — so a
+   * reloaded seat played muted until a NEW gesture, even though it
+   * had sound on for minutes before the reload and the entry-sound
+   * law says sound-on stays on. The picture resumes at the live
+   * edge (same scene) while the sound stays off for the rest of the
+   * sit — exactly fault 53's signature. The choice is now persisted
+   * per-visit (sessionStorage, this tab only, nothing shared): the
+   * pill toggle and the entry paths write it, and this restore
+   * reads it back at load. A restored sound-on seat is audible
+   * again without a new gesture — the per-tick unMute retries
+   * every second, so the sound lands as soon as the browser
+   * allows it (media-engagement / activation), and stays muted
+   * only while the browser itself blocks it. A restored sound-off
+   * seat stays off. A FRESH gate entry still wins: tvEnterMuted()
+   * is consulted before the restored choice below, and the pill
+   * remains the authority once used. Radio untouched — these keys
+   * are TV-only. */
+  let tvSndRestored = false;
+  try {
+    const _rs = sessionStorage.getItem("mw_tv_snd"), _ra = sessionStorage.getItem("mw_tv_act");
+    if (_rs === "1" || _rs === "0") { tvSndOn = _rs === "1"; tvSndRestored = true; }
+    if (_ra === "1") tvSeatAct = true;
+  } catch (_) {}
+  function tvSndPersist() {
+    try { sessionStorage.setItem("mw_tv_snd", tvSndOn ? "1" : "0"); sessionStorage.setItem("mw_tv_act", tvSeatAct ? "1" : "0"); } catch (_) {}
+  }
   /* SOUND-CATCH (2026-11-04, guest seat 09:51 ET): the unlocking tap's
    * pointerdown fires before its click, so a first tap on #tw-sound in
    * the armed-but-muted window would unlock the seat and then toggle
@@ -5570,8 +5600,9 @@ html.popdj #dj-mini{display:none!important}
    * itself, which is the only tap the hold exists for. */
   let tvUnlockFromTap = false;
   function tvEnterApply() {
-    if (tvEnterMuted()) { tvSndOn = false; tvSig = ""; try { tvPaint(); } catch (_) {} return; }
-    tvSndOn = true;
+    if (tvEnterMuted()) { tvSndOn = false; try { tvSndPersist(); } catch (_) {} tvSig = ""; try { tvPaint(); } catch (_) {} return; }
+    if (!tvSndRestored) tvSndOn = true;
+    try { tvSndPersist(); } catch (_) {}
     /* THE WALL: no stopListening() — TV entry never touches the
      * radio. This seat's radio output mutes for as long as the TV
      * view is open (levels / vmixSndScr) and returns on exit. */
@@ -5579,11 +5610,12 @@ html.popdj #dj-mini{display:none!important}
     tvSig = ""; try { tvPaint(); } catch (_) {}
   }
   function tvEnter() {
-    if (tvEnterMuted()) { tvSndOn = false; tvSndArm = false; tvSig = ""; try { tvPaint(); } catch (_) {} return; }
+    if (tvEnterMuted()) { tvSndOn = false; tvSndArm = false; try { tvSndPersist(); } catch (_) {} tvSig = ""; try { tvPaint(); } catch (_) {} return; }
     if (Date.now() - tvLastGesture < 1500) { tvSndArm = false; tvEnterApply(); return; }
-    tvSndOn = true;
+    if (!tvSndRestored) tvSndOn = true;
     /* THE WALL: no stopListening() here either — see tvEnterApply. */
     tvSndArm = true;
+    try { tvSndPersist(); } catch (_) {}
     tvSig = ""; try { tvPaint(); } catch (_) {}
   }
   function tvEntryCheck() {
@@ -5595,7 +5627,9 @@ html.popdj #dj-mini{display:none!important}
   }
   function tvEntryGesture(e) {
     if (!tvSeatAct && e && e.type === "pointerdown" && tvSndOn && e.target && e.target.closest && e.target.closest("#tw-sound")) tvUnlockFromTap = true;
+    const _wasAct = tvSeatAct;
     tvSeatAct = true;
+    if (!_wasAct) { try { tvSndPersist(); } catch (_) {} }
     tvLastGesture = Date.now();
     if (tvSndArm && tvInView) { tvSndArm = false; try { chanSync(); } catch (_) {} tvSig = ""; try { tvPaint(); } catch (_) {} }
   }
@@ -7947,7 +7981,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793976921;
+  const MW_DJ_BUILD = 1793980211;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
