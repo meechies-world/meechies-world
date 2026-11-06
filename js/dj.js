@@ -5815,7 +5815,7 @@ html.popdj #dj-mini{display:none!important}
      * #st-vs1 / #mn-vs1 / #wb-vs1 / #dj-vs1 slots in the markup are
      * simply never mounted again. */
   ];
-  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.bufAt = 0; su.lastCur = null; });
+  TV_SURFS.forEach((su) => { su.el = null; su.key = ""; su.p = null; su.v = null; su.warmEnt = null; su.err = false; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.bufAt = 0; su.lastCur = null; su.sndBadAt = 0; su.sndRebuilds = 0; su.sndRbKey = ""; });
   function chanOverlay(su) {
     const slot = document.querySelector(su.slot); if (!slot) return null;
     const box = slot.closest(".vstage"); if (!box) return null;
@@ -6051,6 +6051,48 @@ html.popdj #dj-mini{display:none!important}
      * first ran (no player, no error, nothing in flight) — retry it on
      * this tick until a player exists. */
     if (cur.src === "yt" && !su.p && !su.v && !su.mounting && Date.now() - (su.mountAt || 0) > 2000) { chanYtMount(su, cur.yt, cur.pos, !audible); return; }
+    /* SPONTANEOUS SOUND DEATH (2026-11-06, watcher faults 64/65):
+     * a seat's tap joined sound, then — no stall, no poster, no
+     * reload, no tap — the pill reverted to OFF inside ~30 s and the
+     * sound was gone for the rest of the sit. The seat's intent is
+     * never flipped (tvSndOn/tvSeatAct have no writer once the pill
+     * tap has spent the recorded gate choice), and the pill paints
+     * the player's reality (tvSndReality), so the OFF was a muted
+     * PLAYER: a muted-first replacement installed by a remount whose
+     * API channel never applied an unMute — its onReady was lost and
+     * its state reads throw (the fault-57/61 per-seat bridge
+     * failure), so every assertion call travels a dead channel while
+     * autoplay keeps the picture playing with no error latched.
+     * Assertions cannot heal a channel that does not carry them, so
+     * when reality contradicts intent CONTINUOUSLY — a muted read on
+     * a player the assertions have already had seconds to reach —
+     * the surface rebuilds the bridge itself: destroy the player,
+     * clear the API cache (the C8 lever, so the remount re-appends
+     * a fresh script tag) and remount at the tape position with the
+     * seat's sound choice. Capped per segment key (the watchdog's 3)
+     * so a seat whose API is dead outright parks instead of
+     * churning; the stamp clears the moment reality matches intent
+     * again, so healthy seats — and seats the assertion alone heals —
+     * never see this fire. */
+    if (cur.src === "yt" && su.p && su.p.isMuted && !su.mounting) {
+      /* the rebuild budget is keyed on the SEGMENT (cur.key), not the
+       * surface key: the watchdog's remount clears su.key through the
+       * key-change branch, and a budget reset there would let a dead
+       * bridge churn forever, 3 rebuilds per watchdog cycle. */
+      if (su.sndRbKey !== cur.key) { su.sndRbKey = cur.key; su.sndRebuilds = 0; su.sndBadAt = 0; }
+      let rMut = null; try { rMut = su.p.isMuted(); } catch (_) {}
+      if (audible && rMut === true) {
+        if (!su.sndBadAt) su.sndBadAt = Date.now();
+        else if (Date.now() - su.sndBadAt > 5000 && (su.sndRebuilds || 0) < 3) {
+          su.sndRebuilds = (su.sndRebuilds || 0) + 1; su.sndBadAt = 0;
+          try { su.p.destroy(); } catch (_) {}
+          su.p = null; if (su.el) su.el.innerHTML = "";
+          try { ytApiP = null; } catch (_) {}
+          chanYtMount(su, cur.yt, cur.pos, false);
+          return;
+        }
+      } else if (rMut === false) su.sndBadAt = 0;
+    }
     if (su.v) {
       const wantMuted = !audible;
       if (su.v.muted !== wantMuted) { try { su.v.muted = wantMuted; } catch (_) {} }
@@ -7981,7 +8023,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793985200;
+  const MW_DJ_BUILD = 1793987449;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
