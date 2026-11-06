@@ -141,7 +141,12 @@
     all = rows; paintDot(); autoPlayVoices(); if (!view.hidden) renderGate();
     fresh.forEach(popIn); fresh.length = 0; paintHeads(); if (mini) paintMini();
   }
-  function later() { clearTimeout(timer); timer = setTimeout(load, 200); }
+  /* D1 BURN FIX (2026-11-06): the dms-live channel already reloads on every
+     change; the 45s timer below now only fires when a change was signalled
+     but its debounced load has not completed — it is a safety net, not a
+     second full reload of the whole mailbox every 45s per signed-in tab. */
+  let dmDirty = false;
+  function later() { dmDirty = true; clearTimeout(timer); timer = setTimeout(() => { dmDirty = false; load(); }, 200); }
 
   async function markRead() {
     if (!other || document.hidden) return;
@@ -397,7 +402,7 @@ body.mw-editing #mx-heads,body.mw-editing #mx-mini{display:none}`;
     const d0 = DB();
     if (d0) d0.collection("groups").limit(500).onSnapshot((s) => { const nx = {}; s.docs.forEach((x) => { const v = x.data(); if (v && !v.deleted && Array.isArray(v.members) && v.members.includes(uid)) nx[x.id] = { name: String(v.name || "Group chat"), members: v.members.filter((i) => typeof i === "string"), owner: v.owner || "" }; }); groups = nx; if (!view.hidden) renderGate(); }, () => {});
     sb.channel("dms-live").on("postgres_changes", { event: "*", schema: "public", table: "dms" }, later).subscribe();
-    started = true; setInterval(() => { if (!document.hidden) load(); }, 45000);
+    started = true; setInterval(() => { if (!document.hidden && dmDirty) { dmDirty = false; load(); } }, 45000);
     // keep "active now" dots fresh
     setInterval(() => { if (!view.hidden && !document.getElementById("dm-in")?.matches(":focus")) { const l = view.querySelector(".dm-list"); if (l && !q) renderGate(); } }, 30000);
   }

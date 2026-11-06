@@ -7860,7 +7860,7 @@ html.popdj #dj-mini{display:none!important}
     }
   }
   /* HEART-H1-END */
-  const pingKeeper = () => { let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
+  const pingKeeper = () => { if (document.hidden) return; /* D1 BURN FIX (2026-11-06): a hidden tab does not need presence pings — the keeper is driven by any visible client, and this tab resumes pinging the moment it is seen again. */ let extra = ""; try { const su = window.MW && MW.session && MW.session() && MW.session().user; if (su && su.id) { const nm = (typeof members !== "undefined" && members && members[su.id] && members[su.id].handle) || su.name || ""; extra = "&u=" + encodeURIComponent(su.id) + (nm ? "&n=" + encodeURIComponent(String(nm).slice(0, 40)) : ""); } } catch (_) {}
     const t0 = Date.now(); fetch("/api/station?cid=" + encodeURIComponent(myCid) + "&l=" + (listening && !OWNER() ? 1 : 0) + extra, { cache: "no-store" }).then((r) => r.text().then((t) => ({ ok: r.ok, t })).catch(() => ({ ok: r.ok, t: "" }))).then(({ ok, t }) => { let j = null; try { j = t ? JSON.parse(t) : null; } catch (_) { j = null; } if (j && j.now) { const t2 = Date.now(); clockSamples.push(j.now - (t0 + t2) / 2); if (clockSamples.length > 5) clockSamples.shift(); const srt = clockSamples.slice().sort((a, b) => a - b); clockOff = srt[Math.floor(srt.length / 2)]; clockAnchor = { wall: t2, mono: performance.now() }; } if (j && j.online != null) { pingFails = 0; paintOnline(j.online, j.listening || 0, j.users, j.guestSince || 0); } else if (j || !ok) pingFails++; heartPaint(); }).catch(() => { pingFails++; heartPaint(); }); };
   let clockOff = 0; // this device's clock error vs the server, learned from keeper pings — the sync math below trusts it over the local clock
   /* Clock estimation, NTP-style (2026-11-01): each keeper ping now stamps
@@ -7900,7 +7900,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793967723;
+  const MW_DJ_BUILD = 1793967918;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
