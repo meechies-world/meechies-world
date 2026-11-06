@@ -1,270 +1,2310 @@
 {
-  "v": 1,
-  "source": "Movie Night pool \u2014 new & trending refresh (verified 2026-11-04)",
-  "segments": [
-    {
-      "yt": "fdb6ofP2ViM",
-      "title": "GRIT",
-      "durSec": 6635,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "L3YHnYerrjM",
-      "title": "The Lonely Crowd (2026)",
-      "durSec": 6367,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "HIx4-U9jek4",
-      "title": "In This House",
-      "durSec": 4592,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "F8YgH1KsttY",
-      "title": "Salt of the Earth (2026)",
-      "durSec": 6773,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "S1VAyhrzTcQ",
-      "title": "Girl From Nowhere (2018)",
-      "durSec": 5128,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "KSwpsUOgkzo",
-      "title": "Looking For The Jackalope",
-      "durSec": 6002,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "jPXvABw1BrA",
-      "title": "The One That Got Away",
-      "durSec": 4831,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "VyX9zn7kVYE",
-      "title": "Who's Watching Us",
-      "durSec": 4876,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "hsI3plbkCGo",
-      "title": "Plight",
-      "durSec": 4877,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "tUtfu_Z3Oe4",
-      "title": "Broken Innocence (2024)",
-      "durSec": 6454,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "tUPdVPsZvBg",
-      "title": "Artist Unknown (2024)",
-      "durSec": 4937,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "T0ssIG_tLvE",
-      "title": "Jack London's Martin Eden (2024)",
-      "durSec": 6239,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "f2jpuJpXJM4",
-      "title": "Wrong Numbers (2024)",
-      "durSec": 5385,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "3aSqJ9QDeS4",
-      "title": "Intermedium (2024)",
-      "durSec": 6426,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "0rtQ81qpxBM",
-      "title": "Dublin Crust (2024)",
-      "durSec": 5974,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "wMEJYro8h6E",
-      "title": "Blue",
-      "durSec": 6706,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "NeRRvWKauVg",
-      "title": "The Incoherents",
-      "durSec": 6535,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "UUZnaIH3ulw",
-      "title": "Grinders",
-      "durSec": 4453,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "pcx7qcsxX4A",
-      "title": "Swiped",
-      "durSec": 5607,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "FqfbvfzrHxc",
-      "title": "Go Back to China",
-      "durSec": 5738,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "wq7kf-olFQs",
-      "title": "With a Little Faith",
-      "durSec": 5883,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "mNCmsX2KC1c",
-      "title": "The Truth Will Come Out",
-      "durSec": 5348,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "k8jz85RTVw0",
-      "title": "Lifetime Friends and Relationship Goals",
-      "durSec": 5268,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "ukR3uclGwQI",
-      "title": "Demon Queen Pinball Machine",
-      "durSec": 5510,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "63yCTQWEjxM",
-      "title": "OnlyFangs",
-      "durSec": 6875,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "Ej3n_CbT_68",
-      "title": "#LIKE",
-      "durSec": 5518,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "K7zHs3KHNP0",
-      "title": "The Hopewell Haunting",
-      "durSec": 4993,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "O1qHR7g3jRc",
-      "title": "Holiday Heist",
-      "durSec": 4783,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "U_HMNev_vvg",
-      "title": "Redemption",
-      "durSec": 9495,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "9bKHCRU4m7Y",
-      "title": "Christmas for the Soul",
-      "durSec": 5120,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "OG1n91kBajI",
-      "title": "Love and Leftovers",
-      "durSec": 5426,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "2VsNoZG6rn4",
-      "title": "Informal Crooks",
-      "durSec": 4743,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "gDTYyfiMWXM",
-      "title": "Toxic Friendz",
-      "durSec": 4969,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "tp63qp6CtUo",
-      "title": "Thy Will Be Done",
-      "durSec": 5920,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "f0mQbdbVMfQ",
-      "title": "Bloodline of the Jewel",
-      "durSec": 7787,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "XIhlEgkDp1U",
-      "title": "Double Blended",
-      "durSec": 5254,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "7Mr0VALZ4K4",
-      "title": "Sugar Daddy Killer",
-      "durSec": 4545,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "F0Ol7Hc6saw",
-      "title": "The Deponent",
-      "durSec": 6152,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "6Q-srq-8eG0",
-      "title": "Till Death Do Us 2",
-      "durSec": 5883,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "lCwNX9B5044",
-      "title": "CLUTCH",
-      "durSec": 4997,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "ue7pvraHWNE",
-      "title": "Three Secrets",
-      "durSec": 5562,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "JLxw29b5NKE",
-      "title": "Ratchet",
-      "durSec": 7007,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "C4jM1IrCZsQ",
-      "title": "The Mattachine Family",
-      "durSec": 5995,
-      "show": "Movie Night"
-    },
-    {
-      "yt": "1V4XX141doE",
-      "title": "Studio 666",
-      "durSec": 6376,
-      "show": "Movie Night"
-    }
-  ]
+ "v": 1,
+ "source": "Synced 2026-11-06 to the Cloudflare keeper lineup on repo main (TV_PROGRAM_V 18, build 1793967918): fill music pool 302 in keeper seed order, Islamic shorts 25, Movie Night pool 46, Friday khutbah sermons 10, Family Time eligible +1 (Johnny Test; Giving Thanks already inside Movie Night). File-only items (cartoon parts, premiere/rerun, house spots), the D1-timed adhan, fresh-only news, and dormant non-fill seed items cannot be expressed in this format - see website/lifeline-lineup-sync-2026-11-06/PROGRESS.md.",
+ "segments": [
+  {
+   "yt": "rvrA29B1pqk",
+   "title": "Deen Squad — Halal Boy (Slowed Down)",
+   "durSec": 252,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "w_O8R_2doPg",
+   "title": "ASAP Preach — The Light",
+   "durSec": 171,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "RuH_UcxAWKM",
+   "title": "Tyson James — Broken Hallelujah",
+   "durSec": 150,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "_-GQtvMaRpg",
+   "title": "Brother Bo — On A Mission",
+   "durSec": 282,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "i8g4C1hkSus",
+   "title": "#HERO — NOT AFRAID",
+   "durSec": 216,
+   "show": "#HERO"
+  },
+  {
+   "yt": "IwySCFXJIwc",
+   "title": "REZUM — Rock Bottom",
+   "durSec": 194,
+   "show": "REZUM"
+  },
+  {
+   "yt": "apELpQWJyz0",
+   "title": "Essam — Runnin",
+   "durSec": 264,
+   "show": "Essam"
+  },
+  {
+   "yt": "O1qHR7g3jRc",
+   "title": "Holiday Heist",
+   "durSec": 4783,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "uwdyA5-kBWs",
+   "title": "Muslim Belal — KABIR",
+   "durSec": 337,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "BvCwf4wzAb4",
+   "title": "Nicky Gracious — 1st String",
+   "durSec": 226,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "W0teY-RYBsw",
+   "title": "Karter Zaher — WE WON'T FORGET",
+   "durSec": 186,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "RnYjH1tXRE8",
+   "title": "Waheeb Nasan — Ceasefire",
+   "durSec": 221,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "4AhhNR6dCpg",
+   "title": "Native Deen — Not Afraid to Stand Alone",
+   "durSec": 302,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "aMY3O06GYlw",
+   "title": "Mufti Menk — No Excuse For Salah",
+   "durSec": 88,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "wc2UQKhgWmU",
+   "title": "Bryann T — Concrete Hymms",
+   "durSec": 191,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "rSg1eyM-ELw",
+   "title": "REDEEMED — ECHOES",
+   "durSec": 204,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "9bKHCRU4m7Y",
+   "title": "Christmas for the Soul",
+   "durSec": 5120,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "jZ4LpOcyqCk",
+   "title": "Lil Baliil — Royal",
+   "durSec": 177,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "ubUz_5-JtFU",
+   "title": "Nino Salas — FOUND IN YOUR LOVE",
+   "durSec": 186,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "m7ridipLgk8",
+   "title": "Khalil Ismail — 20/20",
+   "durSec": 367,
+   "show": "Khalil Ismail"
+  },
+  {
+   "yt": "mX4HbcMGgi4",
+   "title": "Deen Squad — RAMADAN",
+   "durSec": 191,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "azxFcb68luY",
+   "title": "Ilyas Mao — The Blame Game",
+   "durSec": 233,
+   "show": "Ilyas Mao"
+  },
+  {
+   "yt": "kFz_LmRijqA",
+   "title": "Big Yeet — Yahweh",
+   "durSec": 117,
+   "show": "Big Yeet"
+  },
+  {
+   "yt": "KBX_89zw6Ys",
+   "title": "Jysa BP — Intermission",
+   "durSec": 213,
+   "show": "Jysa BP"
+  },
+  {
+   "yt": "OG1n91kBajI",
+   "title": "Love and Leftovers",
+   "durSec": 5426,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "wRipoaIGw5o",
+   "title": "Blizz — Always",
+   "durSec": 216,
+   "show": "Blizz"
+  },
+  {
+   "yt": "2s4W-zabkkc",
+   "title": "Kamban — On The Road",
+   "durSec": 197,
+   "show": "Kamban"
+  },
+  {
+   "yt": "-mG7Vmzk4uA",
+   "title": "ASAP Preach — Tested",
+   "durSec": 252,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "_NLL7uwkQ4Y",
+   "title": "Mufti Menk — The Right Time For Tahajjud",
+   "durSec": 85,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "g9bCjy4AUeY",
+   "title": "Tyson James — 2A Heavy",
+   "durSec": 181,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "4PvizmgSUts",
+   "title": "KHXLED — Selfish Love",
+   "durSec": 183,
+   "show": "KHXLED"
+  },
+  {
+   "yt": "jfKVdPMVEOM",
+   "title": "Brother Bo — Love Letter",
+   "durSec": 193,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "0WW98XWRX18",
+   "title": "Adrion Butler — UGH UGH",
+   "durSec": 591,
+   "show": "Adrion Butler"
+  },
+  {
+   "yt": "2VsNoZG6rn4",
+   "title": "Informal Crooks",
+   "durSec": 4743,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "GMVbovL033I",
+   "title": "Brett Raio — Freedom",
+   "durSec": 178,
+   "show": "Brett Raio"
+  },
+  {
+   "yt": "vY1yHFAj1XA",
+   "title": "Kurtis Hoppie — WHATCHUDOIN?",
+   "durSec": 218,
+   "show": "Kurtis Hoppie"
+  },
+  {
+   "yt": "f2H740A9s3Y",
+   "title": "Mufti Menk — The Ummah & The Holidays (Jumu'ah, Mayfair)",
+   "durSec": 1906,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "n9KV1k7pt38",
+   "title": "Marquese Saenz — Valleys",
+   "durSec": 396,
+   "show": "Marquese Saenz"
+  },
+  {
+   "yt": "sfHdWpEC8wc",
+   "title": "Jae Deen — Ramadan Fiesta",
+   "durSec": 209,
+   "show": "Jae Deen"
+  },
+  {
+   "yt": "CaVFOBzw8rc",
+   "title": "Deen Squad — COVER GIRL",
+   "durSec": 276,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "aw3msUsu1g0",
+   "title": "#HERO — Sumn",
+   "durSec": 143,
+   "show": "#HERO"
+  },
+  {
+   "yt": "o1ErLuJCapo",
+   "title": "Justo Chalaire — Tell Em The Truth",
+   "durSec": 184,
+   "show": "Justo Chalaire"
+  },
+  {
+   "yt": "ukR3uclGwQI",
+   "title": "Demon Queen Pinball Machine",
+   "durSec": 5510,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "gcPVLVW9YVQ",
+   "title": "REZUM — Still With Me",
+   "durSec": 227,
+   "show": "REZUM"
+  },
+  {
+   "yt": "xLFjgaF9-mI",
+   "title": "Mufti Menk — 1 Outweighed 99",
+   "durSec": 84,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "CnKH2InvmrE",
+   "title": "SYL noiZ — Rain On The Window",
+   "durSec": 230,
+   "show": "SYL noiZ"
+  },
+  {
+   "yt": "VOpzm0cMYac",
+   "title": "ASAP Preach — City Boy",
+   "durSec": 137,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "iMI5CGCP5uA",
+   "title": "Tyson James — Catch Me Listening",
+   "durSec": 178,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "Tz_jxQw9LZs",
+   "title": "Essam — Runnin' Pt. 2",
+   "durSec": 447,
+   "show": "Essam"
+  },
+  {
+   "yt": "V0U6RwtmC_g",
+   "title": "Muslim Belal — Ameen",
+   "durSec": 260,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "-CrSes5jcuo",
+   "title": "Nicky Gracious — Everything",
+   "durSec": 249,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "gDTYyfiMWXM",
+   "title": "Toxic Friendz",
+   "durSec": 4969,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "wLSYvUTMcZk",
+   "title": "Karter Zaher — PALESTINE WILL BE",
+   "durSec": 154,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "yaLEoOhQS9Y",
+   "title": "Brother Bo — LOOK AT MY GOD",
+   "durSec": 128,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "4caP6u8xdlY",
+   "title": "Waheeb Nasan — A Free Palestine",
+   "durSec": 200,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "itXckkLebRE",
+   "title": "Deen Squad — RAMADAN KAREEM",
+   "durSec": 211,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "vNW258w0CRk",
+   "title": "Native Deen — Small Deeds",
+   "durSec": 233,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "wMDAB0TAU38",
+   "title": "Bryann T — With Me",
+   "durSec": 228,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "gltvKUs5hEY",
+   "title": "Mufti Menk — We Only Cry When Desperate",
+   "durSec": 86,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "jNS9esiPG74",
+   "title": "REDEEMED — Creation Is Groaning",
+   "durSec": 213,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "63yCTQWEjxM",
+   "title": "OnlyFangs",
+   "durSec": 6875,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "O6JMfIYtzlQ",
+   "title": "Lil Baliil — Bad Gal",
+   "durSec": 207,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "OlujvM1HZGE",
+   "title": "ASAP Preach — Don't Let Me Go",
+   "durSec": 168,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "tTeCblTCpk4",
+   "title": "Tyson James — Dangerous",
+   "durSec": 217,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "d9EI2xNWl_4",
+   "title": "#HERO — Repent or Perish",
+   "durSec": 198,
+   "show": "#HERO"
+  },
+  {
+   "yt": "_5ClafdJtIM",
+   "title": "Nino Salas — IM GRATEFUL",
+   "durSec": 237,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "qBL5sLPznjs",
+   "title": "Deen Squad — NO GOD BUT YOU",
+   "durSec": 173,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "NLQkK554m9g",
+   "title": "REZUM — Get It Right",
+   "durSec": 212,
+   "show": "REZUM"
+  },
+  {
+   "yt": "Ekfn-RVo8XI",
+   "title": "Mortuary",
+   "durSec": 5576,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "SF8AnXZ5PRA",
+   "title": "Brother Bo — STILL GROWING",
+   "durSec": 212,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "hgISdPTdiDA",
+   "title": "Khalil Ismail — First We Need the Love",
+   "durSec": 256,
+   "show": "Khalil Ismail"
+  },
+  {
+   "yt": "4iiPcJgUDdQ",
+   "title": "Ilyas Mao — The Battle Of Badr",
+   "durSec": 284,
+   "show": "Ilyas Mao"
+  },
+  {
+   "yt": "L0pzs3vsBNo",
+   "title": "Big Yeet — Nobody Knew",
+   "durSec": 190,
+   "show": "Big Yeet"
+  },
+  {
+   "yt": "9AM8stMOw5k",
+   "title": "Mufti Menk — Control Your Tongue!",
+   "durSec": 44,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "m9xcwWBwXkc",
+   "title": "Mufti Menk — The Biggest Hypocrite! (Friday Lecture)",
+   "durSec": 1863,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "WvHuNbwHumU",
+   "title": "Essam — Wonder",
+   "durSec": 206,
+   "show": "Essam"
+  },
+  {
+   "yt": "0xptcdZuTp0",
+   "title": "Muslim Belal — Family",
+   "durSec": 253,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "tG1Yr9uG8vE",
+   "title": "Nicky Gracious — Oil Stay Drippin",
+   "durSec": 258,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "Pdm6ONVUNno",
+   "title": "Hell Night",
+   "durSec": 6120,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "6NQp7TpRRfI",
+   "title": "Karter Zaher — MUZZY SAUCE",
+   "durSec": 218,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "gg_zRZIK74k",
+   "title": "Jysa BP — Adderrall and Prayers",
+   "durSec": 146,
+   "show": "Jysa BP"
+  },
+  {
+   "yt": "Zo1lcSmsI9g",
+   "title": "Blizz — I Lie to Me",
+   "durSec": 311,
+   "show": "Blizz"
+  },
+  {
+   "yt": "ud2zs4bmmlQ",
+   "title": "Kamban — LUKE CAGE",
+   "durSec": 158,
+   "show": "Kamban"
+  },
+  {
+   "yt": "rLJRIWBSBYg",
+   "title": "KHXLED — ONLY2U",
+   "durSec": 206,
+   "show": "KHXLED"
+  },
+  {
+   "yt": "0qR2d7ap7us",
+   "title": "ASAP Preach — Let It Go",
+   "durSec": 176,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "uPeACoLzH4w",
+   "title": "Tyson James — Pride is the Devil 2",
+   "durSec": 186,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "Ej3n_CbT_68",
+   "title": "#LIKE",
+   "durSec": 5518,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "ONqqu_y6_sE",
+   "title": "Deen Squad — PAKISTANI",
+   "durSec": 191,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "jqC72i6ACyw",
+   "title": "Waheeb Nasan — Is It Wrong",
+   "durSec": 231,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "HKRq0DE-GTo",
+   "title": "Mufti Menk — Just Don't Get Angry",
+   "durSec": 60,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "XNkHR_SzojQ",
+   "title": "Adrion Butler — Robotnic",
+   "durSec": 215,
+   "show": "Adrion Butler"
+  },
+  {
+   "yt": "rUKnBSQvR6I",
+   "title": "Brett Raio — Leading My Way",
+   "durSec": 197,
+   "show": "Brett Raio"
+  },
+  {
+   "yt": "KUvSCdSScDc",
+   "title": "Kurtis Hoppie — Sunflowers",
+   "durSec": 196,
+   "show": "Kurtis Hoppie"
+  },
+  {
+   "yt": "lt__OjndSCE",
+   "title": "Brother Bo — Way Of The Lord",
+   "durSec": 221,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "COjTwEC8MgQ",
+   "title": "#HERO — Billboard",
+   "durSec": 223,
+   "show": "#HERO"
+  },
+  {
+   "yt": "tp63qp6CtUo",
+   "title": "Thy Will Be Done",
+   "durSec": 5920,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "iXLnUeANLGQ",
+   "title": "Native Deen — Shaded Seven",
+   "durSec": 377,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "AjBk6oDBNeM",
+   "title": "Bryann T — Seeking Grace",
+   "durSec": 188,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "VU5FMglrY-I",
+   "title": "Marquese Saenz — Lifting Up Your Name",
+   "durSec": 253,
+   "show": "Marquese Saenz"
+  },
+  {
+   "yt": "qXFURc_ZDQY",
+   "title": "Jae Deen — MASHALLAH",
+   "durSec": 221,
+   "show": "Jae Deen"
+  },
+  {
+   "yt": "IGkDrXZm2xY",
+   "title": "REZUM — I'm Sorry",
+   "durSec": 230,
+   "show": "REZUM"
+  },
+  {
+   "yt": "w53EgDpHkZU",
+   "title": "Deen Squad — HALAL LOVIN",
+   "durSec": 223,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "tkjT4k1GwG8",
+   "title": "ASAP Preach — All Of Me",
+   "durSec": 283,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "SSRRo74BwGM",
+   "title": "Mufti Menk — Ask Allah To Soften Hearts",
+   "durSec": 78,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "f0mQbdbVMfQ",
+   "title": "Bloodline of the Jewel",
+   "durSec": 7787,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "gh5cs-X7s0g",
+   "title": "Tyson James — Free",
+   "durSec": 175,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "6Y8v1qP2PAw",
+   "title": "REDEEMED — I BELIEVE",
+   "durSec": 168,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "ZQV68YKbLpo",
+   "title": "Lil Baliil — ONE MORE NIGHT",
+   "durSec": 175,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "1_lV0iL4wF8",
+   "title": "Essam — No Love",
+   "durSec": 172,
+   "show": "Essam"
+  },
+  {
+   "yt": "pqMVxcyEN2c",
+   "title": "Muslim Belal — The Corner",
+   "durSec": 340,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "fRCDHrHn5Z8",
+   "title": "Nicky Gracious — Wack A Mole",
+   "durSec": 194,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "pRVHGIT2DwQ",
+   "title": "Mufti Menk — How to Become a Muslim (Jumu'ah, Harare)",
+   "durSec": 1353,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "uiOkS9_6RVk",
+   "title": "Karter Zaher — THATS HARAM",
+   "durSec": 156,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "XIhlEgkDp1U",
+   "title": "Double Blended",
+   "durSec": 5254,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "V3wPauytt0Y",
+   "title": "Justo Chalaire — Drop",
+   "durSec": 176,
+   "show": "Justo Chalaire"
+  },
+  {
+   "yt": "FwiYFS4lDCc",
+   "title": "Brother Bo — NOT FORGOTTEN",
+   "durSec": 251,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "7peMsRUijSs",
+   "title": "Nino Salas — Blame Game",
+   "durSec": 176,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "XHV6WJD_1ps",
+   "title": "Deen Squad — HANDS OF ALLAH",
+   "durSec": 190,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "PFOeri_TC-o",
+   "title": "Waheeb Nasan — Crickets",
+   "durSec": 145,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "mHt_HiAYQqo",
+   "title": "Mufti Menk — What Islam Really Teaches",
+   "durSec": 48,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "228RTNk_aEs",
+   "title": "#HERO — In The Name of Jesus",
+   "durSec": 151,
+   "show": "#HERO"
+  },
+  {
+   "yt": "QkToQPqFShs",
+   "title": "ASAP Preach — Owe You Praise",
+   "durSec": 167,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "7Mr0VALZ4K4",
+   "title": "Sugar Daddy Killer",
+   "durSec": 4545,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "SGojopSiEe0",
+   "title": "Tyson James — Co-Sign",
+   "durSec": 109,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "n9GUwDEeMAE",
+   "title": "SYL noiZ — Know You Lord",
+   "durSec": 160,
+   "show": "SYL noiZ"
+  },
+  {
+   "yt": "i3jzH2xEDJ8",
+   "title": "REZUM — Going Through The Motions",
+   "durSec": 181,
+   "show": "REZUM"
+  },
+  {
+   "yt": "h7K4vYZGoM8",
+   "title": "Native Deen — Living Halal",
+   "durSec": 289,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "H852P3dpOIY",
+   "title": "Bryann T — Everything",
+   "durSec": 266,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "D6GtQhIgyH8",
+   "title": "Khalil Ismail — Man Up",
+   "durSec": 290,
+   "show": "Khalil Ismail"
+  },
+  {
+   "yt": "TJd1Kw3379w",
+   "title": "Ilyas Mao — Still A Muslim",
+   "durSec": 187,
+   "show": "Ilyas Mao"
+  },
+  {
+   "yt": "F0Ol7Hc6saw",
+   "title": "The Deponent",
+   "durSec": 6152,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "N9APtatNCg0",
+   "title": "Big Yeet — Take Me Back",
+   "durSec": 138,
+   "show": "Big Yeet"
+  },
+  {
+   "yt": "deFXDDAyqsQ",
+   "title": "Deen Squad — OOOUUU",
+   "durSec": 175,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "PGkyYgk45j0",
+   "title": "Jysa BP — Legacy",
+   "durSec": 162,
+   "show": "Jysa BP"
+  },
+  {
+   "yt": "ezThSnI6K_0",
+   "title": "Yaqeen Institute — Would You Cheat Your Sibling? (Dr. Omar Suleiman)",
+   "durSec": 36,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "uRNnm3qmjPY",
+   "title": "Blizz — Looking Up",
+   "durSec": 271,
+   "show": "Blizz"
+  },
+  {
+   "yt": "XliL8voy2ag",
+   "title": "Brother Bo — Want to see you",
+   "durSec": 257,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "KCkmQ2QToHE",
+   "title": "Kamban — Marvelous Things",
+   "durSec": 150,
+   "show": "Kamban"
+  },
+  {
+   "yt": "-h_qG1PmCgI",
+   "title": "KHXLED — DEAR BELOVED SON",
+   "durSec": 177,
+   "show": "KHXLED"
+  },
+  {
+   "yt": "6Q-srq-8eG0",
+   "title": "Till Death Do Us 2",
+   "durSec": 5883,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "Pr2O2ZEpiK4",
+   "title": "Essam — Morocco",
+   "durSec": 145,
+   "show": "Essam"
+  },
+  {
+   "yt": "Zz1hXWEHwvc",
+   "title": "ASAP Preach — Rose In The Road",
+   "durSec": 176,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "V2cWUqEy-Ik",
+   "title": "Tyson James — Pressure Makes Diamonds",
+   "durSec": 169,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "KeusmKI6L_k",
+   "title": "Muslim Belal — Journey",
+   "durSec": 152,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "zFQEujDKhg8",
+   "title": "Nicky Gracious — Open Eyes",
+   "durSec": 191,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "vkojlkPgJ60",
+   "title": "Karter Zaher — Mecca Money",
+   "durSec": 147,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "ONaSrJFx3EQ",
+   "title": "REDEEMED — BIG HOMIE",
+   "durSec": 214,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "uDEGZwk_nOI",
+   "title": "Drive",
+   "durSec": 5987,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "J4q23BwTaMs",
+   "title": "Lil Baliil — Kista",
+   "durSec": 168,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "xWRPVuVJk_g",
+   "title": "Yaqeen Institute — What Would You Regret On Your Last Day? (Dr. Omar Suleiman)",
+   "durSec": 60,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "JXO7QaTsxoU",
+   "title": "Mufti Menk — This Will Be an Amazing Ramadan (Jumu'ah Lecture)",
+   "durSec": 1353,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "IzQ2TPCzm4o",
+   "title": "Deen Squad — ON MY DEEN",
+   "durSec": 200,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "yuomnVk0qFY",
+   "title": "#HERO — BIG GOD BIG CHAIN",
+   "durSec": 248,
+   "show": "#HERO"
+  },
+  {
+   "yt": "cp8Hqaa4bQk",
+   "title": "Waheeb Nasan — Touchdown Palestine",
+   "durSec": 193,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "IeoG-HSG5vs",
+   "title": "Adrion Butler — What Was That",
+   "durSec": 186,
+   "show": "Adrion Butler"
+  },
+  {
+   "yt": "IDSYKC1EEq4",
+   "title": "Brett Raio — Scars",
+   "durSec": 179,
+   "show": "Brett Raio"
+  },
+  {
+   "yt": "2qEcXEn_HEA",
+   "title": "Brother Bo — Father Forgive 'Em",
+   "durSec": 210,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "lCwNX9B5044",
+   "title": "CLUTCH",
+   "durSec": 4997,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "a00d2uCScbQ",
+   "title": "Kurtis Hoppie — MASTERPIECE",
+   "durSec": 205,
+   "show": "Kurtis Hoppie"
+  },
+  {
+   "yt": "PLr1sH6_eoQ",
+   "title": "Marquese Saenz — God's Realer",
+   "durSec": 240,
+   "show": "Marquese Saenz"
+  },
+  {
+   "yt": "uvziq5W9WV4",
+   "title": "Jae Deen — WAX WALBA",
+   "durSec": 217,
+   "show": "Jae Deen"
+  },
+  {
+   "yt": "4SodIcKUNeQ",
+   "title": "ASAP Preach — FALL",
+   "durSec": 194,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "EkZWGwSvqGQ",
+   "title": "Tyson James — Fighting Myself",
+   "durSec": 208,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "OPgZBQSWPCI",
+   "title": "REZUM — FREE TONIGHT",
+   "durSec": 176,
+   "show": "REZUM"
+  },
+  {
+   "yt": "C75mxHXvvGU",
+   "title": "Yaqeen Institute — Does Your Shaytan Have Hope In You? (Dr. Omar Suleiman)",
+   "durSec": 56,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "5UsjjR2DOJc",
+   "title": "Deen Squad — MASJID",
+   "durSec": 161,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "ue7pvraHWNE",
+   "title": "Three Secrets",
+   "durSec": 5562,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "KMcaZMKeO88",
+   "title": "Nino Salas — REMEMBER ME",
+   "durSec": 172,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "HFKgP3IzP6c",
+   "title": "Native Deen — Lord, Enable Me",
+   "durSec": 274,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "s3nKpAHOR-A",
+   "title": "Bryann T — Learn From This",
+   "durSec": 254,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "W7qyAmxj-wA",
+   "title": "Essam — Hero",
+   "durSec": 134,
+   "show": "Essam"
+  },
+  {
+   "yt": "Fm2yjvKcOQw",
+   "title": "Muslim Belal — Traveller",
+   "durSec": 249,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "Mez8TQBMPIM",
+   "title": "Nicky Gracious — Not Here Anymore",
+   "durSec": 249,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "vtS5GIsW73M",
+   "title": "Karter Zaher — Beirut",
+   "durSec": 211,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "JLxw29b5NKE",
+   "title": "Ratchet",
+   "durSec": 7007,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "1_E6ek6q6Gs",
+   "title": "#HERO — Mercy",
+   "durSec": 147,
+   "show": "#HERO"
+  },
+  {
+   "yt": "PmKRuA5B-fo",
+   "title": "Brother Bo — By Your Spirit",
+   "durSec": 186,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "fIPZwghO_PA",
+   "title": "ASAP Preach — LIFE",
+   "durSec": 187,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "toVoE4zDA4Q",
+   "title": "Tyson James — Never Sell My Soul",
+   "durSec": 187,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "ZEtMUqIic2U",
+   "title": "Yaqeen Institute — When Parents Aren't The Priority Anymore (Dr. Omar Suleiman)",
+   "durSec": 37,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "Pf25t2dS5Nk",
+   "title": "Deen Squad — MECCA",
+   "durSec": 214,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "Od_xIfBlVzU",
+   "title": "Justo Chalaire — Who Is Jesus?",
+   "durSec": 144,
+   "show": "Justo Chalaire"
+  },
+  {
+   "yt": "FmCWC3k3CmY",
+   "title": "Khalil Ismail — Sometimes",
+   "durSec": 285,
+   "show": "Khalil Ismail"
+  },
+  {
+   "yt": "36C74wcr9JI",
+   "title": "eXistenZ",
+   "durSec": 5842,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "yXElKR5KTrI",
+   "title": "Ilyas Mao — Ghost",
+   "durSec": 219,
+   "show": "Ilyas Mao"
+  },
+  {
+   "yt": "0g72dWP2EVE",
+   "title": "Big Yeet — I Need Jesus",
+   "durSec": 181,
+   "show": "Big Yeet"
+  },
+  {
+   "yt": "NSD12MLXWO0",
+   "title": "Jysa BP — Halo",
+   "durSec": 183,
+   "show": "Jysa BP"
+  },
+  {
+   "yt": "3EoSp8rb6c4",
+   "title": "Mufti Menk — Work Towards a Good Death (Jumu'ah, Harare)",
+   "durSec": 1318,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "9At_HJEmbr0",
+   "title": "REDEEMED — OFF THE BLOCK",
+   "durSec": 231,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "EqEyFCgQXtA",
+   "title": "1 Hour of Johnny Test: The Lost Web Series | Full Episodes | Cartoons For Kids",
+   "durSec": 3603,
+   "show": "Family Time"
+  },
+  {
+   "yt": "PyFtsN7YSas",
+   "title": "REZUM — Through The Flame",
+   "durSec": 322,
+   "show": "REZUM"
+  },
+  {
+   "yt": "bfK2bpM7KMQ",
+   "title": "Waheeb Nasan — My Village",
+   "durSec": 211,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "CqSpPEUznO8",
+   "title": "Lil Baliil — LAST SONG",
+   "durSec": 186,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "N7uOkzNt8ik",
+   "title": "Maniac Cop 2",
+   "durSec": 5270,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "E-x8VMY3_F4",
+   "title": "Blizz — More Than Life",
+   "durSec": 254,
+   "show": "Blizz"
+  },
+  {
+   "yt": "fcw-3QZj3oQ",
+   "title": "Kamban — Rain Down",
+   "durSec": 195,
+   "show": "Kamban"
+  },
+  {
+   "yt": "uINXL4JxJK4",
+   "title": "Yaqeen Institute — Umar (RA) Was Offered to Pray in a Church (Dr. Omar Suleiman)",
+   "durSec": 106,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "pFz9k2zB8po",
+   "title": "KHXLED — FREEDOM",
+   "durSec": 169,
+   "show": "KHXLED"
+  },
+  {
+   "yt": "OKnHojaVSzg",
+   "title": "Deen Squad — PRAY IN PEACE",
+   "durSec": 221,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "Ijap51EZGog",
+   "title": "ASAP Preach — PAIN",
+   "durSec": 290,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "gmvyT3MG6Ek",
+   "title": "Tyson James — Psalm 23",
+   "durSec": 213,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "lXElKZ-3ywI",
+   "title": "Brother Bo — WIN SOULS",
+   "durSec": 231,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "wgBnLO4Pnb0",
+   "title": "Saturn 3",
+   "durSec": 5231,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "YzbdSLIpsmQ",
+   "title": "#HERO — Set Apart",
+   "durSec": 118,
+   "show": "#HERO"
+  },
+  {
+   "yt": "4cVEtQH1HBk",
+   "title": "Essam — Famila",
+   "durSec": 324,
+   "show": "Essam"
+  },
+  {
+   "yt": "RrDqRfm_d9w",
+   "title": "Muslim Belal — Layla (The Dunya)",
+   "durSec": 202,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "exHY5XqOPpY",
+   "title": "Nicky Gracious — Get Up",
+   "durSec": 165,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "XwkUI_3UO3I",
+   "title": "Karter Zaher — Say MashAllah",
+   "durSec": 174,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "1ZpN1ebXgCE",
+   "title": "Native Deen — SubhanAllah",
+   "durSec": 262,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "9en8d-FAR1U",
+   "title": "Bryann T — Free My Lil Brudda",
+   "durSec": 257,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "3Hrec0RaxGI",
+   "title": "Yaqeen Institute — A Message About Al-Aqsa You Need to Hear (Dr. Omar Suleiman)",
+   "durSec": 158,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "ra0vF8YSvps",
+   "title": "Rendel: Dark Vengeance",
+   "durSec": 6325,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "e5axizhiQvw",
+   "title": "Nino Salas — PAPER",
+   "durSec": 144,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "ZYkUXgU_qBI",
+   "title": "Deen Squad — NO LIMIT",
+   "durSec": 222,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "zgXHeFOxuTQ",
+   "title": "Adrion Butler — Can't Tell Me Nothing",
+   "durSec": 222,
+   "show": "Adrion Butler"
+  },
+  {
+   "yt": "ZLyO0KW9iIY",
+   "title": "Brett Raio — Slow Baby",
+   "durSec": 198,
+   "show": "Brett Raio"
+  },
+  {
+   "yt": "tpuqRrHKLEU",
+   "title": "ASAP Preach — DRAPED",
+   "durSec": 243,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "6R4AsyF2GOM",
+   "title": "Tyson James — God Over Government",
+   "durSec": 190,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "Bc3VFmzgJzY",
+   "title": "REZUM — Landslide",
+   "durSec": 170,
+   "show": "REZUM"
+  },
+  {
+   "yt": "B7RsU9_DTfU",
+   "title": "Knightriders",
+   "durSec": 8792,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "-6mf14___F4",
+   "title": "Kurtis Hoppie — Problem Child",
+   "durSec": 187,
+   "show": "Kurtis Hoppie"
+  },
+  {
+   "yt": "5pnJbcNj-Pk",
+   "title": "Brother Bo — HOUSE OF BREAD",
+   "durSec": 226,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "GpU3TKME90Q",
+   "title": "Marquese Saenz — Send the Rain",
+   "durSec": 228,
+   "show": "Marquese Saenz"
+  },
+  {
+   "yt": "h7JZVZZn1HA",
+   "title": "Jae Deen — SOO SOCO",
+   "durSec": 136,
+   "show": "Jae Deen"
+  },
+  {
+   "yt": "XjayVG2FFGA",
+   "title": "Waheeb Nasan — Tawel Balek",
+   "durSec": 251,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "-6CmWXoZvz4",
+   "title": "Yaqeen Institute — Why Your Dua Isn't Being Answered (Sh. Mohammad Elshinawy)",
+   "durSec": 30,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "Cnc5FPFtUgc",
+   "title": "Mufti Menk — The Call to Goodness (Khutbah, Kuala Lumpur)",
+   "durSec": 1255,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "31JG3lPHSbc",
+   "title": "SYL noiZ — 26",
+   "durSec": 242,
+   "show": "SYL noiZ"
+  },
+  {
+   "yt": "S9CZmFyxVwQ",
+   "title": "Deen Squad — MUSLIM QUEEN",
+   "durSec": 179,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "eXPFCTYqCag",
+   "title": "Halo 4: Forward Unto Dawn",
+   "durSec": 5483,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "372BCWs22w4",
+   "title": "#HERO — Brand New Name",
+   "durSec": 193,
+   "show": "#HERO"
+  },
+  {
+   "yt": "UlPwMyOzBRU",
+   "title": "REDEEMED — ACTION",
+   "durSec": 233,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "65IYuoJTWo8",
+   "title": "Lil Baliil — THE BAG",
+   "durSec": 220,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "YGsUHespjaU",
+   "title": "Essam — On the Road",
+   "durSec": 328,
+   "show": "Essam"
+  },
+  {
+   "yt": "fzHwu4Vr7as",
+   "title": "Muslim Belal — Real Life",
+   "durSec": 285,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "O6mJZerPVdY",
+   "title": "Nicky Gracious — What Type of Time You On?",
+   "durSec": 223,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "rqtKnjB0_Aw",
+   "title": "ASAP Preach — FORGIVEN",
+   "durSec": 244,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "U_HMNev_vvg",
+   "title": "Redemption",
+   "durSec": 9495,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "S-TKnLiylmg",
+   "title": "Tyson James — True Colors",
+   "durSec": 287,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "FCZi86WEJj4",
+   "title": "Karter Zaher — You Can Be Awesome",
+   "durSec": 212,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "0GuIy2mFoO4",
+   "title": "Khalil Ismail — Knocking",
+   "durSec": 276,
+   "show": "Khalil Ismail"
+  },
+  {
+   "yt": "XTWxaK2QAi0",
+   "title": "Bayyinah — When You Stop Hearing the Truth (Nouman Ali Khan)",
+   "durSec": 105,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "uvSRMu3t1v8",
+   "title": "Brother Bo — Church",
+   "durSec": 227,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "LyZlw-tp1zc",
+   "title": "Ilyas Mao — Seize The Day",
+   "durSec": 202,
+   "show": "Ilyas Mao"
+  },
+  {
+   "yt": "ch6zgOXGAMk",
+   "title": "Big Yeet — Guard My Heart",
+   "durSec": 151,
+   "show": "Big Yeet"
+  },
+  {
+   "yt": "DzGaxvPqoeo",
+   "title": "Deen Squad — DEEN STARS",
+   "durSec": 209,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "ttUoIcWUUUw",
+   "title": "The Kitty Hallow Killer",
+   "durSec": 5554,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "TJrr-qrEYJk",
+   "title": "Jysa BP — There For You",
+   "durSec": 158,
+   "show": "Jysa BP"
+  },
+  {
+   "yt": "umt5moaFY7k",
+   "title": "Blizz — Thin Line",
+   "durSec": 246,
+   "show": "Blizz"
+  },
+  {
+   "yt": "ok4x1zHdy-Y",
+   "title": "Kamban — The Race",
+   "durSec": 223,
+   "show": "Kamban"
+  },
+  {
+   "yt": "mEmAsgJN2hM",
+   "title": "KHXLED — HOMECOMING",
+   "durSec": 109,
+   "show": "KHXLED"
+  },
+  {
+   "yt": "prn8KDGlCbE",
+   "title": "Native Deen — Al-Widaa",
+   "durSec": 353,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "o82nbGqy4Tw",
+   "title": "REZUM — Bye Bye",
+   "durSec": 206,
+   "show": "REZUM"
+  },
+  {
+   "yt": "oDWRXS7XIC8",
+   "title": "Bryann T — Vent",
+   "durSec": 324,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "pSaGCWffxy4",
+   "title": "Nowhere to Be Found",
+   "durSec": 6291,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "BQoTL5pQUn8",
+   "title": "ASAP Preach — Counterfeit",
+   "durSec": 234,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "AXn1OJH4y2M",
+   "title": "Bayyinah — Our Limits Point Back to Allah (Nouman Ali Khan)",
+   "durSec": 178,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "K5Dan8ml_uE",
+   "title": "Tyson James — All by Design",
+   "durSec": 195,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "2XckUwAyVGQ",
+   "title": "#HERO — Dead Man",
+   "durSec": 146,
+   "show": "#HERO"
+  },
+  {
+   "yt": "5-XzEv9UfyE",
+   "title": "Waheeb Nasan — Enough",
+   "durSec": 143,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "_HDK44cCbRE",
+   "title": "Deen Squad — MADINA",
+   "durSec": 208,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "w8u6ReGlaN0",
+   "title": "Nino Salas — Pain",
+   "durSec": 185,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "CNUhnbqDsM4",
+   "title": "Brother Bo — Prodigal",
+   "durSec": 237,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "3oFzMFPV7Rk",
+   "title": "Inthralled",
+   "durSec": 6777,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "aHy26wN728g",
+   "title": "Mufti Menk — When They Say Bad Things About You (Jumu'ah Lecture)",
+   "durSec": 1241,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "r67zVRq5Efs",
+   "title": "Justo Chalaire — Look Where I Stand",
+   "durSec": 149,
+   "show": "Justo Chalaire"
+  },
+  {
+   "yt": "qM93ntiNJnc",
+   "title": "Essam — Fly",
+   "durSec": 199,
+   "show": "Essam"
+  },
+  {
+   "yt": "pLJJLlr0kas",
+   "title": "Muslim Belal — Faith 2 Faith",
+   "durSec": 304,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "2XGusPC8nQo",
+   "title": "Nicky Gracious — Right Out The Gate",
+   "durSec": 210,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "Y-VVcBIoo-k",
+   "title": "Karter Zaher — WHAT ARE YOUR INTENTIONS?",
+   "durSec": 234,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "ZI3gAzTm3vg",
+   "title": "REDEEMED — ANOTHER MINUTE",
+   "durSec": 230,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "xU_15CVuEE4",
+   "title": "Bayyinah — Allah Is Already Near You (Nouman Ali Khan)",
+   "durSec": 154,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "GYS0fuloJSI",
+   "title": "Lil Baliil — QURUXDIYO QOF AH",
+   "durSec": 211,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "FPnOXPSqJ4c",
+   "title": "The Bad Visitor 2",
+   "durSec": 5420,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "i3Z-eC7jxjQ",
+   "title": "ASAP Preach — Get Right",
+   "durSec": 185,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "q0YolnMf6sU",
+   "title": "Tyson James — Big Mad",
+   "durSec": 167,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "uP5zLaVdECQ",
+   "title": "Deen Squad — MUSLIM MAN",
+   "durSec": 219,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "RP4cOof6hgY",
+   "title": "REZUM — He Knows What We Need",
+   "durSec": 207,
+   "show": "REZUM"
+  },
+  {
+   "yt": "xNpFJ8e9lBk",
+   "title": "Adrion Butler — On Time",
+   "durSec": 314,
+   "show": "Adrion Butler"
+  },
+  {
+   "yt": "JGHc9Hsc1PE",
+   "title": "Brett Raio — Last Days",
+   "durSec": 164,
+   "show": "Brett Raio"
+  },
+  {
+   "yt": "qd_-fvIj0Ok",
+   "title": "Kurtis Hoppie — Eye of the Storm",
+   "durSec": 202,
+   "show": "Kurtis Hoppie"
+  },
+  {
+   "yt": "HziWdpePIhw",
+   "title": "Curfew: Sins of the Father",
+   "durSec": 4829,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "J8iYbDbDkZ4",
+   "title": "Marquese Saenz — Cleaning Out My Closet",
+   "durSec": 350,
+   "show": "Marquese Saenz"
+  },
+  {
+   "yt": "dzMarqob2F4",
+   "title": "Jae Deen — HAYE HAYE",
+   "durSec": 151,
+   "show": "Jae Deen"
+  },
+  {
+   "yt": "2zzn9gYtCjc",
+   "title": "Brother Bo — Fill Me Up",
+   "durSec": 182,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "od1r2XuACIg",
+   "title": "#HERO — Wake Up",
+   "durSec": 156,
+   "show": "#HERO"
+  },
+  {
+   "yt": "pY4bnQJIFu4",
+   "title": "Bayyinah — How To Make Kids Love The Masjid (Nouman Ali Khan)",
+   "durSec": 72,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "qQlDNCkVsRc",
+   "title": "Native Deen — Lose Their Way",
+   "durSec": 346,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "OuXaHI4DYv8",
+   "title": "Bryann T — Older & Wiser",
+   "durSec": 292,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "YY3g9HK5IW8",
+   "title": "Waheeb Nasan — I'm So Elite",
+   "durSec": 203,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "4IuRIKoWwPY",
+   "title": "Ebony Hustle 2: Ballistic Protection",
+   "durSec": 5729,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "Vd6yzyWTWWg",
+   "title": "Deen Squad — BELIEVER",
+   "durSec": 174,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "2r3Ji9eijtQ",
+   "title": "ASAP Preach — Lowest",
+   "durSec": 219,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "TnxQGgmu-EM",
+   "title": "Tyson James — See it Clearly",
+   "durSec": 183,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "mzvR-ff5xcM",
+   "title": "Khalil Ismail — Thank You Haters",
+   "durSec": 276,
+   "show": "Khalil Ismail"
+  },
+  {
+   "yt": "muXc-8CiAGo",
+   "title": "Ilyas Mao — WHOLE",
+   "durSec": 199,
+   "show": "Ilyas Mao"
+  },
+  {
+   "yt": "FKo3j2Lqg0g",
+   "title": "Big Yeet — Better Life",
+   "durSec": 148,
+   "show": "Big Yeet"
+  },
+  {
+   "yt": "V4_IcgcKGR0",
+   "title": "Jysa BP — Way Out",
+   "durSec": 239,
+   "show": "Jysa BP"
+  },
+  {
+   "yt": "eRrvpe0S_I0",
+   "title": "Nothing Even Matters",
+   "durSec": 6781,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "DeS2Fq8LPE4",
+   "title": "Blizz — You Still Love Me",
+   "durSec": 219,
+   "show": "Blizz"
+  },
+  {
+   "yt": "NMkpAZMrFjs",
+   "title": "Kamban — Got to Go",
+   "durSec": 255,
+   "show": "Kamban"
+  },
+  {
+   "yt": "PpZOPFY5XPs",
+   "title": "Bayyinah — Gratitude: This is Allah's Promise (Nouman Ali Khan)",
+   "durSec": 69,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "w8G2piyhNlY",
+   "title": "Mufti Menk — B+ (Jumu'ah Talk)",
+   "durSec": 1241,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "zgu5o2WUKgs",
+   "title": "KHXLED — NO WHITE GOD",
+   "durSec": 121,
+   "show": "KHXLED"
+  },
+  {
+   "yt": "beOndSHThog",
+   "title": "Essam — Fajr",
+   "durSec": 199,
+   "show": "Essam"
+  },
+  {
+   "yt": "JTHChlgfpJo",
+   "title": "Muslim Belal — Spot Project",
+   "durSec": 360,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "H0CdqTGAJZ8",
+   "title": "Nicky Gracious — STUPID",
+   "durSec": 274,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "9ptk6mKDXKw",
+   "title": "Karter Zaher — Who You Are",
+   "durSec": 148,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "fdb6ofP2ViM",
+   "title": "GRIT",
+   "durSec": 6636,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "6u8_aJZdqwA",
+   "title": "Brother Bo — Check Your Heart",
+   "durSec": 212,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "Flv7d6cS9rc",
+   "title": "REZUM — Target On My Back",
+   "durSec": 130,
+   "show": "REZUM"
+  },
+  {
+   "yt": "Ff5pOBGLsJY",
+   "title": "Deen Squad — FRIDAY",
+   "durSec": 208,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "vH4wz_aklkA",
+   "title": "Nino Salas — FIND MY WAY",
+   "durSec": 201,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "1KevZBcEefI",
+   "title": "#HERO — American Church",
+   "durSec": 182,
+   "show": "#HERO"
+  },
+  {
+   "yt": "FBkcFMCj4Bg",
+   "title": "ASAP Preach — Crying Out",
+   "durSec": 224,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "saidxWwDKBg",
+   "title": "Tyson James — Christian Rappers",
+   "durSec": 199,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "hSONHt8gJYM",
+   "title": "Bayyinah — How Do I Raise My Muslim Kids In The West? (Nouman Ali Khan)",
+   "durSec": 90,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "bIfQnBzEggk",
+   "title": "Lady Thug",
+   "durSec": 6333,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "30XPWq-HoeA",
+   "title": "REDEEMED — Hear Me Now",
+   "durSec": 180,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "VRDFZjiqiVo",
+   "title": "Lil Baliil — HAIWEEYDIIN",
+   "durSec": 171,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "1-YKIU4cDL8",
+   "title": "Native Deen — Baligna Ramadan",
+   "durSec": 176,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "hHVJd8pZcDo",
+   "title": "Bryann T — Prayer Changes Everything",
+   "durSec": 225,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "j82A1GyZqYw",
+   "title": "Deen Squad — JANNAH",
+   "durSec": 191,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "eit0L5Lo5CY",
+   "title": "SYL noiZ — Legacy",
+   "durSec": 224,
+   "show": "SYL noiZ"
+  },
+  {
+   "yt": "v4EwEP0TVgI",
+   "title": "Brother Bo — Aliens",
+   "durSec": 209,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "yIK9eyZUqcI",
+   "title": "Fist of Vengence",
+   "durSec": 4986,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "TnvRyQ2-1Do",
+   "title": "Waheeb Nasan — Backseat",
+   "durSec": 240,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "AfgVKo9Tyxg",
+   "title": "Essam — Free",
+   "durSec": 223,
+   "show": "Essam"
+  },
+  {
+   "yt": "9690aGhZ1Ss",
+   "title": "Muslim Belal — LIFE",
+   "durSec": 412,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "DhtAn777qY4",
+   "title": "Nicky Gracious — Sinner Saved",
+   "durSec": 264,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "uNerdm9Cwr8",
+   "title": "Karter Zaher — Hijabi Queen",
+   "durSec": 277,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "OBjqR-A5H54",
+   "title": "Deen Squad — Everybody Say Muslim (Short)",
+   "durSec": 25,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "jEW6ZiPVdFo",
+   "title": "ASAP Preach — Letting Go",
+   "durSec": 192,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "US8vglkDZQ0",
+   "title": "Tyson James — Send Me An Angel",
+   "durSec": 253,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "FqKqowcTESY",
+   "title": "American Girl",
+   "durSec": 6003,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "_OT6a0c8Z6E",
+   "title": "REZUM — Running to God",
+   "durSec": 231,
+   "show": "REZUM"
+  },
+  {
+   "yt": "lnjgK70uUHk",
+   "title": "Justo Chalaire — Tryna Get It",
+   "durSec": 195,
+   "show": "Justo Chalaire"
+  },
+  {
+   "yt": "fPdQGPC1UeM",
+   "title": "#HERO — Praise Yahweh",
+   "durSec": 223,
+   "show": "#HERO"
+  },
+  {
+   "yt": "7bdoDTlGMLo",
+   "title": "Deen Squad — ALLAH'S PLAN",
+   "durSec": 206,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "FMBvXbIIm18",
+   "title": "Mufti Menk — How to Protect Yourself from Evil (Jumu'ah, Johannesburg)",
+   "durSec": 1202,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "qT9UyREKkgc",
+   "title": "Adrion Butler — Day III",
+   "durSec": 149,
+   "show": "Adrion Butler"
+  },
+  {
+   "yt": "wjc3r9PQpsw",
+   "title": "Brett Raio — Unleashed Ignite",
+   "durSec": 151,
+   "show": "Brett Raio"
+  },
+  {
+   "yt": "_sXOAezMUD0",
+   "title": "Kurtis Hoppie — Icy",
+   "durSec": 207,
+   "show": "Kurtis Hoppie"
+  },
+  {
+   "yt": "3tqGJ67GzwY",
+   "title": "Judge Knott",
+   "durSec": 4527,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "-bZEm7MsaX8",
+   "title": "Marquese Saenz — Not About It",
+   "durSec": 180,
+   "show": "Marquese Saenz"
+  },
+  {
+   "yt": "TORSFKNOqwY",
+   "title": "Jae Deen — KAALAY YA XABIBTI",
+   "durSec": 203,
+   "show": "Jae Deen"
+  },
+  {
+   "yt": "vgWma2puGpA",
+   "title": "Brother Bo — Narrow Road",
+   "durSec": 181,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "HWNcV9LJUQQ",
+   "title": "Deen Squad — Karter on the Comeback (Short)",
+   "durSec": 29,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "w91s8WqtKf0",
+   "title": "Khalil Ismail — Freedom Fighters",
+   "durSec": 183,
+   "show": "Khalil Ismail"
+  },
+  {
+   "yt": "FB1fykja3xs",
+   "title": "Ilyas Mao — How Far",
+   "durSec": 226,
+   "show": "Ilyas Mao"
+  },
+  {
+   "yt": "mV3a0Mc-Xl4",
+   "title": "ASAP Preach — Yahweh",
+   "durSec": 149,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "Z6Qnr42wjQ0",
+   "title": "Tyson James — Sodom Got Smoked",
+   "durSec": 177,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "8-ngS-WjqJw",
+   "title": "Giving Thanks",
+   "durSec": 4233,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "MvqGsJYE4-c",
+   "title": "Big Yeet — My God",
+   "durSec": 172,
+   "show": "Big Yeet"
+  },
+  {
+   "yt": "KpeLcRWxfS0",
+   "title": "Jysa BP — Let 'Em Know",
+   "durSec": 218,
+   "show": "Jysa BP"
+  },
+  {
+   "yt": "u6n7evj7dS4",
+   "title": "Blizz — When It Rains",
+   "durSec": 352,
+   "show": "Blizz"
+  },
+  {
+   "yt": "wgbNNXf-ywk",
+   "title": "Kamban — Covenant",
+   "durSec": 238,
+   "show": "Kamban"
+  },
+  {
+   "yt": "F5c3LH33pIE",
+   "title": "Deen Squad — HALAL BOY",
+   "durSec": 238,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "u6GHUwEzJww",
+   "title": "KHXLED — GOD FORBID",
+   "durSec": 125,
+   "show": "KHXLED"
+  },
+  {
+   "yt": "evF05yPveaA",
+   "title": "Nino Salas — STILL FREE",
+   "durSec": 168,
+   "show": "Nino Salas"
+  },
+  {
+   "yt": "uo6GRLmhgms",
+   "title": "A Night in Compton",
+   "durSec": 6780,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "kQU7gHQVGsQ",
+   "title": "REDEEMED — 2 DA CHURCH",
+   "durSec": 217,
+   "show": "REDEEMED"
+  },
+  {
+   "yt": "3bH-PSUDc3A",
+   "title": "Deen Squad — Cooking (Short)",
+   "durSec": 16,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "5Q4IiUbipLg",
+   "title": "Lil Baliil — IF",
+   "durSec": 205,
+   "show": "Lil Baliil"
+  },
+  {
+   "yt": "ifCD8fh5v7M",
+   "title": "Native Deen — I Am Near",
+   "durSec": 639,
+   "show": "Native Deen"
+  },
+  {
+   "yt": "91ZCIEGIGm0",
+   "title": "Bryann T — Struggle",
+   "durSec": 296,
+   "show": "Bryann T"
+  },
+  {
+   "yt": "SlmRV06NPGM",
+   "title": "Waheeb Nasan — The Farthest Mosque",
+   "durSec": 181,
+   "show": "Waheeb Nasan"
+  },
+  {
+   "yt": "E-YclDzq_Wk",
+   "title": "Essam — My People",
+   "durSec": 211,
+   "show": "Essam"
+  },
+  {
+   "yt": "F03jpLWeTgU",
+   "title": "Muslim Belal — Palestine (Live at Conway Hall)",
+   "durSec": 330,
+   "show": "Muslim Belal"
+  },
+  {
+   "yt": "TWe60ZC6icc",
+   "title": "The Harder They Come",
+   "durSec": 6168,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "ZMO8v6P__Co",
+   "title": "Nicky Gracious — If I Died",
+   "durSec": 320,
+   "show": "Nicky Gracious"
+  },
+  {
+   "yt": "bYyfikVXraQ",
+   "title": "Karter Zaher — Convert for me",
+   "durSec": 262,
+   "show": "Karter Zaher"
+  },
+  {
+   "yt": "3m2hfm9ksZ8",
+   "title": "REZUM — Sanity",
+   "durSec": 185,
+   "show": "REZUM"
+  },
+  {
+   "yt": "5cZla5XkWxw",
+   "title": "#HERO — 1 Way",
+   "durSec": 202,
+   "show": "#HERO"
+  },
+  {
+   "yt": "HZok7UW_HnI",
+   "title": "Brother Bo — Fallen Stars",
+   "durSec": 203,
+   "show": "Brother Bo"
+  },
+  {
+   "yt": "2VRTbR2jnmc",
+   "title": "ASAP Preach — God Made Muzic",
+   "durSec": 382,
+   "show": "ASAP Preach"
+  },
+  {
+   "yt": "bn8OMhSMLSQ",
+   "title": "Deen Squad — Halal Lovin Live in Ohio (Short)",
+   "durSec": 11,
+   "show": "Islamic Shorts"
+  },
+  {
+   "yt": "c1aOe6d2kcE",
+   "title": "Mufti Menk — You Pay a Price for Your Tongue (Jumu'ah Lecture)",
+   "durSec": 1201,
+   "show": "Friday Khutbah"
+  },
+  {
+   "yt": "bUGiMRSpkuQ",
+   "title": "Tyson James — Holy Rebellion",
+   "durSec": 131,
+   "show": "Tyson James"
+  },
+  {
+   "yt": "rvph5KLOPBk",
+   "title": "Blood 4 Blood",
+   "durSec": 4701,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "ZR4bztPhc_U",
+   "title": "Deen Squad — LOOK ALIVE",
+   "durSec": 186,
+   "show": "Deen Squad"
+  },
+  {
+   "yt": "VAP2TpkjrF4",
+   "title": "Conflict of Interest",
+   "durSec": 6888,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "zxE0GGl-tJA",
+   "title": "The Hills",
+   "durSec": 5041,
+   "show": "Movie Night"
+  },
+  {
+   "yt": "okLDf_ge2oQ",
+   "title": "The Next Day",
+   "durSec": 4522,
+   "show": "Movie Night"
+  }
+ ]
 }
