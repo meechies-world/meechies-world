@@ -4480,6 +4480,10 @@ html.popdj #dj-mini{display:none!important}
     if (!t || !t.closest) return;
     if (t.closest("#tw-sound")) {
       if (elOpen("v-mwtv")) {
+        /* The pill is the authority from its first tap on: any
+         * recorded Enter-without-sound choice is spent here
+         * (watcher faults 8/11/15 fix, 2026-11-06). */
+        tvPillUsed = true; try { sessionStorage.removeItem("mw_enter_muted"); } catch (_) {}
         /* on the MW TV page this button is the TV sound switch, not
          * the radio toggle: flip the seat-local TV flag and nothing
          * else. THE WALL (2026-11-03): turning TV sound on used to
@@ -5418,7 +5422,49 @@ html.popdj #dj-mini{display:none!important}
    * surface counts as audible and the channel players unmute on this
    * seat only. It writes nothing to shared state. */
   let tvSndOn = false;
+  /* ENTER WITHOUT SOUND (2026-11-06, watcher faults 8/11/15): the
+   * entry gate's muted choice is recorded by app-core.js as
+   * sessionStorage mw_enter_muted, and entering this view respects
+   * it — the entry does NOT force tvSndOn on — until the viewer
+   * uses the pill itself. From that tap on, the pill is the
+   * authority: the recorded choice is spent (the pill handler
+   * removes it) and entries follow the owner's sound-on rule
+   * again. Before this, the gate choice reached only the radio
+   * (snoozeRadio) and TV entry forced the sound on over it, so a
+   * guest who had just tapped "Enter without sound" could be
+   * greeted by a TV already playing sound. The gate's WITH-sound
+   * choice is the mirror image (owner, 2026-11-06: "I want them
+   * to enter with sound if they click that option at the
+   * beginning"): the flag stays absent, and the entry below sets
+   * the intent and runs chanSync inside the entry moment, so the
+   * player itself unmutes (tvSndReality paints the truth either
+   * way — see tvPaint). */
+  let tvPillUsed = false;
+  function tvEnterMuted() { if (tvPillUsed) return false; try { return sessionStorage.getItem("mw_enter_muted") === "1"; } catch (_) { return false; } }
   let tvSig = "";
+  /* SOUND LABEL = THE PLAYER'S REAL STATE (2026-11-06, watcher fault
+   * 11): the label used to paint the intent conjunction
+   * (tvSndOn && tvSeatAct) — but a seat gesture ANYWHERE (even the
+   * entry-gate tap on another view) flips tvSeatAct, so the pill
+   * could read "TV sound on" over a player that was still muted,
+   * and the seat heard silence until a tap cycle ran chanSync
+   * inside a fresh gesture. The label now reads the TW surface's
+   * player itself: a YouTube player's isMuted(), a file element's
+   * .muted. Null = no player mounted (standby/poster): the caller
+   * falls back to the intent conjunction, the only honest answer
+   * then. tvPaint also rides the 1s tick below, so the label
+   * follows the player within a second as it mounts, unmutes or
+   * mutes. The TV_SURFS lookup rides in try/catch on purpose:
+   * tvPaint can be called during first evaluation, before the
+   * TV_SURFS const further down this closure has initialized. */
+  function tvSndReality() {
+    try {
+      const su = TV_SURFS[0]; if (!su) return null;
+      if (su.p && su.p.isMuted) { try { return !su.p.isMuted(); } catch (_) { return null; } }
+      if (su.v) return !su.v.muted;
+      return null;
+    } catch (_) { return null; }
+  }
   function tvPaint() {
     const vs = S.vstream || {};
     let mode = "", label = "";
@@ -5429,12 +5475,28 @@ html.popdj #dj-mini{display:none!important}
      * content on the TV page. What remains on the TV page is the
      * master's own share / screen video (the master law) and, owned
      * by chanGuidePaint below, the channel itself. */
-    const sig = mode + "|" + label + "|" + (listening ? 1 : 0) + "|" + (tvSndOn ? 1 : 0) + "|" + (tvSeatAct ? 1 : 0);
+    /* ENTRY SOUND LAW (2026-11-06, watcher fault 44): the label's
+     * TV/radio branch rides the SAME defended view test as
+     * tvEntryCheck — the router's body[data-view] stamp OR the
+     * element check — and the branch is part of the paint
+     * signature. Before this the branch was elOpen() alone and
+     * absent from the sig: a paint that landed while #v-mwtv was
+     * momentarily hidden (a shell DOM swap) painted the RADIO
+     * label under a sig that then matched for the rest of the
+     * program, so the pill sat on the TV page reading "RADIO OFF"
+     * while the TV sound state never moved — a spontaneous flip
+     * to a radio label, exactly what the owner's entry-sound law
+     * forbids. */
+    let onTv = false;
+    try { onTv = !!(document.body && document.body.dataset && document.body.dataset.view === "mwtv"); } catch (_) {}
+    if (!onTv) onTv = elOpen("v-mwtv");
+    const tvReal = tvSndReality();
+    const sig = mode + "|" + label + "|" + (listening ? 1 : 0) + "|" + (tvSndOn ? 1 : 0) + "|" + (tvSeatAct ? 1 : 0) + "|" + (tvReal === null ? "-" : tvReal ? 1 : 0) + "|" + (onTv ? "T" : "R");
     if (sig === tvSig) return; tvSig = sig;
     const bd = $("#tw-live"), wt = $("#tw-what"), sb = $("#tw-sound");
     /* While the channel is up, chanGuidePaint owns the badge words —
      * don't blank them from this paint. */
-    const chanOwns = elOpen("v-mwtv") && chanReady();
+    const chanOwns = onTv && chanReady();
     if (bd && !chanOwns) { bd.hidden = !mode; bd.classList.toggle("mix", mode === "mix"); bd.textContent = mode === "live" ? "🔴 LIVE" : "ON AIR"; }
     if (wt && !chanOwns) wt.textContent = label;
     /* SOUND LABEL = REALITY (2026-11-04, guest seat 09:51 ET): on the TV
@@ -5443,8 +5505,14 @@ html.popdj #dj-mini{display:none!important}
      * window read "TV sound on" over silence. Sound is really on only
      * when intent is on AND a seat gesture has unlocked it (the tick
      * unmutes exactly under that condition), so the label paints that
-     * conjunction. The radio branch is untouched. */
-    if (sb) sb.textContent = elOpen("v-mwtv") ? ((tvSndOn && tvSeatAct) ? "🔊 TV sound on — tap to mute" : "🔇 TV sound off — tap for sound") : (listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound");
+     * conjunction. The radio branch is untouched.
+     * 2026-11-06 (watcher fault 11): the conjunction still lied
+     * whenever the unlocking gesture had landed outside this view,
+     * so the label now paints tvSndReality() whenever a player is
+     * mounted and keeps the conjunction only as the no-player
+     * fallback. The branch itself is the defended onTv test above,
+     * never elOpen() alone (fault 44). */
+    if (sb) sb.textContent = onTv ? (((tvReal !== null ? tvReal : (tvSndOn && tvSeatAct))) ? "🔊 TV sound on — tap to mute" : "🔇 TV sound off — tap for sound") : (listening ? "🔊 Radio on — tap to mute" : "🔇 Radio off — tap for sound");
   }
   /* MW TV ENTRY = SOUND ON (owner, 2026-11-02: "Make sure if they
    * click on MW TV it comes on with the sound on and the radio cuts
@@ -5489,9 +5557,20 @@ html.popdj #dj-mini{display:none!important}
    * with silence. This flag remembers that the seat was unlocked by
    * this very tap so the button handler can hold the intent instead
    * of flipping it. Pointer taps only: a keypress unlock leaves no
-   * pending button tap behind, and any other click clears it. */
+   * pending button tap behind, and any other click clears it.
+   * SCOPED (2026-11-06, watcher fault 8): the flag used to be set
+   * by ANY pointerdown in that window — the entry-gate tap, a nav
+   * tap, a tap on the picture — and it is cleared only by a click
+   * that actually reaches this file's bubble-phase document
+   * listener; a first gesture whose click was swallowed (iframe
+   * territory before the sound-catch layer engages on its tick)
+   * left the flag armed to eat the viewer's first real pill tap:
+   * the tap changed neither label nor sound. The flag is now set
+   * only when the unlocking pointerdown lands on #tw-sound
+   * itself, which is the only tap the hold exists for. */
   let tvUnlockFromTap = false;
   function tvEnterApply() {
+    if (tvEnterMuted()) { tvSndOn = false; tvSig = ""; try { tvPaint(); } catch (_) {} return; }
     tvSndOn = true;
     /* THE WALL: no stopListening() — TV entry never touches the
      * radio. This seat's radio output mutes for as long as the TV
@@ -5500,6 +5579,7 @@ html.popdj #dj-mini{display:none!important}
     tvSig = ""; try { tvPaint(); } catch (_) {}
   }
   function tvEnter() {
+    if (tvEnterMuted()) { tvSndOn = false; tvSndArm = false; tvSig = ""; try { tvPaint(); } catch (_) {} return; }
     if (Date.now() - tvLastGesture < 1500) { tvSndArm = false; tvEnterApply(); return; }
     tvSndOn = true;
     /* THE WALL: no stopListening() here either — see tvEnterApply. */
@@ -5514,7 +5594,7 @@ html.popdj #dj-mini{display:none!important}
     else if (!on && tvInView) { tvInView = false; tvSndArm = false; }
   }
   function tvEntryGesture(e) {
-    if (!tvSeatAct && e && e.type === "pointerdown" && tvSndOn) tvUnlockFromTap = true;
+    if (!tvSeatAct && e && e.type === "pointerdown" && tvSndOn && e.target && e.target.closest && e.target.closest("#tw-sound")) tvUnlockFromTap = true;
     tvSeatAct = true;
     tvLastGesture = Date.now();
     if (tvSndArm && tvInView) { tvSndArm = false; try { chanSync(); } catch (_) {} tvSig = ""; try { tvPaint(); } catch (_) {} }
@@ -5895,6 +5975,16 @@ html.popdj #dj-mini{display:none!important}
     if (su.v) {
       const wantMuted = !audible;
       if (su.v.muted !== wantMuted) { try { su.v.muted = wantMuted; } catch (_) {} }
+      /* ENTRY SOUND LAW (2026-11-06, owner: "enter with sound"
+       * must mean AUDIBLE): the YouTube branch below re-asserts
+       * unMute + setVolume(100) every tick, but the file branch
+       * only ever reconciled .muted — a file element whose volume
+       * was left below full (a warm element carried in, an
+       * earlier surface) would unmute into silence and stay
+       * there. Mirror the YouTube guarantee: while the surface is
+       * meant to be audible, raise a lowered volume back to full.
+       * Raise-only — nothing here ever turns a viewer down. */
+      if (audible && su.v.volume < 1) { try { su.v.volume = 1; } catch (_) {} }
       /* Ended inside a still-running window (2026-11-03): a news
        * edition (94s) laid in a longer window (600s) leaves the pick's
        * position CLAMPED at the media's real end for the remainder of
@@ -6087,7 +6177,7 @@ html.popdj #dj-mini{display:none!important}
     try { const tw = TV_SURFS[0]; want = elOpen("v-mwtv") && tvSndOn && !tvSeatAct && !!(tw && (tw.p || tw.v)); } catch (_) { want = false; }
     try { document.body.classList.toggle("tw-sndcatch", want); } catch (_) {}
   }
-  setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} try { twSndCatchTick(); } catch (_) {} try { tvWatchdogTick(); } catch (_) {} }, 1000); // tvWatchdogTick: poster/stall fix 2026-11-06
+  setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} try { twSndCatchTick(); } catch (_) {} try { tvWatchdogTick(); } catch (_) {} try { tvPaint(); } catch (_) {} }, 1000); // tvWatchdogTick: poster/stall fix 2026-11-06; tvPaint on the tick: sound-label reality fix 2026-11-06
   /* ================= MW TV LIFELINE (owner, 2026-11-04 ~00:13 EST:
    * "Make it so my tv station can play without cloudflare… dont have
    * to log in to see mwtv") =================
@@ -7810,7 +7900,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793966918;
+  const MW_DJ_BUILD = 1793967723;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
