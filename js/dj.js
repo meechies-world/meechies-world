@@ -5809,7 +5809,8 @@ html.popdj #dj-mini{display:none!important}
     const freshPos = () => { try { const c = su.id === "TW" ? tvChanCurTv() : tvChanCur(); return c && c.key === kAtCall ? c.pos : null; } catch (_) { return null; } };
     su.mounting = true; su.mountAt = Date.now();
     ytApi().then(() => {
-      if (!su.el || su.key !== kAtCall) return;
+      /* STALL FOLLOW-UP (2026-11-06, watcher fault 52): the old early return left mounting stuck true — the pending-mount retry owns a mount only while !mounting, so a key change mid-mount parked the surface on the poster for the rest of the segment. */
+      if (!su.el || su.key !== kAtCall) { su.mounting = false; su.mountAt = Date.now(); return; }
       /* YT not ready yet is PENDING, not an error (2026-11-02): ytApi()
        * resolves after 7s even when the IFrame API has not loaded, and
        * latching su.err here parked the segment on the poster for its
@@ -5821,7 +5822,7 @@ html.popdj #dj-mini{display:none!important}
         su.p = new YT.Player(su.el.firstChild, { videoId: yt, playerVars: { autoplay: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, mute: 1 }, events: {
           onReady: (e) => { try { e.target.mute(); } catch (_) {} try { const fp = freshPos(); e.target.seekTo(Math.max(0, fp != null ? fp : startAt), true); } catch (_) {} try { e.target.playVideo(); } catch (_) {} try { if (!muted) { e.target.unMute(); e.target.setVolume(100); } } catch (_) {} },
           onStateChange: (e) => { try { if (e.data === YT.PlayerState.PLAYING && su.el) { const fr = su.el.querySelector("iframe"); if (fr) fr.classList.add("playing"); } } catch (_) {} },
-          onError: (e) => { su.err = true; su.errCode = (e && e.data) || 0; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } catch (_) {} }
+          onError: (e) => { /* STALL FOLLOW-UP (2026-11-06, watcher fault 52): an error from a player that is no longer the surface's player (a stale callback from a destroyed/remounted player) must not latch this surface — it would remount a healthy replacement. And a transient error on a player that is still PLAYING or BUFFERING (the tap's unMute rebuffer) must not blank the picture: the player is alive, its last frame stays up, and chanSyncSurf clears the latch on recovery. Strip the reveal only for a player already in a dead/stuck state — the poster is honest there, and the remount path still shows it across the gap. */ if (e && e.target && su.p && e.target !== su.p) return; su.err = true; su.errCode = (e && e.data) || 0; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; try { let pst = -2; try { pst = su.p ? su.p.getPlayerState() : -2; } catch (_) {} if (pst !== 1 && pst !== 3) { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } } catch (_) {} }
         } });
         su.mounting = false;
       } catch (_) { su.err = true; su.errAt = Date.now(); su.errN = (su.errN || 0) + 1; su.mounting = false; }
@@ -5907,7 +5908,7 @@ html.popdj #dj-mini{display:none!important}
       const w = su.warmEnt && su.warmEnt.key === cur.key ? su.warmEnt : null;
       chanTeardown(su, w ? w.v : null);
       if (w) su.warmEnt = null;
-      su.key = cur.key; su.err = false; su.errCode = 0; su.errFile = false; su._gKey = ""; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.bufAt = 0;
+      su.key = cur.key; su.err = false; su.errCode = 0; su.errFile = false; su._gKey = ""; su.seekAt = 0; su.mounting = false; su.mountAt = 0; su.errAt = 0; su.errN = 0; su.kickAt = 0; su.driftAt = 0; su.bufAt = 0; su.lastPlayAt = 0;
       if (w && (cur.src === "file" || cur.src === "ia")) { w.v.classList.remove("tvwarm"); chanFileMount(su, cur.url, cur.pos, !audible, w.v); }
       else if (cur.src === "yt") chanYtMount(su, cur.yt, cur.pos, !audible);
       else chanFileMount(su, cur.url, cur.pos, !audible, null);
@@ -5954,6 +5955,7 @@ html.popdj #dj-mini{display:none!important}
       let pst = -2;
       try { pst = su.p.getPlayerState(); } catch (_) {}
       if (pst === 1) {
+        su.lastPlayAt = Date.now();
         try { const fr = su.el && su.el.querySelector("iframe"); if (fr && !fr.classList.contains("playing")) fr.classList.add("playing"); } catch (_) {}
         if (su.err) { tvGuardReport(cur, su); su.err = false; su.errN = 0; }
       }
@@ -5971,16 +5973,21 @@ html.popdj #dj-mini{display:none!important}
        * seat's existing choice here too, for both player kinds. */
       if (su.p && su.p.isMuted) { try { if (audible) { su.p.unMute(); su.p.setVolume(100); } else su.p.mute(); } catch (_) {} }
       if (su.v) { try { const wantMuted = !audible; if (su.v.muted !== wantMuted) su.v.muted = wantMuted; if (audible && su.v.volume < 1) su.v.volume = 1; } catch (_) {} }
+      /* While a latched error rides a LONG buffering stall, the poster is the honest state: a brief rebuffer keeps its last frame (no flash — fault 52), but a stall past ~8 s of latched buffering shows the connecting poster instead of a frozen frame. The remount below still waits (see its deadline), so this is paint only, never a teardown. */
+      if (cur.src === "yt" && su.p && su.p.getPlayerState) { try { if (su.p.getPlayerState() === 3 && Date.now() - (su.errAt || 0) > 8000) { const fr = su.el && su.el.querySelector("iframe"); if (fr) fr.classList.remove("playing"); } } catch (_) {} }
       /* Bounded remount on real YT errors (2026-11-02): a transient
        * construction throw or onError heals itself with a fresh mount
        * ~15s later instead of parking the segment; the cap (errN
        * reaches 4 = the initial mount plus 3 remounts) parks a truly
        * unembeddable video on the poster for the rest of its segment —
        * never-blank holds either way. File surfaces keep the old latch. */
-      if (cur.src === "yt" && (su.errN || 0) < 4 && Date.now() - (su.errAt || 0) > 15000) {
+      /* STALL FOLLOW-UP (2026-11-06, watcher fault 52): the deadline used to run from the error, so a tap's unMute rebuffer that errored mid-buffer was destroyed at 15 s even though it was still recovering — that remount is what ate the scene and came back muted. The deadline now runs from the last PLAYING sighting (stamped above): a recovering player heals in place, and a player still BUFFERING is never remounted inside its first 30 s of non-playing (the watchdog's rescue window). A genuinely dead player still remounts after its 15 s grace, cap unchanged. */
+      const noPlayMs = Date.now() - (su.lastPlayAt || su.errAt || 0);
+      let pstE = -2; try { pstE = su.p ? su.p.getPlayerState() : -2; } catch (_) {}
+      if (cur.src === "yt" && (su.errN || 0) < 4 && ((pstE !== 3 && noPlayMs > 15000) || noPlayMs > 30000)) {
         if (su.p) { try { su.p.destroy(); } catch (_) {} su.p = null; }
         if (su.el) su.el.innerHTML = "";
-        su.err = false;
+        su.err = false; su.lastPlayAt = 0;
         chanYtMount(su, cur.yt, cur.pos, !audible);
       }
       /* Bounded remount on real FILE errors (2026-11-03): file
@@ -6040,6 +6047,10 @@ html.popdj #dj-mini{display:none!important}
         if (isFinite(drift) && Math.abs(drift) > 2.5 && su.v.readyState >= 2 && !su.v.seeking) { try { su.v.currentTime = Math.max(0, cur.pos); } catch (_) {} }
       }
     } else if (su.p && su.p.getPlayerState) {
+      /* STALL FOLLOW-UP (2026-11-06, watcher fault 52): the sound assertion used to sit inside the same try as getPlayerState(), so a throwing state read skipped unMute/mute every tick and a playing player could sit muted indefinitely — the pill reading OFF after the resume. The assertion runs in its own try and always executes when a player exists; the state read below defaults to -2 on a throw and only gates the kick/seek/drift logic. */
+      try { if (audible) { su.p.unMute(); su.p.setVolume(100); } else su.p.mute(); } catch (_) {}
+      let pst = -2;
+      try { pst = su.p.getPlayerState(); } catch (_) {}
       try {
         /* Kick every stuck non-playing state (2026-11-02), throttled to
          * ~4s per surface: PAUSED (2), CUED (5) and UNSTARTED (-1) get a
@@ -6049,7 +6060,6 @@ html.popdj #dj-mini{display:none!important}
          * Same seat semantics as the old state-2 rescue: the channel
          * sync owns channel playback; a seat's own pause lives on the
          * decks/screens, and TV sound stays seat-local via audible. */
-        const pst = su.p.getPlayerState();
         /* Overstated-duration tail (2026-11-02): when the tape position
          * is past the real video end (+1s grace) the player can only sit
          * at ENDED and every seek lands clamped at the end — suppress
@@ -6059,7 +6069,6 @@ html.popdj #dj-mini{display:none!important}
         const pastEnd = dur > 0 && cur.pos > dur + 1;
         if ((pst === 2 || pst === 5 || pst === -1) && Date.now() - (su.kickAt || 0) > 4000) { su.kickAt = Date.now(); su.p.playVideo(); }
         else if (pst === 0 && !pastEnd && Date.now() - (su.kickAt || 0) > 4000) { su.kickAt = Date.now(); su.p.seekTo(Math.max(0, cur.pos), true); su.p.playVideo(); }
-        if (audible) { su.p.unMute(); su.p.setVolume(100); } else su.p.mute();
         /* Drift correction (2026-11-02): NEVER seek a BUFFERING player.
          * Its clock is frozen while the wall-clock tape runs on, so the
          * old rule hard-seeked every ~4s through every stall, throwing
@@ -7938,7 +7947,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793972229;
+  const MW_DJ_BUILD = 1793976921;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
