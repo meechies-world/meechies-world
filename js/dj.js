@@ -5653,6 +5653,19 @@ html.popdj #dj-mini{display:none!important}
    * a share, a screen video or the mix holding the master screen
    * never parks the channel on its own page (owner, 2026-11-01). */
   function tvChanCurTv() { return tvChanCurPick(chanReady()); }
+  /* OUTAGE INSTRUMENTATION (poster/stall fix 2026-11-06, diagnosis §5 fix 3):
+   * the outage probe (js/outage.js) files a best-effort Guardian marker on
+   * every guest() firing and needs the segment on air to name it. Read-only:
+   * the current pick straight from tv/now, so the endpoint's own
+   * current-or-just-ended check passes by construction. Null when no live
+   * pick exists — the filing is skipped then, localStorage-only. */
+  window.MW_TV_SEG = function () {
+    try {
+      const c = tvChanCurTv();
+      if (c && c.seg && c.seg.id && +c.seg.start > 0) return { id: String(c.seg.id), start: +c.seg.start };
+    } catch (_) {}
+    return null;
+  };
   function tvChanCurPick(holds) {
     if (!holds) return null;
     const now = serverNow();
@@ -6074,7 +6087,7 @@ html.popdj #dj-mini{display:none!important}
     try { const tw = TV_SURFS[0]; want = elOpen("v-mwtv") && tvSndOn && !tvSeatAct && !!(tw && (tw.p || tw.v)); } catch (_) { want = false; }
     try { document.body.classList.toggle("tw-sndcatch", want); } catch (_) {}
   }
-  setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} try { twSndCatchTick(); } catch (_) {} }, 1000);
+  setInterval(() => { try { chanSync(); } catch (_) {} try { twImmTick(); } catch (_) {} try { twSndCatchTick(); } catch (_) {} try { tvWatchdogTick(); } catch (_) {} }, 1000); // tvWatchdogTick: poster/stall fix 2026-11-06
   /* ================= MW TV LIFELINE (owner, 2026-11-04 ~00:13 EST:
    * "Make it so my tv station can play without cloudflare… dont have
    * to log in to see mwtv") =================
@@ -6195,6 +6208,96 @@ html.popdj #dj-mini{display:none!important}
     }
   }
   if (!SANDBOX) setInterval(() => { try { llTvTick(); } catch (_) {} }, 1000);
+  /* TV STALL WATCHDOG — poster/stall fix 2026-11-06 (diagnosis §5, fix 2).
+   * "TV: connecting…" is static standby text until a player reaches PLAYING.
+   * Two shapes stall a seat while the keeper and the lifeline both look fine:
+   * (a) a live segment's player mounts but never reaches PLAYING — the
+   * lifeline correctly does NOT engage when a live segment exists, so a stuck
+   * player is invisible to it; (b) the view is open with no player at PLAYING
+   * at all — the YT IFrame API loader (ytApi) resolves after 7 s even when
+   * the script never loads, so mounts retry forever with no YT. Thresholds
+   * are GENEROUS on purpose: a slow connection's normal buffering must never
+   * be mistaken for a stall. Runs only on the MW TV view (TV_SURFS[0] = TW);
+   * never touches the keeper gate, the lineup, any fence, or the radio. */
+  const TV_STALL_WATCH_MS = 30000;   // view open this long with no PLAYING player -> rescue
+  const TV_MOUNT_PLAY_MS = 20000;    // mounted player this long without PLAYING -> remount
+  const TV_WATCHDOG_REMOUNT_CAP = 3; // remounts per segment key, then stop
+  const tvWatch = { noPlaySince: 0, mountKey: "", mountPlayer: null, mountSince: 0, remounts: 0, lastRemountKey: "", apiRefreshedAt: 0 };
+  function twPlayerPlaying() {
+    try {
+      const tw = TV_SURFS[0];
+      if (!tw) return false;
+      if (tw.v) {
+        // Playing, or ended-but-holding its last frame by design (a segment
+        // whose window outlives its media holds the frame until the key
+        // changes) — the picture is up either way, so this is not a stall.
+        // A paused-not-ended video IS a stall: the tick re-plays it, so a
+        // video that stays paused is being refused, not resting.
+        return tw.v.readyState >= 2 && (!tw.v.paused || tw.v.ended);
+      }
+      if (tw.p && tw.p.getPlayerState) { try { return tw.p.getPlayerState() === 1; } catch (_) { return false; } }
+      return false;
+    } catch (_) { return false; }
+  }
+  function tvWatchdogTick() {
+    if (SANDBOX) return;
+    const tw = TV_SURFS[0];
+    if (!tw) return;
+    if (!elOpen("v-mwtv")) { tvWatch.noPlaySince = 0; tvWatch.mountKey = ""; tvWatch.mountPlayer = null; tvWatch.mountSince = 0; tvWatch.remounts = 0; tvWatch.lastRemountKey = ""; return; }
+    const now = Date.now();
+    if (twPlayerPlaying()) { tvWatch.noPlaySince = 0; tvWatch.mountKey = ""; tvWatch.mountPlayer = null; tvWatch.mountSince = 0; tvWatch.remounts = 0; tvWatch.lastRemountKey = ""; return; }
+    if (!tvWatch.noPlaySince) tvWatch.noPlaySince = now;
+    // (a) A player is mounted but has not reached PLAYING within ~20 s.
+    // Clear the segment key so the next chanSyncSurf tick does the full
+    // teardown + fresh mount with a fresh seek to the live edge (the same
+    // key-change branch a normal program change takes). Skipped while a
+    // mount is in flight, while an error remount is already scheduled, and
+    // when there is no player at all (the pending-YT-API retry owns that).
+    // The clock follows the PLAYER OBJECT, not just the key: any remount —
+    // watchdog or error-path — creates a new player, so a fresh mount always
+    // gets a full 20 s. The remount count is kept per key across re-mounts
+    // (lastRemountKey), so a permanently stuck player stops at 3 remounts
+    // instead of churning forever; a new segment resets the count.
+    const player = tw.p || tw.v || null;
+    if (tw.key && player && !tw.err && !tw.mounting) {
+      if (tvWatch.mountKey !== tw.key || tvWatch.mountPlayer !== player) {
+        tvWatch.mountKey = tw.key; tvWatch.mountPlayer = player; tvWatch.mountSince = now;
+        if (tvWatch.lastRemountKey !== tw.key) tvWatch.remounts = 0;
+      }
+      if (now - tvWatch.mountSince >= TV_MOUNT_PLAY_MS && tvWatch.remounts < TV_WATCHDOG_REMOUNT_CAP) {
+        tvWatch.remounts++;
+        tvWatch.lastRemountKey = tw.key;
+        try { console.info("[MW] tv stall watchdog: remounting stuck player", tw.key, "attempt", tvWatch.remounts); } catch (_) {}
+        tw.key = "";
+        tvWatch.mountKey = ""; tvWatch.mountPlayer = null; tvWatch.mountSince = 0;
+        return; // let the remount land before judging the 30 s rescue
+      }
+    } else if (!tw.key || !player) { tvWatch.mountKey = ""; tvWatch.mountPlayer = null; tvWatch.mountSince = 0; }
+    // (b) The view has been open ~30 s with no player at PLAYING: rescue.
+    // Re-append the YouTube IFrame API script (once per episode — ytApi()
+    // caches its promise and resolves after 7 s even when the script never
+    // loaded, so a dead first load is never retried by the mount path),
+    // re-fetch the lifeline lineup if it never loaded, and — only when
+    // there is no live segment at all and the owner has not turned the
+    // channel off — engage the lifeline now, mirroring llTvTick's own
+    // engage block. The #tw-lifeline label follows LL_TV.on via
+    // llTvLabel(), so it shows while the rescue carries the station.
+    // Re-arm the clock so the rescue does not spam every tick.
+    if (now - tvWatch.noPlaySince >= TV_STALL_WATCH_MS) {
+      try { console.info("[MW] tv stall watchdog: no player playing for 30s, rescuing"); } catch (_) {}
+      if (!window.YT || !YT.Player) {
+        if (now - (tvWatch.apiRefreshedAt || 0) > 30000) { tvWatch.apiRefreshedAt = now; try { ytApiP = null; ytApi(); } catch (_) {} }
+      }
+      if (!LL_TV.lineup) { try { llTvLoad(); } catch (_) {} }
+      const cur = tvChanCurTv();
+      const realChan = tvChanDoc && !tvChanDoc.__ll ? tvChanDoc : null;
+      if (!cur && !LL_TV.on && !(realChan && realChan.on === false)) {
+        LL_TV.on = true; LL_TV.realChan = undefined; LL_TV.realNow = undefined; LL_TV.laidUntil = 0;
+        try { llTvLabel(); } catch (_) {}
+      }
+      tvWatch.noPlaySince = now;
+    }
+  }
   /* MW TV OWNER SEARCH (Malik, 2026-11-02 ~20:56: "Make it so i can
    * search what i want to play on my tv channel" — "Give just me a
    * search box somewhere" — "Bottom right corner"): a compact search
@@ -7707,7 +7810,7 @@ html.popdj #dj-mini{display:none!important}
    * the handshake with the shell checker in app-core.js: whichever
    * checker fires first stamps it, and the other stands down for that
    * build — one reload per build, whoever gets the safe moment first. */
-  const MW_DJ_BUILD = 1793966597;
+  const MW_DJ_BUILD = 1793966918;
   (() => {
     let updBuild = 0, updSince = 0, updTimer = null;
     const anyPlaying = () => { try { return DECKS.some((k) => S[k] && S[k].playing); } catch (_) { return false; } };
