@@ -1,6 +1,6 @@
 {
  "v": 1,
- "source": "Synced 2026-11-06 to the Cloudflare keeper lineup on repo main (TV_PROGRAM_V 18, build 1793967918): fill music pool 302 in keeper seed order, Islamic shorts 25, Movie Night pool 46, Friday khutbah sermons 10, Family Time eligible +1 (Johnny Test; Giving Thanks already inside Movie Night). File-only items (cartoon parts, premiere/rerun, house spots), the D1-timed adhan, fresh-only news, and dormant non-fill seed items cannot be expressed in this format - see website/lifeline-lineup-sync-2026-11-06/PROGRESS.md.",
+ "source": "Synced 2026-11-06 to the Cloudflare keeper lineup on repo main (TV_PROGRAM_V 18, build 1793967918): fill music pool 302 in keeper seed order, Islamic shorts 25, Movie Night pool 45, Friday khutbah sermons 10, Family Time eligible +1 (Johnny Test; Giving Thanks already inside Movie Night). File-only items (cartoon parts, premiere/rerun, house spots), the D1-timed adhan, fresh-only news, and dormant non-fill seed items cannot be expressed in this format - see website/lifeline-lineup-sync-2026-11-06/PROGRESS.md. Owner strike 2026-11-06: Sugar Daddy Killer (7Mr0VALZ4K4) removed from the lifeline and the keeper movie seed by Malik's order (\"isnt suposed to be on\") - 383 segments.",
  "segments": [
   {
    "yt": "rvrA29B1pqk",
@@ -733,12 +733,6 @@
    "title": "ASAP Preach — Owe You Praise",
    "durSec": 167,
    "show": "ASAP Preach"
-  },
-  {
-   "yt": "7Mr0VALZ4K4",
-   "title": "Sugar Daddy Killer",
-   "durSec": 4545,
-   "show": "Movie Night"
   },
   {
    "yt": "SGojopSiEe0",
