@@ -137,15 +137,20 @@ pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px sol
     return { ok: true, out };
   }
   async function verify(payloads) {
+    /* A bundle may carry no verify list at all (e.g. a docs-only publish
+     * like the adhan): nothing to check is a pass, not a crash. Reading
+     * payloads.verify unguarded here threw AFTER the docs were written
+     * and labelled the whole run FAILED (2026-11-05). */
+    const checks = Array.isArray(payloads.verify) ? payloads.verify : [];
     const media = [];
-    for (const v of payloads.verify.filter((x) => x.url)) {
+    for (const v of checks.filter((x) => x.url)) {
       const r = await fetch(v.url, { headers: { Range: "bytes=0-0" } });
       const cr = r.headers.get("content-range") || "";
       const total = cr.includes("/") ? +cr.split("/")[1] : +r.headers.get("content-length") || 0;
       media.push({ url: v.url, status: r.status, bytes: total, expectBytes: v.expectBytes, match: total === v.expectBytes });
     }
     const docs = {};
-    for (const v of payloads.verify.filter((x) => x.doc)) {
+    for (const v of checks.filter((x) => x.doc)) {
       const d = await readDoc(v.doc);
       docs[v.doc] = d ? { at: d.at || (d.current && d.current.at) || null, dur: d.dur || (d.current && d.current.dur) || null, videoUrl: (d.current && d.current.videoUrl) || d.url || null } : null;
     }
