@@ -1044,7 +1044,7 @@ function mwVmixRescue(S, now, obs) {
  * that the break cuts in even during his own live booth sets, so
  * there is no booth exception. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 15;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules; v11 = the news freshness + Family Time build (Malik, 2026-11-04 ~21:37: "Fix my news" / "8 oclock is supposed to be a kids family movie"): the :50 news window is laid ONLY when tv/news holds an edition produced within TV_NEWS_FRESH_MS before the window start — a stale edition is never laid, the program chain flows through the window instead — and a news window overlapping the Family Time window is never laid at all (Family Time is a hard window; the :50 news no longer passes over the family movie); the bump forces the one-time re-lay that clears stale-edition news windows and news segments inside the Family Time span already laid in tv/now); v12 = the ASAP Preach build (Malik, 2026-11-05 ~08:34 ET: "I want asap preach s music to get shuffled on my tv station"): 20 verified music videos from ASAP Preach's official YouTube channel (@OfficialASAPPreach, channel UCDG6YLw_vMVDRXKErys6EJQ) join the break pool as ordinary cleared auto-picks (kind break, lane "gospel") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/asap-preach-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v13 = the Deen Squad build (Malik, 2026-11-05 ~11:03 ET: "And deen squad" / "Music videos"): 24 verified music videos from Deen Squad's official YouTube channel (@deensquadmusic, channel UCh6MhPyvzCNz_VF5q9UcV1A) join the break pool as ordinary cleared auto-picks (kind break, lane "faith") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/deen-squad-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v14 = the ONLY build (Malik, 2026-11-05 12:25 ET: "I only want my 2 cartoons comercials and asap preech videos on my tv channel along with deen squad" — scope confirmed B, shuffle only): the auto-picked fill narrows to ASAP Preach + Deen Squad + the MY EMPIRE house show spots — the cycle seed gains the 44 gospel/faith videos as fill program items (fill: true), tvFillOk gates the chain walk, tvCyclePos and the break bag, and tvMovieState stands the movie chain down as fill (its seed stays: Family Time eligibility reads the shared seeds, which are NOT narrowed — tvFamilyEligible output is unchanged); the scheduled blocks (news window + quarter cadence, anchor, cartoon, Comedy Hour insert, Family Time, premiere/rerun, owner queue) are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now under the narrowed fill (build record: website/only-lineup-2026-11-05/PROGRESS.md); v15 = the fill mix build (Malik, 2026-11-05 ~14:33 ET: "Wheres asap preach i dont see his videos shuffled into mwtv" — then ~14:38 ET: "And shuffle in my cartoons as well" / "All 3 asap deen and my cartoons"): the v14 membership was right but the ORDER played like blocks — the fill videos sat in the cycle seed as one ASAP Preach run followed by one Deen Squad run and the chain walk plays the seed in order, so ASAP Preach played straight through, then Deen Squad played alone for the better part of an hour. tvSeedChannel now weaves the fill into one shuffled cycle: the 44 ASAP Preach / Deen Squad videos interleave proportionally (each artist's videos keep their seeded order inside the weave; Deen Squad carries four more videos than ASAP Preach, so an extra Deen Squad video lands every so often and no artist plays more than two in a row), and Malik's two barbershop cartoons join the fill as WHOLE EPISODES — the same four files the hourly slot plays (tvCartoonItems), seeded here as fill and dealt into the weave as single units: Part 1 then Part 2 back-to-back, never split, each episode exactly once per pass, the two episodes landing half a cycle apart. The hourly cartoon block is NOT changed: it still plays on its own pinned span every hour (Episode 1, one show commercial, Episode 2, one more commercial), the span still cuts whatever fill is playing — a fill cartoon included — and the fill resumes from its exact offset after the span, exactly like every other fill program. Membership otherwise unchanged: the same 51-id fill set plus the 4 cartoon parts, every other seed item and every scheduled block exactly as before; the bump reseeds tv/channel and re-lays tv/now in the new mixed order (build record: website/fill-interleave-2026-11-05/PROGRESS.md)
+const TV_PROGRAM_V = 16;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules; v11 = the news freshness + Family Time build (Malik, 2026-11-04 ~21:37: "Fix my news" / "8 oclock is supposed to be a kids family movie"): the :50 news window is laid ONLY when tv/news holds an edition produced within TV_NEWS_FRESH_MS before the window start — a stale edition is never laid, the program chain flows through the window instead — and a news window overlapping the Family Time window is never laid at all (Family Time is a hard window; the :50 news no longer passes over the family movie); the bump forces the one-time re-lay that clears stale-edition news windows and news segments inside the Family Time span already laid in tv/now); v12 = the ASAP Preach build (Malik, 2026-11-05 ~08:34 ET: "I want asap preach s music to get shuffled on my tv station"): 20 verified music videos from ASAP Preach's official YouTube channel (@OfficialASAPPreach, channel UCDG6YLw_vMVDRXKErys6EJQ) join the break pool as ordinary cleared auto-picks (kind break, lane "gospel") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/asap-preach-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v13 = the Deen Squad build (Malik, 2026-11-05 ~11:03 ET: "And deen squad" / "Music videos"): 24 verified music videos from Deen Squad's official YouTube channel (@deensquadmusic, channel UCh6MhPyvzCNz_VF5q9UcV1A) join the break pool as ordinary cleared auto-picks (kind break, lane "faith") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/deen-squad-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v14 = the ONLY build (Malik, 2026-11-05 12:25 ET: "I only want my 2 cartoons comercials and asap preech videos on my tv channel along with deen squad" — scope confirmed B, shuffle only): the auto-picked fill narrows to ASAP Preach + Deen Squad + the MY EMPIRE house show spots — the cycle seed gains the 44 gospel/faith videos as fill program items (fill: true), tvFillOk gates the chain walk, tvCyclePos and the break bag, and tvMovieState stands the movie chain down as fill (its seed stays: Family Time eligibility reads the shared seeds, which are NOT narrowed — tvFamilyEligible output is unchanged); the scheduled blocks (news window + quarter cadence, anchor, cartoon, Comedy Hour insert, Family Time, premiere/rerun, owner queue) are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now under the narrowed fill (build record: website/only-lineup-2026-11-05/PROGRESS.md); v15 = the fill mix build (Malik, 2026-11-05 ~14:33 ET: "Wheres asap preach i dont see his videos shuffled into mwtv" — then ~14:38 ET: "And shuffle in my cartoons as well" / "All 3 asap deen and my cartoons"): the v14 membership was right but the ORDER played like blocks — the fill videos sat in the cycle seed as one ASAP Preach run followed by one Deen Squad run and the chain walk plays the seed in order, so ASAP Preach played straight through, then Deen Squad played alone for the better part of an hour. tvSeedChannel now weaves the fill into one shuffled cycle: the 44 ASAP Preach / Deen Squad videos interleave proportionally (each artist's videos keep their seeded order inside the weave; Deen Squad carries four more videos than ASAP Preach, so an extra Deen Squad video lands every so often and no artist plays more than two in a row), and Malik's two barbershop cartoons join the fill as WHOLE EPISODES — the same four files the hourly slot plays (tvCartoonItems), seeded here as fill and dealt into the weave as single units: Part 1 then Part 2 back-to-back, never split, each episode exactly once per pass, the two episodes landing half a cycle apart. The hourly cartoon block is NOT changed: it still plays on its own pinned span every hour (Episode 1, one show commercial, Episode 2, one more commercial), the span still cuts whatever fill is playing — a fill cartoon included — and the fill resumes from its exact offset after the span, exactly like every other fill program. Membership otherwise unchanged: the same 51-id fill set plus the 4 cartoon parts, every other seed item and every scheduled block exactly as before; the bump reseeds tv/channel and re-lays tv/now in the new mixed order (build record: website/fill-interleave-2026-11-05/PROGRESS.md); v16 = the Islamic programming build (Malik, 2026-11-05 ~18:00 ET: "Every friday at 1 i want a kutbah from mufti menk to play and i want the adan to play when its time to pray i want it to be a beautiful recitation. Also i want random islamic shorts to play randomly and find more muslin rap like deen squad and mix that in as well" — picks decided by Malik 2026-11-05 ~19:31 ET): (i) a Friday 13:00 ET KHUTBAH hard window (tvKhutbahWin, rotation doc tv/khutbah) carrying one of 10 verified Mufti Menk Jumu'ah sermons from his OFFICIAL channel @muftimenkofficial in rotation — a true hard window like Family Time: it preempts fill, the break bag, the ad cadence and the owner queue (which freezes and resumes), the hourly cartoon block slides past it as a unit, the :50 news gate refuses any window overlapping it, and it is protected from crowd-skip AND Guardian cuts (owner skip still cuts one Friday's instance, qCut.khutbah); (ii) the ADHAN at the five daily prayer times for Uniontown, PA (ISNA / Aladhan method 2, precomputed daily into the producer-owned doc tv/adhan for today AND tomorrow — a stale or missing day means NO adhan that day, never a guessed time): Malik's picked voice, Mishary Rashid Alafasy — the standard cut (HekbKqYc8Qk) at Dhuhr/Asr/Maghrib/Isha and the Fajr cut (BUQFIszAxnM, carrying 'prayer is better than sleep') at Fajr; the adhan CUTS at the exact prayer minute through fill, the break bag, the cadence and the owner queue (split/resume — nothing is lost), and SLIDES to the end of a cartoon span, an anchor edition, a laid :50 news window, the premiere/rerun and Family Time (Maghrib slides past the movie); the Friday Dhuhr adhan is SUPPRESSED under Jumu'ah (the khutbah is the observance); protected from crowd-skip and Guardian cuts, owner skip can cut one prayer (qCut.adhan, stamped by day+prayer so one cut never suppresses the next); (iii) 25 verified ISLAMIC SHORTS (Mufti Menk x8, Yaqeen Institute x7, Bayyinah x6, Deen Squad x4 — official channels only, oEmbed-verified) join the break pool in a new lane "shorts" admitted by tvFillOk — brief vertical interludes in the break bag only, never program items; the bag never deals two shorts back-to-back, and the 4 Deen Squad behind-the-scenes clips carry sparse:true (Malik: they play "sometimes") — a sparse short enters only every third bag, so it is clearly rarer than the other 21; (iv) 48 more MUSLIM RAP videos join Deen Squad in the faith lane — Native Deen 10, Essam 12, Khalil Ismail 7 (the strict verified set) plus Muslim Belal 12 and Ilyas Mao 7 (Malik, 2026-11-05 ~19:31 ET: Belal and Ilyas are "in") — every id an official-channel upload, oEmbed-verified with the artist's own channel as author, durations pinned from the actual uploads; like Deen Squad they join BOTH the break pool (kind break, lane "faith") and the cycle seed as fill:true program items, so the v15 weave re-deals them into the mixed fill by artist. The seeds are otherwise untouched and Family Time eligibility is unchanged (exactly Johnny Test + Giving Thanks); the bump reseeds tv/channel + tv/breakpool, seeds tv/khutbah, and re-lays tv/now (build record: website/islamic-programming-2026-11-05/PROGRESS.md)
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
 const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 3;                // post-premiere movie block doc generation (tv/movieblock) (v3 = the 2026-11-03 pool expansion: the new-pool sweep's verified titles join the chain — see tvSeedMovieBlock)
@@ -1217,6 +1217,7 @@ const TV_BASES = ["own", "embed", "pd", "cc", "grant", "submission"];
 function tvEtParts(ms) {
   const F = tvEtParts._f || (tvEtParts._f = {
     hm: new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour12: false, hour: "2-digit", minute: "2-digit" }),
+    wd: new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }),
     day: new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }),
     memo: new Map(),
   });
@@ -1225,7 +1226,7 @@ function tvEtParts(ms) {
   if (!v) {
     const parts = F.hm.formatToParts(new Date(ms));
     const gp = (t) => +(parts.find((x) => x.type === t) || {}).value || 0;
-    v = { hour: gp("hour") % 24, minute: gp("minute"), dayKey: F.day.format(new Date(ms)) };
+    v = { hour: gp("hour") % 24, minute: gp("minute"), dayKey: F.day.format(new Date(ms)), weekday: F.wd.format(new Date(ms)) };
     if (F.memo.size > 512) F.memo.clear();
     F.memo.set(bucket, v);
   }
@@ -1263,6 +1264,15 @@ function tvCleared(it) {
  *     (TV_SHOW_SPOT_IDS, resolved from the break pool),
  *   - a break-bag item in the gospel lane (ASAP Preach) or the
  *     faith lane (Deen Squad).
+ * v16 amendment (Malik, 2026-11-05 ~18:00 ET — the Islamic
+ * programming order, by its own author, on the record, exactly
+ * the way v13 layered "faith" onto v12's "gospel"): the faith
+ * lane now also carries the 48 new Muslim rap videos (Native
+ * Deen, Essam, Khalil Ismail, Muslim Belal, Ilyas Mao — the
+ * same uploads ride the cycle as fill: true program items), and
+ * a fourth class joins the BAG only: break items in the new
+ * "shorts" lane (25 verified Islamic shorts — brief vertical
+ * interludes, never program items, never in the cycle seed).
  * Everything else — every other artist, the Movie Night titles,
  * the stand-up specials, Malik's own anthem video, the local-update
  * break spot, paid sponsor spots — is out of fill. The gate binds
@@ -1278,7 +1288,7 @@ function tvFillOk(it) {
   if (!it) return false;
   if (it.fill === true) return true;
   if (TV_SHOW_SPOT_IDS.includes(it.id)) return true;
-  return it.kind === "break" && (it.lane === "gospel" || it.lane === "faith");
+  return it.kind === "break" && (it.lane === "gospel" || it.lane === "faith" || it.lane === "shorts");
 }
 /* SHARED BAN GATE AT LAY TIME (2026-11-03 — the Old Bodyguard fix):
  * brain/ytblock is the channel's shared ban list, but before tonight
@@ -1448,9 +1458,18 @@ function tvDrawBreak(pool, voteNet) {
     // Paid sponsors ride the same bag; a Featured sponsor's spot sits
     // in the bag twice (its ~2x rotation weight — the cadence rail
     // weights it the same way, tvAdCadItems).
+    // SPARSE SHORTS (v16 — Malik, 2026-11-05 ~19:31 ET: the Deen
+    // Squad behind-the-scenes shorts play "sometimes"): a shorts-lane
+    // item flagged sparse: true deals into only every THIRD bag
+    // (bagCycle 1, 4, 7, ...), one copy when it deals — so across a
+    // day it surfaces a third as often as an ordinary short, on top
+    // of shorts already being a minority of the bag. The cycle count
+    // rides the pool doc, so every keeper pass agrees on the bag.
+    pool.bagCycle = ((pool.bagCycle | 0) + 1);
+    const sparseIn = pool.bagCycle % 3 === 1;
     pool.bag = [];
-    for (const x of cleared) { pool.bag.push(x.id); if (x.kind === "sponsor" && x.sponsor && x.sponsor.tier === "featured") pool.bag.push(x.id); }
-    if (voteNet) for (const x of cleared) { if (x.kind !== "sponsor" && (voteNet[x.id] || 0) >= TV_VOTE_BOOST_NET) pool.bag.push(x.id); }
+    for (const x of cleared) { if (x.lane === "shorts" && x.sparse === true && !sparseIn) continue; pool.bag.push(x.id); if (x.kind === "sponsor" && x.sponsor && x.sponsor.tier === "featured") pool.bag.push(x.id); }
+    if (voteNet) for (const x of cleared) { if (x.kind !== "sponsor" && !(x.lane === "shorts" && x.sparse === true && !sparseIn) && (voteNet[x.id] || 0) >= TV_VOTE_BOOST_NET) pool.bag.push(x.id); }
     for (let i = pool.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool.bag[i]; pool.bag[i] = pool.bag[j]; pool.bag[j] = t; }
     if (voteNet) {
       const sunk = (id) => { const it = cleared.find((x) => x.id === id); return !!it && it.kind !== "sponsor" && (voteNet[id] || 0) <= TV_VOTE_SINK_NET; };
@@ -1476,8 +1495,24 @@ function tvDrawBreak(pool, voteNet) {
     // is consumed, nothing is laid, and the next bag starts clean.
     if (!swapped) { pool.bagIx++; pool._dirty = true; return null; }
   }
+  // Shorts run cap (v16): never two shorts back-to-back out of the
+  // bag — after a short, the draw swaps to the nearest non-short
+  // still in the bag (skipping a sponsor when the sponsor run is
+  // already two deep, so the swap cannot break the cap above). The
+  // rest of this bag being all shorts skips the break entirely —
+  // the slot is consumed, nothing is laid, the next bag starts
+  // clean (the sponsor-cap rule's own answer).
+  if (item && item.lane === "shorts" && pool.lastBreakShort) {
+    let swapped = false;
+    for (let j = pool.bagIx + 1; j < pool.bag.length; j++) {
+      const alt = cleared.find((x) => x.id === pool.bag[j]);
+      if (alt && alt.lane !== "shorts" && !(alt.kind === "sponsor" && recent.length >= 2 && recent[recent.length - 1] && recent[recent.length - 2])) { const t = pool.bag[pool.bagIx]; pool.bag[pool.bagIx] = pool.bag[j]; pool.bag[j] = t; id = pool.bag[pool.bagIx]; item = alt; swapped = true; break; }
+    }
+    if (!swapped) { pool.bagIx++; pool._dirty = true; return null; }
+  }
   pool.bagIx++; pool._dirty = true;
   pool.recentBreaks = [...recent.slice(-1), !!(item && item.kind === "sponsor")];
+  if (item) pool.lastBreakShort = item.lane === "shorts"; // a seed-bag miss (returns null, nothing aired) must not clear the after-short state — the next aired break still may not be a short
   return item;
 }
 /* Net tallies per program id from the tv/votes doc the vote
@@ -1545,12 +1580,16 @@ function tvSkipGate(seg, chan, now, by, cadNow, proof) {
   if (seg.k === "news") return gProof ? pass("news") : { ok: false, why: "news" };
   if (seg.qid) return gProof ? pass("owner-queue") : { ok: false, why: "owner-queue" };
   if (seg.fam) return { ok: false, why: "family-time" };
+  if (seg.khut) return { ok: false, why: "khutbah" };
+  if (seg.adh) return { ok: false, why: "adhan" };
   if (TV_CROWD_PROTECTED_IDS.includes(seg.id)) return gProof ? pass("news-update") : { ok: false, why: "news-update" };
   if (cadNow && cadNow.inside && cadNow.upd && seg.id === cadNow.upd.id) return gProof ? pass("news-update") : { ok: false, why: "news-update" };
   if (tvNewsWin(now).inside) return { ok: false, why: "news-window" };
   if (chan._prem) { const w = tvPremWin(now, chan._prem); if (w && w.inside) return { ok: false, why: "premiere" }; }
   if (chan._rerun) { const w = tvPremWin(now, chan._rerun); if (w && w.inside) return { ok: false, why: "rerun" }; }
   if (chan._family) { const w = tvFamilyWin(now, chan._family); if (w && w.inside) return { ok: false, why: "family-time" }; }
+  if (chan._khutbah) { const w = tvKhutbahWin(now, chan._khutbah); if (w && w.inside) return { ok: false, why: "khutbah" }; }
+  if (chan._adhan) { const w = tvAdhanWinAt(now, chan._adhan); if (w && w.inside) return { ok: false, why: "adhan" }; }
   if (chan._insert) { const w = tvInsertWin(now, chan._insert); if (w && w.inside) return { ok: false, why: "owner-queue" }; }
   if (chan._anchor) { const w = tvAnchorWin(now, chan._anchor); if (w && w.inside) return { ok: false, why: "news" }; }
   return { ok: true };
@@ -1567,7 +1606,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
   // (the insert freeze rule): tvMovieWin runs the window long by
   // the spot time inside it, which it computes from this state.
   if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rer: chan._rerun, qtr: chan._qtr };
-  if (chan._queue) chan._queue._st = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr, family: chan._family, crt: chan._cartoon };
+  if (chan._queue) chan._queue._st = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr, family: chan._family, crt: chan._cartoon, khutbah: chan._khutbah, adhan: chan._adhan };
   const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
@@ -1576,10 +1615,12 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const pwin = tvPremWin(t, chan._prem);
     const rwin = tvPremWin(t, chan._rerun);
     const fwin = tvFamilyWin(t, chan._family);
+    const kwin = tvKhutbahWin(t, chan._khutbah);
+    const dwin = tvAdhanWinAt(t, chan._adhan);
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
     const iwin = tvInsertWin(t, chan._insert);
-    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr);
+    const cadwin = tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr, chan._khutbah);
     const qwin = tvQueueWin(t, chan._queue);
     const cwin = tvCartoonWinAt(t, chan._cartoon);
     // NEWS WINDOW — laid only under the v11 gates (see
@@ -1594,7 +1635,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     // program branch used to cut every item at every window start
     // and spin when the window then was not laid; an owner-cut
     // window truncated generation the same way — both now flow).
-    const newsLive = !(chan._qCut && chan._qCut.news === win.start) && tvNewsFreshFor(chan, win.start) && !tvNewsOverlapsFamily(win, chan._family);
+    const newsLive = !(chan._qCut && chan._qCut.news === win.start) && tvNewsFreshFor(chan, win.start) && !tvNewsOverlapsFamily(win, chan._family) && !tvNewsOverlapsKhutbah(win, chan._khutbah);
     if (win.inside && newsLive) { const dur = Math.max(1, Math.round((win.end - t) / 1000)); segs.push({ k: "news", start: t, dur, edWin: win.start }); t = win.end; skips = 0; continue; }
     if (pwin && pwin.inside && !(chan._qCut && chan._qCut.prem === pwin.start)) {
       // MY EMPIRE premiere slot: chain the live slot items; the program
@@ -1633,6 +1674,21 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (d > 0.05) { const sg = tvProgSeg(fit, t, d, foff); sg.fam = 1; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; }
       t = fwin.end; continue;
     }
+    if (kwin && kwin.inside && !(chan._qCut && chan._qCut.khutbah === kwin.start)) {
+      // FRIDAY KHUTBAH (v16): this Friday's sermon chains inside
+      // its window exactly like the Family Time movie — the
+      // program cursor freezes and the interrupted program
+      // resumes after the block from the offset it reached. The
+      // branch sits ahead of the anchor and the ad cadence, so
+      // quarter breaks never chop the sermon, and the news gate
+      // refuses any :50 window overlapping it
+      // (tvNewsOverlapsKhutbah) — the khutbah plays wall-to-wall.
+      const kit = chan._khutbah.item;
+      const koff = (t - kwin.start) / 1000;
+      const d = Math.min(Math.round((+kit.dur - koff) * 10) / 10, Math.round((kwin.end - t) / 100) / 10);
+      if (d > 0.05) { const sg = tvProgSeg(kit, t, d, koff); sg.khut = 1; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; }
+      t = kwin.end; continue;
+    }
     if (awin && awin.inside && !(chan._qCut && chan._qCut.anchor === awin.start)) {
       // Anchor news slot: the current anchor edition plays as one
       // program segment; the interrupted program freezes and resumes
@@ -1666,6 +1722,21 @@ function tvGen(chan, pool, cursor, horizonMs) {
       for (const sit of cseq) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cwin.end - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cwin.end; continue;
+    }
+    if (dwin && dwin.inside && !(chan._qCut && chan._qCut.adhan === dwin.key)) {
+      // THE ADHAN (v16): the prayer placed by tvAdhanSpans — at
+      // its exact time through everything still running at this
+      // precedence (the fill chain, the break bag, the ad cadence
+      // below, the owner queue), or slid to the end of the
+      // protected span it would have overlapped. It chains by
+      // wall-clock offset like the premiere chain; the program
+      // cursor does not move here, so whatever it interrupts
+      // resumes from the offset it reached.
+      const dit = dwin.item;
+      const doff = (t - dwin.start) / 1000;
+      const d = Math.min(Math.round((+dit.dur - doff) * 10) / 10, Math.round((dwin.end - t) / 100) / 10);
+      if (d > 0.05) { const sg = tvProgSeg(dit, t, d, doff); sg.adh = 1; sg.adhKey = dwin.key; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; }
+      t = dwin.end; continue;
     }
     if (cadwin && cadwin.inside && !(chan._qCut && chan._qCut.cad === cadwin.start)) {
       // MY EMPIRE ad cadence: the spot interrupts whatever is
@@ -1712,6 +1783,8 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (qwin && !qwin.inside && qwin.start > t && qwin.start < cap) cap = qwin.start;
       if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       if (cwin && !cwin.inside && cwin.start > t && cwin.start < cap) cap = cwin.start;
+      if (kwin && !kwin.inside && kwin.start > t && kwin.start < cap) cap = kwin.start;
+      if (dwin && !dwin.inside && dwin.start > t && dwin.start < cap) cap = dwin.start;
       const list = Array.isArray(chan._insert.items) && chan._insert.items.length ? chan._insert.items : [chan._insert.item];
       let slotOff = (t - iwin.start) / 1000, segIt = null, segOff = 0;
       for (const sit of list) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
@@ -1736,6 +1809,8 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (mwin && !mwin.inside && mwin.start > t && mwin.start < cap) cap = mwin.start;
       if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       if (cwin && !cwin.inside && cwin.start > t && cwin.start < cap) cap = cwin.start;
+      if (kwin && !kwin.inside && kwin.start > t && kwin.start < cap) cap = kwin.start;
+      if (dwin && !dwin.inside && dwin.start > t && dwin.start < cap) cap = dwin.start;
       const qat = tvQueueAt(chan._queue, tvQueueElapsed(chan._queue, t));
       if (qat) { const d = Math.min(Math.round((+qat.it.dur - qat.off) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { const sg = tvProgSeg(qat.it, t, d, qat.off); sg.qid = qat.it.qid; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; } }
       t = cap; continue;
@@ -1759,6 +1834,8 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (qwin && !qwin.inside && qwin.start > t && qwin.start < cap) cap = qwin.start;
       if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       if (cwin && !cwin.inside && cwin.start > t && cwin.start < cap) cap = cwin.start;
+      if (kwin && !kwin.inside && kwin.start > t && kwin.start < cap) cap = kwin.start;
+      if (dwin && !dwin.inside && dwin.start > t && dwin.start < cap) cap = dwin.start;
       let slotOff = (t - mwin.start) / 1000, segIt = null, segOff = 0;
       // An insert that cut into this block froze it: once the
       // insert window has run, positions sit behind the wall clock
@@ -1769,7 +1846,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       // The ad cadence froze the block at every spot inside it:
       // positions likewise sit behind the wall clock by the spot
       // time laid between the window start and here.
-      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu, chan._rerun, chan._qtr);
+      if (cad) slotOff -= tvAdTimeIn(cad, chan._prem, chan._anchor, chan._insert, mwin.start, t, chan._char, chan._lu, chan._rerun, chan._qtr, chan._khutbah);
       if (chan._movies.skipShift > 0 && t >= chan._movies.skipAt) slotOff += chan._movies.skipShift;
       for (const sit of chan._movies.items) { if (slotOff < +sit.dur) { segIt = sit; segOff = slotOff; break; } slotOff -= +sit.dur; }
       if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { segs.push(tvProgSeg(segIt, t, d, segOff)); t += Math.round(d * 1000); skips = 0; continue; } }
@@ -1795,6 +1872,8 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (qwin && !qwin.inside && qwin.start > t && qwin.start < boundary) boundary = qwin.start;
     if (fwin && !fwin.inside && fwin.start > t && fwin.start < boundary) boundary = fwin.start;
     if (cwin && !cwin.inside && cwin.start > t && cwin.start < boundary) boundary = cwin.start;
+    if (kwin && !kwin.inside && kwin.start > t && kwin.start < boundary) boundary = kwin.start;
+    if (dwin && !dwin.inside && dwin.start > t && dwin.start < boundary) boundary = dwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
       if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
@@ -1811,7 +1890,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr), tvQueueWin(t, chan._queue), tvFamilyWin(t, chan._family), tvCartoonWinAt(t, chan._cartoon)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
+        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr, chan._khutbah), tvQueueWin(t, chan._queue), tvFamilyWin(t, chan._family), tvCartoonWinAt(t, chan._cartoon), tvKhutbahWin(t, chan._khutbah), tvAdhanWinAt(t, chan._adhan)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: (b.kind === "house" || b.kind === "sponsor") ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
       run = 0;
@@ -2023,6 +2102,59 @@ function tvSeedChannel(now) {
       { id: "mv-7bdodtlgmlo", kind: "show", src: "yt", yt: "7bdoDTlGMLo", title: "Deen Squad — ALLAH'S PLAN", show: "Deen Squad", dur: 206, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 206 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement") },
       { id: "mv-f5c3lh33pie", kind: "show", src: "yt", yt: "F5c3LH33pIE", title: "Deen Squad — HALAL BOY", show: "Deen Squad", dur: 238, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 238 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement") },
       { id: "mv-zr4bztphc_u", kind: "show", src: "yt", yt: "ZR4bztPhc_U", title: "Deen Squad — LOOK ALIVE", show: "Deen Squad", dur: 186, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 186 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement") },
+      // v16: the 48 Muslim rap videos (Native Deen, Essam, Khalil
+      // Ismail, Muslim Belal, Ilyas Mao — the same verified uploads
+      // as the break bag's faith lane) join the fill here as program
+      // items, so the weave deals them into the mixed cycle by
+      // artist alongside ASAP Preach and Deen Squad.
+      { id: "mv-4ahhnr6dcpg", kind: "show", src: "yt", yt: "4AhhNR6dCpg", title: "Native Deen — Not Afraid to Stand Alone", show: "Native Deen", dur: 302, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 302 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-vnw258w0crk", kind: "show", src: "yt", yt: "vNW258w0CRk", title: "Native Deen — Small Deeds", show: "Native Deen", dur: 233, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 233 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-ixlnueanlgq", kind: "show", src: "yt", yt: "iXLnUeANLGQ", title: "Native Deen — Shaded Seven", show: "Native Deen", dur: 377, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 377 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-h7k4vyzgom8", kind: "show", src: "yt", yt: "h7K4vYZGoM8", title: "Native Deen — Living Halal", show: "Native Deen", dur: 289, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 289 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-hfkgp3izp6c", kind: "show", src: "yt", yt: "HFKgP3IzP6c", title: "Native Deen — Lord, Enable Me", show: "Native Deen", dur: 274, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 274 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-1zpn1ebxgce", kind: "show", src: "yt", yt: "1ZpN1ebXgCE", title: "Native Deen — SubhanAllah", show: "Native Deen", dur: 262, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 262 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-prn8kdglcbe", kind: "show", src: "yt", yt: "prn8KDGlCbE", title: "Native Deen — Al-Widaa", show: "Native Deen", dur: 353, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 353 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-qqldnckvsrc", kind: "show", src: "yt", yt: "qQlDNCkVsRc", title: "Native Deen — Lose Their Way", show: "Native Deen", dur: 346, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 346 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-1-ykiu4cdl8", kind: "show", src: "yt", yt: "1-YKIU4cDL8", title: "Native Deen — Baligna Ramadan", show: "Native Deen", dur: 176, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 176 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-ifcd8fh5v7m", kind: "show", src: "yt", yt: "ifCD8fh5v7M", title: "Native Deen — I Am Near", show: "Native Deen", dur: 639, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 639 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-apelpqwjyz0", kind: "show", src: "yt", yt: "apELpQWJyz0", title: "Essam — Runnin", show: "Essam", dur: 264, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 264 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-tz_jxqw9lzs", kind: "show", src: "yt", yt: "Tz_jxQw9LZs", title: "Essam — Runnin' Pt. 2", show: "Essam", dur: 447, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 447 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-wvhunbwhumu", kind: "show", src: "yt", yt: "WvHuNbwHumU", title: "Essam — Wonder", show: "Essam", dur: 206, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 206 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-1_lv0il4wf8", kind: "show", src: "yt", yt: "1_lV0iL4wF8", title: "Essam — No Love", show: "Essam", dur: 172, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 172 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-pr2o2zepik4", kind: "show", src: "yt", yt: "Pr2O2ZEpiK4", title: "Essam — Morocco", show: "Essam", dur: 145, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 145 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-w7qyamxj-wa", kind: "show", src: "yt", yt: "W7qyAmxj-wA", title: "Essam — Hero", show: "Essam", dur: 134, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 134 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-4cvetqh1hbk", kind: "show", src: "yt", yt: "4cVEtQH1HBk", title: "Essam — Famila", show: "Essam", dur: 324, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 324 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-ygsuhespjau", kind: "show", src: "yt", yt: "YGsUHespjaU", title: "Essam — On the Road", show: "Essam", dur: 328, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 328 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-qm93ntinjnc", kind: "show", src: "yt", yt: "qM93ntiNJnc", title: "Essam — Fly", show: "Essam", dur: 199, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 199 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-beondshthog", kind: "show", src: "yt", yt: "beOndSHThog", title: "Essam — Fajr", show: "Essam", dur: 199, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 199 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-afgvko9tyxg", kind: "show", src: "yt", yt: "AfgVKo9Tyxg", title: "Essam — Free", show: "Essam", dur: 223, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 223 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-e-ycldzq_wk", kind: "show", src: "yt", yt: "E-YclDzq_Wk", title: "Essam — My People", show: "Essam", dur: 211, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 211 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-m7ridiplgk8", kind: "show", src: "yt", yt: "m7ridipLgk8", title: "Khalil Ismail — 20/20", show: "Khalil Ismail", dur: 367, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 367 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-hgisdptdida", kind: "show", src: "yt", yt: "hgISdPTdiDA", title: "Khalil Ismail — First We Need the Love", show: "Khalil Ismail", dur: 256, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 256 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-d6gtqhigyh8", kind: "show", src: "yt", yt: "D6GtQhIgyH8", title: "Khalil Ismail — Man Up", show: "Khalil Ismail", dur: 290, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 290 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-fmcwc3k3cmy", kind: "show", src: "yt", yt: "FmCWC3k3CmY", title: "Khalil Ismail — Sometimes", show: "Khalil Ismail", dur: 285, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 285 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-0guiy2mfoo4", kind: "show", src: "yt", yt: "0GuIy2mFoO4", title: "Khalil Ismail — Knocking", show: "Khalil Ismail", dur: 276, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 276 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-mzvr-ff5xcm", kind: "show", src: "yt", yt: "mzvR-ff5xcM", title: "Khalil Ismail — Thank You Haters", show: "Khalil Ismail", dur: 276, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 276 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-w91s8wqtkf0", kind: "show", src: "yt", yt: "w91s8WqtKf0", title: "Khalil Ismail — Freedom Fighters", show: "Khalil Ismail", dur: 183, block: "anytime", fill: true, rights: RE("Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 183 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)") },
+      { id: "mv-uwdya5-kbws", kind: "show", src: "yt", yt: "uwdyA5-kBWs", title: "Muslim Belal — KABIR", show: "Muslim Belal", dur: 337, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 337 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-v0u6rwtmc_g", kind: "show", src: "yt", yt: "V0U6RwtmC_g", title: "Muslim Belal — Ameen", show: "Muslim Belal", dur: 260, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 260 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-0xptcdzutp0", kind: "show", src: "yt", yt: "0xptcdZuTp0", title: "Muslim Belal — Family", show: "Muslim Belal", dur: 253, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 253 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-pqmvxcyen2c", kind: "show", src: "yt", yt: "pqMVxcyEN2c", title: "Muslim Belal — The Corner", show: "Muslim Belal", dur: 340, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 340 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-keusmki6l_k", kind: "show", src: "yt", yt: "KeusmKI6L_k", title: "Muslim Belal — Journey", show: "Muslim Belal", dur: 152, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 152 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-fm2yjvkcoqw", kind: "show", src: "yt", yt: "Fm2yjvKcOQw", title: "Muslim Belal — Traveller", show: "Muslim Belal", dur: 249, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 249 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-rrdqrfm_d9w", kind: "show", src: "yt", yt: "RrDqRfm_d9w", title: "Muslim Belal — Layla (The Dunya)", show: "Muslim Belal", dur: 202, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 202 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-fzhwu4vr7as", kind: "show", src: "yt", yt: "fzHwu4Vr7as", title: "Muslim Belal — Real Life", show: "Muslim Belal", dur: 285, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 285 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-pljjllr0kas", kind: "show", src: "yt", yt: "pLJJLlr0kas", title: "Muslim Belal — Faith 2 Faith", show: "Muslim Belal", dur: 304, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 304 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-jthchlgfpjo", kind: "show", src: "yt", yt: "JTHChlgfpJo", title: "Muslim Belal — Spot Project", show: "Muslim Belal", dur: 360, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 360 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-9690aghz1ss", kind: "show", src: "yt", yt: "9690aGhZ1Ss", title: "Muslim Belal — LIFE", show: "Muslim Belal", dur: 412, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 412 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-f03jplwetgu", kind: "show", src: "yt", yt: "F03jpLWeTgU", title: "Muslim Belal — Palestine (Live at Conway Hall)", show: "Muslim Belal", dur: 330, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 330 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-azxfcb68luy", kind: "show", src: "yt", yt: "azxFcb68luY", title: "Ilyas Mao — The Blame Game", show: "Ilyas Mao", dur: 233, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 233 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-4iipcjguddq", kind: "show", src: "yt", yt: "4iiPcJgUDdQ", title: "Ilyas Mao — The Battle Of Badr", show: "Ilyas Mao", dur: 284, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 284 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-tjd1kw3379w", kind: "show", src: "yt", yt: "TJd1Kw3379w", title: "Ilyas Mao — Still A Muslim", show: "Ilyas Mao", dur: 187, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 187 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-yxelkr5ktri", kind: "show", src: "yt", yt: "yXElKR5KTrI", title: "Ilyas Mao — Ghost", show: "Ilyas Mao", dur: 219, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 219 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-lyzlw-tp1zc", kind: "show", src: "yt", yt: "LyZlw-tp1zc", title: "Ilyas Mao — Seize The Day", show: "Ilyas Mao", dur: 202, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 202 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-muxc-8ciago", kind: "show", src: "yt", yt: "muXc-8CiAGo", title: "Ilyas Mao — WHOLE", show: "Ilyas Mao", dur: 199, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 199 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
+      { id: "mv-fb1fykja3xs", kind: "show", src: "yt", yt: "FB1fykja3xs", title: "Ilyas Mao — How Far", show: "Ilyas Mao", dur: 226, block: "anytime", fill: true, rights: RE("YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 226 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)") },
       // v15: Malik's two barbershop cartoons join the fill as WHOLE
       // EPISODES (Malik, 2026-11-05 ~14:38 ET: "And shuffle in my
       // cartoons as well" / "All 3 asap deen and my cartoons") — the
@@ -2112,6 +2244,7 @@ function tvSeedChannel(now) {
 function tvSeedPool(now) {
   const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
   const Y = (id, yt, title, dur, lane, evidence) => ({ id, kind: "break", src: "yt", yt, title, dur, lane, rights: R(evidence) });
+  const YS = (id, yt, title, dur, sparse, evidence) => { const it = Y(id, yt, title, dur, "shorts", evidence); if (sparse) it.sparse = true; return it; };
   const items = [
     Y("brk-gxbsyx85kp8", "GxBSyx85Kp8", "Usher — Yeah! (Official Video) ft. Lil Jon, Ludacris", 253, "rb", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader UsherVEVO (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed"),
     Y("brk-gezzr_p6vb8", "GeZZr_p6vB8", "Nelly — Hot In Herre (Official Music Video)", 245, "hiphop", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at reprogram time (2026-11-02): embeddable, uploader NellyVEVO (official artist/label channel); keeper-recheck simulation (gate search by exact title returns this id) passed"),
@@ -2215,6 +2348,102 @@ function tvSeedPool(now) {
     Y("brk-7bdodtlgmlo", "7bdoDTlGMLo", "Deen Squad — ALLAH'S PLAN", 206, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 206 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement"),
     Y("brk-f5c3lh33pie", "F5c3LH33pIE", "Deen Squad — HALAL BOY", 238, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 238 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement"),
     Y("brk-zr4bztphc_u", "ZR4bztPhc_U", "Deen Squad — LOOK ALIVE", 186, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Deen Squad (the artist's official channel, @deensquadmusic); gate search by title returns this id; duration 186 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement"),
+    // Muslim rap expansion (v16 — Malik, 2026-11-05 ~18:00 ET:
+    // "find more muslin rap like deen squad and mix that in";
+    // picks locked 2026-11-05 ~19:31 ET): 48 more verified Muslim
+    // rap videos join Deen Squad in the faith lane — Native Deen
+    // 10, Essam 12, Khalil Ismail 7 (the strict verified set),
+    // plus Muslim Belal 12 and Ilyas Mao 7 (Malik: Belal and Ilyas
+    // are "in"). Every id is an upload on the artist's OWN official
+    // channel — no "- Topic" auto-generated channels, no fan
+    // re-uploads — oEmbed-verified with the artist's own channel
+    // as author, durations pinned from the actual uploads
+    // (research records: website/islamic-programming-2026-11-05/
+    // MUSLIM-RAP.md + MUSLIM-RAP-VERIFIED.md). The same 48 uploads
+    // ride the cycle seed as fill: true program items below.
+    Y("brk-4ahhnr6dcpg", "4AhhNR6dCpg", "Native Deen — Not Afraid to Stand Alone", 302, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 302 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-vnw258w0crk", "vNW258w0CRk", "Native Deen — Small Deeds", 233, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 233 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-ixlnueanlgq", "iXLnUeANLGQ", "Native Deen — Shaded Seven", 377, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 377 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-h7k4vyzgom8", "h7K4vYZGoM8", "Native Deen — Living Halal", 289, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 289 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-hfkgp3izp6c", "HFKgP3IzP6c", "Native Deen — Lord, Enable Me", 274, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 274 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-1zpn1ebxgce", "1ZpN1ebXgCE", "Native Deen — SubhanAllah", 262, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 262 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-prn8kdglcbe", "prn8KDGlCbE", "Native Deen — Al-Widaa", 353, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 353 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-qqldnckvsrc", "qQlDNCkVsRc", "Native Deen — Lose Their Way", 346, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 346 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-1-ykiu4cdl8", "1-YKIU4cDL8", "Native Deen — Baligna Ramadan", 176, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 176 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-ifcd8fh5v7m", "ifCD8fh5v7M", "Native Deen — I Am Near", 639, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Native Deen (the artist's official channel, @nativedeen); gate search by title returns this id; duration 639 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-apelpqwjyz0", "apELpQWJyz0", "Essam — Runnin", 264, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 264 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-tz_jxqw9lzs", "Tz_jxQw9LZs", "Essam — Runnin' Pt. 2", 447, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 447 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-wvhunbwhumu", "WvHuNbwHumU", "Essam — Wonder", 206, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 206 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-1_lv0il4wf8", "1_lV0iL4wF8", "Essam — No Love", 172, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 172 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-pr2o2zepik4", "Pr2O2ZEpiK4", "Essam — Morocco", 145, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 145 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-w7qyamxj-wa", "W7qyAmxj-wA", "Essam — Hero", 134, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 134 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-4cvetqh1hbk", "4cVEtQH1HBk", "Essam — Famila", 324, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 324 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-ygsuhespjau", "YGsUHespjaU", "Essam — On the Road", 328, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 328 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-qm93ntinjnc", "qM93ntiNJnc", "Essam — Fly", 199, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 199 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-beondshthog", "beOndSHThog", "Essam — Fajr", 199, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 199 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-afgvko9tyxg", "AfgVKo9Tyxg", "Essam — Free", 223, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 223 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-e-ycldzq_wk", "E-YclDzq_Wk", "Essam — My People", 211, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Essam (the artist's official channel, @masseone39); gate search by title returns this id; duration 211 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-m7ridiplgk8", "m7ridipLgk8", "Khalil Ismail — 20/20", 367, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 367 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-hgisdptdida", "hgISdPTdiDA", "Khalil Ismail — First We Need the Love", 256, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 256 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-d6gtqhigyh8", "D6GtQhIgyH8", "Khalil Ismail — Man Up", 290, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 290 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-fmcwc3k3cmy", "FmCWC3k3CmY", "Khalil Ismail — Sometimes", 285, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 285 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-0guiy2mfoo4", "0GuIy2mFoO4", "Khalil Ismail — Knocking", 276, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 276 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-mzvr-ff5xcm", "mzvR-ff5xcM", "Khalil Ismail — Thank You Haters", 276, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 276 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-w91s8wqtkf0", "w91s8WqtKf0", "Khalil Ismail — Freedom Fighters", 183, "faith", "Passed the site embed gate (/api/ytsearch) and YouTube oEmbed verification at pool build time (2026-11-05): embeddable, uploader Khalil Ismail (the artist's official channel, @khalilismailtv); gate search by title returns this id; duration 183 pinned from the actual upload via the channel grid and the embed-gate relay in exact agreement (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP.md)"),
+    Y("brk-uwdya5-kbws", "uwdyA5-kBWs", "Muslim Belal — KABIR", 337, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 337 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-v0u6rwtmc_g", "V0U6RwtmC_g", "Muslim Belal — Ameen", 260, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 260 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-0xptcdzutp0", "0xptcdZuTp0", "Muslim Belal — Family", 253, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 253 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-pqmvxcyen2c", "pqMVxcyEN2c", "Muslim Belal — The Corner", 340, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 340 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-keusmki6l_k", "KeusmKI6L_k", "Muslim Belal — Journey", 152, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 152 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-fm2yjvkcoqw", "Fm2yjvKcOQw", "Muslim Belal — Traveller", 249, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 249 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-rrdqrfm_d9w", "RrDqRfm_d9w", "Muslim Belal — Layla (The Dunya)", 202, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 202 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-fzhwu4vr7as", "fzHwu4Vr7as", "Muslim Belal — Real Life", 285, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 285 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-pljjllr0kas", "pLJJLlr0kas", "Muslim Belal — Faith 2 Faith", 304, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 304 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-jthchlgfpjo", "JTHChlgfpJo", "Muslim Belal — Spot Project", 360, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 360 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-9690aghz1ss", "9690aGhZ1Ss", "Muslim Belal — LIFE", 412, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 412 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-f03jplwetgu", "F03jpLWeTgU", "Muslim Belal — Palestine (Live at Conway Hall)", 330, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Muslim Belal (the artist's official channel, @muslimbelal885) with the author matching on this id; duration 330 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-azxfcb68luy", "azxFcb68luY", "Ilyas Mao — The Blame Game", 233, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 233 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-4iipcjguddq", "4iiPcJgUDdQ", "Ilyas Mao — The Battle Of Badr", 284, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 284 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-tjd1kw3379w", "TJd1Kw3379w", "Ilyas Mao — Still A Muslim", 187, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 187 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-yxelkr5ktri", "yXElKR5KTrI", "Ilyas Mao — Ghost", 219, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 219 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-lyzlw-tp1zc", "LyZlw-tp1zc", "Ilyas Mao — Seize The Day", 202, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 202 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-muxc-8ciago", "muXc-8CiAGo", "Ilyas Mao — WHOLE", 199, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 199 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    Y("brk-fb1fykja3xs", "FB1fykja3xs", "Ilyas Mao — How Far", 226, "faith", "YouTube oEmbed verification at research time (2026-11-05): embeddable, uploader Ilyas Mao (the artist's official channel, @IlyasMao) with the author matching on this id; duration 226 pinned from the artist's own channel grid; kept in the pool by Malik's decision 2026-11-05 ~19:31 ET (research record: website/islamic-programming-2026-11-05/MUSLIM-RAP-VERIFIED.md)"),
+    // Islamic shorts (v16 — Malik, 2026-11-05 ~18:00 ET: "i want
+    // random islamic shorts to play randomly"): 25 verified
+    // shorts from official channels only (Mufti Menk x8, Yaqeen
+    // Institute x7, Bayyinah x6, Deen Squad x4) join the bag in
+    // the new "shorts" lane — break interludes only, never
+    // program items, never in the cycle seed. The bag never deals
+    // two shorts back-to-back (tvDrawBreak), and the 4 Deen Squad
+    // behind-the-scenes clips are sparse: true — Malik, 2026-11-05
+    // ~19:31 ET: they play "sometimes" — so they deal into only
+    // every third bag.
+    YS("brk-amy3o06gylw", "aMY3O06GYlw", "Mufti Menk — No Excuse For Salah", 88, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 88s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-_nll7uwkq4y", "_NLL7uwkQ4Y", "Mufti Menk — The Right Time For Tahajjud", 85, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 85s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-xlfjgaf9-mi", "xLFjgaF9-mI", "Mufti Menk — 1 Outweighed 99", 84, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 84s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-gltvkus5hey", "gltvKUs5hEY", "Mufti Menk — We Only Cry When Desperate", 86, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 86s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-9am8stmow5k", "9AM8stMOw5k", "Mufti Menk — Control Your Tongue!", 44, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 44s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-hkrq0de-gto", "HKRq0DE-GTo", "Mufti Menk — Just Don't Get Angry", 60, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 60s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-ssrro74bwgm", "SSRRo74BwGM", "Mufti Menk — Ask Allah To Soften Hearts", 78, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 78s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-mht_hiayqqo", "mHt_HiAYQqo", "Mufti Menk — What Islam Really Teaches", 48, false, "Verified Islamic short on the official channel (Mufti Menk, @muftimenkofficial): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); duration 48s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-ezthsni6k_0", "ezThSnI6K_0", "Yaqeen Institute — Would You Cheat Your Sibling? (Dr. Omar Suleiman)", 36, false, "Verified Islamic short on the official channel (Yaqeen Institute, @yaqeeninstituteofficial): YouTube oEmbed HTTP 200 with author 'Yaqeen Institute' at research time (2026-11-05); duration 36s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-xwrpvuvjk_g", "xWRPVuVJk_g", "Yaqeen Institute — What Would You Regret On Your Last Day? (Dr. Omar Suleiman)", 60, false, "Verified Islamic short on the official channel (Yaqeen Institute, @yaqeeninstituteofficial): YouTube oEmbed HTTP 200 with author 'Yaqeen Institute' at research time (2026-11-05); duration 60s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-c75mxhxvvgu", "C75mxHXvvGU", "Yaqeen Institute — Does Your Shaytan Have Hope In You? (Dr. Omar Suleiman)", 56, false, "Verified Islamic short on the official channel (Yaqeen Institute, @yaqeeninstituteofficial): YouTube oEmbed HTTP 200 with author 'Yaqeen Institute' at research time (2026-11-05); duration 56s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-zetmuqiic2u", "ZEtMUqIic2U", "Yaqeen Institute — When Parents Aren't The Priority Anymore (Dr. Omar Suleiman)", 37, false, "Verified Islamic short on the official channel (Yaqeen Institute, @yaqeeninstituteofficial): YouTube oEmbed HTTP 200 with author 'Yaqeen Institute' at research time (2026-11-05); duration 37s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-uinxl4jxjk4", "uINXL4JxJK4", "Yaqeen Institute — Umar (RA) Was Offered to Pray in a Church (Dr. Omar Suleiman)", 106, false, "Verified Islamic short on the official channel (Yaqeen Institute, @yaqeeninstituteofficial): YouTube oEmbed HTTP 200 with author 'Yaqeen Institute' at research time (2026-11-05); duration 106s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-3hrec0raxgi", "3Hrec0RaxGI", "Yaqeen Institute — A Message About Al-Aqsa You Need to Hear (Dr. Omar Suleiman)", 158, false, "Verified Islamic short on the official channel (Yaqeen Institute, @yaqeeninstituteofficial): YouTube oEmbed HTTP 200 with author 'Yaqeen Institute' at research time (2026-11-05); duration 158s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk--6cmwxozvz4", "-6CmWXoZvz4", "Yaqeen Institute — Why Your Dua Isn't Being Answered (Sh. Mohammad Elshinawy)", 30, false, "Verified Islamic short on the official channel (Yaqeen Institute, @yaqeeninstituteofficial): YouTube oEmbed HTTP 200 with author 'Yaqeen Institute' at research time (2026-11-05); duration 30s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-xtwxak2qai0", "XTWxaK2QAi0", "Bayyinah — When You Stop Hearing the Truth (Nouman Ali Khan)", 105, false, "Verified Islamic short on the official channel (Bayyinah, @bayyinah): YouTube oEmbed HTTP 200 with author 'Nouman Ali Khan - Official - Bayyinah' at research time (2026-11-05); duration 105s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-axn1ojh4y2m", "AXn1OJH4y2M", "Bayyinah — Our Limits Point Back to Allah (Nouman Ali Khan)", 178, false, "Verified Islamic short on the official channel (Bayyinah, @bayyinah): YouTube oEmbed HTTP 200 with author 'Nouman Ali Khan - Official - Bayyinah' at research time (2026-11-05); duration 178s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-xu_15cvuee4", "xU_15CVuEE4", "Bayyinah — Allah Is Already Near You (Nouman Ali Khan)", 154, false, "Verified Islamic short on the official channel (Bayyinah, @bayyinah): YouTube oEmbed HTTP 200 with author 'Nouman Ali Khan - Official - Bayyinah' at research time (2026-11-05); duration 154s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-py4bnqjifu4", "pY4bnQJIFu4", "Bayyinah — How To Make Kids Love The Masjid (Nouman Ali Khan)", 72, false, "Verified Islamic short on the official channel (Bayyinah, @bayyinah): YouTube oEmbed HTTP 200 with author 'Nouman Ali Khan - Official - Bayyinah' at research time (2026-11-05); duration 72s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-ppzopfy5xps", "PpZOPFY5XPs", "Bayyinah — Gratitude: This is Allah's Promise (Nouman Ali Khan)", 69, false, "Verified Islamic short on the official channel (Bayyinah, @bayyinah): YouTube oEmbed HTTP 200 with author 'Nouman Ali Khan - Official - Bayyinah' at research time (2026-11-05); duration 69s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-hsonht8gjym", "hSONHt8gJYM", "Bayyinah — How Do I Raise My Muslim Kids In The West? (Nouman Ali Khan)", 90, false, "Verified Islamic short on the official channel (Bayyinah, @bayyinah): YouTube oEmbed HTTP 200 with author 'Nouman Ali Khan - Official - Bayyinah' at research time (2026-11-05); duration 90s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-objqr-a5h54", "OBjqR-A5H54", "Deen Squad — Everybody Say Muslim (Short)", 25, true, "Verified Islamic short on the official channel (Deen Squad, @deensquadmusic): YouTube oEmbed HTTP 200 with author 'Deen Squad' at research time (2026-11-05); duration 25s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-hwncv9ljuqq", "HWNcV9LJUQQ", "Deen Squad — Karter on the Comeback (Short)", 29, true, "Verified Islamic short on the official channel (Deen Squad, @deensquadmusic): YouTube oEmbed HTTP 200 with author 'Deen Squad' at research time (2026-11-05); duration 29s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-3bh-psudc3a", "3bH-PSUDc3A", "Deen Squad — Cooking (Short)", 16, true, "Verified Islamic short on the official channel (Deen Squad, @deensquadmusic): YouTube oEmbed HTTP 200 with author 'Deen Squad' at research time (2026-11-05); duration 16s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
+    YS("brk-bn8omhsmlsq", "bn8OMhSMLSQ", "Deen Squad — Halal Lovin Live in Ohio (Short)", 11, true, "Verified Islamic short on the official channel (Deen Squad, @deensquadmusic): YouTube oEmbed HTTP 200 with author 'Deen Squad' at research time (2026-11-05); duration 11s read from the video's own Shorts page; vertical 9:16 short-form — airs pillarboxed as a brief break interlude, never a program item (research record: website/islamic-programming-2026-11-05/SHORTS.md)"),
     { id: "brk-house-anthem", kind: "house", src: "file", url: "/media/the-world-gone-be.mp4", title: "Meechie's World — The World Gone Be", dur: 266, lane: "house", rights: { basis: "own", evidence: "Malik's own song and video, hosted on his own site media (/media/the-world-gone-be.mp4, HTTP 200 video/mp4 verified at seed time); he is the artist and rights holder", clearedBy: "owner", at: now, simulcast: true } },
     { id: "brk-my-empire-ad", kind: "house", src: "file", url: "/media/my-empire-commercial.mp4", title: "MY EMPIRE — Premiere Commercial", dur: 42, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, his business and himself, hosted on his own site media (/media/my-empire-commercial.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
     { id: "brk-my-empire-by10", kind: "house", src: "file", url: "/media/my-empire-by10.mp4", title: "MY EMPIRE — Done by 10 Tonight", dur: 15, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE, hosted on his own site media (/media/my-empire-by10.mp4, HTTP 200 video/mp4 verified at seed time); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
@@ -2225,7 +2454,7 @@ function tvSeedPool(now) {
     { id: "brk-my-empire-12", kind: "house", src: "file", url: "/media/my-empire-12-shirts.mp4", title: "MY EMPIRE — 12 Shirts, Zero Excuses", dur: 10, lane: "house", rights: { basis: "own", evidence: "Malik's own commercial for his show MY EMPIRE (the 12-shirts, zero-excuses line), supplied by Malik on 2026-11-03 for the random show-spot rotation and hosted on his own site media (/media/my-empire-12-shirts.mp4); he is the creator and rights holder", clearedBy: "owner", at: now, simulcast: true } },
     { id: "brk-local-update", kind: "house", src: "file", url: "/m/media/local-update.mp4", title: "Uniontown Local Update — News & Traffic", dur: 51, lane: "house", rights: { basis: "own", evidence: "Produced in-house by the site news producer from attributed public sources (Herald-Standard headlines, PennDOT 511PA traffic, NWS alerts); Malik is the publisher and rights holder of the produced spot", clearedBy: "owner", at: now, simulcast: true } }
   ];
-  const bag = items.map((x) => x.id);
+  const bag = items.filter((x) => !(x.lane === "shorts" && x.sparse === true)).map((x) => x.id); // v16: sparse shorts never ride the seed bag either — they deal in only on the tvDrawBreak bag cycle
   for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = bag[i]; bag[i] = bag[j]; bag[j] = t; }
   return { items, bag, bagIx: 0, progV: TV_PROGRAM_V, updatedAt: now, by: "keeper-seed" };
 }
@@ -2476,7 +2705,7 @@ async function tvCartoonLive(env, nw, now, origin) {
  * hour it drops under the normal guards, like any other span. */
 function tvCartoonSpans(chan, crt, fromMs, toMs, pins) {
   if (!crt || !Array.isArray(crt.items) || !(crt.total > 0)) return [];
-  const laidAt = (ws) => !(chan._qCut && chan._qCut.news === ws) && tvNewsFreshFor(chan, ws) && !tvNewsOverlapsFamily({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, chan._family);
+  const laidAt = (ws) => !(chan._qCut && chan._qCut.news === ws) && tvNewsFreshFor(chan, ws) && !tvNewsOverlapsFamily({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, chan._family) && !tvNewsOverlapsKhutbah({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, chan._khutbah);
   const out = [];
   let lastEnd = -Infinity;
   const b0 = Math.floor((fromMs - 3600e3) / 3600e3) * 3600e3;
@@ -2498,6 +2727,7 @@ function tvCartoonSpans(chan, crt, fromMs, toMs, pins) {
         consider(tvFamilyWin(f, chan._family), true);
         consider(tvAnchorWin(f, chan._anchor), true);
         consider(tvInsertWin(f, chan._insert), true);
+        consider(tvKhutbahWin(f, chan._khutbah), true);
         if (!(push > f)) break;
         f = push;
       }
@@ -2620,6 +2850,12 @@ function tvQueueFrozen(q, fromMs, toMs) {
   for (let ws = nw0.start; ws < toMs; ws += 3600e3) sub(ws, ws + TV_NEWS_LEN * 1000);
   const walk = (winFn, stt) => { let t2 = fromMs; for (let i = 0; i < 4; i++) { const w = winFn(t2, stt); if (!w || w.start >= toMs) break; sub(w.start, w.end); t2 = w.end; } };
   walk(tvPremWin, st.prem); walk(tvPremWin, st.rerun); walk(tvAnchorWin, st.anchor);
+  // The Friday khutbah freezes the queue like every hard window,
+  // and the placed adhan spans freeze it for their (exact or
+  // slid) spans — the queue is consumed only by seconds it
+  // actually aired, so both preempt it losslessly (v16).
+  walk(tvKhutbahWin, st.khutbah);
+  if (st.adhan && Array.isArray(st.adhan.spans)) for (const sp of st.adhan.spans) sub(sp.start, sp.end);
   // Family Time freezes the queue for its whole span — minus the
   // news windows that pass over it and the cadence time inside it,
   // which the lines above/below already count (the tvInsertFrozen
@@ -2743,6 +2979,8 @@ function tvAdvanceChannel(chan, segs, cursor, now, cadNow) {
   if ((sc = slotCut(tvPremWin(now, chan._prem), chan._prem && chan._prem.items, "prem", "premiere"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvPremWin(now, chan._rerun), chan._rerun && chan._rerun.items, "rerun", "rerun"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvFamilyWin(now, chan._family), chan._family && chan._family.items, "family", "Family Time"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if ((sc = slotCut(tvKhutbahWin(now, chan._khutbah), chan._khutbah && chan._khutbah.items, "khutbah", "Friday khutbah"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if (cur.adh && cur.adhKey) { out.qCut = { adhan: cur.adhKey }; out.note = "cut the adhan short — the channel moves on; the next prayer is untouched"; return out; }
   if ((sc = slotCut(tvAnchorWin(now, chan._anchor), chan._anchor ? [chan._anchor.item] : null, "anchor", "anchor edition"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvCartoonWinAt(now, chan._cartoon), chan._cartoon ? chan._cartoon.items.concat(chan._cartoon.spots || []) : null, "cartoon", "the cartoon block"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if (cadNow && cadNow.inside && cur.start >= cadNow.start && cur.start < cadNow.end && ((cadNow.item && cur.id === cadNow.item.id) || (cadNow.upd && cur.id === cadNow.upd.id))) { out.qCut = { cad: cadNow.start }; out.note = "cut the break short — back to the program"; return out; }
@@ -2968,7 +3206,7 @@ function tvAdPick(cad, k) {
  * The chain is computed from 2h before fromMs: no combination of
  * the higher windows can displace an occurrence further than that,
  * so the carry-in is exact. */
-function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr) {  if (!cad || !cad.length) return [];
+function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr, khu) {  if (!cad || !cad.length) return [];
   const spans = [];
   let prevEnd = -Infinity;
   const kFirst = Math.floor((fromMs - 2 * 3600e3) / TV_AD_EVERY_MS);
@@ -3012,7 +3250,7 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr) {  if
     for (let i = 0; i < 8; i++) {
       const e = s + (dur + (updAt(s) ? updAt(s).dur : 0)) * 1000;
       let slid = false;
-      for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins), tvPremWin(s, rer)]) {
+      for (const w of [tvNewsWin(s), tvPremWin(s, prem), tvAnchorWin(s, anch), tvInsertWin(s, ins), tvPremWin(s, rer), tvKhutbahWin(s, khu)]) {
         if (w && s < w.end && e > w.start) { s = w.end; slid = true; break; }
       }
       if (!slid) break;
@@ -3026,8 +3264,8 @@ function tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr) {  if
   return spans;
 }
 /* The cadence window containing ms (inside: true) or the next one. */
-function tvAdWin(ms, cad, prem, anch, ins, char, lu, rer, qtr) {  if (!cad || !cad.length) return null;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON, char, lu, rer, qtr)) {
+function tvAdWin(ms, cad, prem, anch, ins, char, lu, rer, qtr, khu) {  if (!cad || !cad.length) return null;
+  for (const sp of tvAdSpans(cad, prem, anch, ins, ms, ms + TV_HORIZON, char, lu, rer, qtr, khu)) {
     if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, item: sp.item, upd: sp.upd || null };
     if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, item: sp.item, upd: sp.upd || null };  }
   return null;
@@ -3036,8 +3274,8 @@ function tvAdWin(ms, cad, prem, anch, ins, char, lu, rer, qtr) {  if (!cad || !c
  * movie block freezes for the spots laid inside it (the insert
  * freeze rule — the block resumes from the offset it reached and
  * its window runs long by this much). */
-function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr) {  let sec = 0;
-  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;  return Math.round(sec * 10) / 10;
+function tvAdTimeIn(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr, khu) {  let sec = 0;
+  for (const sp of tvAdSpans(cad, prem, anch, ins, fromMs, toMs, char, lu, rer, qtr, khu)) sec += (Math.min(sp.end, toMs) - Math.max(sp.start, fromMs)) / 1000;  return Math.round(sec * 10) / 10;
 }
 /* The MY EMPIRE premiere window containing ms (inside: true) or the
  * next one. prem = { startMinET, liveDurSec } as built by tvPremLive.
@@ -3183,6 +3421,252 @@ function tvFamilyResolve(famDoc, chan, movies, premState, now) {
   if (!it) return { state: null, doc, changed };
   const item = { ...it, show: "👨‍👩‍👧 Family Time" };
   return { state: { startMinET: TV_FAMILY_START_MIN, item, items: [item], liveDurSec: +it.dur, night: dayKey }, doc, changed };
+}
+/* FRIDAY KHUTBAH (v16 — Malik, 2026-11-05 ~18:00 ET: "Every
+ * friday at 1 i want a kutbah from mufti menk to play"): a standing
+ * WEEKLY hard window at 13:00 ET on Fridays carrying ONE verified
+ * Mufti Menk Jumu'ah sermon from his OFFICIAL channel
+ * (@muftimenkofficial, channel UCNB_OaI4524fASt8h0IL8dw — the
+ * @MuftiMenk handle is a squatter and is never used). Built exactly
+ * like the Family Time window it is modelled on:
+ *   - Precedence in tvGen: premiere, rerun, Family Time, then the
+ *     KHUTBAH — ahead of the anchor, the ad cadence, inserts, the
+ *     owner queue and the fill chain, which freeze and resume
+ *     after it (the queue in content time, the program cursor by
+ *     split/resume). The cadence never lays inside it (the
+ *     tvAdSpans exclusion) and the hourly cartoon block slides
+ *     past it as a unit (tvCartoonSpans).
+ *   - The :50 news gate refuses any window overlapping it
+ *     (tvNewsOverlapsKhutbah), so news never cuts the sermon.
+ *   - Rotation lives in tv/khutbah (keeper-owned, the familytime
+ *     shape): a shuffled bag over the 10 verified sermons below, a
+ *     week's pick locked on the first resolve of that Friday and
+ *     never re-drawn, never the same sermon inside 28 days while
+ *     the pool allows.
+ *   - A week with nothing eligible = no window; the channel plays
+ *     its standing lineup — never dead air.
+ *   - Protection: crowd-skip AND Guardian cuts refused (the
+ *     Family Time class, tvSkipGate); the OWNER skip still cuts
+ *     one Friday's instance (qCut.khutbah, stamped by window
+ *     start). Segments carry khut:1 and the item's show is stamped
+ *     "🕌 Friday Khutbah" so the Guide and TV bar paint the block.
+ * Every sermon below: YouTube oEmbed HTTP 200 with author "Mufti
+ * Menk" (@muftimenkofficial) at research time (2026-11-05), billed
+ * as a Jumu'ah/Friday sermon in its own title or description, its
+ * duration pinned from the actual upload (research record:
+ * website/islamic-programming-2026-11-05/KHUTBAH-ADHAN.md). All run
+ * 20–32 min, so a 13:00 start always ends clear of the 13:50 news
+ * window even before the overlap refusal above. */
+const TV_KHUTBAH_V = 1;              // khutbah doc generation (tv/khutbah)
+const TV_KHUTBAH_START_MIN = 780;    // 13:00 ET, Fridays only
+const TV_KHUTBAH_FROM_MS = 1793988000000; // first airing: Fri 2026-11-06 13:00 ET — earlier windows never lay
+function tvKhutbahItems(now) {
+  const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
+  const EV = (dur) => "Verified Mufti Menk Jumu'ah sermon on his official channel (@muftimenkofficial, channel UCNB_OaI4524fASt8h0IL8dw): YouTube oEmbed HTTP 200 with author 'Mufti Menk' at research time (2026-11-05); billed as a Friday/Jumu'ah sermon in its own title or description; duration " + dur + "s pinned from the actual upload (research record: website/islamic-programming-2026-11-05/KHUTBAH-ADHAN.md)";
+  const K = (yt, title, dur) => ({ id: "khut-" + yt.toLowerCase(), kind: "show", src: "yt", yt, title, show: "Mufti Menk", dur, rights: R(EV(dur)) });
+  return [
+    K("f2H740A9s3Y", "Mufti Menk — The Ummah & The Holidays (Jumu'ah, Mayfair)", 1906),
+    K("m9xcwWBwXkc", "Mufti Menk — The Biggest Hypocrite! (Friday Lecture)", 1863),
+    K("pRVHGIT2DwQ", "Mufti Menk — How to Become a Muslim (Jumu'ah, Harare)", 1353),
+    K("JXO7QaTsxoU", "Mufti Menk — This Will Be an Amazing Ramadan (Jumu'ah Lecture)", 1353),
+    K("3EoSp8rb6c4", "Mufti Menk — Work Towards a Good Death (Jumu'ah, Harare)", 1318),
+    K("Cnc5FPFtUgc", "Mufti Menk — The Call to Goodness (Khutbah, Kuala Lumpur)", 1255),
+    K("aHy26wN728g", "Mufti Menk — When They Say Bad Things About You (Jumu'ah Lecture)", 1241),
+    K("w8G2piyhNlY", "Mufti Menk — B+ (Jumu'ah Talk)", 1241),
+    K("FMBvXbIIm18", "Mufti Menk — How to Protect Yourself from Evil (Jumu'ah, Johannesburg)", 1202),
+    K("c1aOe6d2kcE", "Mufti Menk — You Pay a Price for Your Tongue (Jumu'ah Lecture)", 1201),
+  ];
+}
+function tvSeedKhutbah(now) {
+  return { progV: TV_KHUTBAH_V, on: true, startMinET: TV_KHUTBAH_START_MIN, bag: [], week: "", itemId: "", hist: [], updatedAt: now, by: "keeper-seed" };
+}
+function tvKhutbahEligible(now, banSet) {
+  return tvKhutbahItems(now).filter((it) => tvCleared(it) && !(banSet && it.yt && banSet.has(String(it.yt))));
+}
+/* The khutbah window containing ms (inside: true) or the next
+ * one: tvPremWin's daily arithmetic over the resolved state,
+ * filtered to Fridays — a daily window whose start is not a
+ * Friday is stepped over, day by day, to the next Friday. */
+function tvKhutbahWin(ms, kh) {
+  if (!kh || !kh.item || !(kh.liveDurSec > 0)) return null;
+  let w = tvPremWin(ms, { startMinET: kh.startMinET || TV_KHUTBAH_START_MIN, liveDurSec: kh.liveDurSec });
+  for (let i = 0; i < 8 && w; i++) {
+    if (tvEtParts(w.start).weekday === "Fri") return w;
+    w = { start: w.start + 86400e3, end: w.end + 86400e3, inside: false };
+  }
+  return null;
+}
+function tvNewsOverlapsKhutbah(win, kh) {
+  if (!win || !kh) return false;
+  const kw = tvKhutbahWin(win.start, kh);
+  if (!kw) return false;
+  return kw.start < win.end && win.start < kw.end;
+}
+/* Resolve the khutbah state for the Friday this tick must serve:
+ * today's window when today is Friday (or the coming Friday's —
+ * generation reaches 2 hours ahead, and the pick locks the first
+ * time any tick resolves that Friday, the familytime discipline).
+ * Pure: returns { state, doc, changed } — tvTick persists the doc
+ * when a pick was locked. State is null when the block is off,
+ * before the first airing, or when nothing eligible exists. */
+function tvKhutbahResolve(khDoc, now, banSet) {
+  const doc = khDoc && typeof khDoc === "object" ? khDoc : tvSeedKhutbah(now);
+  if (doc.on === false) return { state: null, doc, changed: false };
+  const et0 = tvEtParts(now), sec0 = Math.floor((now % 60000) / 1000);
+  const wdIdx = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[et0.weekday];
+  const add = (5 - wdIdx + 7) % 7; // days until Friday (0 when today is Friday)
+  let winStart = now - ((et0.hour * 60 + et0.minute - TV_KHUTBAH_START_MIN) * 60 + sec0) * 1000 + add * 86400e3;
+  if (add === 0) {
+    // Friday: once this week's window has fully ended, the state
+    // this tick serves is NEXT Friday's.
+    const locked0 = doc.itemId ? tvKhutbahItems(now).find((x) => x.id === doc.itemId) : null;
+    const durMs = ((locked0 && +locked0.dur) || 1906) * 1000;
+    if (doc.week === tvEtParts(winStart).dayKey && winStart + durMs <= now) winStart += 7 * 86400e3;
+    else if (doc.week !== tvEtParts(winStart).dayKey && winStart + 1906e3 <= now) winStart += 7 * 86400e3;
+  }
+  if (winStart < TV_KHUTBAH_FROM_MS) return { state: null, doc, changed: false };
+  const weekKey = tvEtParts(winStart).dayKey;
+  const eligible = tvKhutbahEligible(now, banSet);
+  if (!eligible.length) return { state: null, doc, changed: false };
+  let changed = false;
+  let it = null;
+  if (doc.week === weekKey && doc.itemId) it = eligible.find((x) => x.id === doc.itemId) || null;
+  if (!it) {
+    const ids = new Set(eligible.map((x) => x.id));
+    let bag = (Array.isArray(doc.bag) ? doc.bag : []).filter((id) => ids.has(id));
+    if (!bag.length) { bag = eligible.map((x) => x.id); for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t2 = bag[i]; bag[i] = bag[j]; bag[j] = t2; } }
+    const hist = Array.isArray(doc.hist) ? doc.hist : [];
+    const cutMs = Date.parse(weekKey) - 28 * 86400e3;
+    const recent = new Set(hist.filter((h) => h && Date.parse(h.week || "") >= cutMs).map((h) => h.id));
+    const lastWeek = hist.length ? hist[hist.length - 1].id : "";
+    const pick = bag.find((id) => !recent.has(id) && id !== lastWeek) || bag.find((id) => id !== lastWeek) || bag[0];
+    bag = bag.filter((id) => id !== pick);
+    it = eligible.find((x) => x.id === pick) || null;
+    if (it) {
+      doc.bag = bag; doc.week = weekKey; doc.itemId = pick;
+      doc.hist = [...hist, { week: weekKey, id: pick }].slice(-12);
+      doc.updatedAt = now; doc.by = "keeper";
+      changed = true;
+    }
+  }
+  if (!it) return { state: null, doc, changed };
+  const item = { ...it, show: "🕌 Friday Khutbah" };
+  return { state: { startMinET: TV_KHUTBAH_START_MIN, item, items: [item], liveDurSec: +it.dur, week: weekKey }, doc, changed };
+}
+/* THE ADHAN (v16 — Malik, 2026-11-05 ~18:00 ET: "i want the adan
+ * to play when its time to pray i want it to be a beautiful
+ * recitation"; the voice picked by Malik 2026-11-05 ~19:31 ET:
+ * ALAFASY): five daily windows at the prayer times for Uniontown,
+ * PA (ISNA / Aladhan method 2). The times are PRECOMPUTED daily by
+ * the adhan producer (record:
+ * website/islamic-programming-2026-11-05/PROGRESS.md) into the
+ * producer-owned doc tv/adhan — { days: { "<ET dayKey>": { fajr,
+ * dhuhr, asr, maghrib, isha } (ms ET) }, updatedAt } — carrying
+ * TODAY's AND TOMORROW's times, because generation lays 2 hours
+ * ahead and the horizon crosses midnight. The keeper only lays:
+ * a day missing from the doc (a stale producer, a missed refresh)
+ * means NO adhan that day — the channel never guesses a prayer
+ * time. The recitation is one pinned pair: Alafasy's standard
+ * adhan for Dhuhr/Asr/Maghrib/Isha, and his Fajr adhan — which
+ * carries "as-salatu khayrun min an-nawm" (prayer is better than
+ * sleep) — at Fajr.
+ * Placement (the cartoon-span method): each prayer is placed AT
+ * its exact time — cutting fill, the break bag, the ad cadence
+ * and the owner queue mid-item under the split/resume rule —
+ * UNLESS it would land inside a protected span, in which case it
+ * SLIDES to that span's end: an hourly cartoon span, an anchor
+ * edition, a laid :50 news window, the premiere/rerun, the
+ * khutbah, and Family Time (in midsummer Uniontown's Maghrib
+ * falls inside the movie; the movie stays whole and the adhan
+ * follows it — Malik's standing defaults, 2026-11-05). The
+ * Friday Dhuhr adhan is SUPPRESSED outright: Jumu'ah replaces
+ * Dhuhr and the khutbah is the observance. Placed segments carry
+ * adh:1 and adhKey ("<dayKey>:<prayer>") and are protected from
+ * crowd-skip AND Guardian cuts (tvSkipGate); the owner skip can
+ * cut one prayer (qCut.adhan, stamped by adhKey — one cut never
+ * suppresses the next prayer). */
+const TV_ADHAN_PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
+function tvAdhanItems(now) {
+  const R = (evidence) => ({ basis: "embed", evidence, clearedBy: "keeper-check", at: now, simulcast: false });
+  return {
+    std: { id: "adhan-alafasy", kind: "show", src: "yt", yt: "HekbKqYc8Qk", title: "Adhan — Mishary Rashid Alafasy", show: "🕌 Adhan", dur: 193, rights: R("The standard Alafasy adhan on the reciter's official channel (Alafasy, @alafasy): YouTube oEmbed HTTP 200 with author 'Alafasy' at research time (2026-11-05); duration 193s pinned from the actual upload; voice picked by Malik 2026-11-05 (research record: website/islamic-programming-2026-11-05/KHUTBAH-ADHAN.md)") },
+    fajr: { id: "adhan-alafasy-fajr", kind: "show", src: "yt", yt: "BUQFIszAxnM", title: "Adhan (Fajr) — Mishary Rashid Alafasy", show: "🕌 Adhan", dur: 213, rights: R("The Fajr Alafasy adhan — carrying 'as-salatu khayrun min an-nawm' (prayer is better than sleep) — on the reciter's official channel (Alafasy, @alafasy): YouTube oEmbed HTTP 200 with author 'Alafasy' at research time (2026-11-05); duration 213s pinned from the actual upload; voice picked by Malik 2026-11-05 (research record: website/islamic-programming-2026-11-05/KHUTBAH-ADHAN.md)") },
+  };
+}
+/* The adhan state from the producer doc: the prayer entries for
+ * the ET days the doc actually carries at resolve time (today and
+ * tomorrow — any other day in the doc is ignored, so a stale doc
+ * yields no entries at all and no adhan is laid). Pure; spans are
+ * placed by tvAdhanSpans once the keeper's window states exist. */
+function tvAdhanState(doc, now, banSet) {
+  if (!doc || typeof doc !== "object" || !doc.days || typeof doc.days !== "object") return null;
+  const items = tvAdhanItems(now);
+  if (banSet && (banSet.has(String(items.std.yt)) || banSet.has(String(items.fajr.yt)))) return null;
+  if (!tvCleared(items.std) || !tvCleared(items.fajr)) return null;
+  const dayKeys = [tvEtParts(now).dayKey, tvEtParts(now + 86400e3).dayKey];
+  const entries = [];
+  for (const dk of dayKeys) {
+    const day = doc.days[dk];
+    if (!day || typeof day !== "object") continue;
+    for (const name of TV_ADHAN_PRAYERS) {
+      const at = +day[name] || 0;
+      if (!(at > 0)) continue;
+      entries.push({ key: dk + ":" + name, name, dayKey: dk, at, item: name === "fajr" ? items.fajr : items.std });
+    }
+  }
+  if (!entries.length) return null;
+  entries.sort((a, b) => a.at - b.at);
+  return { entries, items, spans: [] };
+}
+/* Place the adhan spans for [fromMs, toMs): each prayer AT its
+ * time, slid forward past every protected span it would overlap
+ * (the tvCartoonSpans slide discipline). Friday Dhuhr never
+ * places (Jumu'ah). An owner-cut prayer (qCut.adhan === its key)
+ * never places. A prayer slid more than 2 hours is dropped rather
+ * than laid absurdly late — no protected span on this channel
+ * runs anywhere near that long; the cap is a safety rail only. */
+function tvAdhanSpans(chan, adh, fromMs, toMs) {
+  if (!adh || !Array.isArray(adh.entries)) return [];
+  const out = [];
+  const newsLaidAt = (ws) => !(chan._qCut && chan._qCut.news === ws) && tvNewsFreshFor(chan, ws) && !tvNewsOverlapsFamily({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, chan._family) && !tvNewsOverlapsKhutbah({ start: ws, end: ws + TV_NEWS_LEN * 1000 }, chan._khutbah);
+  for (const e of adh.entries) {
+    if (e.at < fromMs - 3600e3 || e.at >= toMs) continue;
+    if (e.name === "dhuhr" && tvEtParts(e.at).weekday === "Fri") continue;
+    if (chan._qCut && chan._qCut.adhan === e.key) continue;
+    const durMs = (+e.item.dur || 0) * 1000;
+    if (!(durMs > 0)) continue;
+    let f = e.at;
+    for (let i = 0; i < 10; i++) {
+      const en = f + durMs;
+      let push = 0;
+      const consider = (w) => { if (w && f < w.end && en > w.start && w.end > push) push = w.end; };
+      if (chan._cartoon && Array.isArray(chan._cartoon.spans)) for (const sp of chan._cartoon.spans) consider(sp);
+      consider(tvAnchorWin(f, chan._anchor));
+      { const nw1 = tvNewsWin(f); for (let k = 0; k < 2; k++) { const ws = nw1.start + k * 3600e3; if (newsLaidAt(ws)) consider({ start: ws, end: ws + TV_NEWS_LEN * 1000 }); } }
+      consider(tvPremWin(f, chan._prem));
+      consider(tvPremWin(f, chan._rerun));
+      consider(tvFamilyWin(f, chan._family));
+      consider(tvKhutbahWin(f, chan._khutbah));
+      for (const sp of out) consider(sp);
+      if (!(push > f)) break;
+      f = push;
+    }
+    if (f - e.at > 2 * 3600e3) continue;
+    out.push({ start: f, end: f + durMs, key: e.key, name: e.name, item: e.item });
+  }
+  out.sort((a, b) => a.start - b.start);
+  return out.filter((sp) => sp.end > fromMs && sp.start < toMs);
+}
+/* The adhan window containing ms, or the next one — the
+ * tvCartoonWinAt shape ({ start, end, inside } + the prayer's
+ * key, name and item). */
+function tvAdhanWinAt(ms, adh) {
+  if (!adh || !Array.isArray(adh.spans)) return null;
+  for (const sp of adh.spans) {
+    if (ms >= sp.start && ms < sp.end) return { start: sp.start, end: sp.end, inside: true, key: sp.key, name: sp.name, item: sp.item };
+    if (sp.start > ms) return { start: sp.start, end: sp.end, inside: false, key: sp.key, name: sp.name, item: sp.item };
+  }
+  return null;
 }
 /* The anchor news window containing ms (inside: true) or the next one,
  * over the fixed daily slots (TV_ANCHOR_SLOTS, minutes ET). anch is the
@@ -3777,6 +4261,9 @@ async function tvTick(env, S, now, origin, online) {
   if (!rerun || !Array.isArray(rerun.items) || !rerun.items.length || (+rerun.progV || 0) < TV_RERUN_V) { rerun = tvSeedRerun(now); await writeDoc(env, "tv/rerun", "tv", rerun); }
   let famDoc = await readDoc(env, "tv/familytime");
   if (!famDoc || (+famDoc.progV || 0) < TV_FAMILY_V) { famDoc = tvSeedFamilyTime(now); await writeDoc(env, "tv/familytime", "tv", famDoc); }
+  let khuDoc = await readDoc(env, "tv/khutbah");
+  if (!khuDoc || (+khuDoc.progV || 0) < TV_KHUTBAH_V) { khuDoc = tvSeedKhutbah(now); await writeDoc(env, "tv/khutbah", "tv", khuDoc); }
+  const adhanDoc = await readDoc(env, "tv/adhan");
   let movies = await readDoc(env, "tv/movieblock");
   if (!movies || !Array.isArray(movies.items) || !movies.items.length || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
   let insDoc = await readDoc(env, "tv/insert");
@@ -3881,6 +4368,18 @@ async function tvTick(env, S, now, origin, online) {
   const famRes = tvFamilyResolve(famDoc, chan, movies, premState, now);
   chan._family = famRes.state;
   if (famRes.changed) { famDoc = famRes.doc; await writeDoc(env, "tv/familytime", "tv", famDoc); }
+  // FRIDAY KHUTBAH (v16): resolve the Friday state from the
+  // rotation doc (the familytime discipline — persist only when a
+  // pick was locked). The ban gate's set rides in, so a banned
+  // sermon can never be picked.
+  const khuRes = tvKhutbahResolve(khuDoc, now, banSet);
+  chan._khutbah = khuRes.state;
+  if (khuRes.changed) { khuDoc = khuRes.doc; await writeDoc(env, "tv/khutbah", "tv", khuDoc); }
+  // THE ADHAN (v16): the state from the producer-owned tv/adhan
+  // doc — the entries for the days it actually carries (today and
+  // tomorrow, or nothing at all). Spans are placed further down,
+  // once the cartoon spans exist (placement slides past them).
+  chan._adhan = tvAdhanState(adhanDoc, now, banSet);
   chan._voteNet = tvVoteNetMap(votesDoc);
   let segs = nw && Array.isArray(nw.segs) ? nw.segs : null;
   let cursor = nw && nw.cursor && isFinite(nw.cursor.at) ? nw.cursor : null;
@@ -4072,6 +4571,14 @@ async function tvTick(env, S, now, origin, online) {
   chan._cartoon = cartoonState.crt ? { items: cartoonState.crt.items, total: cartoonState.crt.total, spots: tvCartoonSpots(pool), spans: [] } : null;
   if (chan._cartoon) chan._cartoon.spans = tvCartoonSpans(chan, chan._cartoon, now - 3600e3, now + TV_HORIZON + 3600e3, (nw && nw.crtWin) || []);
   qSt.crt = chan._cartoon;
+  qSt.khutbah = chan._khutbah;
+  // Adhan spans place now that every protected state exists (the
+  // cartoon spans above; premiere/rerun, Family Time, the khutbah
+  // and the anchor attached earlier): exact at the prayer time,
+  // slid past protected spans, Friday Dhuhr suppressed — all
+  // inside tvAdhanSpans.
+  if (chan._adhan) chan._adhan.spans = tvAdhanSpans(chan, chan._adhan, now - 3600e3, now + TV_HORIZON + 3600e3);
+  qSt.adhan = chan._adhan;
   let qSkipAtDone = (nw && +nw.qSkipAt) || 0;
   let qSkipNote = nw && nw.qSkipNote && now - nw.qSkipNote.at < 3600e3 ? nw.qSkipNote : null;
   let movSkipState = nw && nw.movSkip && (+nw.movSkip.shift || 0) > 0 ? nw.movSkip : null;
@@ -4575,6 +5082,8 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._insert;
   delete chan._queue;
   delete chan._family;
+  delete chan._khutbah;
+  delete chan._adhan;
   delete chan._voteNet;
   delete chan._qCut;
   delete chan._cartoon;
