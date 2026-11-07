@@ -5529,9 +5529,32 @@ async function loadLib(env, now) {
   libMemo.at = now; libMemo.lib = lib; libMemo.byAsset = new Map(lib.map((t) => [t.assetId, t]));
   return libMemo;
 }
+/* D1 MINIMISATION (2026-11-06): the requests collection grows by design
+ * (listener picks are saved docs) and the old loader read ALL of it on
+ * every memo miss, though its only two callers (the harvest, takePick)
+ * each parse the rows and keep just the unplayed picks, oldest first.
+ * The read is now that subset, in the same order the docs_coll index
+ * already returned: a json_valid CASE guard keeps a malformed doc from
+ * failing the query (json_extract throws on one), the waiting line is
+ * capped at 500 (the keeper consumes one pick per advance, so a deeper
+ * line drains oldest-first over later memo cycles; nothing is deleted
+ * or dropped, deeper picks load as they near the front), and both
+ * callers still apply their own parse + predicate to the rows, so what
+ * they act on is exactly what the old full read produced for them. The
+ * kind expression index carries the same CASE guard inside its own
+ * expression, so creating it cannot fail on a malformed doc either;
+ * it is ensured here, failure-contained: if it cannot be created the
+ * query still runs correctly on the docs_coll index. */
+let rqIdxTried = false;
+async function ensureRqPickIndex(env) {
+  if (rqIdxTried) return; rqIdxTried = true;
+  try { await env.DB.prepare("create index if not exists docs_requests_kind on docs (coll, (case when json_valid(data) then json_extract(data, '$.kind') end), created_at)").run(); }
+  catch (_) { rqIdxTried = false; }
+}
 async function loadRequests(env, now) {
   if (rqMemo.rows && now - rqMemo.at < RQ_TTL) return rqMemo.rows;
-  const { results } = await env.DB.prepare("select path, data from docs where coll = 'requests'").all();
+  await ensureRqPickIndex(env);
+  const { results } = await env.DB.prepare("select path, data from docs where coll = 'requests' and (case when json_valid(data) then json_extract(data, '$.kind') end) = 'pick' and (case when json_valid(data) then coalesce(json_extract(data, '$.played'), 0) else 0 end) = 0 order by created_at asc limit 500").all();
   rqMemo.at = now; rqMemo.rows = results || [];
   return rqMemo.rows;
 }
