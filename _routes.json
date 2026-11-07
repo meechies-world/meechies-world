@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "include": ["/*"],
+  "exclude": [
+    "/js/*",
+    "/css/*",
+    "/img/*",
+    "/fonts/*",
+    "/media/*",
+    "/lifeline/*",
+    "/vod/*",
+    "/books/*",
+    "/version.json",
+    "/sw.js",
+    "/favicon.ico",
+    "/robots.txt"
+  ]
+}
