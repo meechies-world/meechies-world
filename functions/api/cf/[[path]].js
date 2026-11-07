@@ -358,7 +358,13 @@ async function rest(request, env) {
       // reports are private to the sender and Meechie; the phone-alert channel only to Meechie (same as the old database)
       if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'", "coll <> 'pushsubs'", "path not like 'brain/calls/%'", "path not like 'brain/texts/%'", "(path not like 'brain/member/%' or owner = ?)"); args.push(uid || "-", uid || "-"); }
       const W = where.length ? " where " + where.join(" and ") : "";
-      if (q.count && q.head) { const ck = "count:" + W + "|" + args.join("|"); const cv = _qGet(ck, 60000); if (cv !== undefined) return json({ data: null, count: cv, error: null }); const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: _qSet(ck, r ? r.n : 0), error: null }); }
+      /* D1 BURN FIX F5 (2026-11-07, AUDIT3): the counts memo was 60 s
+       * per isolate, so the member count (social.js asks every 2 min
+       * per tab) re-ran a count(*) over the whole members collection
+       * on ~120 memo misses an hour. It is 600 s now — the same trade
+       * Malik took for plays in S3. A count display can lag up to
+       * 10 min; the count itself is unchanged whenever it runs. */
+      if (q.count && q.head) { const ck = "count:" + W + "|" + args.join("|"); const cv = _qGet(ck, 600000); if (cv !== undefined) return json({ data: null, count: cv, error: null }); const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: _qSet(ck, r ? r.n : 0), error: null }); }
       let order = " order by created_at asc";
       if (q.order && q.order.col) {
         const m = /^data->([A-Za-z0-9_]{1,40})$/.exec(q.order.col), dir = q.order.asc === false ? "desc" : "asc";
