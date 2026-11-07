@@ -436,7 +436,7 @@ async function rest(request, env) {
     return json({ data: results, error: null });
   }
   if (q.table === "plays" && q.op === "select") {
-    const ck = "plays:" + Math.min(limit, 2000); const cv = _qGet(ck, 120000); if (cv !== undefined) return json({ data: cv, error: null });
+    const ck = "plays:" + Math.min(limit, 2000); const cv = _qGet(ck, 600000); if (cv !== undefined) return json({ data: cv, error: null });
     const { results } = await env.DB.prepare("select id, n from plays limit ?").bind(Math.min(limit, 2000)).all();
     return json({ data: _qSet(ck, results), error: null });
   }
