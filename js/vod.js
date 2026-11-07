@@ -48,6 +48,9 @@
   var curPart = 0;         // which part is on the player
   var ytPlayer = null;     // the live YT.Player, if any
   var activeCard = null;   // the highlighted card element
+  var curItem = null;      // the item on the player right now, if any
+  var warmFor = null;      // next-part url the warmer should be holding
+  var warmYield = false;   // player needs the connection (seek / starve)
 
   function fmt(s) {
     if (s == null || isNaN(s)) return "";
@@ -80,9 +83,10 @@
     warmEl.removeAttribute("src");
     try { warmEl.load(); } catch (e) {}
     killYt();
-    curParts = []; curPart = 0;
+    curParts = []; curPart = 0; curItem = null;
+    warmFor = null; warmYield = false;
     if (partEl) partEl.textContent = "";
-    if (idleEl) idleEl.hidden = false;
+    if (idleEl) { idleEl.hidden = false; idleEl.style.display = ""; }
     clearActive();
   }
   function setNow(item, note) {
@@ -100,12 +104,44 @@
       ? "Part " + (n + 1) + " of " + curParts.length + " — the parts chain on their own."
       : "";
     var p = videoEl.play(); if (p && p.catch) p.catch(function () {});
-    if (curParts[n + 1]) warmEl.src = curParts[n + 1];
+    warmFor = curParts[n + 1] || null;
+    if (warmFor && !warmYield && warmEl.getAttribute("src") !== warmFor)
+      warmEl.src = warmFor;
   }
   videoEl.addEventListener("ended", function () {
     if (curPart + 1 < curParts.length) playPart(curPart + 1);
     else if (partEl) partEl.textContent = "Finished — tap another title any time.";
   });
+
+  /* The warmer's preload shares the viewer's one connection with the
+   * player. When the player needs the wire itself — a seek fetching
+   * the range around its target, or a buffer running dry — the warmer
+   * stands down (its fetch is aborted) until playback is flowing
+   * again, so the seek's data lands at once instead of queueing
+   * behind a whole next part the viewer may never reach. With no seek
+   * in flight the warmer preloads exactly as before, so playback
+   * start and part chaining are unchanged. */
+  function warmDrop() {
+    if (warmEl.getAttribute("src")) {
+      warmEl.removeAttribute("src");
+      try { warmEl.load(); } catch (e) {}
+    }
+  }
+  function warmMaybe() {
+    if (!warmFor || warmYield) return;
+    if (warmEl.getAttribute("src") === warmFor) return;
+    var ahead = 0;
+    try {
+      if (videoEl.buffered && videoEl.buffered.length)
+        ahead = videoEl.buffered.end(videoEl.buffered.length - 1) - videoEl.currentTime;
+    } catch (e) {}
+    if (ahead >= 10) warmEl.src = warmFor;
+  }
+  videoEl.addEventListener("seeking", function () { warmYield = true; warmDrop(); });
+  videoEl.addEventListener("waiting", function () { warmYield = true; warmDrop(); });
+  videoEl.addEventListener("playing", function () { warmYield = false; warmMaybe(); });
+  videoEl.addEventListener("progress", warmMaybe);
+  videoEl.addEventListener("timeupdate", warmMaybe);
 
   /* YouTube items — the dj.js ytApi() loader shape, this bundle's own
    * promise cache (lazy bundles never share code with dj.js). */
@@ -149,10 +185,45 @@
     });
   }
 
+  function pickIsLive(item) {
+    if (item.kind === "yt") {
+      if (!ytPlayer) return false;
+      try { return ytPlayer.getPlayerState ? ytPlayer.getPlayerState() !== 0 : true; }
+      catch (e) { return true; }
+    }
+    return !!(curParts.length && videoEl.getAttribute("src") && !videoEl.ended);
+  }
+  /* Once a pick starts, keyboard focus belongs on the player, not on
+   * the card button: with focus left on the card, Space/Enter (the
+   * viewer's pause keys) re-fire the pick and restart the part. */
+  function focusPlayer(item, card) {
+    if (card && card.blur) card.blur();
+    if (item.kind !== "yt") {
+      try { videoEl.focus({ preventScroll: true }); } catch (e) {}
+    }
+  }
+
   function pick(item, card) {
+    /* Re-activating the title that is already on the player must not
+     * restart it. The classic path: the tapped card keeps keyboard
+     * focus, so the viewer's Space "pause" press lands on the button
+     * and re-fires this pick — the part restarts at 0:00. If the pick
+     * is still live, hand focus to the player and leave it playing. */
+    if (item === curItem && pickIsLive(item)) {
+      focusPlayer(item, card);
+      return;
+    }
     stopAll();
+    curItem = item;
     activeCard = card; if (card) card.classList.add("on");
-    if (idleEl) idleEl.hidden = true;
+    if (idleEl) {
+      idleEl.hidden = true;
+      /* The view stylesheet sets #vod-idle{display:grid}, which beats
+       * the hidden attribute — without this the splash stays painted
+       * over the picture and swallows every click aimed at the
+       * player's own controls. Inline display is the off switch. */
+      idleEl.style.display = "none";
+    }
     setNow(item, "");
     if (item.kind === "yt" && item.yt) {
       playYt(item);
@@ -164,6 +235,7 @@
       videoEl.hidden = false;
       playPart(0);
     }
+    focusPlayer(item, card);
     var stage = document.getElementById("vod-stagebox");
     if (stage && stage.scrollIntoView) stage.scrollIntoView({ behavior: "smooth", block: "start" });
   }
