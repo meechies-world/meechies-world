@@ -3,3 +3,40 @@ html.lux .gi{width:1.2em;height:1.2em;flex:none;display:inline-block;vertical-al
 @media (max-width:420px){html.lux header.bar .brand{gap:6px!important;padding:0!important}html.lux header.bar .brand svg{width:30px!important;height:30px!important}html.lux header.bar .brand b{font-size:12px!important;letter-spacing:0!important}html.lux header.bar .online-chip{padding:4px 7px!important}}
 @media (max-width:380px){html.lux header.bar .brand b{font-size:11px!important}html.lux header.bar .brand svg{width:26px!important;height:26px!important}}
 @media (max-width:340px){html.lux header.bar .brand b{display:none!important}}
+
+/* ======== phones get more room (owner: "upgrade everything", 2026-11-06) ========
+   Nothing removed: same header, Book bar, tabs and master screen on every tab.
+   Each one is just tighter, and section headers are compact, so the page itself
+   starts much higher on a phone. */
+@media (max-width:600px){
+  html.lux #fb-top{padding-top:4px!important;padding-bottom:4px!important;gap:6px!important}
+  html.lux #fb-top .wm{font-size:20px!important}
+  html.lux #fb-top button{width:34px!important;height:34px!important}
+  html.lux #fb-top button .gi{width:19px!important;height:19px!important}
+  html.lux #fb-tabs button{height:40px!important}
+  html.lux #fb-tabs button .gi{width:23px!important;height:23px!important}
+  html.lux main > .view{padding-top:14px!important}
+  html.lux .view[data-theme] .section-head{padding:14px 14px 16px!important;margin-bottom:14px!important}
+  html.lux .gi-medal{width:40px!important;height:40px!important;margin-bottom:4px!important}
+  html.lux .gi-medal .gi{width:21px!important;height:21px!important}
+  html.lux .view[data-theme] .section-head h2{font-size:31px!important;line-height:1.05!important}
+  html.lux .view[data-theme] .section-head .muted{font-size:14px!important;line-height:1.4!important}
+}
+@media (max-width:600px){
+  html.lux .view[data-theme] .section-head .eyebrow{letter-spacing:.14em!important;font-size:10.5px!important}
+  html.lux .view[data-theme] .section-head .eyebrow::before{display:none!important}
+  html.lux .view[data-theme] .section-head::after{margin:0!important}
+  html.lux .section-head .lux-div,html.lux .section-head .lux-orn{margin:6px auto!important;transform:scale(.8)}
+  html.lux .mn-chipcol .mn-chip-t,html.lux .mn-chipcol .mn-chip-n{font-size:9.5px!important;line-height:1.25!important;letter-spacing:0!important;word-break:break-word;hyphens:auto}
+}
+/* better empty pages (owner, 2026-11-06 "upgrade everything"): blank spots read as a gold card with a sparkle, not a grey dashed box */
+.view .empty{background:radial-gradient(120% 90% at 50% 0%,rgba(255,200,90,.10),transparent 70%),linear-gradient(180deg,rgba(26,20,10,.55),rgba(10,8,5,.55));border:1px dashed rgba(214,170,74,.45);color:#d8cfb4;font-size:15px;line-height:1.5}
+.view .empty::before{content:"✦";display:block;margin:0 auto 8px;font-size:22px;line-height:1;color:#f0cf78;text-shadow:0 0 12px rgba(255,200,90,.55)}
+.view .empty[hidden]{display:none}
+.view .empty a,.view .empty button.link{color:#ffe08a}
+#v-clips .clip-empty{gap:6px;color:#d8cfb4}
+#v-clips .clip-empty .ce-ic{font-size:44px;line-height:1;filter:drop-shadow(0 0 14px rgba(255,200,90,.45))}
+#v-clips .clip-empty h3{margin:6px 0 0;font:700 24px var(--display,Georgia,serif);color:#f0cf78;letter-spacing:.04em}
+#v-clips .clip-empty p{margin:0 auto;max-width:300px;font-size:15px;line-height:1.5}
+#v-clips .clip-empty .ce-go{justify-self:center;margin-top:14px;cursor:pointer;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.04em;padding:13px 22px;border-radius:14px;box-shadow:0 6px 22px rgba(240,207,120,.3)}
+#v-clips .clips:has(.clip-empty)~.clip-add{opacity:0!important;pointer-events:none!important}
