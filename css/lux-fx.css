@@ -42,3 +42,16 @@ html.lux .gi{width:1.2em;height:1.2em;flex:none;display:inline-block;vertical-al
 #v-clips .clips:has(.clip-empty)~.clip-add{opacity:0!important;pointer-events:none!important}
 /* bigger finger target for the small MW TV button on the master screen (no size or layout change) */
 #mn-pop{position:relative}#mn-pop::after{content:"";position:absolute;inset:-12px -8px}
+/* Meechie's Book feed (owner, 2026-11-07 "upgrade the feed"): posts were sizing to their widest content (972px on a 390px phone), so long posts and the Message button ran off the right edge */
+#feed{grid-template-columns:minmax(0,1fr)!important}
+#feed>.post,#feed .post-body,#feed .post-head .who{min-width:0}
+#feed .post-text{overflow-wrap:anywhere}
+#feed .post-head{flex-wrap:wrap;row-gap:6px}
+/* feed: long feeds scroll smoother (the phone skips drawing posts that are off screen) */
+#feed>.post{content-visibility:auto;contain-intrinsic-size:auto 420px}
+#feed .post .photo{display:block;width:100%;height:auto;max-height:78vh;object-fit:cover;background:#0b0907}
+@media (max-width:600px){
+ #feed .post-head .fl-btn{padding:6px 10px!important;font-size:11px!important;min-height:30px;letter-spacing:.04em}
+ #feed .post-head .act[data-dm]{padding:6px 6px;font-size:12.5px}
+ #feed .post-head .who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+}
