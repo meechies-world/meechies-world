@@ -41,7 +41,7 @@ const DOC_MEMO_TTL = 4000;
 const DOC_MEMO_PATHS = new Set(["tv/channel", "tv/breakpool", "tv/premiere", "tv/rerun", "tv/familytime", "tv/movieblock", "tv/insert", "tv/news", "tv/localupdate", "tv/anchor", "tv/charnews", "tv/quarternews", "tv/votes", "tv/guardian", "tv/now", "brain/ytblock", "brain/tvwatch", "station/schedule", "station/rqplaylist"]);
 const docMemo = new Map(); // path -> { at, raw } — raw is the stored JSON string, or null
 const rqMemo = { at: 0, rows: null }; // D1 READ FIX: listener-request rows, shared by the harvest + takePick (loader above onRequestGet)
-const libMemo = { at: 0, lib: null, byAsset: null }; // D1 READ FIX: the parsed track library (loader above onRequestGet)
+const libMemo = { at: 0, lib: null, byAsset: null, ver: -1 }; // D1 READ FIX: the parsed track library (loader above onRequestGet); ver = the site/tracks-version stamp it was built from (F3)
 async function readDoc(env, path) {
   if (DOC_MEMO_PATHS.has(path)) {
     const m = docMemo.get(path);
@@ -5571,12 +5571,25 @@ async function tvTick(env, S, now, origin, online) {
  * module's own writes and deletes invalidate the request rows at
  * once (writeDoc above, takePick below). */
 const LIB_TTL = 60000, RQ_TTL = 15000;
+/* D1 BURN FIX F3 (2026-11-07, AUDIT3): the library changed rarely next
+ * to the 12 s ping cadence, but the memo re-read the whole tracks
+ * collection every 60 s per isolate. The memo is now keyed on a version
+ * stamp (site/tracks-version, bumped by every path that writes a track
+ * doc — see bumpTracksVersion in lib/cf.js): when the TTL lapses the
+ * keeper reads the 1-row stamp and re-reads the library only when the
+ * version moved. A new track still becomes pickable within ~1 min of
+ * upload (the TTL window, same as today); a metadata-only change
+ * (bpm/key) also bumps the version, so the keeper never serves a stale
+ * track row. */
 async function loadLib(env, now) {
   if (libMemo.lib && now - libMemo.at < LIB_TTL) return libMemo;
+  let ver = 0;
+  try { const vr = await env.DB.prepare("select data from docs where path = ?").bind("site/tracks-version").first(); ver = (vr && JSON.parse(vr.data || "{}").v) || 0; } catch (_) { ver = 0; }
+  if (libMemo.lib && ver === libMemo.ver) { libMemo.at = now; return libMemo; }
   const { results } = await env.DB.prepare("select data from docs where coll = 'tracks'").all();
   const lib = (results || []).map((r) => { try { return JSON.parse(r.data); } catch (_) { return null; } })
     .filter((t) => t && t.assetId && +t.duration > 3 && !String(t.assetId).includes("supabase"));
-  libMemo.at = now; libMemo.lib = lib; libMemo.byAsset = new Map(lib.map((t) => [t.assetId, t]));
+  libMemo.at = now; libMemo.lib = lib; libMemo.byAsset = new Map(lib.map((t) => [t.assetId, t])); libMemo.ver = ver;
   return libMemo;
 }
 /* D1 MINIMISATION (2026-11-06): the requests collection grows by design
