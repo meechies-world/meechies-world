@@ -5956,12 +5956,28 @@ export async function onRequestGet({ request, env }) {
         // request slot under the screen): it plays as a video deck,
         // exactly like a queued video, so its picture takes the master
         // screen. Only with a known length — an unknown-length video
-        // could stall the unattended station, so that pick is NOT
-        // deleted here; it waits in the line for the live booth, whose
-        // player learns the length as it loads.
+        // could stall the unattended station.
         const yid = String(p.d.yt);
         if (/^[A-Za-z0-9_-]{11}$/.test(yid) && +p.d.dur > 0) ytItem = { src: "", yt: yid, title: p.d.title || "", cover: p.d.cover || ("https://i.ytimg.com/vi/" + yid + "/hqdefault.jpg"), dur: +p.d.dur };
-        else continue;
+        else {
+          /* D1 BURN FIX F2 (2026-11-07, AUDIT3): this pick can never
+           * play unattended — no usable file src, no archive id, and
+           * the video fails the gate (an id no player can load, or a
+           * length nobody knows). It used to sit in the waiting line
+           * forever, re-read from D1 on every loadRequests pass while
+           * the line behind it grew. It is now consumed exactly like
+           * a dead pick below: folded into the saved Listener
+           * Requests playlist first — the request itself is never
+           * lost, and the booth can still load it from the playlist,
+           * whose player learns the length as it loads — then
+           * deleted, so the line drains. If the fold fails the pick
+           * stays for a later pass, never deleted unsaved. Playable
+           * and pending picks are untouched: same picks, same order,
+           * same returns as before. */
+          try { await rqPlaylistAdd(env, [{ d: p.d, path: p.path }]); } catch (_) { continue; }
+          try { await env.DB.prepare("delete from docs where path = ?").bind(p.path).run(); await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", p.path, "requests", null, null, Date.now()).run(); rqMemo.at = 0; } catch (_) {}
+          continue;
+        }
       }
       if (!src && p.d.iaId) {
         try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.d.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { src = "https://archive.org/download/" + encodeURIComponent(p.d.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"); iaDur = +f.length || 0; } } catch (_) {}
