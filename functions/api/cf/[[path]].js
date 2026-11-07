@@ -170,7 +170,7 @@ async function auth(what, request, env) {
     // Google's full-page sign-in (no pop-up window): Google posts the sign-in back here as a form
     const f = await request.formData().catch(() => null);
     const cookie = (request.headers.get("cookie") || "").match(/(?:^|;\s*)g_csrf_token=([^;]+)/);
-    if (!f || !cookie || f.get("g_csrf_token") !== cookie[1]) return new Response("Sign-in expired. Go back and try again.", { status: 400 });
+    if (!f || !cookie || f.get("g_csrf_token") !== cookie[1]) return page("Sign-in expired. Go back and try again.", 400);
     body = { credential: f.get("credential") };
   } else if (request.method === "POST") body = await request.json().catch(() => ({}));
   if (what === "settings") return json({ google: GOOGLE_CLIENT_ID(env) || null, facebook: !!(env.FACEBOOK_APP_ID && env.FACEBOOK_APP_SECRET) });
@@ -201,9 +201,10 @@ async function auth(what, request, env) {
   if (what === "google" || what === "google-redirect") {
     const cid = GOOGLE_CLIENT_ID(env); if (!cid) return err("Google sign-in isn't set up yet.", 501);
     const g = await verifyGoogle(body.credential, cid);
-    if (!g) return what === "google-redirect" ? new Response("Google sign-in didn't work. Go back and try again.", { status: 401 }) : err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
-    const u = await linkProvider(env, "gsub:" + g.sub, String(g.email || "").toLowerCase(), g.name, g.picture);
-    const session = await newSession(env, u);
+    if (!g) return what === "google-redirect" ? page("Google sign-in didn't work. Go back and try again.", 401) : err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
+    let u, session;
+    try { u = await linkProvider(env, "gsub:" + g.sub, String(g.email || "").toLowerCase(), g.name, g.picture); session = await newSession(env, u); }
+    catch (e) { if (what === "google-redirect") return page("Sign-in hit a snag just now. Go back and try again in a little while.", 503); throw e; }
     if (what === "google-redirect") {
       return signedInPage(session);
     }
