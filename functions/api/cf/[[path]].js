@@ -1,5 +1,5 @@
 /* /api/cf/* — Meechie's World's own free sign-in + database (Cloudflare D1 + KV). See lib/cf.js for the rules. */
-import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, checkInsert, checkUpdate, hasProfilePhoto, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
+import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, bumpTracksVersion, checkInsert, checkUpdate, hasProfilePhoto, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
 
 // Google "Sign in with Google" client id (public; the Google Cloud project the site already uses)
 const GOOGLE_CLIENT_ID = (env) => env.GOOGLE_CLIENT_ID || "";
@@ -330,6 +330,17 @@ async function photoGate(env, coll, uid, admin) {
 const _qCache = new Map();
 function _qGet(k, ttl) { const e = _qCache.get(k); return e && Date.now() - e.at < ttl ? e.v : undefined; }
 function _qSet(k, v) { _qCache.set(k, { at: Date.now(), v }); return v; }
+/* D1 BURN FIX F1 (2026-11-07, AUDIT3): the expression index serving the
+ * elims leaderboard ORDER BY (see rest() below). Ensured lazily in the
+ * docs_requests_kind pattern: the CASE guard keeps a malformed doc from
+ * breaking creation, and a failure to create it is contained — the
+ * select still runs correctly, just unscanned. */
+let elimsIdxTried = false;
+async function ensureElimsIndex(env) {
+  if (elimsIdxTried) return; elimsIdxTried = true;
+  try { await env.DB.prepare("create index if not exists docs_elims on docs (coll, (case when json_valid(data) then json_extract(data, '$.elims') end))").run(); }
+  catch (_) { elimsIdxTried = false; }
+}
 
 async function rest(request, env) {
   const q = await request.json().catch(() => null);
@@ -351,7 +362,32 @@ async function rest(request, env) {
       let order = " order by created_at asc";
       if (q.order && q.order.col) {
         const m = /^data->([A-Za-z0-9_]{1,40})$/.exec(q.order.col), dir = q.order.asc === false ? "desc" : "asc";
-        if (m) order = ` order by json_extract(data, '$.${m[1]}') is null, json_extract(data, '$.${m[1]}') ${dir}`;
+        if (m) {
+          /* D1 BURN FIX F1 (2026-11-07, AUDIT3): ordering by a data field
+           * made SQLite scan + sort the whole collection on every read
+           * (ORDER BY json_extract cannot use docs_coll; the LIMIT caps
+           * only rows returned, so a page load examined whole collections).
+           * createdAt/joinedAt/at are stamped by the client at the same
+           * instant the server stamps created_at, so ordering by the
+           * indexed created_at column returns the same order while the
+           * index serves the read (LIMIT rows examined). addedAt is NOT
+           * translated: rn-sync stamps it with a synthetic release-order
+           * value (1700000000000 + i*1000), not the insert instant, so
+           * its order is the radio's release order and must stay — the
+           * tracks collection is ~150 rows, so leaving it scanned costs
+           * ~nothing. elims (a true ranking field, no same-instant
+           * column) keeps data ordering behind a json_valid CASE guard
+           * — the old form threw "malformed JSON" on a single bad doc —
+           * served by the docs_elims expression index (ensured below).
+           * Any other field keeps the old form. One known placement
+           * nuance, proved in the fix record: a doc missing the order
+           * field used to sort last and now sorts at its true
+           * chronological position; docs carrying the field keep their
+           * exact relative order. */
+          if (m[1] === "elims") { order = ` order by (case when json_valid(data) then json_extract(data, '$.elims') end) ${dir}`; await ensureElimsIndex(env); }
+          else if (["createdAt", "joinedAt", "at"].includes(m[1])) order = ` order by created_at ${dir}`;
+          else order = ` order by json_extract(data, '$.${m[1]}') is null, json_extract(data, '$.${m[1]}') ${dir}`;
+        }
         else if (["created_at", "updated_at", "path"].includes(q.order.col)) order = ` order by ${q.order.col} ${dir}`;
       }
       const { results } = await env.DB.prepare("select " + (cols.length ? cols.join(",") : "path,data") + " from docs" + W + order + " limit ?").bind(...args, limit).all();
@@ -369,10 +405,12 @@ async function rest(request, env) {
       r.data = await leadLock(env, path, r.data); /* mwLeadLock */
       r.data = await corpseGuard(env, path, r.data); /* mwCorpseGuard */
       const now = new Date().toISOString();
-      const res = await env.DB.batch([
+      const insStmts = [
         env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(r.data), now, now),
         change(env, "docs", path, coll),
-      ]);
+      ];
+      if (coll === "tracks") insStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+      const res = await env.DB.batch(insStmts);
       if (!res[0].meta.changes) return err("That already exists.", 409, "duplicate");
       if (Math.random() < 0.02) await env.DB.prepare("delete from changes where at < ?").bind(Date.now() - 864e5).run();
       return json({ data: null, error: null }, 201);
@@ -382,7 +420,9 @@ async function rest(request, env) {
       const row = await env.DB.prepare("select owner, coll from docs where path = ?").bind(path).first();
       if (!row) return json({ data: null, error: null });
       if (!uid || !((row.owner === uid && row.coll !== "members" && !SERVER_COLLS.includes(row.coll)) || (await isAdmin(env, uid)))) throw new RuleError("You can only delete your own.");
-      await env.DB.batch([env.DB.prepare("delete from docs where path = ?").bind(path), change(env, "docs", path, row.coll)]);
+      const delStmts = [env.DB.prepare("delete from docs where path = ?").bind(path), change(env, "docs", path, row.coll)];
+      if (row.coll === "tracks") delStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+      await env.DB.batch(delStmts);
       return json({ data: null, error: null });
     }
   }
@@ -460,7 +500,9 @@ async function rpc(request, env) {
       await photoGate(env, coll, uid, admin);
       let freshData = await leadLock(env, path, args.p_data); /* mwLeadLock */
       freshData = await corpseGuard(env, path, freshData); /* mwCorpseGuard */
-      await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)]);
+      const setStmts = [env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)];
+      if (coll === "tracks") setStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+      await env.DB.batch(setStmts);
       return json({ data: null, error: null });
     }
     /* DJ BATTLES gate (2026-10-29): while a battle is live, the battler on
@@ -487,7 +529,9 @@ async function rpc(request, env) {
     checkUpdate(row, next, uid, admin);
     next = await leadLock(env, path, next); /* mwLeadLock */
     next = await corpseGuard(env, path, next); /* mwCorpseGuard */
-    await env.DB.batch([env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(next), now, path), change(env, "docs", path, row.coll)]);
+    const updStmts = [env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(next), now, path), change(env, "docs", path, row.coll)];
+    if (path.startsWith("tracks/")) updStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+    await env.DB.batch(updStmts);
     return json({ data: null, error: null });
   }
   if (name === "bump_play") {
@@ -495,7 +539,25 @@ async function rpc(request, env) {
     if (!uid || !/^[A-Za-z0-9:_-]{1,80}$/.test(id)) return json({ data: null, error: null });
     const day = new Date().toISOString().slice(0, 10);
     const r = await env.DB.prepare("insert or ignore into plays_seen (uid, id, day) values (?,?,?)").bind(uid, id, day).run();
-    if (r.meta.changes) { await env.DB.prepare("insert into plays (id, n, updated_at) values (?, 1, ?) on conflict(id) do update set n = n + 1, updated_at = excluded.updated_at").bind(id, new Date().toISOString()).run(); _qCache.clear(); }
+    if (r.meta.changes) {
+      await env.DB.prepare("insert into plays (id, n, updated_at) values (?, 1, ?) on conflict(id) do update set n = n + 1, updated_at = excluded.updated_at").bind(id, new Date().toISOString()).run();
+      /* D1 BURN FIX F4 (2026-11-07, AUDIT3): the old code cleared the
+       * whole per-isolate memo here, wiping the counts memo too and
+       * forcing a fresh full plays scan on the next select. The payload
+       * after a bump is the same rows with this id's count +1, so update
+       * every cached plays table in place instead — and never touch the
+       * counts memo. A fresh scan returns rows in rowid order, so a new
+       * id (highest rowid) appends at the end — but only when the cached
+       * table is under its limit, since a full cached table would not
+       * have included it either. */
+      for (const [k, e] of _qCache) {
+        if (!k.startsWith("plays:")) continue;
+        const rows = e.v, lim = +k.slice(6) || 2000;
+        const row = rows.find((x) => x && x.id === id);
+        if (row) row.n = (+row.n || 0) + 1;
+        else if (rows.length < lim) rows.push({ id, n: 1 });
+      }
+    }
     return json({ data: null, error: null });
   }
   return err("Unknown action", 404, "not_found");
