@@ -78,7 +78,7 @@ export async function onRequestGet({ request }) {
     for (const it of mine) earlierTitles.add(it.title.trim().toLowerCase());
   }
   const body = JSON.stringify({ store: STORES[0], stores: STORES, products, updated: Date.now() });
-  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=120, s-maxage=120" } });
+  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=600, s-maxage=900" } });
   if (products.length) await cache.put(key, res.clone());
   return res;
 }
