@@ -39,7 +39,7 @@ export async function onRequestGet({ request }) {
     if (list.length < 250) break;
   }
   const body = JSON.stringify({ store: STORE, products: [...seen.values()], updated: Date.now() });
-  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=120, s-maxage=120" } });
+  const res = new Response(body, { headers: { "content-type": "application/json", "cache-control": "public, max-age=600, s-maxage=900" } });
   if (seen.size) await cache.put(key, res.clone());
   return res;
 }
