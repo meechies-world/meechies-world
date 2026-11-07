@@ -28,6 +28,8 @@ const SCHEMA = [
   "create table if not exists fans_creators (uid text primary key, status text not null default 'pending', name text, bio text, price_cents integer not null default 999, legal_name text, dob text, id_front text, id_selfie text, agreed_at integer, applied_at integer, reviewed_at integer, review_note text)",
   "create table if not exists fans_posts (id text primary key, creator text not null, caption text, media text not null, preview text, price_cents integer not null default 0, others integer not null default 0, status text not null default 'live', created_at integer not null)",
   "create index if not exists fans_posts_c on fans_posts (creator, created_at)",
+  "create index if not exists fans_posts_status on fans_posts (status, created_at)",
+  "create index if not exists fans_creators_status on fans_creators (status)",
   "create table if not exists fans_releases (id text primary key, post_id text not null, person_name text not null, dob text not null, id_key text not null, release_key text not null, at integer not null)",
   "create table if not exists fans_subs (fan text not null, creator text not null, until integer not null, primary key (fan, creator))",
   "create table if not exists fans_unlocks (fan text not null, post_id text not null, at integer not null, primary key (fan, post_id))",
@@ -36,6 +38,7 @@ const SCHEMA = [
   "create table if not exists fans_orders (id text primary key, uid text not null, pack text not null, tokens integer not null, cents integer not null, status text not null default 'open', at integer not null)",
   "create table if not exists fans_reports (id integer primary key autoincrement, post_id text not null, reporter text not null, reason text not null, details text, status text not null default 'open', at integer not null)",
   "create table if not exists fans_cashouts (id integer primary key autoincrement, uid text not null, cents integer not null, method text, handle text, status text not null default 'requested', at integer not null, paid_at integer)",
+  "create index if not exists fans_cashouts_uid_status on fans_cashouts (uid, status)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
