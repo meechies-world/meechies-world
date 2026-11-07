@@ -117,7 +117,6 @@
   async function readerOpen(id) {
     open = books.find((b) => b.id === id); if (!open) return;
     if (okBuy(open.buy) && !open.src) { buyPanel(open); return; }
-    if (!ME()) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to read Meechie's books."); return; }
     try { page = Math.min(open.pages - 1, +(localStorage.getItem("mw_bk_" + id) || 0)); } catch (_) { page = 0; }
     render();
   }
@@ -133,7 +132,7 @@
   }
   async function render() {
     if (!open) { shelf(); return; }
-    const who = (typeof members !== "undefined" && members[ME()]?.handle) || "Member";
+    const who = (typeof members !== "undefined" && members[ME()]?.handle) || (ME() ? "Member" : "Guest");
     const stamp = who + " · " + new Date().toLocaleDateString();
     root.innerHTML = `<div class="bk-reader bk-shield" id="bk-shield">
       <div class="bk-top"><button class="btn ghost sm" type="button" data-shelf="1">← Books</button><b>${E(open.title)}</b>
