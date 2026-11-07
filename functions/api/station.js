@@ -4728,7 +4728,7 @@ async function tvTick(env, S, now, origin, online) {
   if (!khuDoc || (+khuDoc.progV || 0) < TV_KHUTBAH_V) { khuDoc = tvSeedKhutbah(now); await writeDoc(env, "tv/khutbah", "tv", khuDoc); }
   const adhanDoc = await readDoc(env, "tv/adhan");
   let movies = await readDoc(env, "tv/movieblock");
-  if (!movies || !Array.isArray(movies.items) || !movies.items.length || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
+  if (!movies || !Array.isArray(movies.items) || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
   let insDoc = await readDoc(env, "tv/insert");
   if (!insDoc || (+insDoc.progV || 0) < TV_INSERT_V) { insDoc = tvSeedInsert(now); await writeDoc(env, "tv/insert", "tv", insDoc); }
   const newsDoc = await readDoc(env, "tv/news");

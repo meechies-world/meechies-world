@@ -71,7 +71,7 @@
     if (activeCard) { activeCard.classList.remove("on"); activeCard = null; }
   }
   function killYt() {
-    if (ytPlayer) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; }
+    if (ytPlayer) { try { ytPlayer.destroy(); } catch (e) {} ytPlayer = null; if (window.MW_videoSound) MW_videoSound.end(); }
     ytBox.innerHTML = '<div id="vod-ytmount"></div>';
     ytBox.hidden = true;
   }
@@ -173,6 +173,7 @@
         return;
       }
       killYt();
+      if (window.MW_videoSound) MW_videoSound.start();   // a YouTube iframe fires no media events, so radio-keep can't duck the radio for it
       ytBox.hidden = false;
       ytPlayer = new YT.Player("vod-ytmount", {
         width: "100%", height: "100%",
