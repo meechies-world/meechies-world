@@ -40,3 +40,5 @@ html.lux .gi{width:1.2em;height:1.2em;flex:none;display:inline-block;vertical-al
 #v-clips .clip-empty p{margin:0 auto;max-width:300px;font-size:15px;line-height:1.5}
 #v-clips .clip-empty .ce-go{justify-self:center;margin-top:14px;cursor:pointer;background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.04em;padding:13px 22px;border-radius:14px;box-shadow:0 6px 22px rgba(240,207,120,.3)}
 #v-clips .clips:has(.clip-empty)~.clip-add{opacity:0!important;pointer-events:none!important}
+/* bigger finger target for the small MW TV button on the master screen (no size or layout change) */
+#mn-pop{position:relative}#mn-pop::after{content:"";position:absolute;inset:-12px -8px}
