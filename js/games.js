@@ -460,7 +460,7 @@
     paintIdle();
   }
   async function load() {
-    if (!tok()) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">Sign in (or join free) to play for coins — win coins, gift them, and the people you gift earn real cash value.</p>`; return; }
+    if (!tok()) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">Sign in (or join free) to play for coins — win coins, gift them, and the people you gift earn real cash value.</p><p style="margin-top:12px"><button class="btn" type="button" data-auth="signup">Join free</button> <button class="btn ghost" type="button" data-auth="signin">Sign in</button></p>`; return; }
     const r = await api("games");
     if (!r.ok) { root.innerHTML = `<div class="cz-head"><h3>🎰 Coin Jackpot</h3></div><p class="cz-safe">${E(r.j.error || "The Jackpot couldn't load right now.")}</p>`; return; }
     const me = await api("me").catch(() => null);

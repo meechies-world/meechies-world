@@ -54,12 +54,11 @@
 
   /* ---------- page ---------- */
   function render() {
-    if (!ME()) { root.innerHTML = `<div class="empty"><h3>Sign in to go live or watch</h3><button class="btn" type="button" data-auth="signup" style="margin-top:12px">Join free</button></div>`; return; }
     const key = ME() + "|" + !!hosting + "|" + Object.keys(watching).join(",");
     if (key === shellKey && root.querySelector("#gl-list")) { paintList(); paintBattle(); return; }
     shellKey = key;
     root.innerHTML = `
-      <div class="gl-host-ctrl">${hosting ? `<button class="btn" type="button" id="gl-end" style="background:#e5484d;color:#fff">■ End my live</button><button class="btn ghost" type="button" id="gl-flip">🔄 Flip camera</button><button class="btn ghost" type="button" id="gl-battle">⚔️ Start a battle</button><span class="muted" id="gl-vc">0 watching</span><div style="flex-basis:100%;display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:4px"><label class="muted" style="display:flex;gap:6px;align-items:center">🎙️ Your voice <input type="range" id="gl-voice" min="0" max="1.5" step="0.05" value="${hosting.voiceVol ?? 1}" style="width:110px"></label><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gl-rad" ${hosting.radioOn ? "checked" : ""} style="width:auto"> 🎧 Station music on my stream</label><label class="muted" style="display:flex;gap:6px;align-items:center">🎵 Music for viewers <input type="range" id="gl-radvol" min="0" max="1" step="0.05" value="${hosting.radioVol ?? 0.7}" style="width:110px"></label><small class="muted">Your voice and the station, balanced by you — the music dips on its own while you talk.</small></div>` : `<input type="text" id="gl-title" maxlength="80" placeholder="What's your live about?" value="${E(titleDraft)}" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)"><button class="btn" type="button" id="gl-go" style="background:#e5484d;color:#fff">🎥 Go live</button>`}</div>
+      <div class="gl-host-ctrl">${hosting ? `<button class="btn" type="button" id="gl-end" style="background:#e5484d;color:#fff">■ End my live</button><button class="btn ghost" type="button" id="gl-flip">🔄 Flip camera</button><button class="btn ghost" type="button" id="gl-battle">⚔️ Start a battle</button><span class="muted" id="gl-vc">0 watching</span><div style="flex-basis:100%;display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:4px"><label class="muted" style="display:flex;gap:6px;align-items:center">🎙️ Your voice <input type="range" id="gl-voice" min="0" max="1.5" step="0.05" value="${hosting.voiceVol ?? 1}" style="width:110px"></label><label class="muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gl-rad" ${hosting.radioOn ? "checked" : ""} style="width:auto"> 🎧 Station music on my stream</label><label class="muted" style="display:flex;gap:6px;align-items:center">🎵 Music for viewers <input type="range" id="gl-radvol" min="0" max="1" step="0.05" value="${hosting.radioVol ?? 0.7}" style="width:110px"></label><small class="muted">Your voice and the station, balanced by you — the music dips on its own while you talk.</small></div>` : ME() ? `<input type="text" id="gl-title" maxlength="80" placeholder="What's your live about?" value="${E(titleDraft)}" style="flex:1;min-width:200px;background:var(--ink);border:1px solid var(--line);border-radius:12px;padding:11px;color:var(--text);font:16px var(--body)"><button class="btn" type="button" id="gl-go" style="background:#e5484d;color:#fff">🎥 Go live</button>` : `<span class="muted">👀 Watching is free — tap a live below to watch it here.</span><button class="btn" type="button" data-auth="signup">Join free to go live, chat & gift</button>`}</div>
       <div id="gl-status" class="muted" style="font-size:14px;${statusMsg ? "" : "display:none;"}padding:10px 12px;border:1px solid #e5484d;border-radius:12px;background:#1a0d0d;color:#ffd6d6">${E(statusMsg)}</div>
       <div class="gl-stage" id="gl-stage"></div>
       <div id="gl-battlebox"></div>
@@ -125,7 +124,7 @@
   }
 
   /* ---------- rooms ---------- */
-  async function joinRoom(id) { const lobby = await claude.use("room"); if (!lobby || !lobby.join) throw new Error("Sign in to use Live."); return lobby.join("lv-" + id); }
+  async function joinRoom(id) { const lobby = await claude.use("room", { guest: true }); if (!lobby || !lobby.join) throw new Error("Sign in to use Live."); return lobby.join("lv-" + id); }
   function wireChat(room, id) {
     room.on("chat", ({ data }) => { if (data && data.text) { chatLog.push({ room: id, uid: data.uid, text: String(data.text).slice(0, 150) }); chatLog = chatLog.slice(-200); paintChat(); } });
     room.on("gift", ({ data }) => { if (data && data.kind) { fly(id, data.kind); chatLog.push({ room: id, uid: data.uid, text: "sent " + (EMO[data.kind] || "🎁") }); paintChat(); paintBattle(); } });
@@ -451,7 +450,7 @@
   root.addEventListener("keydown", (e) => { if (e.target.id === "gl-title" && e.key === "Enter") { e.preventDefault(); goLive(); } });
   root.addEventListener("submit", (e) => {
     const f = e.target.closest("[data-chatform]"); if (!f) return; e.preventDefault();
-    const id = f.dataset.chatform, inp = f.querySelector("input"), text = inp.value.trim(); if (!text) return; inp.value = "";
+    const id = f.dataset.chatform, inp = f.querySelector("input"), text = inp.value.trim(); if (!text) return; if (!ME()) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to chat."); return; } inp.value = "";
     const r = id === ME() ? hosting && hosting.room : (watching[id] || {}).room; if (!r) return;
     r.emit("chat", { uid: ME(), text: text.slice(0, 150) }); chatLog.push({ room: id, uid: ME(), text }); paintChat();
   });
