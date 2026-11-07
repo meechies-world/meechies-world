@@ -3809,7 +3809,7 @@ const TV_FAMILY_START_MIN = 1200;   // 20:00 ET, every night
 const TV_FAMILY_FROM_MS = 1793840400000; // first airing: Wed 2026-11-04 20:00 ET — earlier windows never lay
 const TV_FAMILY_MIN_SEC = 2400;     // a real feature, not an episode-length piece
 const TV_FAMILY_MAX_SEC = 7200;     // at most ~120 min: the block ends by the 22:00 rerun window
-const TV_FAMILY_TITLE_KEYS = ["kung fu panda", "lion king", "karate kid", "the mask", "grinch", "ice age", "wild robot", "the wild", "the lost world", "giving thanks", "johnny test", "madeline"];
+const TV_FAMILY_TITLE_KEYS = ["kung fu panda", "lion king", "karate kid", "the mask", "grinch", "ice age", "wild robot", "the wild", "the lost world", "johnny test", "madeline"];
 function tvSeedFamilyTime(now) {
   return { progV: TV_FAMILY_V, on: true, startMinET: TV_FAMILY_START_MIN, bag: [], night: "", itemId: "", hist: [], updatedAt: now, by: "keeper-seed" };
 }
