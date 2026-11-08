@@ -399,6 +399,135 @@ async function aiDjPass(deps, S, now) {
 }
 /* AIDJ-END */
 
+/* WEBMIX-BEGIN — THE COLLABORATION WEB IN THE MAIN STATION MIX
+ * (owner, 2026-11-08: "Mix them into the main station with my music",
+ * plus the all-in ruling the same day: VEVO / label-channel artists
+ * count, with the basis recorded per artist in the pool report).
+ *
+ * The web: Deen Squad + ASAP Preach and everyone they make music
+ * with, out three hops — 115 artists / 872 tracks / 47.7 hours, every
+ * track verified to the house standard (official artist channel,
+ * official VEVO, or — for Bizzle — the artist's official label
+ * channel; oEmbed-verified; family-clean screen; the 7 flagged
+ * tracks never entered the pool). The pool is DATA, not code: it
+ * lives in the static /lifeline/radio-web-pool.json (the
+ * channel-pools.json pattern), so this lane reads ZERO D1 rows —
+ * the keeper fetches the asset through its own origin and memoizes
+ * it per isolate. Any failure (asset missing, disabled, malformed)
+ * closes the lane and the rotation falls through to the Archive
+ * pool / his bag exactly as before: a web failure can never stall
+ * or silence the station.
+ *
+ * Where it plays: the rotation tail only, in the "world" half of
+ * the mixAlt alternation. Listener picks, the schedule, Malik's own
+ * queue, AI stock, spots and the requests lane all keep their
+ * priority ahead of the tail, untouched. The cadence is set by the
+ * daypart (the owner daypart law transcribed in
+ * aiDjDefaultDayparts): inside the mixed daypart (12:00–21:00 ET)
+ * the web takes every world slot — about 50/50 with his bag across
+ * the tail. In the thematic dayparts — overnight trap (21:00–06:00)
+ * and the morning wake-up (06:00–12:00) — the alternation stretches
+ * to a three-step cycle (his, his, world), so the web takes about
+ * one alternation draw in three, a ~2:1 his:web mix that keeps each
+ * block's own flavor. The lane is live around the clock because the
+ * owner ruled it the same day (2026-11-08): "I dont want it 100
+ * percent me never" — no daypart of his station is ever all-his.
+ *
+ * Inside the web half, the draw is a hop-weighted no-repeat bag
+ * (S.webBag: an Efraimidis–Spirakis permutation of the pool, the
+ * rqWeightedOrder construction): seeds + hop 1 weigh 2x hop 2 and
+ * hop 3 weighs half of hop 2, so the closest circles surface first
+ * while the whole web still cycles without repeats. A per-artist
+ * cap (2 plays per rolling hour, S.webPlays) keeps any single act
+ * from taking over his station. Tracks already on a deck, in a
+ * queue, or in the station log are skipped for the cycle. Every
+ * web item rides the deck as a plain video item with a known
+ * duration — the same shape the queue / AI-stock branches already
+ * serve — so a failed embed is bounded by its duration and the
+ * rotation rolls on with no dead air. */
+const WEB_POOL_URL = "/lifeline/radio-web-pool.json";
+const WEB_POOL_TTL = 10 * 60e3; // static asset: re-read at most once per 10 min per isolate
+const WEB_MIX_START = 12 * 60, WEB_MIX_END = 21 * 60; // ET minutes — the mixed daypart (owner law)
+const WEB_HOP_W = [4, 4, 2, 1]; // hop weights: seeds + hop 1 at 2x hop 2; hop 3 at half of hop 2
+const WEB_ARTIST_CAP = 2; // max plays per web artist per rolling hour
+const WEB_CAP_WINDOW = 3600e3;
+const WEB_DUR_MIN = 45, WEB_DUR_MAX = 1200; // the unattended band (aiDjSurvivors precedent)
+const webMemo = { at: 0, failAt: 0, v: 0, entries: null };
+/* Cadence, not a gate (owner, 2026-11-08: "I dont want it 100
+   percent me never"): the lane never closes. Mode 2 — the mixed
+   daypart: the web takes every "world" slot of the mixAlt
+   alternation. Mode 1 — the thematic dayparts: the tail stretches
+   the alternation to his, his, world (~2:1 his:web). */
+function webMixMode(now) { const m = aiDjEasternMinutes(now); return m >= WEB_MIX_START && m < WEB_MIX_END ? 2 : 1; }
+function webWeightedOrder(entries, rand) {
+  const rnd = typeof rand === "function" ? rand : Math.random;
+  return (Array.isArray(entries) ? entries : []).map((e, i) => ({ i, k: -Math.log(1 - rnd()) / (WEB_HOP_W[Math.max(0, Math.min(3, +e.hop || 0))]) })).sort((a, b) => a.k - b.k).map((x) => x.i);
+}
+async function webLoadPool(origin, fetchFn, now) {
+  if (webMemo.entries && now - webMemo.at < WEB_POOL_TTL) return webMemo;
+  if (!webMemo.entries && webMemo.failAt && now - webMemo.failAt < WEB_POOL_TTL) return webMemo;
+  try {
+    const r = await fetchFn(String(origin || "") + WEB_POOL_URL, { cache: "no-store" });
+    if (!r || !r.ok) throw new Error("web pool fetch");
+    const j = await r.json();
+    if (!j || j.enabled === false || !Array.isArray(j.artists)) throw new Error("web pool shape");
+    const entries = [];
+    for (const a of j.artists) {
+      if (!a || typeof a.name !== "string" || !a.name) continue;
+      const hop = Math.max(0, Math.min(3, +a.hop || 0));
+      for (const t of (Array.isArray(a.tracks) ? a.tracks : [])) {
+        if (!t || !/^[A-Za-z0-9_-]{11}$/.test(String(t.yt || ""))) continue;
+        const dur = +t.dur || 0;
+        if (dur < WEB_DUR_MIN || dur > WEB_DUR_MAX) continue;
+        entries.push({ yt: String(t.yt), title: String(t.title || "").slice(0, 120), dur, artist: a.name, hop });
+      }
+    }
+    webMemo.at = now; webMemo.v = +j.v || 0; webMemo.entries = entries.length ? entries : null;
+    if (!webMemo.entries) webMemo.failAt = now;
+  } catch (_) { if (!webMemo.entries) webMemo.failAt = now; }
+  return webMemo;
+}
+/* One web draw for the rotation tail. Mutates only S.webBag /
+ * S.webBagV / S.webPlays on the shared doc (the tick's own write
+ * carries them, exactly like S.bag and S.rqBag); returns the deck
+ * item or null — null always means "fall through to the lanes that
+ * were there before", never an error worth surfacing. */
+async function webLaneItem(deps, S, now) {
+  const memo = await webLoadPool(deps && deps.origin, deps && deps.fetchFn, now);
+  const entries = memo.entries;
+  if (!entries || !entries.length) return null;
+  const plays = (Array.isArray(S.webPlays) ? S.webPlays : []).filter((p) => p && now - (+p.at || 0) < WEB_CAP_WINDOW);
+  const countOf = (a) => plays.reduce((n, p) => n + (p.a === a ? 1 : 0), 0);
+  const banned = new Set();
+  const addId = (v) => { if (v) banned.add(String(v)); };
+  for (const k of ["A", "B", "C", "D"]) addId(S[k] && S[k].yt);
+  if (Array.isArray(S.queue)) for (const it of S.queue) addId(it && it.yt);
+  if (Array.isArray(S.aiQ)) for (const it of S.aiQ) addId(it && it.yt);
+  if (Array.isArray(S.schedQ)) for (const it of S.schedQ) addId(it && it.yt);
+  const logTitles = new Set((S.log || []).map((x) => aiDjNorm(x && x.t)));
+  let bag = Array.isArray(S.webBag) ? S.webBag.filter((i) => entries[+i]) : [];
+  if (S.webBagV !== memo.v || !bag.length) bag = webWeightedOrder(entries, deps && deps.rand);
+  S.webBagV = memo.v;
+  const defer = [];
+  let picked = null;
+  while (bag.length) {
+    const ix = bag.shift();
+    const e = entries[ix];
+    if (!e) continue;
+    if (banned.has(e.yt)) continue; // on a deck or in a queue already: skip for this cycle
+    const nt = aiDjNorm(e.title);
+    if (nt && logTitles.has(nt)) continue; // just played (the station log): skip for this cycle
+    if (countOf(e.artist) >= WEB_ARTIST_CAP) { defer.push(ix); continue; } // capped: back of the bag, later draws retry
+    picked = e; break;
+  }
+  S.webBag = bag.concat(defer);
+  S.webPlays = plays;
+  if (!picked) return null;
+  S.webPlays = plays.concat([{ a: picked.artist, at: now }]);
+  return { src: "", yt: picked.yt, title: picked.title, cover: "https://i.ytimg.com/vi/" + picked.yt + "/hqdefault.jpg", dur: picked.dur };
+}
+/* WEBMIX-END */
+
 /* SELF-REVIEW-BEGIN — MEECHIE'S SELF-UPGRADE LOOP (Malik, 2026-11-03:
  * "I want him to be able to upgrade himself").
  *
@@ -6268,7 +6397,23 @@ export async function onRequestGet({ request, env }) {
     S.rqTail = (S.rqTail | 0) + 1;
     if (S.rqTail % 3 === 0) { const rqItem = await rqLaneItem(); if (rqItem) return rqItem; }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
-    if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
+    /* WEB MIX (owner, 2026-11-08, cadence revised the same day):
+       the "world" slot belongs to the collaboration web first,
+       around the clock (see the WEBMIX block above aiDjPass). In
+       the mixed daypart the mixAlt alternation stands as-is, so
+       the tail runs ~50/50 web:his. In the thematic dayparts the
+       alternation stretches to a three-step cycle (S.webAlt —
+       his, his, world) for a ~2:1 his:web mix: his word is "I
+       dont want it 100 percent me never", so no daypart is ever
+       all-his. A web draw that yields nothing falls through to
+       the Archive pool exactly as before, and any draw the cycle
+       gives to his bag falls through to bagPick below. */
+    let webWorld = S.mixAlt;
+    if (webMixMode(now) === 1) { S.webAlt = (S.webAlt | 0) + 1; webWorld = S.webAlt % 3 === 0; }
+    if (webWorld) {
+      const wi = await webLaneItem({ origin, fetchFn: fetch }, S, now); if (wi) return wi;
+      const pi = await poolItem(); if (pi) return pi;
+    }
     const t = await bagPick(avoidSrc);
     return { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 };
   };
