@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1794053598"></script>
-<meta name="mw-build" content="1794145488">
+<meta name="mw-build" content="1794150760">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -1230,7 +1230,17 @@ body[data-view="mwtv"].tw-immersive #tw-share{opacity:0!important;pointer-events
    every rule is gated on body[data-view="mwtv"] so no other view can
    ever be affected, and the class is removed the moment the view is
    left, so these selectors only ever bite on this page. */
-@media(orientation:landscape){#tw-stagebox{position:absolute;inset:0}#tw-stage{width:100dvw;height:100dvh;aspect-ratio:auto}}
+/* FRAME FIT (Fix #2D, 2026-11-08): in landscape the stage is ONE fitted
+   16/9 frame inside the viewport — never stretched to the viewport's own
+   flatter shape. Stretched, the poster underlay and the playing picture
+   sized independently by contain-fit, so on any program narrower than
+   the poster (Squishy is 3:2) the poster's gold side signs stuck out
+   past the picture and were sliced on both sides, and the frame's edges
+   ran to the screen edges (owner photo, 2026-11-07 19:46 EST). Fitted,
+   the picture renders at the exact same size as before; the poster
+   lives inside the same frame (see the .tvchan black-backing rule
+   below), and nothing reaches a screen edge except the frame itself. */
+@media(orientation:landscape){#tw-stagebox{position:absolute;inset:0}#tw-stage{width:min(100dvw,177.78dvh);height:auto;aspect-ratio:16/9}}
 body[data-view="mwtv"] #tw-bar,body[data-view="mwtv"] #tw-guide,body[data-view="mwtv"] #tw-progwrap,body[data-view="mwtv"] #tw-vchip,body[data-view="mwtv"] #tw-shell .mw-adbar,body[data-view="mwtv"] #tw-shell .mw-tvfill,body[data-view="mwtv"] #mx-fab,body[data-view="mwtv"] #mx-heads,body[data-view="mwtv"] #mw-fab{transition:opacity .35s ease}
 body[data-view="mwtv"].tw-immersive #tw-guide,body[data-view="mwtv"].tw-immersive #tw-progwrap,body[data-view="mwtv"].tw-immersive #tw-vchip,body[data-view="mwtv"].tw-immersive #tw-shell .mw-adbar,body[data-view="mwtv"].tw-immersive #tw-shell .mw-tvfill,body[data-view="mwtv"].tw-immersive #mx-fab,body[data-view="mwtv"].tw-immersive #mx-heads,body[data-view="mwtv"].tw-immersive #mw-fab{opacity:0!important;pointer-events:none!important;visibility:hidden}
 /* SOUND PILL EXEMPTION (2026-11-06, watcher faults 7/12/15/17/20): the
@@ -1281,19 +1291,37 @@ body[data-view="mwtv"].tw-sndcatch #tw-sndcatch{pointer-events:auto}
    underlay the channel players reveal over (PR #531). The mix and
    screen-video layers already hide the whole slate via .vs-on/.msv-on. */
 #tw-stage:has(> .tvchan.on) #tw-vstandby .tw-sb{display:none}
+/* FRAME FIT (Fix #2D): while a channel player is actually playing, the
+   channel layer paints black in the frame beside the picture, so a
+   program narrower than the frame (3:2, 4:3) gets clean station
+   pillarbox instead of the standby poster's half-cut side signs showing
+   beside it. Before the player reaches .playing the layer stays
+   transparent, so the poster underlay still covers loads exactly as
+   before (PR #531 never-blank behaviour unchanged). */
+#tw-stage .tvchan:has(.playing){background:#000}
 /* The screen ad bar rides the shell's bottom edge; the standby words
    and the guide/progress lines lift clear of it instead of sitting
    underneath it, and in landscape the deck chip parks above it too.
    (The house-ad bar only ever mounts inside #tw-shell.) */
 #tw-shell:has(> .mw-adbar) #tw-vstandby .tw-sb{padding-bottom:60px}
 #tw-shell:has(> .mw-adbar) #tw-guide{bottom:48px}
-#tw-shell:has(> .mw-adbar) #tw-progwrap{bottom:42px} #tw-shell:has(> .mw-adbar) #tw-stagebox{bottom:42px}@media(orientation:landscape){#tw-shell:has(> .mw-adbar) #tw-stage{height:calc(100dvh - 42px)}}@media(orientation:landscape) and (max-width:640px){#tw-shell:has(> .mw-adbar) #tw-stage{height:calc(100dvh - 104px)}}
+#tw-shell:has(> .mw-adbar) #tw-progwrap{bottom:42px} #tw-shell:has(> .mw-adbar) #tw-stagebox{bottom:42px}@media(orientation:landscape){#tw-shell:has(> .mw-adbar) #tw-stage{width:min(100dvw,calc(177.78dvh - 74.67px))}}@media(orientation:landscape) and (max-width:640px){#tw-shell:has(> .mw-adbar) #tw-stage{width:min(100dvw,calc(177.78dvh - 184.89px))}}
 @media(max-width:640px){#tw-shell:has(> .mw-adbar) #tw-vstandby .tw-sb{padding-bottom:118px}#tw-shell:has(> .mw-adbar) #tw-guide{bottom:116px}#tw-shell:has(> .mw-adbar) #tw-progwrap{bottom:104px}#tw-shell:has(> .mw-adbar) #tw-stagebox{bottom:104px}}
 @media(orientation:landscape){#tw-shell:has(> .mw-adbar) #tw-vchip{bottom:48px}}
 /* Portrait phones: the top bar stays ONE compact group — tighter
    padding and buttons so the row wraps shallow instead of stacking
    deep over the picture. */
 @media(max-width:640px){#tw-bar{padding:8px 10px;gap:5px}#tw-bar .btn{padding:5px 9px;font-size:12px}}
+/* FRAME FIT (Fix #2D): at laptop widths the top bar's fixed controls
+   (owner state: mark, LIVE pill, Guide, vote cluster, Share, the long
+   sound pill, Watch, fullscreen, Studio, On Demand, back link) sum
+   wider than the window — 1766px measured for the full row — so the
+   row's right end ran off the screen (owner photo 2026-11-07: the back
+   link gone entirely, On Demand cut). Same elements, same order, same
+   text: the row is tightened uniformly at laptop widths only, the same
+   treatment the <=640px rule above already gives phones, so the whole
+   bar fits inside the window. At 1920 the bar is exactly as before. */
+@media(min-width:641px) and (max-width:1790px){#tw-bar{gap:5px;padding:10px 8px}#tw-bar .btn{padding:6px 9px;font-size:11.5px;letter-spacing:.005em}#tw-bar .tw-mark{font-size:15px}}
 
   </style>
   <div id="tw-shell">
