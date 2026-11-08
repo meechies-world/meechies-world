@@ -38,6 +38,8 @@ const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, header
  * radio/dj (the booth's live state), tv/queue, tv/skip and
  * brain/commands (see the drain memo below). */
 const DOC_MEMO_TTL = 4000;
+const PRESENCE_TTL = 15000; // presence reads shared for 15 s per isolate (D1 read fix, 2026-11-08)
+const presenceMemo = { at: 0, counts: null };
 const DOC_MEMO_PATHS = new Set(["tv/channel", "tv/breakpool", "tv/premiere", "tv/rerun", "tv/familytime", "tv/comedyhour", "tv/movieblock", "tv/insert", "tv/news", "tv/localupdate", "tv/anchor", "tv/charnews", "tv/quarternews", "tv/votes", "tv/guardian", "tv/now", "brain/ytblock", "brain/tvwatch", "station/schedule", "station/rqplaylist"]);
 const docMemo = new Map(); // path -> { at, raw } — raw is the stored JSON string, or null
 const rqMemo = { at: 0, rows: null }; // D1 READ FIX: listener-request rows, shared by the harvest + takePick (loader above onRequestGet)
@@ -5948,14 +5950,25 @@ export async function onRequestGet({ request, env }) {
       } catch (_) {}
     }
     if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
+    // D1 READ FIX (Malik, 2026-11-08 "what if 100 people"): the prune and the three
+    // presence reads below each walk every live ping row, on every ping from every
+    // tab, so their cost grew with the square of the audience (100 people = ~3M rows
+    // an hour). They now run at most once per PRESENCE_TTL per isolate and every ping
+    // in between reuses the answer; the ping's own upsert above still lands every time.
+    if (!(presenceMemo.counts && now - presenceMemo.at < PRESENCE_TTL)) {
+    const pc = { online: 0, listening: 0, users: [], guestSince: 0 };
     await env.DB.prepare("delete from pings where at < ?").bind(now - 45000).run();
     const row = await env.DB.prepare("select count(*) as n, coalesce(sum(listening), 0) as l from pings where at > ?").bind(now - 35000).first();
-    if (row) { counts.online = row.n || 0; counts.listening = row.l || 0; }
+    if (row) { pc.online = row.n || 0; pc.listening = row.l || 0; }
     // who's online: signed-in members identify themselves on the ping, so every
     // counter on the site (header chip, Book strip, booth) reads this ONE list
-    counts.users = [];
-    try { const ur = await env.DB.prepare("select uid, name, max(at) as at, min(first) as since from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); counts.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "", since: r.since || 0 })); } catch (_) {}
-    try { const gr = await env.DB.prepare("select min(first) as f from pings where at > ? and (uid is null or uid = '')").bind(now - 35000).first(); counts.guestSince = (gr && gr.f) || 0; } catch (_) {}
+    try { const ur = await env.DB.prepare("select uid, name, max(at) as at, min(first) as since from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); pc.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "", since: r.since || 0 })); } catch (_) {}
+    try { const gr = await env.DB.prepare("select min(first) as f from pings where at > ? and (uid is null or uid = '')").bind(now - 35000).first(); pc.guestSince = (gr && gr.f) || 0; } catch (_) {}
+    presenceMemo.at = now; presenceMemo.counts = pc;
+    }
+    { const pc = presenceMemo.counts; counts.online = pc.online; counts.listening = pc.listening; counts.users = pc.users.slice(); counts.guestSince = pc.guestSince; }
+    // a brand-new arrival counts at once even inside a memo window
+    if (bellName && presenceMemo.at !== now) counts.online += 1;
     // ring the doorbell for the arrival spotted above — counts.online now
     // includes the person who just landed, which is the number the push
     // quotes. Fully wrapped: the ping answers the same whether or not the
