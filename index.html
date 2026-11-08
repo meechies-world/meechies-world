@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1794053598"></script>
-<meta name="mw-build" content="1794152435">
+<meta name="mw-build" content="1794152884">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -1191,7 +1191,18 @@ body[data-view="mwtv"]>header,body[data-view="mwtv"]>footer,body[data-view="mwtv
 .tw-sb-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 #tw-vstandby .tw-sb-logo{text-shadow:0 2px 18px rgba(0,0,0,.9)}
 #tw-vstandby .tw-sb{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:38px 20px 16px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.86))}
-#tw-bar{position:absolute;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,0));color:#f3ead2}
+/* TITLE STRIP (Fix #3, fault 114, 2026-11-08): the bar's backdrop used to
+   fade from .8 black to fully transparent INSIDE the bar's own height,
+   so wherever the fitted stage's top edge runs under the bar (any
+   viewport at or flatter than 16:9 — maximized laptop windows included)
+   the YouTube player's own title text, drawn at the top-left of the
+   player whenever its chrome is up, showed through the faded half and
+   interleaved with the station's mark and now-playing title. Same bar,
+   same elements, same text: the backdrop now stays at .92 or better
+   across the bar's whole height, so the station's strip owns its strip
+   and the player's title is never legible through it. The immersive
+   fade still takes the whole bar transparent as before. */
+#tw-bar{position:absolute;top:0;left:0;right:0;z-index:9;display:flex;align-items:center;gap:10px;padding:12px 14px;background:linear-gradient(180deg,rgba(0,0,0,.95),rgba(0,0,0,.92));color:#f3ead2}
 .tw-mark{font:800 17px Georgia,serif;letter-spacing:.05em;color:#f0cf78;white-space:nowrap}
 .tw-live{background:#e5484d;color:#fff;border-radius:999px;padding:3px 10px;font:800 11.5px var(--body,system-ui);letter-spacing:.08em;white-space:nowrap}
 .tw-live.mix{background:#241d10;color:#f0cf78;border:1px solid #8a6a2a}
@@ -2196,7 +2207,7 @@ body[data-view="mwtv"].tw-sndcatch #tw-sndcatch{pointer-events:auto}
 <script src="js/owner.js?v=1794053598"></script>
 <script src="js/messages.js?v=1794053598"></script>
 <script src="js/videos.js?v=1794053598"></script>
-<script src="js/dj.js?v=1794149731"></script>
+<script src="js/dj.js?v=1794152884"></script>
 <script src="js/live.js?v=1794053598"></script>
 <script src="js/friends.js?v=1794053598"></script>
 <script src="js/social.js?v=1794053598"></script>
