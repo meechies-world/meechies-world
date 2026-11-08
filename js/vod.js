@@ -51,6 +51,12 @@
   var curItem = null;      // the item on the player right now, if any
   var warmFor = null;      // next-part url the warmer should be holding
   var warmYield = false;   // player needs the connection (seek / starve)
+  var lastPos = 0;         // furthest position reached on the current part
+  var recTries = 0;        // stall/error recoveries spent on this part
+  var stallPos = -1;       // position where the current stall began (-1 = flowing)
+  var stallTimer = null;   // pending stall-recovery timer
+  var REC_MAX = 3;         // recoveries per part before moving on (the channel's budget)
+  var STALL_MS = 60000;    // no-progress budget before a stall counts as dead
 
   function fmt(s) {
     if (s == null || isNaN(s)) return "";
@@ -85,6 +91,7 @@
     killYt();
     curParts = []; curPart = 0; curItem = null;
     warmFor = null; warmYield = false;
+    lastPos = 0; recTries = 0; stallClear();
     if (partEl) partEl.textContent = "";
     if (idleEl) { idleEl.hidden = false; idleEl.style.display = ""; }
     clearActive();
@@ -99,6 +106,7 @@
   /* File items — empire.html playPart() in miniature. */
   function playPart(n) {
     curPart = n;
+    lastPos = 0; recTries = 0; stallClear();
     videoEl.src = curParts[n];
     if (partEl) partEl.textContent = curParts.length > 1
       ? "Part " + (n + 1) + " of " + curParts.length + " — the parts chain on their own."
@@ -138,10 +146,70 @@
     if (ahead >= 10) warmEl.src = warmFor;
   }
   videoEl.addEventListener("seeking", function () { warmYield = true; warmDrop(); });
-  videoEl.addEventListener("waiting", function () { warmYield = true; warmDrop(); });
-  videoEl.addEventListener("playing", function () { warmYield = false; warmMaybe(); });
+  videoEl.addEventListener("waiting", function () { warmYield = true; warmDrop(); stallArm(); });
+  videoEl.addEventListener("stalled", stallArm);
+  videoEl.addEventListener("playing", function () { warmYield = false; stallClear(); warmMaybe(); });
   videoEl.addEventListener("progress", warmMaybe);
-  videoEl.addEventListener("timeupdate", warmMaybe);
+  videoEl.addEventListener("timeupdate", function () {
+    if (videoEl.currentTime > lastPos) lastPos = videoEl.currentTime;
+    if (stallPos >= 0 && videoEl.currentTime > stallPos + 0.25) stallClear();
+    warmMaybe();
+  });
+
+  /* A mid-part failure used to be the end of the show. When the
+   * element hit a fatal error (or its fetch died mid-part) nothing
+   * in this file reacted: the picture froze on the last frame with
+   * no message and no way forward, and because the element sat in
+   * its error state — no seekable resource left — pressing play
+   * re-ran resource selection and restarted the part at 0:00. The
+   * channel player in js/dj.js survives the same failure by
+   * remounting at the viewer's position; this is the same shape for
+   * a viewer-picked player: reload the part and resume where it
+   * stopped, a few tries per part, then move on honestly. A stall
+   * gets the channel's 60s no-progress budget first (a slow start
+   * or a seek is not a death); an error is definitive and recovers
+   * at once. */
+  function stallArm() {
+    if (stallPos >= 0 || !curParts.length) return;
+    stallPos = Math.max(lastPos, videoEl.currentTime || 0);
+    stallTimer = setTimeout(function () {
+      stallTimer = null;
+      if (!curParts.length || videoEl.paused || videoEl.ended) return;
+      if ((videoEl.currentTime || 0) > stallPos + 0.25) return;  // it moved — not dead
+      vodRecover();
+    }, STALL_MS);
+  }
+  function stallClear() {
+    stallPos = -1;
+    if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
+  }
+  function vodRecover() {
+    if (!curParts.length || !curItem || curItem.kind === "yt") return;
+    if (!videoEl.getAttribute("src")) return;
+    stallClear();
+    if (recTries >= REC_MAX) { vodGiveUp(); return; }
+    recTries++;
+    var at = lastPos;
+    var src = curParts[curPart];
+    var resume = function () {
+      videoEl.removeEventListener("loadedmetadata", resume);
+      if (videoEl.getAttribute("src") !== src) return;   // a newer pick owns the player now
+      try { if (at > 0.05) videoEl.currentTime = at; } catch (e) {}
+      var p = videoEl.play(); if (p && p.catch) p.catch(function () {});
+    };
+    videoEl.addEventListener("loadedmetadata", resume);
+    warmYield = true; warmDrop();          // the recovery needs the wire to itself
+    videoEl.src = src;
+    try { videoEl.load(); } catch (e) {}
+  }
+  function vodGiveUp() {
+    if (curPart + 1 < curParts.length) { playPart(curPart + 1); return; }
+    try { videoEl.pause(); } catch (e) {}
+    curParts = [];                          // a re-tap of the title starts the pick fresh
+    warmFor = null; warmDrop();
+    if (partEl) partEl.textContent = "That part stopped early and couldn't be picked back up — tap the title to try it again.";
+  }
+  videoEl.addEventListener("error", vodRecover);
 
   /* YouTube items — the dj.js ytApi() loader shape, this bundle's own
    * promise cache (lazy bundles never share code with dj.js). */
