@@ -124,6 +124,29 @@ function ensurePingsSchema(env) {
 const RQPL_PATH = "station/rqplaylist", RQPL_CAP = 200, RQPL_SEEN = 400;
 let rqHvAt = 0;
 let tvTickAt = 0; // D1 READ FIX: per-isolate tvTick throttle stamp (see the call site in onRequestGet)
+/* F6-MITIGATED (Malik, 2026-11-07 19:02 ET: "Slow any thing down
+ * thats going to shut down my cloudflare"): the FULL tvTick pass —
+ * it re-reads ~21 docs and re-lays a ~2h window, and every decision
+ * it carries (news windows, quarter cadence, spot cadence, lays) is
+ * minute-scale — now runs at most once per TV_TICK_FULL_MS per
+ * isolate instead of on the old 5s gate. The actions that must stay
+ * fast (owner skip on tv/queue.skipAt, crowd skip on tv/skip,
+ * Guardian confirmations on tv/guardian) are watched by
+ * tvLightPending on the old 5s gate: those doors are single-doc
+ * reads (tv/queue + tv/skip deliberately unmemoized, tv/guardian a
+ * single memoized doc), and when one carries an unanswered action
+ * the light check pulls the FULL tick forward immediately — a skip
+ * or a confirmed-dead cut is still answered within ~5s, by the
+ * exact same tick code as before, never a second implementation.
+ * Nothing viewer-visible waits on the slower full cadence: the
+ * window is laid ~2h ahead, and the radio news fire window is
+ * 5 minutes wide at each quarter head. */
+const TV_TICK_FULL_MS = 60000;
+let tvLightAt = 0; // per-isolate light-check throttle stamp (5s gate)
+let tvLightSkipAt = 0; // newest tv/queue.skipAt this isolate has already pulled a tick for
+let tvLightCrowdAt = 0; // tv/skip filing stamp this isolate last pulled a tick for
+let tvLightGuardKey = ""; // last guardian fault key+hard-seat count this isolate pulled a tick for
+let tvLightEyesKey = ""; // last guardian eyes-batch tail this isolate pulled a tick for
 let selfRevCheckAt = 0; // SELF-REVIEW: per-isolate check throttle for the daily pass in the GET handler
 const rqKeyOf = (d) => (d && d.yt ? "yt:" + d.yt : d && d.src ? "s:" + d.src : d && d.iaId ? "ia:" + d.iaId : "");
 async function rqRecOf(d) {
@@ -4759,6 +4782,40 @@ function tvGuardHoles(segs, watermark) {
   return out;
 }
 /* MWTV-GUARDIAN-HELPERS-END */
+/* F6-MITIGATED light check (see TV_TICK_FULL_MS at the stamp
+ * declarations): read ONLY the three action docs and say whether
+ * one carries work the full tick must answer NOW. The stamps
+ * remember what this isolate already pulled a tick for, so a
+ * request the tick saw but left standing (a protected refusal, a
+ * crowd request naming another segment, a fault record awaiting
+ * more seats) never re-pulls on every check — new evidence (a
+ * newer skipAt, a new filing, a higher hard-seat count, a new
+ * eyes batch) is what pulls again. A rewind of tv/queue (doc
+ * replaced, skipAt smaller) resyncs the stamp down so a future
+ * skip can never be masked by a stale one. Failure-silent by
+ * contract: the caller treats a throw as "no". */
+async function tvLightPending(env, now) {
+  const qu = await readDoc(env, "tv/queue");
+  const skipAt = qu ? (+qu.skipAt || 0) : 0;
+  if (skipAt > tvLightSkipAt) { tvLightSkipAt = skipAt; return true; }
+  if (skipAt < tvLightSkipAt) tvLightSkipAt = skipAt;
+  const sk = await readDoc(env, "tv/skip");
+  if (sk && !sk.consumedAt && (+sk.at || 0) > 0 && now - (+sk.at || 0) < 180e3 && (+sk.at || 0) !== tvLightCrowdAt) { tvLightCrowdAt = +sk.at || 0; return true; }
+  const gd = await readDoc(env, "tv/guardian");
+  if (gd && typeof gd === "object" && !Array.isArray(gd)) {
+    if (Array.isArray(gd.eyes) && gd.eyes.length) {
+      const e = gd.eyes[gd.eyes.length - 1];
+      const ek = (e && e.segKey ? String(e.segKey) : "") + "@" + ((e && +e.at) || 0) + "#" + gd.eyes.length;
+      if (ek !== tvLightEyesKey) { tvLightEyesKey = ek; return true; }
+    }
+    const faults = gd.faults && typeof gd.faults === "object" ? gd.faults : {};
+    for (const k of Object.keys(faults)) {
+      const hs = tvGuardHardSeats(faults[k]);
+      if (hs >= TV_GUARD_CONFIRM_SEATS && k + ":" + hs !== tvLightGuardKey) { tvLightGuardKey = k + ":" + hs; return true; }
+    }
+  }
+  return false;
+}
 async function tvTick(env, S, now, origin, online) {
   let chan = await readDoc(env, "tv/channel");
   if (!chan || !Array.isArray(chan.items) || !chan.items.length || (+chan.progV || 0) < TV_PROGRAM_V) { chan = tvSeedChannel(now); await writeDoc(env, "tv/channel", "tv", chan); }
@@ -5815,7 +5872,17 @@ export async function onRequestGet({ request, env }) {
      the jitter the 12s ping cadence already carries. The ping
      itself is never throttled: presence, the booth stand-down and
      the rotation below run on every request, on fresh radio/dj. */
-  if (now - tvTickAt >= 5000) {
+  /* F6-MITIGATED (see TV_TICK_FULL_MS at the stamp declarations):
+     the full pass runs on the 60s stamp; on the old 5s gate between
+     full passes only the 3-doc light check runs, and a pending
+     skip / Guardian action pulls the full pass forward so it is
+     still answered within ~5s. */
+  let tvRunTick = now - tvTickAt >= TV_TICK_FULL_MS;
+  if (!tvRunTick && now - tvLightAt >= 5000) {
+    tvLightAt = now;
+    try { tvRunTick = await tvLightPending(env, now); } catch (_) { tvRunTick = false; }
+  }
+  if (tvRunTick) {
     tvTickAt = now;
     try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
   }
