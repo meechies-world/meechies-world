@@ -209,10 +209,8 @@
     const st = await camState();
     if (st === "granted") return;
     if (st === "denied") { permModal("denied"); return; }
-    // ask the phone right away; if it needs a tap first, show our pop-up with the big button
-    permModal("prompt");
-    // if they answer the browser's box after leaving Live, don't leave the Live pop-up over another page
-    requestCam(false).then(() => { const m = document.getElementById("gl-perm"); if (m && view.hidden && m.dataset.from === "live") m.hidden = true; });
+    // (2026-11-08, visual check: the card covered GO LIVE the moment the page opened) the camera is
+    // asked for when they tap Go live (goLive asks the phone itself); no card just for opening the page
   }
 
   /* ---------- hosting ---------- */
