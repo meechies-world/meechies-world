@@ -439,8 +439,8 @@ html.gated body>header,html.gated body>main,html.gated body>footer,html.gated .a
     try{ if(window.MW && MW.session && MW.session()) return true; }catch(_){}
     return /[?&#](code=|access_token=|type=recovery)/.test(location.href); }
   if(signedIn()) return;
-  setTimeout(function(){ if(signedIn() || window.MW_OUTAGE) return; /* signed in meanwhile, or sign-in is down: keep browsing */
-    var gate=function(){ if(signedIn() || window.MW_OUTAGE) return; document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true; };
+  setTimeout(function(){ if(signedIn() || window.MW_OUTAGE || (window.MW_OPENHOUSE && window.MW_OPENHOUSE.on)) return; /* signed in meanwhile, or sign-in is down: keep browsing */
+    var gate=function(){ if(signedIn() || window.MW_OUTAGE || (window.MW_OPENHOUSE && window.MW_OPENHOUSE.on)) return; document.documentElement.classList.add("gated"); var g=document.getElementById("gate"); if(g) g.hidden=false; var e=document.getElementById("enter"); if(e) e.hidden=true; };
     /* MW TV is a viewing channel: no sign-in wall while someone is watching it.
        If the 30 minutes run out on the channel, the wall waits and lands the
        moment they step back into the site proper. */
@@ -2152,11 +2152,11 @@ body[data-view="mwtv"].tw-sndcatch #tw-sndcatch{pointer-events:auto}
 <div class="toast" id="toast" hidden></div>
 
 <script src="js/config.js?v=1794053598"></script>
-<script src="js/outage.js?v=1794053598"></script>
+<script src="js/outage.js?v=1794149731"></script>
 <script src="js/float-layout.js?v=1794053598"></script>
-<script src="js/cf-client.js?v=1794053598"></script>
+<script src="js/cf-client.js?v=1794149731"></script>
 <script src="js/platform.js?v=1794089871"></script>
-<script src="js/app-core.js?v=1794142476"></script>
+<script src="js/app-core.js?v=1794149731"></script>
 <script>
 /* FIRST PAINT FOLLOWS THE LINK, part 2: go() ran inside app-core and set
  * the real hidden flags for the linked view, so the head pin has done
@@ -2168,7 +2168,7 @@ body[data-view="mwtv"].tw-sndcatch #tw-sndcatch{pointer-events:auto}
 <script src="js/owner.js?v=1794053598"></script>
 <script src="js/messages.js?v=1794053598"></script>
 <script src="js/videos.js?v=1794053598"></script>
-<script src="js/dj.js?v=1794111779"></script>
+<script src="js/dj.js?v=1794149731"></script>
 <script src="js/live.js?v=1794053598"></script>
 <script src="js/friends.js?v=1794053598"></script>
 <script src="js/social.js?v=1794053598"></script>
