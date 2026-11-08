@@ -38,8 +38,12 @@ const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, header
  * radio/dj (the booth's live state), tv/queue, tv/skip and
  * brain/commands (see the drain memo below). */
 const DOC_MEMO_TTL = 4000;
-const PRESENCE_TTL = 15000; // presence reads shared for 15 s per isolate (D1 read fix, 2026-11-08)
-const presenceMemo = { at: 0, counts: null };
+/* PRESENCE RETIRED (2026-11-08, Malik: stop checking who is online): the ping-table
+ * presence that used to ride this endpoint is gone — no pings upsert, no roster reads,
+ * no online/listening/users/guestSince in the response, no doorbell. Presence is
+ * event-driven now: a member announces once at sign-in (js/cf-client.js, docs coll
+ * "presence") and every client builds its Door roster from the changes feed. This
+ * endpoint keeps only its radio/TV keeper duties. */
 const DOC_MEMO_PATHS = new Set(["tv/channel", "tv/breakpool", "tv/premiere", "tv/rerun", "tv/familytime", "tv/comedyhour", "tv/movieblock", "tv/insert", "tv/news", "tv/localupdate", "tv/anchor", "tv/charnews", "tv/quarternews", "tv/votes", "tv/guardian", "tv/now", "brain/ytblock", "brain/tvwatch", "station/schedule", "station/rqplaylist"]);
 const docMemo = new Map(); // path -> { at, raw } — raw is the stored JSON string, or null
 const rqMemo = { at: 0, rows: null }; // D1 READ FIX: listener-request rows, shared by the harvest + takePick (loader above onRequestGet)
@@ -89,26 +93,6 @@ async function writeDoc(env, path, coll, data) {
  * still creates them if missing, exactly as before. A failed pass is not
  * cached, so the next request retries — matching the old per-request
  * behaviour on the error path too. Zero behaviour change. */
-let pingsSchemaP = null;
-function ensurePingsSchema(env) {
-  if (!pingsSchemaP) {
-    pingsSchemaP = (async () => {
-      await env.DB.prepare("create table if not exists pings (cid text primary key, at integer, listening integer)").run();
-      try { await env.DB.prepare("alter table pings add column uid text").run(); } catch (_) {}
-      try { await env.DB.prepare("alter table pings add column name text").run(); } catch (_) {}
-      try { await env.DB.prepare("alter table pings add column first integer").run(); } catch (_) {}
-      /* D1 READ FIX: the ping path's five per-ping queries filter on
-         at / uid, which had no index — each one scanned the whole
-         pings table on every 12s ping from every tab. Indexed, they
-         touch only the live window's rows. */
-      try { await env.DB.prepare("create index if not exists pings_at on pings(at)").run(); } catch (_) {}
-      try { await env.DB.prepare("create index if not exists pings_uid on pings(uid, at)").run(); } catch (_) {}
-    })();
-    pingsSchemaP.catch(() => { pingsSchemaP = null; });
-  }
-  return pingsSchemaP;
-}
-
 /* LISTENER REQUESTS PLAYLIST (2026-10-30, owner: requests are SAVED
  * into a playlist that shuffles itself back into the rotation — "Im
  * building this to be automated on my side"). Every accepted song
@@ -414,135 +398,6 @@ async function aiDjPass(deps, S, now) {
   return { changed: true, events, note: "stocked " + survivors.length };
 }
 /* AIDJ-END */
-
-/* WEBMIX-BEGIN — THE COLLABORATION WEB IN THE MAIN STATION MIX
- * (owner, 2026-11-08: "Mix them into the main station with my music",
- * plus the all-in ruling the same day: VEVO / label-channel artists
- * count, with the basis recorded per artist in the pool report).
- *
- * The web: Deen Squad + ASAP Preach and everyone they make music
- * with, out three hops — 115 artists / 872 tracks / 47.7 hours, every
- * track verified to the house standard (official artist channel,
- * official VEVO, or — for Bizzle — the artist's official label
- * channel; oEmbed-verified; family-clean screen; the 7 flagged
- * tracks never entered the pool). The pool is DATA, not code: it
- * lives in the static /lifeline/radio-web-pool.json (the
- * channel-pools.json pattern), so this lane reads ZERO D1 rows —
- * the keeper fetches the asset through its own origin and memoizes
- * it per isolate. Any failure (asset missing, disabled, malformed)
- * closes the lane and the rotation falls through to the Archive
- * pool / his bag exactly as before: a web failure can never stall
- * or silence the station.
- *
- * Where it plays: the rotation tail only, in the "world" half of
- * the mixAlt alternation. Listener picks, the schedule, Malik's own
- * queue, AI stock, spots and the requests lane all keep their
- * priority ahead of the tail, untouched. The cadence is set by the
- * daypart (the owner daypart law transcribed in
- * aiDjDefaultDayparts): inside the mixed daypart (12:00–21:00 ET)
- * the web takes every world slot — about 50/50 with his bag across
- * the tail. In the thematic dayparts — overnight trap (21:00–06:00)
- * and the morning wake-up (06:00–12:00) — the alternation stretches
- * to a three-step cycle (his, his, world), so the web takes about
- * one alternation draw in three, a ~2:1 his:web mix that keeps each
- * block's own flavor. The lane is live around the clock because the
- * owner ruled it the same day (2026-11-08): "I dont want it 100
- * percent me never" — no daypart of his station is ever all-his.
- *
- * Inside the web half, the draw is a hop-weighted no-repeat bag
- * (S.webBag: an Efraimidis–Spirakis permutation of the pool, the
- * rqWeightedOrder construction): seeds + hop 1 weigh 2x hop 2 and
- * hop 3 weighs half of hop 2, so the closest circles surface first
- * while the whole web still cycles without repeats. A per-artist
- * cap (2 plays per rolling hour, S.webPlays) keeps any single act
- * from taking over his station. Tracks already on a deck, in a
- * queue, or in the station log are skipped for the cycle. Every
- * web item rides the deck as a plain video item with a known
- * duration — the same shape the queue / AI-stock branches already
- * serve — so a failed embed is bounded by its duration and the
- * rotation rolls on with no dead air. */
-const WEB_POOL_URL = "/lifeline/radio-web-pool.json";
-const WEB_POOL_TTL = 10 * 60e3; // static asset: re-read at most once per 10 min per isolate
-const WEB_MIX_START = 12 * 60, WEB_MIX_END = 21 * 60; // ET minutes — the mixed daypart (owner law)
-const WEB_HOP_W = [4, 4, 2, 1]; // hop weights: seeds + hop 1 at 2x hop 2; hop 3 at half of hop 2
-const WEB_ARTIST_CAP = 2; // max plays per web artist per rolling hour
-const WEB_CAP_WINDOW = 3600e3;
-const WEB_DUR_MIN = 45, WEB_DUR_MAX = 1200; // the unattended band (aiDjSurvivors precedent)
-const webMemo = { at: 0, failAt: 0, v: 0, entries: null };
-/* Cadence, not a gate (owner, 2026-11-08: "I dont want it 100
-   percent me never"): the lane never closes. Mode 2 — the mixed
-   daypart: the web takes every "world" slot of the mixAlt
-   alternation. Mode 1 — the thematic dayparts: the tail stretches
-   the alternation to his, his, world (~2:1 his:web). */
-function webMixMode(now) { const m = aiDjEasternMinutes(now); return m >= WEB_MIX_START && m < WEB_MIX_END ? 2 : 1; }
-function webWeightedOrder(entries, rand) {
-  const rnd = typeof rand === "function" ? rand : Math.random;
-  return (Array.isArray(entries) ? entries : []).map((e, i) => ({ i, k: -Math.log(1 - rnd()) / (WEB_HOP_W[Math.max(0, Math.min(3, +e.hop || 0))]) })).sort((a, b) => a.k - b.k).map((x) => x.i);
-}
-async function webLoadPool(origin, fetchFn, now) {
-  if (webMemo.entries && now - webMemo.at < WEB_POOL_TTL) return webMemo;
-  if (!webMemo.entries && webMemo.failAt && now - webMemo.failAt < WEB_POOL_TTL) return webMemo;
-  try {
-    const r = await fetchFn(String(origin || "") + WEB_POOL_URL, { cache: "no-store" });
-    if (!r || !r.ok) throw new Error("web pool fetch");
-    const j = await r.json();
-    if (!j || j.enabled === false || !Array.isArray(j.artists)) throw new Error("web pool shape");
-    const entries = [];
-    for (const a of j.artists) {
-      if (!a || typeof a.name !== "string" || !a.name) continue;
-      const hop = Math.max(0, Math.min(3, +a.hop || 0));
-      for (const t of (Array.isArray(a.tracks) ? a.tracks : [])) {
-        if (!t || !/^[A-Za-z0-9_-]{11}$/.test(String(t.yt || ""))) continue;
-        const dur = +t.dur || 0;
-        if (dur < WEB_DUR_MIN || dur > WEB_DUR_MAX) continue;
-        entries.push({ yt: String(t.yt), title: String(t.title || "").slice(0, 120), dur, artist: a.name, hop });
-      }
-    }
-    webMemo.at = now; webMemo.v = +j.v || 0; webMemo.entries = entries.length ? entries : null;
-    if (!webMemo.entries) webMemo.failAt = now;
-  } catch (_) { if (!webMemo.entries) webMemo.failAt = now; }
-  return webMemo;
-}
-/* One web draw for the rotation tail. Mutates only S.webBag /
- * S.webBagV / S.webPlays on the shared doc (the tick's own write
- * carries them, exactly like S.bag and S.rqBag); returns the deck
- * item or null — null always means "fall through to the lanes that
- * were there before", never an error worth surfacing. */
-async function webLaneItem(deps, S, now) {
-  const memo = await webLoadPool(deps && deps.origin, deps && deps.fetchFn, now);
-  const entries = memo.entries;
-  if (!entries || !entries.length) return null;
-  const plays = (Array.isArray(S.webPlays) ? S.webPlays : []).filter((p) => p && now - (+p.at || 0) < WEB_CAP_WINDOW);
-  const countOf = (a) => plays.reduce((n, p) => n + (p.a === a ? 1 : 0), 0);
-  const banned = new Set();
-  const addId = (v) => { if (v) banned.add(String(v)); };
-  for (const k of ["A", "B", "C", "D"]) addId(S[k] && S[k].yt);
-  if (Array.isArray(S.queue)) for (const it of S.queue) addId(it && it.yt);
-  if (Array.isArray(S.aiQ)) for (const it of S.aiQ) addId(it && it.yt);
-  if (Array.isArray(S.schedQ)) for (const it of S.schedQ) addId(it && it.yt);
-  const logTitles = new Set((S.log || []).map((x) => aiDjNorm(x && x.t)));
-  let bag = Array.isArray(S.webBag) ? S.webBag.filter((i) => entries[+i]) : [];
-  if (S.webBagV !== memo.v || !bag.length) bag = webWeightedOrder(entries, deps && deps.rand);
-  S.webBagV = memo.v;
-  const defer = [];
-  let picked = null;
-  while (bag.length) {
-    const ix = bag.shift();
-    const e = entries[ix];
-    if (!e) continue;
-    if (banned.has(e.yt)) continue; // on a deck or in a queue already: skip for this cycle
-    const nt = aiDjNorm(e.title);
-    if (nt && logTitles.has(nt)) continue; // just played (the station log): skip for this cycle
-    if (countOf(e.artist) >= WEB_ARTIST_CAP) { defer.push(ix); continue; } // capped: back of the bag, later draws retry
-    picked = e; break;
-  }
-  S.webBag = bag.concat(defer);
-  S.webPlays = plays;
-  if (!picked) return null;
-  S.webPlays = plays.concat([{ a: picked.artist, at: now }]);
-  return { src: "", yt: picked.yt, title: picked.title, cover: "https://i.ytimg.com/vi/" + picked.yt + "/hqdefault.jpg", dur: picked.dur };
-}
-/* WEBMIX-END */
 
 /* SELF-REVIEW-BEGIN — MEECHIE'S SELF-UPGRADE LOOP (Malik, 2026-11-03:
  * "I want him to be able to upgrade himself").
@@ -1026,45 +881,9 @@ async function handsDrain(env, K) {
 /* HANDS-END */
 
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
-const BELL_WINDOW = 120000; // at most one doorbell push per two minutes
-/* The DOORBELL (owner, 2026-10-29): when the presence block below spots a
- * genuine new arrival, ring the owner's phones with a Web Push. The
- * subscriptions live in docs (coll "pushsubs"), written only by
- * /api/push/subscribe after it checks the owner session. The VAPID private
- * half never leaves the Pages secrets: VAPID_PRIVATE_KEY if it is ever set,
- * otherwise the VAPID_PRIVATE the message notifications already use — one
- * keypair serves the whole site (its public half is in js/push.js), because
- * a browser registration holds ONE push subscription and two keypairs
- * would make the doorbell and the message notifications fight over it.
- * The two-minute window is claimed in the site/doorbell doc BEFORE
- * sending, so a burst of arrivals lands as one ring; arrivals inside the
- * window are covered by the in-site cards and the 10-minute phone alert.
- * A subscription the push service reports gone (404/410) is pruned with
- * its changes row. Everything here is best-effort: the caller wraps the
- * call, and no failure in this function may ever break the station ping. */
-async function doorbell(env, name, online, now) {
-  const d = env.VAPID_PRIVATE_KEY || env.VAPID_PRIVATE;
-  if (!d) return;
-  const rows = await env.DB.prepare("select path, data from docs where coll = 'pushsubs'").all();
-  const subs = [];
-  for (const r of (rows.results || [])) { try { const s = JSON.parse(r.data); if (s && /^https:\/\//.test(s.endpoint || "") && s.keys && s.keys.p256dh && s.keys.auth) subs.push({ path: r.path, endpoint: s.endpoint, keys: s.keys }); } catch (_) {} }
-  if (!subs.length) return; // nobody to ring yet: leave the window unstamped
-  const state = await readDoc(env, "site/doorbell");
-  if (state && now - (+state.last || 0) < BELL_WINDOW) return;
-  await writeDoc(env, "site/doorbell", "site", { last: now });
-  const data = { title: "🚪 Meechie's World", body: name + " just came in — " + Math.max(1, online || 1) + " on now", url: "/", tag: "doorbell" };
-  await Promise.all(subs.map(async (s) => {
-    try {
-      const body = await encrypt(JSON.stringify(data), s.keys.p256dh, s.keys.auth);
-      const r = await fetch(s.endpoint, { method: "POST", headers: { authorization: await vapid(s.endpoint, d), "content-encoding": "aes128gcm", "content-type": "application/octet-stream", ttl: "86400", urgency: "high" }, body, signal: AbortSignal.timeout(6000) });
-      if (r.status === 404 || r.status === 410) {
-        await env.DB.prepare("delete from docs where path = ?").bind(s.path).run();
-        await env.DB.prepare("insert into changes (tbl, path, coll, a, b, at) values (?,?,?,?,?,?)").bind("docs", s.path, "pushsubs", null, null, Date.now()).run();
-      }
-    } catch (_) {}
-  }));
-}
-
+/* The DOORBELL retired with ping presence (2026-11-08): arrivals are announced
+ * by the sign-in itself now (event presence, js/cf-client.js) and land in the
+ * owner Door in-site; the push ring that rode the ping table is gone with it. */
 /* MWVMIXRESCUE-BEGIN */
 /* VMIX RESCUE (mwVmixRescue, 2026-10-29): the second deliberate keeper
  * exception, sibling to the ghost-share switch below. The keeper already
@@ -6050,62 +5869,11 @@ export async function onRequestGet({ request, env }) {
   if (!env.DB) return json({ ok: false, error: "not_ready" }, 503);
   const now = Date.now();
   const origin = new URL(request.url).origin;
-  // presence: every client pings this endpoint every ~12s, so a small ping table
-  // doubles as the site's online count — counts only, no identities are stored
-  const counts = { online: 0, listening: 0, guestSince: 0 };
-  try {
-    const u = new URL(request.url);
-    const cid = (u.searchParams.get("cid") || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
-    const lis = u.searchParams.get("l") === "1" ? 1 : 0;
-    const pu = (u.searchParams.get("u") || "").replace(/[^a-zA-Z0-9-]/g, "").slice(0, 40);
-    const pn = (u.searchParams.get("n") || "").slice(0, 40);
-    await ensurePingsSchema(env);
-    // DOORBELL arrival spotting, checked BEFORE the upsert below lands:
-    // a cid with no fresh ping row is someone landing right now. A member
-    // counts only when no other fresh ping already carries their uid (a
-    // second tab is not a second arrival); the owner never counts, signed
-    // in as himself or not — his own uid is the one thing the ping carries
-    // that he cannot be rung about.
-    let bellName = null;
-    if (cid) {
-      try {
-        const prev = await env.DB.prepare("select cid from pings where cid = ? and at > ?").bind(cid, now - 45000).first();
-        if (!prev) {
-          if (pu && pu !== OWNER_ID) {
-            const elsewhere = await env.DB.prepare("select cid from pings where uid = ? and at > ? limit 1").bind(pu, now - 35000).first();
-            if (!elsewhere) bellName = (pn || "A member").slice(0, 40);
-          } else if (!pu) bellName = "A guest";
-        }
-      } catch (_) {}
-    }
-    if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
-    // D1 READ FIX (Malik, 2026-11-08 "what if 100 people"): the prune and the three
-    // presence reads below each walk every live ping row, on every ping from every
-    // tab, so their cost grew with the square of the audience (100 people = ~3M rows
-    // an hour). They now run at most once per PRESENCE_TTL per isolate and every ping
-    // in between reuses the answer; the ping's own upsert above still lands every time.
-    if (!(presenceMemo.counts && now - presenceMemo.at < PRESENCE_TTL)) {
-    const pc = { online: 0, listening: 0, users: [], guestSince: 0 };
-    await env.DB.prepare("delete from pings where at < ?").bind(now - 45000).run();
-    const row = await env.DB.prepare("select count(*) as n, coalesce(sum(listening), 0) as l from pings where at > ?").bind(now - 35000).first();
-    if (row) { pc.online = row.n || 0; pc.listening = row.l || 0; }
-    // who's online: signed-in members identify themselves on the ping, so every
-    // counter on the site (header chip, Book strip, booth) reads this ONE list
-    try { const ur = await env.DB.prepare("select uid, name, max(at) as at, min(first) as since from pings where at > ? and uid is not null and uid != '' group by uid order by at desc limit 60").bind(now - 35000).all(); pc.users = (ur.results || []).map((r) => ({ uid: r.uid, name: r.name || "", since: r.since || 0 })); } catch (_) {}
-    try { const gr = await env.DB.prepare("select min(first) as f from pings where at > ? and (uid is null or uid = '')").bind(now - 35000).first(); pc.guestSince = (gr && gr.f) || 0; } catch (_) {}
-    presenceMemo.at = now; presenceMemo.counts = pc;
-    }
-    { const pc = presenceMemo.counts; counts.online = pc.online; counts.listening = pc.listening; counts.users = pc.users.slice(); counts.guestSince = pc.guestSince; }
-    // a brand-new arrival counts at once even inside a memo window
-    if (bellName && presenceMemo.at !== now) counts.online += 1;
-    // ring the doorbell for the arrival spotted above — counts.online now
-    // includes the person who just landed, which is the number the push
-    // quotes. Fully wrapped: the ping answers the same whether or not the
-    // ring goes through.
-    if (bellName) { try { await doorbell(env, bellName, counts.online, now); } catch (_) {} }
-  } catch (_) {}
+  // presence retired (2026-11-08): no ping table, no roster reads — see the
+  // PRESENCE RETIRED note at the top of this file. The keeper work below is
+  // unchanged and this response carries station state only.
   let S = await readDoc(env, "radio/dj");
-  if (!S) return json({ ok: true, mode: "empty", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+  if (!S) return json({ ok: true, mode: "empty", now });
   S.A = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.A || {});
   S.B = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.B || {});
   S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
@@ -6198,7 +5966,7 @@ export async function onRequestGet({ request, env }) {
   }
   if (tvRunTick) {
     tvTickAt = now;
-    try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
+    try { const tvd = await tvTick(env, S, now, origin, null); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
   }
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
@@ -6259,7 +6027,7 @@ export async function onRequestGet({ request, env }) {
      stay queued for the main drain below. Decks are never touched in
      this mode (startDeckItem stays null on purpose). */
   try { await handsDrain(env, { S, now, tvOnly: true, deps: { env, origin, readDoc, readTaste, tasteScore, cleanBrainEvent, fetchFn: fetch }, startDeckItem: null, cur: null, brainEvts: [] }); } catch (_) {}
-  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak && !tvNewsFire) return json({ ok: true, mode: "booth", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+  if (S.boothAt && now - S.boothAt < BOOTH_FRESH && !deadDeck && !silentBreak && !handBreak && !tvNewsFire) return json({ ok: true, mode: "booth", now });
   // VMIX RESCUE (mwVmixRescue, 2026-10-29): past this line the booth is
   // stale or a breaker fell through; the helper re-tests staleness itself
   // (a breaker fall-through with a fresh booth must never move the
@@ -6272,11 +6040,11 @@ export async function onRequestGet({ request, env }) {
   // Auto-DJ off is Malik's setting: the keeper stays out and the playlist rules.
   if (!S.autodj) {
     if (S.live && now - (S.updatedAt || 0) > 180000) { S.live = false; S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "playlist", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+    return json({ ok: true, mode: "playlist", now });
   }
 
   const { lib, byAsset } = await loadLib(env, now);
-  if (!lib.length) return json({ ok: true, mode: "empty-lib", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+  if (!lib.length) return json({ ok: true, mode: "empty-lib", now });
   const durOf = (deck) => { if (+deck.dur > 0) return +deck.dur; const t = lib.find((x) => deck.src && deck.src.includes(x.assetId)); return t ? +t.duration : 0; };
   const srcOf = (t) => origin + "/m/assets/" + t.assetId;
 
@@ -6473,8 +6241,8 @@ export async function onRequestGet({ request, env }) {
     if (tvSpotItem && !(S.boothAt && now - S.boothAt < BOOTH_FRESH)) {
       const sp = tvSpotItem; tvSpotItem = null;
       S.spotAt = now; S.spotLast = sp.spotId; changed = true;
-      // Sponsor radio plays count too (the pool doc's radio tally),
-      // with the same honest air-time online count.
+      // Sponsor radio plays count too (the pool doc's radio tally).
+      // (The air-time lastOnline stamp retired with presence counting, 2026-11-08.)
       if (String(sp.spotId || "").indexOf("spn-") === 0) {
         try {
           const p = await readDoc(env, "tv/breakpool");
@@ -6483,7 +6251,6 @@ export async function onRequestGet({ request, env }) {
             if (!it.tally || typeof it.tally !== "object") it.tally = { served: 0, radioServed: 0, lastAt: 0, lastOnline: 0, countedThrough: 0 };
             it.tally.radioServed = (+it.tally.radioServed || 0) + 1;
             it.tally.lastAt = now;
-            if (counts && counts.online != null) it.tally.lastOnline = counts.online;
             p.updatedAt = now; await writeDoc(env, "tv/breakpool", "tv", p);
           }
         } catch (_) {}
@@ -6501,23 +6268,7 @@ export async function onRequestGet({ request, env }) {
     S.rqTail = (S.rqTail | 0) + 1;
     if (S.rqTail % 3 === 0) { const rqItem = await rqLaneItem(); if (rqItem) return rqItem; }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
-    /* WEB MIX (owner, 2026-11-08, cadence revised the same day):
-       the "world" slot belongs to the collaboration web first,
-       around the clock (see the WEBMIX block above aiDjPass). In
-       the mixed daypart the mixAlt alternation stands as-is, so
-       the tail runs ~50/50 web:his. In the thematic dayparts the
-       alternation stretches to a three-step cycle (S.webAlt —
-       his, his, world) for a ~2:1 his:web mix: his word is "I
-       dont want it 100 percent me never", so no daypart is ever
-       all-his. A web draw that yields nothing falls through to
-       the Archive pool exactly as before, and any draw the cycle
-       gives to his bag falls through to bagPick below. */
-    let webWorld = S.mixAlt;
-    if (webMixMode(now) === 1) { S.webAlt = (S.webAlt | 0) + 1; webWorld = S.webAlt % 3 === 0; }
-    if (webWorld) {
-      const wi = await webLaneItem({ origin, fetchFn: fetch }, S, now); if (wi) return wi;
-      const pi = await poolItem(); if (pi) return pi;
-    }
+    if (S.mixAlt) { const pi = await poolItem(); if (pi) return pi; }
     const t = await bagPick(avoidSrc);
     return { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 };
   };
@@ -6542,7 +6293,7 @@ export async function onRequestGet({ request, env }) {
   for (const k of ["A", "B"]) { const dk = S[k]; if (dk && dk.playing) { const dur = durOf(dk) || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
     if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
-    return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+    return json({ ok: true, mode: "paused", now });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
   if (S.silentSince && anyPlayingSB) delete S.silentSince; // mwSilentBreak: a playing deck ends any silence episode
@@ -6689,7 +6440,7 @@ export async function onRequestGet({ request, env }) {
   if (brainEvts.length) { try { await recordBrainEvents(env, brainEvts); } catch (_) {} }
   if (seedPlays.length) { try { await selfSeedNote(env, null, seedPlays); } catch (_) {} }
   if (changed) { S.by = "keeper"; /* mwFlapFix: keeper writes carry their own stamp, so a booth tab never mistakes a rescue for its own save echo */ await writeDoc(env, "radio/dj", "radio", S); }
-  return json({ ok: true, mode: "autodj", changed, now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
+  return json({ ok: true, mode: "autodj", changed, now });
 }
 
 /* Guest song requests: the picker in js/dj.js first tries the member write; when

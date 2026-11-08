@@ -653,6 +653,21 @@ async function changesRows(env, since, uid) {
   const last = (top && top.s) || 0;
   if (since < 0 || since >= last) return json({ seq: last, rows: [] }); // first check just says where things are
   const { results } = await env.DB.prepare("select seq, tbl, path, coll from changes where seq > ? and (tbl <> 'dms' or a = ? or b = ?) order by seq limit 200").bind(since, uid, uid).all();
+  /* EVENT PRESENCE (2026-11-08): presence rows (docs coll "presence") carry their doc
+   * payload as pdata, so a client hearing the announce on this feed can build its
+   * roster with NO presence read of its own. One extra point query, only on pages
+   * that actually contain a presence row (the seconds after a sign-in or sign-out);
+   * a presence row whose doc is gone (the goodbye delete) gets pdata null. */
+  try {
+    const pp = results.filter((r) => r.tbl === "docs" && r.coll === "presence" && r.path);
+    if (pp.length) {
+      const paths = [...new Set(pp.map((r) => r.path))].slice(0, 60);
+      const { results: pdocs } = await env.DB.prepare("select path, data from docs where path in (" + paths.map(() => "?").join(",") + ")").bind(...paths).all();
+      const byPath = {};
+      for (const d of pdocs || []) { try { const p = JSON.parse(d.data || "{}"); byPath[d.path] = { uid: p.uid || null, name: p.name || "", at: +p.at || 0 }; } catch (_) {} }
+      for (const r of pp) r.pdata = byPath[r.path] || null;
+    }
+  } catch (_) {}
   return json({ seq: last, rows: results });
 }
 
