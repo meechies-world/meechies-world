@@ -55,3 +55,11 @@ html.lux .gi{width:1.2em;height:1.2em;flex:none;display:inline-block;vertical-al
  #feed .post-head .act[data-dm]{padding:6px 6px;font-size:12.5px}
  #feed .post-head .who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+/* visual check (owner, 2026-11-08 "nothing overlaying each other"): on computers the pinned left menu (240px) covered the left edge of the master screen band; the band now starts right of the menu whenever the menu is showing */
+@media (min-width:1100px){html:not(.appmode) body:not([data-view=radio]):not([data-view=clips]):not([data-view=world]):not([data-view=dj]):not(.dj-on):not(.dj-past) #dj-band{padding-left:248px;box-sizing:border-box}}
+/* phones: the band's side note was squeezed into a ~48px column and broke mid-word ("MEECHI / E'S"); keep the station name, drop the long note */
+@media (max-width:600px){.mn-chipcol .mn-chip-n{display:none!important}.mn-chipcol .mn-chip-t{word-break:normal!important;overflow-wrap:normal!important;hyphens:none;font-size:8.5px!important;letter-spacing:.02em;line-height:1.2}}
+/* phones: the welcome line ran into the screen edge */
+.soul-greet{padding-left:14px;padding-right:14px;box-sizing:border-box}
+/* MW TV top bar: with every button showing (members get more), the bar ran past the right edge and ON DEMAND / back were unclickable; let it wrap to a second row instead */
+#tw-bar{flex-wrap:wrap!important;row-gap:6px;max-width:100%;box-sizing:border-box}
