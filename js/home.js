@@ -115,7 +115,7 @@
 
   async function refresh() {
     if (!visible()) return;
-    if (Date.now() - lastFetch >= 20000) { lastFetch = Date.now(); await fetchState(); }
+    if (Date.now() - lastFetch >= 60000) { lastFetch = Date.now(); await fetchState(); }
     paintStrip();
     paintRail();
     fetchShop();
@@ -131,6 +131,6 @@
       if (fab) fab.click(); // the AI widget's own open path (its gold button)
     }
   });
-  setInterval(refresh, 20000);
+  setInterval(refresh, 60000);
   kick();
 })();
