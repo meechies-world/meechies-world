@@ -1,0 +1,5058 @@
+{
+ "v": 1,
+ "enabled": true,
+ "generated": "2026-11-08",
+ "source": "Radio collaboration web (Deen Squad x ASAP Preach), finalized all-in 2026-11-08. See ARTIST-WEB.md / WIRING.md.",
+ "artists": [
+  {
+   "name": "ASAP Preach",
+   "hop": 0,
+   "tracks": [
+    {
+     "yt": "w_O8R_2doPg",
+     "title": "ASAP Preach — The Light",
+     "dur": 171
+    },
+    {
+     "yt": "-mG7Vmzk4uA",
+     "title": "ASAP Preach — Tested",
+     "dur": 252
+    },
+    {
+     "yt": "VOpzm0cMYac",
+     "title": "ASAP Preach — City Boy",
+     "dur": 137
+    },
+    {
+     "yt": "OlujvM1HZGE",
+     "title": "ASAP Preach — Don't Let Me Go",
+     "dur": 168
+    },
+    {
+     "yt": "0qR2d7ap7us",
+     "title": "ASAP Preach — Let It Go",
+     "dur": 176
+    },
+    {
+     "yt": "tkjT4k1GwG8",
+     "title": "ASAP Preach — All Of Me",
+     "dur": 283
+    },
+    {
+     "yt": "QkToQPqFShs",
+     "title": "ASAP Preach — Owe You Praise",
+     "dur": 167
+    },
+    {
+     "yt": "Zz1hXWEHwvc",
+     "title": "ASAP Preach — Rose In The Road",
+     "dur": 176
+    },
+    {
+     "yt": "4SodIcKUNeQ",
+     "title": "ASAP Preach — FALL",
+     "dur": 194
+    },
+    {
+     "yt": "fIPZwghO_PA",
+     "title": "ASAP Preach — LIFE",
+     "dur": 187
+    },
+    {
+     "yt": "Ijap51EZGog",
+     "title": "ASAP Preach — PAIN",
+     "dur": 290
+    },
+    {
+     "yt": "tpuqRrHKLEU",
+     "title": "ASAP Preach — DRAPED",
+     "dur": 243
+    },
+    {
+     "yt": "rqtKnjB0_Aw",
+     "title": "ASAP Preach — FORGIVEN",
+     "dur": 244
+    },
+    {
+     "yt": "BQoTL5pQUn8",
+     "title": "ASAP Preach — Counterfeit",
+     "dur": 234
+    },
+    {
+     "yt": "i3Z-eC7jxjQ",
+     "title": "ASAP Preach — Get Right",
+     "dur": 185
+    },
+    {
+     "yt": "2r3Ji9eijtQ",
+     "title": "ASAP Preach — Lowest",
+     "dur": 219
+    },
+    {
+     "yt": "FBkcFMCj4Bg",
+     "title": "ASAP Preach — Crying Out",
+     "dur": 224
+    },
+    {
+     "yt": "jEW6ZiPVdFo",
+     "title": "ASAP Preach — Letting Go",
+     "dur": 192
+    },
+    {
+     "yt": "mV3a0Mc-Xl4",
+     "title": "ASAP Preach — Yahweh",
+     "dur": 149
+    },
+    {
+     "yt": "2VRTbR2jnmc",
+     "title": "ASAP Preach — God Made Muzic",
+     "dur": 382
+    }
+   ]
+  },
+  {
+   "name": "Deen Squad",
+   "hop": 0,
+   "tracks": [
+    {
+     "yt": "rvrA29B1pqk",
+     "title": "Deen Squad — Halal Boy (Slowed Down)",
+     "dur": 252
+    },
+    {
+     "yt": "mX4HbcMGgi4",
+     "title": "Deen Squad — RAMADAN",
+     "dur": 191
+    },
+    {
+     "yt": "CaVFOBzw8rc",
+     "title": "Deen Squad — COVER GIRL",
+     "dur": 276
+    },
+    {
+     "yt": "itXckkLebRE",
+     "title": "Deen Squad — RAMADAN KAREEM",
+     "dur": 211
+    },
+    {
+     "yt": "qBL5sLPznjs",
+     "title": "Deen Squad — NO GOD BUT YOU",
+     "dur": 173
+    },
+    {
+     "yt": "ONqqu_y6_sE",
+     "title": "Deen Squad — PAKISTANI",
+     "dur": 191
+    },
+    {
+     "yt": "w53EgDpHkZU",
+     "title": "Deen Squad — HALAL LOVIN",
+     "dur": 223
+    },
+    {
+     "yt": "XHV6WJD_1ps",
+     "title": "Deen Squad — HANDS OF ALLAH",
+     "dur": 190
+    },
+    {
+     "yt": "deFXDDAyqsQ",
+     "title": "Deen Squad — OOOUUU",
+     "dur": 175
+    },
+    {
+     "yt": "IzQ2TPCzm4o",
+     "title": "Deen Squad — ON MY DEEN",
+     "dur": 200
+    },
+    {
+     "yt": "5UsjjR2DOJc",
+     "title": "Deen Squad — MASJID",
+     "dur": 161
+    },
+    {
+     "yt": "Pf25t2dS5Nk",
+     "title": "Deen Squad — MECCA",
+     "dur": 214
+    },
+    {
+     "yt": "OKnHojaVSzg",
+     "title": "Deen Squad — PRAY IN PEACE",
+     "dur": 221
+    },
+    {
+     "yt": "ZYkUXgU_qBI",
+     "title": "Deen Squad — NO LIMIT",
+     "dur": 222
+    },
+    {
+     "yt": "S9CZmFyxVwQ",
+     "title": "Deen Squad — MUSLIM QUEEN",
+     "dur": 179
+    },
+    {
+     "yt": "DzGaxvPqoeo",
+     "title": "Deen Squad — DEEN STARS",
+     "dur": 209
+    },
+    {
+     "yt": "_HDK44cCbRE",
+     "title": "Deen Squad — MADINA",
+     "dur": 208
+    },
+    {
+     "yt": "uP5zLaVdECQ",
+     "title": "Deen Squad — MUSLIM MAN",
+     "dur": 219
+    },
+    {
+     "yt": "Vd6yzyWTWWg",
+     "title": "Deen Squad — BELIEVER",
+     "dur": 174
+    },
+    {
+     "yt": "Ff5pOBGLsJY",
+     "title": "Deen Squad — FRIDAY",
+     "dur": 208
+    },
+    {
+     "yt": "j82A1GyZqYw",
+     "title": "Deen Squad — JANNAH",
+     "dur": 191
+    },
+    {
+     "yt": "7bdoDTlGMLo",
+     "title": "Deen Squad — ALLAH'S PLAN",
+     "dur": 206
+    },
+    {
+     "yt": "F5c3LH33pIE",
+     "title": "Deen Squad — HALAL BOY",
+     "dur": 238
+    },
+    {
+     "yt": "ZR4bztPhc_U",
+     "title": "Deen Squad — LOOK ALIVE",
+     "dur": 186
+    }
+   ]
+  },
+  {
+   "name": "#HERO",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "i8g4C1hkSus",
+     "title": "#HERO — NOT AFRAID",
+     "dur": 216
+    },
+    {
+     "yt": "aw3msUsu1g0",
+     "title": "#HERO — Sumn",
+     "dur": 143
+    },
+    {
+     "yt": "d9EI2xNWl_4",
+     "title": "#HERO — Repent or Perish",
+     "dur": 198
+    },
+    {
+     "yt": "COjTwEC8MgQ",
+     "title": "#HERO — Billboard",
+     "dur": 223
+    },
+    {
+     "yt": "228RTNk_aEs",
+     "title": "#HERO — In The Name of Jesus",
+     "dur": 151
+    },
+    {
+     "yt": "yuomnVk0qFY",
+     "title": "#HERO — BIG GOD BIG CHAIN",
+     "dur": 248
+    },
+    {
+     "yt": "1_E6ek6q6Gs",
+     "title": "#HERO — Mercy",
+     "dur": 147
+    },
+    {
+     "yt": "YzbdSLIpsmQ",
+     "title": "#HERO — Set Apart",
+     "dur": 118
+    },
+    {
+     "yt": "372BCWs22w4",
+     "title": "#HERO — Brand New Name",
+     "dur": 193
+    },
+    {
+     "yt": "2XckUwAyVGQ",
+     "title": "#HERO — Dead Man",
+     "dur": 146
+    },
+    {
+     "yt": "od1r2XuACIg",
+     "title": "#HERO — Wake Up",
+     "dur": 156
+    },
+    {
+     "yt": "1KevZBcEefI",
+     "title": "#HERO — American Church",
+     "dur": 182
+    },
+    {
+     "yt": "fPdQGPC1UeM",
+     "title": "#HERO — Praise Yahweh",
+     "dur": 223
+    },
+    {
+     "yt": "5cZla5XkWxw",
+     "title": "#HERO — 1 Way",
+     "dur": 202
+    }
+   ]
+  },
+  {
+   "name": "Adrion Butler",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "0WW98XWRX18",
+     "title": "Adrion Butler — UGH UGH",
+     "dur": 591
+    },
+    {
+     "yt": "XNkHR_SzojQ",
+     "title": "Adrion Butler — Robotnic",
+     "dur": 215
+    },
+    {
+     "yt": "IeoG-HSG5vs",
+     "title": "Adrion Butler — What Was That",
+     "dur": 186
+    },
+    {
+     "yt": "zgXHeFOxuTQ",
+     "title": "Adrion Butler — Can't Tell Me Nothing",
+     "dur": 222
+    },
+    {
+     "yt": "xNpFJ8e9lBk",
+     "title": "Adrion Butler — On Time",
+     "dur": 314
+    },
+    {
+     "yt": "qT9UyREKkgc",
+     "title": "Adrion Butler — Day III",
+     "dur": 149
+    }
+   ]
+  },
+  {
+   "name": "Big Yeet",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "kFz_LmRijqA",
+     "title": "Big Yeet — Yahweh",
+     "dur": 117
+    },
+    {
+     "yt": "L0pzs3vsBNo",
+     "title": "Big Yeet — Nobody Knew",
+     "dur": 190
+    },
+    {
+     "yt": "N9APtatNCg0",
+     "title": "Big Yeet — Take Me Back",
+     "dur": 138
+    },
+    {
+     "yt": "0g72dWP2EVE",
+     "title": "Big Yeet — I Need Jesus",
+     "dur": 181
+    },
+    {
+     "yt": "ch6zgOXGAMk",
+     "title": "Big Yeet — Guard My Heart",
+     "dur": 151
+    },
+    {
+     "yt": "FKo3j2Lqg0g",
+     "title": "Big Yeet — Better Life",
+     "dur": 148
+    },
+    {
+     "yt": "MvqGsJYE4-c",
+     "title": "Big Yeet — My God",
+     "dur": 172
+    }
+   ]
+  },
+  {
+   "name": "Blizz",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "wRipoaIGw5o",
+     "title": "Blizz — Always",
+     "dur": 216
+    },
+    {
+     "yt": "Zo1lcSmsI9g",
+     "title": "Blizz — I Lie to Me",
+     "dur": 311
+    },
+    {
+     "yt": "uRNnm3qmjPY",
+     "title": "Blizz — Looking Up",
+     "dur": 271
+    },
+    {
+     "yt": "E-x8VMY3_F4",
+     "title": "Blizz — More Than Life",
+     "dur": 254
+    },
+    {
+     "yt": "umt5moaFY7k",
+     "title": "Blizz — Thin Line",
+     "dur": 246
+    },
+    {
+     "yt": "DeS2Fq8LPE4",
+     "title": "Blizz — You Still Love Me",
+     "dur": 219
+    },
+    {
+     "yt": "u6n7evj7dS4",
+     "title": "Blizz — When It Rains",
+     "dur": 352
+    }
+   ]
+  },
+  {
+   "name": "Brett Raio",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "GMVbovL033I",
+     "title": "Brett Raio — Freedom",
+     "dur": 178
+    },
+    {
+     "yt": "rUKnBSQvR6I",
+     "title": "Brett Raio — Leading My Way",
+     "dur": 197
+    },
+    {
+     "yt": "IDSYKC1EEq4",
+     "title": "Brett Raio — Scars",
+     "dur": 179
+    },
+    {
+     "yt": "ZLyO0KW9iIY",
+     "title": "Brett Raio — Slow Baby",
+     "dur": 198
+    },
+    {
+     "yt": "JGHc9Hsc1PE",
+     "title": "Brett Raio — Last Days",
+     "dur": 164
+    },
+    {
+     "yt": "wjc3r9PQpsw",
+     "title": "Brett Raio — Unleashed Ignite",
+     "dur": 151
+    }
+   ]
+  },
+  {
+   "name": "Brother Bo",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "_-GQtvMaRpg",
+     "title": "Brother Bo — On A Mission",
+     "dur": 282
+    },
+    {
+     "yt": "jfKVdPMVEOM",
+     "title": "Brother Bo — Love Letter",
+     "dur": 193
+    },
+    {
+     "yt": "yaLEoOhQS9Y",
+     "title": "Brother Bo — LOOK AT MY GOD",
+     "dur": 128
+    },
+    {
+     "yt": "SF8AnXZ5PRA",
+     "title": "Brother Bo — STILL GROWING",
+     "dur": 212
+    },
+    {
+     "yt": "lt__OjndSCE",
+     "title": "Brother Bo — Way Of The Lord",
+     "dur": 221
+    },
+    {
+     "yt": "FwiYFS4lDCc",
+     "title": "Brother Bo — NOT FORGOTTEN",
+     "dur": 251
+    },
+    {
+     "yt": "XliL8voy2ag",
+     "title": "Brother Bo — Want to see you",
+     "dur": 257
+    },
+    {
+     "yt": "2qEcXEn_HEA",
+     "title": "Brother Bo — Father Forgive 'Em",
+     "dur": 210
+    },
+    {
+     "yt": "PmKRuA5B-fo",
+     "title": "Brother Bo — By Your Spirit",
+     "dur": 186
+    },
+    {
+     "yt": "lXElKZ-3ywI",
+     "title": "Brother Bo — WIN SOULS",
+     "dur": 231
+    },
+    {
+     "yt": "5pnJbcNj-Pk",
+     "title": "Brother Bo — HOUSE OF BREAD",
+     "dur": 226
+    },
+    {
+     "yt": "uvSRMu3t1v8",
+     "title": "Brother Bo — Church",
+     "dur": 227
+    },
+    {
+     "yt": "CNUhnbqDsM4",
+     "title": "Brother Bo — Prodigal",
+     "dur": 237
+    },
+    {
+     "yt": "2zzn9gYtCjc",
+     "title": "Brother Bo — Fill Me Up",
+     "dur": 182
+    },
+    {
+     "yt": "6u8_aJZdqwA",
+     "title": "Brother Bo — Check Your Heart",
+     "dur": 212
+    },
+    {
+     "yt": "v4EwEP0TVgI",
+     "title": "Brother Bo — Aliens",
+     "dur": 209
+    },
+    {
+     "yt": "vgWma2puGpA",
+     "title": "Brother Bo — Narrow Road",
+     "dur": 181
+    },
+    {
+     "yt": "HZok7UW_HnI",
+     "title": "Brother Bo — Fallen Stars",
+     "dur": 203
+    }
+   ]
+  },
+  {
+   "name": "Bryann T",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "wc2UQKhgWmU",
+     "title": "Bryann T — Concrete Hymms",
+     "dur": 191
+    },
+    {
+     "yt": "wMDAB0TAU38",
+     "title": "Bryann T — With Me",
+     "dur": 228
+    },
+    {
+     "yt": "AjBk6oDBNeM",
+     "title": "Bryann T — Seeking Grace",
+     "dur": 188
+    },
+    {
+     "yt": "H852P3dpOIY",
+     "title": "Bryann T — Everything",
+     "dur": 266
+    },
+    {
+     "yt": "s3nKpAHOR-A",
+     "title": "Bryann T — Learn From This",
+     "dur": 254
+    },
+    {
+     "yt": "9en8d-FAR1U",
+     "title": "Bryann T — Free My Lil Brudda",
+     "dur": 257
+    },
+    {
+     "yt": "oDWRXS7XIC8",
+     "title": "Bryann T — Vent",
+     "dur": 324
+    },
+    {
+     "yt": "OuXaHI4DYv8",
+     "title": "Bryann T — Older & Wiser",
+     "dur": 292
+    },
+    {
+     "yt": "hHVJd8pZcDo",
+     "title": "Bryann T — Prayer Changes Everything",
+     "dur": 225
+    },
+    {
+     "yt": "91ZCIEGIGm0",
+     "title": "Bryann T — Struggle",
+     "dur": 296
+    }
+   ]
+  },
+  {
+   "name": "Jae Deen",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "sfHdWpEC8wc",
+     "title": "Jae Deen — Ramadan Fiesta",
+     "dur": 209
+    },
+    {
+     "yt": "qXFURc_ZDQY",
+     "title": "Jae Deen — MASHALLAH",
+     "dur": 221
+    },
+    {
+     "yt": "uvziq5W9WV4",
+     "title": "Jae Deen — WAX WALBA",
+     "dur": 217
+    },
+    {
+     "yt": "h7JZVZZn1HA",
+     "title": "Jae Deen — SOO SOCO",
+     "dur": 136
+    },
+    {
+     "yt": "dzMarqob2F4",
+     "title": "Jae Deen — HAYE HAYE",
+     "dur": 151
+    },
+    {
+     "yt": "TORSFKNOqwY",
+     "title": "Jae Deen — KAALAY YA XABIBTI",
+     "dur": 203
+    }
+   ]
+  },
+  {
+   "name": "Justo Chalaire",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "o1ErLuJCapo",
+     "title": "Justo Chalaire — Tell Em The Truth",
+     "dur": 184
+    },
+    {
+     "yt": "V3wPauytt0Y",
+     "title": "Justo Chalaire — Drop",
+     "dur": 176
+    },
+    {
+     "yt": "Od_xIfBlVzU",
+     "title": "Justo Chalaire — Who Is Jesus?",
+     "dur": 144
+    },
+    {
+     "yt": "r67zVRq5Efs",
+     "title": "Justo Chalaire — Look Where I Stand",
+     "dur": 149
+    },
+    {
+     "yt": "lnjgK70uUHk",
+     "title": "Justo Chalaire — Tryna Get It",
+     "dur": 195
+    }
+   ]
+  },
+  {
+   "name": "Jysa BP",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "KBX_89zw6Ys",
+     "title": "Jysa BP — Intermission",
+     "dur": 213
+    },
+    {
+     "yt": "gg_zRZIK74k",
+     "title": "Jysa BP — Adderrall and Prayers",
+     "dur": 146
+    },
+    {
+     "yt": "PGkyYgk45j0",
+     "title": "Jysa BP — Legacy",
+     "dur": 162
+    },
+    {
+     "yt": "NSD12MLXWO0",
+     "title": "Jysa BP — Halo",
+     "dur": 183
+    },
+    {
+     "yt": "TJrr-qrEYJk",
+     "title": "Jysa BP — There For You",
+     "dur": 158
+    },
+    {
+     "yt": "V4_IcgcKGR0",
+     "title": "Jysa BP — Way Out",
+     "dur": 239
+    },
+    {
+     "yt": "KpeLcRWxfS0",
+     "title": "Jysa BP — Let 'Em Know",
+     "dur": 218
+    }
+   ]
+  },
+  {
+   "name": "KHXLED",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "4PvizmgSUts",
+     "title": "KHXLED — Selfish Love",
+     "dur": 183
+    },
+    {
+     "yt": "rLJRIWBSBYg",
+     "title": "KHXLED — ONLY2U",
+     "dur": 206
+    },
+    {
+     "yt": "-h_qG1PmCgI",
+     "title": "KHXLED — DEAR BELOVED SON",
+     "dur": 177
+    },
+    {
+     "yt": "pFz9k2zB8po",
+     "title": "KHXLED — FREEDOM",
+     "dur": 169
+    },
+    {
+     "yt": "mEmAsgJN2hM",
+     "title": "KHXLED — HOMECOMING",
+     "dur": 109
+    },
+    {
+     "yt": "zgu5o2WUKgs",
+     "title": "KHXLED — NO WHITE GOD",
+     "dur": 121
+    },
+    {
+     "yt": "u6GHUwEzJww",
+     "title": "KHXLED — GOD FORBID",
+     "dur": 125
+    }
+   ]
+  },
+  {
+   "name": "Kamban",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "2s4W-zabkkc",
+     "title": "Kamban — On The Road",
+     "dur": 197
+    },
+    {
+     "yt": "ud2zs4bmmlQ",
+     "title": "Kamban — LUKE CAGE",
+     "dur": 158
+    },
+    {
+     "yt": "KCkmQ2QToHE",
+     "title": "Kamban — Marvelous Things",
+     "dur": 150
+    },
+    {
+     "yt": "fcw-3QZj3oQ",
+     "title": "Kamban — Rain Down",
+     "dur": 195
+    },
+    {
+     "yt": "ok4x1zHdy-Y",
+     "title": "Kamban — The Race",
+     "dur": 223
+    },
+    {
+     "yt": "NMkpAZMrFjs",
+     "title": "Kamban — Got to Go",
+     "dur": 255
+    },
+    {
+     "yt": "wgbNNXf-ywk",
+     "title": "Kamban — Covenant",
+     "dur": 238
+    }
+   ]
+  },
+  {
+   "name": "Karter Zaher",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "W0teY-RYBsw",
+     "title": "Karter Zaher — WE WON'T FORGET",
+     "dur": 186
+    },
+    {
+     "yt": "wLSYvUTMcZk",
+     "title": "Karter Zaher — PALESTINE WILL BE",
+     "dur": 154
+    },
+    {
+     "yt": "6NQp7TpRRfI",
+     "title": "Karter Zaher — MUZZY SAUCE",
+     "dur": 218
+    },
+    {
+     "yt": "uiOkS9_6RVk",
+     "title": "Karter Zaher — THATS HARAM",
+     "dur": 156
+    },
+    {
+     "yt": "vkojlkPgJ60",
+     "title": "Karter Zaher — Mecca Money",
+     "dur": 147
+    },
+    {
+     "yt": "vtS5GIsW73M",
+     "title": "Karter Zaher — Beirut",
+     "dur": 211
+    },
+    {
+     "yt": "XwkUI_3UO3I",
+     "title": "Karter Zaher — Say MashAllah",
+     "dur": 174
+    },
+    {
+     "yt": "FCZi86WEJj4",
+     "title": "Karter Zaher — You Can Be Awesome",
+     "dur": 212
+    },
+    {
+     "yt": "Y-VVcBIoo-k",
+     "title": "Karter Zaher — WHAT ARE YOUR INTENTIONS?",
+     "dur": 234
+    },
+    {
+     "yt": "9ptk6mKDXKw",
+     "title": "Karter Zaher — Who You Are",
+     "dur": 148
+    },
+    {
+     "yt": "uNerdm9Cwr8",
+     "title": "Karter Zaher — Hijabi Queen",
+     "dur": 277
+    },
+    {
+     "yt": "bYyfikVXraQ",
+     "title": "Karter Zaher — Convert for me",
+     "dur": 262
+    }
+   ]
+  },
+  {
+   "name": "Kurtis Hoppie",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "vY1yHFAj1XA",
+     "title": "Kurtis Hoppie — WHATCHUDOIN?",
+     "dur": 218
+    },
+    {
+     "yt": "KUvSCdSScDc",
+     "title": "Kurtis Hoppie — Sunflowers",
+     "dur": 196
+    },
+    {
+     "yt": "a00d2uCScbQ",
+     "title": "Kurtis Hoppie — MASTERPIECE",
+     "dur": 205
+    },
+    {
+     "yt": "-6mf14___F4",
+     "title": "Kurtis Hoppie — Problem Child",
+     "dur": 187
+    },
+    {
+     "yt": "qd_-fvIj0Ok",
+     "title": "Kurtis Hoppie — Eye of the Storm",
+     "dur": 202
+    },
+    {
+     "yt": "_sXOAezMUD0",
+     "title": "Kurtis Hoppie — Icy",
+     "dur": 207
+    },
+    {
+     "yt": "IP2LqMelfJk",
+     "title": "Kurtis Hoppie - The Fall (Official Video)",
+     "dur": 193
+    },
+    {
+     "yt": "D9ABZkTuHI8",
+     "title": "Kurtis Hoppie - Vegan Burgers (Official Video)",
+     "dur": 192
+    }
+   ]
+  },
+  {
+   "name": "Lil Baliil",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "jZ4LpOcyqCk",
+     "title": "Lil Baliil — Royal",
+     "dur": 177
+    },
+    {
+     "yt": "O6JMfIYtzlQ",
+     "title": "Lil Baliil — Bad Gal",
+     "dur": 207
+    },
+    {
+     "yt": "ZQV68YKbLpo",
+     "title": "Lil Baliil — ONE MORE NIGHT",
+     "dur": 175
+    },
+    {
+     "yt": "J4q23BwTaMs",
+     "title": "Lil Baliil — Kista",
+     "dur": 168
+    },
+    {
+     "yt": "CqSpPEUznO8",
+     "title": "Lil Baliil — LAST SONG",
+     "dur": 186
+    },
+    {
+     "yt": "65IYuoJTWo8",
+     "title": "Lil Baliil — THE BAG",
+     "dur": 220
+    },
+    {
+     "yt": "GYS0fuloJSI",
+     "title": "Lil Baliil — QURUXDIYO QOF AH",
+     "dur": 211
+    },
+    {
+     "yt": "VRDFZjiqiVo",
+     "title": "Lil Baliil — HAIWEEYDIIN",
+     "dur": 171
+    },
+    {
+     "yt": "5Q4IiUbipLg",
+     "title": "Lil Baliil — IF",
+     "dur": 205
+    }
+   ]
+  },
+  {
+   "name": "Marquese Saenz",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "n9KV1k7pt38",
+     "title": "Marquese Saenz — Valleys",
+     "dur": 396
+    },
+    {
+     "yt": "VU5FMglrY-I",
+     "title": "Marquese Saenz — Lifting Up Your Name",
+     "dur": 253
+    },
+    {
+     "yt": "PLr1sH6_eoQ",
+     "title": "Marquese Saenz — God's Realer",
+     "dur": 240
+    },
+    {
+     "yt": "GpU3TKME90Q",
+     "title": "Marquese Saenz — Send the Rain",
+     "dur": 228
+    },
+    {
+     "yt": "J8iYbDbDkZ4",
+     "title": "Marquese Saenz — Cleaning Out My Closet",
+     "dur": 350
+    },
+    {
+     "yt": "-bZEm7MsaX8",
+     "title": "Marquese Saenz — Not About It",
+     "dur": 180
+    }
+   ]
+  },
+  {
+   "name": "Nicky Gracious",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "BvCwf4wzAb4",
+     "title": "Nicky Gracious — 1st String",
+     "dur": 226
+    },
+    {
+     "yt": "-CrSes5jcuo",
+     "title": "Nicky Gracious — Everything",
+     "dur": 249
+    },
+    {
+     "yt": "tG1Yr9uG8vE",
+     "title": "Nicky Gracious — Oil Stay Drippin",
+     "dur": 258
+    },
+    {
+     "yt": "fRCDHrHn5Z8",
+     "title": "Nicky Gracious — Wack A Mole",
+     "dur": 194
+    },
+    {
+     "yt": "zFQEujDKhg8",
+     "title": "Nicky Gracious — Open Eyes",
+     "dur": 191
+    },
+    {
+     "yt": "Mez8TQBMPIM",
+     "title": "Nicky Gracious — Not Here Anymore",
+     "dur": 249
+    },
+    {
+     "yt": "exHY5XqOPpY",
+     "title": "Nicky Gracious — Get Up",
+     "dur": 165
+    },
+    {
+     "yt": "O6mJZerPVdY",
+     "title": "Nicky Gracious — What Type of Time You On?",
+     "dur": 223
+    },
+    {
+     "yt": "2XGusPC8nQo",
+     "title": "Nicky Gracious — Right Out The Gate",
+     "dur": 210
+    },
+    {
+     "yt": "H0CdqTGAJZ8",
+     "title": "Nicky Gracious — STUPID",
+     "dur": 274
+    },
+    {
+     "yt": "DhtAn777qY4",
+     "title": "Nicky Gracious — Sinner Saved",
+     "dur": 264
+    },
+    {
+     "yt": "ZMO8v6P__Co",
+     "title": "Nicky Gracious — If I Died",
+     "dur": 320
+    }
+   ]
+  },
+  {
+   "name": "Nino Salas",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "ubUz_5-JtFU",
+     "title": "Nino Salas — FOUND IN YOUR LOVE",
+     "dur": 186
+    },
+    {
+     "yt": "_5ClafdJtIM",
+     "title": "Nino Salas — IM GRATEFUL",
+     "dur": 237
+    },
+    {
+     "yt": "7peMsRUijSs",
+     "title": "Nino Salas — Blame Game",
+     "dur": 176
+    },
+    {
+     "yt": "KMcaZMKeO88",
+     "title": "Nino Salas — REMEMBER ME",
+     "dur": 172
+    },
+    {
+     "yt": "e5axizhiQvw",
+     "title": "Nino Salas — PAPER",
+     "dur": 144
+    },
+    {
+     "yt": "w8u6ReGlaN0",
+     "title": "Nino Salas — Pain",
+     "dur": 185
+    },
+    {
+     "yt": "vH4wz_aklkA",
+     "title": "Nino Salas — FIND MY WAY",
+     "dur": 201
+    },
+    {
+     "yt": "evF05yPveaA",
+     "title": "Nino Salas — STILL FREE",
+     "dur": 168
+    }
+   ]
+  },
+  {
+   "name": "REDEEMED",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "rSg1eyM-ELw",
+     "title": "REDEEMED — ECHOES",
+     "dur": 204
+    },
+    {
+     "yt": "jNS9esiPG74",
+     "title": "REDEEMED — Creation Is Groaning",
+     "dur": 213
+    },
+    {
+     "yt": "6Y8v1qP2PAw",
+     "title": "REDEEMED — I BELIEVE",
+     "dur": 168
+    },
+    {
+     "yt": "ONaSrJFx3EQ",
+     "title": "REDEEMED — BIG HOMIE",
+     "dur": 214
+    },
+    {
+     "yt": "9At_HJEmbr0",
+     "title": "REDEEMED — OFF THE BLOCK",
+     "dur": 231
+    },
+    {
+     "yt": "UlPwMyOzBRU",
+     "title": "REDEEMED — ACTION",
+     "dur": 233
+    },
+    {
+     "yt": "ZI3gAzTm3vg",
+     "title": "REDEEMED — ANOTHER MINUTE",
+     "dur": 230
+    },
+    {
+     "yt": "30XPWq-HoeA",
+     "title": "REDEEMED — Hear Me Now",
+     "dur": 180
+    },
+    {
+     "yt": "kQU7gHQVGsQ",
+     "title": "REDEEMED — 2 DA CHURCH",
+     "dur": 217
+    }
+   ]
+  },
+  {
+   "name": "REZUM",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "IwySCFXJIwc",
+     "title": "REZUM — Rock Bottom",
+     "dur": 194
+    },
+    {
+     "yt": "gcPVLVW9YVQ",
+     "title": "REZUM — Still With Me",
+     "dur": 227
+    },
+    {
+     "yt": "NLQkK554m9g",
+     "title": "REZUM — Get It Right",
+     "dur": 212
+    },
+    {
+     "yt": "IGkDrXZm2xY",
+     "title": "REZUM — I'm Sorry",
+     "dur": 230
+    },
+    {
+     "yt": "i3jzH2xEDJ8",
+     "title": "REZUM — Going Through The Motions",
+     "dur": 181
+    },
+    {
+     "yt": "OPgZBQSWPCI",
+     "title": "REZUM — FREE TONIGHT",
+     "dur": 176
+    },
+    {
+     "yt": "PyFtsN7YSas",
+     "title": "REZUM — Through The Flame",
+     "dur": 322
+    },
+    {
+     "yt": "Bc3VFmzgJzY",
+     "title": "REZUM — Landslide",
+     "dur": 170
+    },
+    {
+     "yt": "o82nbGqy4Tw",
+     "title": "REZUM — Bye Bye",
+     "dur": 206
+    },
+    {
+     "yt": "RP4cOof6hgY",
+     "title": "REZUM — He Knows What We Need",
+     "dur": 207
+    },
+    {
+     "yt": "Flv7d6cS9rc",
+     "title": "REZUM — Target On My Back",
+     "dur": 130
+    },
+    {
+     "yt": "_OT6a0c8Z6E",
+     "title": "REZUM — Running to God",
+     "dur": 231
+    },
+    {
+     "yt": "3m2hfm9ksZ8",
+     "title": "REZUM — Sanity",
+     "dur": 185
+    }
+   ]
+  },
+  {
+   "name": "SYL noiZ",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "CnKH2InvmrE",
+     "title": "SYL noiZ — Rain On The Window",
+     "dur": 230
+    },
+    {
+     "yt": "n9GUwDEeMAE",
+     "title": "SYL noiZ — Know You Lord",
+     "dur": 160
+    },
+    {
+     "yt": "31JG3lPHSbc",
+     "title": "SYL noiZ — 26",
+     "dur": 242
+    },
+    {
+     "yt": "eit0L5Lo5CY",
+     "title": "SYL noiZ — Legacy",
+     "dur": 224
+    }
+   ]
+  },
+  {
+   "name": "Tyson James",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "RuH_UcxAWKM",
+     "title": "Tyson James — Broken Hallelujah",
+     "dur": 150
+    },
+    {
+     "yt": "g9bCjy4AUeY",
+     "title": "Tyson James — 2A Heavy",
+     "dur": 181
+    },
+    {
+     "yt": "iMI5CGCP5uA",
+     "title": "Tyson James — Catch Me Listening",
+     "dur": 178
+    },
+    {
+     "yt": "tTeCblTCpk4",
+     "title": "Tyson James — Dangerous",
+     "dur": 217
+    },
+    {
+     "yt": "uPeACoLzH4w",
+     "title": "Tyson James — Pride is the Devil 2",
+     "dur": 186
+    },
+    {
+     "yt": "gh5cs-X7s0g",
+     "title": "Tyson James — Free",
+     "dur": 175
+    },
+    {
+     "yt": "SGojopSiEe0",
+     "title": "Tyson James — Co-Sign",
+     "dur": 109
+    },
+    {
+     "yt": "V2cWUqEy-Ik",
+     "title": "Tyson James — Pressure Makes Diamonds",
+     "dur": 169
+    },
+    {
+     "yt": "EkZWGwSvqGQ",
+     "title": "Tyson James — Fighting Myself",
+     "dur": 208
+    },
+    {
+     "yt": "toVoE4zDA4Q",
+     "title": "Tyson James — Never Sell My Soul",
+     "dur": 187
+    },
+    {
+     "yt": "gmvyT3MG6Ek",
+     "title": "Tyson James — Psalm 23",
+     "dur": 213
+    },
+    {
+     "yt": "6R4AsyF2GOM",
+     "title": "Tyson James — God Over Government",
+     "dur": 190
+    },
+    {
+     "yt": "S-TKnLiylmg",
+     "title": "Tyson James — True Colors",
+     "dur": 287
+    },
+    {
+     "yt": "K5Dan8ml_uE",
+     "title": "Tyson James — All by Design",
+     "dur": 195
+    },
+    {
+     "yt": "q0YolnMf6sU",
+     "title": "Tyson James — Big Mad",
+     "dur": 167
+    },
+    {
+     "yt": "TnxQGgmu-EM",
+     "title": "Tyson James — See it Clearly",
+     "dur": 183
+    },
+    {
+     "yt": "saidxWwDKBg",
+     "title": "Tyson James — Christian Rappers",
+     "dur": 199
+    },
+    {
+     "yt": "US8vglkDZQ0",
+     "title": "Tyson James — Send Me An Angel",
+     "dur": 253
+    },
+    {
+     "yt": "Z6Qnr42wjQ0",
+     "title": "Tyson James — Sodom Got Smoked",
+     "dur": 177
+    },
+    {
+     "yt": "bUGiMRSpkuQ",
+     "title": "Tyson James — Holy Rebellion",
+     "dur": 131
+    }
+   ]
+  },
+  {
+   "name": "Waheeb Nasan",
+   "hop": 1,
+   "tracks": [
+    {
+     "yt": "RnYjH1tXRE8",
+     "title": "Waheeb Nasan — Ceasefire",
+     "dur": 221
+    },
+    {
+     "yt": "4caP6u8xdlY",
+     "title": "Waheeb Nasan — A Free Palestine",
+     "dur": 200
+    },
+    {
+     "yt": "jqC72i6ACyw",
+     "title": "Waheeb Nasan — Is It Wrong",
+     "dur": 231
+    },
+    {
+     "yt": "PFOeri_TC-o",
+     "title": "Waheeb Nasan — Crickets",
+     "dur": 145
+    },
+    {
+     "yt": "cp8Hqaa4bQk",
+     "title": "Waheeb Nasan — Touchdown Palestine",
+     "dur": 193
+    },
+    {
+     "yt": "bfK2bpM7KMQ",
+     "title": "Waheeb Nasan — My Village",
+     "dur": 211
+    },
+    {
+     "yt": "XjayVG2FFGA",
+     "title": "Waheeb Nasan — Tawel Balek",
+     "dur": 251
+    },
+    {
+     "yt": "5-XzEv9UfyE",
+     "title": "Waheeb Nasan — Enough",
+     "dur": 143
+    },
+    {
+     "yt": "YY3g9HK5IW8",
+     "title": "Waheeb Nasan — I'm So Elite",
+     "dur": 203
+    },
+    {
+     "yt": "TnvRyQ2-1Do",
+     "title": "Waheeb Nasan — Backseat",
+     "dur": 240
+    },
+    {
+     "yt": "SlmRV06NPGM",
+     "title": "Waheeb Nasan — The Farthest Mosque",
+     "dur": 181
+    }
+   ]
+  },
+  {
+   "name": "A.Rob",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "TrFSsCSMdwY",
+     "title": "Long Way To Go (feat. Waheeb Nasan & Saud)",
+     "dur": 199
+    },
+    {
+     "yt": "u40EDlYQsoA",
+     "title": "SOUL - A.Rob & B.Wilks (Official Music Video)",
+     "dur": 188
+    },
+    {
+     "yt": "9ysgewR9v6c",
+     "title": "A.Rob & Michael Wilbur - Half Past Noon",
+     "dur": 156
+    },
+    {
+     "yt": "Aui93q9Ba3I",
+     "title": "GRATEFUL",
+     "dur": 150
+    }
+   ]
+  },
+  {
+   "name": "Ali Kulture",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "h5L8tGMf4fs",
+     "title": "Ali Kulture - DUNYA (Official Music Video)",
+     "dur": 204
+    },
+    {
+     "yt": "tYgrafV6OfU",
+     "title": "FREE PALESTINE | Ali Kulture | Guru Lahori | Tone Trump | Frenzo Harami | Byg Byrd",
+     "dur": 251
+    }
+   ]
+  },
+  {
+   "name": "Aubreyy",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "x9iuqS3qKmk",
+     "title": "Aubreyy-HOLY SPIRIT (OFFICIAL MUSIC VIDEO)",
+     "dur": 170
+    },
+    {
+     "yt": "gqlIkd3JzeQ",
+     "title": "THROUGH IT ALL - AUBREYY",
+     "dur": 215
+    },
+    {
+     "yt": "6ao_M5UMuhI",
+     "title": "AUBREYY-DON'T WASTE YOUR LIFE official music video",
+     "dur": 273
+    }
+   ]
+  },
+  {
+   "name": "B. Cody Shields",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "IMmHF2hXxYY",
+     "title": "B.Cody Shields - Let The Church Out (Official Music Video)",
+     "dur": 166
+    }
+   ]
+  },
+  {
+   "name": "Bizzle",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "q2jHeGsjacA",
+     "title": "Bizzle x Amore Jones - Date Night",
+     "dur": 211
+    },
+    {
+     "yt": "aeF7yFpdKlU",
+     "title": "Bizzle x Monster Tarver - Already Know",
+     "dur": 180
+    },
+    {
+     "yt": "_GLllDMe3jk",
+     "title": "Bizzle x Lil Biz - Already Know (Remix)",
+     "dur": 182
+    },
+    {
+     "yt": "_OehLamx4Vw",
+     "title": "Bizzle x Mike Teezy - Keep Ya Head Up",
+     "dur": 193
+    },
+    {
+     "yt": "UMSW8suM6vA",
+     "title": "Bizzle Feat. Lil Biz - Last Time (Official Music Video)",
+     "dur": 228
+    },
+    {
+     "yt": "3ZUROqPlH8Y",
+     "title": "Bizzle - Hit'em Up (Official Video)",
+     "dur": 241
+    }
+   ]
+  },
+  {
+   "name": "Brandon Trejo",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "Acpq7btRJuk",
+     "title": "PURPOSE IN THE PAIN II MV | LEGACY (BRANDON TREJO & RYANN T)",
+     "dur": 216
+    },
+    {
+     "yt": "jgzmkN5rsCU",
+     "title": "CAN'T EXPLAIN FT BRYANN T MV",
+     "dur": 204
+    },
+    {
+     "yt": "Tz200j3SZZI",
+     "title": "BREATH OF LIFE/ BETTER DAYS",
+     "dur": 317
+    },
+    {
+     "yt": "5wvrrPZe7Ik",
+     "title": "MAMA (BRANDON & RYANN TREJO JR. VERSION)",
+     "dur": 261
+    },
+    {
+     "yt": "MtDCAgMdUp8",
+     "title": "BOUT MY FATHER BUSINESS",
+     "dur": 157
+    }
+   ]
+  },
+  {
+   "name": "Bryson Gray",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "ZZ8orOFNezQ",
+     "title": "IT'S SIN - Bryson Gray x @AnavielTheServant",
+     "dur": 150
+    },
+    {
+     "yt": "QDdUEpSXrY4",
+     "title": "REPENT OR PERISH - Bryson Gray x @#HERO x @Nicky Gracious [Music Video]",
+     "dur": 198
+    },
+    {
+     "yt": "IW3X4yS_gFw",
+     "title": "Smoke For Everybody by Bryson Gray [Music Video]",
+     "dur": 219
+    },
+    {
+     "yt": "n3-Jb88kYbo",
+     "title": "Too Controversial by Bryson Gray & @Lighthouse [Music Video]",
+     "dur": 131
+    },
+    {
+     "yt": "ZUSK48OHpXw",
+     "title": "Bryson Gray x @Lighthousewis - Long Way (Music Video)",
+     "dur": 177
+    },
+    {
+     "yt": "AYgzi0fdTKU",
+     "title": "Bryson Gray - Set Me Free (Official Music Video)",
+     "dur": 171
+    },
+    {
+     "yt": "tdj8zbEn1l4",
+     "title": "Bryson Gray - Test Every Spirit [Official Music Video]",
+     "dur": 183
+    },
+    {
+     "yt": "gIHStk2dH8E",
+     "title": "Bryson Gray - Yah Says (Official Music Video)",
+     "dur": 185
+    },
+    {
+     "yt": "VkDzUCZEDRk",
+     "title": "Bryson Gray - 2 Peter (Official Music Video)",
+     "dur": 181
+    },
+    {
+     "yt": "nCYSQPtiZvw",
+     "title": "Bryson Gray - Child Of God (Official Music Video)",
+     "dur": 125
+    },
+    {
+     "yt": "cbjRskYSnn8",
+     "title": "Bryson Gray - Send Me (Official Music Video)",
+     "dur": 193
+    },
+    {
+     "yt": "EpcERBQ0DMM",
+     "title": "Bryson Gray - Did That (Official Music Video)",
+     "dur": 176
+    }
+   ]
+  },
+  {
+   "name": "Clean Slate",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "oq_otFJbegE",
+     "title": "Wash Me Down - Clean Slate X Kidd Reborn X Sane Da Gospel Rapper X Jimmy Hunt",
+     "dur": 269
+    },
+    {
+     "yt": "9zmVx0h0Pm4",
+     "title": "AND THEN WHAT - Clean Slate (Official Music Video)",
+     "dur": 239
+    },
+    {
+     "yt": "8dFi0w6hM-g",
+     "title": "\"Next Step\" - Clean Slate ft. Mallory Be. (Official Music Video)",
+     "dur": 236
+    },
+    {
+     "yt": "KsnBcd0GiEk",
+     "title": "I Thank Jesus - Clean Slate (Official Music Video)",
+     "dur": 219
+    },
+    {
+     "yt": "pynNxCzQLz8",
+     "title": "Trenches 2 - Clean Slate Ft. Nicky Gracious, Tommy Chapa, & SORIpm (Official Music Video)",
+     "dur": 272
+    },
+    {
+     "yt": "tWHoLP0b3-c",
+     "title": "Even If... - Clean Slate (Official Music Video)",
+     "dur": 274
+    },
+    {
+     "yt": "YsiA1VFWAnc",
+     "title": "\"Slaying Dragons\" - Clean Slate & Mallory Be. (Official Music Video)",
+     "dur": 269
+    },
+    {
+     "yt": "cioq4ZZEEVQ",
+     "title": "Clean Slate STROLLIN (Official Music Video)",
+     "dur": 210
+    },
+    {
+     "yt": "uV-ipmOzJmQ",
+     "title": "UNDERRATED - Clean Slate (official music video)",
+     "dur": 178
+    },
+    {
+     "yt": "STMpOCHh7JQ",
+     "title": "WORK - SORIpm X Clean Slate X Nicky Gracious (official music video)",
+     "dur": 214
+    },
+    {
+     "yt": "7lSYwZEx3PU",
+     "title": "ON GO - Clean Slate x Nicky Gracious x SORI (Official Music Video)",
+     "dur": 261
+    },
+    {
+     "yt": "qwcy65DvhEs",
+     "title": "For Too Long - Clean Slate x Nicky Gracious (Official Music Video)",
+     "dur": 321
+    },
+    {
+     "yt": "GC2MNtIXrT0",
+     "title": "\"Jace Favre\" - OFFICIAL MUSIC VIDEO",
+     "dur": 209
+    },
+    {
+     "yt": "jkIBFP0QaY8",
+     "title": "Stepping In My J’s - Clean Slate X @redeemedmuzic ( Official Music Video )",
+     "dur": 223
+    },
+    {
+     "yt": "XVXlw89OlQE",
+     "title": "Paradise - Clean Slate X @joenester9984 X @redeemedmuzic",
+     "dur": 289
+    },
+    {
+     "yt": "xaqyOZwqtDw",
+     "title": "LOVE IS THE CURE - Clean Slate ( Official Music Video )",
+     "dur": 207
+    }
+   ]
+  },
+  {
+   "name": "Cordell Paige",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "8OM9RuBEVZ0",
+     "title": "“Forgive” by Cordell Paige",
+     "dur": 260
+    },
+    {
+     "yt": "gjrTdaJvOPo",
+     "title": "Give Myself Away ft. @REZUM",
+     "dur": 194
+    },
+    {
+     "yt": "V12fe4c_vyc",
+     "title": "Cordell Paige - 356 Ft. Rezum",
+     "dur": 196
+    },
+    {
+     "yt": "r2Yx0ltV4Kg",
+     "title": "Cordell Paige - The Waiting Room Ft. Crystal Anderson",
+     "dur": 223
+    },
+    {
+     "yt": "RFotS1z01Hc",
+     "title": "Pain Away- Cordell Paige",
+     "dur": 181
+    },
+    {
+     "yt": "cajwTsekrpc",
+     "title": "Did It All Reprise Cordell Paige",
+     "dur": 183
+    },
+    {
+     "yt": "ewaw7fk6z0c",
+     "title": "“WHY” Gospel Rapper Cordell Paige",
+     "dur": 130
+    },
+    {
+     "yt": "jYKjZ0-zPkQ",
+     "title": "Who the Son sets free is truly free indeed!!!",
+     "dur": 197
+    }
+   ]
+  },
+  {
+   "name": "DJ Lostnfound",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "7yyw9VJETjA",
+     "title": "DJ LostNFound - Made It Out (ft Saint Jones & Terrance Lamar) [Official Music Video]",
+     "dur": 199
+    },
+    {
+     "yt": "tKHuCkaxEOs",
+     "title": "DJ LostNFound - Rising Ft. L. Dejuan & Jekasole [Official Music Video]",
+     "dur": 215
+    },
+    {
+     "yt": "VMZWrnpFC8w",
+     "title": "DJ LostNFound - Tunnel Remix [Official Music Video]",
+     "dur": 187
+    },
+    {
+     "yt": "acAkFXdcP6A",
+     "title": "DJ LostNFound - Tunnel ft. Justcallmedt, Kamban & J-Phish",
+     "dur": 190
+    },
+    {
+     "yt": "-ClHTJo7WJo",
+     "title": "DJ LostNFound - Foolish (feat. Battz, Stevie Rizo & Bumps INF)",
+     "dur": 188
+    },
+    {
+     "yt": "NfFXSgHqPH0",
+     "title": "DJ LostNFound - Saturday Morning Cartoons ft. JP KILLED IT & Ian Kenville",
+     "dur": 119
+    },
+    {
+     "yt": "dRiItEh874c",
+     "title": "DJ LostNFound & Solomon Headen - Easy",
+     "dur": 192
+    }
+   ]
+  },
+  {
+   "name": "DKG KIE",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "Se_O6R-JG5k",
+     "title": "DKG KIE - TEVIN'S STORY (OFFICIAL MUSIC VIDEO)",
+     "dur": 142
+    },
+    {
+     "yt": "JRJlMg2FQAA",
+     "title": "DKG KIE - CLAP YA HANDS (OFFICIAL MUSIC VIDEO)",
+     "dur": 125
+    },
+    {
+     "yt": "CkimwM6w6UY",
+     "title": "DKG KIE - ABC (OFFICIAL VIDEO)",
+     "dur": 172
+    },
+    {
+     "yt": "I_teFF9XjWY",
+     "title": "DKG KIE x EMANUELDAPROPHET - SMACKDOWN (OFFICIAL VIDEO)",
+     "dur": 169
+    },
+    {
+     "yt": "sGQKs9X_5sw",
+     "title": "DKG KIE - WHO DO YOU SERVE? (OFFICIAL MUSIC VIDEO)",
+     "dur": 156
+    },
+    {
+     "yt": "C88WsnUw5Bw",
+     "title": "DKG KIE - OUT DA GRAVE (OFFICIAL MUSIC VIDEO)",
+     "dur": 155
+    },
+    {
+     "yt": "_3MvkZVT-5k",
+     "title": "DKG KIE - WE WON (Official Video)",
+     "dur": 174
+    },
+    {
+     "yt": "N9RmgaSTrN0",
+     "title": "DKG KIE - LORD CALLIN (Official Video)",
+     "dur": 151
+    },
+    {
+     "yt": "FzOz8dVhk2Y",
+     "title": "DKG KIE - THIS SIDE (Official Music Video)",
+     "dur": 167
+    },
+    {
+     "yt": "pIH0bSr4rz8",
+     "title": "DKG KIE - LEAD EM (Official Video)",
+     "dur": 209
+    },
+    {
+     "yt": "LixKIRm-t8I",
+     "title": "DKG KIE - SHE BLESSED (Official Video)",
+     "dur": 170
+    },
+    {
+     "yt": "oECRzeQIDjU",
+     "title": "DKG KIE - WHERE YO BIBLE AT? (Official Music Video)",
+     "dur": 161
+    }
+   ]
+  },
+  {
+   "name": "DTG Rich",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "RMjzArg1OfE",
+     "title": "RED ALERT – DTG Rich | Christian Drill",
+     "dur": 146
+    },
+    {
+     "yt": "Z6pqeWCGKCA",
+     "title": "DTG Rich - NLT | ARP (Official Music Video)",
+     "dur": 154
+    },
+    {
+     "yt": "y6UYkJsd2zY",
+     "title": "ALL HAIL - DTG Rich | Holy Drill Anthem (Official Music Video)",
+     "dur": 161
+    },
+    {
+     "yt": "r8U4cIgpvkg",
+     "title": "DTG Rich – No Exposing Me (Official Music Video) ft. DTG Marv & DTG Kece",
+     "dur": 192
+    },
+    {
+     "yt": "wDYS42IUAdo",
+     "title": "Die Daily (official audio) - DTG Rich",
+     "dur": 184
+    },
+    {
+     "yt": "VCc4G5EH6rk",
+     "title": "Tremble Gang - DTG Rich ft. Baruch [Official Music Video]",
+     "dur": 161
+    }
+   ]
+  },
+  {
+   "name": "Drew Ava",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "5RdpKXjyM7c",
+     "title": "Drew Ava - HAND ON ME (feat. Outpour East & Brandon Trejo) [Official Video]",
+     "dur": 150
+    },
+    {
+     "yt": "j3GlwvcmnH4",
+     "title": "Drew Ava - Used To [Official Video]",
+     "dur": 151
+    },
+    {
+     "yt": "b7MrtVG8zwc",
+     "title": "Drew Ava - Alright (official video)",
+     "dur": 181
+    },
+    {
+     "yt": "_qUbqYy7_qg",
+     "title": "Yung B.A.R. Ft Drew Ava - You Say [Official Music Video]",
+     "dur": 280
+    }
+   ]
+  },
+  {
+   "name": "Essam",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "E-YclDzq_Wk",
+     "title": "Essam x Jae Deen - My People (Official Video)",
+     "dur": 211
+    },
+    {
+     "yt": "WvHuNbwHumU",
+     "title": "Essam - Wonder (Official Video)",
+     "dur": 206
+    },
+    {
+     "yt": "1_lV0iL4wF8",
+     "title": "Essam - No Love (Official Video)",
+     "dur": 172
+    },
+    {
+     "yt": "Pr2O2ZEpiK4",
+     "title": "MOROCCO - Essam (Official Video)",
+     "dur": 145
+    },
+    {
+     "yt": "W7qyAmxj-wA",
+     "title": "Essam - HERO (Official Video)",
+     "dur": 134
+    },
+    {
+     "yt": "4cVEtQH1HBk",
+     "title": "Essam - Famila (Official Video)",
+     "dur": 324
+    },
+    {
+     "yt": "AfgVKo9Tyxg",
+     "title": "Essam - Free (Official Video)",
+     "dur": 223
+    },
+    {
+     "yt": "JFN534KUCXI",
+     "title": "Essam - Free Palestine (Official Video)",
+     "dur": 225
+    },
+    {
+     "yt": "vi7o-rPhZCs",
+     "title": "Essam - Change (Official Video)",
+     "dur": 254
+    },
+    {
+     "yt": "5Ac5Vuw8lsc",
+     "title": "Faith (official video) - Essam",
+     "dur": 184
+    },
+    {
+     "yt": "PX4i75Bl5pk",
+     "title": "Essam - Living in a Tale",
+     "dur": 191
+    },
+    {
+     "yt": "H5RM8C7wCIE",
+     "title": "Essam x Zak YM x Akhi Abu - Eid Mubarak (Official Video)",
+     "dur": 287
+    }
+   ]
+  },
+  {
+   "name": "Hannah Barr",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "rgKun2e2g3Q",
+     "title": "Now - Hannah Barr",
+     "dur": 212
+    }
+   ]
+  },
+  {
+   "name": "Harris J",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "p0gXMig8esU",
+     "title": "Harris J - I Promise (Vocals Only) | Official Music Video",
+     "dur": 240
+    },
+    {
+     "yt": "qboPetXxY4A",
+     "title": "Harris J - Always Listening (Vocals Only) | Official Music Video",
+     "dur": 234
+    },
+    {
+     "yt": "z2gmqUfzkA8",
+     "title": "Harris J & Maher Zain - Qalbi Fil Madinah (Vocals Only) | Official Music Video",
+     "dur": 246
+    },
+    {
+     "yt": "nQEGQP0c7F0",
+     "title": "Harris J - Hayati (Vocals Only) | Official Music Video",
+     "dur": 259
+    },
+    {
+     "yt": "jAN6RHvUZ_Y",
+     "title": "Harris J - O Allah (Vocals Only) | Official Music Video",
+     "dur": 225
+    }
+   ]
+  },
+  {
+   "name": "Ilyas Mao",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "YKeA_shk52c",
+     "title": "Thankful (Alhamdulillah) - Ilyas Mao | Official Nasheed",
+     "dur": 204
+    },
+    {
+     "yt": "tytttJOV3ro",
+     "title": "Ya Tayba - Ilyas Mao (Official Video)",
+     "dur": 197
+    },
+    {
+     "yt": "ImsNbdZJOY0",
+     "title": "Salawat - Ilyas Mao (Official Video)",
+     "dur": 228
+    },
+    {
+     "yt": "Pw5e0VYylWM",
+     "title": "Ilyas Mao - Heavenly Love Feat. Isam B (Official Nasheed) Vocals only",
+     "dur": 288
+    },
+    {
+     "yt": "SpVztvTw8lQ",
+     "title": "Ilyas Mao - Zawjati Ft. Mo Khan (Official Nasheed Video) Vocals Only",
+     "dur": 227
+    },
+    {
+     "yt": "x8h4SZ9idns",
+     "title": "Ilyas - Committed (Wedding Nasheed 2024)",
+     "dur": 227
+    },
+    {
+     "yt": "uXznG9XnlOM",
+     "title": "Ilyas Mao - Habibullah Ft. Siedd",
+     "dur": 193
+    },
+    {
+     "yt": "jMu6MVnk0XE",
+     "title": "Ilyas Mao - In Your Hands (Animation Video)",
+     "dur": 199
+    },
+    {
+     "yt": "azxFcb68luY",
+     "title": "Ilyas Mao - The Blame Game (Official Video)",
+     "dur": 233
+    },
+    {
+     "yt": "tfi33FC9jGw",
+     "title": "Ilyas Mao - Saved My Life (Official Video)",
+     "dur": 210
+    },
+    {
+     "yt": "muXc-8CiAGo",
+     "title": "ILYAS MAO - WHOLE (OFFICIAL VIDEO)",
+     "dur": 199
+    },
+    {
+     "yt": "LyZlw-tp1zc",
+     "title": "Ilyas Mao - Seize The Day (Official Video)",
+     "dur": 202
+    }
+   ]
+  },
+  {
+   "name": "J-Phish",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "fWwqNLhRddM",
+     "title": "J-Phish - THESE CHRISTIANS TOO LIT",
+     "dur": 143
+    },
+    {
+     "yt": "TXVeeRdtYGQ",
+     "title": "J-Phish - WATCH THIS",
+     "dur": 137
+    },
+    {
+     "yt": "1hWwKwYf6Qw",
+     "title": "J-Phish - BELIEVER (feat. Xavier Sorrow)",
+     "dur": 131
+    },
+    {
+     "yt": "dxU_o-8alUc",
+     "title": "J-Phish - ENEMY",
+     "dur": 147
+    },
+    {
+     "yt": "ky2O197uryA",
+     "title": "J-Phish & OnBeatMusic - Battlecry",
+     "dur": 152
+    },
+    {
+     "yt": "xyvhpBmJDDg",
+     "title": "J-Phish & DEON - WHOA",
+     "dur": 157
+    },
+    {
+     "yt": "ey5GdavjRc4",
+     "title": "J-Phish & Illijam - Comeback",
+     "dur": 143
+    },
+    {
+     "yt": "Sv13KUbkPu8",
+     "title": "J-Phish, Josiah Lowe & King Chai - Out The Box (Official Audio)",
+     "dur": 183
+    },
+    {
+     "yt": "BfWaI2yHLwA",
+     "title": "J-Phish & JP KILLED IT - Put That On God (Official Audio)",
+     "dur": 153
+    },
+    {
+     "yt": "a-qbUYjT6QQ",
+     "title": "J-Phish - Die2Live (Official Music Video)",
+     "dur": 211
+    },
+    {
+     "yt": "s0jXCKHF4o0",
+     "title": "J-Phish - Die2Live Remix (feat. Parris Chariz & Kamban)",
+     "dur": 199
+    },
+    {
+     "yt": "HE_foyOp7RU",
+     "title": "J-Phish - I Came To Play (feat. YJO)",
+     "dur": 159
+    }
+   ]
+  },
+  {
+   "name": "J.Truth",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "BR6BblVQ7Ns",
+     "title": "J.Truth x P. Stanley - I REBUKE YOU SATAN | OFFICIAL VIDEO",
+     "dur": 218
+    },
+    {
+     "yt": "N1A1K4UM_Ts",
+     "title": "J.Truth x #Hero-Big GOD Big Chain",
+     "dur": 202
+    },
+    {
+     "yt": "S3o0q2VmAMk",
+     "title": "J.Truth-99 Servants (VIDEO)",
+     "dur": 189
+    },
+    {
+     "yt": "AHbX7X-qWwU",
+     "title": "J.Truth Jobs Story",
+     "dur": 158
+    },
+    {
+     "yt": "fRT2v7hnQD0",
+     "title": "Please Lord (OFFICIAL VIDEO) J.Truth x Ja Proof x Ja Preach",
+     "dur": 196
+    },
+    {
+     "yt": "HKPV0qCtJLQ",
+     "title": "J.TRUTH X REDEEMED X HERO LUKE 10:19 PT. 2 OFFICIAL VIDEO",
+     "dur": 198
+    },
+    {
+     "yt": "bhuCVFDYC5k",
+     "title": "J.Truth - Going In, Pt.1 @J.Truth33",
+     "dur": 143
+    },
+    {
+     "yt": "sBUD7I6xmq4",
+     "title": "Trials and Tribulations",
+     "dur": 159
+    }
+   ]
+  },
+  {
+   "name": "Jimmy Levy",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "KV_BKBjXhmY",
+     "title": "Jimmy Levy - Misunderstood (Official Music Video)",
+     "dur": 226
+    },
+    {
+     "yt": "xyzrnrCPXzw",
+     "title": "Amen (Official Music Video) | Jimmy Levy",
+     "dur": 255
+    },
+    {
+     "yt": "1CPdkO6NsIY",
+     "title": "Jimmy Levy - Safety (Official Music Video)",
+     "dur": 232
+    },
+    {
+     "yt": "nysadWvdTq8",
+     "title": "Jimmy Levy - Take The Lead (Official Music Video)",
+     "dur": 257
+    },
+    {
+     "yt": "Xt4pilyoFK8",
+     "title": "Jimmy Levy - Queen of Hearts (Official Video)",
+     "dur": 239
+    },
+    {
+     "yt": "BoOwCVgWkP4",
+     "title": "Jimmy Levy - Shadow (Official Music Video)",
+     "dur": 290
+    },
+    {
+     "yt": "81e8MEK7FKc",
+     "title": "Jimmy Levy - Anything For You (Official Flynn Movie Soundtrack)",
+     "dur": 241
+    }
+   ]
+  },
+  {
+   "name": "Joe Nester",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "nsvGfDFHDBQ",
+     "title": "Joe Nester- To The River (Final Music Video)",
+     "dur": 183
+    },
+    {
+     "yt": "8IjPmzHpGMU",
+     "title": "Conversations With God",
+     "dur": 196
+    },
+    {
+     "yt": "VKAMrivps1E",
+     "title": "Joe Nester x SYL noiZ - YOU LOVE ME ANYWAY (Official Music Video)",
+     "dur": 252
+    },
+    {
+     "yt": "LH_jEjUg-GQ",
+     "title": "JOE NESTER - PLAN JUST FOR ME (OFFICIAL MUSIC VIDEO)",
+     "dur": 274
+    },
+    {
+     "yt": "q3tTq9lLsiY",
+     "title": "Joe Nester - MY GOD (Official Music Video)",
+     "dur": 179
+    },
+    {
+     "yt": "JwkbHW_wla8",
+     "title": "Joe Nester x @Colicchie - Recovery and God ( Official Music Video)",
+     "dur": 234
+    },
+    {
+     "yt": "3_pxHS6MYps",
+     "title": "Joe Nester - Can He Really Save Me (Official Music Video)",
+     "dur": 245
+    },
+    {
+     "yt": "PVt0d0T8Gq0",
+     "title": "Joe Nester x @sylnoiz  - In Your Presence (Official Music Video)",
+     "dur": 199
+    },
+    {
+     "yt": "bHS8KioMPkM",
+     "title": "Joe Nester - New Wine (Official Music Video)",
+     "dur": 214
+    },
+    {
+     "yt": "ytxY5zOk3IA",
+     "title": "Joe Nester x Rare of Breed - Faithful To Your Promise (Official Music Video)",
+     "dur": 201
+    },
+    {
+     "yt": "8DIwsgNSOUE",
+     "title": "Joe Nester x Clean Slate - 10 Toes Down (Official Music Video)",
+     "dur": 186
+    },
+    {
+     "yt": "zJa0UzmRxgY",
+     "title": "Joe Nester - Fighting With My Demons (Music Video)",
+     "dur": 192
+    }
+   ]
+  },
+  {
+   "name": "Jor'Dan Armstrong",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "M7VVSVVClXs",
+     "title": "Jor'Dan Armstrong - God Loves Us (Official Music Video)",
+     "dur": 181
+    },
+    {
+     "yt": "5IPqdBq4uUg",
+     "title": "Jor'Dan Armstrong and 1K Phew - MIA (Official Music Video)",
+     "dur": 219
+    },
+    {
+     "yt": "tj4VOsgh5Wo",
+     "title": "Jor'Dan Armstrong & Lee Vasi - You've Been Good (Official Visualizer)",
+     "dur": 193
+    },
+    {
+     "yt": "P5_hamPmYg8",
+     "title": "Jor'Dan Armstrong - WILIN' (VISUALIZER)",
+     "dur": 216
+    },
+    {
+     "yt": "s4sHL-qXedE",
+     "title": "Jor'Dan Armstrong - SHE (Visualizer)",
+     "dur": 199
+    },
+    {
+     "yt": "FpTH4Z-5fKo",
+     "title": "Jor'Dan Armstrong - EMOTIONS (Visualizer)",
+     "dur": 205
+    }
+   ]
+  },
+  {
+   "name": "KG Santiago",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "t2UhsnSo_n8",
+     "title": "KG Santiago - Problems",
+     "dur": 216
+    },
+    {
+     "yt": "sQ_t3UhhFGU",
+     "title": "Pray A Lil Mo (Official Video) - KG Santiago feat. Bryann T & T-Strike",
+     "dur": 325
+    },
+    {
+     "yt": "jg_h3yTOWfc",
+     "title": "Shame The Devil KG Santiago ft. Bryann T",
+     "dur": 222
+    },
+    {
+     "yt": "RtumGhpESR0",
+     "title": "KG SANTIAGO - I DON'T WANNA FT GINA SANTIAGO (OFFICIAL)",
+     "dur": 179
+    },
+    {
+     "yt": "yw3CzfjNauM",
+     "title": "KG Santiago - In JESUS Name ft. Da Young Disciples (OFFICIAL VIDEO)",
+     "dur": 225
+    },
+    {
+     "yt": "IY051hy44Jc",
+     "title": "KG SANTIAGO - BUT JESUS (OFFICIAL MUSIC VIDEO)",
+     "dur": 208
+    },
+    {
+     "yt": "vuew5LnRFq4",
+     "title": "KG SANTIAGO - WALK IN AUTHORITY (OFFICIAL MUSIC VIDEO)",
+     "dur": 171
+    },
+    {
+     "yt": "yq9rL1gjlJE",
+     "title": "KG Santiago ft. ASAP Preach - Go Up From Here",
+     "dur": 221
+    },
+    {
+     "yt": "Xiz4kkNf6Ao",
+     "title": "ALL GLORY (Official Music Video) - KG Santiago ft. Da Young Disciples",
+     "dur": 267
+    },
+    {
+     "yt": "Q6MIpLzwtsM",
+     "title": "KG Santiago Praise You (Ft.Gabby Abby)- Official Music Video",
+     "dur": 225
+    }
+   ]
+  },
+  {
+   "name": "Kieran The Light",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "MK34ID8mtV4",
+     "title": "Kieran The Light - Voice (Official Music Video)",
+     "dur": 148
+    },
+    {
+     "yt": "kAMLm0baClk",
+     "title": "Kieran The Light - Forgiven (Official Music Video)",
+     "dur": 197
+    },
+    {
+     "yt": "eFdM1zRBIo8",
+     "title": "Kieran The Light - SEARCHING (Official Music Video)",
+     "dur": 154
+    },
+    {
+     "yt": "SJllB2R8Xiw",
+     "title": "Kieran The Light - SKATE (Official Music Video)",
+     "dur": 128
+    },
+    {
+     "yt": "G7ilgONk-Js",
+     "title": "Kieran The Light - Keep Going (Official Music Video)",
+     "dur": 163
+    },
+    {
+     "yt": "-yeXAL2h3i8",
+     "title": "Kieran The Light - Out Of The Wilderness (Official Music Video)",
+     "dur": 131
+    },
+    {
+     "yt": "cNrU7cVhJoc",
+     "title": "Kieran The Light- RETURN (Official Music Video)",
+     "dur": 210
+    },
+    {
+     "yt": "ilrmpP0TOoU",
+     "title": "Kieran The Light - LOOK AT THE SMILE (Official Music Video)",
+     "dur": 138
+    },
+    {
+     "yt": "0Qh-Y5Fw1aE",
+     "title": "LION",
+     "dur": 193
+    },
+    {
+     "yt": "9h14Y6bic0k",
+     "title": "MOTIVATE",
+     "dur": 139
+    }
+   ]
+  },
+  {
+   "name": "Lamar Riddick",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "jYrR3lzu7fY",
+     "title": "Lamar Riddick - SIDE NOTE (Official Video)",
+     "dur": 180
+    },
+    {
+     "yt": "N6egb9tMsCk",
+     "title": "Lamar Riddick - FEELING GOOD (Official Video)",
+     "dur": 124
+    },
+    {
+     "yt": "j2ZfyxrLMfo",
+     "title": "Lamar Riddick - Running Late (Official Video)",
+     "dur": 166
+    },
+    {
+     "yt": "NdjdTaEXYIw",
+     "title": "Lamar Riddick - Let's Be Real (Official Video)",
+     "dur": 121
+    },
+    {
+     "yt": "-Y1abZ5GgNo",
+     "title": "Lamar Riddick - What Did You Say? (Official Video)",
+     "dur": 112
+    },
+    {
+     "yt": "PRFsNhuhyYw",
+     "title": "Lamar Riddick - PASOS (Official Video)",
+     "dur": 170
+    },
+    {
+     "yt": "ZSfcsGf-1wI",
+     "title": "Lamar Riddick - Nothing to Prove (Official Video)",
+     "dur": 169
+    },
+    {
+     "yt": "Byzsq9mkH_0",
+     "title": "Lamar Riddick - Too Much (Official Video)",
+     "dur": 274
+    },
+    {
+     "yt": "jz099ypRgOs",
+     "title": "Lamar Riddick - Said So (Official Video)",
+     "dur": 163
+    },
+    {
+     "yt": "WPx_4FdCaU4",
+     "title": "Lamar Riddick - CHEWING GUM (Official Music Video)",
+     "dur": 129
+    },
+    {
+     "yt": "y-4Uxetkrxg",
+     "title": "Lamar Riddick - Meantime (Official Video)",
+     "dur": 209
+    },
+    {
+     "yt": "RoIaE22XBbo",
+     "title": "Lamar Riddick - Victory (Official Video)",
+     "dur": 114
+    }
+   ]
+  },
+  {
+   "name": "Lighthouse",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "2brI_VFHkjY",
+     "title": "Lighthouse X @BrysonGrayMusic X @Jaybroader - Flippa (Official Music Video)",
+     "dur": 199
+    },
+    {
+     "yt": "g_FJ1Js5f04",
+     "title": "Lighthouse X @Just_Ru3 - P31 (Official Music Video)",
+     "dur": 153
+    },
+    {
+     "yt": "fXzZdJ_-vBE",
+     "title": "Lighthouse - Repentance (Official Music Video)",
+     "dur": 170
+    },
+    {
+     "yt": "5HaGj0EIm20",
+     "title": "Lighthouse x @BrysonGrayMusic - GO (Official Music Video)",
+     "dur": 178
+    },
+    {
+     "yt": "gr4oLqsQXKI",
+     "title": "Lighthouse x @BrysonGrayMusic - WOAH. (Official Music Video)",
+     "dur": 185
+    }
+   ]
+  },
+  {
+   "name": "Mike Teezy",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "sD2t3g4aizs",
+     "title": "Mike Teezy - GET LOST (Official Music Video)",
+     "dur": 157
+    },
+    {
+     "yt": "iUW363NGCp8",
+     "title": "Mike Teezy - Loose Leaf (Official Music Video)",
+     "dur": 213
+    },
+    {
+     "yt": "pD28JQrCWS0",
+     "title": "Mike Teezy - NEW LEAF (Official Music Video)",
+     "dur": 208
+    },
+    {
+     "yt": "0Y-il4u-VWc",
+     "title": "Mike Teezy - Cup of Tea [FREE] (Official Music Video)",
+     "dur": 323
+    },
+    {
+     "yt": "Gf9XE1R92LQ",
+     "title": "Mike Teezy - Ahead of my Time [Official Visualizer]",
+     "dur": 154
+    }
+   ]
+  },
+  {
+   "name": "Miles Minnick",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "b1JDMUSusKc",
+     "title": "Miles Minnick - Still Sober (Official Audio)",
+     "dur": 128
+    },
+    {
+     "yt": "NPxrlcpWRoc",
+     "title": "Miles Minnick - Same x2 (Official Audio)",
+     "dur": 132
+    },
+    {
+     "yt": "L1lBfPnmHug",
+     "title": "Miles Minnick - EBT to BET (Official Audio)",
+     "dur": 167
+    },
+    {
+     "yt": "I9AYB6pF2oM",
+     "title": "Miles Minnick - Club KJV (Official Audio) ft. Yasmine Jinelle, Key'ijah",
+     "dur": 154
+    },
+    {
+     "yt": "BTrTsoNiPfg",
+     "title": "Miles Minnick - Fomo (Official Audio)",
+     "dur": 145
+    },
+    {
+     "yt": "jaGlQ-EcjI8",
+     "title": "Miles Minnick - PRESS (Official Video)",
+     "dur": 150
+    },
+    {
+     "yt": "zsQHUNi7jXg",
+     "title": "Miles Minnick - Call Em' (Official Video)",
+     "dur": 164
+    },
+    {
+     "yt": "GH6XtdmY-V0",
+     "title": "Miles Minnick, Aha Gazelle - Way I Live (Official Video)",
+     "dur": 143
+    },
+    {
+     "yt": "ckUx0gc1GF0",
+     "title": "Miles Minnick, Lecrae, nobigdyl. - UHH (Official Video)",
+     "dur": 166
+    },
+    {
+     "yt": "zUXc0E90BtM",
+     "title": "Miles Minnick, Tommy Zuko, Josh P - Set It Off (Official Video)",
+     "dur": 184
+    }
+   ]
+  },
+  {
+   "name": "Roy Tosh",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "R9fSgHOD-3U",
+     "title": "Roy Tosh & Morgan Coblentz - Right Now - Let It Be Album",
+     "dur": 209
+    },
+    {
+     "yt": "2EcKl8k53LA",
+     "title": "Roy Tosh - Do It All Over - Let It Be Album",
+     "dur": 151
+    },
+    {
+     "yt": "jEvKT_CMch8",
+     "title": "Roy Tosh - On a Run - Let It Be Album",
+     "dur": 191
+    },
+    {
+     "yt": "5zgaOj1qcIc",
+     "title": "Roy Tosh - My Heart - Let It Be Album",
+     "dur": 165
+    },
+    {
+     "yt": "aV1kn6orfW8",
+     "title": "Roy Tosh - Price Tags - Let It Be Album",
+     "dur": 214
+    },
+    {
+     "yt": "HIw91DqeDdA",
+     "title": "Roy Tosh & Peabod - Everything's Gonna Be Alright - Let It Be Album",
+     "dur": 230
+    },
+    {
+     "yt": "3he80b2PnD0",
+     "title": "Roy Tosh x V. Rose - Let It Be",
+     "dur": 206
+    },
+    {
+     "yt": "R6YhOCDSX3U",
+     "title": "ROY TOSH x CANON - ALL WE DO IS WIN (Official Audio)",
+     "dur": 181
+    },
+    {
+     "yt": "ro4vk8m-BEw",
+     "title": "Roy Tosh x dawnpatrol - No Breaks (REMIX) Official Music Video",
+     "dur": 196
+    },
+    {
+     "yt": "nILU7SRHWqk",
+     "title": "Roy Tosh x Kurtis Hoppie - Strangers (Viral Tik Tok Song)",
+     "dur": 200
+    },
+    {
+     "yt": "U3rPqoLU7DU",
+     "title": "Roy Tosh x Kurtis Hoppie - Become ft. Lynnea (Prod. by Phil J.)",
+     "dur": 192
+    },
+    {
+     "yt": "nNOMBqxQmcY",
+     "title": "Roy Tosh - Young Forever (Official Music Video)",
+     "dur": 182
+    }
+   ]
+  },
+  {
+   "name": "ShySpeaks",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "9yZ2YupFv8U",
+     "title": "ShySpeaks: Reign (Official Video)",
+     "dur": 204
+    },
+    {
+     "yt": "kNRlCf7QeBY",
+     "title": "ShySpeaks: NGU (Official Video)",
+     "dur": 207
+    },
+    {
+     "yt": "GF2974t3w-4",
+     "title": "ShySpeaks: Selah (Official Video)",
+     "dur": 160
+    },
+    {
+     "yt": "DCu0jIwT1G8",
+     "title": "ShySpeaks: Rooted In Rhythm (Official Audio)",
+     "dur": 223
+    },
+    {
+     "yt": "KyX1bGhH6RM",
+     "title": "ShySpeaks: Dawg! Affirm (Official Audio)",
+     "dur": 109
+    },
+    {
+     "yt": "wIv4rh36FH8",
+     "title": "ShySpeaks: Real Ones (Official Audio)",
+     "dur": 119
+    },
+    {
+     "yt": "0iYDQBR4Nso",
+     "title": "ShySpeaks: Free (Official Audio)",
+     "dur": 119
+    }
+   ]
+  },
+  {
+   "name": "Spencer Boliou",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "ogFE62Zdess",
+     "title": "Spencer Boliou & NoahWalker - here. (Official Music Video)",
+     "dur": 283
+    },
+    {
+     "yt": "IlmcFgZKIS4",
+     "title": "Spencer Boliou, lofi hymns. & Dan's Music - patient. (Full Music Video)",
+     "dur": 201
+    },
+    {
+     "yt": "1zI5Z900tiM",
+     "title": "on Christ the solid rock i stand. - Spencer Boliou & lofi hymns. (Official Music Video)",
+     "dur": 154
+    },
+    {
+     "yt": "TuYwR7ZfHyY",
+     "title": "keep me faithful. - Spencer Boliou & Lofi Hymns. (Official Music Video)",
+     "dur": 310
+    },
+    {
+     "yt": "MXZG5hfxO1Y",
+     "title": "blood. - Spencer Boliou & lofi hymns. (Full Music Video)",
+     "dur": 294
+    },
+    {
+     "yt": "FV5NRFh3yCo",
+     "title": "it is well. (Official Music Video) - Spencer Boliou & lofi hymns.",
+     "dur": 227
+    },
+    {
+     "yt": "ilyb2K5bMdQ",
+     "title": "HIGH-Fi, Spencer Boliou, Brian Morales - BOLD (Official Music Video)",
+     "dur": 142
+    },
+    {
+     "yt": "h9YesZavqzg",
+     "title": "Spencer Boliou, Brianna Grace - Thorns & Roses (Official Music Video)",
+     "dur": 232
+    },
+    {
+     "yt": "1F4y0ZegWws",
+     "title": "Spencer Boliou & lofi hymns. - what a friend we have in Jesus.",
+     "dur": 236
+    },
+    {
+     "yt": "k8-A6NSdAG4",
+     "title": "Spencer Boliou - Beam (Official Video)",
+     "dur": 163
+    }
+   ]
+  },
+  {
+   "name": "The Real Young Swagg",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "KYSeZGsQKpo",
+     "title": "SWAGG - Here Am I (Official Music Video)",
+     "dur": 156
+    },
+    {
+     "yt": "yZjBIOKSCHM",
+     "title": "SWAGG - For You (Official Music Video)",
+     "dur": 179
+    },
+    {
+     "yt": "fQLp_xD2zmo",
+     "title": "SWAGG - High Places (Official Music Video)",
+     "dur": 234
+    },
+    {
+     "yt": "LotkDd614k4",
+     "title": "SWAGG - The Story of Cam (Official Music Video)",
+     "dur": 187
+    },
+    {
+     "yt": "iB2ezelQSaw",
+     "title": "SWAGG - The Truth (Official Music Video)",
+     "dur": 171
+    },
+    {
+     "yt": "odHUH8mPDX8",
+     "title": "SWAGG - Don't Bother (Official Music Video)",
+     "dur": 224
+    },
+    {
+     "yt": "iSeG3Nm7QpI",
+     "title": "SWAGG - Closer (Official Music Video)",
+     "dur": 164
+    },
+    {
+     "yt": "WnNTYi6giIo",
+     "title": "SWAGG - Voices (Official Music Video)",
+     "dur": 176
+    },
+    {
+     "yt": "bUh16Avk8X8",
+     "title": "SWAGG - Weak Men (Official Music Video)",
+     "dur": 181
+    },
+    {
+     "yt": "tfVyL7n-2_I",
+     "title": "SWAGG - Different Breed (Official Music Video)",
+     "dur": 225
+    }
+   ]
+  },
+  {
+   "name": "Thiez King",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "KX0AYLEPGSo",
+     "title": "Thiez King - ALI (Official Music Video)",
+     "dur": 172
+    },
+    {
+     "yt": "xyAx8g_KwZ0",
+     "title": "Thiez King - Tapped In (Official Music Video)",
+     "dur": 148
+    },
+    {
+     "yt": "AX5GeYOIaLU",
+     "title": "Thiez King - If Only (Official Music Video) ft. Tim Presley",
+     "dur": 181
+    },
+    {
+     "yt": "lNm9cUunCm0",
+     "title": "Thiez King - Broken (Official Video)",
+     "dur": 214
+    },
+    {
+     "yt": "BWr-OVTinjo",
+     "title": "Thiez King - Who I Am (Official Video)",
+     "dur": 215
+    },
+    {
+     "yt": "5gfuy5DZbNw",
+     "title": "Thiez King - Let You Go (Official Video)",
+     "dur": 227
+    },
+    {
+     "yt": "DiRq40147WQ",
+     "title": "Thiez King - I'll be Okay (Official Video)",
+     "dur": 244
+    },
+    {
+     "yt": "rxj7J_zOc_A",
+     "title": "Thiez King - When It Rains (Official Video)",
+     "dur": 352
+    },
+    {
+     "yt": "1BZyfP4PN_A",
+     "title": "Thiez King - UNTAPPED (Official Music Video)",
+     "dur": 192
+    }
+   ]
+  },
+  {
+   "name": "Tommy Chapa",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "FXZAsb8n5-0",
+     "title": "Wac A Mole @tommychapa5419 @NickyGraciousMusic",
+     "dur": 194
+    },
+    {
+     "yt": "S-eZCLKHL8s",
+     "title": "Day 1s by C.O.G (Tommy chapa) ft Gospel Ready",
+     "dur": 213
+    },
+    {
+     "yt": "0CKrFVi407o",
+     "title": "Know that He loves you ft Noah Surratt",
+     "dur": 185
+    },
+    {
+     "yt": "76zBVz9ihVY",
+     "title": "66 In Da Clip by C.O.G ft J Diamond",
+     "dur": 213
+    },
+    {
+     "yt": "UIEF-zsNu6w",
+     "title": "Pray by C.O.G",
+     "dur": 180
+    },
+    {
+     "yt": "fyMOI0dSPTU",
+     "title": "Blood Bought ft Antwoine Hill",
+     "dur": 197
+    },
+    {
+     "yt": "IJx6GrNkdzY",
+     "title": "Momma",
+     "dur": 266
+    },
+    {
+     "yt": "iOXvx7u8gf4",
+     "title": "Living Sacrifice by C.O.G featuring Gospel Ready & Aaron Andrew. Tommy Chapa",
+     "dur": 302
+    }
+   ]
+  },
+  {
+   "name": "Topher",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "f15HhiHQNpw",
+     "title": "Topher - The Patriot (feat. @TheMarineRapper)",
+     "dur": 203
+    },
+    {
+     "yt": "8O-NU9H2n34",
+     "title": "Topher - Olympus Has Fallen (feat. @DCure)",
+     "dur": 223
+    },
+    {
+     "yt": "Km_oTRvQ7wo",
+     "title": "Topher - Not Guilty (feat. @DCure & @TheMarineRapper)",
+     "dur": 213
+    },
+    {
+     "yt": "WeaAlxl1eBY",
+     "title": "C.W.A. - The Marine Rapper (feat. Various Artists)",
+     "dur": 243
+    }
+   ]
+  },
+  {
+   "name": "Trustie",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "kPEnF4Dqghc",
+     "title": "Leave Now - Trustie Official Music Video",
+     "dur": 196
+    },
+    {
+     "yt": "vLSsOUc1XpU",
+     "title": "Trustie - Dangerous (feat. The Black Sheep & Dream Boy Q) OFFICIAL VIDEO",
+     "dur": 210
+    }
+   ]
+  },
+  {
+   "name": "Uncle Reece",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "fklDtlmU9fE",
+     "title": "Uncle Reece - I'm Saved Feat. Double ATL (Official Music Video)",
+     "dur": 245
+    },
+    {
+     "yt": "Q9z2kZXqUi8",
+     "title": "Uncle Reece - Thank You For This Pain (Official Music Video)",
+     "dur": 182
+    },
+    {
+     "yt": "yexSK6bM2Nc",
+     "title": "Uncle Reece - Smile (Official Music Video)",
+     "dur": 209
+    },
+    {
+     "yt": "wY9NYozIibE",
+     "title": "Uncle Reece - Lost Count (Official Music Video)",
+     "dur": 168
+    },
+    {
+     "yt": "Xt45_3I7460",
+     "title": "Uncle Reece - Saying That You Love Me (Official Music Video)",
+     "dur": 153
+    },
+    {
+     "yt": "9g97nQgywos",
+     "title": "Uncle Reece - Have Your Heart Ft. Canton Jones (Official Music Video)",
+     "dur": 199
+    },
+    {
+     "yt": "AiZq5CfPPeU",
+     "title": "Uncle Reece - Make It Right (Official Music Video)",
+     "dur": 199
+    },
+    {
+     "yt": "4WGbSsgdZXI",
+     "title": "Uncle Reece - 4 These Blessings (Official Music Video)",
+     "dur": 188
+    },
+    {
+     "yt": "45RYzsFpwvM",
+     "title": "Uncle Reece - Love You Forever (Official Music Video)",
+     "dur": 300
+    },
+    {
+     "yt": "6WFarDZvnbo",
+     "title": "Uncle Reece - Bananas (Official Music Video)",
+     "dur": 241
+    },
+    {
+     "yt": "Q55OAUXyhZ0",
+     "title": "Uncle Reece - Revolution Music ft. Adrion Butler, Jay Harris (Audio)",
+     "dur": 211
+    },
+    {
+     "yt": "Y3SmjYpTf1E",
+     "title": "Uncle Reece - Creation (Audio)",
+     "dur": 223
+    }
+   ]
+  },
+  {
+   "name": "WarCry Nation",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "Qlz9WyWIj-w",
+     "title": "\"Not Afraid\" WarCry feat. Hero",
+     "dur": 216
+    }
+   ]
+  },
+  {
+   "name": "Xay Hill",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "OZjJiYm182Y",
+     "title": "Xay Hill - Did Me Wrong | Official Full Music Video",
+     "dur": 162
+    },
+    {
+     "yt": "5u77-seBOWI",
+     "title": "Xay Hill - Roses (FULL MUSIC VIDEO)",
+     "dur": 162
+    },
+    {
+     "yt": "pKRFxOzbexQ",
+     "title": "Xay Hill - Hate On Me (Feat. Darnell Nate) (Official Music Video)",
+     "dur": 191
+    },
+    {
+     "yt": "HpAwrEXpyG8",
+     "title": "Xay Hill - No Tears | But I'm Redeemed Album (OFFICIAL MUSIC VIDEO)",
+     "dur": 151
+    },
+    {
+     "yt": "wfhx2owQ97A",
+     "title": "Xay Hill - Go Getters (Feat. SIXELEVEN) | But I'm Redeemed Album (OFFICIAL MUSIC VIDEO)",
+     "dur": 275
+    },
+    {
+     "yt": "S3JiXQ9504A",
+     "title": "Xay Hill - Breathing | But I'm Redeemed Album",
+     "dur": 167
+    },
+    {
+     "yt": "otBAiyoalcY",
+     "title": "Xay Hill - Toxic Love | But I'm Redeemed Album",
+     "dur": 183
+    },
+    {
+     "yt": "irKwhvy3O5Y",
+     "title": "Xay Hill - We Did That | But I'm Redeemed Album",
+     "dur": 185
+    },
+    {
+     "yt": "OJrVhYzGi1E",
+     "title": "Xay Hill - Silent Prayers | But I'm Redeemed Album",
+     "dur": 126
+    },
+    {
+     "yt": "BbMeGwtM1RA",
+     "title": "Xay Hill - C4 | But I'm Redeemed Album",
+     "dur": 183
+    },
+    {
+     "yt": "akf5tia9sQw",
+     "title": "Xay Hill - If Xay Died Young | But I'm Redeemed Album",
+     "dur": 150
+    },
+    {
+     "yt": "0BwJWGuE73I",
+     "title": "Xay Hill - Idol | But I'm Redeemed Album",
+     "dur": 134
+    }
+   ]
+  },
+  {
+   "name": "Xero",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "LsmyTDv8Rrc",
+     "title": "XEROGANGG - I DON'T FEEL LONELY NOW - [OFFICIAL MUSIC VIDEO]",
+     "dur": 152
+    },
+    {
+     "yt": "GDdeMJtNJ0Q",
+     "title": "XEROGANGG - GRAVE - [OFFICIAL MUSIC VIDEO]",
+     "dur": 152
+    },
+    {
+     "yt": "RLWP3d98A2o",
+     "title": "XEROGANGG - WOAH [OFFICIAL MUSIC VIDEO]",
+     "dur": 192
+    },
+    {
+     "yt": "fOcwGxDj-7A",
+     "title": "XEROGANGG - I DESERVE LESS - [OFFICIAL MUSIC VIDEO]",
+     "dur": 201
+    },
+    {
+     "yt": "UdfBWw9xrfM",
+     "title": "HOLY HALLELUJAH - XEROGANGG [OFFICIAL MUSIC VIDEO]",
+     "dur": 225
+    },
+    {
+     "yt": "Lo-e2KOf11s",
+     "title": "XEROGANGG - BREAK THESE CHAINS [OFFICIAL MUSIC VIDEO]",
+     "dur": 156
+    },
+    {
+     "yt": "6s_g1dhGjAY",
+     "title": "XEROGANGG - I LIFT MY ARMS [OFFICIAL MUSIC VIDEO]",
+     "dur": 233
+    },
+    {
+     "yt": "u-OZsiGDXog",
+     "title": "Xerogangg - 3am",
+     "dur": 219
+    }
+   ]
+  },
+  {
+   "name": "Young Bro",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "KLt05TK6j6U",
+     "title": "Young bro - Simple things feat Jordan may",
+     "dur": 213
+    },
+    {
+     "yt": "j5ZW5KSVEMQ",
+     "title": "Young bro - Hide it in my heart",
+     "dur": 202
+    },
+    {
+     "yt": "8c8hQqcZ100",
+     "title": "Young bro - The way you love me Feat Lil Marco",
+     "dur": 210
+    },
+    {
+     "yt": "57fVdYRIdfs",
+     "title": "Young bro - Stay Awhile",
+     "dur": 182
+    },
+    {
+     "yt": "qackB9RHStE",
+     "title": "Young bro -Believe & i pray dat",
+     "dur": 157
+    },
+    {
+     "yt": "XOtoST4ISj0",
+     "title": "Young Bro - I NEED YOUR SPIRIT",
+     "dur": 183
+    },
+    {
+     "yt": "qWpJqM9XJQI",
+     "title": "Young bro -The God who sees me",
+     "dur": 217
+    },
+    {
+     "yt": "bjMvSBAQLvc",
+     "title": "Young Bro -Closer than ever",
+     "dur": 197
+    },
+    {
+     "yt": "AayUL_cDqhQ",
+     "title": "Young Bro -Promise Keeper",
+     "dur": 206
+    },
+    {
+     "yt": "noaOQGdieU8",
+     "title": "Young bro - Wonderful Savior (Official Music Video)",
+     "dur": 191
+    }
+   ]
+  },
+  {
+   "name": "Zee",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "zTYthRErHAc",
+     "title": "ZEE - Son of the King ft. @RichardLorenzoJrMusic",
+     "dur": 218
+    },
+    {
+     "yt": "HTVeE2gSHzE",
+     "title": "ZEE - WYFL Freestyle",
+     "dur": 142
+    },
+    {
+     "yt": "G-o-L9p2Uj8",
+     "title": "ZEE - Let'em in Ft. @EGR MUZIK",
+     "dur": 194
+    },
+    {
+     "yt": "7qe4jW0GIY4",
+     "title": "ZEE - SHIFT",
+     "dur": 161
+    },
+    {
+     "yt": "qsGqEM5A980",
+     "title": "ZEE - BIG OIL ft. BRENNO & Taylor Wells",
+     "dur": 208
+    },
+    {
+     "yt": "Dn8E74I-tYI",
+     "title": "Turning Point - (Charlie Kirk Tribute)",
+     "dur": 217
+    }
+   ]
+  },
+  {
+   "name": "nobigdyl.",
+   "hop": 2,
+   "tracks": [
+    {
+     "yt": "-ACm1lYRs5E",
+     "title": "nobigdyl. & Andy Mineo \"ROTATION\" (Official Music Video)",
+     "dur": 144
+    },
+    {
+     "yt": "QS1ZnizDYoc",
+     "title": "nobigdyl., KB - REVIVAL! [Official Music Video]",
+     "dur": 189
+    },
+    {
+     "yt": "x0dSW2E8d0o",
+     "title": "nobigdyl., Kato On The Track - REPENTANCE FREESTYLE [Official Music Video]",
+     "dur": 117
+    }
+   ]
+  },
+  {
+   "name": "Aha Gazelle",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "YhTxmz6IOjc",
+     "title": "Aha Gazelle - Kiss & Tell (Official Visualizer)",
+     "dur": 136
+    },
+    {
+     "yt": "UFGHgqPxEEI",
+     "title": "Aha Gazelle - Warriors Anthem [Official Visualizer]",
+     "dur": 132
+    },
+    {
+     "yt": "rJCSSFDgjos",
+     "title": "Aha Gazelle - Higher (Visualizer)",
+     "dur": 163
+    },
+    {
+     "yt": "G6jap4eVC_M",
+     "title": "Aha Gazelle - Checking In (Visualizer)",
+     "dur": 156
+    },
+    {
+     "yt": "VNONMsLycDc",
+     "title": "Aha Gazelle - Change Your Mind (Visualizer)",
+     "dur": 234
+    },
+    {
+     "yt": "cgyqv4OY0u0",
+     "title": "Aha Gazelle - THE BEST (Visualizer)",
+     "dur": 137
+    },
+    {
+     "yt": "5sAZp2Sydzk",
+     "title": "Aha Gazelle - JOKES ON YOU",
+     "dur": 236
+    },
+    {
+     "yt": "pLNX9sRbJ_M",
+     "title": "Aha Gazelle - Make It Make Sense",
+     "dur": 193
+    }
+   ]
+  },
+  {
+   "name": "Amin Davis",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "ZVbtbUYUa6Q",
+     "title": "GHURABA - Amin Davis ft. Ilyas Mao (Official Nasheed) | Vocals Only",
+     "dur": 250
+    },
+    {
+     "yt": "5OsdHLOnPgQ",
+     "title": "Amin Davis - Celebrate Humanity (feat. Boonaa Mohammed, Ilyas Mao & Essam)",
+     "dur": 203
+    },
+    {
+     "yt": "Vx8is_g8I34",
+     "title": "Amin Davis - In My Dreams (feat. Ilyas Mao & Faisal Salah) VOCALS ONLY",
+     "dur": 197
+    },
+    {
+     "yt": "bOgwEbj09zU",
+     "title": "Peace - Amin Davis (Official Video) | Truth Be Told",
+     "dur": 241
+    },
+    {
+     "yt": "7rlbjmGY2SA",
+     "title": "Amin Davis - Take Me Away (Official Video) | VOCALS ONLY",
+     "dur": 186
+    },
+    {
+     "yt": "o1lM_n0_JEU",
+     "title": "Amin Davis - Devil In Disguise (Official Nasheed)",
+     "dur": 221
+    },
+    {
+     "yt": "IXmagVGTN5Y",
+     "title": "Amin Davis - Paradise (Official NASHEED Video) | Vocals Only",
+     "dur": 317
+    },
+    {
+     "yt": "cg1__0niQ8c",
+     "title": "Amin Davis - Freedom (Official NASHEED video) | Vocals Only",
+     "dur": 200
+    }
+   ]
+  },
+  {
+   "name": "Andy Mineo",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "A4iZne9FYmw",
+     "title": "Andy Mineo - \"More Lost Than Found\" (Official Video)",
+     "dur": 139
+    },
+    {
+     "yt": "8gwhfwNZYW4",
+     "title": "Magic & Bird, Andy Mineo, Wordsplayed - STAMINA (Official Music Video)",
+     "dur": 111
+    },
+    {
+     "yt": "iXfkToevcmE",
+     "title": "Magic & Bird, Andy Mineo, Wordsplayed — MAKE IT STOP (Official Audio)",
+     "dur": 160
+    },
+    {
+     "yt": "4vh3N29GWFM",
+     "title": "Magic & Bird, Andy Mineo, Wordsplayed — GTA 6 (Official Audio)",
+     "dur": 167
+    },
+    {
+     "yt": "wkb7_RiwTYU",
+     "title": "Magic & Bird, Andy Mineo, Wordsplayed — TURBO (Official Audio)",
+     "dur": 205
+    },
+    {
+     "yt": "d37G-zMHGTk",
+     "title": "Magic & Bird, Andy Mineo, Wordsplayed — POWER! (Official Audio)",
+     "dur": 127
+    }
+   ]
+  },
+  {
+   "name": "Austin Joyce",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "_WsNJ2yumT4",
+     "title": "Austin Joyce - What's Up Now | Official Video",
+     "dur": 155
+    },
+    {
+     "yt": "wBqfXEuXHrM",
+     "title": "Austin Joyce - Don't Let Me Go (feat Henrik) | Official Video",
+     "dur": 151
+    },
+    {
+     "yt": "F5Cn9QCMEnM",
+     "title": "Austin Joyce - No Hesitation | Official Video",
+     "dur": 131
+    },
+    {
+     "yt": "5dAGd7TW4JI",
+     "title": "Austin Joyce - EXHALE (feat Christopher Syncere) | Official Video",
+     "dur": 165
+    },
+    {
+     "yt": "eAJ_QcP7P6Q",
+     "title": "Austin Joyce - KINGDOM COMES (Official Visualizer)",
+     "dur": 127
+    },
+    {
+     "yt": "w_e4k3-jdNM",
+     "title": "Austin Joyce - GLORY (Official Visualizer)",
+     "dur": 118
+    }
+   ]
+  },
+  {
+   "name": "Battz",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "tgrT1h-gp9c",
+     "title": "Battz- \"Did you know\" (Official Music Video)",
+     "dur": 193
+    },
+    {
+     "yt": "et412xtL7pQ",
+     "title": "Battz- Cult-ure ( Official Music Video )",
+     "dur": 136
+    },
+    {
+     "yt": "e12Ut-3Whbo",
+     "title": "Battz- Dirty Laundry  (Official Music Video)",
+     "dur": 148
+    },
+    {
+     "yt": "4AeSt5IPpzg",
+     "title": "Battz - “21!” (Official music video )",
+     "dur": 142
+    },
+    {
+     "yt": "WdK52yMde7Y",
+     "title": "Battz - Be real (Official Music Video )",
+     "dur": 148
+    },
+    {
+     "yt": "7cky0E2JCqw",
+     "title": "Battz- Deserve (official music video)",
+     "dur": 150
+    }
+   ]
+  },
+  {
+   "name": "Beacon Light",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "4TSsmIeGViI",
+     "title": "BRANDONDAVID - Basic feat. Derek Minor (Official Music Video)",
+     "dur": 192
+    },
+    {
+     "yt": "rLZZK46xfkw",
+     "title": "BRANDONDAVID - Lit (Official Music Video)",
+     "dur": 199
+    },
+    {
+     "yt": "kBl51bojR0o",
+     "title": "BRANDONDAVID - Get By (Official Audio)",
+     "dur": 166
+    },
+    {
+     "yt": "E8pCqtETPuE",
+     "title": "BRANDONDAVID - Airplane Mode",
+     "dur": 225
+    },
+    {
+     "yt": "hUM0rjUTipY",
+     "title": "BRANDONDAVID - I'm in It",
+     "dur": 238
+    }
+   ]
+  },
+  {
+   "name": "Boonaa Mohammed",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "W7o43Of_odA",
+     "title": "Boonaa Mohammed x Ilyas Mao | PARADISE",
+     "dur": 205
+    },
+    {
+     "yt": "P8imO1yIXZw",
+     "title": "Boonaa Mohammed - Boxhead",
+     "dur": 261
+    },
+    {
+     "yt": "M_Xa2p1mx9Y",
+     "title": "Boonaa Mohammed | That Deen",
+     "dur": 149
+    },
+    {
+     "yt": "K8P2iV0pUpo",
+     "title": "Boonaa Mohammed | Nothin'",
+     "dur": 147
+    },
+    {
+     "yt": "CNNyGc7G1yI",
+     "title": "Boonaa Mohammed | Prophet Amongst Us",
+     "dur": 361
+    },
+    {
+     "yt": "5a6XvO0BAMo",
+     "title": "Boonaa Mohammed | Love Life",
+     "dur": 174
+    },
+    {
+     "yt": "W0eyxHiwbsQ",
+     "title": "Boonaa Mohammed | FAKE SHEIKH",
+     "dur": 195
+    },
+    {
+     "yt": "RWZoIk38evI",
+     "title": "Boonaa Mohammed - The Best Things",
+     "dur": 346
+    }
+   ]
+  },
+  {
+   "name": "Bumps INF",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "n7NhO0ej1X0",
+     "title": "Bumps INF - Dark Days & Long Nights (Im Fine)",
+     "dur": 141
+    },
+    {
+     "yt": "ie1Zlfj7sjw",
+     "title": "Bumps INF - Hey Mom (Im Fine EP)",
+     "dur": 156
+    },
+    {
+     "yt": "Ew6GyWb7s0o",
+     "title": "Bumps INF - Rain Coming (Im Fine)",
+     "dur": 302
+    },
+    {
+     "yt": "TRqZ848NGYs",
+     "title": "Bumps INF - Small Talk (Im Fine)",
+     "dur": 171
+    },
+    {
+     "yt": "4s_BGXiWnLE",
+     "title": "Bumps INF - You & Me (Im Fine EP)",
+     "dur": 137
+    },
+    {
+     "yt": "o9MaSGv5nak",
+     "title": "Bumps INF - September 8th (God Over Money)",
+     "dur": 180
+    }
+   ]
+  },
+  {
+   "name": "CJ Emulous",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "Y0fuU7ky3aU",
+     "title": "CJ Emulous x Key'ijah - Flesh Or Spirit (Official Video)",
+     "dur": 186
+    },
+    {
+     "yt": "zJ8inOyChZU",
+     "title": "CJ Emulous & Gawvi - TODAY (Official Video)",
+     "dur": 203
+    },
+    {
+     "yt": "6hY3NNZHNeI",
+     "title": "CJ EMULOUS - SILENT (OFFICIAL MUSIC VIDEO)",
+     "dur": 174
+    },
+    {
+     "yt": "yR1Z3fiHcE8",
+     "title": "\"Got It On Me\" CJ Emulous (Official Music Video)",
+     "dur": 194
+    },
+    {
+     "yt": "o8NLvEVh8-k",
+     "title": "CJ Emulous - Insecurities (Official Music Video)",
+     "dur": 125
+    },
+    {
+     "yt": "o6GZ9KQLphI",
+     "title": "CJ Emulous - Built Different (Official Music Video)",
+     "dur": 142
+    },
+    {
+     "yt": "exKxhIKPZas",
+     "title": "CJ Emulous - G-LO (Official Music Video)",
+     "dur": 163
+    }
+   ]
+  },
+  {
+   "name": "Caleb Gordon",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "ZYytcC2iD48",
+     "title": "Caleb Gordon - God is by My Side (Official Music Video)",
+     "dur": 158
+    },
+    {
+     "yt": "k_BYc44GPQI",
+     "title": "Caleb Gordon - Preach! (Official Music Video)",
+     "dur": 150
+    },
+    {
+     "yt": "YifDliyV65U",
+     "title": "Caleb Gordon - Dangerous (Official Music Video)",
+     "dur": 142
+    },
+    {
+     "yt": "-04Xa9tEY8U",
+     "title": "Caleb Gordon - CHILD OF GOD",
+     "dur": 158
+    },
+    {
+     "yt": "q2Mn8r4znOw",
+     "title": "Caleb Gordon - Championship Ring (Official Music Video)",
+     "dur": 211
+    },
+    {
+     "yt": "yBPbVwlkQgA",
+     "title": "Caleb Gordon - Yesterday Is Gone (Official Music Video)",
+     "dur": 169
+    },
+    {
+     "yt": "oEeDaOPU4N8",
+     "title": "Caleb Gordon - I Need Peace (Official Music Video)",
+     "dur": 200
+    },
+    {
+     "yt": "0qvn2e3ZM5s",
+     "title": "Caleb Gordon - God Good (Official Music Video)",
+     "dur": 174
+    }
+   ]
+  },
+  {
+   "name": "Canon",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "XpmtYj7v0bE",
+     "title": "Canon - Falling Down (Official Music Video)",
+     "dur": 252
+    },
+    {
+     "yt": "S2jycczJm-Y",
+     "title": "Canon | Flowers (Official Music Video)",
+     "dur": 179
+    },
+    {
+     "yt": "i1RmLojAqMk",
+     "title": "Shake Sum - Canon (Official Video)",
+     "dur": 211
+    },
+    {
+     "yt": "D-XI_isXfUo",
+     "title": "NEVER SCARED - Canon",
+     "dur": 132
+    },
+    {
+     "yt": "y8o0gpaLH8o",
+     "title": "Home Run - Canon (Original Video)",
+     "dur": 165
+    },
+    {
+     "yt": "ZWXFeeLgwIU",
+     "title": "Bend The Whip - Canon (Original Video)",
+     "dur": 167
+    },
+    {
+     "yt": "ixGAnqSZhFY",
+     "title": "Canon, Derek Minor - Hold Me back (Official Video)",
+     "dur": 191
+    }
+   ]
+  },
+  {
+   "name": "Childlike CiCi",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "Qhw1HTq_YEs",
+     "title": "HEAD HIGH! - CHILDLIKE CICI (OFFICIAL MUSIC VIDEO)",
+     "dur": 140
+    },
+    {
+     "yt": "14nsyPdMbqo",
+     "title": "EVERYTHING NEW! - CHILDLIKE CICI",
+     "dur": 141
+    },
+    {
+     "yt": "FO9lVVOR-4I",
+     "title": "ME NO FEAR (BADMON) - CHILDLIKE CICI & KIERAN THE LIGHT",
+     "dur": 156
+    },
+    {
+     "yt": "IU7vnb4QhLU",
+     "title": "Mr Send His Son - Childlike CiCi (Official Music Video)",
+     "dur": 151
+    },
+    {
+     "yt": "ZbhBYQeI2lY",
+     "title": "BLOW THE TRUMPET - Childlike CiCi (Official Music Video)",
+     "dur": 153
+    },
+    {
+     "yt": "19noqlHxHEs",
+     "title": "Childlike CiCi - Party In The Heavens",
+     "dur": 179
+    }
+   ]
+  },
+  {
+   "name": "Colicchie",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "w6bjX4Jvg_U",
+     "title": "Beneath The Surface",
+     "dur": 167
+    },
+    {
+     "yt": "39EZtEM9Q5I",
+     "title": "More Than I Deserve",
+     "dur": 183
+    },
+    {
+     "yt": "LBvUDXPr9aw",
+     "title": "Tell It All",
+     "dur": 183
+    },
+    {
+     "yt": "rcIyNpwlDWM",
+     "title": "Disclosure",
+     "dur": 217
+    },
+    {
+     "yt": "lyki4vEVTMo",
+     "title": "Conversations with God (Joe Nester & Colicchie)",
+     "dur": 196
+    },
+    {
+     "yt": "-0Fh_-LDIgM",
+     "title": "Recovery and God (Colicchie & Joe Nester)",
+     "dur": 231
+    },
+    {
+     "yt": "DZHZjk7ilho",
+     "title": "Anywhere But Here",
+     "dur": 171
+    },
+    {
+     "yt": "3KlirFzQ7AQ",
+     "title": "Drive",
+     "dur": 125
+    }
+   ]
+  },
+  {
+   "name": "D.Cure",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "FsIaGAZkOjs",
+     "title": "D.Cure - Stray (Official Music Video)",
+     "dur": 220
+    },
+    {
+     "yt": "R4K8TGCVqGA",
+     "title": "D.Cure - Pajamas (Official Music Video)",
+     "dur": 168
+    },
+    {
+     "yt": "EhfQqinwD94",
+     "title": "D.Cure - Creature (Official Music Video)",
+     "dur": 141
+    },
+    {
+     "yt": "-UNyzHUSsk4",
+     "title": "D.Cure - Regret (Official Music Video)",
+     "dur": 217
+    },
+    {
+     "yt": "5GQL_C5lvtA",
+     "title": "D.Cure - Need an Idol (Official Music Video)",
+     "dur": 244
+    },
+    {
+     "yt": "DLxYdUtUJHA",
+     "title": "D.Cure - End of Me (Official Music Video)",
+     "dur": 187
+    }
+   ]
+  },
+  {
+   "name": "DJ Mykael V",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "p7U8mIkP6-s",
+     "title": "Doing The Most - DJ Mykael V (Feat. Bachi & Ray Benton)",
+     "dur": 222
+    }
+   ]
+  },
+  {
+   "name": "DTG Marv",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "7dZMSzeoDCM",
+     "title": "HAVE YOU EVA? 💔🚨 | DTG Marv ft. DTG Rich (Official Music Video) | Christian Drill Rap",
+     "dur": 181
+    }
+   ]
+  },
+  {
+   "name": "Emanuel Da Prophet",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "o6LYajSbYlQ",
+     "title": "EMANUELDAPROPHET- TALK TO EM (Official Music Video)",
+     "dur": 136
+    },
+    {
+     "yt": "VehbdtXevcY",
+     "title": "EMANUELDAPROPHET- TOP RAMEN (Official Music Video)",
+     "dur": 114
+    },
+    {
+     "yt": "Lb2jyBcwZPw",
+     "title": "EmanuelDaProphet Pray Or Play",
+     "dur": 100
+    },
+    {
+     "yt": "AU-nRMbAzRg",
+     "title": "01. HOPE 4 THE TRENCHES x Stop Violence",
+     "dur": 151
+    },
+    {
+     "yt": "R-XNRtPpFXg",
+     "title": "10. HOPE 4 THE TRENCHES x FILL MY CUP",
+     "dur": 155
+    },
+    {
+     "yt": "GuwB4XeGBls",
+     "title": "03. HOPE 4 THE TRENCHES x Choosing Peace",
+     "dur": 114
+    },
+    {
+     "yt": "wd5ZaAgIpXM",
+     "title": "EmanuelDaProphet - Forgive Me (Visualizer)",
+     "dur": 139
+    },
+    {
+     "yt": "l4XLeG6jluE",
+     "title": "EmanuelDaProphet - Letter To My Son (Visualizer)",
+     "dur": 153
+    }
+   ]
+  },
+  {
+   "name": "Foeva",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "FA_0DOvBnro",
+     "title": "FOEVA & AYEKO - Polar (Official Music Video)",
+     "dur": 151
+    },
+    {
+     "yt": "rnDkFsuQqt4",
+     "title": "FOEVA - Put My Heart Away (Official Music Video)",
+     "dur": 149
+    },
+    {
+     "yt": "T8DAoWq4-5M",
+     "title": "FOEVA - His Design (Official Music Video)",
+     "dur": 130
+    },
+    {
+     "yt": "eJKs427JkyM",
+     "title": "FOEVA - Ain't The Same (Official Music Video)",
+     "dur": 166
+    },
+    {
+     "yt": "WNfLc46YyG0",
+     "title": "FOEVA - Jungle (Official Music Video)",
+     "dur": 166
+    },
+    {
+     "yt": "2G9wl_VfxFM",
+     "title": "FOEVA - Roller Coaster (Official Visualizer)",
+     "dur": 145
+    }
+   ]
+  },
+  {
+   "name": "GvE Bray",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "BIIztiDW9kc",
+     "title": "Good vs. Evil",
+     "dur": 135
+    },
+    {
+     "yt": "_sZ-H0EyC94",
+     "title": "Spade A Spade (Bryson Gray x GvE Bray)",
+     "dur": 151
+    },
+    {
+     "yt": "RU5UL_5b7j8",
+     "title": "MEDITATE (GvE Bray x Reese McLane)",
+     "dur": 180
+    },
+    {
+     "yt": "vWgfalU3pkk",
+     "title": "NEVER FAIL (GvE Bray x Reese McLane)",
+     "dur": 210
+    },
+    {
+     "yt": "2FcbvWK6eA8",
+     "title": "Crazy (GvE Bray x Robby Heck)",
+     "dur": 183
+    },
+    {
+     "yt": "PGCpPEIGzRg",
+     "title": "Complacent (GvE Bray x Charlie Carbone)",
+     "dur": 127
+    }
+   ]
+  },
+  {
+   "name": "Illijam",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "eMZD_WrNtiU",
+     "title": "Illijam - Summer Vibin",
+     "dur": 198
+    },
+    {
+     "yt": "EpNRY3aOgj4",
+     "title": "Illijam - Wasteland",
+     "dur": 209
+    },
+    {
+     "yt": "n1dqM3mdhwA",
+     "title": "Illijam - All Work Out Feat. CJ King",
+     "dur": 232
+    },
+    {
+     "yt": "Bta6wj0pwBU",
+     "title": "Illijam - Penny For Your Thoughts",
+     "dur": 128
+    },
+    {
+     "yt": "RH3Xh-4Ntgo",
+     "title": "Break Out (Prod. OnBeatMusic)",
+     "dur": 211
+    }
+   ]
+  },
+  {
+   "name": "J. Crum",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "00LHvLJ3HMM",
+     "title": "CLARITY (Official Music Video)",
+     "dur": 199
+    },
+    {
+     "yt": "GqSF-mhmHW8",
+     "title": "NO MORE visualizer",
+     "dur": 222
+    },
+    {
+     "yt": "eaKS11Lx7QY",
+     "title": "PIPE DREAM",
+     "dur": 191
+    },
+    {
+     "yt": "wVILTiZs7uU",
+     "title": "Monochrome Melancholy Official Music Video",
+     "dur": 197
+    },
+    {
+     "yt": "yk5AW3GOF74",
+     "title": "1988 - J. Crum",
+     "dur": 171
+    }
+   ]
+  },
+  {
+   "name": "Jay Broader",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "pd90OHqxEEQ",
+     "title": "Walk",
+     "dur": 138
+    },
+    {
+     "yt": "pWhasbPwc4M",
+     "title": "Outside (ft. Ru3)",
+     "dur": 194
+    },
+    {
+     "yt": "FbZgHhIQ994",
+     "title": "Calvin Cambridge (ft. Ru3)",
+     "dur": 151
+    },
+    {
+     "yt": "Ga43QEh5alI",
+     "title": "Pick A Side (ft. Bryson Gray & Lighthouse)",
+     "dur": 201
+    },
+    {
+     "yt": "Y647bAVOPlg",
+     "title": "Kill My Flesh",
+     "dur": 140
+    }
+   ]
+  },
+  {
+   "name": "Jekasole",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "wmovOcvQFC4",
+     "title": "Jekasole - Locked in (Official Audio)",
+     "dur": 191
+    },
+    {
+     "yt": "iq9PHqbmO5w",
+     "title": "Jekasole- Blame Game (Official Audio)",
+     "dur": 231
+    },
+    {
+     "yt": "iLLVIHXiJXQ",
+     "title": "Jekasole  - Tell Me (Official Audio)",
+     "dur": 226
+    },
+    {
+     "yt": "aGgAEZXe4hQ",
+     "title": "Jekasole -  Can I (Official Audio)",
+     "dur": 200
+    },
+    {
+     "yt": "kCm6LwiYJDM",
+     "title": "Jekasole - Due Time (Official Audio)",
+     "dur": 133
+    },
+    {
+     "yt": "YdjEjx-yXkM",
+     "title": "Jekasole - Enough For Me  (Official Audio)",
+     "dur": 171
+    }
+   ]
+  },
+  {
+   "name": "Jodie Jermaine",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "6x7xZijCl54",
+     "title": "Jodie Jermaine - Moon Flower (Official MV)",
+     "dur": 210
+    },
+    {
+     "yt": "fY6IlZDHZ2o",
+     "title": "Jodie Jermaine - Honey (Official MV)",
+     "dur": 186
+    },
+    {
+     "yt": "AqZLGu8cDvQ",
+     "title": "Jodie Jermaine - Heart Bloom (Official Visual)",
+     "dur": 194
+    }
+   ]
+  },
+  {
+   "name": "Jon Keith",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "EJ65T4v94QY",
+     "title": "Jon Keith - WONT FLY (Official Music Video)",
+     "dur": 302
+    },
+    {
+     "yt": "qXXzlEQ_TnA",
+     "title": "Jon Keith - KILLERS (Official Music Video)",
+     "dur": 161
+    },
+    {
+     "yt": "cTzG-RadBQk",
+     "title": "Jon Keith, DaniLeigh - NEW ME (Official Music Video)",
+     "dur": 199
+    },
+    {
+     "yt": "qx2l8Ljxlx8",
+     "title": "Jon Keith - STAINS Ft. Lani Rose",
+     "dur": 195
+    },
+    {
+     "yt": "6wzcCbORCa0",
+     "title": "Jon Keith- DONT LOOK DOWN (Official Visualizer)",
+     "dur": 240
+    },
+    {
+     "yt": "QUIb1QOGGyk",
+     "title": "Jon Keith - FOR THE SAKE OF LOVE ft. Torey D'Shaun (Official Audio)",
+     "dur": 132
+    },
+    {
+     "yt": "irx1Xbw1yJw",
+     "title": "Jon Keith & Aklesso - SERAPHIM (Official Audio)",
+     "dur": 192
+    },
+    {
+     "yt": "_6ZV0wdEYyw",
+     "title": "Jon Keith - START AGAIN",
+     "dur": 225
+    },
+    {
+     "yt": "RLGJ7dLJVqw",
+     "title": "Jon Keith- WHAT A LIFE (Official Visualizer)",
+     "dur": 180
+    },
+    {
+     "yt": "DdIo-HxHVzA",
+     "title": "Jon Keith - FEEL LIKE HEAVEN (Official Visualizer)",
+     "dur": 154
+    },
+    {
+     "yt": "5bgwIHjaGpc",
+     "title": "Jon Keith - EVERYTHING (Official Visualizer)",
+     "dur": 184
+    }
+   ]
+  },
+  {
+   "name": "Jordan May",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "vs8GhpeBKfo",
+     "title": "WHO U LUV (Official Music Video)",
+     "dur": 178
+    },
+    {
+     "yt": "51XNOQQTquw",
+     "title": "Praying For Ye (Official Video)",
+     "dur": 210
+    },
+    {
+     "yt": "aoLg2LnSwRE",
+     "title": "Open Heart (ft. Gabby Callwood)",
+     "dur": 201
+    },
+    {
+     "yt": "ZVYajtbnLTs",
+     "title": "Better With You (Visualizer)",
+     "dur": 223
+    },
+    {
+     "yt": "dexJEbnX9Zk",
+     "title": "Win Win (Visualizer)",
+     "dur": 178
+    },
+    {
+     "yt": "WDDaCM4i-5U",
+     "title": "Over and Over (Visualizer)",
+     "dur": 190
+    }
+   ]
+  },
+  {
+   "name": "KB",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "Rq6EqUW9s3E",
+     "title": "KB, Kaden Jordan, WHATUPRG - SPEAK THRU ME! (Music Video)",
+     "dur": 233
+    },
+    {
+     "yt": "X3NTLCDQdVA",
+     "title": "KB - TOO UNFAZED (Music Video)",
+     "dur": 287
+    },
+    {
+     "yt": "YCODhzPFAqI",
+     "title": "KB - THIS CANNOT BE SOLD (Music Video)",
+     "dur": 201
+    },
+    {
+     "yt": "8Aw6MJU60kc",
+     "title": "KB - GOD CAME THROUGH (Audio Video)",
+     "dur": 218
+    },
+    {
+     "yt": "qEZUSDKYDDE",
+     "title": "KB, nobigdyl. - GOT A REASON (Music Video)",
+     "dur": 197
+    },
+    {
+     "yt": "QvIHXB7o7MA",
+     "title": "KB - CAMPAIGN (Music Video)",
+     "dur": 169
+    },
+    {
+     "yt": "55sXysxHmD4",
+     "title": "KB, Ty Brasel - Friends (Music Video)",
+     "dur": 179
+    }
+   ]
+  },
+  {
+   "name": "Kevi Morse",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "wFoYogVHrc4",
+     "title": "Only God Knows | Kevi Morse & Gabe Hammes ft. Creative Collective Choir (Official Music Video)",
+     "dur": 219
+    },
+    {
+     "yt": "yyqxxfuPxu8",
+     "title": "Kevi Morse - Behind The Scheme [ Official Video ]",
+     "dur": 195
+    },
+    {
+     "yt": "L6wwq2meIRU",
+     "title": "Kevi Morse - Best friends ( Audio )",
+     "dur": 163
+    },
+    {
+     "yt": "8Vz8HW-q9IU",
+     "title": "\"Lost Inside\" - Kevi Morse (Visualizer ) with lyrics",
+     "dur": 222
+    }
+   ]
+  },
+  {
+   "name": "Lecrae",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "BNs4AvenJQo",
+     "title": "Lecrae - H2O (Visualizer)",
+     "dur": 142
+    },
+    {
+     "yt": "ySRRnlU5uCw",
+     "title": "Lecrae, CéJae - No One (Official Audio)",
+     "dur": 187
+    },
+    {
+     "yt": "xNY3CsUuj48",
+     "title": "Lecrae - Firm Foundation (Official Audio)",
+     "dur": 224
+    },
+    {
+     "yt": "HuEgYblo7_Y",
+     "title": "Lecrae - Living Water (Official Audio)",
+     "dur": 130
+    },
+    {
+     "yt": "EACoIEbIEU8",
+     "title": "Lecrae, MEEZO! - Brick for Brick (Official Music Video)",
+     "dur": 159
+    },
+    {
+     "yt": "cFLY5ocXRC0",
+     "title": "Lecrae, Propaganda - Politickin (Official Audio)",
+     "dur": 148
+    },
+    {
+     "yt": "u11Doyg_qwI",
+     "title": "Lecrae - Pray For Me (Official Audio)",
+     "dur": 200
+    }
+   ]
+  },
+  {
+   "name": "Lee Vasi",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "Qm0rZZA6R50",
+     "title": "Lee Vasi - Hallelujah  (Official Audio)",
+     "dur": 215
+    },
+    {
+     "yt": "qOBXm0vKInQ",
+     "title": "Lee Vasi - Forward (Official Audio)",
+     "dur": 200
+    }
+   ]
+  },
+  {
+   "name": "Maher Zain",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "TgogLEPsxfo",
+     "title": "Maher Zain - For The Rest Of My Life | Official Music Video",
+     "dur": 233
+    },
+    {
+     "yt": "7-XFHUzBDKw",
+     "title": "Maher Zain - Ya Nabi Salam Alayka (International Version) | Official Music Video",
+     "dur": 334
+    },
+    {
+     "yt": "aaL5MdGL4nU",
+     "title": "Maher Zain - Palestine Will Be Free | Official Music Video",
+     "dur": 324
+    },
+    {
+     "yt": "Qwo6f1U8ffA",
+     "title": "Maher Zain - So Soon | Official Music Video",
+     "dur": 375
+    },
+    {
+     "yt": "tBbdSzwxqyY",
+     "title": "Maher Zain - Rahmatun Lil'Alameen (Official Music Video)",
+     "dur": 261
+    },
+    {
+     "yt": "lNebR4caZvc",
+     "title": "Maher Zain - Close To You | Official Music Video",
+     "dur": 236
+    },
+    {
+     "yt": "GvWIgHeg5Aw",
+     "title": "Maher Zain - The Power | Official Music Video",
+     "dur": 269
+    },
+    {
+     "yt": "Mbl6V7hZpho",
+     "title": "Maher Zain - Kun Rahma | Official Music Video",
+     "dur": 253
+    },
+    {
+     "yt": "Tkescmm-enM",
+     "title": "Maher Zain - No One But You | Official Music Video",
+     "dur": 226
+    },
+    {
+     "yt": "mFYGTHNDrlg",
+     "title": "Maher Zain - Maly Siwak | Official Music Video",
+     "dur": 215
+    },
+    {
+     "yt": "a3okPqC0Egc",
+     "title": "Maher Zain - Lawlaka | Official Music Video",
+     "dur": 231
+    },
+    {
+     "yt": "LSkGIRLQXkQ",
+     "title": "Maher Zain - Medina | Official Music Video",
+     "dur": 251
+    },
+    {
+     "yt": "yjL4fonmTpM",
+     "title": "Maher Zain & Salim-Sulaiman - Ya Khuda (O God) | Official Music Video",
+     "dur": 283
+    }
+   ]
+  },
+  {
+   "name": "Mogli the Iceburg",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "GSaUHOWsVNI",
+     "title": "Mogli the Iceburg - Long Time Coming (Prod. by Clams Casino)",
+     "dur": 135
+    },
+    {
+     "yt": "usKGOV9Icfg",
+     "title": "Mogli the Iceburg - On My Way (Official Video)",
+     "dur": 147
+    }
+   ]
+  },
+  {
+   "name": "Muslim Belal",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "V0U6RwtmC_g",
+     "title": "Muslim Belal & Essam — Ameen ft Sofian (Official Video)",
+     "dur": 260
+    },
+    {
+     "yt": "uwdyA5-kBWs",
+     "title": "Muslim Belal & Essam - KABIR",
+     "dur": 337
+    },
+    {
+     "yt": "0xptcdZuTp0",
+     "title": "Muslim Belal x Essam - Family (Official Video)",
+     "dur": 253
+    },
+    {
+     "yt": "pqMVxcyEN2c",
+     "title": "Muslim Belal x Essam - The Corner (Official video)",
+     "dur": 340
+    },
+    {
+     "yt": "KeusmKI6L_k",
+     "title": "Muslim Belal (Ashley Chin) - Journey",
+     "dur": 152
+    },
+    {
+     "yt": "fzHwu4Vr7as",
+     "title": "Real Life | Muslim Belal",
+     "dur": 285
+    },
+    {
+     "yt": "RrDqRfm_d9w",
+     "title": "Muslim Belal - Layla (The Dunya)",
+     "dur": 202
+    },
+    {
+     "yt": "Fm2yjvKcOQw",
+     "title": "Muslim Belal - Traveller",
+     "dur": 249
+    }
+   ]
+  },
+  {
+   "name": "Omar Esa",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "LvG_bmelkJA",
+     "title": "Omar Esa - Show me the way (Official Nasheed Video)",
+     "dur": 295
+    },
+    {
+     "yt": "DGsfzL1tR0s",
+     "title": "Omar Esa - Don't Worry (Official Nasheed Video)",
+     "dur": 319
+    },
+    {
+     "yt": "LFlv3r3Eufg",
+     "title": "Omar Esa - Set Me Free (Official Nasheed Video)",
+     "dur": 248
+    },
+    {
+     "yt": "560GWUrWhWI",
+     "title": "Omar Esa - Allah Made You Perfect (Official Nasheed Video)",
+     "dur": 259
+    },
+    {
+     "yt": "-Ch5AsgK9Ck",
+     "title": "Omar Esa - My Prophet | Rahmatul lil Alameen (Official Nasheed Video)",
+     "dur": 304
+    },
+    {
+     "yt": "u7BQwk5Plaw",
+     "title": "Omar Esa - Muhammad (sallallahu alahiwasallam) | Official Nasheed Video",
+     "dur": 257
+    },
+    {
+     "yt": "421EJ3lQMoo",
+     "title": "Omar Esa - Run This Town ft. Muslim Belal, Kamal Saleh and RawFlow | Official Nasheed Video",
+     "dur": 512
+    },
+    {
+     "yt": "IfODNGoAulU",
+     "title": "Turn Back 2 Allah (Official Nasheed Audio) — Omar Esa",
+     "dur": 203
+    }
+   ]
+  },
+  {
+   "name": "Parris Chariz",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "HgH-NbEo2Xc",
+     "title": "Parris Chariz - Christ or Cash (Official Music Video)",
+     "dur": 139
+    },
+    {
+     "yt": "vRRlIj91Ykg",
+     "title": "Parris Chariz - Christian Mingle (Official Music Video)",
+     "dur": 138
+    },
+    {
+     "yt": "vaADSCbpi0s",
+     "title": "REPLICA (Official Video)",
+     "dur": 132
+    },
+    {
+     "yt": "X16qmgNHPsU",
+     "title": "Parris Chariz - 2003 feat. OTS J Huncho (Official Music Video)",
+     "dur": 174
+    },
+    {
+     "yt": "OEoFl0ZvQk4",
+     "title": "ANGELICA Feat. Eli Montanna",
+     "dur": 121
+    },
+    {
+     "yt": "dne1ss1xXUc",
+     "title": "AURA +4500 feat. Mission",
+     "dur": 127
+    },
+    {
+     "yt": "k7ebsGe3fzk",
+     "title": "Parris Chariz - I Can't Let Up",
+     "dur": 156
+    }
+   ]
+  },
+  {
+   "name": "Rare of Breed",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "sXJ0ZqV8q9E",
+     "title": "Rare of Breed - UNTIL WE MEET AGAIN ft. Joe Nester (Official Music Video)",
+     "dur": 184
+    },
+    {
+     "yt": "-CeVNAmpLxk",
+     "title": "Rare of Breed - LONELY ROAD (Music Video)",
+     "dur": 166
+    },
+    {
+     "yt": "wzU0842WvnQ",
+     "title": "Rare of Breed- NEED YOU AGAIN (Music Video)",
+     "dur": 169
+    },
+    {
+     "yt": "_u9P1R_C7FY",
+     "title": "Rare of Breed - CHANGE (Music Video)",
+     "dur": 166
+    },
+    {
+     "yt": "kb1LRDBEXmE",
+     "title": "Rare of Breed - DIFFERENT (Music Video)",
+     "dur": 189
+    },
+    {
+     "yt": "AhVhty710EM",
+     "title": "Rare of Breed - THE DEVIL IS A LIE (Music Video)",
+     "dur": 238
+    },
+    {
+     "yt": "ubsHEvUUuz8",
+     "title": "Rare of Breed - WELL DONE (Music Video)",
+     "dur": 184
+    }
+   ]
+  },
+  {
+   "name": "Richard Lorenzo Jr.",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "_GyctHIW2M4",
+     "title": "Richard Lorenzo Jr. - COUNTERCULTURE (Official Music Video)",
+     "dur": 182
+    },
+    {
+     "yt": "YDBK5s3ifV8",
+     "title": "Richard Lorenzo Jr. - Be Like You (Official Music Video)",
+     "dur": 142
+    },
+    {
+     "yt": "EEHMXO0cPDQ",
+     "title": "Richard Lorenzo Jr. - Power (Official Music Video)",
+     "dur": 217
+    },
+    {
+     "yt": "mJfYIag7R2c",
+     "title": "Richard Lorenzo Jr. - Focus (Official Music Video)",
+     "dur": 175
+    },
+    {
+     "yt": "SmjUdid6_b4",
+     "title": "Richard Lorenzo Jr. - This Worship (Official Music Video)",
+     "dur": 187
+    },
+    {
+     "yt": "Qp20tUrmWiw",
+     "title": "Richard Lorenzo Jr. - Repent! (Official Music Video)",
+     "dur": 194
+    },
+    {
+     "yt": "BHk7fXCSlpk",
+     "title": "Richard Lorenzo Jr. - Too Deep (Official Music Video)",
+     "dur": 134
+    },
+    {
+     "yt": "6XXSTVh0SHk",
+     "title": "Richard Lorenzo Jr. - Living Sacrifice (Official Music Video)",
+     "dur": 189
+    }
+   ]
+  },
+  {
+   "name": "Ru3",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "1_AMQ1T5b9U",
+     "title": "Holy Spirit Twin",
+     "dur": 116
+    },
+    {
+     "yt": "-upt5oG_fqw",
+     "title": "HOT",
+     "dur": 96
+    },
+    {
+     "yt": "3oKXc4qeeiI",
+     "title": "For The Better",
+     "dur": 145
+    },
+    {
+     "yt": "CzRBbw2CZAI",
+     "title": "LIGHT WORK",
+     "dur": 112
+    },
+    {
+     "yt": "k_dgJAaSwRY",
+     "title": "Vent",
+     "dur": 165
+    },
+    {
+     "yt": "QBclbxQ9c5U",
+     "title": "Letters to Brooklynn",
+     "dur": 187
+    }
+   ]
+  },
+  {
+   "name": "Saint Jones",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "GLH453LQIdQ",
+     "title": "Saint Jones - MIRACLE - [VISUALIZER] - Prod. By Buckroll",
+     "dur": 233
+    },
+    {
+     "yt": "fr5qs_RQ4rA",
+     "title": "Saint Jones - Epiphany (Prod. By Buckroll)",
+     "dur": 130
+    },
+    {
+     "yt": "JW7cT4kRah0",
+     "title": "Saint Jones - Good Day - prod. By Leeked",
+     "dur": 148
+    }
+   ]
+  },
+  {
+   "name": "Scribe Music",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "TCPjrOU7-VI",
+     "title": "Welcome to the Wild (Official Video)",
+     "dur": 199
+    },
+    {
+     "yt": "LHE7mcjx6D0",
+     "title": "Scribe Music - Much Afraid (Visualizer)",
+     "dur": 275
+    },
+    {
+     "yt": "NcBa8jCXS3I",
+     "title": "Scribe Music - No King (Audio)",
+     "dur": 206
+    },
+    {
+     "yt": "pCr2mCzlMto",
+     "title": "Scribe Music - Mood... (Audio)",
+     "dur": 210
+    },
+    {
+     "yt": "VAqLfHcPwK8",
+     "title": "Scribe Music - Innocence (Audio)",
+     "dur": 239
+    }
+   ]
+  },
+  {
+   "name": "Sean C. Johnson",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "9nYk_Jx8MQY",
+     "title": "Sean C. Johnson - \"Daydreaming\" (Official Video) ft. The Junk Band",
+     "dur": 186
+    },
+    {
+     "yt": "a0EAM05lhk4",
+     "title": "Sean C. Johnson - \"Save Me\" (Official Video)",
+     "dur": 288
+    },
+    {
+     "yt": "JN9lDjCo7WY",
+     "title": "Sean C. Johnson - \"Mountains\" (Official Video)",
+     "dur": 262
+    },
+    {
+     "yt": "1oH_2LBfP08",
+     "title": "Sean C. Johnson - \"NO NEVER\" (Official) Music Video - (@SeanCJohnson)",
+     "dur": 299
+    },
+    {
+     "yt": "6ODf9sPJXxQ",
+     "title": "Sean C. Johnson - \"WHO\" (Official) Music Video  (@SeanCJohnson)",
+     "dur": 245
+    },
+    {
+     "yt": "T-lIYO-nnbI",
+     "title": "Sean C. Johnson - \"Home\" (Part 1 of 5) #RaceTheSun",
+     "dur": 218
+    }
+   ]
+  },
+  {
+   "name": "Shiwan",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "ARvMe4uWTng",
+     "title": "Shiwan - Altar",
+     "dur": 200
+    },
+    {
+     "yt": "RF3wZu_JyA0",
+     "title": "Shiwan - They Know You (Visualizer)",
+     "dur": 185
+    },
+    {
+     "yt": "ESpHvAtVtjw",
+     "title": "Shiwan - Nothing Basic (Visualizer)",
+     "dur": 158
+    },
+    {
+     "yt": "prfr2r93Sq0",
+     "title": "Shiwan - Lifeline",
+     "dur": 246
+    },
+    {
+     "yt": "MDWZ3guAmTc",
+     "title": "Shiwan - What I’ll Do",
+     "dur": 221
+    },
+    {
+     "yt": "byepFOmwqj8",
+     "title": "Shiwan - City On Fire",
+     "dur": 202
+    }
+   ]
+  },
+  {
+   "name": "Siedd",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "PPuPvtjbFHk",
+     "title": "Siedd - Maula Tere Bina (Official Nasheed Video) | Vocals Only",
+     "dur": 227
+    },
+    {
+     "yt": "GCOw3kgn6cg",
+     "title": "Siedd - Hubbak | Vocals Only (Official Nasheed Video)",
+     "dur": 224
+    },
+    {
+     "yt": "jsPFbohzaAk",
+     "title": "Siedd - Calling to You (Stripped) | Vocals Only Nasheed",
+     "dur": 217
+    },
+    {
+     "yt": "K14Be6cB5hc",
+     "title": "Siedd - Till We Meet Again (Official Nasheed Video) | Vocals Only",
+     "dur": 246
+    },
+    {
+     "yt": "OgTaSmeBSIM",
+     "title": "Siedd - Driving 140 (Official Nasheed Video) | Vocals Only",
+     "dur": 184
+    },
+    {
+     "yt": "nD4MTMmSDCw",
+     "title": "Siedd - Truth (Official Nasheed Video) | Vocals Only",
+     "dur": 163
+    },
+    {
+     "yt": "jwEFLyWM_fY",
+     "title": "Siedd - My Beloved (PBUH) | Vocals Only Nasheed",
+     "dur": 241
+    },
+    {
+     "yt": "G44oeKWyFWo",
+     "title": "Siedd - Thank God | Vocals Only Nasheed",
+     "dur": 127
+    }
+   ]
+  },
+  {
+   "name": "Stevie Rizo",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "tG5udNrM-ag",
+     "title": "Stevie Rizo - Possible (Official Visualizer)",
+     "dur": 153
+    },
+    {
+     "yt": "VswBBd341oI",
+     "title": "Stevie Rizo - Wherever I Go (Official Visualizer)",
+     "dur": 92
+    },
+    {
+     "yt": "YXsaCSXbV8w",
+     "title": "Stevie Rizo - Flowers Bloom (Official Audio)",
+     "dur": 205
+    },
+    {
+     "yt": "yItNqsxPQfg",
+     "title": "Stevie Rizo - All Yours (Official Audio)",
+     "dur": 202
+    },
+    {
+     "yt": "wmBnOo3sIRY",
+     "title": "Stevie Rizo - 365 (Official Audio)",
+     "dur": 158
+    },
+    {
+     "yt": "uJpTehDEb1w",
+     "title": "Stevie Rizo - Him (Official Video)",
+     "dur": 196
+    }
+   ]
+  },
+  {
+   "name": "Tommy Zuko",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "JwqQZfESFfY",
+     "title": "Tommy Zuko - INGLISH (Official Video)",
+     "dur": 145
+    },
+    {
+     "yt": "nQC_NeWO8jI",
+     "title": "Tommy Zuko - ALRIGHTOKAY (Official Video)",
+     "dur": 105
+    },
+    {
+     "yt": "-FzsdHi7iwc",
+     "title": "Tommy Zuko - Praise God Look Fly (Official Video)",
+     "dur": 152
+    },
+    {
+     "yt": "X6yilTJyXsk",
+     "title": "Tommy Zuko - Pray For The Homies (Official Video)",
+     "dur": 162
+    },
+    {
+     "yt": "l1lX8NEy4K8",
+     "title": "Tommy Zuko - No Pressure (Official Video)",
+     "dur": 173
+    },
+    {
+     "yt": "3N_J0o8Dx2Q",
+     "title": "Tommy Zuko - INNAREALWAY (Official Video)",
+     "dur": 153
+    },
+    {
+     "yt": "y1M2fHbyZeE",
+     "title": "Tommy Zuko - What I Got (Official Music Video)",
+     "dur": 295
+    }
+   ]
+  },
+  {
+   "name": "Toyalove",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "icr3MI-eQOw",
+     "title": "Toyalove, MelodicB- Motion (Official Video)",
+     "dur": 143
+    },
+    {
+     "yt": "MxOw_XMCNRU",
+     "title": "Toyalove - Red Mercedes (Official Video)",
+     "dur": 156
+    },
+    {
+     "yt": "JBMMUcyIX8Y",
+     "title": "Toyalove: Worship Forreal Music Video",
+     "dur": 177
+    },
+    {
+     "yt": "SEoLhWvtveM",
+     "title": "Toyalove: Be Yourself Official Audio",
+     "dur": 179
+    }
+   ]
+  },
+  {
+   "name": "Xavier Sorrow",
+   "hop": 3,
+   "tracks": [
+    {
+     "yt": "dsIYOOkVV0A",
+     "title": "Xavier Sorrow - Chosen (Official Music Video)",
+     "dur": 214
+    },
+    {
+     "yt": "vIArc3ek9O4",
+     "title": "Xavier Sorrow - Doomsday (Official Music Video)",
+     "dur": 107
+    },
+    {
+     "yt": "drZ5EGpn9Yc",
+     "title": "Xavier Sorrow - This Time! (Official Audio)",
+     "dur": 107
+    },
+    {
+     "yt": "bYE2YJdequc",
+     "title": "Xavier Sorrow - Holy Ground (Visualizer)",
+     "dur": 124
+    },
+    {
+     "yt": "VhdOiEAi5hA",
+     "title": "Xavier Sorrow - POPSTAR (Official Audio)",
+     "dur": 139
+    },
+    {
+     "yt": "1YlXsn0atF0",
+     "title": "Xavier Sorrow - HEAVEN IN VIEW (Official Audio)",
+     "dur": 193
+    },
+    {
+     "yt": "teC2VNWsftE",
+     "title": "Xavier Sorrow - HONEST (Official Audio)",
+     "dur": 189
+    }
+   ]
+  }
+ ]
+}
