@@ -1470,7 +1470,11 @@ async function tvBanGate(env, now, D) {
   D.rerun = await strip(D.rerun, null, "tv", "rerun");
   D.movies = await strip(D.movies, "tv/movieblock", "tv", "movieblock");
   if (D.insDoc && Array.isArray(D.insDoc.items)) D.insDoc = await strip(D.insDoc, "tv/insert", "tv", "insert");
-  else if (D.insDoc && D.insDoc.yt && banSet.has(String(D.insDoc.yt))) {
+  // DRAIN FIX (2026-11-07): only once. Without the consumedAt check this
+  // branch re-wrote the already-consumed doc on EVERY keeper tick (live D1:
+  // tv/insert rewritten every 4-15 s, ~1,700 writes/day, each one a changes
+  // row and a re-read for every MW TV watcher).
+  else if (D.insDoc && D.insDoc.yt && !D.insDoc.consumedAt && banSet.has(String(D.insDoc.yt))) {
     // v1 top-level insert shape (the owner play-next door's doc):
     // a banned pick is consumed on the spot, with the reason on the
     // doc, so the firing rule can never stamp its window.
