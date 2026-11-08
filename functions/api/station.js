@@ -435,13 +435,19 @@ async function aiDjPass(deps, S, now) {
  * or silence the station.
  *
  * Where it plays: the rotation tail only, in the "world" half of
- * the mixAlt alternation, and only inside the mixed daypart
- * (12:00–21:00 ET — the owner daypart law transcribed in
- * aiDjDefaultDayparts). Listener picks, the schedule, Malik's own
+ * the mixAlt alternation. Listener picks, the schedule, Malik's own
  * queue, AI stock, spots and the requests lane all keep their
- * priority ahead of the tail, untouched. Overnight trap and the
- * morning wake-up stay exactly as they were — this lane never
- * fires outside the mixed block.
+ * priority ahead of the tail, untouched. The cadence is set by the
+ * daypart (the owner daypart law transcribed in
+ * aiDjDefaultDayparts): inside the mixed daypart (12:00–21:00 ET)
+ * the web takes every world slot — about 50/50 with his bag across
+ * the tail. In the thematic dayparts — overnight trap (21:00–06:00)
+ * and the morning wake-up (06:00–12:00) — the alternation stretches
+ * to a three-step cycle (his, his, world), so the web takes about
+ * one alternation draw in three, a ~2:1 his:web mix that keeps each
+ * block's own flavor. The lane is live around the clock because the
+ * owner ruled it the same day (2026-11-08): "I dont want it 100
+ * percent me never" — no daypart of his station is ever all-his.
  *
  * Inside the web half, the draw is a hop-weighted no-repeat bag
  * (S.webBag: an Efraimidis–Spirakis permutation of the pool, the
@@ -463,7 +469,12 @@ const WEB_ARTIST_CAP = 2; // max plays per web artist per rolling hour
 const WEB_CAP_WINDOW = 3600e3;
 const WEB_DUR_MIN = 45, WEB_DUR_MAX = 1200; // the unattended band (aiDjSurvivors precedent)
 const webMemo = { at: 0, failAt: 0, v: 0, entries: null };
-function webMixActive(now) { const m = aiDjEasternMinutes(now); return m >= WEB_MIX_START && m < WEB_MIX_END; }
+/* Cadence, not a gate (owner, 2026-11-08: "I dont want it 100
+   percent me never"): the lane never closes. Mode 2 — the mixed
+   daypart: the web takes every "world" slot of the mixAlt
+   alternation. Mode 1 — the thematic dayparts: the tail stretches
+   the alternation to his, his, world (~2:1 his:web). */
+function webMixMode(now) { const m = aiDjEasternMinutes(now); return m >= WEB_MIX_START && m < WEB_MIX_END ? 2 : 1; }
 function webWeightedOrder(entries, rand) {
   const rnd = typeof rand === "function" ? rand : Math.random;
   return (Array.isArray(entries) ? entries : []).map((e, i) => ({ i, k: -Math.log(1 - rnd()) / (WEB_HOP_W[Math.max(0, Math.min(3, +e.hop || 0))]) })).sort((a, b) => a.k - b.k).map((x) => x.i);
@@ -6490,13 +6501,21 @@ export async function onRequestGet({ request, env }) {
     S.rqTail = (S.rqTail | 0) + 1;
     if (S.rqTail % 3 === 0) { const rqItem = await rqLaneItem(); if (rqItem) return rqItem; }
     S.mixAlt = !S.mixAlt; // alternate: one of Meechie's, one from the world
-    if (S.mixAlt) {
-      /* WEB MIX (owner, 2026-11-08): inside the mixed daypart the
-         "world" slot belongs to the collaboration web first (see the
-         WEBMIX block above aiDjPass) — a web draw that yields
-         nothing, and every draw outside the mixed block, falls
-         through to the Archive pool exactly as before. */
-      if (webMixActive(now)) { const wi = await webLaneItem({ origin, fetchFn: fetch }, S, now); if (wi) return wi; }
+    /* WEB MIX (owner, 2026-11-08, cadence revised the same day):
+       the "world" slot belongs to the collaboration web first,
+       around the clock (see the WEBMIX block above aiDjPass). In
+       the mixed daypart the mixAlt alternation stands as-is, so
+       the tail runs ~50/50 web:his. In the thematic dayparts the
+       alternation stretches to a three-step cycle (S.webAlt —
+       his, his, world) for a ~2:1 his:web mix: his word is "I
+       dont want it 100 percent me never", so no daypart is ever
+       all-his. A web draw that yields nothing falls through to
+       the Archive pool exactly as before, and any draw the cycle
+       gives to his bag falls through to bagPick below. */
+    let webWorld = S.mixAlt;
+    if (webMixMode(now) === 1) { S.webAlt = (S.webAlt | 0) + 1; webWorld = S.webAlt % 3 === 0; }
+    if (webWorld) {
+      const wi = await webLaneItem({ origin, fetchFn: fetch }, S, now); if (wi) return wi;
       const pi = await poolItem(); if (pi) return pi;
     }
     const t = await bagPick(avoidSrc);
