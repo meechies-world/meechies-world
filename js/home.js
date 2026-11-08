@@ -50,16 +50,34 @@
     for (const k of ["A", "B", "C", "D"]) { const d = S[k]; if (d && d.playing && d.title) return d; }
     return null;
   };
+  // The LIVE NOW claim is freshness-gated (Fix #2B): radio/dj keeps
+  // whatever the booth last wrote, so a deck left "playing" when a
+  // session ended would otherwise headline the hero forever (the
+  // stale Friday battle-night title). The keeper's own liveness
+  // signals decide: the booth heartbeat (boothAt, inside its
+  // 90-second window) or the playing deck's own song timeline
+  // still covering now (the keeper's dead-deck margin). Neither
+  // fresh = not live, whatever the stored flags say; the strip and
+  // rail then fall through to the members-live branch or hide,
+  // exactly as they do today when nothing is live.
+  const liveDeck = () => {
+    const d = playingDeck();
+    if (!S || !S.live || !d) return null;
+    const now = Date.now();
+    if (S.boothAt && now - S.boothAt < 90000) return d;
+    if (+d.dur > 0 && +d.start > 0 && now <= +d.start + +d.dur * 1000 + 60000) return d;
+    return null;
+  };
   const battleLive = () => (S && S.battle && S.battle.on && S.battle.phase === "live") ? S.battle : null;
   const battleNames = (b) => [((b.p1 && b.p1.name) || "DJ 1"), ((b.p2 && b.p2.name) || "DJ 2")];
 
   function paintStrip() {
-    const b = battleLive(), d = playingDeck();
+    const b = battleLive(), d = liveDeck();
     let html = "";
     if (b) {
       const [p1, p2] = battleNames(b);
       html = `<span>⚔️ BATTLE LIVE — ${E(p1)} vs ${E(p2)}</span><a class="btn" href="#radio" data-go="radio">Watch the battle</a>`;
-    } else if (S && S.live && d) {
+    } else if (d) {
       html = `<span>🔴 LIVE NOW — ${E(d.title)}</span><a class="btn" href="#radio" data-go="radio">Tune in</a>`;
     } else if (lives.length) {
       html = `<span>📡 ${lives.length} streaming live now</span><a class="btn" href="#live" data-go="live">Watch live</a>`;
@@ -71,10 +89,10 @@
 
   function paintRail() {
     if (bAir) {
-      const b = battleLive(), d = playingDeck();
+      const b = battleLive(), d = liveDeck();
       let air = "";
       if (b) { const [p1, p2] = battleNames(b); air = `⚔️ Battle live: ${E(p1)} vs ${E(p2)}`; }
-      else if (S && S.live && d) air = `🔴 On air now: ${E(d.title)}`;
+      else if (d) air = `🔴 On air now: ${E(d.title)}`;
       else if (lives.length) air = "📡 Live now: " + lives.slice(0, 3).map((l) => E(nameOf(l))).join(", ");
       if (air) {
         const h = `<h4>ON AIR / LIVE NOW</h4><p>${air}</p>`;

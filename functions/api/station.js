@@ -38,7 +38,7 @@ const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, header
  * radio/dj (the booth's live state), tv/queue, tv/skip and
  * brain/commands (see the drain memo below). */
 const DOC_MEMO_TTL = 4000;
-const DOC_MEMO_PATHS = new Set(["tv/channel", "tv/breakpool", "tv/premiere", "tv/rerun", "tv/familytime", "tv/movieblock", "tv/insert", "tv/news", "tv/localupdate", "tv/anchor", "tv/charnews", "tv/quarternews", "tv/votes", "tv/guardian", "tv/now", "brain/ytblock", "brain/tvwatch", "station/schedule", "station/rqplaylist"]);
+const DOC_MEMO_PATHS = new Set(["tv/channel", "tv/breakpool", "tv/premiere", "tv/rerun", "tv/familytime", "tv/comedyhour", "tv/movieblock", "tv/insert", "tv/news", "tv/localupdate", "tv/anchor", "tv/charnews", "tv/quarternews", "tv/votes", "tv/guardian", "tv/now", "brain/ytblock", "brain/tvwatch", "station/schedule", "station/rqplaylist"]);
 const docMemo = new Map(); // path -> { at, raw } — raw is the stored JSON string, or null
 const rqMemo = { at: 0, rows: null }; // D1 READ FIX: listener-request rows, shared by the harvest + takePick (loader above onRequestGet)
 const libMemo = { at: 0, lib: null, byAsset: null, ver: -1 }; // D1 READ FIX: the parsed track library (loader above onRequestGet); ver = the site/tracks-version stamp it was built from (F3)
@@ -1067,7 +1067,7 @@ function mwVmixRescue(S, now, obs) {
  * that the break cuts in even during his own live booth sets, so
  * there is no booth exception. */
 const TV_CHAIN_SEC = 720;          // short programs chain until a run reaches 12 min, then a break (SPEC §2.1)
-const TV_PROGRAM_V = 21;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules; v11 = the news freshness + Family Time build (Malik, 2026-11-04 ~21:37: "Fix my news" / "8 oclock is supposed to be a kids family movie"): the :50 news window is laid ONLY when tv/news holds an edition produced within TV_NEWS_FRESH_MS before the window start — a stale edition is never laid, the program chain flows through the window instead — and a news window overlapping the Family Time window is never laid at all (Family Time is a hard window; the :50 news no longer passes over the family movie); the bump forces the one-time re-lay that clears stale-edition news windows and news segments inside the Family Time span already laid in tv/now); v12 = the ASAP Preach build (Malik, 2026-11-05 ~08:34 ET: "I want asap preach s music to get shuffled on my tv station"): 20 verified music videos from ASAP Preach's official YouTube channel (@OfficialASAPPreach, channel UCDG6YLw_vMVDRXKErys6EJQ) join the break pool as ordinary cleared auto-picks (kind break, lane "gospel") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/asap-preach-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v13 = the Deen Squad build (Malik, 2026-11-05 ~11:03 ET: "And deen squad" / "Music videos"): 24 verified music videos from Deen Squad's official YouTube channel (@deensquadmusic, channel UCh6MhPyvzCNz_VF5q9UcV1A) join the break pool as ordinary cleared auto-picks (kind break, lane "faith") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/deen-squad-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v14 = the ONLY build (Malik, 2026-11-05 12:25 ET: "I only want my 2 cartoons comercials and asap preech videos on my tv channel along with deen squad" — scope confirmed B, shuffle only): the auto-picked fill narrows to ASAP Preach + Deen Squad + the MY EMPIRE house show spots — the cycle seed gains the 44 gospel/faith videos as fill program items (fill: true), tvFillOk gates the chain walk, tvCyclePos and the break bag, and tvMovieState stands the movie chain down as fill (its seed stays: Family Time eligibility reads the shared seeds, which are NOT narrowed — tvFamilyEligible output is unchanged); the scheduled blocks (news window + quarter cadence, anchor, cartoon, Comedy Hour insert, Family Time, premiere/rerun, owner queue) are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now under the narrowed fill (build record: website/only-lineup-2026-11-05/PROGRESS.md); v15 = the fill mix build (Malik, 2026-11-05 ~14:33 ET: "Wheres asap preach i dont see his videos shuffled into mwtv" — then ~14:38 ET: "And shuffle in my cartoons as well" / "All 3 asap deen and my cartoons"): the v14 membership was right but the ORDER played like blocks — the fill videos sat in the cycle seed as one ASAP Preach run followed by one Deen Squad run and the chain walk plays the seed in order, so ASAP Preach played straight through, then Deen Squad played alone for the better part of an hour. tvSeedChannel now weaves the fill into one shuffled cycle: the 44 ASAP Preach / Deen Squad videos interleave proportionally (each artist's videos keep their seeded order inside the weave; Deen Squad carries four more videos than ASAP Preach, so an extra Deen Squad video lands every so often and no artist plays more than two in a row), and Malik's two barbershop cartoons join the fill as WHOLE EPISODES — the same four files the hourly slot plays (tvCartoonItems), seeded here as fill and dealt into the weave as single units: Part 1 then Part 2 back-to-back, never split, each episode exactly once per pass, the two episodes landing half a cycle apart. The hourly cartoon block is NOT changed: it still plays on its own pinned span every hour (Episode 1, one show commercial, Episode 2, one more commercial), the span still cuts whatever fill is playing — a fill cartoon included — and the fill resumes from its exact offset after the span, exactly like every other fill program. Membership otherwise unchanged: the same 51-id fill set plus the 4 cartoon parts, every other seed item and every scheduled block exactly as before; the bump reseeds tv/channel and re-lays tv/now in the new mixed order (build record: website/fill-interleave-2026-11-05/PROGRESS.md); v16 = the Islamic programming build (Malik, 2026-11-05 ~18:00 ET: "Every friday at 1 i want a kutbah from mufti menk to play and i want the adan to play when its time to pray i want it to be a beautiful recitation. Also i want random islamic shorts to play randomly and find more muslin rap like deen squad and mix that in as well" — picks decided by Malik 2026-11-05 ~19:31 ET): (i) a Friday 13:00 ET KHUTBAH hard window (tvKhutbahWin, rotation doc tv/khutbah) carrying one of 10 verified Mufti Menk Jumu'ah sermons from his OFFICIAL channel @muftimenkofficial in rotation — a true hard window like Family Time: it preempts fill, the break bag, the ad cadence and the owner queue (which freezes and resumes), the hourly cartoon block slides past it as a unit, the :50 news gate refuses any window overlapping it, and it is protected from crowd-skip AND Guardian cuts (owner skip still cuts one Friday's instance, qCut.khutbah); (ii) the ADHAN at the five daily prayer times for Uniontown, PA (ISNA / Aladhan method 2, precomputed daily into the producer-owned doc tv/adhan for today AND tomorrow — a stale or missing day means NO adhan that day, never a guessed time): Malik's picked voice, Mishary Rashid Alafasy — the standard cut (HekbKqYc8Qk) at Dhuhr/Asr/Maghrib/Isha and the Fajr cut (BUQFIszAxnM, carrying 'prayer is better than sleep') at Fajr; the adhan CUTS at the exact prayer minute through fill, the break bag, the cadence and the owner queue (split/resume — nothing is lost), and SLIDES to the end of a cartoon span, an anchor edition, a laid :50 news window, the premiere/rerun and Family Time (Maghrib slides past the movie); the Friday Dhuhr adhan is SUPPRESSED under Jumu'ah (the khutbah is the observance); protected from crowd-skip and Guardian cuts, owner skip can cut one prayer (qCut.adhan, stamped by day+prayer so one cut never suppresses the next); (iii) 25 verified ISLAMIC SHORTS (Mufti Menk x8, Yaqeen Institute x7, Bayyinah x6, Deen Squad x4 — official channels only, oEmbed-verified) join the break pool in a new lane "shorts" admitted by tvFillOk — brief vertical interludes in the break bag only, never program items; the bag never deals two shorts back-to-back, and the 4 Deen Squad behind-the-scenes clips carry sparse:true (Malik: they play "sometimes") — a sparse short enters only every third bag, so it is clearly rarer than the other 21; (iv) 48 more MUSLIM RAP videos join Deen Squad in the faith lane — Native Deen 10, Essam 12, Khalil Ismail 7 (the strict verified set) plus Muslim Belal 12 and Ilyas Mao 7 (Malik, 2026-11-05 ~19:31 ET: Belal and Ilyas are "in") — every id an official-channel upload, oEmbed-verified with the artist's own channel as author, durations pinned from the actual uploads; like Deen Squad they join BOTH the break pool (kind break, lane "faith") and the cycle seed as fill:true program items, so the v15 weave re-deals them into the mixed fill by artist. The seeds are otherwise untouched and Family Time eligibility is unchanged (exactly Johnny Test + Giving Thanks); the bump reseeds tv/channel + tv/breakpool, seeds tv/khutbah, and re-lays tv/now (build record: website/islamic-programming-2026-11-05/PROGRESS.md); v17 = the Ep1 cartoon replacement build (Malik, 2026-11-05 ~19:33 ET: "Replace all copies of episode one of south park in meechies world and put this one in make sure you format it for best speed and quality"): Episode 1 of the barbershop cartoon is REPLACED by the new cut Malik sent — the hourly slot items (tvCartoonItems) and the v15 fill whole-episode unit now point at the new files media/barbershop-cartoon-v2-p1.mp4 and media/barbershop-cartoon-v2-p2.mp4, durations pinned on the keeper's 0.1 s lay grid as 301.3 / 301.3 (measured 301.233 / 301.216 — the pins MUST sit on the grid and clear the slot chain walk's float edge: with off-grid or 301.2/301.2 pins the walker's cumulative subtraction leaves a ~1e-13 s residue at a part boundary, re-selects the finished part with ~0 s remaining and bails to the span end, silently dropping the rest of the block from every span — proven by boundary simulation + harness lays; 301.3/301.3 is the closest grid pair that clears every boundary for every entry point and every in-slot commercial pick (full sweep in the build harness); the walker fragility itself is a pre-existing keeper defect, flagged in the build record, NOT fixed here); the same build renames the Episode 1 viewer titles (Malik, 2026-11-05 ~22:02 ET: "The cartoons name is SOUTH PARK IN MEECHIES WORLD"): the old Ep1 titles ('The Barbershop Cartoon — Part 1 of 2' / 'Part 2 of 2') become 'South Park in Meechie's World — Episode 1, Part 1 of 2' / 'Part 2 of 2', matching Episode 2's format, in the slot items and the fill unit alike — the two different names alternating on a single span were watcher fault 16's mid-program title flicker; this rename is titles only, ids unchanged; the item ids are UNCHANGED (cartoon-barbershop-p1/p2) so fault keys, pins and history carry over; the OLD part files media/barbershop-cartoon-p1.mp4 and media/barbershop-cartoon-p2.mp4 are deleted from the repo in the same change — no copy of the old Episode 1 remains anywhere on the channel; Episode 2 and every other seed item are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now at the new durations (build record: website/cartoon-ep1-replace-2026-11-05/PROGRESS.md); v18 = the collaborators build (Malik, 2026-11-05 ~22:24 ET: "I want you to add every bodys music video that makes music with asap preach and deen squad into my music shuffle"): every artist with a credited musical collaboration with ASAP Preach or with Deen Squad joins the shuffle with their own official-channel music videos — 165 videos from 18 ASAP Preach collaborators in the gospel lane (Brother Bo 18, Big Yeet 7, Adrion Butler 6, REDEEMED 9, Jysa BP 7, Blizz 7, Kamban 7, Bryann T 10, Tyson James 20, Brett Raio 6, Justo Chalaire 5, Kurtis Hoppie 6, SYL noiZ 4, #HERO 14, Nicky Gracious 12, Marquese Saenz 6, REZUM 13, Nino Salas 8) and 45 videos from 5 Deen Squad-side acts in the faith lane (Jae Deen 6, Karter Zaher 12, KHXLED 7, Waheeb Nasan 11, Lil Baliil 9; Jae Deen and Karter Zaher are Deen Squad's own members, counted on their verified solo channels) — 210 videos total, each an upload on the artist's own official channel (handle canonical and channel title in agreement; per-video YouTube oEmbed HTTP 200 with the artist's own channel as author; "- Topic" auto channels and squatters excluded), each passed the site embed gate (/api/ytsearch) on a title search, and each duration double-pinned in exact agreement (channel grid vs the embed-gate relay; the relay vs the video's own watch page for the few uploads not on a channel grid). Like the v16 rap set they join BOTH the break pool (kind break, lane "gospel"/"faith") and the cycle seed as fill:true program items, so the v15 weave re-deals them into the mixed fill by artist; tvFillOk itself is UNCHANGED — the new break items ride the two lanes it already admits and the new program items ride fill:true. Same-song uploads mirrored on two collaborators' channels are carried once (kept on one artist's set, held on the other's), and no item already in the pool is duplicated. The seeds are otherwise untouched and Family Time eligibility is unchanged (exactly Johnny Test + Giving Thanks); the bump reseeds tv/channel + tv/breakpool and re-lays tv/now (build record: website/collaborators-tv-2026-11-05/PROGRESS.md); v19 = the adhan voice swap (Malik, 2026-11-06 08:18 ET — his tap: B, use the Mufti Menk channel live Makkah recordings): the pinned adhan pair changes from Alafasy to the live Makkah athaan recordings on the official channel of Mufti Menk (@muftimenkofficial) — standard cut aZ5RxRFBu-8 (217 s, the live Maghrib athaan at the door of the Kaabah) for Dhuhr/Asr/Maghrib/Isha, Fajr cut tagIhATHfPs (185 s, the live Fajr athaan from Makkah) at Fajr; oEmbed author "Mufti Menk" verified 2026-11-06 and both durations double-pinned from the actual uploads; Malik picked these knowing their edge cleanliness cannot be transcript-proven (no captions exist) — his word is the authorization; nothing else in the lineup changes; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now so the new pair takes effect (build record: website/adhan-menk-swap-2026-11-06/PROGRESS.md); v20 = the Episodes 3 + 4 build (Malik, 2026-11-06 17:10 ET: "Put episode 3 and 4 in the tv line up" — the two files he sent at 17:13-17:15 ET): Episodes 3 (the record-deal story) and 4 (the talent-show story) of South Park in Meechie's World join the FILL as whole episodes exactly as Episodes 1 and 2 did in v15 — the same items the hourly slot plays (tvCartoonItems: same ids, files, titles and durations), seeded here as fill so the weave deals each episode into the shuffle as ONE unit (Part 1 then Part 2 back-to-back, never split), each episode exactly once per pass, the episodes dividing the cycle between them; membership otherwise unchanged — every other seed item and every scheduled block exactly as before; the bump reseeds tv/channel and re-lays tv/now with the two new episodes in the weave (build record: website/episodes-34-2026-11-06/PROGRESS.md); v21 = the three MW TV commercial spots join the break pool (Malik, 2026-11-06 16:55 EST: 'Play this randomly every other hour on mwtv as a comercials' — spot-trump-grillz, spot-trump-president, spot-bandz; TV_PROGRAM_V bumped 20 to 21 because the fill seed changed (build record: website/commercials-2026-11-06/PROGRESS.md)
+const TV_PROGRAM_V = 22;              // lineup generation: tvSeedChannel/tvSeedPool carry progV; tvTick reseeds any stored lineup older than this (v2 = the 2026-11-02 music-video network — PD classics retired; v3 = the MY EMPIRE premiere commercial joins the break pool; v4 = the Uniontown Local Update break spot joins the pool, held by age from tv/localupdate; v5 = the MY EMPIRE done-by-10 commercial joins the break pool; v6 = the MY EMPIRE every-day-at-8 commercial joins the break pool; v7 = the MY EMPIRE show-spot pool grows (v2 + the three 2026-11-03 spots join the break pool) and the 15-minute rail draws the whole show-spot pool in seeded random rotation, radio spots join the Auto-DJ rotation — Malik, 2026-11-03: play the show commercials randomly, on MW TV and on the radio; v8 = the 2026-11-03 schedule build: stand-up comedy features, TV One Unsung full episodes, Opry Live and WildBrain family clusters join the cycle; v9 = the 5-minute news+traffic update rail (tvUpdSpans) retired (Malik, 2026-11-03 ~14:57: 'no more interruptions every 5 minutes') — the quarter-hour cadence (commercial + chained fresh update) is the only news interruption on the channel; the bump forces the one-time re-lay that clears rail hits already laid in tv/now; v10 = the quarter-freshness build (Malik, 2026-11-03 ~14:54: 'new news every time — 60 seconds of it every 15 minutes with my commercials'): the cadence chains only THIS quarter's fresh update — the character-hosted clip when produced inside the freshness window (TV_QUARTER_FRESH_MS), else the produced quarter piece from tv/quarternews, else nothing; the hourly edition's local update no longer chains at quarters and its radio cut no longer feeds the radio hit — the radio hit plays the quarter piece's own radio cut; the bump forces the re-lay that clears chains laid under the old rules; v11 = the news freshness + Family Time build (Malik, 2026-11-04 ~21:37: "Fix my news" / "8 oclock is supposed to be a kids family movie"): the :50 news window is laid ONLY when tv/news holds an edition produced within TV_NEWS_FRESH_MS before the window start — a stale edition is never laid, the program chain flows through the window instead — and a news window overlapping the Family Time window is never laid at all (Family Time is a hard window; the :50 news no longer passes over the family movie); the bump forces the one-time re-lay that clears stale-edition news windows and news segments inside the Family Time span already laid in tv/now); v12 = the ASAP Preach build (Malik, 2026-11-05 ~08:34 ET: "I want asap preach s music to get shuffled on my tv station"): 20 verified music videos from ASAP Preach's official YouTube channel (@OfficialASAPPreach, channel UCDG6YLw_vMVDRXKErys6EJQ) join the break pool as ordinary cleared auto-picks (kind break, lane "gospel") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/asap-preach-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v13 = the Deen Squad build (Malik, 2026-11-05 ~11:03 ET: "And deen squad" / "Music videos"): 24 verified music videos from Deen Squad's official YouTube channel (@deensquadmusic, channel UCh6MhPyvzCNz_VF5q9UcV1A) join the break pool as ordinary cleared auto-picks (kind break, lane "faith") — YouTube oEmbed HTTP 200 with the artist's own channel as author on every id, each duration pinned from the actual upload via the channel grid and the site embed-gate relay in exact agreement (build record: website/deen-squad-tv-2026-11-05/PROGRESS.md); the bump reseeds tv/breakpool so the new items enter the shuffle bag; v14 = the ONLY build (Malik, 2026-11-05 12:25 ET: "I only want my 2 cartoons comercials and asap preech videos on my tv channel along with deen squad" — scope confirmed B, shuffle only): the auto-picked fill narrows to ASAP Preach + Deen Squad + the MY EMPIRE house show spots — the cycle seed gains the 44 gospel/faith videos as fill program items (fill: true), tvFillOk gates the chain walk, tvCyclePos and the break bag, and tvMovieState stands the movie chain down as fill (its seed stays: Family Time eligibility reads the shared seeds, which are NOT narrowed — tvFamilyEligible output is unchanged); the scheduled blocks (news window + quarter cadence, anchor, cartoon, Comedy Hour insert, Family Time, premiere/rerun, owner queue) are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now under the narrowed fill (build record: website/only-lineup-2026-11-05/PROGRESS.md); v15 = the fill mix build (Malik, 2026-11-05 ~14:33 ET: "Wheres asap preach i dont see his videos shuffled into mwtv" — then ~14:38 ET: "And shuffle in my cartoons as well" / "All 3 asap deen and my cartoons"): the v14 membership was right but the ORDER played like blocks — the fill videos sat in the cycle seed as one ASAP Preach run followed by one Deen Squad run and the chain walk plays the seed in order, so ASAP Preach played straight through, then Deen Squad played alone for the better part of an hour. tvSeedChannel now weaves the fill into one shuffled cycle: the 44 ASAP Preach / Deen Squad videos interleave proportionally (each artist's videos keep their seeded order inside the weave; Deen Squad carries four more videos than ASAP Preach, so an extra Deen Squad video lands every so often and no artist plays more than two in a row), and Malik's two barbershop cartoons join the fill as WHOLE EPISODES — the same four files the hourly slot plays (tvCartoonItems), seeded here as fill and dealt into the weave as single units: Part 1 then Part 2 back-to-back, never split, each episode exactly once per pass, the two episodes landing half a cycle apart. The hourly cartoon block is NOT changed: it still plays on its own pinned span every hour (Episode 1, one show commercial, Episode 2, one more commercial), the span still cuts whatever fill is playing — a fill cartoon included — and the fill resumes from its exact offset after the span, exactly like every other fill program. Membership otherwise unchanged: the same 51-id fill set plus the 4 cartoon parts, every other seed item and every scheduled block exactly as before; the bump reseeds tv/channel and re-lays tv/now in the new mixed order (build record: website/fill-interleave-2026-11-05/PROGRESS.md); v16 = the Islamic programming build (Malik, 2026-11-05 ~18:00 ET: "Every friday at 1 i want a kutbah from mufti menk to play and i want the adan to play when its time to pray i want it to be a beautiful recitation. Also i want random islamic shorts to play randomly and find more muslin rap like deen squad and mix that in as well" — picks decided by Malik 2026-11-05 ~19:31 ET): (i) a Friday 13:00 ET KHUTBAH hard window (tvKhutbahWin, rotation doc tv/khutbah) carrying one of 10 verified Mufti Menk Jumu'ah sermons from his OFFICIAL channel @muftimenkofficial in rotation — a true hard window like Family Time: it preempts fill, the break bag, the ad cadence and the owner queue (which freezes and resumes), the hourly cartoon block slides past it as a unit, the :50 news gate refuses any window overlapping it, and it is protected from crowd-skip AND Guardian cuts (owner skip still cuts one Friday's instance, qCut.khutbah); (ii) the ADHAN at the five daily prayer times for Uniontown, PA (ISNA / Aladhan method 2, precomputed daily into the producer-owned doc tv/adhan for today AND tomorrow — a stale or missing day means NO adhan that day, never a guessed time): Malik's picked voice, Mishary Rashid Alafasy — the standard cut (HekbKqYc8Qk) at Dhuhr/Asr/Maghrib/Isha and the Fajr cut (BUQFIszAxnM, carrying 'prayer is better than sleep') at Fajr; the adhan CUTS at the exact prayer minute through fill, the break bag, the cadence and the owner queue (split/resume — nothing is lost), and SLIDES to the end of a cartoon span, an anchor edition, a laid :50 news window, the premiere/rerun and Family Time (Maghrib slides past the movie); the Friday Dhuhr adhan is SUPPRESSED under Jumu'ah (the khutbah is the observance); protected from crowd-skip and Guardian cuts, owner skip can cut one prayer (qCut.adhan, stamped by day+prayer so one cut never suppresses the next); (iii) 25 verified ISLAMIC SHORTS (Mufti Menk x8, Yaqeen Institute x7, Bayyinah x6, Deen Squad x4 — official channels only, oEmbed-verified) join the break pool in a new lane "shorts" admitted by tvFillOk — brief vertical interludes in the break bag only, never program items; the bag never deals two shorts back-to-back, and the 4 Deen Squad behind-the-scenes clips carry sparse:true (Malik: they play "sometimes") — a sparse short enters only every third bag, so it is clearly rarer than the other 21; (iv) 48 more MUSLIM RAP videos join Deen Squad in the faith lane — Native Deen 10, Essam 12, Khalil Ismail 7 (the strict verified set) plus Muslim Belal 12 and Ilyas Mao 7 (Malik, 2026-11-05 ~19:31 ET: Belal and Ilyas are "in") — every id an official-channel upload, oEmbed-verified with the artist's own channel as author, durations pinned from the actual uploads; like Deen Squad they join BOTH the break pool (kind break, lane "faith") and the cycle seed as fill:true program items, so the v15 weave re-deals them into the mixed fill by artist. The seeds are otherwise untouched and Family Time eligibility is unchanged (exactly Johnny Test + Giving Thanks); the bump reseeds tv/channel + tv/breakpool, seeds tv/khutbah, and re-lays tv/now (build record: website/islamic-programming-2026-11-05/PROGRESS.md); v17 = the Ep1 cartoon replacement build (Malik, 2026-11-05 ~19:33 ET: "Replace all copies of episode one of south park in meechies world and put this one in make sure you format it for best speed and quality"): Episode 1 of the barbershop cartoon is REPLACED by the new cut Malik sent — the hourly slot items (tvCartoonItems) and the v15 fill whole-episode unit now point at the new files media/barbershop-cartoon-v2-p1.mp4 and media/barbershop-cartoon-v2-p2.mp4, durations pinned on the keeper's 0.1 s lay grid as 301.3 / 301.3 (measured 301.233 / 301.216 — the pins MUST sit on the grid and clear the slot chain walk's float edge: with off-grid or 301.2/301.2 pins the walker's cumulative subtraction leaves a ~1e-13 s residue at a part boundary, re-selects the finished part with ~0 s remaining and bails to the span end, silently dropping the rest of the block from every span — proven by boundary simulation + harness lays; 301.3/301.3 is the closest grid pair that clears every boundary for every entry point and every in-slot commercial pick (full sweep in the build harness); the walker fragility itself is a pre-existing keeper defect, flagged in the build record, NOT fixed here); the same build renames the Episode 1 viewer titles (Malik, 2026-11-05 ~22:02 ET: "The cartoons name is SOUTH PARK IN MEECHIES WORLD"): the old Ep1 titles ('The Barbershop Cartoon — Part 1 of 2' / 'Part 2 of 2') become 'South Park in Meechie's World — Episode 1, Part 1 of 2' / 'Part 2 of 2', matching Episode 2's format, in the slot items and the fill unit alike — the two different names alternating on a single span were watcher fault 16's mid-program title flicker; this rename is titles only, ids unchanged; the item ids are UNCHANGED (cartoon-barbershop-p1/p2) so fault keys, pins and history carry over; the OLD part files media/barbershop-cartoon-p1.mp4 and media/barbershop-cartoon-p2.mp4 are deleted from the repo in the same change — no copy of the old Episode 1 remains anywhere on the channel; Episode 2 and every other seed item are untouched; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now at the new durations (build record: website/cartoon-ep1-replace-2026-11-05/PROGRESS.md); v18 = the collaborators build (Malik, 2026-11-05 ~22:24 ET: "I want you to add every bodys music video that makes music with asap preach and deen squad into my music shuffle"): every artist with a credited musical collaboration with ASAP Preach or with Deen Squad joins the shuffle with their own official-channel music videos — 165 videos from 18 ASAP Preach collaborators in the gospel lane (Brother Bo 18, Big Yeet 7, Adrion Butler 6, REDEEMED 9, Jysa BP 7, Blizz 7, Kamban 7, Bryann T 10, Tyson James 20, Brett Raio 6, Justo Chalaire 5, Kurtis Hoppie 6, SYL noiZ 4, #HERO 14, Nicky Gracious 12, Marquese Saenz 6, REZUM 13, Nino Salas 8) and 45 videos from 5 Deen Squad-side acts in the faith lane (Jae Deen 6, Karter Zaher 12, KHXLED 7, Waheeb Nasan 11, Lil Baliil 9; Jae Deen and Karter Zaher are Deen Squad's own members, counted on their verified solo channels) — 210 videos total, each an upload on the artist's own official channel (handle canonical and channel title in agreement; per-video YouTube oEmbed HTTP 200 with the artist's own channel as author; "- Topic" auto channels and squatters excluded), each passed the site embed gate (/api/ytsearch) on a title search, and each duration double-pinned in exact agreement (channel grid vs the embed-gate relay; the relay vs the video's own watch page for the few uploads not on a channel grid). Like the v16 rap set they join BOTH the break pool (kind break, lane "gospel"/"faith") and the cycle seed as fill:true program items, so the v15 weave re-deals them into the mixed fill by artist; tvFillOk itself is UNCHANGED — the new break items ride the two lanes it already admits and the new program items ride fill:true. Same-song uploads mirrored on two collaborators' channels are carried once (kept on one artist's set, held on the other's), and no item already in the pool is duplicated. The seeds are otherwise untouched and Family Time eligibility is unchanged (exactly Johnny Test + Giving Thanks); the bump reseeds tv/channel + tv/breakpool and re-lays tv/now (build record: website/collaborators-tv-2026-11-05/PROGRESS.md); v19 = the adhan voice swap (Malik, 2026-11-06 08:18 ET — his tap: B, use the Mufti Menk channel live Makkah recordings): the pinned adhan pair changes from Alafasy to the live Makkah athaan recordings on the official channel of Mufti Menk (@muftimenkofficial) — standard cut aZ5RxRFBu-8 (217 s, the live Maghrib athaan at the door of the Kaabah) for Dhuhr/Asr/Maghrib/Isha, Fajr cut tagIhATHfPs (185 s, the live Fajr athaan from Makkah) at Fajr; oEmbed author "Mufti Menk" verified 2026-11-06 and both durations double-pinned from the actual uploads; Malik picked these knowing their edge cleanliness cannot be transcript-proven (no captions exist) — his word is the authorization; nothing else in the lineup changes; the bump reseeds tv/channel + tv/breakpool and re-lays tv/now so the new pair takes effect (build record: website/adhan-menk-swap-2026-11-06/PROGRESS.md); v20 = the Episodes 3 + 4 build (Malik, 2026-11-06 17:10 ET: "Put episode 3 and 4 in the tv line up" — the two files he sent at 17:13-17:15 ET): Episodes 3 (the record-deal story) and 4 (the talent-show story) of South Park in Meechie's World join the FILL as whole episodes exactly as Episodes 1 and 2 did in v15 — the same items the hourly slot plays (tvCartoonItems: same ids, files, titles and durations), seeded here as fill so the weave deals each episode into the shuffle as ONE unit (Part 1 then Part 2 back-to-back, never split), each episode exactly once per pass, the episodes dividing the cycle between them; membership otherwise unchanged — every other seed item and every scheduled block exactly as before; the bump reseeds tv/channel and re-lays tv/now with the two new episodes in the weave (build record: website/episodes-34-2026-11-06/PROGRESS.md); v21 = the three MW TV commercial spots join the break pool (Malik, 2026-11-06 16:55 EST: 'Play this randomly every other hour on mwtv as a comercials' — spot-trump-grillz, spot-trump-president, spot-bandz; TV_PROGRAM_V bumped 20 to 21 because the fill seed changed (build record: website/commercials-2026-11-06/PROGRESS.md); v22 = the Comedy Hour build (Fix #2B, 2026-11-08 — fault 115): the recurring nightly 19:00-20:00 ET COMEDY HOUR hard window is built at last (Malik's standing order, 2026-11-03: the 7 PM hour is the Comedy Hour — until now only the one-shot Tue 2026-11-03 tvSeedInsert ever carried it, so the hour played standing fill): tvComedyResolve locks a nightly chain from the comedy pool (the v8 block "comedy" specials) into the new keeper-owned rotation doc tv/comedyhour, and tvGen lays it as a clock-pinned hard window with Family Time's discipline — it preempts the anchor, the ad cadence, the cartoon block, the insert, the owner queue and the fill (which freeze/resume), ends sharp at 20:00 where Family Time takes the channel, and the :50 news window keeps precedence over it the insert way (comedy caps at the window start; a fresh edition lays, else the hour plays wall-to-wall); segments carry cmd:1, crowd/Guardian cuts are refused, the owner skip cuts one night's instance (qCut.comedy); the bump reseeds tv/channel + tv/breakpool and re-lays tv/now with the window live
 const TV_PREM_V = 1;                 // MY EMPIRE premiere slot doc generation (tv/premiere)
 const TV_RERUN_V = 1;                // MY EMPIRE 10 PM rerun slot doc generation (tv/rerun)
 const TV_MOVIE_V = 6;                // post-premiere movie block doc generation (tv/movieblock) (v3 = the 2026-11-03 pool expansion: the new-pool sweep's verified titles join the chain — see tvSeedMovieBlock; v4 = PR #704's single-title strike of Sugar Daddy Killer, superseded before merge; v5 = the B build, 2026-11-06: the Movie Night pool is removed on Malik's order (scope B) — the seed keeps only mov-giving-thanks, held solely as a Family Time eligibility source, see tvSeedMovieBlock; v6 = Giving Thanks struck from Family Time on Malik's order (2026-11-06 20:32 EST: "Take it out") — a watcher deep seat found the 8 PM Family Time block airing Giving Thanks (yt 8-ngS-WjqJw), an adult drama (profanity, sexual innuendo, a choking scene), in the younger-teens block; the movieblock seed now carries no items and Family Time eligibility is exactly {Johnny Test})
@@ -1697,6 +1697,7 @@ function tvSkipGate(seg, chan, now, by, cadNow, proof) {
   if (seg.qid) return gProof ? pass("owner-queue") : { ok: false, why: "owner-queue" };
   if (seg.fam) return { ok: false, why: "family-time" };
   if (seg.khut) return { ok: false, why: "khutbah" };
+  if (seg.cmd) return { ok: false, why: "comedy-hour" };
   if (seg.adh) return { ok: false, why: "adhan" };
   if (TV_CROWD_PROTECTED_IDS.includes(seg.id)) return gProof ? pass("news-update") : { ok: false, why: "news-update" };
   if (cadNow && cadNow.inside && cadNow.upd && seg.id === cadNow.upd.id) return gProof ? pass("news-update") : { ok: false, why: "news-update" };
@@ -1705,6 +1706,7 @@ function tvSkipGate(seg, chan, now, by, cadNow, proof) {
   if (chan._rerun) { const w = tvPremWin(now, chan._rerun); if (w && w.inside) return { ok: false, why: "rerun" }; }
   if (chan._family) { const w = tvFamilyWin(now, chan._family); if (w && w.inside) return { ok: false, why: "family-time" }; }
   if (chan._khutbah) { const w = tvKhutbahWin(now, chan._khutbah); if (w && w.inside) return { ok: false, why: "khutbah" }; }
+  if (chan._comedy) { const w = tvComedyWin(now, chan._comedy); if (w && w.inside) return { ok: false, why: "comedy-hour" }; }
   if (chan._adhan) { const w = tvAdhanWinAt(now, chan._adhan); if (w && w.inside) return { ok: false, why: "adhan" }; }
   if (chan._insert) { const w = tvInsertWin(now, chan._insert); if (w && w.inside) return { ok: false, why: "owner-queue" }; }
   if (chan._anchor) { const w = tvAnchorWin(now, chan._anchor); if (w && w.inside) return { ok: false, why: "news" }; }
@@ -1722,7 +1724,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
   // (the insert freeze rule): tvMovieWin runs the window long by
   // the spot time inside it, which it computes from this state.
   if (chan._movies && cad) chan._movies._cad = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rer: chan._rerun, qtr: chan._qtr };
-  if (chan._queue) chan._queue._st = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr, family: chan._family, crt: chan._cartoon, khutbah: chan._khutbah, adhan: chan._adhan };
+  if (chan._queue) chan._queue._st = { cad, prem: chan._prem, anch: chan._anchor, ins: chan._insert, char: chan._char, lu: chan._lu, rerun: chan._rerun, qtr: chan._qtr, family: chan._family, comedy: chan._comedy, crt: chan._cartoon, khutbah: chan._khutbah, adhan: chan._adhan };
   const segs = [];
   let t = cursor.at, ix = cursor.ix || 0, off = +cursor.off || 0, run = +cursor.run || 0;
   let guard = 0, skips = 0;
@@ -1732,6 +1734,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     const rwin = tvPremWin(t, chan._rerun);
     const fwin = tvFamilyWin(t, chan._family);
     const kwin = tvKhutbahWin(t, chan._khutbah);
+    const hwin = tvComedyWin(t, chan._comedy);
     const dwin = tvAdhanWinAt(t, chan._adhan);
     const awin = tvAnchorWin(t, chan._anchor);
     const mwin = tvMovieWin(t, chan._movies);
@@ -1804,6 +1807,25 @@ function tvGen(chan, pool, cursor, horizonMs) {
       const d = Math.min(Math.round((+kit.dur - koff) * 10) / 10, Math.round((kwin.end - t) / 100) / 10);
       if (d > 0.05) { const sg = tvProgSeg(kit, t, d, koff); sg.khut = 1; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; }
       t = kwin.end; continue;
+    }
+    if (hwin && hwin.inside && !(chan._qCut && chan._qCut.comedy === hwin.start)) {
+      // COMEDY HOUR (Fix #2B): tonight's comedy chain chains
+      // inside its window by wall-clock offset exactly like the
+      // premiere chain — the program cursor freezes and the
+      // interrupted program resumes after the block from the
+      // offset it reached. The branch sits ahead of the anchor,
+      // the ad cadence, the cartoon block, the insert, the queue
+      // and the fill, so none of them chop the hour; the :50 news
+      // window keeps precedence the insert way — segments cap at
+      // the window start when a fresh edition will lay (newsLive)
+      // and the news branch above owns that span — and the window
+      // ends sharp at 20:00, where Family Time takes the channel.
+      let cap = hwin.end;
+      if (newsLive && win.start > t && win.start < cap) cap = win.start;
+      let slotOff = (t - hwin.start) / 1000, segIt = null, segOff = 0;
+      for (const sit of chan._comedy.items) { if (slotOff < +sit.dur - 1e-6) { segIt = sit; segOff = slotOff > 0 ? slotOff : 0; break; } slotOff -= +sit.dur; }
+      if (segIt) { const d = Math.min(Math.round((+segIt.dur - segOff) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { const sg = tvProgSeg(segIt, t, d, segOff); sg.cmd = 1; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; } }
+      t = cap; continue;
     }
     if (awin && awin.inside && !(chan._qCut && chan._qCut.anchor === awin.start)) {
       // Anchor news slot: the current anchor edition plays as one
@@ -1917,6 +1939,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       if (cwin && !cwin.inside && cwin.start > t && cwin.start < cap) cap = cwin.start;
       if (kwin && !kwin.inside && kwin.start > t && kwin.start < cap) cap = kwin.start;
+      if (hwin && !hwin.inside && hwin.start > t && hwin.start < cap) cap = hwin.start;
       if (dwin && !dwin.inside && dwin.start > t && dwin.start < cap) cap = dwin.start;
       const list = Array.isArray(chan._insert.items) && chan._insert.items.length ? chan._insert.items : [chan._insert.item];
       let slotOff = (t - iwin.start) / 1000, segIt = null, segOff = 0;
@@ -1943,6 +1966,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       if (cwin && !cwin.inside && cwin.start > t && cwin.start < cap) cap = cwin.start;
       if (kwin && !kwin.inside && kwin.start > t && kwin.start < cap) cap = kwin.start;
+      if (hwin && !hwin.inside && hwin.start > t && hwin.start < cap) cap = hwin.start;
       if (dwin && !dwin.inside && dwin.start > t && dwin.start < cap) cap = dwin.start;
       const qat = tvQueueAt(chan._queue, tvQueueElapsed(chan._queue, t));
       if (qat) { const d = Math.min(Math.round((+qat.it.dur - qat.off) * 10) / 10, Math.round((cap - t) / 100) / 10); if (d > 0.05) { const sg = tvProgSeg(qat.it, t, d, qat.off); sg.qid = qat.it.qid; segs.push(sg); t += Math.round(d * 1000); skips = 0; continue; } }
@@ -1968,6 +1992,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
       if (fwin && !fwin.inside && fwin.start > t && fwin.start < cap) cap = fwin.start;
       if (cwin && !cwin.inside && cwin.start > t && cwin.start < cap) cap = cwin.start;
       if (kwin && !kwin.inside && kwin.start > t && kwin.start < cap) cap = kwin.start;
+      if (hwin && !hwin.inside && hwin.start > t && hwin.start < cap) cap = hwin.start;
       if (dwin && !dwin.inside && dwin.start > t && dwin.start < cap) cap = dwin.start;
       let slotOff = (t - mwin.start) / 1000, segIt = null, segOff = 0;
       // An insert that cut into this block froze it: once the
@@ -2006,6 +2031,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (fwin && !fwin.inside && fwin.start > t && fwin.start < boundary) boundary = fwin.start;
     if (cwin && !cwin.inside && cwin.start > t && cwin.start < boundary) boundary = cwin.start;
     if (kwin && !kwin.inside && kwin.start > t && kwin.start < boundary) boundary = kwin.start;
+    if (hwin && !hwin.inside && hwin.start > t && hwin.start < boundary) boundary = hwin.start;
     if (dwin && !dwin.inside && dwin.start > t && dwin.start < boundary) boundary = dwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
@@ -2023,7 +2049,7 @@ function tvGen(chan, pool, cursor, horizonMs) {
         // would remain). News windows keep their long-standing
         // behaviour — the window simply starts when the break ends.
         let bd = +b.dur, capS = Infinity;
-        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr, chan._khutbah), tvQueueWin(t, chan._queue), tvFamilyWin(t, chan._family), tvCartoonWinAt(t, chan._cartoon), tvKhutbahWin(t, chan._khutbah), tvAdhanWinAt(t, chan._adhan)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
+        for (const w of [tvPremWin(t, chan._prem), tvPremWin(t, chan._rerun), tvAnchorWin(t, chan._anchor), tvMovieWin(t, chan._movies), tvInsertWin(t, chan._insert), tvAdWin(t, cad, chan._prem, chan._anchor, chan._insert, chan._char, chan._lu, chan._rerun, chan._qtr, chan._khutbah), tvQueueWin(t, chan._queue), tvFamilyWin(t, chan._family), tvCartoonWinAt(t, chan._cartoon), tvKhutbahWin(t, chan._khutbah), tvComedyWin(t, chan._comedy), tvAdhanWinAt(t, chan._adhan)]) { if (w && !w.inside && w.start > t && w.start < capS) capS = w.start; }        if (capS < t + bd * 1000) bd = Math.round((capS - t) / 100) / 10;
         if (bd > 0.05) { segs.push({ k: (b.kind === "house" || b.kind === "sponsor") ? "house" : "break", id: b.id, src: b.src, yt: b.yt || "", url: b.url || "", iaId: b.iaId || "", title: b.title || "", show: "", start: t, dur: bd, off: 0 }); t += Math.round(bd * 1000); }
       }
       run = 0;
@@ -3268,6 +3294,7 @@ function tvCartoonSpans(chan, crt, fromMs, toMs, pins) {
         consider(tvAnchorWin(f, chan._anchor), true);
         consider(tvInsertWin(f, chan._insert), true);
         consider(tvKhutbahWin(f, chan._khutbah), true);
+        consider(tvComedyWin(f, chan._comedy), true);
         if (!(push > f)) break;
         f = push;
       }
@@ -3402,6 +3429,11 @@ function tvQueueFrozen(q, fromMs, toMs) {
   // overlap rule: a span counted twice would make the queue
   // replay content it already aired).
   if (st.family) { let t3 = fromMs; for (let i = 0; i < 4; i++) { const w = tvFamilyWin(t3, st.family); if (!w || w.start >= toMs) break; const a = Math.max(fromMs, w.start), b = Math.min(toMs, w.end); if (b > a) { let ov = 0; const nw1 = tvNewsWin(a); for (let ws = nw1.start; ws < b; ws += 3600e3) { const o = Math.min(b, ws + TV_NEWS_LEN * 1000) - Math.max(a, ws); if (o > 0) ov += o / 1000; } if (st.cad) ov += tvAdTimeIn(st.cad, st.prem, st.anchor, st.insert, a, b, st.char, st.lu, st.rerun, st.qtr); froz += Math.max(0, (b - a) / 1000 - ov); } t3 = w.end; } }
+  // Comedy Hour freezes the queue the same way (Fix #2B): its
+  // whole span, minus the :50 news window that passes over it —
+  // the news lines above already count that span, and counting
+  // it twice would make the queue replay content it aired.
+  if (st.comedy) { let t4 = fromMs; for (let i = 0; i < 4; i++) { const w = tvComedyWin(t4, st.comedy); if (!w || w.start >= toMs) break; const a = Math.max(fromMs, w.start), b = Math.min(toMs, w.end); if (b > a) { let ov = 0; const nw1 = tvNewsWin(a); for (let ws = nw1.start; ws < b; ws += 3600e3) { const o = Math.min(b, ws + TV_NEWS_LEN * 1000) - Math.max(a, ws); if (o > 0) ov += o / 1000; } froz += Math.max(0, (b - a) / 1000 - ov); } t4 = w.end; } }
   if (st.insert && isFinite(st.insert.start) && (st.insert.dur || 0) > 0) sub(st.insert.start, st.insert.start + st.insert.dur * 1000);
   // The hourly cartoon spans the queue freezes across — netted of
   // any :50 news window and cadence span inside one, like the
@@ -3520,6 +3552,7 @@ function tvAdvanceChannel(chan, segs, cursor, now, cadNow) {
   if ((sc = slotCut(tvPremWin(now, chan._rerun), chan._rerun && chan._rerun.items, "rerun", "rerun"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvFamilyWin(now, chan._family), chan._family && chan._family.items, "family", "Family Time"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvKhutbahWin(now, chan._khutbah), chan._khutbah && chan._khutbah.items, "khutbah", "Friday khutbah"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
+  if ((sc = slotCut(tvComedyWin(now, chan._comedy), chan._comedy && chan._comedy.items, "comedy", "Comedy Hour"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if (cur.adh && cur.adhKey) { out.qCut = { adhan: cur.adhKey }; out.note = "cut the adhan short — the channel moves on; the next prayer is untouched"; return out; }
   if ((sc = slotCut(tvAnchorWin(now, chan._anchor), chan._anchor ? [chan._anchor.item] : null, "anchor", "anchor edition"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
   if ((sc = slotCut(tvCartoonWinAt(now, chan._cartoon), chan._cartoon ? chan._cartoon.items.concat(chan._cartoon.spots || []) : null, "cartoon", "the cartoon block"))) { out.qCut = sc.qCut; out.note = sc.note; return out; }
@@ -4092,6 +4125,132 @@ function tvKhutbahResolve(khDoc, now, banSet) {
   if (!it) return { state: null, doc, changed };
   const item = { ...it, show: "🕌 Friday Khutbah" };
   return { state: { startMinET: TV_KHUTBAH_START_MIN, item, items: [item], liveDurSec: +it.dur, week: weekKey }, doc, changed };
+}
+/* COMEDY HOUR (Fix #2B, 2026-11-08 — fault 115): Malik's standing
+ * order (2026-11-03): the 7 PM hour is the Comedy Hour. Until this
+ * build the recurring window was never laid — only the one-shot
+ * tvSeedInsert for Tue 2026-11-03 ever carried the hour, so at
+ * 19:00 the channel simply played its standing fill (the watcher
+ * deep seat that filed fault 115 sat through South Park in the
+ * slot). It is built exactly like the Family Time window it
+ * precedes:
+ *   - A standing nightly HARD window at 19:00 ET, one hour sharp
+ *     (TV_COMEDY_LEN_SEC): the window ends at 20:00 ET on the
+ *     dot, where Family Time takes the channel.
+ *   - Precedence in tvGen: premiere, rerun, Family Time, the
+ *     khutbah, then the COMEDY HOUR — ahead of the anchor, the ad
+ *     cadence, the cartoon block (whose spans slide past it,
+ *     tvCartoonSpans), the insert, the owner queue (which freezes
+ *     across it, tvQueueFrozen) and the fill chain; what it
+ *     preempts freezes and resumes after the block.
+ *   - The :50 news window keeps precedence over it the insert
+ *     way: comedy segments cap at the window start and the news
+ *     branch lays a FRESH edition when the standing gates allow
+ *     (the chain's wall-clock offset then sits at the window end,
+ *     so the block owes nothing after); with no fresh edition the
+ *     hour plays wall-to-wall. News is never cut by the block.
+ *   - The chain: the night's picks are drawn from the comedy pool
+ *     — the cleared items carrying block "comedy" in the cycle
+ *     seed (the v8 stand-up specials) — until they cover the
+ *     hour, and chain inside the window by wall-clock offset
+ *     exactly like the premiere chain; a pick that runs past
+ *     20:00 is cut there sharp.
+ *   - Rotation lives in tv/comedyhour (keeper-owned, the
+ *     familytime shape): a shuffled pick bag; a night's chain is
+ *     locked on the first tick that resolves it and never
+ *     re-drawn mid-night; the draw skips anything played inside
+ *     the last 7 days while the pool allows.
+ *   - A night with nothing eligible = no window; the channel
+ *     plays its standing lineup — never dead air.
+ *   - Protection: a scheduled window — tvSkipGate refuses crowd
+ *     AND Guardian cuts inside it (log + report only, the Family
+ *     Time class); votes still collect; the OWNER skip still
+ *     cuts one night's instance (tvAdvanceChannel slot cut,
+ *     qCut "comedy").
+ * Segments carry cmd:1 and the items' show is stamped
+ * "MW Comedy Hour", so the Guide and TV bar paint the block. */
+const TV_COMEDY_V = 1;              // comedyhour doc generation (tv/comedyhour)
+const TV_COMEDY_START_MIN = 1140;   // 19:00 ET, every night
+const TV_COMEDY_LEN_SEC = 3600;     // one hour sharp: ends 20:00 ET at Family Time
+const TV_COMEDY_FROM_MS = 1794182400000; // first airing: Sun 2026-11-08 19:00 ET — earlier windows never lay
+function tvSeedComedyHour(now) {
+  return { progV: TV_COMEDY_V, on: true, startMinET: TV_COMEDY_START_MIN, bag: [], night: "", itemIds: [], hist: [], updatedAt: now, by: "keeper-seed" };
+}
+function tvComedyEligible(chan) {
+  const out = [], seen = new Set();
+  for (const it of (chan && chan.items) || []) {
+    if (!it || seen.has(it.id)) continue;
+    if (!tvCleared(it)) continue;
+    if (it.block !== "comedy") continue;
+    seen.add(it.id); out.push(it);
+  }
+  return out;
+}
+/* The Comedy Hour window containing ms (inside: true) or the next
+ * one — tvPremWin's arithmetic over the resolved comedy state at
+ * the fixed one-hour length. */
+function tvComedyWin(ms, com) {
+  if (!com || !Array.isArray(com.items) || !com.items.length) return null;
+  return tvPremWin(ms, { startMinET: com.startMinET || TV_COMEDY_START_MIN, liveDurSec: TV_COMEDY_LEN_SEC });
+}
+/* Resolve tonight's Comedy Hour state from the rotation doc.
+ * Pure: returns { state, doc, changed } — tvTick persists the doc
+ * when a chain was locked. state is null when the block is off,
+ * when the window predates the first airing, or when nothing
+ * eligible exists. The night a window belongs to is its 19:00 ET
+ * start's ET day, so the chain is the same at 17:00 (when
+ * generation first reaches the window) and at 19:30 (mid-window)
+ * — locked once, never re-drawn. */
+function tvComedyResolve(cmdDoc, chan, now) {
+  const doc = cmdDoc && typeof cmdDoc === "object" ? cmdDoc : tvSeedComedyHour(now);
+  if (doc.on === false) return { state: null, doc, changed: false };
+  const et0 = tvEtParts(now), sec0 = Math.floor((now % 60000) / 1000);
+  const winStart = now - ((et0.hour * 60 + et0.minute - TV_COMEDY_START_MIN) * 60 + sec0) * 1000;
+  if (winStart < TV_COMEDY_FROM_MS) return { state: null, doc, changed: false };
+  const dayKey = tvEtParts(winStart).dayKey;
+  const eligible = tvComedyEligible(chan);
+  if (!eligible.length) return { state: null, doc, changed: false };
+  let changed = false;
+  let picks = null;
+  if (doc.night === dayKey && Array.isArray(doc.itemIds) && doc.itemIds.length) {
+    const locked = doc.itemIds.map((id) => eligible.find((x) => x.id === id) || null);
+    if (locked.every(Boolean)) picks = locked;
+  }
+  if (!picks) {
+    const ids = new Set(eligible.map((x) => x.id));
+    let bag = (Array.isArray(doc.bag) ? doc.bag : []).filter((id) => ids.has(id));
+    picks = [];
+    const refill = () => {
+      const used = new Set(picks.map((x) => x.id));
+      bag = eligible.map((x) => x.id).filter((id) => !used.has(id));
+      if (!bag.length) bag = eligible.map((x) => x.id);
+      for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t2 = bag[i]; bag[i] = bag[j]; bag[j] = t2; }
+    };
+    if (!bag.length) refill();
+    const hist = Array.isArray(doc.hist) ? doc.hist : [];
+    const cutMs = Date.parse(dayKey) - 7 * 86400e3;
+    const recent = new Set(hist.filter((h) => h && Date.parse(h.day || "") >= cutMs).map((h) => h.id));
+    const lastNight = hist.length ? hist[hist.length - 1].id : "";
+    let covered = 0;
+    while (covered < TV_COMEDY_LEN_SEC) {
+      if (!bag.length) refill();
+      const pick = picks.length ? bag[0] : bag.find((id) => !recent.has(id) && id !== lastNight) || bag.find((id) => id !== lastNight) || bag[0];
+      if (!pick) break;
+      bag = bag.filter((id) => id !== pick);
+      const it = eligible.find((x) => x.id === pick) || null;
+      if (!it) break;
+      picks.push(it); covered += +it.dur || 0;
+    }
+    if (picks.length) {
+      doc.bag = bag; doc.night = dayKey; doc.itemIds = picks.map((x) => x.id);
+      doc.hist = [...hist, ...picks.map((x) => ({ day: dayKey, id: x.id }))].slice(-42);
+      doc.updatedAt = now; doc.by = "keeper";
+      changed = true;
+    }
+  }
+  if (!picks || !picks.length) return { state: null, doc, changed };
+  const items = picks.map((it) => ({ ...it, show: "MW Comedy Hour" }));
+  return { state: { startMinET: TV_COMEDY_START_MIN, item: items[0], items, liveDurSec: TV_COMEDY_LEN_SEC, night: dayKey }, doc, changed };
 }
 /* THE ADHAN (v16 — Malik, 2026-11-05 ~18:00 ET: "i want the adan
  * to play when its time to pray i want it to be a beautiful
@@ -4839,6 +4998,8 @@ async function tvTick(env, S, now, origin, online) {
   if (!famDoc || (+famDoc.progV || 0) < TV_FAMILY_V) { famDoc = tvSeedFamilyTime(now); await writeDoc(env, "tv/familytime", "tv", famDoc); }
   let khuDoc = await readDoc(env, "tv/khutbah");
   if (!khuDoc || (+khuDoc.progV || 0) < TV_KHUTBAH_V) { khuDoc = tvSeedKhutbah(now); await writeDoc(env, "tv/khutbah", "tv", khuDoc); }
+  let cmdDoc = await readDoc(env, "tv/comedyhour");
+  if (!cmdDoc || (+cmdDoc.progV || 0) < TV_COMEDY_V) { cmdDoc = tvSeedComedyHour(now); await writeDoc(env, "tv/comedyhour", "tv", cmdDoc); }
   const adhanDoc = await readDoc(env, "tv/adhan");
   let movies = await readDoc(env, "tv/movieblock");
   if (!movies || !Array.isArray(movies.items) || (+movies.progV || 0) < TV_MOVIE_V) { movies = tvSeedMovieBlock(now); await writeDoc(env, "tv/movieblock", "tv", movies); }
@@ -4951,6 +5112,13 @@ async function tvTick(env, S, now, origin, online) {
   const khuRes = tvKhutbahResolve(khuDoc, now, banSet);
   chan._khutbah = khuRes.state;
   if (khuRes.changed) { khuDoc = khuRes.doc; await writeDoc(env, "tv/khutbah", "tv", khuDoc); }
+  // COMEDY HOUR (Fix #2B): resolve tonight's chain from the
+  // rotation doc (the familytime discipline — persist only when
+  // a chain was locked). Eligibility reads the post-ban-gate
+  // cycle, so a banned special can never be picked.
+  const cmdRes = tvComedyResolve(cmdDoc, chan, now);
+  chan._comedy = cmdRes.state;
+  if (cmdRes.changed) { cmdDoc = cmdRes.doc; await writeDoc(env, "tv/comedyhour", "tv", cmdDoc); }
   // THE ADHAN (v16): the state from the producer-owned tv/adhan
   // doc — the entries for the days it actually carries (today and
   // tomorrow, or nothing at all). Spans are placed further down,
