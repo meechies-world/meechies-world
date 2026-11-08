@@ -581,9 +581,11 @@
 
   /* The update guardians (dj.js + the shell checker) ask this so a
    * build refresh never cuts a genre channel mid-song — the
-   * no-skip law covers personal channels too. */
+   * no-skip law covers personal channels too. The MW TV channel
+   * (js/dj.js) composes in via MW_TV_PLAYING so a TV viewer is
+   * never cut mid-watch either. */
   window.MW_CHAN = {
-    playing: () => !!(curChan && wantPlay && sounding),
+    playing: () => !!((curChan && wantPlay && sounding) || (window.MW_TV_PLAYING && window.MW_TV_PLAYING())),
     active: () => !!(curChan && wantPlay),
     channel: () => selected,
   };
