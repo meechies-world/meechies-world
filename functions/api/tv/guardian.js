@@ -92,7 +92,15 @@ async function seatOf(request, env, guestTok) {
     const owner = me.id === OWNER_ID && (await isAdmin(env, me.id).catch(() => false));
     return { key: "u:" + me.id, owner: !!owner, uid: me.id };
   }
-  const g = clampStr(guestTok, 64);
+  /* The Guardian cron's watcher seats carry their token in
+   * seat-key form ("g:<token>" — the form their state file
+   * stores and the form this doc's seats map uses), while the
+   * site client sends the bare token. A bare token can never
+   * contain ":", so a leading "g:" is unambiguously the key
+   * form: strip it and the seat lands on the very key a
+   * bare-token client gets. Anything else must still pass
+   * GUEST_RE exactly as before. */
+  const g = clampStr(guestTok, 64).replace(/^g:/, "");
   if (GUEST_RE.test(g)) return { key: "g:" + g, owner: false, uid: "" };
   return null;
 }
