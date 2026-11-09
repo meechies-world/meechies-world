@@ -4153,16 +4153,16 @@
    "parts": [
     {
      "url": "/media/squishy-saga-s1e1-p1.mp4",
-     "dur": 236.6
+     "dur": 249.2
     },
     {
      "url": "/media/squishy-saga-s1e1-p2.mp4",
-     "dur": 206.3
+     "dur": 205.2
     }
    ],
-   "dur": 442.9,
+   "dur": 454.4,
    "status": "ready",
-   "verify": "Malik's own production — he is the creator and rights holder (station.js tvCartoonItems rights evidence, basis 'own'). Parts verified on repo main: media/squishy-saga-s1e1-p1.mp4 (15,124,739 B), media/squishy-saga-s1e1-p2.mp4 (12,673,948 B)."
+   "verify": "Malik's own production — he is the creator and rights holder (station.js tvCartoonItems rights evidence, basis 'own'). Parts verified on repo main: media/squishy-saga-s1e1-p1.mp4 (15,760,728 B), media/squishy-saga-s1e1-p2.mp4 (12,514,584 B)."
   },
   {
    "id": "my-empire-ep1",
