@@ -2150,6 +2150,12 @@ function tvGen(chan, pool, cursor, horizonMs) {
     skips = 0;
     const remain = Math.round((+it.dur - off) * 10) / 10;
     if (!(remain > 0)) { ix = (ix + 1) % items.length; off = 0; continue; }
+    // NO-SKIP FLOOR (2026-11-09): an item (re)starting with only a
+    // sliver of itself left — e.g. its tail after a window its main
+    // piece ended exactly on — is not laid either; the chain moves
+    // to the next item. The viewer loses a sub-floor tail instead of
+    // paying a full mount/teardown hop for a few seconds of content.
+    if (remain < (it.src === "yt" ? 20 : 10)) { ix = (ix + 1) % items.length; off = 0; if (++skips > items.length) break; continue; }
     const progEnd = t + remain * 1000;
     let boundary = newsLive ? win.start : Infinity;
     if (pwin && !pwin.inside && pwin.start > t && pwin.start < boundary) boundary = pwin.start;
@@ -2166,7 +2172,28 @@ function tvGen(chan, pool, cursor, horizonMs) {
     if (dwin && !dwin.inside && dwin.start > t && dwin.start < boundary) boundary = dwin.start;
     if (boundary < progEnd) {
       const cutSec = Math.round((boundary - t) / 100) / 10;
-      if (cutSec > 0.05) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
+      if (cutSec > 0.05) {
+        // NO-SKIP FLOOR (2026-11-09): a sliver segment in front of a
+        // window is unplayable — a full mount/teardown hop for a few
+        // seconds of content (a 3.0s and a 13.9s YouTube segment were
+        // laid in front of :50 news windows). Below the floor (20s
+        // YouTube / 10s file) the sliver is NOT laid: the previous
+        // segment's dur is extended to the boundary instead. Window
+        // starts are fixed — t still lands on the boundary and
+        // nothing downstream shifts. off advances only when the
+        // extended segment is this item's own previous piece (its
+        // media genuinely airs through the extension); with no
+        // previous segment to extend (chain start) the sliver is
+        // simply not laid and the item starts after the window.
+        const floorS = it.src === "yt" ? 20 : 10;
+        const prev = segs[segs.length - 1];
+        if (cutSec < floorS && prev && Math.abs(prev.start + prev.dur * 1000 - t) < 5) {
+          const prevDur = prev.dur;
+          prev.dur = Math.round((prevDur + cutSec) * 10) / 10;
+          run += cutSec;
+          if (prev.k === "prog" && prev.id === it.id && Math.abs((prev.off || 0) + prevDur - off) < 0.15) off += cutSec;
+        } else if (cutSec >= floorS) { segs.push(tvProgSeg(it, t, cutSec, off)); run += cutSec; off += cutSec; }
+      }
       t = boundary;
       continue;
     }
