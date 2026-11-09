@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="js/media-cdn.js?v=1794225572"></script>
-<meta name="mw-build" content="1794267500">
+<meta name="mw-build" content="1794270500">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Meechie's World Inc — Live Online Radio, TV, Music, Shop & Kids App</title>
 <meta name="description" content="Meechie's World Inc: live online radio and DJ tables, MW TV and movies, a kids learning app, an AI assistant, shop, books and community — one free site. Global, not local.">
@@ -1276,6 +1276,15 @@ body[data-view="mwtv"].tw-immersive #tw-bar{background:transparent;pointer-event
 body[data-view="mwtv"].tw-immersive #tw-bar>*:not(#tw-sound):not(#tw-lifeline):not(#tw-guidebtn){opacity:0!important;pointer-events:none!important;visibility:hidden}
 body[data-view="mwtv"].tw-immersive #tw-sound{pointer-events:auto}
 body[data-view="mwtv"].tw-immersive #tw-guidebtn{pointer-events:auto}
+/* GUIDE PANEL EXEMPTION (2026-11-09): the immersive fade may hide the channel
+   furniture, but never a guide the viewer just opened. The open state is owned
+   by dj.js (body.tw-guide-open, synced in chanGuidePaint), not by the chrome
+   idle timer: before this, tvGuideOpen only set a timer and poked the chrome,
+   so any activation that reached the handler without un-immersing first
+   (keyboard, synthetic click, a swallowed pointerdown) unhid the panel INTO
+   the immersive kill rule in this stylesheet (opacity:0 + visibility:
+   hidden) and the guide never appeared. Same precedent as the sound pill. */
+body[data-view="mwtv"].tw-immersive.tw-guide-open #tw-guide{opacity:1!important;pointer-events:auto!important;visibility:visible}
 /* Summon layer (2026-11-02): while the chrome is hidden, the YouTube
    iframe owns every pointer event over the picture — events inside a
    cross-origin iframe never reach the page, so no document listener
@@ -2238,7 +2247,7 @@ body[data-view="mwtv"].tw-sndcatch #tw-sndcatch{pointer-events:auto}
 <script src="js/owner.js?v=1794225572"></script>
 <script src="js/messages.js?v=1794225572"></script>
 <script src="js/videos.js?v=1794225572"></script>
-<script src="js/dj.js?v=1794267500"></script>
+<script src="js/dj.js?v=1794270500"></script>
 <script src="js/live.js?v=1794225572"></script>
 <script src="js/friends.js?v=1794225572"></script>
 <script src="js/social.js?v=1794225572"></script>
