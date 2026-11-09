@@ -117,7 +117,16 @@ export const emptyGuardian = () => ({ v: 1, faults: {}, strikes: {}, eyes: [], l
  * confirms — one viewer's network is not the channel's fault. */
 export function tvGuardHardReport(rep) {
   if (!rep) return false;
-  if (rep.fkind === "file-error") return true;
+  // NO-SKIP (2026-11-09, diagnosis S2): a bare file-error is NOT
+  // hard on its own. Media error codes 1 (aborted) and 2
+  // (network) are transient — the mount usually recovers, and an
+  // advance fired on one cut the channel for every seat. A file
+  // error counts hard only when the reporting seat was genuinely
+  // stuck (rep.stuck, filed by the client's stall watchdog) or
+  // the code is non-transient: 3 (decode) or 4 (src not
+  // supported). Records stored before this build carry no stuck
+  // flag and read as not stuck.
+  if (rep.fkind === "file-error") return rep.stuck === 1 || +rep.err === 3 || +rep.err === 4;
   return TV_GUARD_HARD_ERRS.includes(+rep.err || 0);
 }
 
@@ -143,7 +152,7 @@ export function applyFaultToDoc(doc, instKey, meta, seatKey, rep, now) {
     doc.faults[instKey] = rec;
   }
   if (!rec.seats || typeof rec.seats !== "object") rec.seats = {};
-  rec.seats[seatKey] = { err: +rep.err || 0, fkind: clampStr(rep.fkind || "", 20), at: now };
+  rec.seats[seatKey] = { err: +rep.err || 0, fkind: clampStr(rep.fkind || "", 20), stuck: rep.stuck ? 1 : 0, at: now };
   rec.lastAt = now;
   if (!doc.health || typeof doc.health !== "object") doc.health = emptyGuardian().health;
   doc.health.lastFaultAt = now;
@@ -235,7 +244,7 @@ export async function onRequestPost({ request, env }) {
     const isCurrent = start <= now && now < segEnd;
     const justEnded = now >= segEnd && now - segEnd < 120e3;
     if (!isCurrent && !justEnded) return json({ ok: false, error: "not_current" }, 422);
-    const rec = applyFaultToDoc(doc, instKey, { id, yt: seg.yt || "", title: seg.title || "" }, seat.key, { err: body.err, fkind: body.fkind }, now);
+    const rec = applyFaultToDoc(doc, instKey, { id, yt: seg.yt || "", title: seg.title || "" }, seat.key, { err: body.err, fkind: body.fkind, stuck: body.stuck ? 1 : 0 }, now);
     pruneGuardian(doc, now);
     doc.updatedAt = now;
     await writeDocAs(env, seat.uid || "guest", "tv/guardian", "tv", doc);
