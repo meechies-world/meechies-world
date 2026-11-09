@@ -1229,8 +1229,8 @@ function tvCartoonItems(now) {
     { id: "cartoon-spmw-ep3-p2", kind: "show", src: "file", yt: "", url: "/media/spmw-ep3-p2.mp4", iaId: "", title: "South Park in Meechie's World — Episode 3, Part 2 of 2", show: "Meechie's World Cartoon", dur: 301.9, rights: mk4() },
     { id: "cartoon-spmw-ep4-p1", kind: "show", src: "file", yt: "", url: "/media/spmw-ep4-p1.mp4", iaId: "", title: "South Park in Meechie's World — Episode 4, Part 1 of 2", show: "Meechie's World Cartoon", dur: 301.1, rights: mk5() },
     { id: "cartoon-spmw-ep4-p2", kind: "show", src: "file", yt: "", url: "/media/spmw-ep4-p2.mp4", iaId: "", title: "South Park in Meechie's World — Episode 4, Part 2 of 2", show: "Meechie's World Cartoon", dur: 301.9, rights: mk5() },
-    { id: "cartoon-squishy-p1", kind: "show", src: "file", yt: "", url: "/media/squishy-saga-s1e1-p1.mp4", iaId: "", title: "Squishy Saga — Episode 1: The Fall, Part 1 of 2", show: "Squishy Saga", dur: 236.6, rights: mk3() },
-    { id: "cartoon-squishy-p2", kind: "show", src: "file", yt: "", url: "/media/squishy-saga-s1e1-p2.mp4", iaId: "", title: "Squishy Saga — Episode 1: The Fall, Part 2 of 2", show: "Squishy Saga", dur: 206.3, rights: mk3() },
+    { id: "cartoon-squishy-p1", kind: "show", src: "file", yt: "", url: "/media/squishy-saga-s1e1-p1.mp4", iaId: "", title: "Squishy Saga — Episode 1: The Fall, Part 1 of 2", show: "Squishy Saga", dur: 249.2, rights: mk3() },
+    { id: "cartoon-squishy-p2", kind: "show", src: "file", yt: "", url: "/media/squishy-saga-s1e1-p2.mp4", iaId: "", title: "Squishy Saga — Episode 1: The Fall, Part 2 of 2", show: "Squishy Saga", dur: 205.2, rights: mk3() },
   ];
 }
 /* The in-slot commercial pool: Malik's OWN show spots only — the
