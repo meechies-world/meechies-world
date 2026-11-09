@@ -330,6 +330,7 @@ function aiDjSurvivors(merged, ctx) {
     const dur = +r.dur || 0;
     if (dur < 45 || dur > 1200) continue; // fragments and hour-long mixes never stock the unattended station (and a stocked video must carry a known duration)
     if (ctx.bannedIds && ctx.bannedIds.has(r.id)) continue;
+    if (radioStrikeHit(r.title)) continue; // RADIO STRIKE (owner, 2026-11-09): struck spoken-word items never stock
     const nt = aiDjNorm(r.title);
     if (nt && ctx.logTitles && ctx.logTitles.has(nt)) continue;
     if (nt && ctx.libTitles && ctx.libTitles.has(nt)) continue;
@@ -460,13 +461,64 @@ async function aiDjPass(deps, S, now) {
  * web item rides the deck as a plain video item with a known
  * duration — the same shape the queue / AI-stock branches already
  * serve — so a failed embed is bounded by its duration and the
- * rotation rolls on with no dead air. */
+ * rotation rolls on with no dead air.
+ *
+ * WEB-ONLY OVERRIDE (owner, 2026-11-09: "Only that for now --
+ * take my music off the radio for now"): while RADIO_WEB_ONLY
+ * (below) is on, the cadence above is suspended -- every tail
+ * slot is a world slot, the web pool carries the station in
+ * every daypart, and his bag's rotation weight is ZERO.
+ * Nothing is deleted: the pool, his bag, the daypart seeds
+ * and his own queue are all untouched, and setting the one
+ * constant back to false restores this cadence exactly as
+ * written here. */
 const WEB_POOL_URL = "/lifeline/radio-web-pool.json";
 const WEB_POOL_TTL = 10 * 60e3; // static asset: re-read at most once per 10 min per isolate
 const WEB_MIX_START = 12 * 60, WEB_MIX_END = 21 * 60; // ET minutes — the mixed daypart (owner law)
 const WEB_HOP_W = [4, 4, 2, 1]; // hop weights: seeds + hop 1 at 2x hop 2; hop 3 at half of hop 2
 const WEB_ARTIST_CAP = 2; // max plays per web artist per rolling hour
 const WEB_CAP_WINDOW = 3600e3;
+/* RADIO WEB-ONLY OVERRIDE (owner, 2026-11-09 -- see the header
+   addendum above): true = his catalog's rotation weight in the
+   tail mix is ZERO in every daypart and the collaboration web
+   carries the main station alone; false = the shipped #793
+   cadence (~50/50 in the mixed daypart, ~2:1 his:web in the
+   thematic dayparts). ONE-LINE RESTORE: set this back to false
+   and his music returns to the rotation exactly as before --
+   no other edit needed. */
+const RADIO_WEB_ONLY = true;
+/* RADIO STRIKE LIST (owner, 2026-11-09, after the Auto-DJ played
+   a Jack Benny old-time-radio archive item on air -- his word:
+   never again): old-time radio / spoken-word / non-music items
+   NEVER play on this station, no matter which rotation pool
+   they hide in. The match is on the item title (Archive pool
+   titles carry their creator after the middle dot, so
+   creator-side markers land too) and it is enforced in CODE at
+   every lane that can serve the unattended rotation -- web-pool
+   load (webLoadPool), Archive pool build AND draw (buildPool /
+   poolItem, so a copy already sitting in the saved pool is
+   discarded on draw and never served), his-bag draw (bagPick),
+   AI stock (aiDjSurvivors) and the saved-requests lane
+   (rqLaneItem) -- so the strike survives a pool reseed, a
+   pool-asset regeneration and a station-doc rebuild alike.
+   Proven need: the Archive pool's own "jazz" "live" query
+   returns Old Time Radio Researchers Group drama ("Theater
+   Five") as its top hit; the Benny item itself sits in the
+   live station state, which no asset file shows. Add a pattern
+   here and the whole item class is dead everywhere at once. */
+const RADIO_STRIKE_PATTERNS = [
+  /jack benny/i,
+  /old time radio/i,
+  /\bOTRR\b/,
+  /theater five|theatre five/i,
+  /mindwebs/i,
+  /radio (drama|theater|theatre|serial|show)\b/i,
+];
+function radioStrikeHit(title) {
+  const t = String(title || "");
+  if (!t) return false;
+  return RADIO_STRIKE_PATTERNS.some((re) => re.test(t));
+}
 const WEB_DUR_MIN = 45, WEB_DUR_MAX = 1200; // the unattended band (aiDjSurvivors precedent)
 const webMemo = { at: 0, failAt: 0, v: 0, entries: null };
 /* Cadence, not a gate (owner, 2026-11-08: "I dont want it 100
@@ -495,7 +547,8 @@ async function webLoadPool(origin, fetchFn, now) {
         if (!t || !/^[A-Za-z0-9_-]{11}$/.test(String(t.yt || ""))) continue;
         const dur = +t.dur || 0;
         if (dur < WEB_DUR_MIN || dur > WEB_DUR_MAX) continue;
-        entries.push({ yt: String(t.yt), title: String(t.title || "").slice(0, 120), dur, artist: a.name, hop });
+        if (radioStrikeHit(t.title)) continue; // RADIO STRIKE (owner, 2026-11-09): enforced at load, so it survives a pool reseed
+        entries.push({ yt: String(t.yt), title: String(t.title || "").slice(0, 120), dur, artist: a.name, hop, cat: a.cat ? String(a.cat).slice(0, 24) : "" });
       }
     }
     webMemo.at = now; webMemo.v = +j.v || 0; webMemo.entries = entries.length ? entries : null;
@@ -541,6 +594,78 @@ async function webLaneItem(deps, S, now) {
   if (!picked) return null;
   S.webPlays = plays.concat([{ a: picked.artist, at: now }]);
   return { src: "", yt: picked.yt, title: picked.title, cover: "https://i.ytimg.com/vi/" + picked.yt + "/hqdefault.jpg", dur: picked.dur };
+}
+/* WEB-ONLY FALLBACK DRAW: the web pool's FULL list, ignoring the
+ * no-repeat bag, the per-artist cap and the station-log exclusion.
+ * Used only while RADIO_WEB_ONLY is on and the bagged lane yielded
+ * nothing, so a capped or just-played-heavy cycle can never push
+ * the station off the web. Ids already on a deck or in a queue are
+ * still skipped (a literal duplicate on air is never a fallback);
+ * if even those empty the list, the draw takes the whole list
+ * as-is. The draw is hop-weighted like the lane (webWeightedOrder)
+ * and stamps S.webPlays the same way, so the cap bookkeeping
+ * stays honest. Returns null only when the pool itself is
+ * unreachable, disabled or empty -- the one case the tail cannot
+ * cover from the web (see the tail in nextItem). */
+async function webFullListItem(deps, S, now) {
+  const memo = await webLoadPool(deps && deps.origin, deps && deps.fetchFn, now);
+  const entries = memo.entries;
+  if (!entries || !entries.length) return null;
+  const onAir = new Set();
+  const addId = (v) => { if (v) onAir.add(String(v)); };
+  for (const k of ["A", "B", "C", "D"]) addId(S[k] && S[k].yt);
+  if (Array.isArray(S.queue)) for (const it of S.queue) addId(it && it.yt);
+  if (Array.isArray(S.aiQ)) for (const it of S.aiQ) addId(it && it.yt);
+  if (Array.isArray(S.schedQ)) for (const it of S.schedQ) addId(it && it.yt);
+  const order = webWeightedOrder(entries, deps && deps.rand);
+  let picked = null;
+  for (const ix of order) { const e = entries[ix]; if (e && !onAir.has(e.yt)) { picked = e; break; } }
+  if (!picked) picked = entries[order[0]] || entries[0] || null;
+  if (!picked) return null;
+  const plays = (Array.isArray(S.webPlays) ? S.webPlays : []).filter((p) => p && now - (+p.at || 0) < WEB_CAP_WINDOW);
+  S.webPlays = plays.concat([{ a: picked.artist, at: now }]);
+  return { src: "", yt: picked.yt, title: picked.title, cover: "https://i.ytimg.com/vi/" + picked.yt + "/hqdefault.jpg", dur: picked.dur };
+}
+/* OWNER-SEED CATEGORY LANE (owner, 2026-11-09: the young white
+ * female rappers pack joins the web pool — "I want a lot of
+ * that"): while the web-only override is on, every
+ * WEB_CAT_EVERY-th web pick is offered to this lane first, a
+ * dedicated ~1/3 share of the station for the category. The
+ * category is marked in the pool asset itself (cat: "ywfr" on
+ * the artist rows, stamped onto each entry at load), so the
+ * lane survives a pool reseed. The draw is from the category's
+ * full list with the never-a-duplicate discipline of the
+ * full-list draw (ids on a deck or in a queue are skipped) plus
+ * a short recency guard (the last 8 station-log titles),
+ * because 25 tracks carrying a third of the station would
+ * otherwise repeat back-to-back; the no-repeat bag and the
+ * per-artist cap do not apply here — heavy rotation of this
+ * category is the order, not a defect. Returns null when the
+ * category is empty or fully on air, so the tail falls through
+ * to the normal web lanes untouched. */
+const WEB_CAT_EVERY = 3;
+const WEB_CAT_NAME = "ywfr";
+async function webCatItem(deps, S, now) {
+  const memo = await webLoadPool(deps && deps.origin, deps && deps.fetchFn, now);
+  const entries = memo.entries;
+  if (!entries || !entries.length) return null;
+  const onAir = new Set();
+  const addId = (v) => { if (v) onAir.add(String(v)); };
+  for (const k of ["A", "B", "C", "D"]) addId(S[k] && S[k].yt);
+  if (Array.isArray(S.queue)) for (const it of S.queue) addId(it && it.yt);
+  if (Array.isArray(S.aiQ)) for (const it of S.aiQ) addId(it && it.yt);
+  if (Array.isArray(S.schedQ)) for (const it of S.schedQ) addId(it && it.yt);
+  const recent = new Set((Array.isArray(S.log) ? S.log.slice(-8) : []).map((x) => aiDjNorm(x && x.t)));
+  const fresh = (e) => { const nt = aiDjNorm(e.title); return !(nt && recent.has(nt)); };
+  let list = entries.filter((e) => e && e.cat === WEB_CAT_NAME && !onAir.has(e.yt) && fresh(e));
+  if (!list.length) list = entries.filter((e) => e && e.cat === WEB_CAT_NAME && !onAir.has(e.yt));
+  if (!list.length) return null;
+  const r = deps && typeof deps.rand === "function" ? deps.rand() : Math.random();
+  const e = list[Math.min(list.length - 1, Math.floor(r * list.length))];
+  if (!e) return null;
+  const plays = (Array.isArray(S.webPlays) ? S.webPlays : []).filter((p) => p && now - (+p.at || 0) < WEB_CAP_WINDOW);
+  S.webPlays = plays.concat([{ a: e.artist, at: now }]);
+  return { src: "", yt: e.yt, title: e.title, cover: "https://i.ytimg.com/vi/" + e.yt + "/hqdefault.jpg", dur: e.dur };
 }
 /* WEBMIX-END */
 
@@ -2240,32 +2365,81 @@ function tvCyclePos(chan, now) {
 }
 /* The radio news gate (NEWS-BLOCK; source changed by Malik
  * 2026-11-03 ~14:54: "new news every time — 60 seconds of it every
- * 15 minutes"): fire in the first five minutes of every quarter
+ * 15 minutes"): fire inside its own quarter
  * hour (:00/:15/:30/:45) the SAME fresh ~60-second piece the TV
  * quarter break plays — the producer's quarter piece for the
  * quarter we are IN (tv/quarternews), at its honest produced
  * length. Freshness law: the piece must have been produced FOR
- * this quarter (forQuarter == the quarter's start) and within
- * TV_QUARTER_FRESH_MS of now; last quarter's piece NEVER replays.
+ * this quarter (forQuarter == the quarter's start) and the
+ * quarter itself must be within TV_QUARTER_FRESH_MS of its
+ * start; last quarter's piece NEVER replays.
  * Only once per quarter, only on a live Auto-DJ station. There is
  * NO booth exception (Malik, 2026-11-01: the break cuts in even
  * during his own live booth sets): a due fire falls through the
  * booth stand-down in the handler, like the breakers. Every other
- * state is a named skip — no fresh piece, no break, ever. */
+ * state is a named skip — no fresh piece, no break, ever.
+ *
+ * NEWS FIX (owner, 2026-11-09, "Fix it all — one build with the
+ * flip"): (1) FRESHNESS IS JUDGED FROM THE QUARTER'S START, not
+ * from producedAt — pieces are produced ~15 minutes ahead, so
+ * the old producedAt clock ate the whole fire window before the
+ * quarter even began; producedAt must still exist and must not
+ * be in the future, and a piece from a PAST quarter still never
+ * fires (the wrong-quarter gate above carries the stale law).
+ * (2) LATE FIRE: the first-five-minutes window is GONE from this
+ * gate — if the :00–:04 window is missed (no qualifying tick,
+ * decks busy), the piece fires at the next tick INSIDE THE SAME
+ * QUARTER where the fire block's deck guard clears, mirroring
+ * the owner's TV late-air law; it can never cross into the next
+ * quarter (forQuarter must equal the quarter we are in) and the
+ * once-per-quarter stamp (S.newsHour) still binds. (3) EVERY
+ * outcome of this gate is recorded on the station doc by
+ * tvNewsLog (S.newsLog) instead of computed-and-discarded, so a
+ * quarter with no decision recorded is distinguishable from a
+ * skipped one. The manual radio.newsNow Hands path keeps its
+ * own inline copy of the checks and its own logIt trail —
+ * untouched here. */
 function tvRadioDecision(S, qDoc, now) {
   const cur = qDoc && qDoc.current;
   if (!cur || !cur.radioUrl || !(+cur.radioDur > 0) || !(+cur.forQuarter > 0) || !(+cur.producedAt > 0)) return { fire: false, why: "no-quarter-piece" };
   const qStart = Math.floor(now / TV_AD_EVERY_MS) * TV_AD_EVERY_MS;
   if (+cur.forQuarter !== qStart) return { fire: false, why: "wrong-quarter" };
   if (+cur.producedAt > now) return { fire: false, why: "future-piece" };
-  if (now - +cur.producedAt > TV_QUARTER_FRESH_MS) return { fire: false, why: "stale-piece" };
+  if (now - +cur.forQuarter > TV_QUARTER_FRESH_MS) return { fire: false, why: "stale-piece" };
   const et = tvEtParts(now);
-  const q = Math.floor(et.minute / 15), minInQ = et.minute - q * 15;
-  if (minInQ > 4) return { fire: false, why: "outside-window" };
+  const q = Math.floor(et.minute / 15);
   const qKey = et.dayKey + "T" + et.hour + ":" + String(q * 15).padStart(2, "0");
   if (S.newsHour === qKey) return { fire: false, why: "already-fired" };
   if (!S.live || !S.autodj || S.pausedAt) return { fire: false, why: "station-not-live" };
   return { fire: true, hourKey: qKey, item: { src: String(cur.radioUrl), title: "📰 Meechie's World News", dur: Math.min(600, Math.max(5, Math.round(+cur.radioDur))) } };
+}
+/* RADIO NEWS DECISION LOG (owner, 2026-11-09, "Fix it all"): every
+ * quarter's tvRadioDecision outcome — fired, or the named skip —
+ * is appended to S.newsLog on the station doc itself (the doc the
+ * keeper already writes whenever anything changes, so the record
+ * costs no extra write and rides the tick's own persistence —
+ * the same auditable-state pattern as S.newsHour beside it). One
+ * entry per outcome per quarter: consecutive repeats of the same
+ * (quarter, outcome) collapse, so a quarter that decided the same
+ * way on twenty ticks still reads as one line, while a quarter
+ * with NO entry at all means no decision was ever computed for
+ * it — distinguishable at a glance from a skipped one. The fire
+ * block records "fire" when the break actually cuts in and
+ * "deck-busy" when the gate said fire but the decks could not
+ * take it yet (the late fire then lands on a later tick of the
+ * same quarter). The ring keeps the last 48 outcomes (about
+ * twelve hours of quarters). Returns true when an entry was
+ * appended, so callers mark the doc changed exactly then. */
+function tvNewsLog(S, why, now) {
+  if (!S || !why) return false;
+  const et = tvEtParts(now);
+  const qKey = et.dayKey + "T" + et.hour + ":" + String(Math.floor(et.minute / 15) * 15).padStart(2, "0");
+  if (!Array.isArray(S.newsLog)) S.newsLog = [];
+  const last = S.newsLog[S.newsLog.length - 1];
+  if (last && last.q === qKey && last.why === why) return false;
+  S.newsLog.push({ q: qKey, why: String(why), at: now });
+  while (S.newsLog.length > 48) S.newsLog.shift();
+  return true;
 }
 function tvSeedChannel(now) {
   const R = (basis, evidence, simulcast) => ({ basis, evidence, clearedBy: basis === "own" ? "owner" : "keeper-check", at: now, simulcast: !!simulcast });
@@ -6287,7 +6461,11 @@ export async function onRequestGet({ request, env }) {
   }
   if (tvRunTick) {
     tvTickAt = now;
-    try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
+    /* NEWS FIX (owner, 2026-11-09): a non-fire radio-news decision
+       is RECORDED on the station doc (tvNewsLog / S.newsLog), not
+       discarded — see tvRadioDecision. A fire decision is recorded
+       by the fire block below as "fire" or "deck-busy". */
+    try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; else if (tvd && tvd.why && tvNewsLog(S, tvd.why, now)) changed = true; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
   }
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
@@ -6399,7 +6577,13 @@ export async function onRequestGet({ request, env }) {
     }
     let id = S.bag.pop();
     if (avoidSrc && id && avoidSrc.includes(id) && S.bag.length) { const other = S.bag.pop(); S.bag.push(id); id = other; }
-    return byAsset.get(id) || lib[0];
+    /* RADIO STRIKE (owner, 2026-11-09): a struck library item is
+       skipped even from his own bag -- the strike outranks the
+       pool it hides in. The fallback is the first unstruck
+       library row; lib[0] only if every row were struck. */
+    while (id && S.bag.length && radioStrikeHit((byAsset.get(id) || {}).title)) id = S.bag.pop();
+    const bt = byAsset.get(id);
+    return bt && !radioStrikeHit(bt.title) ? bt : (lib.find((x) => x && !radioStrikeHit(x.title)) || lib[0]);
   };
   const startDeckItem = (k, item, startMs) => {
     S[k] = { src: item.src || "", yt: item.yt || "", kind: item.kind || "", scUrl: item.scUrl || "", scId: item.scId || 0, title: item.title || "", cover: item.cover || "", start: startMs, pos: 0, playing: true, vol: S[k].vol ?? 0.9, rate: 1, dur: item.dur || 0 };
@@ -6468,7 +6652,7 @@ export async function onRequestGet({ request, env }) {
       try {
         const u = "https://archive.org/advancedsearch.php?q=" + encodeURIComponent("(" + q + ") AND mediatype:audio AND licenseurl:*creativecommons*") + "&fl[]=identifier&fl[]=title&fl[]=creator&sort[]=downloads+desc&rows=12&output=json";
         const j = await (await fetch(u)).json();
-        for (const d of (j.response?.docs || [])) { const id = String(d.identifier); if (seen.has(id)) continue; seen.add(id); out.push({ iaId: id, title: [].concat(d.title || id)[0] + (d.creator ? " · " + [].concat(d.creator)[0] : ""), cover: "https://archive.org/services/img/" + encodeURIComponent(id) }); }
+        for (const d of (j.response?.docs || [])) { const id = String(d.identifier); if (seen.has(id)) continue; const ttl = [].concat(d.title || id)[0] + (d.creator ? " · " + [].concat(d.creator)[0] : ""); if (radioStrikeHit(ttl)) continue; seen.add(id); out.push({ iaId: id, title: ttl, cover: "https://archive.org/services/img/" + encodeURIComponent(id) }); }
       } catch (_) {}
     }
     for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
@@ -6478,6 +6662,7 @@ export async function onRequestGet({ request, env }) {
     if (!Array.isArray(S.pool) || !S.pool.length || (S.poolAt && now - S.poolAt > 24 * 3600e3)) { S.pool = await buildPool(); S.poolAt = now; }
     while (S.pool && S.pool.length) {
       const p = S.pool.pop();
+      if (radioStrikeHit(p.title)) continue; // RADIO STRIKE (owner, 2026-11-09): a struck item already in the saved pool dies on draw, before any fetch
       try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(p.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) return { src: "https://archive.org/download/" + encodeURIComponent(p.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"), title: p.title || "", cover: p.cover || "", dur: +f.length || 0 }; } catch (_) {}
     }
     return null;
@@ -6500,6 +6685,7 @@ export async function onRequestGet({ request, env }) {
     while (bag.length) {
       const k = bag.shift(); const r = items.find((x) => x.k === k);
       if (!r || !playable(r)) continue;
+      if (radioStrikeHit(r.title)) continue; // RADIO STRIKE (owner, 2026-11-09): struck items are skipped even from the saved requests
       if (r.yt) { S.rqBag = bag; return { src: "", yt: r.yt, title: r.title || "", cover: r.cover || ("https://i.ytimg.com/vi/" + r.yt + "/hqdefault.jpg"), dur: +r.dur || 0 }; }
       if (r.src && !/supabase/i.test(r.src)) { S.rqBag = bag; return { src: r.src, title: r.title || "", cover: r.cover || "", dur: +r.dur || 0 }; }
       if (r.iaId) { try { const mj = await (await fetch("https://archive.org/metadata/" + encodeURIComponent(r.iaId))).json(); const f = (mj.files || []).find((x) => /mp3/i.test(x.format || "") && /\.mp3$/i.test(x.name)) || (mj.files || []).find((x) => /\.(mp3|ogg|m4a)$/i.test(x.name)); if (f) { S.rqBag = bag; return { src: "https://archive.org/download/" + encodeURIComponent(r.iaId) + "/" + f.name.split("/").map(encodeURIComponent).join("/"), title: r.title || "", cover: r.cover || "", dur: +r.dur || Math.round(+f.length || 0) }; } } catch (_) {} }
@@ -6603,8 +6789,26 @@ export async function onRequestGet({ request, env }) {
        gives to his bag falls through to bagPick below. */
     let webWorld = S.mixAlt;
     if (webMixMode(now) === 1) { S.webAlt = (S.webAlt | 0) + 1; webWorld = S.webAlt % 3 === 0; }
+    /* WEB-ONLY OVERRIDE (owner, 2026-11-09, RADIO_WEB_ONLY): while
+       the switch is on, EVERY tail slot is a world slot in every
+       daypart -- his bag's rotation weight is zero -- and a web
+       draw that yields nothing retries against the web pool's
+       FULL list before the Archive pool, so the station stays on
+       the web even when the bagged lane is capped or exhausted.
+       His bag below remains only as the never-silence floor,
+       reachable when the web pool asset itself is unreachable
+       AND the full list AND the Archive pool all yield nothing
+       in the same draw. */
+    if (RADIO_WEB_ONLY) webWorld = true;
     if (webWorld) {
+      /* Category share (owner, 2026-11-09): every WEB_CAT_EVERY-th
+         web-only slot is offered to the owner-seed category lane
+         (webCatItem) before the general web lane. The counter
+         lives on the station doc beside the other mix counters
+         and advances only in web-only world slots. */
+      if (RADIO_WEB_ONLY) { S.webCatAlt = (S.webCatAlt | 0) + 1; if (S.webCatAlt % WEB_CAT_EVERY === 0) { const ci = await webCatItem({ origin, fetchFn: fetch }, S, now); if (ci) return ci; } }
       const wi = await webLaneItem({ origin, fetchFn: fetch }, S, now); if (wi) return wi;
+      if (RADIO_WEB_ONLY) { const fi = await webFullListItem({ origin, fetchFn: fetch }, S, now); if (fi) return fi; }
       const pi = await poolItem(); if (pi) return pi;
     }
     const t = await bagPick(avoidSrc);
@@ -6702,7 +6906,8 @@ export async function onRequestGet({ request, env }) {
       S[cur].playing = false; S[cur].pos = Math.max(0, Math.min(+S[cur].dur || 0, (now - (S[cur].start || now)) / 1000));
       startDeckItem(otherN, tvNewsFire.item, now);
       S.xf = 0.5; S.newsHour = tvNewsFire.hourKey; changed = true; cur = otherN;
-    }
+      tvNewsLog(S, "fire", now); // NEWS FIX (owner, 2026-11-09): the fired outcome is recorded like every skip
+    } else if (tvNewsLog(S, "deck-busy", now)) changed = true; // NEWS FIX: the gate said fire but the decks could not take it this tick — recorded; the late fire lands on a later tick of this same quarter
   }
   /* HANDS DRAIN (2026-11-03): Meechie's queued operator commands run
      here — after tvTick and the news interrupt, inside the keeper's
