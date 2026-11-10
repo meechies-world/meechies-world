@@ -7,24 +7,28 @@ const GOOGLE_CLIENT_ID = (env) => env.GOOGLE_CLIENT_ID || "";
  * always land on the one return address Google has approved for this site
  * (/api/cf/auth/google-redirect — js/social-login.js no longer switches it).
  * While the D1 quota wall is up, the D1-backed work behind that address
- * fails; ONLY that route and ONLY on a wall-classified failure, the original
- * request (cloned before its form body is read, so the phone stack runs its
- * own CSRF + verify checks on the untouched fields) is forwarded behind the
- * scenes to the login bridge (Malik own-stack phone build, same handler, no
- * quota — the constant must match functions/api/bridge/cf/[[path]].js) and
- * its answer is returned untouched from this origin. Any other outcome —
- * healthy, CSRF 400, verify 401, a non-wall error, or the bridge itself
- * being down — keeps the original response exactly. */
+ * fails; ONLY that route, the original request (cloned before its form body
+ * is read, so the phone stack runs its own CSRF + verify checks on the
+ * untouched fields) is forwarded behind the scenes to the login bridge
+ * (Malik own-stack phone build, same handler, no quota — the constant must
+ * match functions/api/bridge/cf/[[path]].js) and its answer is returned
+ * from this origin. WIDENED 2026-11-09: the bridge is tried on ANY failure
+ * of that D1-backed work, not only wall-classified ones — a non-wall D1
+ * failure stranded sign-ins on the 503 snag page while the bridge sat
+ * healthy. Genuine client answers (CSRF 400, verify 401) and the healthy
+ * path never reach the bridge; if the bridge is down or hangs (10 s fetch
+ * timeout) the original response stands exactly. */
 const BRIDGE_UPSTREAM = "https://steady-assure-convertible-diary.trycloudflare.com";
 const WALL_RE = /D1_ERROR|exceeded|quota|1101/i;
 const isWall = (e) => WALL_RE.test(String(e && e.message || e || ""));
+const errToken = (e) => String((e && e.name ? e.name : "") + (e && e.message || e || "")).slice(0, 60).replace(/[^A-Za-z0-9]/g, "");
 async function bridgeGoogleRedirect(clone) {
   if (!clone) return null;
   let up;
   try {
     const headers = new Headers(clone.headers);
     headers.delete("host");
-    const init = { method: clone.method, headers, redirect: "manual" };
+    const init = { method: clone.method, headers, redirect: "manual", signal: AbortSignal.timeout(10000) };
     if (clone.method !== "GET" && clone.method !== "HEAD" && clone.body) { init.body = clone.body; init.duplex = "half"; }
     up = await fetch(BRIDGE_UPSTREAM + "/api/cf/auth/google-redirect", init);
   } catch (_) { return null; }
@@ -36,6 +40,7 @@ async function bridgeGoogleRedirect(clone) {
   const cookies = typeof up.headers.getSetCookie === "function" ? up.headers.getSetCookie() : [];
   if (cookies.length) for (const c of cookies) out.append("set-cookie", c);
   else { const sc = up.headers.get("set-cookie"); if (sc) out.set("set-cookie", sc); }
+  out.set("x-mw-redirect-err", "bridged");
   return new Response(up.body, { status: up.status, headers: out });
 }
 // one-time move from the old database: only a request carrying the key whose hash is below is accepted, once
@@ -196,7 +201,7 @@ export async function onRequest(ctx) {
   } catch (e) {
     if (e instanceof RuleError) return err(e.message, 403, e.code);
     const orig = err("Something went wrong: " + String(e && e.message || e).slice(0, 160), 500, "server_error");
-    if (grClone && isWall(e)) { const b = await bridgeGoogleRedirect(grClone); if (b) return b; }
+    if (grClone) { const b = await bridgeGoogleRedirect(grClone); if (b) return b; orig.headers.set("x-mw-redirect-err", errToken(e)); }
     return orig;
   }
 }
@@ -244,7 +249,7 @@ async function auth(what, request, env) {
     if (!g) return what === "google-redirect" ? page("Google sign-in didn't work. Go back and try again.", 401) : err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
     let u, session;
     try { u = await linkProvider(env, "gsub:" + g.sub, String(g.email || "").toLowerCase(), g.name, g.picture); session = await newSession(env, u); }
-    catch (e) { if (what === "google-redirect") { if (isWall(e)) { const b = await bridgeGoogleRedirect(grClone); if (b) return b; } return page("Sign-in hit a snag just now. Go back and try again in a little while.", 503); } throw e; }
+    catch (e) { if (what === "google-redirect") { const b = await bridgeGoogleRedirect(grClone); if (b) return b; const snag = page("Sign-in hit a snag just now. Go back and try again in a little while.", 503); snag.headers.set("x-mw-redirect-err", errToken(e)); return snag; } throw e; }
     if (what === "google-redirect") {
       return signedInPage(session);
     }
