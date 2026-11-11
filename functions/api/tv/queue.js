@@ -352,6 +352,16 @@ async function anchorFor(env) {
   return now;
 }
 
+const MEM_TAKES = new Map();
+function memTake(key, windowSec, max) {
+  const now = Date.now(), from = now - windowSec * 1000;
+  const list = (MEM_TAKES.get(key) || []).filter((t) => t > from);
+  if (list.length >= max) { MEM_TAKES.set(key, list); return false; }
+  list.push(now); MEM_TAKES.set(key, list);
+  if (MEM_TAKES.size > 200) MEM_TAKES.clear();
+  return true;
+}
+
 function publicItems(doc) {
   return (doc && Array.isArray(doc.items) ? doc.items : []).map((r) => ({ qid: String(r.qid || ""), yt: String(r.yt || ""), title: String(r.title || ""), dur: +r.dur || 0 }));
 }
@@ -359,7 +369,13 @@ function publicItems(doc) {
 export async function onRequestGet({ request, env }) {
   const gate = await ownerOnly(request, env);
   if (gate.err) return gate.err;
-  if (!(await take(env, "tv-queue-get:" + gate.me.id, 3600, 900))) return json({ ok: false, error: "rate_limited" }, 429);
+  /* D1 WRITE FIX (owner, 2026-11-11 "find out why my cloudflare ran out"): this
+     owner-only poll logged a row in the usage table on every call -- 1,982
+     writes (plus their index entries) in one day from the owner box alone, a
+     real share of the 100,000 daily write wall that locked sign-in. The gate
+     above already limits the route to the owner, so the cap is now counted in
+     memory per isolate: same 900/hour ceiling, zero database writes. */
+  if (!memTake("tv-queue-get:" + gate.me.id, 3600, 900)) return json({ ok: false, error: "rate_limited" }, 429);
   let doc = await readQueue(env);
   // QUEUECHECK sweep: the owner box polls this GET, so the
   // one-time sweep of the stored list rides it (bounded slices;
