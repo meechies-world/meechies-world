@@ -17,6 +17,9 @@
 // browser error. /api is still never intercepted, and saved songs are
 // untouched.
 const MUSIC = "mw-music"; // stable name on purpose: updates must never wipe saved songs
+const STAGE = "mw-music-stage"; // songs downloaded while they play wait here until the next time they start (see mediaStrategy)
+const STAGE_MAX_ENTRIES = 8;
+const MEDIA_SAVE_MAX = 12 * 1024 * 1024; // nothing larger is ever saved on the device (TV episodes are ~20 MB and are streamed, never stored)
 const SHELL = "mw-shell-v3";
 const IMAGES = "mw-images-v1"; // bounded runtime cache for unstamped same-origin images
 const IMG_MAX_ENTRIES = 150; // oldest entries are evicted past this count
@@ -105,7 +108,7 @@ async function skelSeedGeneration() {
 // --- install-time skeleton seeding: end ---
 self.addEventListener("install", (e) => e.waitUntil((async () => { await precacheShell(); await skelSeedGeneration(); await self.skipWaiting(); })()));
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
-  const keep = new Set([MUSIC, SHELL, SKEL_META, IMAGES, KIDSTHUMBS]);
+  const keep = new Set([MUSIC, STAGE, SHELL, SKEL_META, IMAGES, KIDSTHUMBS]);
   const meta = await skelMetaRead();
   const metaKnown = !!(meta && meta.build);
   if (metaKnown) { keep.add(SKEL_PREFIX + meta.build); if (meta.prev) keep.add(SKEL_PREFIX + meta.prev); }
@@ -134,10 +137,50 @@ async function trimMusic(cache) {
   } catch (_) {}
 }
 
+// A file that is playing must keep coming from ONE place. Chrome treats a
+// stream whose first bytes came from the network and whose later bytes come
+// from a copy this worker built as a broken stream and stops the player
+// (PIPELINE_ERROR_READ, reproduced 2026-11-11: every MW TV episode file and
+// any song a listener joined part-way through). So a song that is downloaded
+// in the background while it plays is parked in STAGE, and only moved into
+// the saved-songs cache the next time that song STARTS (a request with no
+// range, or a range from byte 0). A stream already running never changes
+// source. Files over MEDIA_SAVE_MAX are streamed only: before this, each
+// range request for a ~20 MB TV episode started another full download of
+// it and stored it in the saved-songs cache.
+const stageBusy = new Set(); // urls with a background download in flight (per worker life)
+async function stageSong(url) {
+  if (stageBusy.has(url)) return;
+  stageBusy.add(url);
+  try {
+    const stage = await caches.open(STAGE);
+    if (await stage.match(url)) return;
+    const full = await fetch(url);
+    if (!full.ok || full.status !== 200) return;
+    const len = +full.headers.get("content-length") || 0;
+    if (!len || len > MEDIA_SAVE_MAX) return;
+    await stage.put(url, full);
+    const keys = await stage.keys();
+    if (keys.length > STAGE_MAX_ENTRIES) for (const k of keys.slice(0, keys.length - STAGE_MAX_ENTRIES)) await stage.delete(k);
+  } catch (_) {} finally { stageBusy.delete(url); }
+}
+async function promoteStaged(url, cache) {
+  try {
+    const stage = await caches.open(STAGE);
+    const staged = await stage.match(url);
+    if (!staged) return;
+    await cache.put(url, staged);
+    await stage.delete(url);
+    await trimMusic(cache);
+  } catch (_) {}
+}
+
 async function mediaStrategy(e) {
   const url = e.request.url;
   const range = e.request.headers.get("range");
   const cache = await caches.open(MUSIC);
+  const atStart = !range || /^bytes=0-/.test(range);
+  if (atStart) await promoteStaged(url, cache);
   const hit = await cache.match(url);
   if (hit) {
     if (range) return rangeResponse(await hit.blob(), range);
@@ -147,10 +190,13 @@ async function mediaStrategy(e) {
     const net = await fetch(e.request);
     if (net.ok && !range) {
       const len = +net.headers.get("content-length") || 0;
-      if (!len || len < 12 * 1024 * 1024) e.waitUntil(cache.put(url, net.clone()).then(() => trimMusic(cache)));
+      if (!len || len < MEDIA_SAVE_MAX) e.waitUntil(cache.put(url, net.clone()).then(() => trimMusic(cache)));
     } else if (net.ok && range) {
-      // a seek landed first: quietly store the whole song for next time
-      e.waitUntil(fetch(url).then((full) => { if (full.ok) return cache.put(url, full).then(() => trimMusic(cache)); }).catch(() => {}));
+      // the player asked for a range: quietly fetch the whole song for
+      // next time — into STAGE, never into the stream that is playing
+      const m = /\/(\d+)\s*$/.exec(net.headers.get("content-range") || "");
+      const total = m ? +m[1] : 0;
+      if (total && total <= MEDIA_SAVE_MAX) e.waitUntil(stageSong(url));
     }
     return net;
   } catch (_) {
