@@ -14,6 +14,6 @@ open(p,'w').write(s)
 open('version.json','w').write(json.dumps({"build":v,"dj":int(v)}))
 for f,name in (('js/dj.js','MW_DJ_BUILD'),('js/app-core.js','MW_SHELL_BUILD')):
     t=open(f).read()
-    t2=re.sub(r'(const %s = )\d+;'%name, lambda m:m.group(1)+v+';', t, count=1)
+    t2=re.sub(r'(const %s\s*=\s*)\d+;'%name, lambda m:m.group(1)+v+';', t, count=1)
     if t2!=t: open(f,'w').write(t2)
 print(v)
