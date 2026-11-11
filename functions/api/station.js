@@ -487,6 +487,13 @@ const WEB_CAP_WINDOW = 3600e3;
    and his music returns to the rotation exactly as before --
    no other edit needed. */
 const RADIO_WEB_ONLY = true;
+/* CATEGORY PACKS SWITCH (owner, 2026-11-11: "Thats all i want it
+   to play" -- Deen Squad, ASAP Preach and everyone who makes music
+   with them, nothing else, on the live station). false = artist
+   rows that carry a "cat" (the ywfr pack) are left out of the pool
+   at load, so no lane can draw them. Nothing is deleted from the
+   pool file. ONE-LINE RESTORE: set this to true. */
+const WEB_CATS_ON = false;
 /* RADIO STRIKE LIST (owner, 2026-11-09, after the Auto-DJ played
    a Jack Benny old-time-radio archive item on air -- his word:
    never again): old-time radio / spoken-word / non-music items
@@ -542,6 +549,7 @@ async function webLoadPool(origin, fetchFn, now) {
     const entries = [];
     for (const a of j.artists) {
       if (!a || typeof a.name !== "string" || !a.name) continue;
+      if (a.cat && !WEB_CATS_ON) continue; // owner, 2026-11-11: only the Deen Squad / ASAP Preach web plays
       const hop = Math.max(0, Math.min(3, +a.hop || 0));
       for (const t of (Array.isArray(a.tracks) ? a.tracks : [])) {
         if (!t || !/^[A-Za-z0-9_-]{11}$/.test(String(t.yt || ""))) continue;
