@@ -38,6 +38,7 @@ const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, header
  * radio/dj (the booth's live state), tv/queue, tv/skip and
  * brain/commands (see the drain memo below). */
 const DOC_MEMO_TTL = 4000;
+const PING_SAVE_GAP = 15000; const pingMemo = new Map(); // presence row re-saved at most every 15 s per isolate (D1 write fix, 2026-11-11)
 const PRESENCE_TTL = 15000; // presence reads shared for 15 s per isolate (D1 read fix, 2026-11-08)
 const presenceMemo = { at: 0, counts: null };
 const DOC_MEMO_PATHS = new Set(["tv/channel", "tv/breakpool", "tv/premiere", "tv/rerun", "tv/familytime", "tv/comedyhour", "tv/movieblock", "tv/insert", "tv/news", "tv/localupdate", "tv/anchor", "tv/charnews", "tv/quarternews", "tv/votes", "tv/guardian", "tv/now", "brain/ytblock", "brain/tvwatch", "station/schedule", "station/rqplaylist"]);
@@ -487,6 +488,13 @@ const WEB_CAP_WINDOW = 3600e3;
    and his music returns to the rotation exactly as before --
    no other edit needed. */
 const RADIO_WEB_ONLY = true;
+/* CATEGORY PACKS SWITCH (owner, 2026-11-11: "Thats all i want it
+   to play" -- Deen Squad, ASAP Preach and everyone who makes music
+   with them, nothing else, on the live station). false = artist
+   rows that carry a "cat" (the ywfr pack) are left out of the pool
+   at load, so no lane can draw them. Nothing is deleted from the
+   pool file. ONE-LINE RESTORE: set this to true. */
+const WEB_CATS_ON = false;
 /* RADIO STRIKE LIST (owner, 2026-11-09, after the Auto-DJ played
    a Jack Benny old-time-radio archive item on air -- his word:
    never again): old-time radio / spoken-word / non-music items
@@ -542,6 +550,7 @@ async function webLoadPool(origin, fetchFn, now) {
     const entries = [];
     for (const a of j.artists) {
       if (!a || typeof a.name !== "string" || !a.name) continue;
+      if (a.cat && !WEB_CATS_ON) continue; // owner, 2026-11-11: only the Deen Squad / ASAP Preach web plays
       const hop = Math.max(0, Math.min(3, +a.hop || 0));
       for (const t of (Array.isArray(a.tracks) ? a.tracks : [])) {
         if (!t || !/^[A-Za-z0-9_-]{11}$/.test(String(t.yt || ""))) continue;
@@ -6330,9 +6339,11 @@ export async function onRequestGet({ request, env }) {
     // in as himself or not — his own uid is the one thing the ping carries
     // that he cannot be rung about.
     let bellName = null;
+    let pingRowLive = false;
     if (cid) {
       try {
         const prev = await env.DB.prepare("select cid from pings where cid = ? and at > ?").bind(cid, now - 45000).first();
+        pingRowLive = !!prev;
         if (!prev) {
           if (pu && pu !== OWNER_ID) {
             const elsewhere = await env.DB.prepare("select cid from pings where uid = ? and at > ? limit 1").bind(pu, now - 35000).first();
@@ -6341,7 +6352,22 @@ export async function onRequestGet({ request, env }) {
         }
       } catch (_) {}
     }
-    if (cid) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
+    /* D1 WRITE FIX (owner, 2026-11-11 "find out why my cloudflare ran out"):
+       every ping from every open screen re-saved its presence row (row +
+       two index entries) every 12 s -- thousands of writes a day per open
+       screen, the largest steady draw on the 100,000 daily write wall.
+       The 12 s ping itself is untouched (the keeper tick rides in it). The
+       row is now re-saved only when this isolate last saved it 15 s or more
+       ago, or its listening / member state changed, or the row was not
+       live (prev missing). Presence windows are 35 s (counts) and 45 s
+       (arrival / prune), and a skipped save is always followed by a real
+       one on the next 12 s ping, so a live screen's row is never older
+       than ~27 s: counts, the who's-online list and the doorbell behave
+       exactly as before, on about half the writes. */
+    const pm = cid ? pingMemo.get(cid) : null;
+    const pingFresh = !!(pm && pingRowLive && now - pm.at < PING_SAVE_GAP && pm.lis === lis && pm.pu === (pu || ""));
+    if (cid && !pingFresh) { pingMemo.set(cid, { at: now, lis, pu: pu || "" }); if (pingMemo.size > 2000) pingMemo.clear(); }
+    if (cid && !pingFresh) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
     // D1 READ FIX (Malik, 2026-11-08 "what if 100 people"): the prune and the three
     // presence reads below each walk every live ping row, on every ping from every
     // tab, so their cost grew with the square of the audience (100 people = ~3M rows
