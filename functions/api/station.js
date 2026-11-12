@@ -149,6 +149,7 @@ let tvLightAt = 0; // per-isolate light-check throttle stamp (5s gate)
 let tvLightSkipAt = 0; // newest tv/queue.skipAt this isolate has already pulled a tick for
 let tvLightCrowdAt = 0; // tv/skip filing stamp this isolate last pulled a tick for
 let tvLightGuardKey = ""; // last guardian fault key+hard-seat count this isolate pulled a tick for
+let tvLightNewsQ = 0; // last quarter start (ms) this isolate already pulled a full tick for a due radio-news decision
 let tvLightEyesKey = ""; // last guardian eyes-batch tail this isolate pulled a tick for
 let selfRevCheckAt = 0; // SELF-REVIEW: per-isolate check throttle for the daily pass in the GET handler
 const rqKeyOf = (d) => (d && d.yt ? "yt:" + d.yt : d && d.src ? "s:" + d.src : d && d.iaId ? "ia:" + d.iaId : "");
@@ -367,6 +368,14 @@ async function aiDjPass(deps, S, now) {
    * paused still refuse absolutely. */
   if (gate && deps && deps.force && (gate === "booth" || gate === "throttle")) gate = "";
   if (gate) return { changed: false, events: [], note: gate };
+  /* WEB-ONLY OVERRIDE (2026-11-10 diagnosis §1): while the switch is on,
+     the AI DJ does not stock — its daypart seeds are literally "... mix"
+     phrases and a survivor needs only to be 45–1200 s and unstruck, so
+     it can stock exactly the mix/type-beat class the override exists to
+     keep off the air. The web pool carries the station while the switch
+     is on. A commanded Hands stock (deps.force) still runs: Malik's
+     direct word outranks the standing override. */
+  if (RADIO_WEB_ONLY && !(deps && deps.force)) return { changed: false, events: [], note: "web-only" };
   const prevAt = +S.aiDjAt || 0;
   S.aiDjAt = now; // stamped on every attempt, so a dead relay is not retried on the next 12s ping
   let changed = true;
@@ -513,7 +522,10 @@ const WEB_CATS_ON = false;
    returns Old Time Radio Researchers Group drama ("Theater
    Five") as its top hit; the Benny item itself sits in the
    live station state, which no asset file shows. Add a pattern
-   here and the whole item class is dead everywhere at once. */
+   here and the whole item class is dead everywhere at once.
+   2026-11-10: type beats and megamixes join the list (the Nov 9
+   guest listen) — same enforcement points; the web pool carries
+   zero such titles, so nothing in the pool is lost. */
 const RADIO_STRIKE_PATTERNS = [
   /jack benny/i,
   /old time radio/i,
@@ -521,6 +533,8 @@ const RADIO_STRIKE_PATTERNS = [
   /theater five|theatre five/i,
   /mindwebs/i,
   /radio (drama|theater|theatre|serial|show)\b/i,
+  /type beat/i,
+  /\bmegamix\b|mega mix/i,
 ];
 function radioStrikeHit(title) {
   const t = String(title || "");
@@ -572,6 +586,12 @@ async function webLoadPool(origin, fetchFn, now) {
  * were there before", never an error worth surfacing. */
 async function webLaneItem(deps, S, now) {
   const memo = await webLoadPool(deps && deps.origin, deps && deps.fetchFn, now);
+  /* WEB-POOL-DOWN STAMP (2026-11-10 diagnosis §1): a failed pool fetch
+     used to blank the web lane per isolate for 10 minutes with no trace
+     — the tail silently fell through to Archive/bag. Stamp the failure
+     on the station doc (cleared the moment the pool loads again) so the
+     reroute is visible in state. */
+  if (!memo.entries) { if (memo.failAt) S.webPoolDownAt = memo.failAt; } else if (S.webPoolDownAt) delete S.webPoolDownAt;
   const entries = memo.entries;
   if (!entries || !entries.length) return null;
   const plays = (Array.isArray(S.webPlays) ? S.webPlays : []).filter((p) => p && now - (+p.at || 0) < WEB_CAP_WINDOW);
@@ -618,6 +638,12 @@ async function webLaneItem(deps, S, now) {
  * cover from the web (see the tail in nextItem). */
 async function webFullListItem(deps, S, now) {
   const memo = await webLoadPool(deps && deps.origin, deps && deps.fetchFn, now);
+  /* WEB-POOL-DOWN STAMP (2026-11-10 diagnosis §1): a failed pool fetch
+     used to blank the web lane per isolate for 10 minutes with no trace
+     — the tail silently fell through to Archive/bag. Stamp the failure
+     on the station doc (cleared the moment the pool loads again) so the
+     reroute is visible in state. */
+  if (!memo.entries) { if (memo.failAt) S.webPoolDownAt = memo.failAt; } else if (S.webPoolDownAt) delete S.webPoolDownAt;
   const entries = memo.entries;
   if (!entries || !entries.length) return null;
   const onAir = new Set();
@@ -656,6 +682,12 @@ const WEB_CAT_EVERY = 3;
 const WEB_CAT_NAME = "ywfr";
 async function webCatItem(deps, S, now) {
   const memo = await webLoadPool(deps && deps.origin, deps && deps.fetchFn, now);
+  /* WEB-POOL-DOWN STAMP (2026-11-10 diagnosis §1): a failed pool fetch
+     used to blank the web lane per isolate for 10 minutes with no trace
+     — the tail silently fell through to Archive/bag. Stamp the failure
+     on the station doc (cleared the moment the pool loads again) so the
+     reroute is visible in state. */
+  if (!memo.entries) { if (memo.failAt) S.webPoolDownAt = memo.failAt; } else if (S.webPoolDownAt) delete S.webPoolDownAt;
   const entries = memo.entries;
   if (!entries || !entries.length) return null;
   const onAir = new Set();
@@ -5379,6 +5411,20 @@ async function tvLightPending(env, now) {
       if (hs >= TV_GUARD_CONFIRM_SEATS && k + ":" + hs !== tvLightGuardKey) { tvLightGuardKey = k + ":" + hs; return true; }
     }
   }
+  /* RADIO NEWS — QUARTER-START PULL (2026-11-10 diagnosis §2): the radio
+     decision used to depend on a full 60 s-per-isolate tick landing
+     inside the quarter, so a quarter could pass with no decision
+     recorded at all. The 5 s light gate already runs between full
+     ticks: when this quarter's fresh piece is due (forQuarter is this
+     quarter's start, produced, not from the future), pull the full tick
+     forward once per quarter so the decision — fire or named skip — is
+     always computed and logged. One pull per quarter per isolate. */
+  const qd = await readDoc(env, "tv/quarternews");
+  const cur = qd && qd.current;
+  if (cur && +cur.forQuarter > 0) {
+    const qStart = Math.floor(now / TV_AD_EVERY_MS) * TV_AD_EVERY_MS;
+    if (+cur.forQuarter === qStart && (+cur.producedAt || 0) <= now && tvLightNewsQ !== qStart) { tvLightNewsQ = qStart; return true; }
+  }
   return false;
 }
 async function tvTick(env, S, now, origin, online) {
@@ -6400,6 +6446,15 @@ export async function onRequestGet({ request, env }) {
   S.C = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.C || {});
   S.D = Object.assign({ src: "", title: "", cover: "", start: 0, pos: 0, playing: false, vol: 0.9, rate: 1 }, S.D || {});
 
+  /* WEB-ONLY FLAG ON THE SHARED DOC (2026-11-10 diagnosis §1): the booth
+     client's Auto-DJ cannot see the keeper's RADIO_WEB_ONLY constant, so
+     the keeper publishes the override on the station doc itself — the
+     booth reads S.webOnly on every snapshot and draws its Auto-DJ from
+     the web pool while it is set. One write, the first ping after the
+     value changes; the booth's own saves carry the field once seen, and
+     the keeper re-stamps it if a stale save ever wipes it. */
+  if (S.webOnly !== RADIO_WEB_ONLY) { S.webOnly = RADIO_WEB_ONLY; S.updatedAt = now; S.by = "keeper"; await writeDoc(env, "radio/dj", "radio", S); }
+
   // GHOST-SHARE HOLD (mwGhostShare, reworked by the SHARE-STOP FIX,
   // 2026-11-01): this keeper NEVER ends a share. The old switch cleared
   // on + stopAt here once vstream.at was 15 minutes stale — but the
@@ -6719,6 +6774,15 @@ export async function onRequestGet({ request, env }) {
     S.rqBag = bag; return null;
   };
 
+  /* ROTATION CONTRACT UNDER WEB-ONLY (2026-11-10 diagnosis §1): the lanes
+     above the tail are named sanctioned exceptions, not oversights —
+     listener picks, the schedule, Malik's own mirrored queue, a due TV
+     spot and the saved requests playlist are his word or a listener's
+     word and play through. What the override governs is the unattended
+     tail and the stock behind it: the tail draws the web pool only
+     (Archive is out while the switch is on, below), the AI DJ does not
+     stock while the switch is on (aiDjPass), and the booth client's
+     Auto-DJ reads S.webOnly and draws the web pool too. */
   const nextItem = async (avoidSrc) => {
     const pk = await takePick();
     if (pk) return pk;
@@ -6835,7 +6899,13 @@ export async function onRequestGet({ request, env }) {
       if (RADIO_WEB_ONLY) { S.webCatAlt = (S.webCatAlt | 0) + 1; if (S.webCatAlt % WEB_CAT_EVERY === 0) { const ci = await webCatItem({ origin, fetchFn: fetch }, S, now); if (ci) return ci; } }
       const wi = await webLaneItem({ origin, fetchFn: fetch }, S, now); if (wi) return wi;
       if (RADIO_WEB_ONLY) { const fi = await webFullListItem({ origin, fetchFn: fetch }, S, now); if (fi) return fi; }
-      const pi = await poolItem(); if (pi) return pi;
+      /* WEB-ONLY OVERRIDE (2026-11-10 diagnosis §1): while the switch is
+         on, the Archive pool is NOT a fallthrough — the override's own
+         comment says his bag is the only never-silence floor, and the
+         Archive lane sitting between the web draws and the bag is what
+         let non-web audio on air under the override. With the switch
+         off this line is exactly as before. */
+      if (!RADIO_WEB_ONLY) { const pi = await poolItem(); if (pi) return pi; }
     }
     const t = await bagPick(avoidSrc);
     return { src: srcOf(t), title: t.title || "", cover: t.cover || "", dur: +t.duration || 0 };
@@ -6916,6 +6986,27 @@ export async function onRequestGet({ request, env }) {
   if (!cur) { // dead air — start the rotation on deck A right now (fader home is CENTER, owner 2026-10-29)
     startDeckItem("A", await nextItem(""), now); S.xf = 0.5; changed = true; cur = "A";
   }
+  /* NEWS SOUNDING-PAIR SELECTION (2026-11-10 diagnosis §2): the fire
+     block used to assume the news always belongs on A/B, so during a
+     live set on C/D the break landed on a silent pair and no seat heard
+     it. The sounding pair is the one with an ESTABLISHED playing deck:
+     a deck counts as sounding only once it has played for more than
+     10 s (the fire block's own guard) — a song the keeper just
+     cold-started on A ahead of the fire has not established sound yet,
+     so it does not outrank a live C/D set that has been sounding for
+     minutes. A/B first (the rotation's pair, and the pair the fire
+     block has always used), else C/D when the live set is what is
+     sounding. Returns the deck to park and the deck to start the news
+     on, or null when no deck is sounding (the fire block then records
+     deck-busy, as before). */
+  function newsFireDecks(S, now) {
+    const sounding = (k) => S[k] && S[k].playing && now - (S[k].start || now) > 10000;
+    if (sounding("A")) return { cur: "A", other: "B" };
+    if (sounding("B")) return { cur: "B", other: "A" };
+    if (sounding("C")) return { cur: "C", other: "D" };
+    if (sounding("D")) return { cur: "D", other: "C" };
+    return null;
+  }
   /* MW TV NEWS INTERRUPT (NEWS-BLOCK.md, Malik 2026-11-01 ~21:16;
    * cadence 2026-11-03: every quarter hour): the Meechie's World
    * News radio cut, decided by tvTick for this quarter hour. A fresh edition takes the incoming deck now —
@@ -6927,11 +7018,12 @@ export async function onRequestGet({ request, env }) {
    * parked in the same breath. No fresh edition = tvNewsFire is null
    * and nothing here moves. */
   if (tvNewsFire && cur) {
-    const otherN = cur === "A" ? "B" : "A";
-    if (S[cur].playing && !S[otherN].playing && now - (S[cur].start || now) > 10000) {
-      S[cur].playing = false; S[cur].pos = Math.max(0, Math.min(+S[cur].dur || 0, (now - (S[cur].start || now)) / 1000));
-      startDeckItem(otherN, tvNewsFire.item, now);
-      S.xf = 0.5; S.newsHour = tvNewsFire.hourKey; changed = true; cur = otherN;
+    const decks = newsFireDecks(S, now);
+    if (decks && S[decks.cur].playing && !S[decks.other].playing && now - (S[decks.cur].start || now) > 10000) {
+      S[decks.cur].playing = false; S[decks.cur].pos = Math.max(0, Math.min(+S[decks.cur].dur || 0, (now - (S[decks.cur].start || now)) / 1000));
+      startDeckItem(decks.other, tvNewsFire.item, now);
+      if (decks.other === "C" || decks.other === "D") S.xf2 = 0.5; else { S.xf = 0.5; cur = decks.other; }
+      S.newsHour = tvNewsFire.hourKey; changed = true;
       tvNewsLog(S, "fire", now); // NEWS FIX (owner, 2026-11-09): the fired outcome is recorded like every skip
     } else if (tvNewsLog(S, "deck-busy", now)) changed = true; // NEWS FIX: the gate said fire but the decks could not take it this tick — recorded; the late fire lands on a later tick of this same quarter
   }
