@@ -1,5 +1,6 @@
 /* /api/cf/* — Meechie's World's own free sign-in + database (Cloudflare D1 + KV). See lib/cf.js for the rules. */
 import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, bumpTracksVersion, checkInsert, checkUpdate, hasProfilePhoto, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
+import { bridgeUpstream } from "../../../lib/bridge.js";
 
 // Google "Sign in with Google" client id (public; the Google Cloud project the site already uses)
 const GOOGLE_CLIENT_ID = (env) => env.GOOGLE_CLIENT_ID || "";
@@ -10,15 +11,16 @@ const GOOGLE_CLIENT_ID = (env) => env.GOOGLE_CLIENT_ID || "";
  * fails; ONLY that route, the original request (cloned before its form body
  * is read, so the phone stack runs its own CSRF + verify checks on the
  * untouched fields) is forwarded behind the scenes to the login bridge
- * (Malik own-stack phone build, same handler, no quota — the constant must
- * match functions/api/bridge/cf/[[path]].js) and its answer is returned
+ * (Malik own-stack phone build, same handler, no quota — the address comes from the shared
+ * resolver lib/bridge.js — the same one functions/api/bridge/cf/[[path]].js uses) and its answer is returned
  * from this origin. WIDENED 2026-11-09: the bridge is tried on ANY failure
  * of that D1-backed work, not only wall-classified ones — a non-wall D1
  * failure stranded sign-ins on the 503 snag page while the bridge sat
  * healthy. Genuine client answers (CSRF 400, verify 401) and the healthy
  * path never reach the bridge; if the bridge is down or hangs (10 s fetch
  * timeout) the original response stands exactly. */
-const BRIDGE_UPSTREAM = "https://steady-assure-convertible-diary.trycloudflare.com";
+/* (the bridge address comes from the shared resolver, lib/bridge.js —
+ * imported above; there is no constant here anymore) */
 const WALL_RE = /D1_ERROR|exceeded|quota|1101/i;
 const isWall = (e) => WALL_RE.test(String(e && e.message || e || ""));
 const errToken = (e) => String((e && e.name ? e.name : "") + (e && e.message || e || "")).slice(0, 60).replace(/[^A-Za-z0-9]/g, "");
@@ -30,7 +32,7 @@ async function bridgeGoogleRedirect(clone) {
     headers.delete("host");
     const init = { method: clone.method, headers, redirect: "manual", signal: AbortSignal.timeout(10000) };
     if (clone.method !== "GET" && clone.method !== "HEAD" && clone.body) { init.body = clone.body; init.duplex = "half"; }
-    up = await fetch(BRIDGE_UPSTREAM + "/api/cf/auth/google-redirect", init);
+    up = await fetch((await bridgeUpstream(new URL(clone.url).origin)) + "/api/cf/auth/google-redirect", init);
   } catch (_) { return null; }
   if (!up || up.status >= 500) return null;
   const out = new Headers();

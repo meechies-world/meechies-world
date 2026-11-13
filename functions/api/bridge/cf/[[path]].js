@@ -14,10 +14,11 @@
  * keeps working while the wall is up. If the phone tunnel is unreachable it
  * answers 502 with error code "bridge_down" and the client falls back to the
  * main backend's own answer.
- * RE-POINTING: if the phone tunnel restarts, its URL changes. Update the one
- * constant below (current value also lives in ~/bridge-url.txt on the phone)
- * and redeploy — nothing else needs to change. */
-const BRIDGE_UPSTREAM = "https://steady-assure-convertible-diary.trycloudflare.com";
+ * ADDRESS: the upstream is resolved per call by lib/bridge.js (rendezvous
+ * files the phone-side publisher keeps current, every candidate validated
+ * by health + settings probes), so a tunnel restart no longer needs a
+ * code edit or a redeploy. */
+import { bridgeUpstream } from "../../../../lib/bridge.js";
 
 const bridgeDown = () =>
   new Response(
@@ -45,7 +46,7 @@ export async function onRequest(context) {
   if (!segments.length) return notFound();
   const rest = segments.map((s) => encodeURIComponent(String(s))).join("/");
   const url = new URL(request.url);
-  const target = BRIDGE_UPSTREAM + "/api/cf/" + rest + url.search;
+  const target = (await bridgeUpstream(url.origin)) + "/api/cf/" + rest + url.search;
 
   const headers = new Headers(request.headers);
   headers.delete("host");
