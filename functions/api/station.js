@@ -5427,6 +5427,21 @@ async function tvLightPending(env, now) {
   }
   return false;
 }
+/* D1 WRITE CUT (2026-11-12): tv/now was re-saved on every tick whose
+ * probe caches or stamps moved, even when the channel itself — the
+ * segment window, cursor and notes every client reads — was byte-for-
+ * byte what the last write laid. tvNowChanged compares only that
+ * client-visible state; a tick that moved nothing but probe caches
+ * (premProbe / rerunProbe / anchorProbe / charProbe / luProbe /
+ * qProbe / spotProbe / cartoonProbe) or stamps (anchAt / charStamp /
+ * luStamp / qStamp / genAt / updatedAt) skips the write. The caches
+ * live in this isolate's memory regardless and ride the next real
+ * change; a probe re-run by another isolate costs reads, not writes. */
+function tvNowChanged(prev, next) {
+  if (!prev) return true;
+  const pick = (d) => d ? { segs: d.segs || [], cursor: d.cursor || null, curStart: d.curStart || 0, skipNote: d.skipNote || null, gNote: d.gNote || null, newsRefill: d.newsRefill || null, insWin: d.insWin || null, crtWin: d.crtWin || [], qSkipAt: d.qSkipAt || 0, qSkipNote: d.qSkipNote || null, qCut: d.qCut || null, movSkip: d.movSkip || null, qTouched: !!d.qTouched } : null;
+  return JSON.stringify(pick(prev)) !== JSON.stringify(pick(next));
+}
 async function tvTick(env, S, now, origin, online) {
   let chan = await readDoc(env, "tv/channel");
   if (!chan || !Array.isArray(chan.items) || !chan.items.length || (+chan.progV || 0) < TV_PROGRAM_V) { chan = tvSeedChannel(now); await writeDoc(env, "tv/channel", "tv", chan); }
@@ -6293,7 +6308,10 @@ async function tvTick(env, S, now, origin, online) {
   delete chan._qCut;
   delete chan._cartoon;
   if (dirty) {
-    await writeDoc(env, "tv/now", "tv", { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, gNote, newsRefill, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, crtWin: crtPins, cartoonProbe: cartoonState.cache, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now });
+    const nwDoc = { segs, cursor, chanAt: chan.updatedAt || 0, curStart: curSeg ? curSeg.start : 0, checked: (nw && nw.checked) || {}, skipNote, gNote, newsRefill, premProbe: premState.cache, rerunProbe: rerunState.cache, anchorProbe: anchorState.cache, anchAt: anchStamp, charProbe: charState.cache, charStamp, luProbe: luState.cache, luStamp, qProbe: qtrState.cache, qStamp: qStampSeen, spotProbe: spotState.cache, insWin: insWin || null, crtWin: crtPins, cartoonProbe: cartoonState.cache, qSkipAt: qSkipAtDone, qSkipNote, qCut, movSkip: movSkipState, qTouched: !!((nw && nw.qTouched) || (segs || []).some((s) => s && s.qid)), genAt: now, updatedAt: now };
+    /* D1 WRITE CUT (2026-11-12): skip the save when only probe
+     * caches / stamps moved (see tvNowChanged above). */
+    if (tvNowChanged(nw, nwDoc)) await writeDoc(env, "tv/now", "tv", nwDoc);
   }
   // Play tally for sponsor spots (segments that aired this tick).
   try { await tvSponsorTally(env, pool, segs, now, online); } catch (_) {}
@@ -6386,9 +6404,11 @@ export async function onRequestGet({ request, env }) {
     // that he cannot be rung about.
     let bellName = null;
     let pingRowLive = false;
+    let prow = null;
     if (cid) {
       try {
-        const prev = await env.DB.prepare("select cid from pings where cid = ? and at > ?").bind(cid, now - 45000).first();
+        prow = await env.DB.prepare("select cid, at, listening, uid from pings where cid = ?").bind(cid).first();
+        const prev = prow && prow.at > now - 45000 ? prow : null;
         pingRowLive = !!prev;
         if (!prev) {
           if (pu && pu !== OWNER_ID) {
@@ -6411,7 +6431,17 @@ export async function onRequestGet({ request, env }) {
        than ~27 s: counts, the who's-online list and the doorbell behave
        exactly as before, on about half the writes. */
     const pm = cid ? pingMemo.get(cid) : null;
-    const pingFresh = !!(pm && pingRowLive && now - pm.at < PING_SAVE_GAP && pm.lis === lis && pm.pu === (pu || ""));
+    /* D1 WRITE CUT (2026-11-12): the 15 s save floor above was per
+       isolate, so with the site spread over N isolates a screen's row
+       was re-saved up to N times as often. The row this ping already
+       read now testifies for every isolate: if the STORED row is
+       younger than PING_SAVE_GAP and carries the same listening / uid
+       state, the save is skipped no matter which isolate lands the
+       ping. The floor itself is unchanged — a live row is never older
+       than ~27 s, exactly as the 2026-11-11 fix promised — so counts,
+       the who's-online list and the doorbell behave as before. */
+    const rowFresh = !!(prow && now - (prow.at || 0) < PING_SAVE_GAP && (prow.listening ? 1 : 0) === lis && (prow.uid || "") === (pu || ""));
+    const pingFresh = rowFresh || !!(pm && pingRowLive && now - pm.at < PING_SAVE_GAP && pm.lis === lis && pm.pu === (pu || ""));
     if (cid && !pingFresh) { pingMemo.set(cid, { at: now, lis, pu: pu || "" }); if (pingMemo.size > 2000) pingMemo.clear(); }
     if (cid && !pingFresh) await env.DB.prepare("insert into pings (cid, at, listening, uid, name, first) values (?,?,?,?,?,?) on conflict(cid) do update set at = excluded.at, listening = excluded.listening, uid = coalesce(excluded.uid, pings.uid), name = coalesce(excluded.name, pings.name), first = coalesce(pings.first, excluded.first)").bind(cid, now, lis, pu || null, pn || null, now).run();
     // D1 READ FIX (Malik, 2026-11-08 "what if 100 people"): the prune and the three
@@ -6931,7 +6961,7 @@ export async function onRequestGet({ request, env }) {
   // playing, and the 30s grace keeps the 5s blend itself untouched.
   for (const k of ["A", "B"]) { const dk = S[k]; if (dk && dk.playing) { const dur = durOf(dk) || 0; if ((dur > 0 && now > (dk.start || 0) + dur * 1000 + 30000) || (!dur && now - (dk.start || 0) > 30 * 60e3)) { dk.playing = false; dk.pos = 0; parked = true; } } }
   if (S.pausedAt && now - S.pausedAt < 30 * 60e3 && !S.A.playing && !S.B.playing) {
-    if (parked || now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
+    if (parked || now - (S.updatedAt || 0) > 60000) { S.updatedAt = now; S.by = "keeper"; /* mwFlapFix */ await writeDoc(env, "radio/dj", "radio", S); }
     return json({ ok: true, mode: "paused", now, online: counts.online, listening: counts.listening, users: counts.users, guestSince: counts.guestSince || 0 });
   }
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
@@ -7095,7 +7125,7 @@ export async function onRequestGet({ request, env }) {
     if ((+fx.noise || 0) > 0.5) { fx.noise = 0.5; changed = true; }
     if ((+fx.boost || 1) > 1.3) { fx.boost = 1.3; changed = true; }
   }
-  if (now - (S.updatedAt || 0) > 20000) { S.updatedAt = now; changed = true; }
+  if (now - (S.updatedAt || 0) > 60000) { S.updatedAt = now; changed = true; }
   // DJ BRAIN flush: one shared write for everything this tick started or
   // consumed (brain_events rows + the brain/taste fold). Best-effort — the
   // station answers the same whether or not the brain remembers.
