@@ -541,6 +541,26 @@ function radioStrikeHit(title) {
   if (!t) return false;
   return RADIO_STRIKE_PATTERNS.some((re) => re.test(t));
 }
+/* RADIO DEAD-TRACK BAN (owner, 2026-11-13: "Remove all the songs
+   that don't play on the radio. Never let them play again."):
+   YouTube IDs verified dead in the station's embedded player
+   (2026-11-13 sweep of all 1,389 web-pool tracks: oEmbed plus an
+   embed playability probe sent with the site's own Referer, the
+   exact conditions a listener's player runs under). These six
+   are age-restricted -- the videos exist on youtube.com, but
+   the logged-out embed player is refused (UNPLAYABLE), so the
+   song never sounds and the rotation slot burns. Enforced by
+   ID at web-pool load, beside the strike list, so the ban
+   survives a pool reseed or regeneration; the pool file itself
+   is cleaned too. Evidence: radio-dead-tracks-2026-11-13. */
+const RADIO_DEAD_YT_IDS = new Set([
+  "9heuO__j-6E", // Ashnikko — Fuck Me in Shibuya (age-restricted)
+  "UwnosFODMrE", // Zheani — Thought Criminal (age-restricted)
+  "bK3xKG-TxL0", // Zheani — Darker Emptier Simpler (age-restricted)
+  "7FWgl-TqSoA", // Dana Dentata — TND (age-restricted)
+  "VH24UWM3oo0", // Dana Dentata — GAF (age-restricted)
+  "hEc07JRsLm8", // Dana Dentata — 3vil (age-restricted)
+]);
 const WEB_DUR_MIN = 45, WEB_DUR_MAX = 1200; // the unattended band (aiDjSurvivors precedent)
 const webMemo = { at: 0, failAt: 0, v: 0, entries: null };
 /* Cadence, not a gate (owner, 2026-11-08: "I dont want it 100
@@ -571,6 +591,7 @@ async function webLoadPool(origin, fetchFn, now) {
         const dur = +t.dur || 0;
         if (dur < WEB_DUR_MIN || dur > WEB_DUR_MAX) continue;
         if (radioStrikeHit(t.title)) continue; // RADIO STRIKE (owner, 2026-11-09): enforced at load, so it survives a pool reseed
+        if (RADIO_DEAD_YT_IDS.has(String(t.yt))) continue; // RADIO DEAD-TRACK BAN (owner, 2026-11-13): verified unplayable, never served again
         entries.push({ yt: String(t.yt), title: String(t.title || "").slice(0, 120), dur, artist: a.name, hop, cat: a.cat ? String(a.cat).slice(0, 24) : "" });
       }
     }
