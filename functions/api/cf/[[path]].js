@@ -457,13 +457,15 @@ async function rest(request, env) {
       r.data = await leadLock(env, path, r.data); /* mwLeadLock */
       r.data = await corpseGuard(env, path, r.data); /* mwCorpseGuard */
       const now = new Date().toISOString();
-      const insStmts = [
-        env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(r.data), now, now),
-        change(env, "docs", path, coll),
-      ];
+      /* D1 WRITE CUT (2026-11-12): the insert runs on its own first —
+       * on a duplicate the old batch still landed its changes row (a
+       * wake-up for a write that never happened). The changes row (and
+       * the tracks version bump) now land only when the doc did. */
+      const insRes = await env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(r.data), now, now).run();
+      if (!insRes.meta.changes) return err("That already exists.", 409, "duplicate");
+      const insStmts = [change(env, "docs", path, coll)];
       if (coll === "tracks") insStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
-      const res = await env.DB.batch(insStmts);
-      if (!res[0].meta.changes) return err("That already exists.", 409, "duplicate");
+      await env.DB.batch(insStmts);
       if (Math.random() < 0.02) await env.DB.prepare("delete from changes where at < ?").bind(Date.now() - 864e5).run();
       return json({ data: null, error: null }, 201);
     }
@@ -570,6 +572,7 @@ async function rpc(request, env) {
         const src = name === "set_doc" ? (args.p_data || {}) : (args.p_patch || {});
         let bNext = battleMergePerf(storedB, src && typeof src === "object" ? src : {});
         bNext = await corpseGuard(env, path, bNext); /* mwCorpseGuard */
+        if (JSON.stringify(bNext) === (row.data || "")) return json({ data: null, error: null }); /* D1 WRITE CUT (2026-11-12): unchanged payload — no doc write, no changes row */
         await env.DB.batch([env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(bNext), now, path), change(env, "docs", path, row.coll)]);
         return json({ data: null, error: null });
       }
@@ -581,6 +584,11 @@ async function rpc(request, env) {
     checkUpdate(row, next, uid, admin);
     next = await leadLock(env, path, next); /* mwLeadLock */
     next = await corpseGuard(env, path, next); /* mwCorpseGuard */
+    /* D1 WRITE CUT (2026-11-12): an update whose payload is byte-
+     * identical to the stored doc changes nothing any client can see —
+     * skip the doc write AND its changes row (the wake-up every open
+     * tab would otherwise chase to re-read the same bytes). */
+    if (JSON.stringify(next) === (row.data || "")) return json({ data: null, error: null });
     const updStmts = [env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(next), now, path), change(env, "docs", path, row.coll)];
     if (path.startsWith("tracks/")) updStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
     await env.DB.batch(updStmts);
