@@ -166,5 +166,14 @@ window.MW_APP_LIST = [
 "line": "The kids channel — a little school in an app: lessons and movies, lock the screen, hand it over",
 "icon": "/img/kids-art-640.webp",
 "url": "/kids-app/"
+},
+{
+"id": "lookup",
+"name": "MW Reverse Lookup",
+"view": "",
+"views": [],
+"line": "Look up any number — socials, public records & more",
+"icon": "/img/apps/lookup-192.png",
+"url": "/lookup-app/"
 }
 ];
