@@ -157,5 +157,14 @@ window.MW_APP_LIST = [
 "line": "Walk the 3D rooms and talk",
 "icon": "/img/apps/world-192.png",
 "url": "/world-app/"
+},
+{
+"id": "kids",
+"name": "Meechie's World for Kids",
+"view": "",
+"views": [],
+"line": "The kids channel — a little school in an app: lessons and movies, lock the screen, hand it over",
+"icon": "/img/kids-art-640.webp",
+"url": "/kids-app/"
 }
 ];
