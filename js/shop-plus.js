@@ -93,7 +93,7 @@
         const any = [...g.querySelectorAll(".prod")].some((p) => !cardOf(p).classList.contains("sp-hide"));
         let none = g.querySelector(".sp-none");
         const filtering = q || cat !== "all";
-        if (filtering && !any && g.querySelector(".prod")) { if (!none) { none = D.createElement("div"); none.className = "sp-none"; g.appendChild(none); } none.textContent = "Nothing here matches. Try another word or tap All."; }
+        if (filtering && !any && g.querySelector(".prod")) { if (!none) { none = D.createElement("div"); none.className = "sp-none"; g.appendChild(none); } const msg = "Nothing here matches. Try another word or tap All."; if (none.textContent !== msg) none.textContent = msg; }
         else if (none) none.remove();
       }
       count.textContent = (q || cat !== "all") ? `${shown} item${shown === 1 ? "" : "s"} match` : (list.length ? `${list.length} items in the shop` : "");

@@ -6540,13 +6540,14 @@ export async function onRequestGet({ request, env }) {
     tvLightAt = now;
     try { tvRunTick = await tvLightPending(env, now); } catch (_) { tvRunTick = false; }
   }
+  let newsLogDirty = false; // set by the TV tick below; folded into `changed` once it is declared (was a TDZ ReferenceError)
   if (tvRunTick) {
     tvTickAt = now;
     /* NEWS FIX (owner, 2026-11-09): a non-fire radio-news decision
        is RECORDED on the station doc (tvNewsLog / S.newsLog), not
        discarded — see tvRadioDecision. A fire decision is recorded
        by the fire block below as "fire" or "deck-busy". */
-    try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; else if (tvd && tvd.why && tvNewsLog(S, tvd.why, now)) changed = true; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
+    try { const tvd = await tvTick(env, S, now, origin, counts && counts.online); if (tvd && tvd.fire) tvNewsFire = tvd; else if (tvd && tvd.why && tvNewsLog(S, tvd.why, now)) newsLogDirty = true; if (tvd && tvd.spot && tvd.spot.fire) tvSpotItem = tvd.spot; } catch (_) {}
   }
 
   // The booth has the tables — hands off. DEADLOCK BREAKER (mwDeadDeck,
@@ -6936,7 +6937,7 @@ export async function onRequestGet({ request, env }) {
   if (S.pausedAt && (S.A.playing || S.B.playing)) S.pausedAt = 0;
   if (S.silentSince && anyPlayingSB) delete S.silentSince; // mwSilentBreak: a playing deck ends any silence episode
 
-  let changed = parked;
+  let changed = parked || newsLogDirty;
   // schedule (owner, 2026-10-27): at a set time each day the station switches
   // to a saved playlist and plays it through in order. The booth writes the
   // entries to the station/schedule doc; ready items wait in S.schedQ and

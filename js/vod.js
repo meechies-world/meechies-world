@@ -235,7 +235,7 @@
   }
   function playYt(item) {
     ytApi().then(function (ok) {
-      if (!isOpen()) return;                     // viewer already left
+      if (!isOpen() || curItem !== item) return; // viewer left, or picked another title while YouTube loaded
       if (!ok || !window.YT || !YT.Player) {
         if (partEl) partEl.textContent = "YouTube didn't load just now — tap the title again.";
         return;
