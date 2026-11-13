@@ -7,6 +7,7 @@ import { foldChat } from "../../lib/brain-member.js";
 import { userFrom, isAdmin, take as cfTake } from "../../lib/cf.js";
 import { MODELS, MODEL_BY_ID } from "../../lib/ai-catalog.js";
 import * as HANDS from "../../lib/meechie-hands.js";
+import { withVault } from "../../lib/secrets.js";
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const CHAT_KINDS = new Set(["chat", "reasoning", "code", "vision"]);
 
@@ -94,8 +95,10 @@ async function runKind(env, model, body) {
   }
 }
 
-export async function onRequestPost({ request, env, waitUntil }) {
-  if (!env.AI) return json({ error: "ai_off" }, 501);
+export async function onRequestPost({ request, env: baseEnv, waitUntil }) {
+  if (!baseEnv.AI) return json({ error: "ai_off" }, 501);
+  // keys the owner locked in on the Video Studio's API Keys page fill any gap the dashboard leaves
+  const env = await withVault(baseEnv, ["ANTHROPIC_API_KEY", "TAVILY_API_KEY"]);
   const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "sign_in" }, 401);
   // the site's own sign-in (mw_ session tokens), not the old Supabase one
