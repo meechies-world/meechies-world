@@ -63,3 +63,12 @@ html.lux .gi{width:1.2em;height:1.2em;flex:none;display:inline-block;vertical-al
 .soul-greet{padding-left:14px;padding-right:14px;box-sizing:border-box}
 /* MW TV top bar: with every button showing (members get more), the bar ran past the right edge and ON DEMAND / back were unclickable; let it wrap to a second row instead */
 #tw-bar{flex-wrap:wrap!important;row-gap:6px;max-width:100%;box-sizing:border-box}
+
+/* upgrade 2026-11-10: bigger tap targets on touch screens. Footer/gate links get real padding; small round/pill buttons keep their look but get an invisible bigger hit area (no layout shift, band untouched). */
+@media (pointer:coarse){
+ footer .f-links a,footer p a,#gate .gt-fine a{display:inline-block;padding:11px 6px;min-height:44px;box-sizing:border-box}
+ footer .f-links{row-gap:0}
+ #en-mute,#authbar .btn.sm,#announce-x,#ai-close,#mw-outage button,#mn-snd,#mn-pop{position:relative}
+ #en-mute{padding-top:14px;padding-bottom:14px}
+ #en-mute::after,#authbar .btn.sm::after,#announce-x::after,#ai-close::after,#mw-outage button::after,#mn-snd::after,#mn-pop::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:calc(100% + 16px);min-height:44px;transform:translateY(-50%)}
+}
