@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meechie's World Reverse Lookup — find what's public about a number</title>
+<meta name="description" content="Enter a US phone number and get everything that's publicly tied to it: social profiles, public records, court records, crypto and payment profiles — every hit linked to its source. Paid in Meechie's World Coins.">
+<link rel="manifest" href="/manifest-lookup.webmanifest">
+<script>window.__mwBIP=null;addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__mwBIP=e;});</script>
+<meta name="theme-color" content="#0b0a08">
+<link rel="icon" href="/img/apps/lookup-192.png">
+<link rel="apple-touch-icon" href="/img/apps/lookup-512.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MW Lookup">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(120% 50% at 50% -10%,rgba(255,190,80,.16),transparent 60%),#0b0a08;color:#f3ead2;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:26px 16px 48px}
+  .wrap{max-width:640px;margin:0 auto}
+  .badge{display:block;width:min(300px,80vw);margin:0 auto;border-radius:22px;box-shadow:0 0 0 1.5px #8a6d1f,0 12px 34px rgba(0,0,0,.55)}
+  h1{text-align:center;margin:16px 0 2px;font:700 27px Georgia,serif;color:#f0cf78;letter-spacing:.05em}
+  .sub{text-align:center;margin:0 0 6px;color:#cbb26a;letter-spacing:.24em;font-size:11.5px}
+  .pitch{max-width:520px;margin:0 auto 18px;color:#d8d2c0;font-size:15.5px;line-height:1.55;text-align:center}
+  .card{border:1px solid rgba(214,170,74,.35);border-radius:16px;background:linear-gradient(180deg,#17130c,#0b0907);padding:14px 16px;margin:0 0 14px}
+  .card b{color:#ffe08a}
+  .muted{color:#a99f8b;font-size:13.5px;line-height:1.5}
+  form{display:flex;gap:8px;flex-wrap:wrap}
+  input[type=tel]{flex:1 1 220px;background:#0b0a08;border:1px solid #3a3223;border-radius:12px;padding:13px 14px;color:#fff;font:17px system-ui}
+  .go{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.03em;font-size:16px;padding:13px 22px;border-radius:12px;border:0;cursor:pointer;box-shadow:0 6px 22px rgba(240,207,120,.3)}
+  .go:disabled{opacity:.55;cursor:wait}
+  .ghost{background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:14.5px;padding:11px 18px;border-radius:12px;cursor:pointer;text-decoration:none;display:inline-block}
+  .packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:10px}
+  .packs button{display:grid;gap:2px;justify-items:center;padding:10px 6px;border-radius:12px;border:1px solid #d4a843;background:#120f09;color:#fff;font:700 13px system-ui;cursor:pointer}
+  .packs button span{font-size:17px;color:#f0cf78}
+  .packs button small{color:#bbb;font-weight:600}
+  h2{font:700 19px Georgia,serif;color:#f0cf78;letter-spacing:.04em;margin:20px 0 8px}
+  .hit{border:1px solid #2c2413;border-radius:12px;padding:10px 12px;margin:0 0 8px;background:#100d08}
+  .hit a{color:#ffe08a;font-weight:700;text-decoration:none;word-break:break-word}
+  .hit .plat{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;color:#191204;background:linear-gradient(180deg,#f0cf78,#c39a2e);border-radius:999px;padding:2px 8px;margin-right:8px;vertical-align:2px}
+  .hit .snip{color:#cfc6ad;font-size:13.5px;line-height:1.45;margin-top:3px}
+  .hit .src{color:#8a8268;font-size:12px;word-break:break-all}
+  .wallet{font-size:14px;line-height:1.55}
+  .wallet code{color:#ffe08a;word-break:break-all}
+  .facts{font-size:14.5px;line-height:1.6}
+  .hist{display:grid;gap:6px}
+  .hist button{text-align:left;background:#100d08;border:1px solid #2c2413;border-radius:10px;color:#f3ead2;padding:9px 12px;font:600 14px system-ui;cursor:pointer}
+  .hist button small{color:#a99f8b;font-weight:500}
+  .err{color:#ff9d7a}
+  .center{text-align:center}
+  .back{display:block;text-align:center;margin-top:26px;color:#8a8268;font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img class="badge" src="/img/apps/lookup-badge.jpg" alt="Meechie's World Inc — Reverse Phone Look Up">
+  <h1>REVERSE LOOKUP</h1>
+  <p class="sub">FIND OWNER · LOOKUP DETAILS · GET INFO · STAY SAFE</p>
+  <p class="pitch">Enter a US phone number and get <b>everything that's publicly tied to it</b> — social profiles, people-search listings, public court records, crypto and payment profiles. Every hit links to its source. Public records only — nothing sealed, nothing made up.</p>
+
+  <div class="card" id="lk-me"><span class="muted">Checking your account…</span></div>
+
+  <div class="card">
+    <form id="lk-form">
+      <input type="tel" id="lk-num" inputmode="tel" autocomplete="off" placeholder="(724) 555-0134" aria-label="US phone number">
+      <button class="go" id="lk-go" type="submit">Look it up</button>
+    </form>
+    <p class="muted" id="lk-price" style="margin:10px 0 0"></p>
+    <div id="lk-packs" hidden>
+      <p class="muted" style="margin:12px 0 0"><b>Not enough coins.</b> Pick a pack — you'll pay securely with Stripe (card, Apple Pay, Google Pay or Cash App Pay), then come right back.</p>
+      <div class="packs" id="lk-pack-grid"></div>
+    </div>
+    <p class="muted err" id="lk-err" hidden></p>
+  </div>
+
+  <div id="lk-out"></div>
+
+  <h2>Your past lookups</h2>
+  <div class="hist" id="lk-hist"><span class="muted">Sign in to see your lookup history.</span></div>
+
+  <p class="muted" style="margin-top:22px">How it works: your first lookup is 🪙 199 ($1.99), your second is 🪙 500 ($5.00), then 🪙 1,000 ($10.00) makes every lookup after that included — unlimited. Coins are the site's own Meechie's World Coins (1 coin = 1¢). Reports are saved to your account only; nobody else can open them. If the public sources don't answer, you're never charged.</p>
+  <div class="center"><button class="ghost" id="install-btn" type="button">📲 Put Lookup on my home screen</button></div>
+  <a class="back" href="/">← Back to the full Meechie's World site</a>
+</div>
+<div data-app-ad></div>
+<script src="/js/app-ad.js?v=1793549991"></script>
+<script src="/js/install.js?v=1793193000"></script>
+<script>
+(function(){"use strict";
+const E=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $=s=>document.querySelector(s);
+const usd=c=>"$"+(c/100).toFixed(2);
+const tok=()=>{try{const s=JSON.parse(localStorage.getItem("mw-cf-session")||"null");return (s&&s.access_token)||""}catch(_){return""}};
+const api=(path,body)=>fetch("/api/lookup/"+path,{method:body?"POST":"GET",headers:{"content-type":"application/json",authorization:"Bearer "+tok()},body:body?JSON.stringify(body):undefined}).then(async r=>({ok:r.ok,status:r.status,j:await r.json().catch(()=>({}))}));
+const coinsApi=(path,body)=>fetch("/api/coins/"+path,{method:body?"POST":"GET",headers:{"content-type":"application/json",authorization:"Bearer "+tok()},body:body?JSON.stringify(body):undefined}).then(async r=>({ok:r.ok,status:r.status,j:await r.json().catch(()=>({}))}));
+let ME=null,PACKS=null;
+function priceLine(){const p=$("#lk-price"),g=$("#lk-go");if(!ME){p.textContent="";return}
+  if(ME.owner){p.innerHTML="👑 <b>Owner account — your lookups are free.</b> No coins, ever.";g.textContent="Look it up — free";return}
+  if(ME.unlimited){p.innerHTML="You have <b>🪙 "+(ME.coins||0).toLocaleString()+"</b> coins · lookups are <b>included — unlimited</b>.";g.textContent="Look it up — included";return}
+  const step=(ME.used||0)+1;p.innerHTML="You have <b>🪙 "+(ME.coins||0).toLocaleString()+"</b> coins · this is lookup <b>"+step+" of 3</b> on the ladder — 🪙 "+ME.nextPrice+" ("+ME.nextUsd+")"+(step===3?", and it unlocks unlimited":"")+".";
+  g.textContent="Look it up — 🪙 "+ME.nextPrice}
+function paintMe(){const el=$("#lk-me");if(!tok()){el.innerHTML="<b>Sign in first.</b> <span class='muted'>Lookups are paid in coins from your Meechie's World account, and your reports stay saved to it.</span> <a class='ghost' href='/'>Go to the site &amp; sign in</a>";priceLine();return}
+  if(!ME){el.innerHTML="<span class='muted'>Loading your account…</span>";return}
+  el.innerHTML=(ME.owner?"👑 <b>Owner account.</b> <span class='muted'>Your lookups are free — no coins are ever taken.</span>":"<b>🪙 "+(ME.coins||0).toLocaleString()+" coins</b> <span class='muted'>in your wallet.</span>")+" <button class='ghost' type='button' id='lk-buy'>＋ Buy coins</button>";
+  const b=$("#lk-buy");if(b)b.addEventListener("click",showPacks);priceLine()}
+async function showPacks(){const box=$("#lk-packs"),grid=$("#lk-pack-grid");box.hidden=false;if(!PACKS){const r=await fetch("/api/coins/info").then(x=>x.json()).catch(()=>null);PACKS=(r&&r.packs)||{}}
+  const order=["p100","p550","p1150","p3000","p6250"].filter(k=>PACKS[k]);
+  grid.innerHTML=order.map(k=>"<button type='button' data-pack='"+k+"'><span>🪙 "+PACKS[k].coins.toLocaleString()+"</span><small>"+usd(PACKS[k].cents)+"</small></button>").join("")||"<span class='muted'>The coin shop isn't switched on yet.</span>";
+  grid.querySelectorAll("[data-pack]").forEach(btn=>btn.addEventListener("click",async()=>{btn.disabled=true;const r=await coinsApi("checkout",{pack:btn.dataset.pack});if(r.ok&&r.j.url&&/^https:\/\/checkout\.stripe\.com\//.test(r.j.url))location.href=r.j.url;else{btn.disabled=false;err(r.j.error||"Checkout isn't available right now.")}}))}
+function err(m){const e=$("#lk-err");e.textContent=m||"";e.hidden=!m}
+function factsHtml(f){const rows=["<b>Country:</b> "+E(f.country),"<b>Area code:</b> "+E(f.areaCode)+(f.region?" — "+E(f.region):"")];
+  if(f.tollFree)rows.push("📞 <b>Toll-free number</b> — no single owner or location is tied to toll-free numbers.");
+  if(f.fictional555)rows.push("⚠️ <b>555-01xx is the reserved make-believe range</b> used in movies and examples — it isn't a real person's line.");
+  if(f.directoryAssistance)rows.push("ℹ️ This is the directory-assistance number (555-1212).");
+  rows.push("<span class='muted'>"+E(f.carrierNote)+"</span>");
+  return "<div class='card facts'>"+rows.join("<br>")+"</div>"}
+function itemHtml(it){if(it.kind==="wallet"){return "<div class='hit wallet'>💰 <b>"+E(it.chain)+" wallet</b> — printed on <a href='"+E(it.sourceUrl)+"' target='_blank' rel='noopener'>"+E(it.sourceTitle||"a public page")+"</a><br><code>"+E(it.address)+"</code>"
+    +(it.balance!=null?"<br><b>Balance:</b> "+E(it.balance):"")+(it.txCount!=null?"<br><b>Transactions:</b> "+E(it.txCount):"")
+    +(it.firstActivity?"<br><b>First activity:</b> "+E(new Date(it.firstActivity).toLocaleDateString()):"")+(it.lastActivity?"<br><b>Last activity:</b> "+E(new Date(it.lastActivity).toLocaleDateString()):"")
+    +(it.explorerUrl?"<br><a href='"+E(it.explorerUrl)+"' target='_blank' rel='noopener'>See it on the public explorer →</a>":"")+"</div>"}
+  return "<div class='hit'>"+(it.platform?"<span class='plat'>"+E(it.platform)+"</span>":"")+"<a href='"+E(it.url)+"' target='_blank' rel='noopener'>"+E(it.title||it.url)+"</a>"
+    +(it.snippet?"<div class='snip'>"+E(it.snippet)+"</div>":"")+"<div class='src'>"+E(it.url)+"</div></div>"}
+const ORDER=["social","messaging","people","court","crypto","payment","mentions"];
+function dossierHtml(d){let h="<h2>Report — "+E(d.number)+"</h2>"+factsHtml(d.facts);
+  for(const k of ORDER){const s=d.sections[k];if(!s)continue;h+="<h2>"+E(s.title)+"</h2>";
+    h+=s.items.length?s.items.map(itemHtml).join(""):"<p class='muted'>"+E(s.note)+"</p>"}
+  h+="<p class='muted'>Searched the public web "+d.meta.searches+" ways for this number. Every result above links to the public page it came from.</p>";return h}
+async function history(){const box=$("#lk-hist");if(!tok())return;const r=await api("history");if(!r.ok){box.innerHTML="<span class='muted'>Couldn't load your history.</span>";return}
+  const rows=r.j.reports||[];box.innerHTML=rows.length?rows.map(x=>"<button type='button' data-report='"+E(x.id)+"'>"+E(x.digits.replace(/(\d{3})(\d{3})(\d{4})/,"($1) $2-$3"))+" <small>· "+new Date(x.at).toLocaleString()+(x.charged?" · 🪙 "+x.charged:" · free")+"</small></button>").join(""):"<span class='muted'>No lookups yet — your reports will live here.</span>";
+  box.querySelectorAll("[data-report]").forEach(b=>b.addEventListener("click",async()=>{const rr=await api("report?id="+encodeURIComponent(b.dataset.report));if(rr.ok&&rr.j.dossier)$("#lk-out").innerHTML=dossierHtml(rr.j.dossier);else err(rr.j.error||"Couldn't open that report.")}))}
+async function load(){paintMe();if(!tok())return;const r=await api("me");if(r.ok){ME=r.j;paintMe();history()}else paintMe()}
+$("#lk-form").addEventListener("submit",async e=>{e.preventDefault();err("");if(!tok()){location.href="/";return}
+  const num=$("#lk-num").value.trim();if(!num){err("Type the phone number first.");return}
+  const g=$("#lk-go");g.disabled=true;g.textContent="Searching the public web…";
+  const r=await api("run",{number:num});g.disabled=false;
+  if(r.status===402){err("You need 🪙 "+r.j.need+" for this lookup and have 🪙 "+r.j.coins+". Pick a pack:");showPacks();if(ME){ME.coins=r.j.coins;paintMe()}return}
+  if(!r.ok){err(r.j.error||"Something went wrong — you were not charged.");priceLine();return}
+  $("#lk-packs").hidden=true;$("#lk-out").innerHTML=dossierHtml(r.j.report.dossier);
+  if(ME){ME.coins=r.j.coins;ME.used=r.j.state.used;ME.unlimited=r.j.state.unlimited;ME.nextPrice=r.j.state.nextPrice;paintMe()}
+  history();
+  $("#lk-out").scrollIntoView({behavior:"smooth",block:"start"})});
+load();
+})();
+</script>
+</body>
+</html>
