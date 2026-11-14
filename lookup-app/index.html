@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Meechie's World Reverse Lookup — find what's public about a number</title>
 <meta name="description" content="Enter a US phone number and get everything that's publicly tied to it: social profiles, public records, court records, crypto and payment profiles — every hit linked to its source. Paid in Meechie's World Coins.">
+<meta property="og:title" content="Meechie's World Reverse Lookup — find what's public about a number">
+<meta property="og:description" content="Who called you? Find out in seconds. Public records only — nothing sealed, nothing made up. First lookup $1.99 on MeechiesWorldInc.com">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://meechiesworldinc.com/lookup-app/">
+<meta property="og:image" content="https://meechiesworldinc.com/img/apps/lookup-badge.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="/manifest-lookup.webmanifest">
 <script>window.__mwBIP=null;addEventListener("beforeinstallprompt",function(e){e.preventDefault();window.__mwBIP=e;});</script>
 <meta name="theme-color" content="#0b0a08">
@@ -49,6 +55,13 @@
   .err{color:#ff9d7a}
   .center{text-align:center}
   .back{display:block;text-align:center;margin-top:26px;color:#8a8268;font-size:13.5px}
+  .share{margin-top:22px;text-align:center}
+  .share h2{margin:0 0 4px}
+  .share p{margin:0 0 12px}
+  .share-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .share-btn{background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:14.5px;padding:11px 18px;border-radius:12px;cursor:pointer;text-decoration:none;display:inline-block}
+  .share-btn.main{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;border:0;box-shadow:0 6px 22px rgba(240,207,120,.3)}
+  .share-note{font-size:13px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -80,6 +93,18 @@
 
   <p class="muted" style="margin-top:22px">How it works: your first lookup is 🪙 199 ($1.99), your second is 🪙 500 ($5.00), then 🪙 1,000 ($10.00) makes every lookup after that included — unlimited. Coins are the site's own Meechie's World Coins (1 coin = 1¢). Reports are saved to your account only; nobody else can open them. If the public sources don't answer, you're never charged.</p>
   <div class="center"><button class="ghost" id="install-btn" type="button">📲 Put Lookup on my home screen</button></div>
+  <div class="card share">
+    <h2>Share MW Reverse Lookup</h2>
+    <p class="muted">Know somebody getting mystery calls? Share it with them.</p>
+    <div class="share-row">
+      <button class="share-btn main" id="share-btn" type="button">↗ Share this app</button>
+      <button class="share-btn" id="copy-link-btn" type="button">🔗 Copy link</button>
+      <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fmeechiesworldinc.com%2Flookup-app%2F" target="_blank" rel="noopener">Facebook</a>
+      <a class="share-btn" href="https://twitter.com/intent/tweet?text=Who%20called%20you%3F%20Find%20out%20in%20seconds%20with%20MW%20Reverse%20Lookup%20%E2%80%94%20public%20records%20only%2C%20nothing%20made%20up.&amp;url=https%3A%2F%2Fmeechiesworldinc.com%2Flookup-app%2F" target="_blank" rel="noopener">X</a>
+      <a class="share-btn" href="https://wa.me/?text=Who%20called%20you%3F%20Find%20out%20in%20seconds%20with%20MW%20Reverse%20Lookup%20%E2%80%94%20public%20records%20only%2C%20nothing%20made%20up.%20https%3A%2F%2Fmeechiesworldinc.com%2Flookup-app%2F" target="_blank" rel="noopener">WhatsApp</a>
+    </div>
+    <p class="muted share-note" id="share-note"></p>
+  </div>
   <a class="back" href="/">← Back to the full Meechie's World site</a>
 </div>
 <div data-app-ad></div>
@@ -139,6 +164,22 @@ $("#lk-form").addEventListener("submit",async e=>{e.preventDefault();err("");if(
   if(ME){ME.coins=r.j.coins;ME.used=r.j.state.used;ME.unlimited=r.j.state.unlimited;ME.nextPrice=r.j.state.nextPrice;paintMe()}
   history();
   $("#lk-out").scrollIntoView({behavior:"smooth",block:"start"})});
+/* Share MW Reverse Lookup from this page */
+(function(){
+  var url="https://meechiesworldinc.com/lookup-app/";
+  var text="Who called you? Find out in seconds with MW Reverse Lookup — public records only, nothing made up.";
+  var note=$("#share-note");
+  var say=function(m){if(note)note.textContent=m};
+  var shareBtn=$("#share-btn");
+  if(shareBtn)shareBtn.addEventListener("click",async function(){
+    if(navigator.share){try{await navigator.share({title:"Meechie's World Reverse Lookup",text:text,url:url});say("Thanks for sharing!");return}catch(e){if(e&&e.name==="AbortError")return}}
+    try{await navigator.clipboard.writeText(url);say("Link copied — paste it anywhere to share.");}catch(e){say("Copy this link: "+url)}
+  });
+  var copyBtn=$("#copy-link-btn");
+  if(copyBtn)copyBtn.addEventListener("click",async function(){
+    try{await navigator.clipboard.writeText(url);say("Link copied — paste it anywhere to share.");}catch(e){say("Copy this link: "+url)}
+  });
+})();
 load();
 })();
 </script>
