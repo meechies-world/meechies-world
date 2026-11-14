@@ -1,12 +1,15 @@
 /* Meechie's World Reverse Lookup — the paid public-data dossier.
  *
  * A signed-in member enters a US phone number; the server sweeps the
- * public web for that number (five written formats + court + crypto +
- * payment passes — 11 searches), classifies every hit DOMAIN-STRICTLY
- * (a profile counts only when the link sits on the platform's own
- * domain), and returns a dossier where every entry is source-linked and
- * empty sections say so plainly. Public records only — never sealed,
- * never invented (see lib/lookup-core.js for the honesty rules).
+ * public web for that number (five written formats + an unquoted pass +
+ * court + crypto + payment + email passes — 14 searches), classifies
+ * every hit DOMAIN-STRICTLY (a profile counts only when the link sits on
+ * the platform's own domain), and returns a dossier where every entry is
+ * source-linked and empty sections say so plainly. Public records only
+ * — never sealed, never invented (see lib/lookup-core.js for the
+ * honesty rules). Email addresses and wallets count only when printed
+ * on a page the sweep already tied to the number, with that page
+ * linked as the source.
  *
  * Money rides the site's EXISTING coin rails, exactly like gifts and the
  * DJ tiers: the same wallets + coin_tx tables functions/api/coins writes,
@@ -26,7 +29,7 @@
 import { json, userFrom, setup, take, uuid } from "../../../lib/cf.js";
 import {
   LADDER, LADDER_USD, normalizeNumber, buildQueries, numberingFacts,
-  classifyResult, parseDdgHtml, parseBingHtml, findWallets,
+  classifyResult, parseDdgHtml, parseBingHtml, findWallets, findEmails,
   nextPrice, stateAfterPaid, emptySections,
 } from "../../../lib/lookup-core.js";
 
@@ -138,11 +141,13 @@ async function sweep(n) {
       }
     }
   }
-  /* wallet scan: read a few of the pages the sweep already tied to the
-   * number (crypto + people-search hits first) and look for addresses
-   * printed on them — a wallet counts only with its tying page linked */
+  /* wallet + email scan: read a few of the pages the sweep already tied
+   * to the number (crypto + people-search hits first) and look for wallet
+   * addresses and email addresses printed on them — either counts only
+   * with its tying page linked */
   const candidates = [...sections.crypto.items, ...sections.people.items].slice(0, 4);
   const wallets = [], wseen = new Set();
+  const emails = [], eseen = new Set();
   for (const cand of candidates) {
     try {
       const text = await fetchText(cand.url);
@@ -152,9 +157,15 @@ async function sweep(n) {
         wseen.add(k);
         if (wallets.length < 3) wallets.push(await walletFacts(w, cand));
       }
+      for (const a of findEmails(text)) {
+        if (eseen.has(a)) continue;
+        eseen.add(a);
+        if (emails.length < 3) emails.push({ kind: "email", address: a, sourceUrl: cand.url, sourceTitle: cand.title });
+      }
     } catch (_) {}
   }
   for (const w of wallets) sections.crypto.items.push(w);
+  for (const e of emails) sections.email.items.push(e);
   const dossier = {
     number: `(${n.npa}) ${n.nxx}-${n.line}`, digits: n.digits, e164: n.e164,
     facts: numberingFacts(n), sections,

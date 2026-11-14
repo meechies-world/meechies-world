@@ -77,7 +77,7 @@
   <img class="badge" src="/img/apps/lookup-badge.jpg" alt="Meechie's World Inc — Reverse Phone Look Up">
   <h1>REVERSE LOOKUP</h1>
   <p class="sub">FIND OWNER · LOOKUP DETAILS · GET INFO · STAY SAFE</p>
-  <p class="pitch">Enter a US phone number and get <b>everything that's publicly tied to it</b> — social profiles, people-search listings, public court records, crypto and payment profiles. Every hit links to its source. Public records only — nothing sealed, nothing made up.</p>
+  <p class="pitch">Enter a US phone number and get <b>everything that's publicly tied to it</b> — social profiles, people-search listings, email addresses, public court records, crypto and payment profiles. Every hit links to its source. Public records only — nothing sealed, nothing made up.</p>
   <p class="price-line">First lookup $1.99 · second $5 · <span>then $10 unlocks unlimited lookups</span></p>
 
   <div class="card" id="lk-me"><span class="muted">Checking your account…</span></div>
@@ -104,6 +104,7 @@
     <div><b>🔍 People-search listings</b>Public listings that mention the number.</div>
     <div><b>⚖️ Public court records</b>Public records only — nothing sealed.</div>
     <div><b>💰 Crypto &amp; payment profiles</b>Wallets and payment profiles printed publicly.</div>
+    <div><b>✉️ Email addresses</b>Addresses printed on a public page tied to the number.</div>
   </div>
 
   <h2>Your past lookups</h2>
@@ -168,9 +169,10 @@ function itemHtml(it){if(it.kind==="wallet"){return "<div class='hit wallet'>�
     +(it.balance!=null?"<br><b>Balance:</b> "+E(it.balance):"")+(it.txCount!=null?"<br><b>Transactions:</b> "+E(it.txCount):"")
     +(it.firstActivity?"<br><b>First activity:</b> "+E(new Date(it.firstActivity).toLocaleDateString()):"")+(it.lastActivity?"<br><b>Last activity:</b> "+E(new Date(it.lastActivity).toLocaleDateString()):"")
     +(it.explorerUrl?"<br><a href='"+E(it.explorerUrl)+"' target='_blank' rel='noopener'>See it on the public explorer →</a>":"")+"</div>"}
+  if(it.kind==="email"){return "<div class='hit'>✉️ <a href='mailto:"+E(it.address)+"'>"+E(it.address)+"</a> — printed on <a href='"+E(it.sourceUrl)+"' target='_blank' rel='noopener'>"+E(it.sourceTitle||"a public page")+"</a></div>"}
   return "<div class='hit'>"+(it.platform?"<span class='plat'>"+E(it.platform)+"</span>":"")+"<a href='"+E(it.url)+"' target='_blank' rel='noopener'>"+E(it.title||it.url)+"</a>"
     +(it.snippet?"<div class='snip'>"+E(it.snippet)+"</div>":"")+"<div class='src'>"+E(it.url)+"</div></div>"}
-const ORDER=["social","messaging","people","court","crypto","payment","mentions"];
+const ORDER=["social","messaging","people","email","court","crypto","payment","mentions"];
 function dossierHtml(d){let h="<h2>Report — "+E(d.number)+"</h2>"+factsHtml(d.facts);
   for(const k of ORDER){const s=d.sections[k];if(!s)continue;h+="<h2>"+E(s.title)+"</h2>";
     h+=s.items.length?s.items.map(itemHtml).join(""):"<p class='muted'>"+E(s.note)+"</p>"}
