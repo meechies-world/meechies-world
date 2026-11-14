@@ -260,7 +260,7 @@
         <button type="button" class="watch-link" data-watch="4">▶ Watch the commercial</button>
       </div>
       <div class="prod" data-cat="hoodies">
-        <img src="https://images-api.printify.com/mockup/6af65714cf9cf8dcdd3fc8cd/79861/48837/doty-hoodie-aop.jpg?camera_label=front&amp;revision=1794529071274" alt="doty Hoodie (AOP)">
+        <img src="https://images-api.printify.com/mockup/6af6558fd21dad13940806ac/75719/24369/doty-hoodie-aop.jpg?camera_label=front&amp;revision=1794529230449&amp;s=2048" alt="doty Hoodie (AOP)">
         <h3>doty Hoodie (AOP)</h3>
         <p class="price">$62.00</p>
         <a class="buy" href="https://meechiesworld-inc.printify.me/product/34351233" target="_blank" rel="noopener">Shop now →</a>
@@ -436,7 +436,7 @@ document.querySelectorAll('.chip').forEach(function(chip){
 var pageUrl='https://meechiesworldinc.com/caprice/';
 var shareMsg=document.getElementById('shareMsg');
 document.getElementById('shareBtn').addEventListener('click',function(){
-  if(navigator.share){navigator.share({title:"Doty's World",text:"Shop Caprice's doty collection",url:pageUrl}).catch(function(){});}
+  if(navigator.share){navigator.share({title:"Doty's World",text:"Shop Caprice's doty collection",url:pageUrl}).catch(function(){document.getElementById('copyBtn').click();});}
   else{document.getElementById('copyBtn').click();}
 });
 document.getElementById('copyBtn').addEventListener('click',function(){
@@ -450,7 +450,7 @@ var tvItems=[
  {src:'/media/caprice/doty-long-sleeve-tee.mp4',name:'doty Ultra Cotton Long Sleeve Tee',price:'$21.38',shop:'https://meechiesworld-inc.printify.me/product/34351772',poster:'https://images-api.printify.com/mockup/6af659ab0d678adf930c4307/33793/105264/doty-ultra-cotton-long-sleeve-tee.jpg?camera_label=front&revision=1794529746048'},
  {src:'/media/caprice/doty-softstyle-tshirt.mp4',name:'doty Softstyle T-Shirt',price:'$18.02',shop:'https://meechiesworld-inc.printify.me/product/34351652',poster:'https://images-api.printify.com/mockup/6af658e1e28734f03f0cbe60/38191/97992/doty-softstyle-t-shirt.jpg?camera_label=front&revision=1794529528296'},
  {src:'/media/caprice/doty-hoodie-60.mp4',name:'doty Hoodie (AOP)',price:'$60.20',shop:'https://meechiesworld-inc.printify.me/product/34351483',poster:'https://images-api.printify.com/mockup/6af657a9d21dad1394080889/79861/48836/doty-hoodie-aop.jpg?camera_label=front&revision=1794529208287'},
- {src:'/media/caprice/doty-hoodie-62.mp4',name:'doty Hoodie (AOP)',price:'$62.00',shop:'https://meechiesworld-inc.printify.me/product/34351233',poster:'https://images-api.printify.com/mockup/6af65714cf9cf8dcdd3fc8cd/79861/48837/doty-hoodie-aop.jpg?camera_label=front&revision=1794529071274'},
+ {src:'/media/caprice/doty-hoodie-62.mp4',name:'doty Hoodie (AOP)',price:'$62.00',shop:'https://meechiesworld-inc.printify.me/product/34351233',poster:'https://images-api.printify.com/mockup/6af6558fd21dad13940806ac/75719/24369/doty-hoodie-aop.jpg?camera_label=front&revision=1794529230449&s=2048'},
  {src:'/media/caprice/doty-bathmat.mp4',name:'Bath Mat 3-Piece Set (DOTY design)',price:'$10.68',shop:'https://meechiesworld-inc.printify.me/product/34352614',poster:'https://images-api.printify.com/mockup/6af65e77a14976f67708d4dd/149189/128142/bath-mat-3-piece-set.jpg?camera_label=toilet-mat&revision=1794531042519'},
  {src:'/media/caprice/doty-trinket.mp4',name:'Ceramic Trinket Trays (DOTY design)',price:'$10.93',shop:'https://meechiesworld-inc.printify.me/product/34352517',poster:'https://images-api.printify.com/mockup/6af65d79fa61746374095779/423511/173246/ceramic-trinket-trays.jpg?camera_label=front&revision=1794530860425'},
  {src:'/media/caprice/doty-shower.mp4',name:'Shower Curtains (DOTY design)',price:'$67.95',shop:'https://meechiesworld-inc.printify.me/product/34352495',poster:'https://images-api.printify.com/mockup/6af65e0890f8ebf68d05f2e7/41653/403/shower-curtains.jpg?camera_label=front&revision=1794530828357'},
