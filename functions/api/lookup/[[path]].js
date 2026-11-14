@@ -12,6 +12,19 @@
  * wallets count only when printed on a page the sweep already tied to
  * the number, with that page linked as the source.
  *
+ * CALLER ID (Malik, 2026-11-14: "people are going to want to look up
+ * cell phone numbers"): cell numbers are almost never printed on a
+ * public page, so the web sweep alone comes back empty for them. The
+ * sweep therefore also asks two free phone-intelligence services —
+ * Veriphone and IPQualityScore, 1,000 free lookups a month each — for
+ * carrier, line type, region, active status and spam score. Both are
+ * optional and key-gated: the keys live in the owner's API Keys vault
+ * (or a Cloudflare secret) under VERIPHONE_API_KEY and
+ * IPQUALITYSCORE_API_KEY, read through withVault. No keys, no calls,
+ * no change to the report. A key that errors or runs dry is skipped
+ * silently — the report just omits Caller ID. Only facts the services
+ * themselves return are shown, never estimated.
+ *
  * Money rides the site's EXISTING coin rails, exactly like gifts and the
  * DJ tiers: the same wallets + coin_tx tables functions/api/coins writes,
  * the same atomic debit statement, the same 402 not_enough_coins answer
@@ -46,6 +59,7 @@
  * yields no usable rows (bot-check page, empty result) does not count
  * as that source answering. */
 import { json, userFrom, setup, take, uuid } from "../../../lib/cf.js";
+import { withVault } from "../../../lib/secrets.js";
 import {
   LADDER, LADDER_USD, normalizeNumber, buildQueries, numberingFacts,
   classifyResult, parseDdgHtml, parseBingHtml, findWallets, findEmails,
@@ -151,11 +165,71 @@ async function walletFacts(w, source) {
   return out;
 }
 
+/* Caller ID for cell numbers: carrier, line type, region, active
+ * status and spam score from the free phone-intelligence services.
+ * Key-gated (vault or Cloudflare secret), run in parallel with the
+ * web sweep, and skipped silently when no key is set or a service
+ * fails — the report simply omits Caller ID. Only fields the
+ * services themselves return are kept; nothing is guessed. */
+async function enrichCell(env, n) {
+  const full = await withVault(env, ["VERIPHONE_API_KEY", "IPQUALITYSCORE_API_KEY"]).catch(() => env);
+  const e164 = n.e164;
+  const jobs = [];
+  if (full.VERIPHONE_API_KEY) jobs.push((async () => {
+    try {
+      const j = await fetchJson("https://api.veriphone.io/v2/verify?phone=" + encodeURIComponent(e164) + "&key=" + encodeURIComponent(String(full.VERIPHONE_API_KEY)));
+      if (!j || String(j.status || "").toLowerCase() !== "success") return null;
+      return {
+        carrier: typeof j.carrier === "string" && j.carrier ? j.carrier : null,
+        lineType: typeof j.phone_type === "string" && j.phone_type ? j.phone_type : null,
+        valid: typeof j.phone_valid === "boolean" ? j.phone_valid : null,
+        region: typeof j.phone_region === "string" && j.phone_region ? j.phone_region : null,
+        country: typeof j.country === "string" && j.country ? j.country : null,
+        sources: ["Veriphone"],
+      };
+    } catch (_) { return null; }
+  })());
+  if (full.IPQUALITYSCORE_API_KEY) jobs.push((async () => {
+    try {
+      const j = await fetchJson("https://www.ipqualityscore.com/api/json/phone/" + encodeURIComponent(String(full.IPQUALITYSCORE_API_KEY)) + "/" + encodeURIComponent(e164.replace(/^\+/, "")));
+      if (!j || j.success !== true) return null;
+      return {
+        carrier: typeof j.carrier === "string" && j.carrier ? j.carrier : null,
+        lineType: typeof j.line_type === "string" && j.line_type ? j.line_type : null,
+        valid: typeof j.active === "boolean" ? j.active : null,
+        region: null,
+        country: typeof j.country_code === "string" && j.country_code ? j.country_code : null,
+        spamScore: typeof j.fraud_score === "number" ? j.fraud_score : null,
+        recentAbuse: typeof j.recent_abuse === "boolean" ? j.recent_abuse : null,
+        sources: ["IPQualityScore"],
+      };
+    } catch (_) { return null; }
+  })());
+  if (!jobs.length) return null;
+  const parts = (await Promise.all(jobs)).filter(Boolean);
+  if (!parts.length) return null;
+  const out = { carrier: null, lineType: null, valid: null, region: null, country: null, spamScore: null, recentAbuse: null, sources: [] };
+  for (const p of parts) {
+    if (out.carrier == null) out.carrier = p.carrier;
+    if (out.lineType == null) out.lineType = p.lineType;
+    if (out.valid == null) out.valid = p.valid;
+    if (out.region == null) out.region = p.region;
+    if (out.country == null) out.country = p.country;
+    if (out.spamScore == null) out.spamScore = p.spamScore ?? null;
+    if (out.recentAbuse == null) out.recentAbuse = p.recentAbuse ?? null;
+    for (const s of (p.sources || [])) if (!out.sources.includes(s)) out.sources.push(s);
+  }
+  if (!out.carrier && !out.lineType && out.valid == null && !out.region && out.spamScore == null) return null;
+  return out;
+}
+
 async function sweep(n, env) {
   const queries = buildQueries(n);
   const sections = emptySections();
   const seen = new Set();
   let answered = 0;
+  /* Caller ID runs alongside the web sweep so it costs no extra time. */
+  const cellP = enrichCell(env, n);
   /* member directory first: a Meechie's World member who opted in to
    * list this number — consent-gated, server-side, exact digits match
    * only. A listed number always returns its member hit, even when the
@@ -209,15 +283,18 @@ async function sweep(n, env) {
   for (const w of wallets) sections.crypto.items.push(w);
   for (const e of emails) sections.email.items.push(e);
   /* hits drive everything now: a find means something actually landed
-   * in the dossier, not just that a search page loaded. */
+   * in the dossier, not just that a search page loaded. A Caller ID
+   * answer counts as a find too — it is real data about the number. */
   let hits = 0;
   for (const k of Object.keys(sections)) hits += (sections[k].items || []).length;
+  const callerId = await cellP.catch(() => null);
   const dossier = {
     number: `(${n.npa}) ${n.nxx}-${n.line}`, digits: n.digits, e164: n.e164,
     facts: numberingFacts(n), sections,
-    meta: { searches: queries.length, searchesAnswered: answered, hits, directoryHit: memberHit, ranAt: new Date().toISOString() },
+    meta: { searches: queries.length, searchesAnswered: answered, hits, directoryHit: memberHit, callerId: !!callerId, ranAt: new Date().toISOString() },
   };
-  return { dossier, ok: hits > 0, hits, answered };
+  if (callerId) dossier.callerId = callerId;
+  return { dossier, ok: hits > 0 || !!callerId, hits, answered };
 }
 
 export async function onRequest({ request, env, params }) {
