@@ -32,7 +32,8 @@
   .card b{color:#ffe08a}
   .muted{color:#a99f8b;font-size:13.5px;line-height:1.5}
   form{display:flex;gap:8px;flex-wrap:wrap}
-  input[type=tel]{flex:1 1 220px;background:#0b0a08;border:1px solid #3a3223;border-radius:12px;padding:13px 14px;color:#fff;font:17px system-ui}
+  input[type=tel],input[type=text]{flex:1 1 220px;background:#0b0a08;border:1px solid #3a3223;border-radius:12px;padding:13px 14px;color:#fff;font:17px system-ui}
+  #lk-dir input{display:block;width:100%;box-sizing:border-box;margin:0 0 10px}
   .go{background:linear-gradient(180deg,#f0cf78,#c39a2e);color:#191204;font-weight:800;letter-spacing:.03em;font-size:16px;padding:13px 22px;border-radius:12px;border:0;cursor:pointer;box-shadow:0 6px 22px rgba(240,207,120,.3)}
   .go:disabled{opacity:.55;cursor:wait}
   .ghost{background:#171307;color:#f0cf78;border:1.5px solid #8a6d1f;font-weight:700;font-size:14.5px;padding:11px 18px;border-radius:12px;cursor:pointer;text-decoration:none;display:inline-block}
@@ -77,7 +78,7 @@
   <img class="badge" src="/img/apps/lookup-badge.jpg" alt="Meechie's World Inc — Reverse Phone Look Up">
   <h1>REVERSE LOOKUP</h1>
   <p class="sub">FIND OWNER · LOOKUP DETAILS · GET INFO · STAY SAFE</p>
-  <p class="pitch">Enter a US phone number and get <b>everything that's publicly tied to it</b> — social profiles, people-search listings, email addresses, public court records, crypto and payment profiles. Every hit links to its source. Public records only — nothing sealed, nothing made up.</p>
+  <p class="pitch">Enter a US phone number and get <b>everything that's publicly tied to it</b> — Meechie's World member listings, social profiles, people-search listings, email addresses, public court records, crypto and payment profiles. Every hit links to its source. Public records only — nothing sealed, nothing made up.</p>
   <p class="price-line">First lookup $1.99 · second $5 · <span>then $10 unlocks unlimited lookups</span></p>
 
   <div class="card" id="lk-me"><span class="muted">Checking your account…</span></div>
@@ -96,10 +97,25 @@
     <p class="muted err" id="lk-err" hidden></p>
   </div>
 
+  <div class="card" id="lk-dir" hidden>
+    <h2 style="margin-top:0">📇 List my number</h2>
+    <p class="muted">Opt in and your number shows up in lookups as a Meechie's World member. Only the name and number you type here, only to signed-in members who look the number up — and you can take it down any time.</p>
+    <label class="field-label" for="lk-dir-name">Name to show</label>
+    <input type="text" id="lk-dir-name" maxlength="60" placeholder="Your name" autocomplete="off">
+    <label class="field-label" for="lk-dir-num">Your US phone number</label>
+    <input type="tel" id="lk-dir-num" inputmode="tel" autocomplete="off" placeholder="(724) 555-0134" maxlength="14">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="go" id="lk-dir-save" type="button">List my number</button>
+      <button class="ghost" id="lk-dir-remove" type="button" hidden>Remove my listing</button>
+    </div>
+    <p class="muted" id="lk-dir-msg" style="margin:10px 0 0"></p>
+  </div>
+
   <div id="lk-out"></div>
 
   <h2>What you'll get</h2>
   <div class="gets">
+    <div><b>👥 Member directory</b>Numbers listed by Meechie's World members who opted in.</div>
     <div><b>📱 Social profiles</b>Accounts tied to that number, linked to the source.</div>
     <div><b>🔍 People-search listings</b>Public listings that mention the number.</div>
     <div><b>⚖️ Public court records</b>Public records only — nothing sealed.</div>
@@ -116,6 +132,7 @@
   <div class="card faq">
     <p><b>Is this legal?</b><br>Yes — it only shows what's already public about a number, with every hit linked to its source. Nothing sealed, nothing made up.</p>
     <p><b>What if nothing comes back?</b><br>If the public sources don't answer, you're never charged.</p>
+    <p><b>How do I list my number?</b><br>Sign in, then use "List my number" on this page. Only the name and number you type are shown, only to signed-in members who look the number up, and you can remove it any time.</p>
     <p><b>Who can see my reports?</b><br>Only you. Reports are saved to your signed-in account, and nobody else can open them.</p>
   </div>
   <div class="center"><button class="ghost" id="install-btn" type="button">📲 Put Lookup on my home screen</button></div>
@@ -172,7 +189,7 @@ function itemHtml(it){if(it.kind==="wallet"){return "<div class='hit wallet'>�
   if(it.kind==="email"){return "<div class='hit'>✉️ <a href='mailto:"+E(it.address)+"'>"+E(it.address)+"</a> — printed on <a href='"+E(it.sourceUrl)+"' target='_blank' rel='noopener'>"+E(it.sourceTitle||"a public page")+"</a></div>"}
   return "<div class='hit'>"+(it.platform?"<span class='plat'>"+E(it.platform)+"</span>":"")+"<a href='"+E(it.url)+"' target='_blank' rel='noopener'>"+E(it.title||it.url)+"</a>"
     +(it.snippet?"<div class='snip'>"+E(it.snippet)+"</div>":"")+"<div class='src'>"+E(it.url)+"</div></div>"}
-const ORDER=["social","messaging","people","email","court","crypto","payment","mentions"];
+const ORDER=["member","social","messaging","people","email","court","crypto","payment","mentions"];
 function dossierHtml(d){let h="<h2>Report — "+E(d.number)+"</h2>"+factsHtml(d.facts);
   for(const k of ORDER){const s=d.sections[k];if(!s)continue;h+="<h2>"+E(s.title)+"</h2>";
     h+=s.items.length?s.items.map(itemHtml).join(""):"<p class='muted'>"+E(s.note)+"</p>"}
@@ -180,16 +197,39 @@ function dossierHtml(d){let h="<h2>Report — "+E(d.number)+"</h2>"+factsHtml(d.
 async function history(){const box=$("#lk-hist");if(!tok())return;const r=await api("history");if(!r.ok){box.innerHTML="<span class='muted'>Couldn't load your history.</span>";return}
   const rows=r.j.reports||[];box.innerHTML=rows.length?rows.map(x=>"<button type='button' data-report='"+E(x.id)+"'>"+E(x.digits.replace(/(\d{3})(\d{3})(\d{4})/,"($1) $2-$3"))+" <small>· "+new Date(x.at).toLocaleString()+(x.charged?" · 🪙 "+x.charged:" · free")+"</small></button>").join(""):"<span class='muted'>No lookups yet — your reports will live here.</span>";
   box.querySelectorAll("[data-report]").forEach(b=>b.addEventListener("click",async()=>{const rr=await api("report?id="+encodeURIComponent(b.dataset.report));if(rr.ok&&rr.j.dossier)$("#lk-out").innerHTML=dossierHtml(rr.j.dossier);else err(rr.j.error||"Couldn't open that report.")}))}
-async function load(){paintMe();if(!tok())return;const r=await api("me");if(r.ok){ME=r.j;paintMe();history()}else paintMe()}
-/* Format the phone number as you type: (724) 555-0134 */
+async function loadDir(){const box=$("#lk-dir");if(!tok()){box.hidden=true;return}box.hidden=false;
+  const r=await api("directory");if(!r.ok)return;
+  if(r.j.listed){$("#lk-dir-name").value=r.j.name||"";$("#lk-dir-num").value=(r.j.digits||"").replace(/(\d{3})(\d{3})(\d{4})/,"($1) $2-$3");$("#lk-dir-remove").hidden=false;$("#lk-dir-msg").textContent="You're listed as "+(r.j.name||"")+".";}}
+async function load(){loadDir();paintMe();if(!tok())return;const r=await api("me");if(r.ok){ME=r.j;paintMe();history()}else paintMe()}
+/* Format phone numbers as you type: (724) 555-0134 */
 (function(){
-  var input=$("#lk-num");if(!input)return;
+  ["#lk-num","#lk-dir-num"].forEach(function(sel){
+  var input=$(sel);if(!input)return;
   input.addEventListener("input",function(){
     var d=input.value.replace(/\D/g,"").slice(0,10);
     if(d.length>6)input.value="("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6);
     else if(d.length>3)input.value="("+d.slice(0,3)+") "+d.slice(3);
     else if(d.length>0)input.value="("+d;
     else input.value="";
+  });
+  });
+})();
+/* Member directory: list my number / remove my listing */
+(function(){
+  var save=$("#lk-dir-save"),rem=$("#lk-dir-remove"),msg=$("#lk-dir-msg");
+  if(save)save.addEventListener("click",async function(){
+    msg.textContent="";
+    var name=$("#lk-dir-name").value.trim(),num=$("#lk-dir-num").value.trim();
+    if(!name){msg.textContent="Type the name you want listed.";return}
+    if(num.replace(/\D/g,"").length!==10){msg.textContent="Enter your full 10-digit US number.";return}
+    var r=await api("directory",{listed:true,digits:num,name:name});
+    if(r.ok){rem.hidden=false;msg.textContent="You're listed — lookups for your number will show your name.";}
+    else msg.textContent=r.j.error||"Couldn't save that.";
+  });
+  if(rem)rem.addEventListener("click",async function(){
+    var r=await api("directory",{listed:false});
+    if(r.ok){rem.hidden=true;$("#lk-dir-num").value="";msg.textContent="Your listing is removed.";}
+    else msg.textContent=r.j.error||"Couldn't remove that.";
   });
 })();
 $("#lk-form").addEventListener("submit",async e=>{e.preventDefault();err("");if(!tok()){location.href="/";return}

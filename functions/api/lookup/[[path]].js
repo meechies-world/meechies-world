@@ -1,15 +1,16 @@
 /* Meechie's World Reverse Lookup — the paid public-data dossier.
  *
- * A signed-in member enters a US phone number; the server sweeps the
- * public web for that number (five written formats + an unquoted pass +
- * court + crypto + payment + email passes — 14 searches), classifies
- * every hit DOMAIN-STRICTLY (a profile counts only when the link sits on
- * the platform's own domain), and returns a dossier where every entry is
- * source-linked and empty sections say so plainly. Public records only
- * — never sealed, never invented (see lib/lookup-core.js for the
- * honesty rules). Email addresses and wallets count only when printed
- * on a page the sweep already tied to the number, with that page
- * linked as the source.
+ * A signed-in member enters a US phone number; the server checks the
+ * opt-in member directory first (exact digits match, consent-gated),
+ * then sweeps the public web for that number (five written formats +
+ * an unquoted pass + court + crypto + payment + email passes — 14
+ * searches), classifies every hit DOMAIN-STRICTLY (a profile counts
+ * only when the link sits on the platform's own domain), and returns a
+ * dossier where every entry is source-linked and empty sections say so
+ * plainly. Public records only — never sealed, never invented (see
+ * lib/lookup-core.js for the honesty rules). Email addresses and
+ * wallets count only when printed on a page the sweep already tied to
+ * the number, with that page linked as the source.
  *
  * Money rides the site's EXISTING coin rails, exactly like gifts and the
  * DJ tiers: the same wallets + coin_tx tables functions/api/coins writes,
@@ -25,7 +26,16 @@
  * coins function defines — the lookup runs with zero coin deduction:
  * no wallet write, no coin_tx row, and the ladder state is never even
  * read or written. The check is server-side on the session's user id;
- * there is no client flag to flip. */
+ * there is no client flag to flip.
+ *
+ * MEMBER DIRECTORY (Malik, 2026-11-14: "build the opt-in member
+ * directory"): a signed-in member may list their own number with a
+ * display name — opt-in only, never automatic, removable any time.
+ * A lookup checks the directory first: an exact digits match returns
+ * the member's name in the report's Member section, and a member hit
+ * counts as a found result (so a run that finds a member is charged
+ * like any successful lookup, and never refunded as empty). One number
+ * belongs to one member — first listing wins. No email is ever shown. */
 import { json, userFrom, setup, take, uuid } from "../../../lib/cf.js";
 import {
   LADDER, LADDER_USD, normalizeNumber, buildQueries, numberingFacts,
@@ -38,6 +48,8 @@ const SCHEMA = [
   "create table if not exists lookup_state (uid text primary key, used integer not null default 0, unlimited integer not null default 0, updated_at integer)",
   "create table if not exists lookup_reports (id text primary key, uid text not null, digits text not null, data text not null, charged integer not null default 0, at integer not null)",
   "create index if not exists lookup_reports_uid on lookup_reports (uid, at)",
+  "create table if not exists lookup_directory (uid text primary key, digits text not null, name text not null, updated_at integer)",
+  "create index if not exists lookup_directory_digits on lookup_directory (digits)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
@@ -122,11 +134,24 @@ async function walletFacts(w, source) {
   return out;
 }
 
-async function sweep(n) {
+async function sweep(n, env) {
   const queries = buildQueries(n);
   const sections = emptySections();
   const seen = new Set();
   let answered = 0;
+  /* member directory first: a Meechie's World member who opted in to
+   * list this number — consent-gated, server-side, exact digits match
+   * only. A listed number always returns its member hit, even when the
+   * public web sources don't answer. */
+  let memberHit = false;
+  try {
+    const rows = (await env.DB.prepare("select name from lookup_directory where digits = ? order by updated_at desc limit 3").bind(n.digits).all()).results || [];
+    for (const row of rows) {
+      if (!row || !row.name) continue;
+      memberHit = true;
+      sections.member.items.push({ kind: "link", platform: "Meechie's World member", title: String(row.name).slice(0, 60), url: "https://meechiesworldinc.com/lookup-app/", snippet: "Listed by this member on Meechie's World." });
+    }
+  } catch (_) {}
   for (let i = 0; i < queries.length; i += 4) {
     const wave = await Promise.all(queries.slice(i, i + 4).map((q) => searchOne(q.query)));
     for (const r of wave) {
@@ -169,9 +194,9 @@ async function sweep(n) {
   const dossier = {
     number: `(${n.npa}) ${n.nxx}-${n.line}`, digits: n.digits, e164: n.e164,
     facts: numberingFacts(n), sections,
-    meta: { searches: queries.length, searchesAnswered: answered, ranAt: new Date().toISOString() },
+    meta: { searches: queries.length, searchesAnswered: answered, directoryHit: memberHit, ranAt: new Date().toISOString() },
   };
-  return { dossier, ok: answered > 0 };
+  return { dossier, ok: answered > 0 || memberHit };
 }
 
 export async function onRequest({ request, env, params }) {
@@ -195,6 +220,31 @@ export async function onRequest({ request, env, params }) {
     return json({ owner: false, coins: w.coins, used: st.used, unlimited: !!st.unlimited, nextPrice: price, nextUsd: price ? LADDER_USD[st.used] : "Included — unlimited" });
   }
 
+  /* Member directory (opt-in only): a signed-in member lists their own
+   * number with the name they choose. Nothing is listed without the
+   * member's own tap, the row is keyed by their session id (never a
+   * client-supplied uid), and opting out deletes the row. Lookups match
+   * on exact digits only. */
+  if (route === "directory" && method === "GET") {
+    const row = await env.DB.prepare("select digits, name from lookup_directory where uid = ?").bind(me.id).first();
+    return json(row ? { listed: true, digits: row.digits, name: row.name } : { listed: false });
+  }
+
+  if (route === "directory" && method === "POST") {
+    if (!(await take(env, "lookupdir:" + me.id, 3600, 20))) return err("Slow down a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    if (b.listed === false) {
+      await env.DB.prepare("delete from lookup_directory where uid = ?").bind(me.id).run();
+      return json({ listed: false });
+    }
+    const n = normalizeNumber(b.digits || b.number);
+    if (!n) return err("Enter your 10-digit US number to list it.");
+    const name = String(b.name || "").trim().slice(0, 60);
+    if (!name) return err("Type the name you want listed with your number.");
+    await env.DB.prepare("insert into lookup_directory (uid, digits, name, updated_at) values (?,?,?,?) on conflict(uid) do update set digits = excluded.digits, name = excluded.name, updated_at = excluded.updated_at").bind(me.id, n.digits, name, Date.now()).run();
+    return json({ listed: true, digits: n.digits, name });
+  }
+
   if (route === "run" && method === "POST") {
     if (!(await take(env, "lookup:" + me.id, 3600, 20))) return err("Slow down a little — that's a lot of lookups for one hour.", 429);
     const b = await request.json().catch(() => ({}));
@@ -204,7 +254,7 @@ export async function onRequest({ request, env, params }) {
     /* OWNER BYPASS: before any state or wallet touch. No debit, no
      * coin_tx, no lookup_state read or write — the ladder never moves. */
     if (owner) {
-      const { dossier, ok } = await sweep(n);
+      const { dossier, ok } = await sweep(n, env);
       if (!ok) return err("The public search sources didn't answer just now. Try again in a minute.", 502);
       const id = uuid();
       await env.DB.prepare("insert into lookup_reports (id, uid, digits, data, charged, at) values (?,?,?,?,?,?)").bind(id, me.id, n.digits, JSON.stringify(dossier), 0, now).run();
@@ -217,7 +267,7 @@ export async function onRequest({ request, env, params }) {
       const w = await wallet(env, me.id);
       return json({ error: "not_enough_coins", need: price, coins: w.coins }, 402);
     }
-    const { dossier, ok } = await sweep(n);
+    const { dossier, ok } = await sweep(n, env);
     if (!ok) {
       if (price > 0) {
         await credit(env, me.id, price, Date.now());
