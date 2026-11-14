@@ -17,6 +17,7 @@
 // browser error. /api is still never intercepted, and saved songs are
 // untouched.
 const MUSIC = "mw-music"; // stable name on purpose: updates must never wipe saved songs
+const PACK = "mw-pack"; // stable name on purpose: the offline station/TV pack lives here; updates must never wipe it either
 const STAGE = "mw-music-stage"; // songs downloaded while they play wait here until the next time they start (see mediaStrategy)
 const STAGE_MAX_ENTRIES = 8;
 const MEDIA_SAVE_MAX = 12 * 1024 * 1024; // nothing larger is ever saved on the device (TV episodes are ~20 MB and are streamed, never stored)
@@ -106,9 +107,84 @@ async function skelSeedGeneration() {
   } catch (_) {}
 }
 // --- install-time skeleton seeding: end ---
-self.addEventListener("install", (e) => e.waitUntil((async () => { await precacheShell(); await skelSeedGeneration(); await self.skipWaiting(); })()));
+// --- offline pack (2026-11-13): begin ---
+// The station and the TV channel keep playing with no internet because
+// their content is downloaded to the device ahead of time into mw-pack
+// (filled by the pack manager in js/app-core.js from
+// /lifeline/offline-pack.json). This cache is never versioned and never
+// pruned by activation: it is the device's copy of Malik's content, and
+// it only changes when the pack manager diffs a new manifest. The
+// lifeline JSONs the offline players read live here too, so the grid
+// and the dayparts are always on the device: the lineup, the dayparts
+// and the web pool are served stale-while-revalidate, the pack manifest
+// itself is network-first (the manager's diff must never chase a stale
+// copy), and media the pack holds is served pack-first (fetch handler).
+const PACK_JSONS_SWR = ["/lifeline/tv-lineup.json", "/lifeline/radio-dayparts.json", "/lifeline/radio-web-pool.json"];
+const PACK_JSON_NETFIRST = "/lifeline/offline-pack.json";
+async function precachePackJsons() {
+  try {
+    const cache = await caches.open(PACK);
+    const all = PACK_JSONS_SWR.concat([PACK_JSON_NETFIRST]);
+    await Promise.all(all.map(async (p) => {
+      const u = new URL(p, self.location.origin).href;
+      try { if (await cache.match(u)) return; } catch (_) {}
+      try {
+        const r = await fetch(u, { cache: "no-cache" });
+        if (r.ok) await cache.put(u, r);
+      } catch (_) {}
+    }));
+  } catch (_) {}
+}
+async function lifelineJsonStrategy(e) {
+  const cache = await caches.open(PACK);
+  const url = e.request.url;
+  if (new URL(url).pathname === PACK_JSON_NETFIRST) {
+    // the pack manifest: the fresh copy wins, the stored copy is the fallback
+    try {
+      const net = await fetch(e.request);
+      if (net.ok) { e.waitUntil(cache.put(url, net.clone())); return net; }
+      throw new Error("manifest " + net.status);
+    } catch (_) {
+      const hit = await cache.match(url);
+      if (hit) return hit;
+      throw new Error("offline manifest");
+    }
+  }
+  const hit = await cache.match(url);
+  const refresh = (async () => {
+    try {
+      const net = await fetch(e.request);
+      if (net.ok) e.waitUntil(cache.put(url, net.clone()));
+      return net;
+    } catch (_) { return null; }
+  })();
+  if (hit) { e.waitUntil(refresh); return hit; }
+  const net = await refresh;
+  if (net) return net;
+  throw new Error("offline lifeline json");
+}
+async function packMediaStrategy(e) {
+  // A file the pack downloaded is served from the pack: whole, from one
+  // place (the one-source rule mediaStrategy documents), with the same
+  // range synthesis saved songs get, so seeking works offline too.
+  // Anything the pack does not hold falls through to the existing media
+  // behavior, untouched.
+  const url = e.request.url;
+  const range = e.request.headers.get("range");
+  try {
+    const pack = await caches.open(PACK);
+    const hit = await pack.match(url);
+    if (hit) {
+      if (range) return rangeResponse(await hit.blob(), range);
+      return hit;
+    }
+  } catch (_) {}
+  return mediaStrategy(e);
+}
+// --- offline pack: end ---
+self.addEventListener("install", (e) => e.waitUntil((async () => { await precacheShell(); await precachePackJsons(); await skelSeedGeneration(); await self.skipWaiting(); })()));
 self.addEventListener("activate", (e) => e.waitUntil((async () => {
-  const keep = new Set([MUSIC, STAGE, SHELL, SKEL_META, IMAGES, KIDSTHUMBS]);
+  const keep = new Set([MUSIC, STAGE, SHELL, SKEL_META, IMAGES, KIDSTHUMBS, PACK]);
   const meta = await skelMetaRead();
   const metaKnown = !!(meta && meta.build);
   if (metaKnown) { keep.add(SKEL_PREFIX + meta.build); if (meta.prev) keep.add(SKEL_PREFIX + meta.prev); }
@@ -502,7 +578,11 @@ self.addEventListener("fetch", (e) => {
   // the network, exactly as it always has
   if (url.origin === self.location.origin && url.pathname.indexOf("/api/") === 0) return;
   const isMedia = e.request.destination === "audio" || e.request.destination === "video" || e.request.headers.get("x-mw-save") === "1" || url.pathname.indexOf("/m/") === 0;
-  if (isMedia) { e.respondWith(mediaStrategy(e)); return; }
+  if (isMedia) {
+    if (url.origin === self.location.origin && (url.pathname.indexOf("/media/") === 0 || url.pathname.indexOf("/lifeline/audio/") === 0)) { e.respondWith(packMediaStrategy(e)); return; }
+    e.respondWith(mediaStrategy(e)); return;
+  }
+  if (url.origin === self.location.origin && (PACK_JSONS_SWR.indexOf(url.pathname) >= 0 || url.pathname === PACK_JSON_NETFIRST)) { e.respondWith(lifelineJsonStrategy(e)); return; }
   if (e.request.mode === "navigate") {
     if (url.origin === self.location.origin && (url.pathname === "/" || url.pathname === "/index.html")) e.respondWith(skelNavStrategy(e));
     else e.respondWith(navStrategy(e));
