@@ -63,7 +63,12 @@
   .tile b{display:block;margin-top:8px;font-size:14.5px;color:#fff}
   .tile span{font-size:12px;color:#8fa8e8}
   /* Sections */
-  section{padding:26px 16px 0}
+  section{padding:26px 16px 0;scroll-margin-top:64px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+  .chip{border:1.5px solid #2a4fd7;background:#0d1526;color:#7aa0ff;font-weight:700;font-size:13.5px;padding:9px 15px;border-radius:999px;cursor:pointer}
+  .chip.active{background:linear-gradient(180deg,#7aa0ff,#2a4fd7);color:#fff;border-color:transparent}
+  .share-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .share-row a,.share-row button{flex:1 1 40%;min-width:140px;background:#0d1526;color:#7aa0ff;border:1.5px solid #2a4fd7;font-weight:700;font-size:14.5px;padding:14px 10px;border-radius:16px;text-decoration:none;text-align:center;cursor:pointer;min-height:52px}
   .over{color:#8fa8e8;font-size:11.5px;font-weight:800;letter-spacing:.22em;margin:0 0 4px}
   h2{font:700 22px Georgia,serif;color:#7aa0ff;letter-spacing:.03em;margin:0 0 6px}
   .sec-sub{color:#d8d2c0;font-size:14.5px;line-height:1.55;margin:0 0 14px}
@@ -90,6 +95,22 @@
   .center{text-align:center}
   /* Videos */
   .prod video{width:100%;border-radius:14px;display:block;background:#000}
+  .tv{border:1px solid rgba(65,105,225,.5);border-radius:22px;background:#0b0f1e;overflow:hidden;margin-bottom:14px}
+  .tv-screen{position:relative;background:#000}
+  .tv-screen video{width:100%;display:block;background:#000;aspect-ratio:16/9}
+  #tvPlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:17px 24px;border-radius:999px;border:none;background:linear-gradient(180deg,#7aa0ff,#2a4fd7);color:#fff;font-weight:800;font-size:17px;box-shadow:0 8px 28px rgba(65,105,225,.65);cursor:pointer}
+  .tv-bar{display:flex;align-items:center;gap:10px;padding:12px;background:#0d1526}
+  .tv-bar button{flex:0 0 auto;background:#16224a;color:#bcd0ff;border:1.5px solid #2a4fd7;font-weight:700;font-size:13.5px;padding:11px 12px;border-radius:12px;cursor:pointer;min-height:44px}
+  .tv-now{flex:1;text-align:center;min-width:0}
+  .tv-now b{display:block;font-size:14px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tv-now span{font-size:12.5px;color:#8fa8e8}
+  .tv-shop{padding:0 12px 4px;background:#0b0f1e}
+  .tv-shop .buy{text-align:center}
+  .tv-list{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px;background:#0b0f1e}
+  .tv-item{background:#0d1526;color:#d8d2c0;border:1.5px solid rgba(65,105,225,.4);border-radius:14px;padding:11px 10px;text-align:left;cursor:pointer;font-size:13px;line-height:1.35}
+  .tv-item b{display:block;color:#fff;font-size:13.5px}
+  .tv-item span{color:#7aa0ff;font-weight:800}
+  .tv-item.active{border-color:#7aa0ff;background:#16224a}
   /* FAQ */
   .faq{border:1px solid rgba(65,105,225,.4);border-radius:16px;background:#0d1526;margin:0 0 10px;overflow:hidden}
   .faq summary{padding:15px 16px;font-weight:700;font-size:15px;color:#fff;cursor:pointer;list-style:none}
@@ -177,43 +198,50 @@
     <p class="over">03 — SHOP THE DROP</p>
     <h2>Shop Caprice's doty Collection</h2>
     <p class="sec-sub">Every piece with the doty name is Caprice's line. Printed on demand and shipped to you.</p>
+    <div class="chips" role="tablist" aria-label="Filter products">
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="home">Home</button>
+      <button class="chip" data-filter="tees">Tees</button>
+      <button class="chip" data-filter="hoodies">Hoodies</button>
+      <button class="chip" data-filter="blankets">Blankets</button>
+    </div>
     <div class="grid">
-      <div class="prod">
+      <div class="prod" data-cat="home">
         <img src="https://images-api.printify.com/mockup/6af65bebd7c504ab480be8b3/72184/102752/doty-accent-coffee-mug-11-15oz.jpg?camera_label=front&amp;revision=1794530333936" alt="doty Accent Coffee Mug">
         <h3>doty Accent Coffee Mug (11, 15oz)</h3>
         <p class="price">$10.67</p>
         <a class="buy" href="https://meechiesworld-inc.printify.me/product/34352167" target="_blank" rel="noopener">Shop now →</a>
         <a class="watch-link" href="#watch-mug">▶ Watch the commercial</a>
       </div>
-      <div class="prod">
+      <div class="prod" data-cat="blankets">
         <img src="https://images-api.printify.com/mockup/6af65a1f36193af44c011f6d/68322/8862/doty-plush-blanket.jpg?camera_label=front&amp;revision=1794529884917" alt="doty Plush Blanket">
         <h3>doty Plush Blanket</h3>
         <p class="price">$22.73</p>
         <a class="buy" href="https://meechiesworld-inc.printify.me/product/34351825" target="_blank" rel="noopener">Shop now →</a>
         <a class="watch-link" href="#watch-blanket">▶ Watch the commercial</a>
       </div>
-      <div class="prod">
+      <div class="prod" data-cat="tees">
         <img src="https://images-api.printify.com/mockup/6af659ab0d678adf930c4307/33793/105264/doty-ultra-cotton-long-sleeve-tee.jpg?camera_label=front&amp;revision=1794529746048" alt="doty Ultra Cotton Long Sleeve Tee">
         <h3>doty Ultra Cotton Long Sleeve Tee</h3>
         <p class="price">$21.38</p>
         <a class="buy" href="https://meechiesworld-inc.printify.me/product/34351772" target="_blank" rel="noopener">Shop now →</a>
         <a class="watch-link" href="#watch-longsleeve">▶ Watch the commercial</a>
       </div>
-      <div class="prod">
+      <div class="prod" data-cat="tees">
         <img src="https://images-api.printify.com/mockup/6af658e1e28734f03f0cbe60/38191/97992/doty-softstyle-t-shirt.jpg?camera_label=front&amp;revision=1794529528296" alt="doty Softstyle T-Shirt">
         <h3>doty Softstyle T-Shirt</h3>
         <p class="price">$18.02</p>
         <a class="buy" href="https://meechiesworld-inc.printify.me/product/34351652" target="_blank" rel="noopener">Shop now →</a>
         <a class="watch-link" href="#watch-softstyle">▶ Watch the commercial</a>
       </div>
-      <div class="prod">
+      <div class="prod" data-cat="hoodies">
         <img src="https://images-api.printify.com/mockup/6af657a9d21dad1394080889/79861/48836/doty-hoodie-aop.jpg?camera_label=front&amp;revision=1794529208287" alt="doty Hoodie (AOP)">
         <h3>doty Hoodie (AOP)</h3>
         <p class="price">$60.20</p>
         <a class="buy" href="https://meechiesworld-inc.printify.me/product/34351483" target="_blank" rel="noopener">Shop now →</a>
         <a class="watch-link" href="#watch-hoodie60">▶ Watch the commercial</a>
       </div>
-      <div class="prod">
+      <div class="prod" data-cat="hoodies">
         <img src="https://images-api.printify.com/mockup/6af6558fd21dad13940806ac/75719/24369/doty-hoodie-aop.jpg?camera_label=front&amp;revision=1794529230372" alt="doty Hoodie (AOP)">
         <h3>doty Hoodie (AOP)</h3>
         <p class="price">$62.00</p>
@@ -228,6 +256,20 @@
     <p class="over">04 — WATCH</p>
     <h2>Caprice's Commercials</h2>
     <p class="sec-sub">Meechie sells every piece of the doty collection — watch, then shop it right underneath.</p>
+    <h3 style="margin:0 0 10px;font:700 17px Georgia,serif;color:#bcd0ff">📺 Doty TV — plays them all</h3>
+    <div class="tv" id="dotyTvBox">
+      <div class="tv-screen">
+        <video id="dotyTv" controls playsinline preload="metadata" poster="https://images-api.printify.com/mockup/6af65bebd7c504ab480be8b3/72184/102752/doty-accent-coffee-mug-11-15oz.jpg?camera_label=front&amp;revision=1794530333936"></video>
+        <button id="tvPlay" type="button">▶ Play Doty TV</button>
+      </div>
+      <div class="tv-bar">
+        <button id="tvPrev" type="button">⏮ Prev</button>
+        <div class="tv-now"><b id="tvNowName">doty Accent Coffee Mug (11, 15oz)</b><span id="tvNowPrice">$10.67 · 1 of 6</span></div>
+        <button id="tvNext" type="button">Next ⏭</button>
+      </div>
+      <div class="tv-shop"><a id="tvShop" class="buy" href="https://meechiesworld-inc.printify.me/product/34352167" target="_blank" rel="noopener">Shop this one →</a></div>
+      <div class="tv-list" id="tvList"></div>
+    </div>
     <div class="grid">
       <div class="prod" id="watch-mug">
         <video controls preload="metadata" playsinline src="/media/caprice/doty-mug.mp4"></video>
@@ -296,8 +338,22 @@
     </div>
   </section>
 
+  <section id="share">
+    <p class="over">07 — SHARE</p>
+    <h2>Share Doty's World</h2>
+    <p class="sec-sub">Send it to somebody who needs the luxury.</p>
+    <div class="share-row">
+      <button id="shareBtn" type="button">↗ Share this app</button>
+      <button id="copyBtn" type="button">🔗 Copy link</button>
+      <a href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fmeechiesworldinc.com%2Fcaprice%2F" target="_blank" rel="noopener">Facebook</a>
+      <a href="https://twitter.com/intent/tweet?text=Doty%27s%20World%20is%20live%20—%20shop%20Caprice%27s%20doty%20collection&amp;url=https%3A%2F%2Fmeechiesworldinc.com%2Fcaprice%2F" target="_blank" rel="noopener">X</a>
+      <a href="https://wa.me/?text=Doty%27s%20World%20is%20live%20—%20shop%20Caprice%27s%20doty%20collection%20https%3A%2F%2Fmeechiesworldinc.com%2Fcaprice%2F" target="_blank" rel="noopener">WhatsApp</a>
+    </div>
+    <p class="muted center" id="shareMsg" style="margin-top:10px"></p>
+  </section>
+
   <section id="install">
-    <p class="over">07 — GET THE APP</p>
+    <p class="over">08 — GET THE APP</p>
     <h2>Put Doty's World on Your Home Screen</h2>
     <div class="card">
       <p>Keep the drop one tap away — add it like an app, no download needed.</p>
@@ -332,6 +388,58 @@ document.querySelectorAll('.tabbar a').forEach(function(a){
     a.classList.add('active');
   });
 });
+document.querySelectorAll('.chip').forEach(function(chip){
+  chip.addEventListener('click',function(){
+    document.querySelectorAll('.chip').forEach(function(x){x.classList.remove('active')});
+    chip.classList.add('active');
+    var f=chip.getAttribute('data-filter');
+    document.querySelectorAll('#shop .grid .prod').forEach(function(card){
+      card.style.display=(f==='all'||card.getAttribute('data-cat')===f)?'flex':'none';
+    });
+  });
+});
+var pageUrl='https://meechiesworldinc.com/caprice/';
+var shareMsg=document.getElementById('shareMsg');
+document.getElementById('shareBtn').addEventListener('click',function(){
+  if(navigator.share){navigator.share({title:"Doty's World",text:"Shop Caprice's doty collection",url:pageUrl}).catch(function(){});}
+  else{document.getElementById('copyBtn').click();}
+});
+document.getElementById('copyBtn').addEventListener('click',function(){
+  function done(){shareMsg.textContent='Link copied — send it to somebody.';}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(pageUrl).then(done,function(){shareMsg.textContent='Copy this link: '+pageUrl;});}
+  else{shareMsg.textContent='Copy this link: '+pageUrl;}
+});
+var tvItems=[
+ {src:'/media/caprice/doty-mug.mp4',name:'doty Accent Coffee Mug (11, 15oz)',price:'$10.67',shop:'https://meechiesworld-inc.printify.me/product/34352167',poster:'https://images-api.printify.com/mockup/6af65bebd7c504ab480be8b3/72184/102752/doty-accent-coffee-mug-11-15oz.jpg?camera_label=front&revision=1794530333936'},
+ {src:'/media/caprice/doty-plush-blanket.mp4',name:'doty Plush Blanket',price:'$22.73',shop:'https://meechiesworld-inc.printify.me/product/34351825',poster:'https://images-api.printify.com/mockup/6af65a1f36193af44c011f6d/68322/8862/doty-plush-blanket.jpg?camera_label=front&revision=1794529884917'},
+ {src:'/media/caprice/doty-long-sleeve-tee.mp4',name:'doty Ultra Cotton Long Sleeve Tee',price:'$21.38',shop:'https://meechiesworld-inc.printify.me/product/34351772',poster:'https://images-api.printify.com/mockup/6af659ab0d678adf930c4307/33793/105264/doty-ultra-cotton-long-sleeve-tee.jpg?camera_label=front&revision=1794529746048'},
+ {src:'/media/caprice/doty-softstyle-tshirt.mp4',name:'doty Softstyle T-Shirt',price:'$18.02',shop:'https://meechiesworld-inc.printify.me/product/34351652',poster:'https://images-api.printify.com/mockup/6af658e1e28734f03f0cbe60/38191/97992/doty-softstyle-t-shirt.jpg?camera_label=front&revision=1794529528296'},
+ {src:'/media/caprice/doty-hoodie-60.mp4',name:'doty Hoodie (AOP)',price:'$60.20',shop:'https://meechiesworld-inc.printify.me/product/34351483',poster:'https://images-api.printify.com/mockup/6af657a9d21dad1394080889/79861/48836/doty-hoodie-aop.jpg?camera_label=front&revision=1794529208287'},
+ {src:'/media/caprice/doty-hoodie-62.mp4',name:'doty Hoodie (AOP)',price:'$62.00',shop:'https://meechiesworld-inc.printify.me/product/34351233',poster:'https://images-api.printify.com/mockup/6af6558fd21dad13940806ac/75719/24369/doty-hoodie-aop.jpg?camera_label=front&revision=1794529230372'}
+];
+var tv=document.getElementById('dotyTv'),tvIdx=0;
+var tvNowName=document.getElementById('tvNowName'),tvNowPrice=document.getElementById('tvNowPrice'),tvShop=document.getElementById('tvShop'),tvPlayBtn=document.getElementById('tvPlay'),tvListEl=document.getElementById('tvList');
+tvItems.forEach(function(item,i){
+  var b=document.createElement('button');
+  b.type='button';b.className='tv-item'+(i===0?' active':'');
+  b.innerHTML='<b>'+(i+1)+'. '+item.name+'</b><span>'+item.price+'</span>';
+  b.addEventListener('click',function(){tvPlayBtn.style.display='none';tvLoad(i,true);});
+  tvListEl.appendChild(b);
+});
+function tvLoad(i,autoplay){
+  tvIdx=(i+tvItems.length)%tvItems.length;
+  var item=tvItems[tvIdx];
+  tv.src=item.src;tv.poster=item.poster;
+  tvNowName.textContent=item.name;
+  tvNowPrice.textContent=item.price+' · '+(tvIdx+1)+' of '+tvItems.length;
+  tvShop.href=item.shop;
+  tvListEl.querySelectorAll('.tv-item').forEach(function(el,j){el.classList.toggle('active',j===tvIdx);});
+  if(autoplay){tv.play().catch(function(){});}
+}
+tvPlayBtn.addEventListener('click',function(){tvPlayBtn.style.display='none';tvLoad(tvIdx,true);});
+document.getElementById('tvPrev').addEventListener('click',function(){tvPlayBtn.style.display='none';tvLoad(tvIdx-1,true);});
+document.getElementById('tvNext').addEventListener('click',function(){tvPlayBtn.style.display='none';tvLoad(tvIdx+1,true);});
+tv.addEventListener('ended',function(){tvLoad(tvIdx+1,true);});
 </script>
 </body>
 </html>
