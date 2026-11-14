@@ -54,6 +54,8 @@
   .hist button{text-align:left;background:#100d08;border:1px solid #2c2413;border-radius:10px;color:#f3ead2;padding:9px 12px;font:600 14px system-ui;cursor:pointer}
   .hist button small{color:#a99f8b;font-weight:500}
   .err{color:#ff9d7a}
+  .empty-banner{border:1.5px solid #d4a843;border-radius:12px;background:#1a1408;padding:12px 14px;margin:0 0 12px;font-size:14.5px;line-height:1.55}
+  .empty-banner b{color:#ffe08a}
   .center{text-align:center}
   .back{display:block;text-align:center;margin-top:26px;color:#8a8268;font-size:13.5px}
   .share{margin-top:22px;text-align:center}
@@ -126,12 +128,12 @@
   <h2>Your past lookups</h2>
   <div class="hist" id="lk-hist"><span class="muted">Sign in to see your lookup history.</span></div>
 
-  <p class="muted" style="margin-top:22px">How it works: your first lookup is 🪙 199 ($1.99), your second is 🪙 500 ($5.00), then 🪙 1,000 ($10.00) makes every lookup after that included — unlimited. Coins are the site's own Meechie's World Coins (1 coin = 1¢). Reports are saved to your account only; nobody else can open them. If the public sources don't answer, you're never charged.</p>
+  <p class="muted" style="margin-top:22px">How it works: your first lookup is 🪙 199 ($1.99), your second is 🪙 500 ($5.00), then 🪙 1,000 ($10.00) makes every lookup after that included — unlimited. Coins are the site's own Meechie's World Coins (1 coin = 1¢). Reports are saved to your account only; nobody else can open them. If nothing comes back, or the public sources don't answer, you're never charged.</p>
 
   <h2>Questions</h2>
   <div class="card faq">
     <p><b>Is this legal?</b><br>Yes — it only shows what's already public about a number, with every hit linked to its source. Nothing sealed, nothing made up.</p>
-    <p><b>What if nothing comes back?</b><br>If the public sources don't answer, you're never charged.</p>
+    <p><b>What if nothing comes back?</b><br>Then the report says so plainly — and you're never charged for an empty report. If the public sources don't answer at all, you're not charged either; just try again in a minute.</p>
     <p><b>How do I list my number?</b><br>Sign in, then use "List my number" on this page. Only the name and number you type are shown, only to signed-in members who look the number up, and you can remove it any time.</p>
     <p><b>Who can see my reports?</b><br>Only you. Reports are saved to your signed-in account, and nobody else can open them.</p>
   </div>
@@ -190,7 +192,10 @@ function itemHtml(it){if(it.kind==="wallet"){return "<div class='hit wallet'>�
   return "<div class='hit'>"+(it.platform?"<span class='plat'>"+E(it.platform)+"</span>":"")+"<a href='"+E(it.url)+"' target='_blank' rel='noopener'>"+E(it.title||it.url)+"</a>"
     +(it.snippet?"<div class='snip'>"+E(it.snippet)+"</div>":"")+"<div class='src'>"+E(it.url)+"</div></div>"}
 const ORDER=["member","social","messaging","people","email","court","crypto","payment","mentions"];
-function dossierHtml(d){let h="<h2>Report — "+E(d.number)+"</h2>"+factsHtml(d.facts);
+function dossierHtml(d){let hits=0;for(const k of ORDER){const s=d.sections[k];if(s&&s.items)hits+=s.items.length}
+  let h="<h2>Report — "+E(d.number)+"</h2>";
+  if(!hits)h+="<div class='empty-banner'>🔍 <b>Nothing public found for this number.</b><br>We searched the public web "+d.meta.searches+" ways and nothing tied to this number came up — that usually means it's a private number that was never printed anywhere public. <b>You weren't charged for this lookup.</b></div>";
+  h+=factsHtml(d.facts);
   for(const k of ORDER){const s=d.sections[k];if(!s)continue;h+="<h2>"+E(s.title)+"</h2>";
     h+=s.items.length?s.items.map(itemHtml).join(""):"<p class='muted'>"+E(s.note)+"</p>"}
   h+="<p class='muted'>Searched the public web "+d.meta.searches+" ways for this number. Every result above links to the public page it came from.</p>";return h}

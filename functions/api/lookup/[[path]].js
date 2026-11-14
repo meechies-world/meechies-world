@@ -35,7 +35,16 @@
  * the member's name in the report's Member section, and a member hit
  * counts as a found result (so a run that finds a member is charged
  * like any successful lookup, and never refunded as empty). One number
- * belongs to one member — first listing wins. No email is ever shown. */
+ * belongs to one member — first listing wins. No email is ever shown.
+ *
+ * NEVER CHARGED FOR NOTHING (Malik, 2026-11-14: "Fix everything"): a
+ * run is a find only when at least one hit lands in the dossier.
+ * Sources answering with zero hits is an empty report, not a success
+ * — the caller is refunded (or never debited), the ladder does not
+ * move, and the caller gets the empty report free, with a clear banner
+ * on the page saying nothing public was found. A search page that
+ * yields no usable rows (bot-check page, empty result) does not count
+ * as that source answering. */
 import { json, userFrom, setup, take, uuid } from "../../../lib/cf.js";
 import {
   LADDER, LADDER_USD, normalizeNumber, buildQueries, numberingFacts,
@@ -67,8 +76,13 @@ const stateOf = async (env, uid) => (await env.DB.prepare("select used, unlimite
 /* ---------------- the sweep (server-side, keyless) ----------------
  * Each query goes to DuckDuckGo's public HTML endpoint first; if that
  * answers with nothing usable, Bing's results page is tried. A pass that
- * no source answers is simply empty in the dossier — and if NO pass
- * answers at all, the run is a failure and the caller is refunded. */
+ * no source answers is simply empty in the dossier. A run counts as a
+ * FIND only when at least one hit lands in the dossier (a member
+ * listing counts as a hit) — sources merely answering with nothing is
+ * NOT a find, and a run with no hits is never charged: if the sources
+ * answered, the caller gets a free empty report with a clear banner;
+ * if no source answers at all, the run is a failure and the caller is
+ * refunded. */
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 async function fetchText(u, ms = 6000) {
   const c = new AbortController(); const t = setTimeout(() => { try { c.abort(); } catch (_) {} }, ms);
@@ -92,7 +106,10 @@ async function searchOne(query) {
     const html = await fetchText("https://www.bing.com/search?q=" + encodeURIComponent(query));
     const rows = parseBingHtml(html);
     if (rows.length) return { rows, answered: true };
-    return { rows: [], answered: true };
+    /* A page that yields no usable rows — a bot-check page or a
+     * genuinely empty result — does NOT count as answering. Counting
+     * it made empty runs look successful and charged for them. */
+    return { rows: [], answered: false };
   } catch (_) {}
   return { rows: [], answered: false };
 }
@@ -191,12 +208,16 @@ async function sweep(n, env) {
   }
   for (const w of wallets) sections.crypto.items.push(w);
   for (const e of emails) sections.email.items.push(e);
+  /* hits drive everything now: a find means something actually landed
+   * in the dossier, not just that a search page loaded. */
+  let hits = 0;
+  for (const k of Object.keys(sections)) hits += (sections[k].items || []).length;
   const dossier = {
     number: `(${n.npa}) ${n.nxx}-${n.line}`, digits: n.digits, e164: n.e164,
     facts: numberingFacts(n), sections,
-    meta: { searches: queries.length, searchesAnswered: answered, directoryHit: memberHit, ranAt: new Date().toISOString() },
+    meta: { searches: queries.length, searchesAnswered: answered, hits, directoryHit: memberHit, ranAt: new Date().toISOString() },
   };
-  return { dossier, ok: answered > 0 || memberHit };
+  return { dossier, ok: hits > 0, hits, answered };
 }
 
 export async function onRequest({ request, env, params }) {
@@ -254,12 +275,12 @@ export async function onRequest({ request, env, params }) {
     /* OWNER BYPASS: before any state or wallet touch. No debit, no
      * coin_tx, no lookup_state read or write — the ladder never moves. */
     if (owner) {
-      const { dossier, ok } = await sweep(n, env);
-      if (!ok) return err("The public search sources didn't answer just now. Try again in a minute.", 502);
+      const { dossier, ok, answered } = await sweep(n, env);
+      if (!ok && answered === 0) return err("The public search sources didn't answer just now. Try again in a minute.", 502);
       const id = uuid();
       await env.DB.prepare("insert into lookup_reports (id, uid, digits, data, charged, at) values (?,?,?,?,?,?)").bind(id, me.id, n.digits, JSON.stringify(dossier), 0, now).run();
       const w = await wallet(env, me.id);
-      return json({ ok: true, owner: true, charged: 0, coins: w.coins, state: { used: 0, unlimited: true, nextPrice: 0 }, report: { id, dossier } });
+      return json({ ok: true, owner: true, charged: 0, empty: !ok, coins: w.coins, state: { used: 0, unlimited: true, nextPrice: 0 }, report: { id, dossier } });
     }
     const st = await stateOf(env, me.id);
     const price = nextPrice(st);
@@ -267,7 +288,7 @@ export async function onRequest({ request, env, params }) {
       const w = await wallet(env, me.id);
       return json({ error: "not_enough_coins", need: price, coins: w.coins }, 402);
     }
-    const { dossier, ok } = await sweep(n, env);
+    const { dossier, ok, answered } = await sweep(n, env);
     if (!ok) {
       if (price > 0) {
         await credit(env, me.id, price, Date.now());
@@ -276,7 +297,15 @@ export async function onRequest({ request, env, params }) {
           txRow(env, "lr:" + uuid(), me.id, "lookup_refund", price, n.digits, Date.now()),
         ]);
       }
-      return err("The public search sources didn't answer just now — you were not charged. Try again in a minute.", 502);
+      /* Sources failed outright: a failure, retry later. */
+      if (answered === 0) return err("The public search sources didn't answer just now — you were not charged. Try again in a minute.", 502);
+      /* Sources answered but nothing is public about this number: a
+       * FREE empty report with a clear banner — never a charge, and
+       * the ladder does not move. */
+      const id = uuid();
+      await env.DB.prepare("insert into lookup_reports (id, uid, digits, data, charged, at) values (?,?,?,?,?,?)").bind(id, me.id, n.digits, JSON.stringify(dossier), 0, now).run();
+      const w = await wallet(env, me.id);
+      return json({ ok: true, owner: false, charged: 0, empty: true, coins: w.coins, state: { used: st.used, unlimited: !!st.unlimited, nextPrice: nextPrice(st) }, report: { id, dossier } });
     }
     const id = uuid();
     const stmts = [env.DB.prepare("insert into lookup_reports (id, uid, digits, data, charged, at) values (?,?,?,?,?,?)").bind(id, me.id, n.digits, JSON.stringify(dossier), price, now)];
