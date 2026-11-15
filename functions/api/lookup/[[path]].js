@@ -339,6 +339,9 @@ export async function onRequest({ request, env, params }) {
     if (!n) return err("Enter your 10-digit US number to list it.");
     const name = String(b.name || "").trim().slice(0, 60);
     if (!name) return err("Type the name you want listed with your number.");
+    /* one number belongs to one member — first listing wins */
+    const taken = await env.DB.prepare("select uid from lookup_directory where digits = ? and uid != ? limit 1").bind(n.digits, me.id).first();
+    if (taken) return err("That number is already listed by another member.", 409);
     await env.DB.prepare("insert into lookup_directory (uid, digits, name, updated_at) values (?,?,?,?) on conflict(uid) do update set digits = excluded.digits, name = excluded.name, updated_at = excluded.updated_at").bind(me.id, n.digits, name, Date.now()).run();
     return json({ listed: true, digits: n.digits, name });
   }
@@ -391,7 +394,12 @@ export async function onRequest({ request, env, params }) {
       stmts.push(txRow(env, "lk:" + uuid(), me.id, "lookup", -price, n.digits, now));
       stmts.push(env.DB.prepare("insert into lookup_state (uid, used, unlimited, updated_at) values (?,?,?,?) on conflict(uid) do update set used = excluded.used, unlimited = excluded.unlimited, updated_at = excluded.updated_at").bind(me.id, after.used, after.unlimited, now));
     }
-    await env.DB.batch(stmts);
+    try { await env.DB.batch(stmts); }
+    catch (_) {
+      /* the report didn't save: hand the coins back */
+      if (price > 0) await credit(env, me.id, price, Date.now()).catch(() => {});
+      return err("Couldn't save the report — you were not charged. Try again in a minute.", 503);
+    }
     const w = await wallet(env, me.id);
     const stNow = await stateOf(env, me.id);
     return json({ ok: true, owner: false, charged: price, coins: w.coins, state: { used: stNow.used, unlimited: !!stNow.unlimited, nextPrice: nextPrice(stNow) }, report: { id, dossier } });
