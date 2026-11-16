@@ -48,6 +48,7 @@
  #v-shop .shop-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
  #v-shop .prod{padding:8px!important;gap:6px!important;border-radius:14px!important}
  #v-shop .prod img,#v-shop .prod-ph{border-radius:10px!important}
+#v-shop .prod img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
  #v-shop .prod-ph{font-size:13px!important;padding:8px!important}
  #v-shop .prod b{font-size:13px!important;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
  #v-shop .prod .pr{font-size:16px!important}
