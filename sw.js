@@ -272,7 +272,9 @@ async function mediaStrategy(e) {
       // next time — into STAGE, never into the stream that is playing
       const m = /\/(\d+)\s*$/.exec(net.headers.get("content-range") || "");
       const total = m ? +m[1] : 0;
-      if (total && total <= MEDIA_SAVE_MAX) e.waitUntil(stageSong(url));
+      const conn = (typeof navigator!=="undefined" && navigator.connection) || null;
+      const slow = conn && (conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType||""));
+      if (total && total <= MEDIA_SAVE_MAX && !slow) e.waitUntil(stageSong(url));
     }
     return net;
   } catch (_) {
