@@ -11,6 +11,8 @@
  * 1 coin = 1 cent of value. Stripe's card fee comes out of Meechie's 60%. */
 import { json, userFrom, isAdmin, setup, take, change, uuid } from "../../../lib/cf.js";
 import { creditPurse, purseView, createProposal, decideProposal, setUsablePct, setFrozen } from "../../../lib/purse.js";
+import { cjCreateOrder, cjPayBalance } from "../../../lib/cj.js";
+import { getSecret } from "../../../lib/secrets.js";
 
 export const PACKS = { p100: { coins: 100, cents: 100 }, p550: { coins: 550, cents: 500 }, p1150: { coins: 1150, cents: 1000 }, p3000: { coins: 3000, cents: 2500 }, p6250: { coins: 6250, cents: 5000 } };
 /* Paid eBooks sold on the site itself (Stripe Checkout, $10 each). The book's
@@ -25,6 +27,32 @@ const BOOKS = {
   "pyramids-of-egypt-luxury-edition": { name: "The Pyramids of Egypt — Complete Luxury Edition", cents: 1000 },
 };
 const bookOwned = async (env, uid, book) => !!(await env.DB.prepare("select 1 from book_orders where uid = ? and book = ?").bind(uid, book).first());
+/* CJdropshipping products sold on the site itself (Stripe Checkout).
+ * Customer pays through Meechie's Stripe; on payment the webhook auto-creates
+ * the CJ order (vid = CJ variant id) and pays it from his CJ balance, so CJ
+ * ships it direct. vid/cost/ship are filled in from the CJ product lookup —
+ * NEVER guess a vid; an order with a wrong vid goes to the wrong product.
+ * cost_cents/ship_cents are the CJ product + shipping cost (US warehouse). */
+export const CJ_PRODUCTS = {
+  "pimple-patches-star": { name: "Star hydrocolloid pimple patches (7-color)", cents: 1999, vid: "2089600592274935810", cost_cents: 1300, ship_cents: 250 },
+  "acne-patches-invisible": { name: "Invisible hydrocolloid acne patches", cents: 699, vid: "1395576142311854080", cost_cents: 78, ship_cents: 200 },
+  "grater-peeler": { name: "Cucumber/carrot grater julienne peeler", cents: 849, vid: "1382144947280547840", cost_cents: 95, ship_cents: 200 },
+  "flea-comb": { name: "Pet hair & flea comb", cents: 1299, vid: "1887DA9F-2823-4663-AB99-51FF76F6B45E", cost_cents: 582, ship_cents: 250 },
+  "cat-scratch-mat": { name: "Cat anti-scratch mat", cents: 1499, vid: "1B69868E-3F9D-4009-8FB3-B80A5A87E034", cost_cents: 336, ship_cents: 300 },
+  "hand-warmer": { name: "Rechargeable hand warmer, digital display", cents: 1999, vid: "1483833252266512384", cost_cents: 1106, ship_cents: 300 },
+  "pet-hair-remover": { name: "Self-cleaning pet hair remover", cents: 999, vid: "1734502135620325376", cost_cents: 826, ship_cents: 200 },
+  "mini-vacuum": { name: "Mini desktop vacuum cleaner (USB, with brush)", cents: 1499, vid: "0AD659A7-2AF4-4B9F-9D72-A0ECC8020608", cost_cents: 283, ship_cents: 300 },
+  "bag-resealer": { name: "Magnetic bag resealer (fridge-mount)", cents: 799, vid: "2512030938411623700", cost_cents: 76, ship_cents: 200 },
+  "magnetic-cable": { name: "Magnetic charging cable 2m, 3-in-1 tips", cents: 999, vid: "1C2A0B56-BEC1-4EDE-ADAF-89B608B65723", cost_cents: 153, ship_cents: 200 },
+  "vent-phone-holder": { name: "Car air vent phone holder, 360 rotation", cents: 999, vid: "D28BE756-5C10-4EB8-8ABC-EFD54AACADDC", cost_cents: 340, ship_cents: 200 },
+  "cleaning-cloths": { name: "Microfiber car cleaning cloth, 5-pack", cents: 799, vid: "10CD5E33-D41F-4AC2-9A85-A31E2E9B17E4", cost_cents: 111, ship_cents: 200 },
+  "press-on-nails": { name: "Press-on nails kit (glue + file included)", cents: 1299, vid: "1605243713800908800", cost_cents: 449, ship_cents: 200 },
+  "rosemary-oil": { name: "Rosemary hair oil / scalp serum", cents: 1499, vid: "2410121521111623000", cost_cents: 100, ship_cents: 250 },
+  "lick-mat": { name: "Silicone lick mat / slow feeder", cents: 1299, vid: "1721808426055389184", cost_cents: 798, ship_cents: 250 },
+  "deshedding-brush": { name: "Self-cleaning deshedding brush", cents: 1299, vid: "2605221134161607100", cost_cents: 118, ship_cents: 250 },
+  "led-strips": { name: "LED strip lights 5m, USB, remote", cents: 1999, vid: "1396666677067911168", cost_cents: 1417, ship_cents: 250 },
+  "cabinet-light": { name: "LED motion-sensor cabinet light bar, USB rechargeable", cents: 999, vid: "1392666345388249088", cost_cents: 293, ship_cents: 200 },
+};
 // Meechie's World gifts, smallest to biggest (1 coin = 1¢). "fx" gifts play a full-screen animation for everyone watching.
 export const GIFTS = [
   ["rose", "🌹", "Rose", 1], ["heart", "💛", "Gold Heart", 5], ["mic", "🎤", "Mic Drop", 10], ["gg", "👏", "GG", 15], ["fire", "🔥", "Fire", 25],
@@ -57,6 +85,14 @@ const SCHEMA = [
   "create index if not exists book_orders_uid_book on book_orders (uid, book)",
   "create table if not exists book_checkouts (session text primary key, uid text not null, book text not null, url text not null, at integer not null)",
   "create index if not exists book_checkouts_uid_book on book_checkouts (uid, book, at)",
+  // CJ auto-order: cj_orders is the fulfillment record (one row per completed
+  // purchase, idempotent on the Stripe session id); cj_checkouts remembers a
+  // session just opened so a buyer who comes back resumes it instead of
+  // opening (and paying) a second one.
+  "create table if not exists cj_orders (id text primary key, uid text not null, product text not null, cents integer not null default 0, cj_order_id text, cj_cost_cents integer not null default 0, profit_cents integer not null default 0, status text not null default 'pending', at integer not null)",
+  "create index if not exists cj_orders_uid_product on cj_orders (uid, product)",
+  "create table if not exists cj_checkouts (session text primary key, uid text not null, product text not null, url text not null, at integer not null)",
+  "create index if not exists cj_checkouts_uid_product on cj_checkouts (uid, product, at)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
@@ -204,6 +240,48 @@ export async function onRequest({ request, env, params }) {
           const now = Date.now();
           const r = await env.DB.prepare("insert or ignore into book_orders (id, uid, book, cents, at) values (?,?,?,?,?)").bind("cs:" + s.id, uid, book, s.amount_total || 0, now).run();
           if (r.meta.changes) await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "book-sale", ref: "cs:" + s.id, data: { uid, book } });
+        }
+      }
+      // a paid CJ product: auto-create the CJ order and pay it from his CJ
+      // balance, so CJ ships it direct. Idempotent on the session id — a
+      // retried webhook never double-orders. The profit (what the customer
+      // paid minus what CJ charged) lands in Meechie's purse as a CJ sale.
+      if (s.metadata && s.metadata.kind === "cj" && s.payment_status === "paid") {
+        const prod = String(s.metadata.product || ""), P = CJ_PRODUCTS[prod];
+        if (uid && P && P.vid) {
+          const now = Date.now();
+          const r = await env.DB.prepare("insert or ignore into cj_orders (id, uid, product, cents, cj_order_id, cj_cost_cents, profit_cents, status, at) values (?,?,?,?,?,?,?,?,?)").bind("cs:" + s.id, uid, prod, s.amount_total || 0, "", 0, 0, "pending", now).run();
+          if (r.meta.changes) {
+            try {
+              const sd = s.shipping_details || {}, cd = s.customer_details || {};
+              const addr = {
+                firstName: (sd.name || (cd.name || "")).split(" ")[0] || "",
+                lastName: (sd.name || (cd.name || "")).split(" ").slice(1).join(" ") || "",
+                countryCode: (sd.address && sd.address.country) || "US",
+                country: (sd.address && sd.address.country) || "United States",
+                province: (sd.address && sd.address.state) || "",
+                city: (sd.address && sd.address.city) || "",
+                address: (sd.address && sd.address.line1) || "",
+                address2: (sd.address && sd.address.line2) || "",
+                zip: (sd.address && sd.address.postal_code) || "",
+                phone: (cd.phone || sd.phone) || "",
+                email: cd.email || "",
+              };
+              const cj = await cjCreateOrder(env, { orderNumber: "MW-" + s.id.replace(/^cs_/, "").slice(0, 20), address: addr, items: [{ vid: P.vid, quantity: 1 }] });
+              const cjOrderId = String((cj && (cj.orderId || cj.orderNumber)) || "");
+              let cjCost = (P.cost_cents || 0) + (P.ship_cents || 0);
+              try {
+                const pay = await cjPayBalance(env, [cjOrderId]);
+                const paidAmt = pay && (pay.totalAmount || pay.amount);
+                if (paidAmt != null) cjCost = Math.round(Number(paidAmt) * 100);
+              } catch (payErr) { /* order created but pay failed (e.g. low CJ balance) — leave status for retry */ }
+              const profit = Math.max(0, (s.amount_total || 0) - cjCost);
+              await env.DB.prepare("update cj_orders set cj_order_id = ?, cj_cost_cents = ?, profit_cents = ?, status = ? where id = ?").bind(cjOrderId, cjCost, profit, "ordered", "cs:" + s.id).run();
+              if (profit > 0) await creditPurse(env, { coins: profit, cents: profit, source: "cj-sale", ref: "cs:" + s.id, data: { uid, product: prod, cjOrderId } });
+            } catch (cjErr) {
+              await env.DB.prepare("update cj_orders set status = ? where id = ?").bind("cj-error", "cs:" + s.id).run();
+            }
+          }
         }
       }
     }
@@ -431,6 +509,39 @@ export async function onRequest({ request, env, params }) {
     });
     await env.DB.prepare("insert or ignore into book_checkouts (session, uid, book, url, at) values (?,?,?,?,?)").bind(s.id, me.id, id, s.url, Date.now()).run();
     return json({ url: s.url });
+  }
+
+  /* CJ products sold on the site itself (Stripe Checkout). Customer pays
+   * through Meechie's Stripe (shipping address collected at checkout); on
+   * payment the webhook auto-creates the CJ order and pays it from his CJ
+   * balance, so CJ ships it direct to the buyer. */
+  if (route === "cj-checkout" && method === "POST") {
+    if (!paid) return err("The shop isn't switched on yet.", 501);
+    if (!(await take(env, "cjbuy:" + me.id, 3600, 20))) return err("Too many tries. Wait a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const id = String(b.product || ""), P = CJ_PRODUCTS[id];
+    if (!P) return err("That product isn't for sale here yet.");
+    if (!P.vid) return err("That product isn't linked to CJ yet.", 501);
+    // Don't take a customer's money until the CJ key is in the vault — otherwise
+    // the paid order could never be placed with CJ. The key goes on the API Keys page.
+    if (!(await getSecret(env, "CJ_API_KEY"))) return err("The shop isn't ready yet.", 501);
+    // resume a checkout opened in the last 30 minutes instead of a second one
+    const pend = await env.DB.prepare("select url from cj_checkouts where uid = ? and product = ? and at > ? order by at desc limit 1").bind(me.id, id, Date.now() - 30 * 60 * 1000).first();
+    if (pend && pend.url) return json({ url: pend.url });
+    const origin = new URL(request.url).origin;
+    const s = await stripe(env, "checkout/sessions", {
+      mode: "payment", "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(P.cents),
+      "line_items[0][price_data][product_data][name]": P.name + " — Meechie's World",
+      "shipping_address_collection[allowed_countries][0]": "US",
+      "metadata[uid]": me.id, "metadata[kind]": "cj", "metadata[product]": id,
+      client_reference_id: me.id, success_url: origin + "/#shop", cancel_url: origin + "/#shop",
+    });
+    await env.DB.prepare("insert or ignore into cj_checkouts (session, uid, product, url, at) values (?,?,?,?,?)").bind(s.id, me.id, id, s.url, Date.now()).run();
+    return json({ url: s.url });
+  }
+
+  if (route === "cj-products" && method === "GET") {
+    return json({ products: Object.entries(CJ_PRODUCTS).filter(([, p]) => p.vid).map(([id, p]) => ({ id, name: p.name, cents: p.cents })) });
   }
 
   if (route.startsWith("book/") && method === "GET") {
