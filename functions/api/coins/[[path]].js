@@ -13,6 +13,18 @@ import { json, userFrom, isAdmin, setup, take, change, uuid } from "../../../lib
 import { creditPurse, purseView, createProposal, decideProposal, setUsablePct, setFrozen } from "../../../lib/purse.js";
 
 export const PACKS = { p100: { coins: 100, cents: 100 }, p550: { coins: 550, cents: 500 }, p1150: { coins: 1150, cents: 1000 }, p3000: { coins: 3000, cents: 2500 }, p6250: { coins: 6250, cents: 5000 } };
+/* Paid eBooks sold on the site itself (Stripe Checkout, $10 each). The book's
+ * pages live in books/<id>.json on the site; a completed purchase unlocks
+ * the reader for the buyer. Only books listed here can be bought — the
+ * Harlem book joins once its pages file is on the site. */
+const BOOKS = {
+  "tiktok-the-opportunity": { name: "TikTok: The Opportunity", cents: 1000 },
+  "meechies-world-story-and-blueprint": { name: "Meechie's World: The Story and the Blueprint", cents: 1000 },
+  "faith-the-foundation": { name: "Faith: The Foundation", cents: 1000 },
+  "spacex-the-mission": { name: "SpaceX: The Mission", cents: 1000 },
+  "pyramids-of-egypt-luxury-edition": { name: "The Pyramids of Egypt — Complete Luxury Edition", cents: 1000 },
+};
+const bookOwned = async (env, uid, book) => !!(await env.DB.prepare("select 1 from book_orders where uid = ? and book = ?").bind(uid, book).first());
 // Meechie's World gifts, smallest to biggest (1 coin = 1¢). "fx" gifts play a full-screen animation for everyone watching.
 export const GIFTS = [
   ["rose", "🌹", "Rose", 1], ["heart", "💛", "Gold Heart", 5], ["mic", "🎤", "Mic Drop", 10], ["gg", "👏", "GG", 15], ["fire", "🔥", "Fire", 25],
@@ -36,6 +48,15 @@ const SCHEMA = [
   "insert or ignore into game_pool (id, coins) values (1, 0)",
   "create table if not exists game_pots (id text primary key, creator text not null, joiner text, bet integer not null, side text not null, status text not null default 'open', winner text, at integer not null, done_at integer)",
   "create index if not exists game_pots_status on game_pots (status, at)",
+  // Paid eBooks sold on the site itself (Stripe Checkout). book_orders is the
+  // entitlement record (one row per completed purchase, idempotent on the
+  // Stripe session id); book_checkouts remembers a session just opened so a
+  // buyer who comes back before the webhook lands resumes it instead of
+  // opening (and paying) a second one.
+  "create table if not exists book_orders (id text primary key, uid text not null, book text not null, cents integer not null default 0, at integer not null)",
+  "create index if not exists book_orders_uid_book on book_orders (uid, book)",
+  "create table if not exists book_checkouts (session text primary key, uid text not null, book text not null, url text not null, at integer not null)",
+  "create index if not exists book_checkouts_uid_book on book_checkouts (uid, book, at)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
@@ -173,6 +194,16 @@ export async function onRequest({ request, env, params }) {
           // rate (1 coin = 1¢ of value), credited by dollar value received.
           // Idempotent by the session id — a webhook replay never pays twice.
           await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "coin-pack", ref: "cs:" + s.id, data: { uid, packCoins: coins } });
+        }
+      }
+      // a paid eBook: record the purchase (idempotent on the session id) and
+      // land the $10 in Meechie's purse as a book sale
+      if (s.metadata && s.metadata.kind === "book" && s.payment_status === "paid") {
+        const book = String(s.metadata.book || ""), BK = BOOKS[book];
+        if (uid && BK) {
+          const now = Date.now();
+          const r = await env.DB.prepare("insert or ignore into book_orders (id, uid, book, cents, at) values (?,?,?,?,?)").bind("cs:" + s.id, uid, book, s.amount_total || 0, now).run();
+          if (r.meta.changes) await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "book-sale", ref: "cs:" + s.id, data: { uid, book } });
         }
       }
     }
@@ -379,6 +410,33 @@ export async function onRequest({ request, env, params }) {
       client_reference_id: me.id, success_url: origin + "/#coins-thanks", cancel_url: origin + "/#coins",
     });
     return json({ url: s.url });
+  }
+
+  /* ---------------- Paid eBooks (Stripe) ---------------- */
+  if (route === "book-checkout" && method === "POST") {
+    if (!paid) return err("The book shop isn't switched on yet.", 501);
+    if (!(await take(env, "bookbuy:" + me.id, 3600, 20))) return err("Too many tries. Wait a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const id = String(b.book || ""), BK = BOOKS[id];
+    if (!BK) return err("That book isn't for sale here yet.");
+    if (admin || (await bookOwned(env, me.id, id))) return json({ owned: true });
+    // resume a checkout opened in the last 30 minutes instead of a second one
+    const pend = await env.DB.prepare("select url from book_checkouts where uid = ? and book = ? and at > ? order by at desc limit 1").bind(me.id, id, Date.now() - 30 * 60 * 1000).first();
+    if (pend && pend.url) return json({ url: pend.url });
+    const origin = new URL(request.url).origin;
+    const s = await stripe(env, "checkout/sessions", {
+      mode: "payment", "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(BK.cents),
+      "line_items[0][price_data][product_data][name]": BK.name + " eBook", "metadata[uid]": me.id, "metadata[kind]": "book", "metadata[book]": id,
+      client_reference_id: me.id, success_url: origin + "/#books", cancel_url: origin + "/#books",
+    });
+    await env.DB.prepare("insert or ignore into book_checkouts (session, uid, book, url, at) values (?,?,?,?,?)").bind(s.id, me.id, id, s.url, Date.now()).run();
+    return json({ url: s.url });
+  }
+
+  if (route.startsWith("book/") && method === "GET") {
+    const id = route.slice(5);
+    if (!BOOKS[id]) return err("No such book.", 404);
+    return json({ owned: admin || (await bookOwned(env, me.id, id)) });
   }
 
   if (route === "gift" && method === "POST") {
