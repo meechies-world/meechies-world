@@ -36,7 +36,11 @@
       keyEl=document.getElementById('key'), saveBtn=document.getElementById('save'),
       msg=document.getElementById('msg');
   function say(t,ok){ msg.textContent=t; msg.className=ok?'ok':'bad'; }
-  fetch('/api/secrets',{cache:'no-store'}).then(function(r){ return r.json().then(function(j){ return {st:r.status,j:j}; }); })
+  // The vault checks the owner by the session token, which the main site keeps in
+  // localStorage under "mw-cf-session" and sends as Authorization: Bearer <token>.
+  // A bare fetch sends no token, so the vault always answered 401 ("not signed in").
+  function authHeaders(){ try{ var s=JSON.parse(localStorage.getItem('mw-cf-session')||'null'); if(s&&s.access_token) return {authorization:'Bearer '+s.access_token}; }catch(_){} return {}; }
+  fetch('/api/secrets',{cache:'no-store',headers:authHeaders()}).then(function(r){ return r.json().then(function(j){ return {st:r.status,j:j}; }); })
   .then(function(x){
     if(x.st===401){ status.innerHTML='<p class="bad">You are not signed in as the owner. Sign in on meechiesworldinc.com first, then reopen this page.</p>'; return; }
     if(x.st===403){ status.innerHTML='<p class="bad">This page is owner-only.</p>'; return; }
@@ -50,7 +54,7 @@
     if(!v){ say('Paste the key first.', false); return; }
     if(v.indexOf('CJ')!==0){ say('That does not look like a CJ key — it should start with CJ.', false); return; }
     saveBtn.disabled=true; say('Saving…', true);
-    fetch('/api/secrets',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'CJ_API_KEY',value:v})})
+    fetch('/api/secrets',{method:'POST',headers:Object.assign({'content-type':'application/json'},authHeaders()),body:JSON.stringify({name:'CJ_API_KEY',value:v})})
     .then(function(r){ return r.json().then(function(j){ return {st:r.status,j:j}; }); })
     .then(function(x){
       saveBtn.disabled=false;
