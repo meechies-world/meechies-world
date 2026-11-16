@@ -18,13 +18,18 @@
   const okBuy = (u) => /^https:\/\/meechiesworldinc\.myshopify\.com\/[^\s"'<>]*$/.test(u || "");
   function buyPanel(b) {
     // paid books whose pages live on the site sell through our own Stripe checkout;
-    // a paid book with no pages file yet (Harlem) still uses its Shopify link until then
+    // a paid book with no pages file yet and no buy link is coming soon (no Shopify)
     const stripe = b.free === false && !!b.src && !!b.price;
+    const coming = b.free === false && !b.src && !b.buy;
     const buy = stripe
       ? `<button class="btn" type="button" data-buybook="${E(b.id)}">Buy with Stripe · ${E(b.price || "")}</button>`
+      : coming
+      ? `<button class="btn" type="button" disabled>Coming soon · ${E(b.price || "")}</button>`
       : `<a class="btn" href="${E(b.buy)}" target="_blank" rel="noopener">Buy &amp; download · ${E(b.price || "")}</a>${okBuy(b.url) ? ` <a class="btn ghost" href="${E(b.url)}" target="_blank" rel="noopener">Details</a>` : ""}`;
     const note = stripe
       ? "Secure checkout by Stripe \u2014 card, Apple Pay, Google Pay or Cash App Pay. Your copy unlocks right after you pay."
+      : coming
+      ? "This book is moving to our own checkout — check back soon."
       : "Secure checkout by Shopify. Your download link appears right after you pay and is emailed to you.";
     root.innerHTML = `<div class="bk-buy"><button class="btn ghost sm" type="button" data-shelf="1">\u2190 Books</button>
       <div class="bk-buy-in"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div>
@@ -139,7 +144,7 @@
   }
   async function readerOpen(id) {
     open = books.find((b) => b.id === id); if (!open) return;
-    if (okBuy(open.buy) && !open.src) { buyPanel(open); return; }
+    if (open.free === false && !open.src) { buyPanel(open); return; }
     if (open.free === false && open.src) {
       // paid book with its pages on the site: only open the reader for a buyer (or the owner)
       let owned = false;

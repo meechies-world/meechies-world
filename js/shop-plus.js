@@ -55,14 +55,55 @@
  #v-shop .prod-share{font-size:12px!important;padding:6px 4px!important}
  #v-shop .prod-wrap .sg-btn{font-size:11.5px;padding:8px 6px}
  #v-shop .lux-banner img{max-height:70vh;width:100%;object-fit:contain}
+#sp-bar .sp-sort{display:flex;align-items:center;gap:8px;color:#e9d9a6;font:700 13px var(--body,system-ui);padding:10px 2px 0}
+#sp-bar .sp-sort select{flex:1;min-width:0;background:#0e0b07;color:#f3ead2;border:1px solid rgba(214,170,74,.45);border-radius:10px;padding:9px 10px;font:700 13.5px var(--body,system-ui)}
 }`;
   D.head.appendChild(css);
 
   const bar = D.createElement("div"); bar.id = "sp-bar";
-  bar.innerHTML = `<label class="sp-s"><span aria-hidden="true">🔎</span><input type="text" id="sp-q" placeholder="Search the shop: hoodie, book, blanket…" aria-label="Search the shop" autocomplete="off" enterkeyhint="search"><button type="button" id="sp-x" aria-label="Clear search" hidden>✕</button></label><div class="sp-chips" role="group" aria-label="Shop by category"></div><p class="sp-n" aria-live="polite"></p>`;
+  bar.innerHTML = `<label class="sp-s"><span aria-hidden="true">🔎</span><input type="text" id="sp-q" placeholder="Search the shop: hoodie, book, blanket…" aria-label="Search the shop" autocomplete="off" enterkeyhint="search"><button type="button" id="sp-x" aria-label="Clear search" hidden>✕</button></label><div class="sp-chips" role="group" aria-label="Shop by category"></div><label class="sp-sort">Organise: <select id="sp-sort" aria-label="Organise products"><option value="mixed">Mixed up</option><option value="price-asc">Price: low to high</option><option value="price-desc">Price: high to low</option><option value="name">Name: A to Z</option></select></label><p class="sp-n" aria-live="polite"></p>`;
   const firstHead = $(".section-head", view);
   (firstHead || grids[0]).insertAdjacentElement(firstHead ? "afterend" : "beforebegin", bar);
   const chips = $(".sp-chips", bar), input = $("#sp-q", bar), clear = $("#sp-x", bar), count = $(".sp-n", bar);
+const sortSel = $("#sp-sort", bar);
+let sortMode = "mixed";
+const lastOrdered = new Map(); // grid -> card elements in the order we last set
+function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+const nameOf = (c) => ((c.querySelector("b") || {}).textContent || "").trim();
+const pv = (c) => { const p = priceOf(c); return isNaN(p) ? Infinity : p; };
+function reorderGrid(grid, ordered) {
+  // Only move cards that are out of place, so an already-correct order causes no DOM changes.
+  const dom = [];
+  for (const el of grid.children) { if (ordered.indexOf(el) !== -1) dom.push(el); }
+  if (dom.length !== ordered.length) return;
+  let same = true;
+  for (let i = 0; i < ordered.length; i++) { if (dom[i] !== ordered[i]) { same = false; break; } }
+  if (same) return;
+  for (let i = ordered.length - 1; i >= 0; i--) {
+    const card = ordered[i];
+    const ref = (i + 1 < ordered.length) ? ordered[i + 1] : null;
+    let next = card.nextSibling;
+    while (next && ordered.indexOf(next) === -1) next = next.nextSibling;
+    if (next !== ref) grid.insertBefore(card, ref);
+  }
+}
+function orderGrids() {
+  for (const g of grids) {
+    const cards = [...g.querySelectorAll(".prod")].map(cardOf);
+    if (cards.length < 2) { lastOrdered.set(g, cards.slice()); continue; }
+    const last = lastOrdered.get(g) || [];
+    const sameSet = last.length === cards.length && last.every((el) => cards.indexOf(el) !== -1);
+    const sameOrder = sameSet && last.every((el, i) => cards[i] === el);
+    if (sameOrder) continue; // already in the order we set; a repaint replaces the nodes, so this re-runs then
+    let ordered;
+    if (sortMode === "price-asc") ordered = cards.slice().sort((a, b) => pv(a) - pv(b));
+    else if (sortMode === "price-desc") ordered = cards.slice().sort((a, b) => { const pa = pv(a), pb = pv(b); if (pa === Infinity && pb === Infinity) return 0; if (pa === Infinity) return 1; if (pb === Infinity) return -1; return pb - pa; });
+    else if (sortMode === "name") ordered = cards.slice().sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+    else ordered = shuffleArr(cards.slice()); // mixed up by default, fresh shuffle on repaint/mode change
+    reorderGrid(g, ordered);
+    lastOrdered.set(g, ordered);
+  }
+}
 
   function buildChips(list) {
     const have = [["all", "All"]];
@@ -82,6 +123,7 @@
       const list = items();
       bar.hidden = list.length < 4;
       buildChips(list);
+      orderGrids();
       const words = q.toLowerCase().split(/\s+/).filter(Boolean);
       let shown = 0;
       for (const c of list) {
@@ -102,6 +144,7 @@
   }
 
   chips.addEventListener("click", (e) => { const b = e.target.closest(".sp-chip"); if (!b) return; cat = b.dataset.k; apply();  });
+  sortSel.addEventListener("change", () => { sortMode = sortSel.value; lastOrdered.clear(); apply(); });
   let t = 0; input.addEventListener("input", () => { q = input.value.trim(); clearTimeout(t); t = setTimeout(apply, 120); });
   clear.addEventListener("click", () => { input.value = ""; q = ""; apply(); input.focus(); });
 
