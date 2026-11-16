@@ -69,6 +69,32 @@
 const sortSel = $("#sp-sort", bar);
 let sortMode = "mixed";
 const lastOrdered = new Map(); // grid -> card elements in the order we last set
+// "Mixed up" must be STABLE across repaints. A repaint replaces the DOM nodes,
+// so an order stored as node references never matches and re-shuffles every time.
+// Store the shuffled order as product keys (href) instead, and only re-shuffle
+// when the user re-picks "Mixed up" or the product set actually changes.
+const mixedKeys = new Map(); // grid -> array of product keys in shuffled order
+const cardKey = (c) => {
+  const a = c.querySelector("a[href]");
+  return (a && a.getAttribute("href")) || nameOf(c);
+};
+function mixedOrderFor(g, cards) {
+  const keys = cards.map(cardKey);
+  let order = mixedKeys.get(g) || [];
+  // keep stored keys that still exist, in their stored order
+  const kept = order.filter((k) => keys.indexOf(k) !== -1);
+  const fresh = keys.filter((k) => kept.indexOf(k) === -1);
+  if (!order.length || fresh.length === keys.length) {
+    // first paint, or the whole set changed: shuffle once
+    order = shuffleArr(keys.slice());
+  } else if (fresh.length) {
+    // new products only: splice them in at random spots; existing order never jumps
+    for (const k of fresh) order.splice(Math.floor(Math.random() * (order.length + 1)), 0, k);
+  }
+  mixedKeys.set(g, order);
+  const rank = new Map(order.map((k, i) => [k, i]));
+  return cards.slice().sort((a, b) => (rank.get(cardKey(a)) ?? 1e9) - (rank.get(cardKey(b)) ?? 1e9));
+}
 function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
 const nameOf = (c) => ((c.querySelector("b") || {}).textContent || "").trim();
 const pv = (c) => { const p = priceOf(c); return isNaN(p) ? Infinity : p; };
@@ -100,7 +126,7 @@ function orderGrids() {
     if (sortMode === "price-asc") ordered = cards.slice().sort((a, b) => pv(a) - pv(b));
     else if (sortMode === "price-desc") ordered = cards.slice().sort((a, b) => { const pa = pv(a), pb = pv(b); if (pa === Infinity && pb === Infinity) return 0; if (pa === Infinity) return 1; if (pb === Infinity) return -1; return pb - pa; });
     else if (sortMode === "name") ordered = cards.slice().sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
-    else ordered = shuffleArr(cards.slice()); // mixed up by default, fresh shuffle on repaint/mode change
+    else ordered = mixedOrderFor(g, cards); // mixed up by default, but the SAME shuffle on repaint
     reorderGrid(g, ordered);
     lastOrdered.set(g, ordered);
   }
@@ -145,7 +171,12 @@ function orderGrids() {
   }
 
   chips.addEventListener("click", (e) => { const b = e.target.closest(".sp-chip"); if (!b) return; cat = b.dataset.k; apply();  });
-  sortSel.addEventListener("change", () => { sortMode = sortSel.value; lastOrdered.clear(); apply(); });
+  sortSel.addEventListener("change", () => {
+    sortMode = sortSel.value;
+    lastOrdered.clear();
+    if (sortMode === "mixed") mixedKeys.clear(); // re-picking "Mixed up" is the only re-shuffle
+    apply();
+  });
   let t = 0; input.addEventListener("input", () => { q = input.value.trim(); clearTimeout(t); t = setTimeout(apply, 120); });
   clear.addEventListener("click", () => { input.value = ""; q = ""; apply(); input.focus(); });
 
