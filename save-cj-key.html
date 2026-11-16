@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Save CJ API key · Meechie's World</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0b0b12;color:#f5f5f5;margin:0;padding:24px}
+  .card{max-width:520px;margin:0 auto;background:#171724;border:1px solid #2a2a3d;border-radius:14px;padding:22px}
+  h1{font-size:20px;margin:0 0 8px}
+  p{color:#b9b9c9;font-size:14px;line-height:1.5}
+  label{display:block;font-size:13px;color:#b9b9c9;margin:14px 0 6px}
+  input{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #3a3a52;background:#0b0b12;color:#fff;font-size:15px}
+  button{margin-top:16px;width:100%;padding:13px;border:0;border-radius:10px;background:#f5c518;color:#111;font-weight:700;font-size:16px;cursor:pointer}
+  button:disabled{opacity:.5;cursor:default}
+  #msg{margin-top:14px;font-size:14px;min-height:20px}
+  .ok{color:#7be495}.bad{color:#ff8a8a}
+  code{color:#f5c518}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Save your CJ API key</h1>
+  <p>Owner only. This saves the key to the site's encrypted vault so the Cheap Deals store can place CJ orders automatically when a customer buys. The key is never shown back to anyone.</p>
+  <div id="status"><p>Checking sign-in…</p></div>
+  <div id="form" hidden>
+    <label for="key">CJdropshipping API key (starts with <code>CJ6069368@api@</code>)</label>
+    <input id="key" type="password" autocomplete="off" placeholder="Paste the key from CJ here">
+    <button id="save" type="button">Save key</button>
+    <div id="msg"></div>
+  </div>
+</div>
+<script>
+(function(){
+  var status=document.getElementById('status'), form=document.getElementById('form'),
+      keyEl=document.getElementById('key'), saveBtn=document.getElementById('save'),
+      msg=document.getElementById('msg');
+  function say(t,ok){ msg.textContent=t; msg.className=ok?'ok':'bad'; }
+  fetch('/api/secrets',{cache:'no-store'}).then(function(r){ return r.json().then(function(j){ return {st:r.status,j:j}; }); })
+  .then(function(x){
+    if(x.st===401){ status.innerHTML='<p class="bad">You are not signed in as the owner. Sign in on meechiesworldinc.com first, then reopen this page.</p>'; return; }
+    if(x.st===403){ status.innerHTML='<p class="bad">This page is owner-only.</p>'; return; }
+    if(x.st!==200){ status.innerHTML='<p class="bad">Could not reach the vault (HTTP '+x.st+'). Try again.</p>'; return; }
+    var known=(x.j.known||[]).find(function(k){ return k.name==='CJ_API_KEY'; });
+    status.innerHTML='<p>CJ API key is currently: <b>'+(known&&known.set?('saved ('+known.set+')'):'not saved yet')+'</b>.</p>';
+    form.hidden=false;
+  }).catch(function(){ status.innerHTML='<p class="bad">Could not reach the vault. Check your connection and try again.</p>'; });
+  saveBtn.addEventListener('click', function(){
+    var v=keyEl.value.trim();
+    if(!v){ say('Paste the key first.', false); return; }
+    if(v.indexOf('CJ')!==0){ say('That does not look like a CJ key — it should start with CJ.', false); return; }
+    saveBtn.disabled=true; say('Saving…', true);
+    fetch('/api/secrets',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:'CJ_API_KEY',value:v})})
+    .then(function(r){ return r.json().then(function(j){ return {st:r.status,j:j}; }); })
+    .then(function(x){
+      saveBtn.disabled=false;
+      if(x.st===200){ say('Saved. The Cheap Deals store can now place CJ orders automatically.', true); keyEl.value=''; }
+      else { say('Could not save: '+(x.j.error||x.j.message||('HTTP '+x.st)), false); }
+    }).catch(function(){ saveBtn.disabled=false; say('Could not save — check your connection and try again.', false); });
+  });
+})();
+</script>
+</body>
+</html>
