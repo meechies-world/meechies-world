@@ -40,11 +40,12 @@
   /* Buy a paid book through our own Stripe checkout: the server opens the
    * session (or returns the one already open), we send the buyer to Stripe,
    * and the webhook unlocks the reader when the payment lands. */
+  function bookTok() { try { return (window.MW && MW.session && MW.session().access_token) || ""; } catch (_) { return ""; } }
   async function buyBook(id) {
     const b = books.find((x) => x.id === id); if (!b) return;
     say("Opening secure checkout\u2026");
     try {
-      const r = await fetch("/api/coins/book-checkout", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ book: id }) });
+      const r = await fetch("/api/coins/book-checkout", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + bookTok() }, body: JSON.stringify({ book: id }) });
       const j = await r.json().catch(() => ({}));
       if (j.owned) { readerOpen(id); return; }
       if (j.url) { window.location.href = j.url; return; }
@@ -148,7 +149,7 @@
     if (open.free === false && open.src) {
       // paid book with its pages on the site: only open the reader for a buyer (or the owner)
       let owned = false;
-      try { const r = await fetch("/api/coins/book/" + encodeURIComponent(id)); owned = r.ok && (await r.json()).owned; } catch (_) { owned = false; }
+      try { const r = await fetch("/api/coins/book/" + encodeURIComponent(id), { headers: { authorization: "Bearer " + bookTok() } }); owned = r.ok && (await r.json()).owned; } catch (_) { owned = false; }
       if (!owned) { buyPanel(open); return; }
     }
     try { page = Math.min(open.pages - 1, +(localStorage.getItem("mw_bk_" + id) || 0)); } catch (_) { page = 0; }

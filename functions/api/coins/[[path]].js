@@ -269,15 +269,16 @@ export async function onRequest({ request, env, params }) {
               };
               const cj = await cjCreateOrder(env, { orderNumber: "MW-" + s.id.replace(/^cs_/, "").slice(0, 20), address: addr, items: [{ vid: P.vid, quantity: 1 }] });
               const cjOrderId = String((cj && (cj.orderId || cj.orderNumber)) || "");
-              let cjCost = (P.cost_cents || 0) + (P.ship_cents || 0);
+              let cjCost = (P.cost_cents || 0) + (P.ship_cents || 0), cjPaid = false;
               try {
                 const pay = await cjPayBalance(env, [cjOrderId]);
                 const paidAmt = pay && (pay.totalAmount || pay.amount);
                 if (paidAmt != null) cjCost = Math.round(Number(paidAmt) * 100);
-              } catch (payErr) { /* order created but pay failed (e.g. low CJ balance) — leave status for retry */ }
+                cjPaid = true;
+              } catch (payErr) { /* order created but pay failed (e.g. low CJ balance) — mark unpaid, no profit yet */ }
               const profit = Math.max(0, (s.amount_total || 0) - cjCost);
-              await env.DB.prepare("update cj_orders set cj_order_id = ?, cj_cost_cents = ?, profit_cents = ?, status = ? where id = ?").bind(cjOrderId, cjCost, profit, "ordered", "cs:" + s.id).run();
-              if (profit > 0) await creditPurse(env, { coins: profit, cents: profit, source: "cj-sale", ref: "cs:" + s.id, data: { uid, product: prod, cjOrderId } });
+              await env.DB.prepare("update cj_orders set cj_order_id = ?, cj_cost_cents = ?, profit_cents = ?, status = ? where id = ?").bind(cjOrderId, cjCost, cjPaid ? profit : 0, cjPaid ? "ordered" : "unpaid", "cs:" + s.id).run();
+              if (cjPaid && profit > 0) await creditPurse(env, { coins: profit, cents: profit, source: "cj-sale", ref: "cs:" + s.id, data: { uid, product: prod, cjOrderId } });
             } catch (cjErr) {
               await env.DB.prepare("update cj_orders set status = ? where id = ?").bind("cj-error", "cs:" + s.id).run();
             }
@@ -286,6 +287,11 @@ export async function onRequest({ request, env, params }) {
       }
     }
     return json({ received: true });
+  }
+
+  // public list of the cheap CJ deals (no sign-in needed to browse)
+  if (route === "cj-products" && method === "GET") {
+    return json({ products: Object.entries(CJ_PRODUCTS).filter(([, p]) => p.vid).map(([id, p]) => ({ id, name: p.name, cents: p.cents })) });
   }
 
   const me = await userFrom(request, env);
@@ -540,9 +546,6 @@ export async function onRequest({ request, env, params }) {
     return json({ url: s.url });
   }
 
-  if (route === "cj-products" && method === "GET") {
-    return json({ products: Object.entries(CJ_PRODUCTS).filter(([, p]) => p.vid).map(([id, p]) => ({ id, name: p.name, cents: p.cents })) });
-  }
 
   if (route.startsWith("book/") && method === "GET") {
     const id = route.slice(5);

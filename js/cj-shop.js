@@ -3,6 +3,7 @@
 // the CJ order and pays it from his CJ balance, so CJ ships it direct.
 (function () {
   function money(cents) { return "$" + (cents / 100).toFixed(2); }
+  function tok() { try { return (window.MW && MW.session && MW.session().access_token) || ""; } catch (e) { return ""; } }
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   async function load() {
     var grid = document.querySelector("#cj-grid");
@@ -25,7 +26,7 @@
       btn.disabled = true; btn.textContent = "Opening checkout…";
       try {
         var res = await fetch("/api/coins/cj-checkout", {
-          method: "POST", headers: { "content-type": "application/json" },
+          method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + tok() },
           body: JSON.stringify({ product: btn.getAttribute("data-cj") }),
         });
         var out = await res.json().catch(function () { return {}; });
