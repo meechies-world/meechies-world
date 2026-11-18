@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MW TV News Publisher · Meechie's World</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0a08">
+<style>
+body{margin:0;background:#0b0a08;color:#f3ecdc;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:24px 16px 48px}
+h1{font:800 24px Georgia,serif;color:#f0cf78;margin:0 0 16px}
+.card{background:#15130f;border:1px solid #3a3223;border-radius:16px;padding:18px;display:grid;gap:14px}
+label{display:grid;gap:6px;font-size:14px;color:#a99f8b}
+input[type=file]{color:#f3ecdc;font:inherit}
+.btn{display:block;width:100%;border:0;border-radius:999px;padding:14px;background:#d4a843;color:#0b0a08;font:800 16px system-ui,sans-serif;cursor:pointer}
+.btn[disabled]{opacity:.5;cursor:default}
+#gate{font-weight:700;color:#f0cf78}
+pre{white-space:pre-wrap;word-break:break-word;background:#0b0a08;border:1px solid #3a3223;border-radius:10px;padding:12px;min-height:120px;font-size:13px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MW TV News Publisher</h1>
+<div class="card">
+<div id="gate">Owner sign-in required</div>
+<div id="controls" hidden>
+<label>payloads.json
+<input type="file" id="payloadsFile" accept=".json,application/json">
+</label>
+<!-- Upload inputs are built from payloads.json's uploads array once it
+     parses, so ANY edition stamp publishes — never hard-coded filenames. -->
+<div id="uploadInputs"></div>
+<button type="button" class="btn" id="publishBtn" disabled>Publish</button>
+</div>
+<pre id="log"></pre>
+</div>
+</div>
+<script>
+(function () {
+  var gate = document.getElementById("gate");
+  var controls = document.getElementById("controls");
+  var logEl = document.getElementById("log");
+  var publishBtn = document.getElementById("publishBtn");
+  var payloadsInput = document.getElementById("payloadsFile");
+  var uploadInputsEl = document.getElementById("uploadInputs");
+  /* Dynamic: rebuilt from payloads.json's uploads array on every parse,
+   * so the page accepts whatever filenames the current edition carries.
+   * Before a payload parses, there are no upload inputs at all. */
+  var fileInputs = [];
+  function print(line) { logEl.textContent += line + "\n"; }
+  function printJSON(label, obj) { print(label + " " + JSON.stringify(obj)); }
+
+  var ownerVerified = false;
+  var payloads = null;
+
+  /* Session + helpers: same logic as publish-page.js (bundle), verbatim
+   * wherever possible. The token is used ONLY as the Authorization
+   * Bearer for same-origin /api/cf calls. It is never printed. */
+  var ses = null;
+  try { ses = JSON.parse(localStorage.getItem("mw-cf-session") || "null"); } catch (e) { ses = null; }
+  var tok = ses && ses.access_token;
+  var H = { Authorization: "Bearer " + tok };
+  /* NEWS-PUBLISH DOOR FIX (2026-11-04): this page used to dead-end
+   * at the token check — "Owner sign-in required" and a hard stop,
+   * with no sign-in control on the page at all (there is none; the
+   * site's Google button lives on the main site's sign-in screens),
+   * so any browser without a ready session — every automated
+   * publish run since 2026-11-03 21:36 ET — stared at a gate it
+   * could never open, and fresh editions stopped publishing. Two
+   * repairs, both the site's own patterns: (1) refresh the saved
+   * session first, through the same GET /api/cf/auth/session call
+   * js/cf-client.js makes on every main-site load — a stored
+   * session that is still good is renewed and saved back before
+   * the gate judges it (see refreshSession + the boot at the
+   * bottom); (2) when there is still no usable session, the gate
+   * names the door — the sponsors.html pattern: sign in on the
+   * main site, then come back. The gate itself is unchanged: only
+   * a session the server verifies as the owner's (the admins
+   * check below) ever opens the controls. */
+  function noSession() {
+    gate.innerHTML = "Owner sign-in required — <a href=\"/\" style=\"color:#f0cf78\">open the main site</a>, sign in as Meechie, then come back to this page.";
+  }
+  async function refreshSession() {
+    if (!tok) return false;
+    try {
+      const r = await fetch("/api/cf/auth/session", { headers: { Authorization: "Bearer " + tok }, cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      const s2 = (j.data && j.data.session) || j.session || null;
+      if (s2 && s2.access_token) {
+        try { localStorage.setItem("mw-cf-session", JSON.stringify(s2)); } catch (e) {}
+        ses = s2; tok = s2.access_token;
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  async function readDoc(path) {
+    const r = await fetch("/api/cf/rest", { method: "POST", headers: { "Content-Type": "application/json", ...H }, body: JSON.stringify({ table: "docs", op: "select", select: "path,data", filters: [["path", "eq", path]] }) });
+    const j = await r.json();
+    const row = (j.data || [])[0];
+    return row ? row.data : null;
+  }
+  async function setDoc(path, coll, data) {
+    const r = await fetch("/api/cf/rpc", { method: "POST", headers: { "Content-Type": "application/json", ...H }, body: JSON.stringify({ name: "set_doc", args: { p_path: path, p_coll: coll, p_data: data } }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) throw new Error("set_doc " + path + " failed: " + r.status + " " + JSON.stringify(j.error || j).slice(0, 200));
+    return true;
+  }
+  async function who() { const me = await (await fetch("/api/brain/me", { headers: H })).json().catch(() => null); return me; }
+  /* Owner test: the same one the site itself uses (js/platform.js) — the
+   * signed-in user's id must have a row in the `admins` table, checked
+   * server-side through /api/cf/rest. /api/brain/me returns only the
+   * member-memory summary ({ok,has,name,visits,...}) and carries no
+   * role/owner field, so it can never prove ownership on its own. */
+  async function checkOwner() {
+    const uid = ses && ses.user && ses.user.id;
+    if (!uid) return false;
+    const r = await fetch("/api/cf/rest", { method: "POST", headers: { "Content-Type": "application/json", ...H }, body: JSON.stringify({ table: "admins", op: "select", select: "user_id", filters: [["user_id", "eq", uid]] }) });
+    const j = await r.json().catch(() => null);
+    return !!(j && !j.error && Array.isArray(j.data) && j.data.length > 0);
+  }
+  async function publishDocs(payloads) {
+    const out = [];
+    for (const d of payloads.docs) {
+      let data = d.data;
+      if (d.mergePrevious) {
+        const cur = await readDoc(d.path);
+        data = { current: d.data.current, previous: cur && cur.current ? cur.current : null };
+      }
+      await setDoc(d.path, d.coll, data);
+      out.push({ path: d.path, written: true });
+      printJSON("publishDocs doc:", { path: d.path, written: true });
+    }
+    return { ok: true, out };
+  }
+  async function verify(payloads) {
+    /* A bundle may carry no verify list at all (e.g. a docs-only publish
+     * like the adhan): nothing to check is a pass, not a crash. Reading
+     * payloads.verify unguarded here threw AFTER the docs were written
+     * and labelled the whole run FAILED (2026-11-05). */
+    const checks = Array.isArray(payloads.verify) ? payloads.verify : [];
+    const media = [];
+    for (const v of checks.filter((x) => x.url)) {
+      const r = await fetch(v.url, { headers: { Range: "bytes=0-0" } });
+      const cr = r.headers.get("content-range") || "";
+      const total = cr.includes("/") ? +cr.split("/")[1] : +r.headers.get("content-length") || 0;
+      media.push({ url: v.url, status: r.status, bytes: total, expectBytes: v.expectBytes, match: total === v.expectBytes });
+    }
+    const docs = {};
+    for (const v of checks.filter((x) => x.doc)) {
+      const d = await readDoc(v.doc);
+      docs[v.doc] = d ? { at: d.at || (d.current && d.current.at) || null, dur: d.dur || (d.current && d.current.dur) || null, videoUrl: (d.current && d.current.videoUrl) || d.url || null } : null;
+    }
+    return { ok: media.every((m) => m.status === 200 || m.status === 206), media, docs };
+  }
+
+  function selectedFileFor(up) {
+    /* A file counts ONLY when its actual name matches the upload entry
+     * exactly — a wrong file in the right-labeled input must never be
+     * uploaded under the wrong path. */
+    for (var i = 0; i < fileInputs.length; i++) {
+      if (fileInputs[i].getAttribute("data-expect") === up.file) {
+        var f0 = fileInputs[i].files && fileInputs[i].files[0];
+        if (f0 && f0.name === up.file) return f0;
+        /* Matched input is empty or holds a different file — fall through
+         * to the name fallback below instead of returning the wrong file. */
+      }
+    }
+    /* Fallback: a file selected into any input whose actual name matches
+     * the upload entry still counts — the browser agent may have picked a
+     * file before its label rendered. Name must match exactly. */
+    for (var j = 0; j < fileInputs.length; j++) {
+      var list = fileInputs[j].files || [];
+      for (var k = 0; k < list.length; k++) {
+        if (list[k].name === up.file) return list[k];
+      }
+    }
+    return null;
+  }
+  function updatePublishEnabled() {
+    var uploads = (payloads && payloads.uploads) || [];
+    var allFiles = fileInputs.length === uploads.length && fileInputs.every(function (inp) { return inp.files && inp.files.length > 0; });
+    publishBtn.disabled = !(ownerVerified && payloads && allFiles);
+  }
+  function renderUploadInputs() {
+    uploadInputsEl.innerHTML = "";
+    fileInputs = [];
+    var uploads = (payloads && payloads.uploads) || [];
+    uploads.forEach(function (up) {
+      var label = document.createElement("label");
+      label.textContent = up.file;
+      var inp = document.createElement("input");
+      inp.type = "file";
+      inp.setAttribute("data-expect", up.file);
+      if (up.contentType) inp.accept = up.contentType;
+      inp.addEventListener("change", function () {
+        var f = inp.files && inp.files[0];
+        print("file selected for " + inp.getAttribute("data-expect") + ": " + (f ? f.name + " (" + f.size + " bytes)" : "none"));
+        updatePublishEnabled();
+      });
+      label.appendChild(inp);
+      uploadInputsEl.appendChild(label);
+      fileInputs.push(inp);
+    });
+    if (uploads.length) print("upload inputs ready: " + uploads.map(function (u) { return u.file; }).join(", "));
+    updatePublishEnabled();
+  }
+
+  payloadsInput.addEventListener("change", function () {
+    payloads = null;
+    renderUploadInputs();
+    var f = payloadsInput.files && payloadsInput.files[0];
+    if (!f) { print("payloads.json: no file selected"); return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        payloads = JSON.parse(String(reader.result));
+        printJSON("payloads.json parsed:", { ok: true, stamp: payloads.stamp || null, uploads: (payloads.uploads || []).map(function (u) { return u.file; }), docs: (payloads.docs || []).map(function (d) { return d.path; }) });
+      } catch (e) {
+        payloads = null;
+        print("payloads.json parse FAILED: " + (e && e.message ? e.message : e));
+      }
+      renderUploadInputs();
+    };
+    reader.onerror = function () { print("payloads.json read FAILED"); renderUploadInputs(); };
+    reader.readAsText(f);
+  });
+
+  publishBtn.addEventListener("click", async function () {
+    publishBtn.disabled = true;
+    try {
+      if (!payloads) throw new Error("payloads.json not parsed");
+      /* Uploads: same endpoint/headers/contentType as publish-page.js
+       * finishUpload, with a Blob built from the selected File. */
+      for (const up of payloads.uploads || []) {
+        const file = selectedFileFor(up);
+        if (!file) throw new Error("no file selected for upload " + up.file);
+        const blob = new Blob([file], { type: up.contentType });
+        const r = await fetch("/api/cf/upload/media/" + up.path, { method: "POST", headers: { ...H, "Content-Type": up.contentType }, body: blob });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || j.error) throw new Error("upload " + up.file + " failed: " + r.status + " " + JSON.stringify(j.error || j).slice(0, 200));
+        printJSON("upload:", { ok: true, file: up.file, key: j.Key, bytes: blob.size });
+      }
+      const docsResult = await publishDocs(payloads);
+      printJSON("publishDocs:", docsResult);
+      const verifyResult = await verify(payloads);
+      print("FINAL VERIFY: " + JSON.stringify(verifyResult));
+      print(verifyResult.ok ? "PUBLISH RESULT: SUCCESS" : "PUBLISH RESULT: verify ok=false — see FINAL VERIFY above");
+    } catch (e) {
+      print("ERROR — stopped, no retries: " + (e && e.message ? e.message : e));
+      print("PUBLISH RESULT: FAILED");
+    }
+  });
+
+  /* Owner gate: identical who() call to publish-page.js, plus the
+   * site's own admins-table owner check above. Booted through the
+   * session refresh first (the door fix above): a stored session
+   * gets its renewal chance before the gate judges it, and a
+   * browser with no session is told exactly where the door is
+   * instead of dead-ending. */
+  (async function boot() {
+    if (tok) await refreshSession();
+    if (!tok) {
+      noSession();
+      print("No saved owner session in this browser — sign in on the main site first (see the gate line above), then reload this page.");
+      return;
+    }
+    H = { Authorization: "Bearer " + tok };
+    const me = await who().catch((e) => { throw e; });
+    printJSON("who /api/brain/me:", me);
+    const owner = await checkOwner().catch(() => false);
+    printJSON("owner check /api/cf/rest admins:", { owner: owner });
+    if (!owner) {
+      noSession();
+      controls.hidden = true;
+      ownerVerified = false;
+      updatePublishEnabled();
+      return;
+    }
+    ownerVerified = true;
+    gate.textContent = "Owner verified";
+    controls.hidden = false;
+    updatePublishEnabled();
+  })().catch(function (e) {
+    noSession();
+    print("owner check FAILED: " + (e && e.message ? e.message : e));
+  });
+})();
+</script>
+</body>
+</html>

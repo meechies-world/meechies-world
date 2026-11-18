@@ -141,7 +141,17 @@ export async function onRequestPost({ request, env }) {
     const now = Date.now();
     const id = buildId(now, rand6());
     await writeDoc(env, id, "reports", Object.assign({}, report, { at: now }));
-    const next = pushIndex(index.ids, index.sigs, id, report.sig);
+    /* Auto-reports arrive in bursts, and two posts that read the same
+     * index would overwrite each other's append — a report (and its
+     * dedupe sig) silently lost from the index. Re-read and union right
+     * before writing so a concurrent post's entries survive; what
+     * remains is a single store round-trip of window. (The owner's read
+     * door, /api/reports, also scans the store directly, so a stale
+     * index can never hide a stored report from him.) */
+    const fresh = (await readDoc(env, INDEX_PATH)) || { ids: [], sigs: {} };
+    const mergedIds = Array.from(new Set([].concat(Array.isArray(fresh.ids) ? fresh.ids : [], Array.isArray(index.ids) ? index.ids : [])));
+    const mergedSigs = Object.assign({}, index.sigs && typeof index.sigs === "object" ? index.sigs : {}, fresh.sigs && typeof fresh.sigs === "object" ? fresh.sigs : {});
+    const next = pushIndex(mergedIds, mergedSigs, id, report.sig);
     await writeDoc(env, INDEX_PATH, "reports", next);
     return json({ ok: true, id });
   } catch (_) {

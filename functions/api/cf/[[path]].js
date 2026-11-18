@@ -1,8 +1,50 @@
 /* /api/cf/* — Meechie's World's own free sign-in + database (Cloudflare D1 + KV). See lib/cf.js for the rules. */
-import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, checkInsert, checkUpdate, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
+import { json, setup, hashPass, checkPass, newSession, publicUser, sessionOut, userFrom, isAdmin, take, change, bumpTracksVersion, checkInsert, checkUpdate, hasProfilePhoto, RuleError, verifyGoogle, sha256hex, uuid, randToken } from "../../../lib/cf.js";
+import { bridgeUpstream } from "../../../lib/bridge.js";
 
 // Google "Sign in with Google" client id (public; the Google Cloud project the site already uses)
 const GOOGLE_CLIENT_ID = (env) => env.GOOGLE_CLIENT_ID || "";
+/* LOGIN BRIDGE REDIRECT FIX (2026-11-08): redirect-mode Google sign-in must
+ * always land on the one return address Google has approved for this site
+ * (/api/cf/auth/google-redirect — js/social-login.js no longer switches it).
+ * While the D1 quota wall is up, the D1-backed work behind that address
+ * fails; ONLY that route, the original request (cloned before its form body
+ * is read, so the phone stack runs its own CSRF + verify checks on the
+ * untouched fields) is forwarded behind the scenes to the login bridge
+ * (Malik own-stack phone build, same handler, no quota — the address comes from the shared
+ * resolver lib/bridge.js — the same one functions/api/bridge/cf/[[path]].js uses) and its answer is returned
+ * from this origin. WIDENED 2026-11-09: the bridge is tried on ANY failure
+ * of that D1-backed work, not only wall-classified ones — a non-wall D1
+ * failure stranded sign-ins on the 503 snag page while the bridge sat
+ * healthy. Genuine client answers (CSRF 400, verify 401) and the healthy
+ * path never reach the bridge; if the bridge is down or hangs (10 s fetch
+ * timeout) the original response stands exactly. */
+/* (the bridge address comes from the shared resolver, lib/bridge.js —
+ * imported above; there is no constant here anymore) */
+const WALL_RE = /D1_ERROR|exceeded|quota|1101/i;
+const isWall = (e) => WALL_RE.test(String(e && e.message || e || ""));
+const errToken = (e) => String((e && e.name ? e.name : "") + (e && e.message || e || "")).slice(0, 60).replace(/[^A-Za-z0-9]/g, "");
+async function bridgeGoogleRedirect(clone) {
+  if (!clone) return null;
+  let up;
+  try {
+    const headers = new Headers(clone.headers);
+    headers.delete("host");
+    const init = { method: clone.method, headers, redirect: "manual", signal: AbortSignal.timeout(10000) };
+    if (clone.method !== "GET" && clone.method !== "HEAD" && clone.body) { init.body = clone.body; init.duplex = "half"; }
+    up = await fetch((await bridgeUpstream(new URL(clone.url).origin)) + "/api/cf/auth/google-redirect", init);
+  } catch (_) { return null; }
+  if (!up || up.status >= 500) return null;
+  const out = new Headers();
+  const ct = up.headers.get("content-type"); if (ct) out.set("content-type", ct);
+  const cc = up.headers.get("cache-control"); if (cc) out.set("cache-control", cc);
+  const loc = up.headers.get("location"); if (loc) out.set("location", loc);
+  const cookies = typeof up.headers.getSetCookie === "function" ? up.headers.getSetCookie() : [];
+  if (cookies.length) for (const c of cookies) out.append("set-cookie", c);
+  else { const sc = up.headers.get("set-cookie"); if (sc) out.set("set-cookie", sc); }
+  out.set("x-mw-redirect-err", "bridged");
+  return new Response(up.body, { status: up.status, headers: out });
+}
 // one-time move from the old database: only a request carrying the key whose hash is below is accepted, once
 const IMPORT_HASH = "1bfa482be0f068058d5b130298722a309e115245181f62870c5f0ad9c7010080";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -147,6 +189,7 @@ export async function onRequest(ctx) {
   if (!env.DB) return err("The new database isn't connected yet.", 503, "not_ready");
   const parts = Array.isArray(params.path) ? params.path : [params.path || ""];
   const route = parts.join("/");
+  const grClone = route === "auth/google-redirect" ? request.clone() : null;
   try {
     await setup(env);
     if (route === "health") return json({ ok: true });
@@ -159,18 +202,22 @@ export async function onRequest(ctx) {
     return err("Not found", 404, "not_found");
   } catch (e) {
     if (e instanceof RuleError) return err(e.message, 403, e.code);
-    return err("Something went wrong: " + String(e && e.message || e).slice(0, 160), 500, "server_error");
+    const orig = err("Something went wrong: " + String(e && e.message || e).slice(0, 160), 500, "server_error");
+    if (grClone) { const b = await bridgeGoogleRedirect(grClone); if (b) return b; orig.headers.set("x-mw-redirect-err", errToken(e)); }
+    return orig;
   }
 }
 
 /* ---------------- accounts ---------------- */
 async function auth(what, request, env) {
   let body = {};
+  let grClone = null;
   if (what === "google-redirect") {
     // Google's full-page sign-in (no pop-up window): Google posts the sign-in back here as a form
+    grClone = request.clone();
     const f = await request.formData().catch(() => null);
     const cookie = (request.headers.get("cookie") || "").match(/(?:^|;\s*)g_csrf_token=([^;]+)/);
-    if (!f || !cookie || f.get("g_csrf_token") !== cookie[1]) return new Response("Sign-in expired. Go back and try again.", { status: 400 });
+    if (!f || !cookie || f.get("g_csrf_token") !== cookie[1]) return page("Sign-in expired. Go back and try again.", 400);
     body = { credential: f.get("credential") };
   } else if (request.method === "POST") body = await request.json().catch(() => ({}));
   if (what === "settings") return json({ google: GOOGLE_CLIENT_ID(env) || null, facebook: !!(env.FACEBOOK_APP_ID && env.FACEBOOK_APP_SECRET) });
@@ -201,9 +248,10 @@ async function auth(what, request, env) {
   if (what === "google" || what === "google-redirect") {
     const cid = GOOGLE_CLIENT_ID(env); if (!cid) return err("Google sign-in isn't set up yet.", 501);
     const g = await verifyGoogle(body.credential, cid);
-    if (!g) return what === "google-redirect" ? new Response("Google sign-in didn't work. Go back and try again.", { status: 401 }) : err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
-    const u = await linkProvider(env, "gsub:" + g.sub, String(g.email || "").toLowerCase(), g.name, g.picture);
-    const session = await newSession(env, u);
+    if (!g) return what === "google-redirect" ? page("Google sign-in didn't work. Go back and try again.", 401) : err("Google sign-in didn't work. Try again.", 401, "invalid_credentials");
+    let u, session;
+    try { u = await linkProvider(env, "gsub:" + g.sub, String(g.email || "").toLowerCase(), g.name, g.picture); session = await newSession(env, u); }
+    catch (e) { if (what === "google-redirect") { const b = await bridgeGoogleRedirect(grClone); if (b) return b; const snag = page("Sign-in hit a snag just now. Go back and try again in a little while.", 503); snag.headers.set("x-mw-redirect-err", errToken(e)); return snag; } throw e; }
     if (what === "google-redirect") {
       return signedInPage(session);
     }
@@ -272,7 +320,7 @@ async function auth(what, request, env) {
 const page = (msg, status = 200) => new Response(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Meechie's World</title><body style="background:#0b0a08;color:#f0cf78;font:600 17px system-ui;display:grid;place-items:center;height:100vh;text-align:center;padding:20px"><div>${msg}<br><br><a href="/" style="color:#fff">Back to Meechie's World</a></div>`, { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 function signedInPage(session) {
   const data = JSON.stringify(session).replace(/</g, "\\u003c");
-  return new Response(`<!doctype html><meta charset="utf-8"><title>Signing in…</title><body style="background:#0b0a08;color:#f0cf78;font:600 16px system-ui;display:grid;place-items:center;height:100vh">Signing you in…<script>try{localStorage.setItem("mw-cf-session",${JSON.stringify(data)})}catch(e){}location.replace("/")</script>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "set-cookie": "mw_fb_state=; Path=/api/cf/auth; Max-Age=0" } });
+  return new Response(`<!doctype html><meta charset="utf-8"><title>Signing in…</title><body style="background:#0b0a08;color:#f0cf78;font:600 16px system-ui;display:grid;place-items:center;height:100vh">Signing you in…<script>try{localStorage.setItem("mw-cf-session",${JSON.stringify(data)});localStorage.setItem("mw-pres-fresh","1");localStorage.removeItem("mw_bridge");localStorage.removeItem("mw_bridge_session")}catch(e){}location.replace("/")</script>`, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer", "set-cookie": "mw_fb_state=; Path=/api/cf/auth; Max-Age=0" } });
 }
 // Find or make the member for a proven sign-in (Google / Facebook). `key` is e.g. "gsub:<google id>" or "fbid:<facebook id>".
 async function linkProvider(env, key, email, name, picture) {
@@ -310,6 +358,38 @@ const DOC_COLS = ["path", "coll", "owner", "data", "created_at", "updated_at"];
  * row to receive the owner's doorbell alerts, or seed the brain docs. Admins keep
  * the door for repairs. */
 const SERVER_COLLS = ["gifts", "battlegifts", "battlelikes", "battlevotes", "pushsubs", "brain"];
+/* PROFILE PHOTO LAW (Malik, 2026-11-02): posting and commenting are for
+ * members with a real profile photo. Profile create/update enforcement lives
+ * in lib/cf.js (checkInsert / checkUpdate); this gate covers the content
+ * doors for members whose profile predates the law — their account and old
+ * content stay untouched, they just add a photo before the next post. */
+const POST_COLL = (coll) => coll === "posts" || /^posts\/[^/]+\/replies$/.test(coll);
+async function photoGate(env, coll, uid, admin) {
+  if (admin || !uid || !POST_COLL(coll)) return;
+  const row = await env.DB.prepare("select data from docs where path = ?").bind("members/" + uid).first();
+  let photo = ""; try { photo = JSON.parse((row && row.data) || "{}").photo || ""; } catch (_) {}
+  if (!hasProfilePhoto(photo)) { const e = new RuleError("Add your profile photo before you post — no blank profile pictures on Meechie's World."); e.code = "photo_required"; throw e; }
+}
+/* D1 BURN FIX (2026-11-06): per-isolate memo for the two hottest read-only
+ * aggregates — the plays counter table (a full scan with no possible
+ * filter, re-read every 5 min by every open tab) and docs count queries
+ * (the member counter, re-read every 2 min per tab). Counts may lag up to
+ * the TTL; nothing else changes. bump_play clears the memo on write. */
+const _qCache = new Map();
+function _qGet(k, ttl) { const e = _qCache.get(k); return e && Date.now() - e.at < ttl ? e.v : undefined; }
+function _qSet(k, v) { _qCache.set(k, { at: Date.now(), v }); return v; }
+/* D1 BURN FIX F1 (2026-11-07, AUDIT3): the expression index serving the
+ * elims leaderboard ORDER BY (see rest() below). Ensured lazily in the
+ * docs_requests_kind pattern: the CASE guard keeps a malformed doc from
+ * breaking creation, and a failure to create it is contained — the
+ * select still runs correctly, just unscanned. */
+let elimsIdxTried = false;
+async function ensureElimsIndex(env) {
+  if (elimsIdxTried) return; elimsIdxTried = true;
+  try { await env.DB.prepare("create index if not exists docs_elims on docs (coll, (case when json_valid(data) then json_extract(data, '$.elims') end))").run(); }
+  catch (_) { elimsIdxTried = false; }
+}
+
 async function rest(request, env) {
   const q = await request.json().catch(() => null);
   if (!q || typeof q !== "object") return err("Bad request");
@@ -324,13 +404,44 @@ async function rest(request, env) {
       const where = [], args = [];
       for (const c of ["coll", "path", "owner"]) { const v = f(c); if (v !== undefined) { where.push(c + " = ?"); args.push(String(v)); } }
       // reports are private to the sender and Meechie; the phone-alert channel only to Meechie (same as the old database)
-      if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'", "coll <> 'pushsubs'"); args.push(uid || "-"); }
+      if (!(await isAdmin(env, uid))) { where.push("(coll <> 'reports' or owner = ?)", "path <> 'site/alerts'", "coll <> 'pushsubs'", "path not like 'brain/calls/%'", "path not like 'brain/texts/%'", "(path not like 'brain/member/%' or owner = ?)"); args.push(uid || "-", uid || "-"); }
       const W = where.length ? " where " + where.join(" and ") : "";
-      if (q.count && q.head) { const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: r ? r.n : 0, error: null }); }
+      /* D1 BURN FIX F5 (2026-11-07, AUDIT3): the counts memo was 60 s
+       * per isolate, so the member count (social.js asks every 2 min
+       * per tab) re-ran a count(*) over the whole members collection
+       * on ~120 memo misses an hour. It is 600 s now — the same trade
+       * Malik took for plays in S3. A count display can lag up to
+       * 10 min; the count itself is unchanged whenever it runs. */
+      if (q.count && q.head) { const ck = "count:" + W + "|" + args.join("|"); const cv = _qGet(ck, 600000); if (cv !== undefined) return json({ data: null, count: cv, error: null }); const r = await env.DB.prepare("select count(*) n from docs" + W).bind(...args).first(); return json({ data: null, count: _qSet(ck, r ? r.n : 0), error: null }); }
       let order = " order by created_at asc";
       if (q.order && q.order.col) {
         const m = /^data->([A-Za-z0-9_]{1,40})$/.exec(q.order.col), dir = q.order.asc === false ? "desc" : "asc";
-        if (m) order = ` order by json_extract(data, '$.${m[1]}') is null, json_extract(data, '$.${m[1]}') ${dir}`;
+        if (m) {
+          /* D1 BURN FIX F1 (2026-11-07, AUDIT3): ordering by a data field
+           * made SQLite scan + sort the whole collection on every read
+           * (ORDER BY json_extract cannot use docs_coll; the LIMIT caps
+           * only rows returned, so a page load examined whole collections).
+           * createdAt/joinedAt/at are stamped by the client at the same
+           * instant the server stamps created_at, so ordering by the
+           * indexed created_at column returns the same order while the
+           * index serves the read (LIMIT rows examined). addedAt is NOT
+           * translated: rn-sync stamps it with a synthetic release-order
+           * value (1700000000000 + i*1000), not the insert instant, so
+           * its order is the radio's release order and must stay — the
+           * tracks collection is ~150 rows, so leaving it scanned costs
+           * ~nothing. elims (a true ranking field, no same-instant
+           * column) keeps data ordering behind a json_valid CASE guard
+           * — the old form threw "malformed JSON" on a single bad doc —
+           * served by the docs_elims expression index (ensured below).
+           * Any other field keeps the old form. One known placement
+           * nuance, proved in the fix record: a doc missing the order
+           * field used to sort last and now sorts at its true
+           * chronological position; docs carrying the field keep their
+           * exact relative order. */
+          if (m[1] === "elims") { order = ` order by (case when json_valid(data) then json_extract(data, '$.elims') end) ${dir}`; await ensureElimsIndex(env); }
+          else if (["createdAt", "joinedAt", "at"].includes(m[1])) order = ` order by created_at ${dir}`;
+          else order = ` order by json_extract(data, '$.${m[1]}') is null, json_extract(data, '$.${m[1]}') ${dir}`;
+        }
         else if (["created_at", "updated_at", "path"].includes(q.order.col)) order = ` order by ${q.order.col} ${dir}`;
       }
       const { results } = await env.DB.prepare("select " + (cols.length ? cols.join(",") : "path,data") + " from docs" + W + order + " limit ?").bind(...args, limit).all();
@@ -342,15 +453,21 @@ async function rest(request, env) {
       const r = rows[0] || {}, path = String(r.path || ""), coll = String(r.coll || "");
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins. Update the page and try again."); // gifts only come from /api/coins/gift (paid)
       if (SERVER_COLLS.includes(coll) && !(await isAdmin(env, uid))) throw new RuleError("That isn't allowed.");
-      checkInsert(path, coll, r.data, uid, await isAdmin(env, uid));
+      const insAdmin = await isAdmin(env, uid);
+      checkInsert(path, coll, r.data, uid, insAdmin);
+      await photoGate(env, coll, uid, insAdmin);
       r.data = await leadLock(env, path, r.data); /* mwLeadLock */
       r.data = await corpseGuard(env, path, r.data); /* mwCorpseGuard */
       const now = new Date().toISOString();
-      const res = await env.DB.batch([
-        env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(r.data), now, now),
-        change(env, "docs", path, coll),
-      ]);
-      if (!res[0].meta.changes) return err("That already exists.", 409, "duplicate");
+      /* D1 WRITE CUT (2026-11-12): the insert runs on its own first —
+       * on a duplicate the old batch still landed its changes row (a
+       * wake-up for a write that never happened). The changes row (and
+       * the tracks version bump) now land only when the doc did. */
+      const insRes = await env.DB.prepare("insert or ignore into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(r.data), now, now).run();
+      if (!insRes.meta.changes) return err("That already exists.", 409, "duplicate");
+      const insStmts = [change(env, "docs", path, coll)];
+      if (coll === "tracks") insStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+      await env.DB.batch(insStmts);
       if (Math.random() < 0.02) await env.DB.prepare("delete from changes where at < ?").bind(Date.now() - 864e5).run();
       return json({ data: null, error: null }, 201);
     }
@@ -359,7 +476,9 @@ async function rest(request, env) {
       const row = await env.DB.prepare("select owner, coll from docs where path = ?").bind(path).first();
       if (!row) return json({ data: null, error: null });
       if (!uid || !((row.owner === uid && row.coll !== "members" && !SERVER_COLLS.includes(row.coll)) || (await isAdmin(env, uid)))) throw new RuleError("You can only delete your own.");
-      await env.DB.batch([env.DB.prepare("delete from docs where path = ?").bind(path), change(env, "docs", path, row.coll)]);
+      const delStmts = [env.DB.prepare("delete from docs where path = ?").bind(path), change(env, "docs", path, row.coll)];
+      if (row.coll === "tracks") delStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+      await env.DB.batch(delStmts);
       return json({ data: null, error: null });
     }
   }
@@ -413,8 +532,9 @@ async function rest(request, env) {
     return json({ data: results, error: null });
   }
   if (q.table === "plays" && q.op === "select") {
+    const ck = "plays:" + Math.min(limit, 2000); const cv = _qGet(ck, 600000); if (cv !== undefined) return json({ data: cv, error: null });
     const { results } = await env.DB.prepare("select id, n from plays limit ?").bind(Math.min(limit, 2000)).all();
-    return json({ data: results, error: null });
+    return json({ data: _qSet(ck, results), error: null });
   }
   return err("That isn't allowed.", 403, "permission_denied");
 }
@@ -433,9 +553,12 @@ async function rpc(request, env) {
       if (coll === "gifts") throw new RuleError("Gifts are paid with coins.");
       if (SERVER_COLLS.includes(coll) && !admin) throw new RuleError("That isn't allowed.");
       checkInsert(path, coll, args.p_data, uid, admin);
+      await photoGate(env, coll, uid, admin);
       let freshData = await leadLock(env, path, args.p_data); /* mwLeadLock */
       freshData = await corpseGuard(env, path, freshData); /* mwCorpseGuard */
-      await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)]);
+      const setStmts = [env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, coll, uid, JSON.stringify(freshData), now, now), change(env, "docs", path, coll)];
+      if (coll === "tracks") setStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+      await env.DB.batch(setStmts);
       return json({ data: null, error: null });
     }
     /* DJ BATTLES gate (2026-10-29): while a battle is live, the battler on
@@ -451,6 +574,7 @@ async function rpc(request, env) {
         const src = name === "set_doc" ? (args.p_data || {}) : (args.p_patch || {});
         let bNext = battleMergePerf(storedB, src && typeof src === "object" ? src : {});
         bNext = await corpseGuard(env, path, bNext); /* mwCorpseGuard */
+        if (JSON.stringify(bNext) === (row.data || "")) return json({ data: null, error: null }); /* D1 WRITE CUT (2026-11-12): unchanged payload — no doc write, no changes row */
         await env.DB.batch([env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(bNext), now, path), change(env, "docs", path, row.coll)]);
         return json({ data: null, error: null });
       }
@@ -462,7 +586,14 @@ async function rpc(request, env) {
     checkUpdate(row, next, uid, admin);
     next = await leadLock(env, path, next); /* mwLeadLock */
     next = await corpseGuard(env, path, next); /* mwCorpseGuard */
-    await env.DB.batch([env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(next), now, path), change(env, "docs", path, row.coll)]);
+    /* D1 WRITE CUT (2026-11-12): an update whose payload is byte-
+     * identical to the stored doc changes nothing any client can see —
+     * skip the doc write AND its changes row (the wake-up every open
+     * tab would otherwise chase to re-read the same bytes). */
+    if (JSON.stringify(next) === (row.data || "")) return json({ data: null, error: null });
+    const updStmts = [env.DB.prepare("update docs set data = ?, updated_at = ? where path = ?").bind(JSON.stringify(next), now, path), change(env, "docs", path, row.coll)];
+    if (path.startsWith("tracks/")) updStmts.push(bumpTracksVersion(env)); /* F3: library version stamp */
+    await env.DB.batch(updStmts);
     return json({ data: null, error: null });
   }
   if (name === "bump_play") {
@@ -470,7 +601,25 @@ async function rpc(request, env) {
     if (!uid || !/^[A-Za-z0-9:_-]{1,80}$/.test(id)) return json({ data: null, error: null });
     const day = new Date().toISOString().slice(0, 10);
     const r = await env.DB.prepare("insert or ignore into plays_seen (uid, id, day) values (?,?,?)").bind(uid, id, day).run();
-    if (r.meta.changes) await env.DB.prepare("insert into plays (id, n, updated_at) values (?, 1, ?) on conflict(id) do update set n = n + 1, updated_at = excluded.updated_at").bind(id, new Date().toISOString()).run();
+    if (r.meta.changes) {
+      await env.DB.prepare("insert into plays (id, n, updated_at) values (?, 1, ?) on conflict(id) do update set n = n + 1, updated_at = excluded.updated_at").bind(id, new Date().toISOString()).run();
+      /* D1 BURN FIX F4 (2026-11-07, AUDIT3): the old code cleared the
+       * whole per-isolate memo here, wiping the counts memo too and
+       * forcing a fresh full plays scan on the next select. The payload
+       * after a bump is the same rows with this id's count +1, so update
+       * every cached plays table in place instead — and never touch the
+       * counts memo. A fresh scan returns rows in rowid order, so a new
+       * id (highest rowid) appends at the end — but only when the cached
+       * table is under its limit, since a full cached table would not
+       * have included it either. */
+      for (const [k, e] of _qCache) {
+        if (!k.startsWith("plays:")) continue;
+        const rows = e.v, lim = +k.slice(6) || 2000;
+        const row = rows.find((x) => x && x.id === id);
+        if (row) row.n = (+row.n || 0) + 1;
+        else if (rows.length < lim) rows.push({ id, n: 1 });
+      }
+    }
     return json({ data: null, error: null });
   }
   return err("Unknown action", 404, "not_found");
@@ -537,7 +686,7 @@ async function upload(parts, request, env) {
   const type = request.headers.get("content-type") || "application/octet-stream";
   if (bucket === "media" && (!/^(audio|image|video)\//i.test(type) || /svg|xml|html|javascript/i.test(type))) return err("That file type isn't supported."); // no SVG/HTML: they could run code on the site
   const len = +request.headers.get("content-length") || 0; if (len > MAX) return err("That file is over 25 MB. Post a shorter clip.", 413);
-  if (!(await take(env, "up:" + me.id, 86400, 60))) return err("Upload limit reached for today. Try again tomorrow.", 429, "rate_limited");
+  if (!admin && !(await take(env, "up:" + me.id, 86400, 60))) return err("Upload limit reached for today. Try again tomorrow.", 429, "rate_limited");
   const buf = await request.arrayBuffer(); if (buf.byteLength > MAX) return err("That file is over 25 MB. Post a shorter clip.", 413);
   await env.MEDIA.put(key, buf, { metadata: { type, size: buf.byteLength } });
   return json({ Key: key, error: null });

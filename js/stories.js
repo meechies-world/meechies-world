@@ -8,7 +8,7 @@
 (function () {
   "use strict";
   const view = document.getElementById("v-community"); if (!view) return;
-  window.MW_REAL_STORIES = true;
+  window.MW_REAL_STORIES = true; window.MW_STORIES_PENDING = false; // landed: clear the hold fb-feed checks
   const DAY = 864e5, PHOTO_MS = 6000, MAX_VIDEO_MS = 30000;
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const say = (t) => (typeof toast === "function" ? toast(t) : null);

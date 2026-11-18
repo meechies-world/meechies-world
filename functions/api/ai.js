@@ -2,9 +2,12 @@
 // Every Workers AI model in lib/ai-catalog.js is wired through here: chat brains answer in the
 // chat box (members can pick their brain), image makers return a picture, and the ears / voice /
 // language-plumbing models answer their own JSON shapes for the site's features to use.
-import { answer, verifyAnswer, take, logQuestion, recentQuestions, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { answer, answerAmani, verifyAnswer, take, logQuestion, recentQuestions, SUPABASE_URL, SUPABASE_ANON } from "../../lib/brain.js";
+import { foldChat } from "../../lib/brain-member.js";
 import { userFrom, isAdmin, take as cfTake } from "../../lib/cf.js";
 import { MODELS, MODEL_BY_ID } from "../../lib/ai-catalog.js";
+import * as HANDS from "../../lib/meechie-hands.js";
+import { withVault } from "../../lib/secrets.js";
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 const CHAT_KINDS = new Set(["chat", "reasoning", "code", "vision"]);
 
@@ -51,11 +54,15 @@ async function runKind(env, model, body) {
     if (kind === "tts") {
       const text = String(body.text || "").slice(0, 1200);
       if (!text) return json({ error: "bad_request" }, 400);
-      // Meechie speaks with a man's voice (owner, 2026-10-27): Aura's Arcas.
+      // Meechie speaks with a man's voice (owner, 2026-10-27): Aura's Arcas —
+      // still the default for every caller. A caller may name another Aura
+      // speaker from this allowlist (Amani's chat uses Asteria for her lines,
+      // owner 2026-11-03); anything else falls back to Arcas.
       // If the voice field is ever refused, fall back to the plain call rather
       // than going silent.
+      const AURA_SPEAKERS = new Set(["arcas", "asteria", "luna", "stella", "athena", "hera", "orion"]);
       let out;
-      if (model.includes("aura")) { try { out = await env.AI.run(model, { text, speaker: "arcas" }); } catch (_) { out = await env.AI.run(model, { text }); } }
+      if (model.includes("aura")) { const spk = AURA_SPEAKERS.has(body.speaker) ? body.speaker : "arcas"; try { out = await env.AI.run(model, { text, speaker: spk }); } catch (_) { out = await env.AI.run(model, { text }); } }
       else out = await env.AI.run(model, model.includes("melotts") ? { prompt: text } : { text });
       if (out instanceof ArrayBuffer || ArrayBuffer.isView(out) || (out && typeof out.getReader === "function")) return new Response(out, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
       if (out && typeof out.audio === "string") { const u8 = b64ToBytes(out.audio); return new Response(u8, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } }); }
@@ -88,8 +95,10 @@ async function runKind(env, model, body) {
   }
 }
 
-export async function onRequestPost({ request, env, waitUntil }) {
-  if (!env.AI) return json({ error: "ai_off" }, 501);
+export async function onRequestPost({ request, env: baseEnv, waitUntil }) {
+  if (!baseEnv.AI) return json({ error: "ai_off" }, 501);
+  // keys the owner locked in on the Video Studio's API Keys page fill any gap the dashboard leaves
+  const env = await withVault(baseEnv, ["ANTHROPIC_API_KEY", "TAVILY_API_KEY"]);
   const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!token) return json({ error: "sign_in" }, 401);
   // the site's own sign-in (mw_ session tokens), not the old Supabase one
@@ -119,17 +128,46 @@ export async function onRequestPost({ request, env, waitUntil }) {
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-20).map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
   if (!turns.length || turns[turns.length - 1].role !== "user") return json({ error: "bad_request" }, 400);
+  /* HANDS (Malik, 2026-11-03): an action ask in chat is an ACTION, not
+     a question — the owner's "play more country" produces a logged
+     station action, not a paragraph about country. Authority is
+     decided here, server-side, from the session: the owner gets the
+     full hand; a member gets the member-safe subset (song requests +
+     honest declines) and never station control. Anything that is not
+     an action ask falls through to the normal brain untouched, and an
+     action ask never dies on the chat allowance below. */
+  {
+    const intent = HANDS.handsIntent(turns[turns.length - 1].content);
+    if (intent) {
+      const owner = await isAdmin(env, me.id).catch(() => false);
+      const r = await HANDS.handsAct(env, { role: owner ? "owner" : "member", uid: me.id, name: me.name || "" }, intent, { origin: new URL(request.url).origin, fetchFn: fetch, cookie: request.headers.get("cookie") || "", aiText: (p) => HANDS.handsAiText(env, p) });
+      if (r && r.reply) return json({ reply: r.reply, model: "meechie-hands", hands: r.action || null });
+    }
+  }
   const image = typeof body.image === "string" && body.image.length < 2200000 ? body.image : "";
+  if (body.persona === "amani") {
+    // Amani's chat (her own view): her persona, her own fair-use bucket, and
+    // deliberately NO question log and NO member-memory fold — those are
+    // Meechie's memory systems, and her lane stays separate (owner, 2026-11-03).
+    if (!(await lim("amani", 3600, 60)) || !(await lim("amani-day", 86400, 300)))
+      return json({ reply: "You've chatted with Amani a lot this hour. Take a short break and try again later.", limited: true, persona: "amani" });
+    const outA = await answerAmani(env, turns, { origin: new URL(request.url).origin, token });
+    return json(outA, outA.error ? 503 : 200);
+  }
   // fair-use limit: 60 questions an hour, 300 a day per member (the reply explains it, so every chat box shows it)
   if (!(await lim("ai", 3600, 60)) || !(await lim("ai-day", 86400, 300)))
     return json({ reply: "You've used Meechie's AI a lot this hour. Take a short break and try again later.", limited: true });
-  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true });
+  const out = await answer(env, turns, { origin: new URL(request.url).origin, image, token, model, voice: body.voice === true, uid: me.id, tier: body.tier === "quick" || body.tier === "deep" || body.tier === "auto" ? body.tier : undefined });
   // the brain remembers what members ask (private table, never in the public
   // docs): it feeds the "lately members have been asking" facts on the next
   // answers, and the owner can read the log at GET /api/ai?log.
   if (!out.error && !out.limited && typeof waitUntil === "function") {
     const lastUser = turns[turns.length - 1].content;
     waitUntil((async () => { try { await logQuestion(env, me.id, lastUser); } catch (_) {} })());
+    // host brain (PR-B3): fold THIS member's own signals into their own
+    // memory doc — topics by cheap string matching, never the transcript,
+    // never visible to any other member (lib/brain-member.js throttles it).
+    waitUntil((async () => { try { await foldChat(env, me, lastUser); } catch (_) {} })());
   }
   return json(out, out.error ? 503 : 200);
 }

@@ -1,0 +1,425 @@
+{
+ "v": "1794615927",
+ "files": [
+  {
+   "url": "/lifeline/audio/f68448245c2242dfa9d8.mp3",
+   "bytes": 5747109,
+   "kind": "radio",
+   "etag": "\"55ef113032250d4499e5751131a683e1\""
+  },
+  {
+   "url": "/lifeline/audio/304e7d94a0194befa066.mp3",
+   "bytes": 6083784,
+   "kind": "radio",
+   "etag": "\"33b57e14e3ade870d064873b7b8fcaa6\""
+  },
+  {
+   "url": "/lifeline/audio/33c9cc66b6b04e13b2e4.mp3",
+   "bytes": 6283130,
+   "kind": "radio",
+   "etag": "\"d3acec4350d7a96610764791c7c0e345\""
+  },
+  {
+   "url": "/lifeline/audio/1879e7272d87462aacb6.mp3",
+   "bytes": 4522676,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/rn3358975939etpg.mp3",
+   "bytes": 2390773,
+   "kind": "radio",
+   "etag": "\"651688c93066f57d9ed6b6cb98d113ae\""
+  },
+  {
+   "url": "/lifeline/audio/rn33640782x86us8.mp3",
+   "bytes": 2876446,
+   "kind": "radio",
+   "etag": "\"7e56cc7882a0738f05a8e24655b29a7c\""
+  },
+  {
+   "url": "/lifeline/audio/rn33642580t74cud.mp3",
+   "bytes": 3884327,
+   "kind": "radio",
+   "etag": "\"9f105da9f18c4450fbb71348b3859c80\""
+  },
+  {
+   "url": "/lifeline/audio/rn33654895ykq1zb.mp3",
+   "bytes": 3298699,
+   "kind": "radio",
+   "etag": "\"4b9bb075edf34c91f8fed0d091852f7d\""
+  },
+  {
+   "url": "/lifeline/audio/rn33687876p0ki6d.mp3",
+   "bytes": 5174773,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/rn33707260ka0and.mp3",
+   "bytes": 6592426,
+   "kind": "radio",
+   "etag": "\"c9c5d6c164580a7d33d6bd6233186acd\""
+  },
+  {
+   "url": "/lifeline/audio/rn33707538fnsun4.mp3",
+   "bytes": 4711203,
+   "kind": "radio",
+   "etag": "\"75ecd94150e2a3929f6f4a6413a411cf\""
+  },
+  {
+   "url": "/lifeline/audio/rn33728774812jhk.mp3",
+   "bytes": 5872068,
+   "kind": "radio",
+   "etag": "\"3e5cf775858e59ae109de1a5e5b54d17\""
+  },
+  {
+   "url": "/lifeline/audio/rn33730755l2l3xw.mp3",
+   "bytes": 8038529,
+   "kind": "radio",
+   "etag": "\"81483334e6c7ef0f4a8d6fb420f6f25d\""
+  },
+  {
+   "url": "/lifeline/audio/rn337519384zlron.mp3",
+   "bytes": 3378090,
+   "kind": "radio",
+   "etag": "\"c9ddb512d495c9582d29fa0a167b7ed1\""
+  },
+  {
+   "url": "/lifeline/audio/a9da82beaeba46b4ac4e.mp3",
+   "bytes": 4028038,
+   "kind": "radio",
+   "etag": "\"03e257db5a6608a1a0b1cab1cfdf25c2\""
+  },
+  {
+   "url": "/lifeline/audio/ada25a8df2c7486482fc.mp3",
+   "bytes": 3763025,
+   "kind": "radio",
+   "etag": "\"a582b20c7bfa1d7ab1a5b6167c2191a3\""
+  },
+  {
+   "url": "/lifeline/audio/8ca16e8165b349a39439.mp3",
+   "bytes": 6143958,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/cc221417002b486cb618.mp3",
+   "bytes": 6644885,
+   "kind": "radio",
+   "etag": "\"f3de03e7341901ef9047e1f981830d76\""
+  },
+  {
+   "url": "/lifeline/audio/44605806dac14635be39.mp3",
+   "bytes": 5278472,
+   "kind": "radio",
+   "etag": "\"10c48ed8e10d81ed5845755a9d9550a7\""
+  },
+  {
+   "url": "/lifeline/audio/561078ead1a4481bbed0.mp3",
+   "bytes": 6982783,
+   "kind": "radio",
+   "etag": "\"51b6b51cae240d0f0741f4c90fced803\""
+  },
+  {
+   "url": "/lifeline/audio/rn336445974bnh25.mp3",
+   "bytes": 4096085,
+   "kind": "radio",
+   "etag": "\"cd9e1bc14e4ae41194fba84c64a42264\""
+  },
+  {
+   "url": "/lifeline/audio/rn33707209jj4ix4.mp3",
+   "bytes": 5046715,
+   "kind": "radio",
+   "etag": "\"7391b81d22957ef25c2a76932790b041\""
+  },
+  {
+   "url": "/lifeline/audio/rn337637955hucng.mp3",
+   "bytes": 4468991,
+   "kind": "radio",
+   "etag": "\"c5fbddb5dd98b37428d62fbcf83d2526\""
+  },
+  {
+   "url": "/lifeline/audio/41dc1c7d17ed4b7bb347.mp3",
+   "bytes": 6157733,
+   "kind": "radio",
+   "etag": "\"f4453b2b1e5d87050931b4de422e8f5a\""
+  },
+  {
+   "url": "/lifeline/audio/60a8cf566863408082ba.mp3",
+   "bytes": 5265954,
+   "kind": "radio",
+   "etag": "\"0d0d342c4395888624398eb9b283fb70\""
+  },
+  {
+   "url": "/lifeline/audio/663aee6c306c4e81810b.mp3",
+   "bytes": 6820762,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/c340e5725d8e4c6e94d6.mp3",
+   "bytes": 6566225,
+   "kind": "radio",
+   "etag": "\"05be4e67fb3eb6badf98f032f263d69d\""
+  },
+  {
+   "url": "/lifeline/audio/ea06611cc00841e6a383.mp3",
+   "bytes": 7837926,
+   "kind": "radio",
+   "etag": "\"413d3b3fbd7482f639ca5e739c756d57\""
+  },
+  {
+   "url": "/lifeline/audio/f1bfa6012cc14d2eaa96.mp3",
+   "bytes": 5980790,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/rn33117266i6fh5u.mp3",
+   "bytes": 4117952,
+   "kind": "radio",
+   "etag": "\"a71a85c3bdbe8e6675e151319b4fd8bd\""
+  },
+  {
+   "url": "/lifeline/audio/3e938d8b1d5e4f05beeb.mp3",
+   "bytes": 6006633,
+   "kind": "radio",
+   "etag": "\"618fb781760375edbf1497d66cf9e2de\""
+  },
+  {
+   "url": "/lifeline/audio/e4f1634f76f64f07846c.mp3",
+   "bytes": 6559612,
+   "kind": "radio",
+   "etag": "\"f67289929720f879b8f3786ecfc10223\""
+  },
+  {
+   "url": "/lifeline/audio/rn33481139kesu4v.mp3",
+   "bytes": 8489977,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/rn33481163llp2bm.mp3",
+   "bytes": 6236728,
+   "kind": "radio",
+   "etag": "\"7e421199ecc898c0afd79ef92e314906\""
+  },
+  {
+   "url": "/lifeline/audio/rn33483912d2u1px.mp3",
+   "bytes": 6873734,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/rn33578337wlvkc8.mp3",
+   "bytes": 3520489,
+   "kind": "radio",
+   "etag": "\"770ad9574e56f3921aec4f5901ae307f\""
+  },
+  {
+   "url": "/lifeline/audio/rn3365150199wajx.mp3",
+   "bytes": 5689410,
+   "kind": "radio",
+   "etag": "\"4f10b906d3d73356742aaf714626f8fc\""
+  },
+  {
+   "url": "/lifeline/audio/rn33678319dnqerl.mp3",
+   "bytes": 4764473,
+   "kind": "radio",
+   "etag": "\"ca70a2044397991f0e2b883c3ff0700d\""
+  },
+  {
+   "url": "/lifeline/audio/rn336809020rx8ad.mp3",
+   "bytes": 4494323,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/rn3369121723ugvr.mp3",
+   "bytes": 4766310,
+   "kind": "radio",
+   "etag": "\"9716411b2b16e62b704f8b5e6de03762\""
+  },
+  {
+   "url": "/lifeline/audio/rn337173128y2scs.mp3",
+   "bytes": 3609348,
+   "kind": "radio",
+   "etag": "\"f9af3cab167d191e5b1e4c8650d91bbc\""
+  },
+  {
+   "url": "/lifeline/audio/rn337356134yg4z9.mp3",
+   "bytes": 3874872,
+   "kind": "radio"
+  },
+  {
+   "url": "/lifeline/audio/rn33737042339dfd.mp3",
+   "bytes": 3881782,
+   "kind": "radio",
+   "etag": "\"09849447dfb0144c75fc87505f149170\""
+  },
+  {
+   "url": "/lifeline/audio/a00905ce8d724992bd9b.mp3",
+   "bytes": 4041221,
+   "kind": "radio",
+   "etag": "\"a251af03ac1784fe2fe31c17d6ff76eb\""
+  },
+  {
+   "url": "/lifeline/audio/d2508c08cef1426aa801.mp3",
+   "bytes": 5961410,
+   "kind": "radio",
+   "etag": "\"34ce67fe8735951590b7ddcfc98b266c\""
+  },
+  {
+   "url": "/lifeline/audio/a540e5e8248d4819b469.mp3",
+   "bytes": 7710373,
+   "kind": "radio",
+   "etag": "\"b431e3184f55c3d5db659c6ff8bf2da4\""
+  },
+  {
+   "url": "/lifeline/audio/b84546b6d0d1432a9236.mp3",
+   "bytes": 6145201,
+   "kind": "radio",
+   "etag": "\"8e68dd03e8b3c1fc834d0224c1947680\""
+  },
+  {
+   "url": "/lifeline/audio/rn33106322wm109r.mp3",
+   "bytes": 7600311,
+   "kind": "radio",
+   "etag": "\"ae1a4579f4bd091c88f4ac1c6c6a6d6a\""
+  },
+  {
+   "url": "/media/barbershop-cartoon-v2-p1.mp4",
+   "bytes": 19313429,
+   "kind": "tv-show",
+   "etag": "\"db6c761d5816eb98f842339730f13940\""
+  },
+  {
+   "url": "/media/barbershop-cartoon-v2-p2.mp4",
+   "bytes": 19134236,
+   "kind": "tv-show",
+   "etag": "\"12616e5196ad55c57ed7bc1b9970b658\""
+  },
+  {
+   "url": "/media/spot-trump-president.mp4",
+   "bytes": 16895128,
+   "kind": "tv-break",
+   "etag": "\"35f280febc48553acc500251bc7e2869\""
+  },
+  {
+   "url": "/media/dj-battle-cartoon-p1.mp4",
+   "bytes": 16655033,
+   "kind": "tv-show",
+   "etag": "\"a11da7252f2470a1d1b431bfe44d4373\""
+  },
+  {
+   "url": "/media/dj-battle-cartoon-p2.mp4",
+   "bytes": 15951256,
+   "kind": "tv-show",
+   "etag": "\"5e66c49327ac8331cd60fee5da902df3\""
+  },
+  {
+   "url": "/media/spot-trump-grillz.mp4",
+   "bytes": 5104911,
+   "kind": "tv-break",
+   "etag": "\"11da50cefd3ffaad68796e970e8899b1\""
+  },
+  {
+   "url": "/media/spmw-ep3-p1.mp4",
+   "bytes": 20943552,
+   "kind": "tv-show"
+  },
+  {
+   "url": "/media/spmw-ep3-p2.mp4",
+   "bytes": 21489909,
+   "kind": "tv-show",
+   "etag": "\"f9c6ee3c87ec935373f1252e5091340d\""
+  },
+  {
+   "url": "/media/my-empire-commercial.mp4",
+   "bytes": 7196353,
+   "kind": "tv-break",
+   "etag": "\"161a1f8e385e7017dab1a9f057c7693f\""
+  },
+  {
+   "url": "/media/spmw-ep4-p1.mp4",
+   "bytes": 22192147,
+   "kind": "tv-show",
+   "etag": "\"14c6674cadc04374648a6542429d95e6\""
+  },
+  {
+   "url": "/media/spmw-ep4-p2.mp4",
+   "bytes": 22232164,
+   "kind": "tv-show",
+   "etag": "\"0a4ef1f9955f1386d595f71ca3a37e59\""
+  },
+  {
+   "url": "/media/my-empire-by10.mp4",
+   "bytes": 2128357,
+   "kind": "tv-break",
+   "etag": "\"3087bd895e2420c24bbc1ecc4dfaed94\""
+  },
+  {
+   "url": "/media/squishy-saga-s1e1-p1.mp4",
+   "bytes": 15760728,
+   "kind": "tv-show",
+   "etag": "\"906201dce02154118b2d63fee8e149e6\""
+  },
+  {
+   "url": "/media/squishy-saga-s1e1-p2.mp4",
+   "bytes": 12514584,
+   "kind": "tv-show",
+   "etag": "\"b751542bebd09ac25ce6e242d53d6595\""
+  },
+  {
+   "url": "/media/squishy-saga-s1e1-part2.mp4",
+   "bytes": 23869331,
+   "kind": "tv-show"
+  },
+  {
+   "url": "/media/my-empire-commercial-v2.mp4",
+   "bytes": 5797914,
+   "kind": "tv-break"
+  },
+  {
+   "url": "/media/spot-bandz.mp4",
+   "bytes": 15691178,
+   "kind": "tv-break"
+  },
+  {
+   "url": "/media/my-empire-8oclock.mp4",
+   "bytes": 2516713,
+   "kind": "tv-break",
+   "etag": "\"1e9ef74831c496c61ddc8cad27a62e0d\""
+  },
+  {
+   "url": "/media/my-empire-shop-station-family.mp4",
+   "bytes": 1908102,
+   "kind": "tv-break",
+   "etag": "\"eb09eeb6f1cda892eeb6ba244e92294f\""
+  },
+  {
+   "url": "/media/my-empire-family-foundation.mp4",
+   "bytes": 1917212,
+   "kind": "tv-break",
+   "etag": "\"aefcd01f70389bfd4a5c5dbebc3ef162\""
+  },
+  {
+   "url": "/media/my-empire-12-shirts.mp4",
+   "bytes": 1921915,
+   "kind": "tv-break"
+  }
+ ],
+ "totals": {
+  "files": 69,
+  "bytes": 529414686,
+  "mb": 504.9,
+  "byKind": {
+   "radio": {
+    "files": 48,
+    "bytes": 258280534
+   },
+   "tv-show": {
+    "files": 11,
+    "bytes": 210056369
+   },
+   "tv-break": {
+    "files": 10,
+    "bytes": 61077783
+   }
+  },
+  "capBytes": 943718400
+ }
+}

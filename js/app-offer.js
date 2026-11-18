@@ -18,7 +18,8 @@
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   const css = D.createElement("style");
-  css.textContent = `#mw-appoffer{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar,0px) + 12px + env(safe-area-inset-bottom,0px));z-index:9998;max-width:440px;margin:0 auto;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;padding:12px 14px;border-radius:18px;background:linear-gradient(180deg,rgba(28,22,12,.97),rgba(8,7,5,.98));box-shadow:inset 0 0 0 1.5px rgba(232,190,100,.7),0 16px 40px rgba(0,0,0,.6),0 0 24px rgba(255,190,70,.18);color:#f3ead2;font:500 14px/1.35 var(--body,system-ui);animation:mwAoIn .35s cubic-bezier(.2,.8,.2,1)}
+  css.textContent = `body.djr-on #mw-appoffer{bottom:calc(var(--tabbar,0px) + 76px + env(safe-area-inset-bottom,0px))!important}
+#mw-appoffer{position:fixed;left:12px;right:12px;bottom:calc(var(--tabbar,0px) + 12px + env(safe-area-inset-bottom,0px));z-index:9998;max-width:440px;margin:0 auto;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center;padding:12px 14px;border-radius:18px;background:linear-gradient(180deg,rgba(28,22,12,.97),rgba(8,7,5,.98));box-shadow:inset 0 0 0 1.5px rgba(232,190,100,.7),0 16px 40px rgba(0,0,0,.6),0 0 24px rgba(255,190,70,.18);color:#f3ead2;font:500 14px/1.35 var(--body,system-ui);animation:mwAoIn .35s cubic-bezier(.2,.8,.2,1)}
 @keyframes mwAoIn{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
 #mw-appoffer img{grid-row:1 / span 2;width:54px;height:54px;border-radius:14px;object-fit:cover;box-shadow:0 0 0 1.5px #8a6d1f}
 #mw-appoffer b{color:#ffe08a;font-size:15px}
@@ -34,6 +35,7 @@
   function offer(app) {
     if (D.getElementById("mw-appoffer")) return;
     if (window.MW_screenClear && !window.MW_screenClear("mw-appoffer")) return;
+    if (window.MW_popGate && !window.MW_popGate()) return; /* pop-up spacing (owner, 2026-11-02): a denied claim leaves offeredThisVisit false, so the 5s tick tries again after the gap */
     offeredThisVisit = true; try { sessionStorage.setItem("mw_appoffer_done", "1"); } catch (_) {}
     const seen = get("mw_appoffer_seen", {}); seen[app.id] = Date.now(); put("mw_appoffer_seen", seen);
     const c = D.createElement("div"); c.id = "mw-appoffer"; c.setAttribute("role", "dialog"); c.setAttribute("aria-label", "Get the " + app.name + " app");

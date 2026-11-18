@@ -64,7 +64,7 @@ async function liveMint(request, env, c, me, body) {
   // host: the owner only — this is the one door onto the master screen
   if (!me) return json({ error: "sign_in" }, 401);
   if (!(await isAdmin(env, me.id))) return json({ error: "owner", message: "Only Meechie can start the live video." }, 403);
-  if ((await take(env, "kitpub:" + me.id, 3600, 12)) === false)
+  if ((await take(env, "kitpub:" + me.id, 3600, 36)) === false)
     return json({ error: "limit", message: "Too many live video starts this hour. Try again later." }, 429);
   const mt = await kit(c, "/meetings", { method: "POST", body: JSON.stringify({ title: "Meechie's World — Live Studio" }) });
   const mid = (mt.ok && mt.data && (mt.data.id || mt.data.meeting_id)) || "";
