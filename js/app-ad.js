@@ -94,8 +94,15 @@
       rails.forEach(function (r) { r.className = "mw-ad-rail"; products.slice(0, 10).forEach(function (p) { r.appendChild(card(p)); }); r.style.minHeight = ""; });
       if (slots.length) setInterval(function () { if (!document.hidden) slots.forEach(fill); }, 12000);
     };
-    fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) { got.printify = (j && j.products) || []; }).catch(function () {}).then(step);
-    fetch("/api/shopify").then(function (r) { return r.json(); }).then(function (j) { got.shopify = (j && j.products) || []; }).catch(function () {}).then(step);
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem("mw-catalog-v1") || "null"); } catch (e) {}
+    if (cached && Array.isArray(cached.store) && Array.isArray(cached.shopify) && (Date.now() - (cached.at || 0) < 15 * 60 * 1000)) {
+      got.printify = cached.store; got.shopify = cached.shopify; step(); step();
+    } else {
+      var fresh = { at: Date.now(), store: [], shopify: [], sUp: 0, hUp: 0 };
+      fetch("/api/store").then(function (r) { return r.json(); }).then(function (j) { got.printify = (j && j.products) || []; fresh.store = got.printify; fresh.sUp = (j && j.updated) || 0; }).catch(function () {}).then(step);
+      fetch("/api/shopify").then(function (r) { return r.json(); }).then(function (j) { got.shopify = (j && j.products) || []; fresh.shopify = got.shopify; fresh.hUp = (j && j.updated) || 0; }).catch(function () {}).then(function () { try { var cur = JSON.parse(localStorage.getItem("mw-catalog-v1") || "null"); if ((!cur || (cur.at || 0) <= fresh.at) && (fresh.store.length || fresh.shopify.length)) localStorage.setItem("mw-catalog-v1", JSON.stringify(fresh)); } catch (e) {} }).then(step);
+    }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);

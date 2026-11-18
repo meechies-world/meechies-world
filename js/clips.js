@@ -46,7 +46,7 @@ body.has-player #v-clips .rail{bottom:70px}`;
   }
   function render() {
     const list = clips(), uid = ME();
-    if (!list.length) { if (!box.querySelector(".clip-empty")) box.innerHTML = '<div class="clip-empty"><h3>No clips yet</h3><p>Be the first. Tap + to post a video.</p></div>'; els.clear(); return; }
+    if (!list.length) { if (!box.querySelector(".clip-empty")) box.innerHTML = '<div class="clip-empty"><span class="ce-ic" aria-hidden="true">🎬</span><h3>No clips yet</h3><p>Be the first one on the wall. Post a short video and everybody swiping sees it.</p><label class="ce-go" for="clip-file">＋ Post your first clip</label></div>'; els.clear(); return; }
     box.querySelector(".clip-empty")?.remove();
     const keep = new Set(list.map((p) => p.id));
     for (const [id, el] of els) if (!keep.has(id)) { el.remove(); els.delete(id); }

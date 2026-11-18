@@ -16,18 +16,7 @@
     ["applemusic", "Apple Music", "paste your Apple Music link"], ["twitch", "Twitch", "username"], ["kick", "Kick", "username"], ["discord", "Discord", "paste your invite link"],
     ["telegram", "Telegram", "@username"], ["pinterest", "Pinterest", "username"], ["reddit", "Reddit", "u/username"], ["venmo", "Venmo", "@username"],
     ["paypal", "PayPal", "paypal.me/you"], ["linktree", "Linktree", "username"], ["patreon", "Patreon", "username"], ["bluesky", "Bluesky", "name.bsky.social"], ["tumblr", "Tumblr", "username"], ["vimeo", "Vimeo", "username"], ["rumble", "Rumble", "channel name"], ["lemon8", "Lemon8", "@username"], ["triller", "Triller", "@username"], ["audiomack", "Audiomack", "artist name"], ["bandcamp", "Bandcamp", "artist name"], ["substack", "Substack", "name"], ["medium", "Medium", "@username"], ["etsy", "Etsy", "shop name"], ["depop", "Depop", "username"], ["poshmark", "Poshmark", "closet name"], ["truthsocial", "Truth Social", "@username"], ["mastodon", "Mastodon", "paste your profile link"], ["signal", "Signal", "paste your Signal link"], ["tidal", "Tidal", "paste your Tidal link"], ["amazonmusic", "Amazon Music", "paste your link"], ["clubhouse", "Clubhouse", "@username"], ["bereal", "BeReal", "username"], ["messenger", "Facebook Messenger", "username"], ["onlinestore", "Your online store", "paste the link"], ["other", "Any other app", "paste the link"]];
-  const BASE = { facebook: "https://facebook.com/", snapchat: "https://snapchat.com/add/", instagram: "https://instagram.com/", tiktok: "https://tiktok.com/@", youtube: "https://youtube.com/@", x: "https://x.com/", whatsapp: "https://wa.me/", cashapp: "https://cash.app/$", threads: "https://threads.net/@", linkedin: "https://linkedin.com/in/", soundcloud: "https://soundcloud.com/", twitch: "https://twitch.tv/", kick: "https://kick.com/", telegram: "https://t.me/", pinterest: "https://pinterest.com/", reddit: "https://reddit.com/user/", venmo: "https://venmo.com/u/", paypal: "https://paypal.me/", linktree: "https://linktr.ee/", patreon: "https://patreon.com/", bluesky: "https://bsky.app/profile/", tumblr: "https://tumblr.com/", vimeo: "https://vimeo.com/", rumble: "https://rumble.com/c/", lemon8: "https://www.lemon8-app.com/@", triller: "https://triller.co/@", audiomack: "https://audiomack.com/", bandcamp: "https://{v}.bandcamp.com", substack: "https://{v}.substack.com", medium: "https://medium.com/@", etsy: "https://etsy.com/shop/", depop: "https://depop.com/", poshmark: "https://poshmark.com/closet/", truthsocial: "https://truthsocial.com/@", clubhouse: "https://clubhouse.com/@", bereal: "https://bere.al/", messenger: "https://m.me/" };
-  const LINK_ONLY = new Set(["spotify", "applemusic", "discord", "other", "mastodon", "signal", "tidal", "amazonmusic", "onlinestore"]); // these need a full https:// link
-  // turn "@name", "name" or a full link into a safe link for that app
-  function socUrl(k, v) {
-    v = String(v || "").trim(); if (!v) return "";
-    if (/^https:\/\//i.test(v)) { try { const u = new URL(v); return u.protocol === "https:" ? u.href : ""; } catch (_) { return ""; } }
-    if (LINK_ONLY.has(k)) return "";
-    if (k === "whatsapp") { const d = v.replace(/\D/g, ""); return d.length >= 10 ? BASE.whatsapp + (d.length === 10 ? "1" + d : d) : ""; }
-    v = v.replace(/^(https?:\/\/)?(www\.)?[a-z.]*\.(com|me|app)\/(add\/|@)?/i, "").replace(/^[@$]/, "").replace(/[^\w.\-]/g, "");
-    return v ? (BASE[k].includes("{v}") ? BASE[k].replace("{v}", v) : BASE[k] + v) : "";
-  }
-  window.MW_socUrl = socUrl;
+  const socUrl = window.MW_socUrl; // carved out eager in app-core (max-speed Lever 2): friends.js paints members' social links through it on any surface
   const socBox = ([k, n, ph]) => `<label>${n}<input type="text" id="pss-${k}" maxlength="120" placeholder="${ph}" autocomplete="off"></label>`;
   const INTERESTS = ["🎤 Hip-hop & rap", "🎶 R&B & soul", "🙏 Gospel", "🎧 Making beats", "🎬 Movies & TV", "📺 Live TV", "📚 Books", "👗 Fashion & clothes", "💇 Hair & nails", "💈 Barber", "⚖️ Legal help", "💼 Business & money", "🪙 Crypto", "🎮 Games", "🏀 Sports", "🍳 Cooking", "💻 Tech & AI", "🌍 History & Egypt", "❤️ Dating", "👨‍👩‍👧 Family", "🛠️ Remodeling", "✈️ Travel"];
   let picked = new Set();
@@ -143,7 +132,7 @@
         if (window.MW && MW.uploadMedia) { const up = await MW.uploadMedia(await (await fetch(dataUrl)).blob(), { type: "image/jpeg", ext: "jpg" }); if (up && /^https:\/\//.test(up.url)) cover = up.url; d._paint(); }
       } catch (err) { say("Couldn't add the cover photo: " + (err.message || err)); }
     });
-    d.querySelector("#ps-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_ps_later", "1"); } catch (_) {} d.close(); });
+    d.querySelector("#ps-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_ps_later", "1"); localStorage.setItem("mw_ps_later_at", String(Date.now())); } catch (_) {} d.close(); });
     d.querySelector("#ps-form").addEventListener("submit", save);
     return d;
   }
@@ -251,7 +240,9 @@
 <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost" type="button" id="pq-later">Skip for now</button><button class="btn" type="submit" id="pq-save">Save</button></div></form>`;
       document.body.appendChild(d);
       d._paint = picStrip(d.querySelector("#pq-pics"), () => qPics, (a) => { qPics = a; });
-      d.querySelector("#pq-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_pq_later", "1"); } catch (_) {} d.close(); });
+      d.querySelector("#pq-later").addEventListener("click", () => { try { sessionStorage.setItem("mw_pq_later", "1"); localStorage.setItem("mw_pq_later_at", String(Date.now())); } catch (_) {} d.close(); });
+      // PROFILE PHOTO LAW (2026-11-02): while no picture is added, Esc can't dismiss this card either
+      d.addEventListener("cancel", (e) => { if (!qPics.length) e.preventDefault(); });
       d.querySelector("#pq-form").addEventListener("submit", async (e) => {
         e.preventDefault(); if (qBusy || !DB() || !ME()) return;
         const phone = d.querySelector("#pq-phone").value.trim().replace(/[^\d+()\-.\s]/g, "").slice(0, 20);
@@ -271,6 +262,13 @@
     }
     const p = P() || {}; qPics = picsOf(p);
     d.querySelector("#pq-phone").value = p.phone || privPhone(); d.querySelector("#pq-pub").checked = !!p.phonePublic;
+    /* PROFILE PHOTO LAW (2026-11-02): with no photo at all this card is
+     * REQUIRED — no Skip until a picture is added, and it says the law
+     * plainly. (A member who has a photo but no phone keeps the Skip.) */
+    const needPic = !qPics.length;
+    d.querySelector("#pq-later").hidden = needPic;
+    d.querySelector("#pq-form h3").textContent = needPic ? "📸 Add your profile photo" : "📸 Finish your profile";
+    d.querySelector("#pq-form p").textContent = needPic ? "Meechie's World law: every profile has a real photo — no blank profile pictures. Add yours to keep posting and commenting." : "Add your profile pictures and phone number so friends know it's really you.";
     d._paint(); if (!d.open) d.showModal();
   }
   window.MW_profileSetup = { open, quick };
@@ -284,19 +282,52 @@
   }
 
   // on entry: new members get the full designer (picture + phone at the top);
-  // members who skipped the picture or phone get the short card, once per visit.
-  // Both wait for the welcome video, the entrance and any other pop-up to finish first.
+  // members who skipped the picture or phone get the short card. The nudge is
+  // a dismissible CARD at the top of the home view — never a full-screen
+  // takeover while someone is browsing (owner report, 2026-10-29: the modal
+  // ambushed people mid-scroll on home). The dialogs themselves still open
+  // from the profile area (the button above, MW_profileSetup) as before.
+  // "Later" — on the card or in either dialog — is stamped in localStorage
+  // and holds for 30 days on this device; the card shows at most once per
+  // session, and a finished profile retires it for good.
+  const DAY30 = 30 * 24 * 3600 * 1000;
+  const laterAt = (k) => { try { return +localStorage.getItem(k) || 0; } catch (_) { return 0; } };
+  const sflag = (k) => { try { return sessionStorage.getItem(k) === "1"; } catch (_) { return false; } };
+  const stampLater = () => { try { const n = String(Date.now()); localStorage.setItem("mw_ps_later_at", n); localStorage.setItem("mw_pq_later_at", n); sessionStorage.setItem("mw_ps_later", "1"); sessionStorage.setItem("mw_pq_later", "1"); } catch (_) {} };
+  function nudgeCard(which) {
+    if (document.getElementById("ps-nudge")) return;
+    const home = document.getElementById("v-home"); if (!home) return;
+    const wrap = home.querySelector(".wrap") || home;
+    const card = document.createElement("div");
+    card.id = "ps-nudge"; card.className = "card";
+    card.style.cssText = "margin:0 0 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap";
+    card.innerHTML = "<span style='flex:1;min-width:200px'><b>🎨 Design your profile</b><br><small class='muted'>Add your picture and phone number so friends know it is really you.</small></span>";
+    const bOpen = document.createElement("button"); bOpen.type = "button"; bOpen.className = "btn sm"; bOpen.textContent = "🎨 Set up my profile";
+    bOpen.addEventListener("click", () => { card.remove(); (which === "full" ? open : quick)(); });
+    const bLat = document.createElement("button"); bLat.type = "button"; bLat.className = "btn ghost sm"; bLat.textContent = "Later";
+    bLat.addEventListener("click", () => { stampLater(); card.remove(); });
+    card.appendChild(bOpen); card.appendChild(bLat);
+    wrap.insertBefore(card, wrap.firstChild);
+  }
   let tries = 0;
   const t = setInterval(() => {
     if (++tries > 300) return clearInterval(t);
     const p = P(); if (!ME() || !p) return;
-    const flag = (k) => { try { return sessionStorage.getItem(k) === "1"; } catch (_) { return false; } };
+    if (sflag("mw_ps_shown")) return clearInterval(t);
+    /* PROFILE PHOTO LAW (2026-11-02): no photo at all outranks every "later"
+     * hold — the photo card is needed-right-away and returns until the
+     * member adds one. Phone-only missing stays dismissible below. */
+    const photoMissing = !picsOf(p).length;
     const missing = !p.photo || !(p.phone || privPhone());
-    const which = !p.setupDone ? (flag("mw_ps_later") ? null : "full") : (missing && !flag("mw_pq_later") ? "quick" : null);
+    const which = photoMissing ? "quick" : (!p.setupDone ? "full" : (missing ? "quick" : null));
     if (!which) return clearInterval(t);
-    const en = document.getElementById("enter");
-    if ((en && !en.hidden) || document.getElementById("wv-box") || document.getElementById("mw-choices") || document.querySelector("dialog[open]") || document.documentElement.classList.contains("gated")) return;
-    if (window.MW_screenClear && !MW_screenClear("pq")) return;
-    clearInterval(t); setTimeout(() => { if (!document.querySelector("dialog[open]")) (which === "full" ? open : quick)(); }, 1500);
+    if (!photoMissing) {
+      if (sflag(which === "full" ? "mw_ps_later" : "mw_pq_later")) return clearInterval(t);
+      if (Date.now() - laterAt(which === "full" ? "mw_ps_later_at" : "mw_pq_later_at") < DAY30) return clearInterval(t);
+    }
+    if (document.documentElement.classList.contains("gated")) return;
+    clearInterval(t);
+    try { sessionStorage.setItem("mw_ps_shown", "1"); } catch (_) {}
+    nudgeCard(which);
   }, 2000);
 })();

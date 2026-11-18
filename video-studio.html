@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Meechie Video Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Owner tool: one column, tabs on top, black ground with gold trim (house style) */
+  --ink:#0b0a08; --panel:#15130f; --line:#3a3122; --gold:#d4a845; --gold-soft:#8a6d2c; --text:#f1ead9; --muted:#a49a85; --good:#5fbf7f; --bad:#e0705f;
+  --display:"Cinzel", Georgia, serif; --body:"Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink);color:var(--text);font:15px/1.5 var(--body)}
+body{padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px));max-width:760px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:.02em}
+h1{font-size:1.35rem;color:var(--gold)} h2{font-size:1rem;color:var(--gold)}
+header{border-bottom:1px solid var(--gold);padding-bottom:10px;margin-bottom:12px;display:flex;flex-direction:column;gap:2px}
+.sub{font-variant:small-caps;letter-spacing:.12em;color:var(--muted);font-size:.78rem}
+nav{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px}
+button,select,input,textarea{font:inherit;color:var(--text)}
+button{background:transparent;border:1px solid var(--gold-soft);border-radius:8px;padding:9px 14px;cursor:pointer;flex:0 0 auto}
+button:hover{border-color:var(--gold)} button.on{background:#2a2213;border-color:var(--gold);color:var(--gold)}
+button.primary{background:var(--gold);border-color:var(--gold);color:#120f08;font-weight:700}
+button:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+select,input,textarea{background:#0f0d0a;border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+textarea{min-height:90px;resize:vertical}
+label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.note{font-size:.8rem;color:var(--muted)}
+.chip{display:inline-block;border:1px solid var(--gold-soft);color:var(--gold);border-radius:999px;padding:1px 9px;font-size:.72rem}
+.status{font-size:.86rem;padding:9px 11px;border-radius:8px;background:#1d1910;border:1px solid var(--line)}
+.status.err{border-color:var(--bad);color:#f3b7ad} .status.ok{border-color:var(--good);color:#bfe8cc}
+.hidden{display:none!important}
+.msg{padding:10px 12px;border-radius:12px;background:#0f0d0a;border:1px solid var(--line);white-space:pre-wrap}
+.msg b.n{color:var(--gold);font-family:var(--display);font-size:.78rem;display:block}
+.shot{display:grid;grid-template-columns:56px 1fr;gap:8px;border-top:1px solid var(--line);padding-top:6px;font-size:.88rem}
+.shot .t{color:var(--gold);font-variant-numeric:tabular-nums}
+.cap{white-space:pre-wrap;background:#0f0d0a;border-radius:8px;padding:9px;font-size:.88rem}
+.price{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums;color:var(--gold)}
+.meter{height:8px;border-radius:99px;background:#0f0d0a;border:1px solid var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--gold)}
+video{width:100%;max-height:70vh;border-radius:10px;background:#000}
+.vid{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.key{display:flex;justify-content:space-between;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding:8px 0}
+.key:last-child{border-bottom:0}
+.key code{font-size:.85rem;color:var(--text)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>MEECHIE VIDEO STUDIO</h1>
+  <span class="sub">Meechie's World Inc • Conscientia • Owner only</span>
+</header>
+
+<div id="gate" class="status hidden"></div>
+
+<nav aria-label="Studio sections">
+  <button class="on" data-tab="make" id="t-make">Make a video</button>
+  <button data-tab="mine" id="t-mine">My videos</button>
+  <button data-tab="keys" id="t-keys">API keys</button>
+</nav>
+
+<!-- MAKE -->
+<section id="make" class="stack">
+  <div class="panel">
+    <div class="msg"><b class="n">MEECHIE</b>Tell me the idea. I'll write the commercial, then you pick the look and I'll make it, with sound.</div>
+    <label for="idea">Your idea
+      <textarea id="idea" placeholder="e.g. A 10-second ad for my SpaceX book: Meechie on a rooftop at night, rocket launch in the distance, he holds up the book."></textarea>
+    </label>
+    <div class="grid">
+      <label for="secs">Length
+        <select id="secs"><option value="5">5 seconds</option><option value="8">8 seconds</option><option value="10" selected>10 seconds</option><option value="15">15 seconds</option></select>
+      </label>
+      <label for="aspect">Shape
+        <select id="aspect"><option value="9:16">Vertical 9:16</option><option value="16:9">Wide 16:9</option><option value="1:1">Square 1:1</option></select>
+      </label>
+    </div>
+    <div class="row"><button id="planBtn" class="primary">Write my commercial</button><span id="planNote" class="note"></span></div>
+  </div>
+
+  <div class="panel hidden" id="planCard">
+    <div class="row" style="justify-content:space-between"><h2 id="pTitle"></h2><span class="chip" id="pLen"></span></div>
+    <div id="pShots"></div>
+    <div><span class="note">Voiceover</span><div class="cap" id="pVo"></div></div>
+    <label for="pPrompt">Video prompt (you can edit it)
+      <textarea id="pPrompt" style="min-height:150px"></textarea>
+    </label>
+    <label for="pNeg">Keep out of the video
+      <input id="pNeg">
+    </label>
+    <div><span class="note">Caption</span><div class="cap" id="pCap"></div></div>
+  </div>
+
+  <div class="panel hidden" id="renderCard">
+    <h2>Make it</h2>
+    <div class="grid">
+      <label for="model">Video model <select id="model"></select></label>
+      <label for="quality">Quality <select id="quality"></select></label>
+      <label for="dur">Seconds <select id="dur"></select></label>
+    </div>
+    <p class="note" id="modelBlurb" style="margin:0"></p>
+    <label for="photo">Start from a photo (optional: your Meechie character, a product or a book cover)
+      <input type="file" id="photo" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <label style="flex-direction:row;align-items:center;gap:6px;color:var(--text)" for="audio"><input type="checkbox" id="audio" checked style="width:auto"> Sound and voice in the video</label>
+    <div class="row" style="justify-content:space-between">
+      <div><span class="note">This video costs about</span><div class="price" id="price">$0.00</div></div>
+      <button id="makeBtn" class="primary">Make the video</button>
+    </div>
+    <div>
+      <div class="row" style="justify-content:space-between"><span class="note" id="capText">Monthly limit</span><button id="capEdit" style="padding:4px 10px;font-size:.8rem">Change limit</button></div>
+      <div class="meter"><i id="capBar" style="width:0%"></i></div>
+    </div>
+    <div id="makeStatus" class="status hidden"></div>
+  </div>
+
+  <div class="panel hidden" id="resultCard">
+    <h2>Your video</h2>
+    <video id="player" controls playsinline></video>
+    <div class="row">
+      <a id="dl" class="chip" style="padding:8px 12px;font-size:.85rem;text-decoration:none" download>Download</a>
+      <button id="copyCap">Copy caption</button>
+    </div>
+    <p class="note" style="margin:0">Post it with the "AI-generated" label turned on. TikTok and Instagram require it for realistic AI video.</p>
+  </div>
+</section>
+
+<!-- MINE -->
+<section id="mine" class="stack hidden">
+  <div class="panel"><h2>My videos</h2><div id="list" class="stack"><p class="note">Loading…</p></div></div>
+</section>
+
+<!-- KEYS -->
+<section id="keys" class="stack hidden">
+  <div class="panel">
+    <h2>API keys</h2>
+    <p class="note" style="margin:0">Keys are locked (encrypted) the moment you save them. Nobody can read one back, you included. Pages only show the last 4 characters. Your video models are paid through your Cloudflare account and don't need a key here.</p>
+    <div id="lockWarn" class="status err hidden">The lock isn't set up. In Cloudflare → meechies-world → Settings → Variables and secrets, add a secret named SECRETS_KEY with any long random phrase. Then come back.</div>
+    <div id="keyList"></div>
+  </div>
+  <div class="panel">
+    <h2>Add or replace a key</h2>
+    <label for="kName">Name
+      <input id="kName" list="kNames" placeholder="OPENAI_API_KEY" autocapitalize="characters" autocomplete="off" spellcheck="false">
+      <datalist id="kNames"></datalist>
+    </label>
+    <label for="kVal">Key
+      <input id="kVal" type="password" autocomplete="new-password" spellcheck="false" placeholder="Paste the key">
+    </label>
+    <label for="kNote">Note (optional)
+      <input id="kNote" placeholder="e.g. made Nov 10, personal account">
+    </label>
+    <div class="row"><button id="kSave" class="primary">Lock it in</button></div>
+    <div id="kStatus" class="status hidden"></div>
+  </div>
+</section>
+
+<dialog id="capDlg" style="background:var(--panel);color:var(--text);border:1px solid var(--gold);border-radius:12px;width:min(420px,92vw)">
+  <form method="dialog" class="stack">
+    <h2>Monthly video limit</h2>
+    <label for="capVal">Most I'll spend on videos each month (US dollars)
+      <input id="capVal" type="number" min="0" max="500" step="1" inputmode="decimal">
+    </label>
+    <div class="row" style="justify-content:flex-end"><button value="cancel">Cancel</button><button id="capSave" value="ok" class="primary">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="okDlg" style="background:var(--panel);color:var(--text);border:1px solid var(--gold);border-radius:12px;width:min(420px,92vw)">
+  <form method="dialog" class="stack">
+    <h2>Make this video?</h2>
+    <p id="okText" style="margin:0"></p>
+    <div class="row" style="justify-content:flex-end"><button value="no">Not now</button><button value="yes" class="primary">Yes, make it</button></div>
+  </form>
+</dialog>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=n=>"$"+(Math.round((+n||0)*100)/100).toFixed(2);
+function token(){try{const s=JSON.parse(localStorage.getItem("mw-cf-session")||"null");return (s&&s.access_token)||""}catch(_){return ""}}
+async function api(path,body){
+  const r=await fetch(path,{method:body?"POST":"GET",headers:{"authorization":"Bearer "+token(),...(body?{"content-type":"application/json"}:{})},body:body?JSON.stringify(body):undefined});
+  let j={};try{j=await r.json()}catch(_){}
+  return {ok:r.ok,status:r.status,...j};
+}
+function show(el,msg,kind){el.textContent=msg;el.className="status"+(kind?" "+kind:"");}
+
+/* tabs */
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  ["make","mine","keys"].forEach(t=>$(t).classList.toggle("hidden",t!==b.dataset.tab));
+  if(b.dataset.tab==="mine") loadList(); if(b.dataset.tab==="keys") loadKeys();
+}));
+
+/* boot: owner check */
+let S=null, plan=null, photo="";
+async function boot(){
+  if(!token()){show($("gate"),"Sign in on meechiesworldinc.com as Meechie, then open this page again.","err");return;}
+  const r=await api("/api/video");
+  if(!r.ok){show($("gate"),r.message||(r.error==="owner_only"?"The Video Studio is owner-only.":"Couldn't open the studio. Sign in again and retry."),"err");return;}
+  S=r; fillModels(); paintCap();
+}
+function fillModels(){
+  $("model").innerHTML=Object.entries(S.models).map(([id,m])=>`<option value="${esc(id)}">${esc(m.name)}</option>`).join("");
+  onModel();
+}
+function onModel(){
+  const m=S.models[$("model").value]; $("modelBlurb").textContent=m.blurb+(m.image?"":" This one can't start from a photo.");
+  const prevQ=$("quality").value, prevD=$("dur").value;
+  $("quality").innerHTML=Object.keys(m.qualities).map(q=>`<option ${q===(prevQ||"720p")?"selected":""}>${q}</option>`).join("");
+  const want=+($("secs").value||10); const best=m.durations.reduce((a,d)=>Math.abs(d-want)<Math.abs(a-want)?d:a,m.durations[0]);
+  $("dur").innerHTML=m.durations.map(d=>`<option value="${d}" ${d===(+prevD&&m.durations.includes(+prevD)?+prevD:best)?"selected":""}>${d}</option>`).join("");
+  $("photo").disabled=!m.image; if(!m.image){$("photo").value="";photo="";}
+  price();
+}
+function cost(){const m=S.models[$("model").value];return Math.round((m.qualities[$("quality").value]||0)*(+$("dur").value)*100)/100;}
+function price(){$("price").textContent=money(cost());}
+function paintCap(){const pct=S.cap>0?Math.min(100,S.spent/S.cap*100):100;$("capBar").style.width=pct+"%";$("capText").textContent=`This month: ${money(S.spent)} of your ${money(S.cap)} limit`;}
+["model"].forEach(id=>$(id).addEventListener("change",onModel));
+["quality","dur"].forEach(id=>$(id).addEventListener("change",price));
+
+/* plan */
+$("planBtn").addEventListener("click",async()=>{
+  if(!S) return;
+  const idea=$("idea").value.trim(); if(idea.length<4){$("planNote").textContent="Tell me what the video is about.";return;}
+  $("planBtn").disabled=true; $("planNote").textContent="Meechie is writing…";
+  const r=await api("/api/video",{action:"plan",idea,duration:+$("secs").value,aspect:$("aspect").value});
+  $("planBtn").disabled=false;
+  if(!r.ok||!r.plan){$("planNote").textContent=r.message||"Couldn't write that one. Try again.";return;}
+  $("planNote").textContent=""; plan=r.plan;
+  $("pTitle").textContent=plan.title; $("pLen").textContent=$("secs").value+"s • "+$("aspect").value;
+  $("pShots").innerHTML=plan.shots.map(s=>`<div class="shot"><span class="t">${esc(s.time)}</span><span>${esc(s.visual)}${s.sound?`<br><span class="note">Sound: ${esc(s.sound)}</span>`:""}</span></div>`).join("");
+  $("pVo").textContent=plan.voiceover||"(no voiceover)"; $("pPrompt").value=plan.video_prompt; $("pNeg").value=plan.negative||"";
+  $("pCap").textContent=(plan.caption||"")+(plan.hashtags.length?"\n\n"+plan.hashtags.join(" "):"");
+  $("planCard").classList.remove("hidden"); $("renderCard").classList.remove("hidden"); onModel();
+  $("planCard").scrollIntoView({behavior:"smooth",block:"start"});
+});
+
+/* optional start photo → small JPEG data URI */
+$("photo").addEventListener("change",()=>{
+  const f=$("photo").files[0]; photo=""; if(!f) return;
+  const img=new Image(), u=URL.createObjectURL(f);
+  img.onload=()=>{const s=Math.min(1,1080/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);photo=c.toDataURL("image/jpeg",.86);};
+  img.onerror=()=>{show($("makeStatus"),"That file isn't a picture I can read.","err");};
+  img.src=u;
+});
+
+/* make */
+function ask(text){return new Promise(res=>{$("okText").textContent=text;const d=$("okDlg");d.returnValue="";d.onclose=()=>res(d.returnValue==="yes");d.showModal();});}
+$("makeBtn").addEventListener("click",async()=>{
+  if(!S||!plan) return;
+  const c=cost(), m=S.models[$("model").value];
+  if(S.spent+c>S.cap+1e-9){show($("makeStatus"),`That would pass your ${money(S.cap)} monthly limit. Tap "Change limit" to raise it.`,"err");return;}
+  if(!(await ask(`${m.name}, ${$("dur").value} seconds at ${$("quality").value}${$("audio").checked?" with sound":""}. Cloudflare charges about ${money(c)} for this video.`))) return;
+  $("makeBtn").disabled=true; show($("makeStatus"),"Making your video. This can take a few minutes; keep this page open.");
+  const r=await api("/api/video",{action:"make",model:$("model").value,quality:$("quality").value,duration:+$("dur").value,aspect:$("aspect").value,audio:$("audio").checked,prompt:$("pPrompt").value,negative:$("pNeg").value,title:plan.title,image:photo||undefined,confirm_cost:c});
+  $("makeBtn").disabled=false;
+  if(!r.ok){show($("makeStatus"),r.message||"Something went wrong making the video.","err");if(r.spent!=null){S.spent=r.spent;paintCap();}return;}
+  S.spent=r.spent; paintCap(); show($("makeStatus"),"Done. Your video is below and saved in My videos.","ok");
+  $("player").src=r.url; $("dl").href=r.url; $("dl").setAttribute("download",(plan.title||"meechie-video").replace(/[^\w-]+/g,"-")+".mp4");
+  $("resultCard").classList.remove("hidden"); $("resultCard").scrollIntoView({behavior:"smooth",block:"start"});
+});
+$("copyCap").addEventListener("click",async e=>{try{await navigator.clipboard.writeText($("pCap").textContent);e.target.textContent="Copied";}catch(_){e.target.textContent="Copy blocked";}setTimeout(()=>e.target.textContent="Copy caption",1500);});
+
+/* cap */
+$("capEdit").addEventListener("click",()=>{$("capVal").value=S?S.cap:10;$("capDlg").showModal();});
+$("capSave").addEventListener("click",async e=>{e.preventDefault();const r=await api("/api/video",{action:"cap",cap:+$("capVal").value});$("capDlg").close();if(r.ok){S.cap=r.cap;paintCap();}});
+
+/* list */
+async function loadList(){
+  const r=await api("/api/video"); if(!r.ok){$("list").innerHTML=`<p class="note">${esc(r.message||"Couldn't load your videos.")}</p>`;return;}
+  S=Object.assign(S||{},r); paintCap();
+  $("list").innerHTML=r.videos.length?r.videos.map(v=>`<div class="vid">
+    <div class="row" style="justify-content:space-between"><b>${esc(v.title||"Untitled")}</b><span class="chip">${esc(v.status)}</span></div>
+    <span class="note">${new Date(v.at).toLocaleString()} • ${esc((S.models[v.model]||{}).name||v.model)} • ${esc(v.duration)}s ${esc(v.quality||"")} • about ${money(v.est_cost)}</span>
+    ${v.status==="done"&&v.url?`<video controls playsinline preload="metadata" src="${esc(v.url)}"></video><a class="chip" style="align-self:flex-start;padding:6px 10px;text-decoration:none" href="${esc(v.url)}" download>Download</a>`:""}
+    ${v.detail&&v.status!=="done"?`<span class="note">${esc(v.detail)}</span>`:""}
+  </div>`).join(""):'<p class="note">No videos yet. Make your first one in "Make a video".</p>';
+}
+
+/* keys */
+async function loadKeys(){
+  const r=await api("/api/secrets");
+  if(!r.ok){$("keyList").innerHTML=`<p class="note">${esc(r.message||"Couldn't load your keys.")}</p>`;return;}
+  $("lockWarn").classList.toggle("hidden",!!r.lock);
+  $("kNames").innerHTML=r.known.map(k=>`<option value="${esc(k.name)}">${esc(k.label)}</option>`).join("");
+  const known=r.known.map(k=>`<div class="key"><span><b>${esc(k.label)}</b><br><code>${esc(k.name)}</code> <span class="note">${esc(k.use)}</span></span><span class="chip">${k.set==="vault"?"Locked in":k.set==="cloudflare"?"Set in Cloudflare":"Not set"}</span></div>`).join("");
+  const knownNames=new Set(r.known.map(k=>k.name));
+  const extra=r.keys.filter(k=>!knownNames.has(k.name)).map(k=>`<div class="key"><span><code>${esc(k.name)}</code> <span class="note">${esc(k.hint)}${k.note?" • "+esc(k.note):""}</span></span><button data-del="${esc(k.name)}" style="padding:4px 10px;font-size:.8rem">Remove</button></div>`).join("");
+  const vaultKnown=r.keys.filter(k=>knownNames.has(k.name)).map(k=>`<div class="key"><span><code>${esc(k.name)}</code> <span class="note">${esc(k.hint)}${k.note?" • "+esc(k.note):""}</span></span><button data-del="${esc(k.name)}" style="padding:4px 10px;font-size:.8rem">Remove</button></div>`).join("");
+  $("keyList").innerHTML=known+(vaultKnown||extra?`<h2 style="margin-top:10px">Locked keys</h2>${vaultKnown}${extra}`:"");
+}
+$("keyList").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-del]"); if(!b) return;
+  b.disabled=true; const r=await api("/api/secrets",{name:b.dataset.del,remove:true});
+  if(r.ok) loadKeys(); else {b.disabled=false; show($("kStatus"),r.message||"Couldn't remove it.","err");}
+});
+$("kSave").addEventListener("click",async()=>{
+  const name=$("kName").value.trim().toUpperCase(), value=$("kVal").value;
+  if(!/^[A-Z][A-Z0-9_]{1,47}$/.test(name)) return show($("kStatus"),"Use capital letters, numbers and _ only, like OPENAI_API_KEY.","err");
+  if(value.trim().length<8) return show($("kStatus"),"Paste the whole key.","err");
+  $("kSave").disabled=true;
+  const r=await api("/api/secrets",{name,value,note:$("kNote").value});
+  $("kSave").disabled=false; $("kVal").value="";
+  if(r.ok){show($("kStatus"),name+" is locked in.","ok");$("kName").value="";$("kNote").value="";loadKeys();}
+  else show($("kStatus"),r.message||"Couldn't save that key.","err");
+});
+
+boot();
+})();
+</script>
+</body>
+</html>

@@ -17,11 +17,40 @@
   /* Paid eBooks sold through the Meechie's World Shopify store: the card opens a buy panel instead of the reader. */
   const okBuy = (u) => /^https:\/\/meechiesworldinc\.myshopify\.com\/[^\s"'<>]*$/.test(u || "");
   function buyPanel(b) {
-    root.innerHTML = `<div class="bk-buy"><button class="btn ghost sm" type="button" data-shelf="1">← Books</button>
+    // paid books whose pages live on the site sell through our own Stripe checkout;
+    // a paid book with no pages file yet and no buy link is coming soon (no Shopify)
+    const stripe = b.free === false && !!b.src && !!b.price;
+    const coming = b.free === false && !b.src && !b.buy;
+    const buy = stripe
+      ? `<button class="btn" type="button" data-buybook="${E(b.id)}">Buy with Stripe · ${E(b.price || "")}</button>`
+      : coming
+      ? `<button class="btn" type="button" disabled>Coming soon · ${E(b.price || "")}</button>`
+      : `<a class="btn" href="${E(b.buy)}" target="_blank" rel="noopener">Buy &amp; download · ${E(b.price || "")}</a>${okBuy(b.url) ? ` <a class="btn ghost" href="${E(b.url)}" target="_blank" rel="noopener">Details</a>` : ""}`;
+    const note = stripe
+      ? "Secure checkout by Stripe \u2014 card, Apple Pay, Google Pay or Cash App Pay. Your copy unlocks right after you pay."
+      : coming
+      ? "This book is moving to our own checkout — check back soon."
+      : "Secure checkout by Shopify. Your download link appears right after you pay and is emailed to you.";
+    root.innerHTML = `<div class="bk-buy"><button class="btn ghost sm" type="button" data-shelf="1">\u2190 Books</button>
       <div class="bk-buy-in"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div>
       <div><p class="eyebrow">eBook · ${b.pages || 0} pages · PDF</p><h3>${E(b.title)}</h3><p class="muted">${E(b.blurb || "")}</p>
-      <p><a class="btn" href="${E(b.buy)}" target="_blank" rel="noopener">Buy &amp; download · ${E(b.price || "")}</a>${okBuy(b.url) ? ` <a class="btn ghost" href="${E(b.url)}" target="_blank" rel="noopener">Details</a>` : ""}</p>
-      <small class="muted">Secure checkout by Shopify. Your download link appears right after you pay and is emailed to you.</small></div></div></div>`;
+      <p>${buy}</p>
+      <small class="muted">${note}</small></div></div></div>`;
+  }
+  /* Buy a paid book through our own Stripe checkout: the server opens the
+   * session (or returns the one already open), we send the buyer to Stripe,
+   * and the webhook unlocks the reader when the payment lands. */
+  function bookTok() { try { return (window.MW && MW.session && MW.session().access_token) || ""; } catch (_) { return ""; } }
+  async function buyBook(id) {
+    const b = books.find((x) => x.id === id); if (!b) return;
+    say("Opening secure checkout\u2026");
+    try {
+      const r = await fetch("/api/coins/book-checkout", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer " + bookTok() }, body: JSON.stringify({ book: id }) });
+      const j = await r.json().catch(() => ({}));
+      if (j.owned) { readerOpen(id); return; }
+      if (j.url) { window.location.href = j.url; return; }
+      say(j.error || "Checkout didn't open. Try again.");
+    } catch (_) { say("Checkout didn't open. Check your connection and try again."); }
   }
   let books = [], dbBooks = [], staticBooks = [], open = null, page = 0, cache = {}, fontSize = 19;
   /* Books published as files in the site itself (books/index.json). They show on the shelf next to
@@ -41,6 +70,13 @@
   const css = document.createElement("style");
   css.textContent = `
 #bk-root{display:grid;gap:18px}
+.bk-featured{border:1px solid var(--gold-lo);border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#1d1608,#0b0a08);box-shadow:0 12px 34px rgba(0,0,0,.55)}
+.bk-featured img{display:block;width:100%;height:auto}
+.bk-featured-in{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 16px}
+.bk-featured-in h3{margin:0;font:700 22px var(--display,Georgia,serif);color:var(--gold-hi)}
+.bk-featured-in p{margin:2px 0 0;color:var(--muted)}
+.bk-featured-in .btn{margin-left:auto}
+@media (max-width:640px){.bk-featured-in .btn{margin-left:0}}
 .bk-shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:18px}
 .bk-card{display:grid;gap:8px;text-align:left;background:none;border:0;color:var(--text);cursor:pointer;padding:0}
 .bk-cover{aspect-ratio:2/3;border-radius:6px 12px 12px 6px;background:linear-gradient(135deg,#2a2112,#0b0a08) center/cover;border:1px solid var(--gold-lo);box-shadow:6px 8px 22px rgba(0,0,0,.6),inset 6px 0 10px rgba(0,0,0,.45);display:grid;place-items:center;padding:14px;text-align:center;font:700 18px var(--display,Georgia,serif);color:var(--gold-hi)}
@@ -93,9 +129,10 @@
     }
   } catch (_) {}
 
+  const featuredBook = `<div class="bk-featured"><img src="/img/book-cover.jpg" srcset="/img/book-cover-640.webp?v=1793655457 640w, /img/book-cover-1080.webp?v=1793655457 1080w" sizes="(max-width: 920px) 100vw, 880px" alt="Meechies World — The Book cover" loading="lazy" width="1536" height="1024"><div class="bk-featured-in"><div><h3>Meechies World — The Book</h3><p>Real Life · Real Hustle · Real Legacy</p></div><a class="btn" href="#shop" data-go="shop">Get your copy</a></div></div>`;
   function shelf() {
     const own = OWNER();
-    root.innerHTML = `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages${okBuy(b.buy) && b.price ? " · " + E(b.price) : ""}</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
+    root.innerHTML = featuredBook + `<div class="bk-shelf">${books.map((b) => `<button class="bk-card" type="button" data-book="${E(b.id)}"><div class="bk-cover" style="${okImg(b.cover) ? `background-image:url('${E(b.cover)}')` : ""}">${okImg(b.cover) ? "" : E(b.title)}</div><b>${E(b.title)}</b><small>${E(b.author || "Meechie's World Inc")} · ${b.pages || 0} pages${b.price ? " · " + E(b.price) : ""}</small></button>`).join("") || '<p class="muted">Books are coming soon.</p>'}</div>` +
       books.filter((b) => /^[a-z0-9-]+\.html$/.test(b.media || "")).map((b) => `<p class="bk-listen"><a class="btn" href="${E(b.media)}">🎧 Listen to &amp; watch “${E(String(b.title).split(":")[0])}”</a></p>`).join("") +
       (own ? `<div class="bk-admin"><b>Owner: publish a book</b>
         <input type="text" id="bk-t" maxlength="120" placeholder="Book title">
@@ -108,8 +145,13 @@
   }
   async function readerOpen(id) {
     open = books.find((b) => b.id === id); if (!open) return;
-    if (okBuy(open.buy) && !open.src) { buyPanel(open); return; }
-    if (!ME()) { if (typeof openAuth === "function") openAuth("signup"); say("Join free to read Meechie's books."); return; }
+    if (open.free === false && !open.src) { buyPanel(open); return; }
+    if (open.free === false && open.src) {
+      // paid book with its pages on the site: only open the reader for a buyer (or the owner)
+      let owned = false;
+      try { const r = await fetch("/api/coins/book/" + encodeURIComponent(id), { headers: { authorization: "Bearer " + bookTok() } }); owned = r.ok && (await r.json()).owned; } catch (_) { owned = false; }
+      if (!owned) { buyPanel(open); return; }
+    }
     try { page = Math.min(open.pages - 1, +(localStorage.getItem("mw_bk_" + id) || 0)); } catch (_) { page = 0; }
     render();
   }
@@ -125,7 +167,7 @@
   }
   async function render() {
     if (!open) { shelf(); return; }
-    const who = (typeof members !== "undefined" && members[ME()]?.handle) || "Member";
+    const who = (typeof members !== "undefined" && members[ME()]?.handle) || (ME() ? "Member" : "Guest");
     const stamp = who + " · " + new Date().toLocaleDateString();
     root.innerHTML = `<div class="bk-reader bk-shield" id="bk-shield">
       <div class="bk-top"><button class="btn ghost sm" type="button" data-shelf="1">← Books</button><b>${E(open.title)}</b>
@@ -149,6 +191,7 @@
   root.addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.book) return readerOpen(b.dataset.book);
+    if (b.dataset.buybook) return buyBook(b.dataset.buybook);
     if (b.dataset.shelf) { open = null; shelf(); return; }
     if (b.dataset.pg) { const n = page + +b.dataset.pg; if (n >= 0 && n < open.pages) { page = n; render(); view.scrollIntoView({ behavior: "smooth" }); } return; }
     if (b.dataset.fs) { fontSize = Math.max(14, Math.min(30, fontSize + 2 * +b.dataset.fs)); try { localStorage.setItem("mw_bk_fs", fontSize); } catch (_) {} const p = root.querySelector("#bk-page"); if (p) p.style.fontSize = fontSize + "px"; return; }

@@ -2,7 +2,7 @@
 // Songs are kept in Meechie's World's own free file storage (Cloudflare KV), so they keep playing even
 // when the old Supabase storage is over its free limit. It also brings back songs that were already on
 // the radio but whose files were stuck on Supabase: same song, same id, so playlists don't change.
-import { json, userFrom, isAdmin, setup, change } from "../../lib/cf.js";
+import { json, userFrom, isAdmin, setup, change, bumpTracksVersion } from "../../lib/cf.js";
 
 const ARTIST = "7533494";
 const MAX = 25 * 1024 * 1024; // KV's limit for one file
@@ -60,7 +60,7 @@ export async function onRequestPost({ request, env }) {
       await store(env, id, s.url);
       const path = "tracks/" + id, now = new Date().toISOString();
       const data = { title: clean(s.name), artist: "Meechie", assetId: id, duration: Math.round(s.duration || 0), cover: s.image || "", rnId: String(s.id), source: "reverbnation", addedAt: 1700000000000 + i * 1000 };
-      await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, "tracks", me.id, JSON.stringify(data), now, now), change(env, "docs", path, "tracks")]);
+      await env.DB.batch([env.DB.prepare("insert into docs (path, coll, owner, data, created_at, updated_at) values (?,?,?,?,?,?)").bind(path, "tracks", me.id, JSON.stringify(data), now, now), change(env, "docs", path, "tracks"), bumpTracksVersion(env)]); /* F3: library version stamp */
       added.push(data.title); ok++;
     } catch (e) { failed.push(clean(s.name) + ": " + String(e.message || e).slice(0, 100)); }
   }
