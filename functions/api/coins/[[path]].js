@@ -253,7 +253,7 @@ export async function onRequest({ request, env, params }) {
           const r = await env.DB.prepare("insert or ignore into cj_orders (id, uid, product, cents, cj_order_id, cj_cost_cents, profit_cents, status, at) values (?,?,?,?,?,?,?,?,?)").bind("cs:" + s.id, uid, prod, s.amount_total || 0, "", 0, 0, "pending", now).run();
           if (r.meta.changes) {
             try {
-              const sd = s.shipping_details || {}, cd = s.customer_details || {};
+              const sd = s.shipping_details || (s.collected_information && s.collected_information.shipping_details) || {}, cd = s.customer_details || {}; // newer Stripe API versions moved shipping_details under collected_information
               const addr = {
                 firstName: (sd.name || (cd.name || "")).split(" ")[0] || "",
                 lastName: (sd.name || (cd.name || "")).split(" ").slice(1).join(" ") || "",
