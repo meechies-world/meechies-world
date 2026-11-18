@@ -28,6 +28,8 @@ const SCHEMA = [
   "create table if not exists fans_creators (uid text primary key, status text not null default 'pending', name text, bio text, price_cents integer not null default 999, legal_name text, dob text, id_front text, id_selfie text, agreed_at integer, applied_at integer, reviewed_at integer, review_note text)",
   "create table if not exists fans_posts (id text primary key, creator text not null, caption text, media text not null, preview text, price_cents integer not null default 0, others integer not null default 0, status text not null default 'live', created_at integer not null)",
   "create index if not exists fans_posts_c on fans_posts (creator, created_at)",
+  "create index if not exists fans_posts_status on fans_posts (status, created_at)",
+  "create index if not exists fans_creators_status on fans_creators (status)",
   "create table if not exists fans_releases (id text primary key, post_id text not null, person_name text not null, dob text not null, id_key text not null, release_key text not null, at integer not null)",
   "create table if not exists fans_subs (fan text not null, creator text not null, until integer not null, primary key (fan, creator))",
   "create table if not exists fans_unlocks (fan text not null, post_id text not null, at integer not null, primary key (fan, post_id))",
@@ -36,6 +38,7 @@ const SCHEMA = [
   "create table if not exists fans_orders (id text primary key, uid text not null, pack text not null, tokens integer not null, cents integer not null, status text not null default 'open', at integer not null)",
   "create table if not exists fans_reports (id integer primary key autoincrement, post_id text not null, reporter text not null, reason text not null, details text, status text not null default 'open', at integer not null)",
   "create table if not exists fans_cashouts (id integer primary key autoincrement, uid text not null, cents integer not null, method text, handle text, status text not null default 'requested', at integer not null, paid_at integer)",
+  "create index if not exists fans_cashouts_uid_status on fans_cashouts (uid, status)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
@@ -112,11 +115,12 @@ export async function onRequest({ request, env, params }) {
     if (!sub || digest !== (await md5(sub + "1" + env.CCBILL_SALT))) return err("bad digest", 400);
     const order = String(body.X_order || body["X-order"] || body.order || "");
     const o = await env.DB.prepare("select * from fans_orders where id = ? and status = 'open'").bind(order).first(); if (!o) return json({ ok: true, note: "unknown or done" });
-    await env.DB.batch([
-      env.DB.prepare("update fans_orders set status = 'paid' where id = ?").bind(o.id),
-      env.DB.prepare("insert into fans_wallet (uid, tokens) values (?, ?) on conflict(uid) do update set tokens = tokens + excluded.tokens").bind(o.uid, o.tokens),
-      env.DB.prepare("insert or ignore into fans_tx (id, uid, kind, tokens, cents, ref, at) values (?,?,?,?,?,?,?)").bind("b:" + sub, o.uid, "buy", o.tokens, o.cents, o.id, now()),
-    ]);
+    // credit once: the order must still be open AND this CCBill sale must be new (stops retries/replays double-crediting)
+    const claim = await env.DB.prepare("update fans_orders set status = 'paid' where id = ? and status = 'open'").bind(o.id).run();
+    if (!claim.meta.changes) return json({ ok: true, note: "done" });
+    const fresh = await env.DB.prepare("insert or ignore into fans_tx (id, uid, kind, tokens, cents, ref, at) values (?,?,?,?,?,?,?)").bind("b:" + sub, o.uid, "buy", o.tokens, o.cents, o.id, now()).run();
+    if (!fresh.meta.changes) return json({ ok: true, note: "sale already used" });
+    await env.DB.prepare("insert into fans_wallet (uid, tokens) values (?, ?) on conflict(uid) do update set tokens = tokens + excluded.tokens").bind(o.uid, o.tokens).run();
     return json({ ok: true });
   }
 
@@ -268,7 +272,9 @@ export async function onRequest({ request, env, params }) {
     if (/\b\d{3}-?\d{2}-?\d{4}\b|\b\d{12,19}\b/.test(h)) return err("Never send your Social Security or card number.");
     const w = await wallet(env, me.id), pend = ((await env.DB.prepare("select coalesce(sum(cents),0) n from fans_cashouts where uid = ? and status = 'requested'").bind(me.id).first()) || {}).n || 0, avail = w.earned_cents - w.paid_cents - pend;
     if (avail < MIN_CASHOUT) return err("You can cash out once you have $20.");
-    await env.DB.batch([env.DB.prepare("insert into fans_cashouts (uid, cents, method, handle, at) values (?,?,?,?,?)").bind(me.id, avail, m, h, now()), ping(env, me.id, OWNER_ID), dm(env, me.id, OWNER_ID, `💸 Meechie's Fans cash-out: $${(avail / 100).toFixed(2)} by ${m} to ${h}. Pay it, then mark it paid in Fans → Owner.`)]);
+    const ask = await env.DB.prepare("insert into fans_cashouts (uid, cents, method, handle, at) select ?,?,?,?,? where (select earned_cents - paid_cents from fans_wallet where uid = ?) - (select coalesce(sum(cents),0) from fans_cashouts where uid = ? and status = 'requested') >= ?").bind(me.id, avail, m, h, now(), me.id, me.id, avail).run();
+    if (!ask.meta.changes) return err("That cash-out is already on its way.");
+    await env.DB.batch([ping(env, me.id, OWNER_ID), dm(env, me.id, OWNER_ID, `💸 Meechie's Fans cash-out: $${(avail / 100).toFixed(2)} by ${m} to ${h}. Pay it, then mark it paid in Fans → Owner.`)]);
     return json({ ok: true, cents: avail });
   }
 

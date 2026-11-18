@@ -1,0 +1,986 @@
+{
+ "note": "Genre-channel pools for Meechie's World Channels (owner order 2026-11-04: the genre channels play OTHER artists, not the owner's catalog). Official uploads only (artist / VEVO / label / official Topic channels). Every id was verified US-embeddable before it went in (youtubei player availability list incl. US + playableInEmbed + oEmbed 200; see channels-others-2026-11-04/PROGRESS.md in the build record). Titles/artists/durations are baked in so channel labels paint with no backend. The owner may strike any entry.",
+ "generated": "2026-11-04",
+ "pools": {
+  "traplove": [
+   {
+    "id": "d7cVLE4SaN0",
+    "title": "Don't",
+    "artist": "Bryson Tiller",
+    "dur": 223
+   },
+   {
+    "id": "aj9coPGuFkM",
+    "title": "Exchange",
+    "artist": "Bryson Tiller",
+    "dur": 197
+   },
+   {
+    "id": "uxpDa-c-4Mc",
+    "title": "Hotline Bling",
+    "artist": "Drake",
+    "dur": 296
+   },
+   {
+    "id": "JDb3ZZD4bA0",
+    "title": "Marvin's Room",
+    "artist": "Drake",
+    "dur": 347
+   },
+   {
+    "id": "yzTuBuRdAyA",
+    "title": "The Hills",
+    "artist": "The Weeknd",
+    "dur": 234
+   },
+   {
+    "id": "waU75jdUnYw",
+    "title": "Earned It",
+    "artist": "The Weeknd",
+    "dur": 276
+   },
+   {
+    "id": "JPIhUaONiLU",
+    "title": "Often",
+    "artist": "The Weeknd",
+    "dur": 250
+   },
+   {
+    "id": "fS9m0Ac8PCU",
+    "title": "PRBLMS",
+    "artist": "6LACK",
+    "dur": 254
+   },
+   {
+    "id": "1l8vIAvAerE",
+    "title": "Girls Need Love",
+    "artist": "Summer Walker",
+    "dur": 154
+   },
+   {
+    "id": "1ipRd0WgB0c",
+    "title": "Heart of a Woman",
+    "artist": "Summer Walker",
+    "dur": 205
+   },
+   {
+    "id": "hHXfCOjb3fk",
+    "title": "Love Galore",
+    "artist": "SZA ft. Travis Scott",
+    "dur": 284
+   },
+   {
+    "id": "cMD63TwzB1o",
+    "title": "The Weekend",
+    "artist": "SZA",
+    "dur": 249
+   },
+   {
+    "id": "PAFAfhod9TU",
+    "title": "Damage",
+    "artist": "H.E.R.",
+    "dur": 224
+   },
+   {
+    "id": "ul1H_p_FeaA",
+    "title": "B.E.D.",
+    "artist": "Jacquees",
+    "dur": 237
+   },
+   {
+    "id": "dXTBbM21plg",
+    "title": "Slow Motion",
+    "artist": "Trey Songz",
+    "dur": 240
+   },
+   {
+    "id": "xUq1rZ7mmns",
+    "title": "Say It",
+    "artist": "Tory Lanez",
+    "dur": 308
+   },
+   {
+    "id": "8Sczx0Xztd4",
+    "title": "Selfish",
+    "artist": "PnB Rock",
+    "dur": 273
+   },
+   {
+    "id": "deMLg4FPFhQ",
+    "title": "Heart on Ice",
+    "artist": "Rod Wave",
+    "dur": 164
+   },
+   {
+    "id": "lG4HICGeQoo",
+    "title": "Come and See Me",
+    "artist": "PARTYNEXTDOOR ft. Drake",
+    "dur": 238
+   },
+   {
+    "id": "5x-d3pabd5o",
+    "title": "Sativa",
+    "artist": "Jhené Aiko ft. Rae Sremmurd",
+    "dur": 348
+   },
+   {
+    "id": "pfxyk1glEq4",
+    "title": "Under the Influence",
+    "artist": "Chris Brown",
+    "dur": 176
+   },
+   {
+    "id": "6YNZlXfW6Ho",
+    "title": "Boo'd Up",
+    "artist": "Ella Mai",
+    "dur": 242
+   },
+   {
+    "id": "hKgl5-lkT8U",
+    "title": "Best Part",
+    "artist": "Daniel Caesar & H.E.R.",
+    "dur": 243
+   },
+   {
+    "id": "by3yRdlQvzs",
+    "title": "Location",
+    "artist": "Khalid",
+    "dur": 222
+   },
+   {
+    "id": "H64QG4UsrGI",
+    "title": "Let Me Love You",
+    "artist": "Mario",
+    "dur": 266
+   }
+  ],
+  "weed": [
+   {
+    "id": "Wa5B22KAkEk",
+    "title": "Young, Wild & Free",
+    "artist": "Snoop Dogg & Wiz Khalifa ft. Bruno Mars",
+    "dur": 257
+   },
+   {
+    "id": "7xzU9Qqdqww",
+    "title": "Pursuit of Happiness",
+    "artist": "Kid Cudi ft. MGMT",
+    "dur": 283
+   },
+   {
+    "id": "HNBCVM4KbUM",
+    "title": "Three Little Birds",
+    "artist": "Bob Marley & The Wailers",
+    "dur": 192
+   },
+   {
+    "id": "x0T_GIQGqM4",
+    "title": "Is This Love",
+    "artist": "Bob Marley & The Wailers",
+    "dur": 232
+   },
+   {
+    "id": "hadAFzwc8-o",
+    "title": "Come Around",
+    "artist": "Collie Buddz",
+    "dur": 222
+   },
+   {
+    "id": "0Uc3ZrmhDN4",
+    "title": "What I Got",
+    "artist": "Sublime",
+    "dur": 171
+   },
+   {
+    "id": "AEYN5w4T_aM",
+    "title": "Santeria",
+    "artist": "Sublime",
+    "dur": 196
+   },
+   {
+    "id": "KQnzeKKg7Yc",
+    "title": "Smoke Two Joints",
+    "artist": "Sublime",
+    "dur": 284
+   },
+   {
+    "id": "WeYsTmIzjkw",
+    "title": "Because I Got High",
+    "artist": "Afroman",
+    "dur": 197
+   },
+   {
+    "id": "UhQz-0QVmQ0",
+    "title": "Roll Up",
+    "artist": "Wiz Khalifa",
+    "dur": 237
+   },
+   {
+    "id": "H_WzjiTzZBA",
+    "title": "Brown Sugar",
+    "artist": "D'Angelo",
+    "dur": 274
+   },
+   {
+    "id": "_GZlJGERbvE",
+    "title": "Welcome to Jamrock",
+    "artist": "Damian Marley",
+    "dur": 220
+   },
+   {
+    "id": "8MmW_GOFS8I",
+    "title": "Gimme the Light",
+    "artist": "Sean Paul",
+    "dur": 207
+   },
+   {
+    "id": "6cIePqdz03A",
+    "title": "Legalize It",
+    "artist": "Peter Tosh",
+    "dur": 281
+   },
+   {
+    "id": "eMK4cfXj5c0",
+    "title": "Hits from the Bong",
+    "artist": "Cypress Hill",
+    "dur": 162
+   },
+   {
+    "id": "qYx7YG0RsFY",
+    "title": "I Love College",
+    "artist": "Asher Roth",
+    "dur": 250
+   },
+   {
+    "id": "WCYy8jpp7R8",
+    "title": "Da Rockwilder",
+    "artist": "Method Man & Redman",
+    "dur": 147
+   },
+   {
+    "id": "vbED91NU4vE",
+    "title": "Kaya",
+    "artist": "Bob Marley & The Wailers",
+    "dur": 196
+   },
+   {
+    "id": "NnO-1qrdhtY",
+    "title": "I Wanna Get High",
+    "artist": "Cypress Hill",
+    "dur": 176
+   },
+   {
+    "id": "UnAbszcy3bs",
+    "title": "Kool Aid & Frozen Pizza",
+    "artist": "Mac Miller",
+    "dur": 205
+   }
+  ],
+  "oldschool": [
+   {
+    "id": "_JZom_gVfuw",
+    "title": "Juicy",
+    "artist": "The Notorious B.I.G.",
+    "dur": 253
+   },
+   {
+    "id": "HaTgQkG3Mmc",
+    "title": "California Love",
+    "artist": "2Pac",
+    "dur": 432
+   },
+   {
+    "id": "Mb1ZvUDvLDY",
+    "title": "Dear Mama",
+    "artist": "2Pac",
+    "dur": 276
+   },
+   {
+    "id": "8GliyDgAGQI",
+    "title": "Nuthin' but a 'G' Thang",
+    "artist": "Dr. Dre",
+    "dur": 285
+   },
+   {
+    "id": "fWCZse1iwE0",
+    "title": "Gin and Juice",
+    "artist": "Snoop Dogg",
+    "dur": 264
+   },
+   {
+    "id": "1plPyJdXKIY",
+    "title": "Regulate",
+    "artist": "Warren G",
+    "dur": 238
+   },
+   {
+    "id": "4B_UYYPb-Gk",
+    "title": "Walk This Way",
+    "artist": "Run-DMC & Aerosmith",
+    "dur": 244
+   },
+   {
+    "id": "z5rRZdiu1UE",
+    "title": "Sabotage",
+    "artist": "Beastie Boys",
+    "dur": 183
+   },
+   {
+    "id": "O3pyCGnZzYA",
+    "title": "Can I Kick It?",
+    "artist": "A Tribe Called Quest",
+    "dur": 235
+   },
+   {
+    "id": "otCpCn0l4Wo",
+    "title": "U Can't Touch This",
+    "artist": "MC Hammer",
+    "dur": 273
+   },
+   {
+    "id": "X53ZSxkQ3Ho",
+    "title": "Baby Got Back",
+    "artist": "Sir Mix-a-Lot",
+    "dur": 253
+   },
+   {
+    "id": "Rz1Xn1vzOM4",
+    "title": "Hip Hop Hooray",
+    "artist": "Naughty by Nature",
+    "dur": 273
+   },
+   {
+    "id": "010KyIQjkTk",
+    "title": "Jump",
+    "artist": "Kris Kross",
+    "dur": 198
+   },
+   {
+    "id": "K9F5xcpjDMU",
+    "title": "The Choice Is Yours",
+    "artist": "Black Sheep",
+    "dur": 230
+   },
+   {
+    "id": "8WEtxJ4-sh4",
+    "title": "Waterfalls",
+    "artist": "TLC",
+    "dur": 320
+   },
+   {
+    "id": "fV8vB1BB2qc",
+    "title": "I'll Make Love to You",
+    "artist": "Boyz II Men",
+    "dur": 260
+   },
+   {
+    "id": "0hiUuL5uTKc",
+    "title": "This Is How We Do It",
+    "artist": "Montell Jordan",
+    "dur": 234
+   },
+   {
+    "id": "uB1D9wWxd2w",
+    "title": "Return of the Mack",
+    "artist": "Mark Morrison",
+    "dur": 226
+   },
+   {
+    "id": "VMYAEHE2GrM",
+    "title": "Tha Crossroads",
+    "artist": "Bone Thugs-N-Harmony",
+    "dur": 283
+   },
+   {
+    "id": "T6QKqFPRZSA",
+    "title": "Doo Wop (That Thing)",
+    "artist": "Lauryn Hill",
+    "dur": 238
+   },
+   {
+    "id": "oKOtzIo-uYw",
+    "title": "Killing Me Softly",
+    "artist": "Fugees",
+    "dur": 254
+   },
+   {
+    "id": "nXiBUgOzgVQ",
+    "title": "Real Love",
+    "artist": "Mary J. Blige",
+    "dur": 270
+   },
+   {
+    "id": "PBsjggc5jHM",
+    "title": "The Humpty Dance",
+    "artist": "Digital Underground",
+    "dur": 303
+   },
+   {
+    "id": "vimZj8HW0Kg",
+    "title": "Mama Said Knock You Out",
+    "artist": "LL Cool J",
+    "dur": 297
+   },
+   {
+    "id": "vCadcBR95oU",
+    "title": "Push It",
+    "artist": "Salt-N-Pepa",
+    "dur": 265
+   }
+  ],
+  "pop": [
+   {
+    "id": "Zi_XLOBDo_Y",
+    "title": "Billie Jean",
+    "artist": "Michael Jackson",
+    "dur": 296
+   },
+   {
+    "id": "GuJQSAiODqI",
+    "title": "Vogue",
+    "artist": "Madonna",
+    "dur": 293
+   },
+   {
+    "id": "4m1EFMoRFvY",
+    "title": "Single Ladies (Put a Ring on It)",
+    "artist": "Beyoncé",
+    "dur": 200
+   },
+   {
+    "id": "QGJuMBdaqIw",
+    "title": "Firework",
+    "artist": "Katy Perry",
+    "dur": 233
+   },
+   {
+    "id": "e-ORhEE9VVg",
+    "title": "Blank Space",
+    "artist": "Taylor Swift",
+    "dur": 272
+   },
+   {
+    "id": "JGwWNGJdvx8",
+    "title": "Shape of You",
+    "artist": "Ed Sheeran",
+    "dur": 263
+   },
+   {
+    "id": "fRh_vgS2dFE",
+    "title": "Sorry",
+    "artist": "Justin Bieber",
+    "dur": 205
+   },
+   {
+    "id": "gl1aHhXnN1k",
+    "title": "thank u, next",
+    "artist": "Ariana Grande",
+    "dur": 331
+   },
+   {
+    "id": "TUVcZfQe-Kw",
+    "title": "Levitating",
+    "artist": "Dua Lipa",
+    "dur": 230
+   },
+   {
+    "id": "YQHsXMglC9A",
+    "title": "Hello",
+    "artist": "Adele",
+    "dur": 367
+   },
+   {
+    "id": "CvBfHwUxHIk",
+    "title": "Umbrella",
+    "artist": "Rihanna",
+    "dur": 254
+   },
+   {
+    "id": "lWA2pjMjpBs",
+    "title": "Diamonds",
+    "artist": "Rihanna",
+    "dur": 283
+   },
+   {
+    "id": "09R8_2nJtjg",
+    "title": "Sugar",
+    "artist": "Maroon 5",
+    "dur": 301
+   },
+   {
+    "id": "QJO3ROT-A4E",
+    "title": "What Makes You Beautiful",
+    "artist": "One Direction",
+    "dur": 206
+   },
+   {
+    "id": "gdZLi9oWNZg",
+    "title": "Dynamite",
+    "artist": "BTS",
+    "dur": 223
+   },
+   {
+    "id": "H5v3kku4y6Q",
+    "title": "As It Was",
+    "artist": "Harry Styles",
+    "dur": 166
+   },
+   {
+    "id": "DyDfgMOUjCI",
+    "title": "bad guy",
+    "artist": "Billie Eilish",
+    "dur": 206
+   },
+   {
+    "id": "4NRXx6U8ABQ",
+    "title": "Blinding Lights",
+    "artist": "The Weeknd",
+    "dur": 263
+   },
+   {
+    "id": "G7KNmW9a75Y",
+    "title": "Flowers",
+    "artist": "Miley Cyrus",
+    "dur": 202
+   },
+   {
+    "id": "4fndeDfaWCg",
+    "title": "I Want It That Way",
+    "artist": "Backstreet Boys",
+    "dur": 219
+   },
+   {
+    "id": "gJLIiF15wjQ",
+    "title": "Wannabe",
+    "artist": "Spice Girls",
+    "dur": 236
+   },
+   {
+    "id": "6Cs3Pvmmv0E",
+    "title": "Faith",
+    "artist": "George Michael",
+    "dur": 223
+   },
+   {
+    "id": "PIb6AZdTr-A",
+    "title": "Girls Just Want to Have Fun",
+    "artist": "Cyndi Lauper",
+    "dur": 267
+   },
+   {
+    "id": "dQw4w9WgXcQ",
+    "title": "Never Gonna Give You Up",
+    "artist": "Rick Astley",
+    "dur": 213
+   }
+  ],
+  "country": [
+   {
+    "id": "5WyLhwYFgmk",
+    "title": "Ring of Fire",
+    "artist": "Johnny Cash",
+    "dur": 160
+   },
+   {
+    "id": "Ixrje2rXLMA",
+    "title": "Jolene",
+    "artist": "Dolly Parton",
+    "dur": 163
+   },
+   {
+    "id": "UbxUSsFXYo4",
+    "title": "9 to 5",
+    "artist": "Dolly Parton",
+    "dur": 154
+   },
+   {
+    "id": "7hx4gdlfamo",
+    "title": "The Gambler",
+    "artist": "Kenny Rogers",
+    "dur": 211
+   },
+   {
+    "id": "JW5UEW2kYvc",
+    "title": "Chattahoochee",
+    "artist": "Alan Jackson",
+    "dur": 245
+   },
+   {
+    "id": "9MjxgombiLY",
+    "title": "Man! I Feel Like a Woman!",
+    "artist": "Shania Twain",
+    "dur": 237
+   },
+   {
+    "id": "2UH1ow2OAKU",
+    "title": "You're Still the One",
+    "artist": "Shania Twain",
+    "dur": 213
+   },
+   {
+    "id": "abBAa6_b0yM",
+    "title": "Humble and Kind",
+    "artist": "Tim McGraw",
+    "dur": 259
+   },
+   {
+    "id": "dls_cBmUt7Q",
+    "title": "This Kiss",
+    "artist": "Faith Hill",
+    "dur": 194
+   },
+   {
+    "id": "ZEWGyyLiqY4",
+    "title": "God's Country",
+    "artist": "Blake Shelton",
+    "dur": 208
+   },
+   {
+    "id": "4zAThXFOy2c",
+    "title": "Tennessee Whiskey",
+    "artist": "Chris Stapleton",
+    "dur": 293
+   },
+   {
+    "id": "pXyUUUFtNJc",
+    "title": "White Horse",
+    "artist": "Chris Stapleton",
+    "dur": 268
+   },
+   {
+    "id": "TyjgBxIVmEc",
+    "title": "Last Night",
+    "artist": "Morgan Wallen",
+    "dur": 162
+   },
+   {
+    "id": "6OFv566mj7s",
+    "title": "Rainbow",
+    "artist": "Kacey Musgraves",
+    "dur": 215
+   },
+   {
+    "id": "8PvebsWcpto",
+    "title": "Cruise",
+    "artist": "Florida Georgia Line",
+    "dur": 216
+   },
+   {
+    "id": "eM213aMKTHg",
+    "title": "Need You Now",
+    "artist": "Lady A",
+    "dur": 271
+   },
+   {
+    "id": "BKZqGJONH68",
+    "title": "Red Solo Cup",
+    "artist": "Toby Keith",
+    "dur": 224
+   },
+   {
+    "id": "Mdh2p03cRfw",
+    "title": "Body Like a Back Road",
+    "artist": "Sam Hunt",
+    "dur": 165
+   },
+   {
+    "id": "dRX0wDNK6S4",
+    "title": "Heaven",
+    "artist": "Kane Brown",
+    "dur": 175
+   },
+   {
+    "id": "wtVeDaZxAXo",
+    "title": "Amarillo by Morning",
+    "artist": "George Strait",
+    "dur": 163
+   }
+  ],
+  "rock": [
+   {
+    "id": "pAgnJDJN4VA",
+    "title": "Back in Black",
+    "artist": "AC/DC",
+    "dur": 254
+   },
+   {
+    "id": "lDK9QqIzhwk",
+    "title": "Livin' on a Prayer",
+    "artist": "Bon Jovi",
+    "dur": 249
+   },
+   {
+    "id": "KrZHPOeOxQQ",
+    "title": "You Give Love a Bad Name",
+    "artist": "Bon Jovi",
+    "dur": 231
+   },
+   {
+    "id": "Y3ywicffOj4",
+    "title": "Dreams",
+    "artist": "Fleetwood Mac",
+    "dur": 263
+   },
+   {
+    "id": "CD-E-LDc384",
+    "title": "Enter Sandman",
+    "artist": "Metallica",
+    "dur": 331
+   },
+   {
+    "id": "qM0zINtulhM",
+    "title": "Alive",
+    "artist": "Pearl Jam",
+    "dur": 295
+   },
+   {
+    "id": "GLvohMXgcBo",
+    "title": "Under the Bridge",
+    "artist": "Red Hot Chili Peppers",
+    "dur": 267
+   },
+   {
+    "id": "eBG7P-K-r1Y",
+    "title": "Everlong",
+    "artist": "Foo Fighters",
+    "dur": 291
+   },
+   {
+    "id": "NUTGr5t3MoY",
+    "title": "Basket Case",
+    "artist": "Green Day",
+    "dur": 194
+   },
+   {
+    "id": "ujNeHIo7oTE",
+    "title": "With or Without You",
+    "artist": "U2",
+    "dur": 292
+   },
+   {
+    "id": "EPhWR4d3FJQ",
+    "title": "Born in the U.S.A.",
+    "artist": "Bruce Springsteen",
+    "dur": 283
+   },
+   {
+    "id": "1lWJXDG2i0A",
+    "title": "Free Fallin'",
+    "artist": "Tom Petty",
+    "dur": 255
+   },
+   {
+    "id": "0UIB9Y4OFPs",
+    "title": "Pour Some Sugar on Me",
+    "artist": "Def Leppard",
+    "dur": 296
+   },
+   {
+    "id": "r3Pr1_v7hsw",
+    "title": "I Want to Know What Love Is",
+    "artist": "Foreigner",
+    "dur": 301
+   },
+   {
+    "id": "PeMvMNpvB5M",
+    "title": "Barracuda",
+    "artist": "Heart",
+    "dur": 264
+   },
+   {
+    "id": "t4QK8RxCAwo",
+    "title": "More Than a Feeling",
+    "artist": "Boston",
+    "dur": 217
+   },
+   {
+    "id": "40JmEj0_aVM",
+    "title": "Fortunate Son",
+    "artist": "Creedence Clearwater Revival",
+    "dur": 141
+   },
+   {
+    "id": "y8Nla-98CRY",
+    "title": "Africa",
+    "artist": "Toto",
+    "dur": 261
+   },
+   {
+    "id": "83FS5WCM4bk",
+    "title": "Don't Stop Believin'",
+    "artist": "Journey",
+    "dur": 250
+   },
+   {
+    "id": "SwYN7mTi6HM",
+    "title": "Jump",
+    "artist": "Van Halen",
+    "dur": 242
+   },
+   {
+    "id": "9f06QZCVUHg",
+    "title": "Summer of '69",
+    "artist": "Bryan Adams",
+    "dur": 207
+   },
+   {
+    "id": "jFKBR1ggTMY",
+    "title": "Bohemian Rhapsody",
+    "artist": "Queen",
+    "dur": 363
+   }
+  ],
+  "edm": [
+   {
+    "id": "IcrbM1l_BoI",
+    "title": "Wake Me Up",
+    "artist": "Avicii",
+    "dur": 273
+   },
+   {
+    "id": "_ovdm2yX4MA",
+    "title": "Levels",
+    "artist": "Avicii",
+    "dur": 198
+   },
+   {
+    "id": "6Cp6mKbRTQY",
+    "title": "Hey Brother",
+    "artist": "Avicii",
+    "dur": 263
+   },
+   {
+    "id": "ebXbLfLACGM",
+    "title": "Summer",
+    "artist": "Calvin Harris",
+    "dur": 234
+   },
+   {
+    "id": "kOkQ4T5WO9E",
+    "title": "This Is What You Came For",
+    "artist": "Calvin Harris & Rihanna",
+    "dur": 239
+   },
+   {
+    "id": "JRfuAukYTKg",
+    "title": "Titanium",
+    "artist": "David Guetta ft. Sia",
+    "dur": 245
+   },
+   {
+    "id": "1y6smkh6c-0",
+    "title": "Don't You Worry Child",
+    "artist": "Swedish House Mafia ft. John Martin",
+    "dur": 335
+   },
+   {
+    "id": "IxxstCcJlsc",
+    "title": "Clarity",
+    "artist": "Zedd ft. Foxes",
+    "dur": 275
+   },
+   {
+    "id": "yWEK4v9AVKQ",
+    "title": "Stay",
+    "artist": "Zedd & Alessia Cara",
+    "dur": 213
+   },
+   {
+    "id": "gCYcHz2k5x0",
+    "title": "Animals",
+    "artist": "Martin Garrix",
+    "dur": 192
+   },
+   {
+    "id": "m7Bc3pLyij0",
+    "title": "Happier",
+    "artist": "Marshmello & Bastille",
+    "dur": 233
+   },
+   {
+    "id": "0zGcUoRlhmw",
+    "title": "Closer",
+    "artist": "The Chainsmokers ft. Halsey",
+    "dur": 247
+   },
+   {
+    "id": "FM7MFYoylVs",
+    "title": "Something Just Like This",
+    "artist": "The Chainsmokers & Coldplay",
+    "dur": 247
+   },
+   {
+    "id": "nntGTK2Fhb0",
+    "title": "Where Are Ü Now",
+    "artist": "Jack Ü with Justin Bieber",
+    "dur": 251
+   },
+   {
+    "id": "YJVmu6yttiw",
+    "title": "Bangarang",
+    "artist": "Skrillex ft. Sirah",
+    "dur": 219
+   },
+   {
+    "id": "5NV6Rdv1a3I",
+    "title": "Get Lucky",
+    "artist": "Daft Punk ft. Pharrell Williams & Nile Rodgers",
+    "dur": 249
+   },
+   {
+    "id": "nCg3ufihKyU",
+    "title": "The Business",
+    "artist": "Tiësto",
+    "dur": 192
+   },
+   {
+    "id": "mfJhMfOPWdE",
+    "title": "Blah Blah Blah",
+    "artist": "Armin van Buuren",
+    "dur": 194
+   },
+   {
+    "id": "a7SouU3ECpU",
+    "title": "Heroes (We Could Be)",
+    "artist": "Alesso ft. Tove Lo",
+    "dur": 294
+   },
+   {
+    "id": "9Sc-ir2UwGU",
+    "title": "Firestone",
+    "artist": "Kygo ft. Conrad Sewell",
+    "dur": 222
+   },
+   {
+    "id": "YqeW9_5kURI",
+    "title": "Lean On",
+    "artist": "Major Lazer & DJ Snake ft. MØ",
+    "dur": 179
+   },
+   {
+    "id": "HMUDVMiITOU",
+    "title": "Turn Down for What",
+    "artist": "DJ Snake & Lil Jon",
+    "dur": 216
+   },
+   {
+    "id": "euCqAq6BRa4",
+    "title": "Let Me Love You",
+    "artist": "DJ Snake ft. Justin Bieber",
+    "dur": 205
+   },
+   {
+    "id": "60ItHLz5WEA",
+    "title": "Faded",
+    "artist": "Alan Walker",
+    "dur": 213
+   },
+   {
+    "id": "y6120QOlsfU",
+    "title": "Sandstorm",
+    "artist": "Darude",
+    "dur": 232
+   }
+  ]
+ }
+}

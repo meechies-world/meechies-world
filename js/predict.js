@@ -85,7 +85,7 @@
     // which accounts are the owner's (so only Meechie's questions show)
     d.doc("site/owners").onSnapshot((s) => { owners = new Set((s.exists && s.data().ids) || []); if (OWNER() && ME() && !owners.has(ME())) d.doc("site/owners").set({ ids: [...owners, ME()] }).catch(() => {}); if (!view.hidden && !typing()) render(); }, () => {});
     d.collection("predict").orderBy("createdAt", "desc").limit(100).onSnapshot((s) => { qs = s.docs.map((x) => ({ id: x.id, ...x.data() })); if (!view.hidden && !typing()) render(); }, () => {});
-    d.collection("picks").limit(5000).onSnapshot((s) => { const seen = new Set(); picks = s.docs.map((x) => x.data()).filter((p) => Number.isFinite(p.pts) && p.pts > 0 && p.pts <= 100000).filter((p) => { const k = p.authorId + "|" + p.q; if (seen.has(k)) return false; seen.add(k); return true; }); if (!view.hidden && !typing()) render(); }, () => {});
+    d.collection("picks").limit(1000).onSnapshot((s) => { const seen = new Set(); picks = s.docs.map((x) => x.data()).filter((p) => Number.isFinite(p.pts) && p.pts > 0 && p.pts <= 100000).filter((p) => { const k = p.authorId + "|" + p.q; if (seen.has(k)) return false; seen.add(k); return true; }); if (!view.hidden && !typing()) render(); }, () => {});
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();

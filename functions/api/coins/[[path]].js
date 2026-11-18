@@ -10,8 +10,49 @@
  *
  * 1 coin = 1 cent of value. Stripe's card fee comes out of Meechie's 60%. */
 import { json, userFrom, isAdmin, setup, take, change, uuid } from "../../../lib/cf.js";
+import { creditPurse, purseView, createProposal, decideProposal, setUsablePct, setFrozen } from "../../../lib/purse.js";
+import { cjCreateOrder, cjPayBalance } from "../../../lib/cj.js";
+import { getSecret } from "../../../lib/secrets.js";
 
 export const PACKS = { p100: { coins: 100, cents: 100 }, p550: { coins: 550, cents: 500 }, p1150: { coins: 1150, cents: 1000 }, p3000: { coins: 3000, cents: 2500 }, p6250: { coins: 6250, cents: 5000 } };
+/* Paid eBooks sold on the site itself (Stripe Checkout, $10 each). The book's
+ * pages live in books/<id>.json on the site; a completed purchase unlocks
+ * the reader for the buyer. Only books listed here can be bought — the
+ * Harlem book joins once its pages file is on the site. */
+const BOOKS = {
+  "tiktok-the-opportunity": { name: "TikTok: The Opportunity", cents: 1000 },
+  "meechies-world-story-and-blueprint": { name: "Meechie's World: The Story and the Blueprint", cents: 1000 },
+  "faith-the-foundation": { name: "Faith: The Foundation", cents: 1000 },
+  "spacex-the-mission": { name: "SpaceX: The Mission", cents: 1000 },
+  "pyramids-of-egypt-luxury-edition": { name: "The Pyramids of Egypt — Complete Luxury Edition", cents: 1000 },
+};
+const bookOwned = async (env, uid, book) => !!(await env.DB.prepare("select 1 from book_orders where uid = ? and book = ?").bind(uid, book).first());
+/* CJdropshipping products sold on the site itself (Stripe Checkout).
+ * Customer pays through Meechie's Stripe; on payment the webhook auto-creates
+ * the CJ order (vid = CJ variant id) and pays it from his CJ balance, so CJ
+ * ships it direct. vid/cost/ship are filled in from the CJ product lookup —
+ * NEVER guess a vid; an order with a wrong vid goes to the wrong product.
+ * cost_cents/ship_cents are the CJ product + shipping cost (US warehouse). */
+export const CJ_PRODUCTS = {
+  "pimple-patches-star": { name: "Star hydrocolloid pimple patches (7-color)", cents: 1999, vid: "2089600592274935810", cost_cents: 1300, ship_cents: 250 },
+  "acne-patches-invisible": { name: "Invisible hydrocolloid acne patches", cents: 699, vid: "1395576142311854080", cost_cents: 78, ship_cents: 200 },
+  "grater-peeler": { name: "Cucumber/carrot grater julienne peeler", cents: 849, vid: "1382144947280547840", cost_cents: 95, ship_cents: 200 },
+  "flea-comb": { name: "Pet hair & flea comb", cents: 1299, vid: "1887DA9F-2823-4663-AB99-51FF76F6B45E", cost_cents: 582, ship_cents: 250 },
+  "cat-scratch-mat": { name: "Cat anti-scratch mat", cents: 1499, vid: "1B69868E-3F9D-4009-8FB3-B80A5A87E034", cost_cents: 336, ship_cents: 300 },
+  "hand-warmer": { name: "Rechargeable hand warmer, digital display", cents: 1999, vid: "1483833252266512384", cost_cents: 1106, ship_cents: 300 },
+  "pet-hair-remover": { name: "Self-cleaning pet hair remover", cents: 999, vid: "1734502135620325376", cost_cents: 826, ship_cents: 200 },
+  "mini-vacuum": { name: "Mini desktop vacuum cleaner (USB, with brush)", cents: 1499, vid: "0AD659A7-2AF4-4B9F-9D72-A0ECC8020608", cost_cents: 283, ship_cents: 300 },
+  "bag-resealer": { name: "Magnetic bag resealer (fridge-mount)", cents: 799, vid: "2512030938411623700", cost_cents: 76, ship_cents: 200 },
+  "magnetic-cable": { name: "Magnetic charging cable 2m, 3-in-1 tips", cents: 999, vid: "1C2A0B56-BEC1-4EDE-ADAF-89B608B65723", cost_cents: 153, ship_cents: 200 },
+  "vent-phone-holder": { name: "Car air vent phone holder, 360 rotation", cents: 999, vid: "D28BE756-5C10-4EB8-8ABC-EFD54AACADDC", cost_cents: 340, ship_cents: 200 },
+  "cleaning-cloths": { name: "Microfiber car cleaning cloth, 5-pack", cents: 799, vid: "10CD5E33-D41F-4AC2-9A85-A31E2E9B17E4", cost_cents: 111, ship_cents: 200 },
+  "press-on-nails": { name: "Press-on nails kit (glue + file included)", cents: 1299, vid: "1605243713800908800", cost_cents: 449, ship_cents: 200 },
+  "rosemary-oil": { name: "Rosemary hair oil / scalp serum", cents: 1499, vid: "2410121521111623000", cost_cents: 100, ship_cents: 250 },
+  "lick-mat": { name: "Silicone lick mat / slow feeder", cents: 1299, vid: "1721808426055389184", cost_cents: 798, ship_cents: 250 },
+  "deshedding-brush": { name: "Self-cleaning deshedding brush", cents: 1299, vid: "2605221134161607100", cost_cents: 118, ship_cents: 250 },
+  "led-strips": { name: "LED strip lights 5m, USB, remote", cents: 1999, vid: "1396666677067911168", cost_cents: 1417, ship_cents: 250 },
+  "cabinet-light": { name: "LED motion-sensor cabinet light bar, USB rechargeable", cents: 999, vid: "1392666345388249088", cost_cents: 293, ship_cents: 200 },
+};
 // Meechie's World gifts, smallest to biggest (1 coin = 1¢). "fx" gifts play a full-screen animation for everyone watching.
 export const GIFTS = [
   ["rose", "🌹", "Rose", 1], ["heart", "💛", "Gold Heart", 5], ["mic", "🎤", "Mic Drop", 10], ["gg", "👏", "GG", 15], ["fire", "🔥", "Fire", 25],
@@ -22,13 +63,36 @@ export const GIFTS = [
 export const GIFT_COINS = Object.fromEntries(GIFTS.map((g) => [g[0], g[3]]));
 GIFT_COINS.gold = 100; // older gift name, still accepted
 const MEMBER_SHARE = 0.4;          // the person who receives the gift
-const MIN_CASHOUT_CENTS = 2000;    // $20
+const MIN_CASHOUT_CENTS = 1000;    // $10 — a 1000-coin cashout minimum (owner, 2026-10-27)
 const OWNER_ID = "9c4f7de6-bd82-46f9-88af-7fac069fe0e9";
 const SCHEMA = [
   "create table if not exists wallets (uid text primary key, coins integer not null default 0, earned_cents integer not null default 0, paid_cents integer not null default 0, updated_at integer)",
   "create table if not exists coin_tx (id text primary key, uid text not null, kind text not null, coins integer not null default 0, cents integer not null default 0, other text, at integer not null)",
   "create index if not exists coin_tx_uid on coin_tx (uid, at)",
+  "create index if not exists coin_tx_kind on coin_tx (kind, at)",
   "create table if not exists cashouts (id integer primary key autoincrement, uid text not null, cents integer not null, method text, handle text, status text not null default 'requested', at integer not null, paid_at integer)",
+  "create index if not exists cashouts_uid_status on cashouts (uid, status)",
+  "create table if not exists game_pool (id integer primary key, coins integer not null default 0)",
+  "insert or ignore into game_pool (id, coins) values (1, 0)",
+  "create table if not exists game_pots (id text primary key, creator text not null, joiner text, bet integer not null, side text not null, status text not null default 'open', winner text, at integer not null, done_at integer)",
+  "create index if not exists game_pots_status on game_pots (status, at)",
+  // Paid eBooks sold on the site itself (Stripe Checkout). book_orders is the
+  // entitlement record (one row per completed purchase, idempotent on the
+  // Stripe session id); book_checkouts remembers a session just opened so a
+  // buyer who comes back before the webhook lands resumes it instead of
+  // opening (and paying) a second one.
+  "create table if not exists book_orders (id text primary key, uid text not null, book text not null, cents integer not null default 0, at integer not null)",
+  "create index if not exists book_orders_uid_book on book_orders (uid, book)",
+  "create table if not exists book_checkouts (session text primary key, uid text not null, book text not null, url text not null, at integer not null)",
+  "create index if not exists book_checkouts_uid_book on book_checkouts (uid, book, at)",
+  // CJ auto-order: cj_orders is the fulfillment record (one row per completed
+  // purchase, idempotent on the Stripe session id); cj_checkouts remembers a
+  // session just opened so a buyer who comes back resumes it instead of
+  // opening (and paying) a second one.
+  "create table if not exists cj_orders (id text primary key, uid text not null, product text not null, cents integer not null default 0, cj_order_id text, cj_cost_cents integer not null default 0, profit_cents integer not null default 0, status text not null default 'pending', at integer not null)",
+  "create index if not exists cj_orders_uid_product on cj_orders (uid, product)",
+  "create table if not exists cj_checkouts (session text primary key, uid text not null, product text not null, url text not null, at integer not null)",
+  "create index if not exists cj_checkouts_uid_product on cj_checkouts (uid, product, at)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
@@ -51,6 +115,94 @@ async function stripeSigned(env, body, header) {
   return sigs.some((s) => s.length === mac.length && [...s].reduce((d, c, i) => d | (c.charCodeAt(0) ^ mac.charCodeAt(i)), 0) === 0);
 }
 
+/* ---------------- Coin Casino (games for coins) ----------------
+ * The house can never lose: every payout comes out of the prize pool, and the pool is only ever
+ * filled by players — the losing part of every bet (minus a 10% house fee) plus any coins the
+ * owner seeds in. A bet is refused up front when its biggest possible win beats the pool, so the
+ * site never owes a coin it didn't collect first. Winnings are coins: spend them on gifts (the
+ * person you gift earns cash value at the usual 40%) or play them again. Members flagged
+ * under 18 can't play. */
+const GAMES = {
+  flip: { name: "Coin Flip", maxMult: 1.9 },
+  highcard: { name: "High Card", maxMult: 1.9 },
+  dice: { name: "Lucky Dice", maxMult: 5.4 },
+  slots: { name: "Gold Slots", maxMult: 25 },
+  race: { name: "Meechie Race", maxMult: 5 },
+  wheel: { name: "Wheel of Gold", maxMult: 4.5 },
+  plinko: { name: "Gold Drop", maxMult: 8 },
+  triple: { name: "Triple Flip", maxMult: 7 },
+};
+const GAME_MIN_BET = 5, GAME_MAX_BET = 1000, GAME_FEE = 0.10;
+const rnd = (n) => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n; };
+const die = () => 1 + rnd(6);
+function settleGame(game, bet, choice) {
+  // pay = TOTAL coins credited back (0 = lost, bet = push)
+  if (game === "flip") {
+    const land = rnd(2) ? "tails" : "heads";
+    return { pay: land === choice ? Math.floor(bet * 1.9) : 0, detail: { land } };
+  }
+  if (game === "highcard") {
+    const you = 2 + rnd(13), dealer = 2 + rnd(13);
+    return { pay: you > dealer ? Math.floor(bet * 1.9) : you === dealer ? bet : 0, detail: { you, dealer } };
+  }
+  if (game === "dice") {
+    const d1 = die(), d2 = die(), sum = d1 + d2;
+    const win = choice === "seven" ? sum === 7 : choice === "over" ? sum > 7 : sum < 7;
+    return { pay: win ? Math.floor(bet * (choice === "seven" ? 5.4 : 2.2)) : 0, detail: { d1, d2, sum } };
+  }
+  if (game === "slots") {
+    const W = [["🌹", 3], ["🎤", 3], ["🔥", 2], ["💵", 2], ["💎", 1], ["👑", 1]];
+    const bag = W.flatMap(([s, w]) => Array(w).fill(s));
+    const reels = [bag[rnd(12)], bag[rnd(12)], bag[rnd(12)]];
+    const TRIPLE = { "👑": 25, "💎": 15, "💵": 10, "🔥": 10, "🎤": 8, "🌹": 6 };
+    let pay = 0;
+    if (reels[0] === reels[1] && reels[1] === reels[2]) pay = Math.floor(bet * TRIPLE[reels[0]]);
+    else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) pay = Math.floor(bet * 1.2);
+    return { pay, detail: { reels } };
+  }
+  if (game === "wheel") {
+    // 12 segments; pays back about 92 per 100 bet over time, same house math as the rest of the floor
+    const SEGS = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1.5, 2, 4.5];
+    const seg = rnd(12), mult = SEGS[seg];
+    return { pay: Math.floor(bet * mult), detail: { seg, mult } };
+  }
+  if (game === "plinko") {
+    // 7 bounces, 8 slots: the middle is common and pays small, the edges are rare and pay big — about 89 back per 100
+    const MULTS = [8, 2.5, 1, 0.3, 0.3, 1, 2.5, 8];
+    const path = Array.from({ length: 7 }, () => rnd(2));
+    const slot = path.reduce((a, b) => a + b, 0), mult = MULTS[slot];
+    return { pay: Math.floor(bet * mult), detail: { path, slot, mult } };
+  }
+  if (game === "triple") {
+    const flips = [rnd(2), rnd(2), rnd(2)], heads = flips.reduce((a, b) => a + b, 0);
+    const win = choice === "heads3" ? heads === 3 : choice === "tails3" ? heads === 0 : heads === 1 || heads === 2;
+    return { pay: win ? Math.floor(bet * (choice === "mixed" ? 1.2 : 7)) : 0, detail: { flips, heads } };
+  }
+  const rolls = [die(), die(), die(), die()], total = rolls.reduce((a, b) => a + b, 0); // race: 4 dice down a 24-space board
+  return { pay: total >= 21 ? bet * 5 : total >= 17 ? Math.floor(bet * 1.8) : total >= 13 ? bet : 0, detail: { rolls, total } };
+}
+const poolRow = async (env) => ((await env.DB.prepare("select coins from game_pool where id = 1").first()) || { coins: 0 }).coins;
+
+/* ---------------- Daily check-in ----------------
+ * One claim per member per America/New_York day: 10 free coins, and every
+ * 7th straight day pays a 40-coin bonus (50 total). The claim is a coin_tx
+ * row with kind "daily" and a deterministic id, so a double claim can never
+ * pay twice; the wallet is credited only when the insert actually landed. */
+const DAILY_BASE = 10, DAILY_BONUS_EVERY = 7, DAILY_BONUS = 40;
+const dayET = (back = 0) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(Date.now() - back * 864e5));
+const dailyDays = async (env, uid) => new Set(((await env.DB.prepare("select id from coin_tx where uid = ? and kind = 'daily' order by at desc limit 90").bind(uid).all()).results || []).map((r) => String(r.id).split(":").pop()));
+
+/* ---------------- Welcome promo drop ----------------
+ * One-time 100 free coins per member (owner promo, 2026-10-27). Same
+ * insert-or-ignore claim shape as the daily, so nobody can claim twice.
+ * The drop costs the owner nothing out of pocket by design: game payouts
+ * only ever come out of the player-funded prize pool, and every game pays
+ * back less than fair odds, so promo coins played here mostly flow back
+ * into the pool and the house fee — and players who run out buy packs. */
+const PROMO_ID = "launch100", PROMO_COINS = 100;
+const streakFrom = (days, includeToday) => { let n = 0; for (let i = includeToday ? 0 : 1; ; i++) { if (days.has(dayET(i))) n++; else break; } return n; };
+const isUnder18 = async (env, uid) => { const r = await env.DB.prepare("select data from docs where path = ?").bind("members/" + uid).first(); try { return !!(r && JSON.parse(r.data || "{}").under18); } catch (_) { return false; } };
+
 export async function onRequest({ request, env, params }) {
   if (!env.DB) return err("Database not connected.", 503);
   await setup(env); await ensure(env);
@@ -71,10 +223,75 @@ export async function onRequest({ request, env, params }) {
       if (uid && coins > 0 && s.payment_status === "paid") {
         const now = Date.now();
         const r = await env.DB.prepare("insert or ignore into coin_tx (id, uid, kind, coins, cents, at) values (?,?,?,?,?,?)").bind("cs:" + s.id, uid, "buy", coins, s.amount_total || 0, now).run();
-        if (r.meta.changes) await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(uid, coins, now).run();
+        if (r.meta.changes) {
+          await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(uid, coins, now).run();
+          // the purse IS this coin account (Malik, 2026-11-05): a confirmed
+          // site receipt lands in Meechie's purse at the coin system's own
+          // rate (1 coin = 1¢ of value), credited by dollar value received.
+          // Idempotent by the session id — a webhook replay never pays twice.
+          await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "coin-pack", ref: "cs:" + s.id, data: { uid, packCoins: coins } });
+        }
+      }
+      // a paid eBook: record the purchase (idempotent on the session id) and
+      // land the $10 in Meechie's purse as a book sale
+      if (s.metadata && s.metadata.kind === "book" && s.payment_status === "paid") {
+        const book = String(s.metadata.book || ""), BK = BOOKS[book];
+        if (uid && BK) {
+          const now = Date.now();
+          const r = await env.DB.prepare("insert or ignore into book_orders (id, uid, book, cents, at) values (?,?,?,?,?)").bind("cs:" + s.id, uid, book, s.amount_total || 0, now).run();
+          if (r.meta.changes) await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "book-sale", ref: "cs:" + s.id, data: { uid, book } });
+        }
+      }
+      // a paid CJ product: auto-create the CJ order and pay it from his CJ
+      // balance, so CJ ships it direct. Idempotent on the session id — a
+      // retried webhook never double-orders. The profit (what the customer
+      // paid minus what CJ charged) lands in Meechie's purse as a CJ sale.
+      if (s.metadata && s.metadata.kind === "cj" && s.payment_status === "paid") {
+        const prod = String(s.metadata.product || ""), P = CJ_PRODUCTS[prod];
+        if (uid && P && P.vid) {
+          const now = Date.now();
+          const r = await env.DB.prepare("insert or ignore into cj_orders (id, uid, product, cents, cj_order_id, cj_cost_cents, profit_cents, status, at) values (?,?,?,?,?,?,?,?,?)").bind("cs:" + s.id, uid, prod, s.amount_total || 0, "", 0, 0, "pending", now).run();
+          if (r.meta.changes) {
+            try {
+              const sd = s.shipping_details || (s.collected_information && s.collected_information.shipping_details) || {}, cd = s.customer_details || {}; // newer Stripe API versions moved shipping_details under collected_information
+              const addr = {
+                firstName: (sd.name || (cd.name || "")).split(" ")[0] || "",
+                lastName: (sd.name || (cd.name || "")).split(" ").slice(1).join(" ") || "",
+                countryCode: (sd.address && sd.address.country) || "US",
+                country: (sd.address && sd.address.country) || "United States",
+                province: (sd.address && sd.address.state) || "",
+                city: (sd.address && sd.address.city) || "",
+                address: (sd.address && sd.address.line1) || "",
+                address2: (sd.address && sd.address.line2) || "",
+                zip: (sd.address && sd.address.postal_code) || "",
+                phone: (cd.phone || sd.phone) || "",
+                email: cd.email || "",
+              };
+              const cj = await cjCreateOrder(env, { orderNumber: "MW-" + s.id.replace(/^cs_/, "").slice(0, 20), address: addr, items: [{ vid: P.vid, quantity: 1 }] });
+              const cjOrderId = String((cj && (cj.orderId || cj.orderNumber)) || "");
+              let cjCost = (P.cost_cents || 0) + (P.ship_cents || 0), cjPaid = false;
+              try {
+                const pay = await cjPayBalance(env, [cjOrderId]);
+                const paidAmt = pay && (pay.totalAmount || pay.amount);
+                if (paidAmt != null) cjCost = Math.round(Number(paidAmt) * 100);
+                cjPaid = true;
+              } catch (payErr) { /* order created but pay failed (e.g. low CJ balance) — mark unpaid, no profit yet */ }
+              const profit = Math.max(0, (s.amount_total || 0) - cjCost);
+              await env.DB.prepare("update cj_orders set cj_order_id = ?, cj_cost_cents = ?, profit_cents = ?, status = ? where id = ?").bind(cjOrderId, cjCost, cjPaid ? profit : 0, cjPaid ? "ordered" : "unpaid", "cs:" + s.id).run();
+              if (cjPaid && profit > 0) await creditPurse(env, { coins: profit, cents: profit, source: "cj-sale", ref: "cs:" + s.id, data: { uid, product: prod, cjOrderId } });
+            } catch (cjErr) {
+              await env.DB.prepare("update cj_orders set status = ? where id = ?").bind("cj-error", "cs:" + s.id).run();
+            }
+          }
+        }
       }
     }
     return json({ received: true });
+  }
+
+  // public list of the cheap CJ deals (no sign-in needed to browse)
+  if (route === "cj-products" && method === "GET") {
+    return json({ products: Object.entries(CJ_PRODUCTS).filter(([, p]) => p.vid).map(([id, p]) => ({ id, name: p.name, cents: p.cents })) });
   }
 
   const me = await userFrom(request, env);
@@ -86,6 +303,184 @@ export async function onRequest({ request, env, params }) {
     const recent = (await env.DB.prepare("select kind, coins, cents, other, at from coin_tx where uid = ? order by at desc limit 30").bind(me.id).all()).results || [];
     const outs = (await env.DB.prepare("select id, cents, method, status, at, paid_at from cashouts where uid = ? order by at desc limit 10").bind(me.id).all()).results || [];
     return json({ paid, coins: w.coins, earnedCents: w.earned_cents, paidOutCents: w.paid_cents, pendingCents: p, availableCents: w.earned_cents - w.paid_cents - p, recent, cashouts: outs });
+  }
+
+  /* ---------------- Coin Casino routes ---------------- */
+  if (route === "games" && method === "GET") {
+    const pool = await poolRow(env);
+    const maxBet = {}; for (const [k, g] of Object.entries(GAMES)) maxBet[k] = Math.max(0, Math.min(GAME_MAX_BET, Math.floor(pool / (g.maxMult - 1))));
+    const pots = (await env.DB.prepare("select id, creator, bet, side, at from game_pots where status = 'open' order by at desc limit 20").all()).results || [];
+    const wins = (await env.DB.prepare("select uid, kind, coins, other, at from coin_tx where kind in ('game_win','pot_win') order by at desc limit 12").all()).results || [];
+    const mine = (await env.DB.prepare("select kind, coins, other, at from coin_tx where (uid = ? and kind like 'game%') or (uid = ? and kind like 'pot%') order by at desc limit 10").bind(me.id, me.id).all()).results || [];
+    const promoClaimed = !!(await env.DB.prepare("select 1 from coin_tx where id = ?").bind("promo:" + PROMO_ID + ":" + me.id).first());
+    return json({ pool, games: Object.fromEntries(Object.entries(GAMES).map(([k, g]) => [k, { name: g.name, maxMult: g.maxMult }])), maxBet, minBet: GAME_MIN_BET, fee: GAME_FEE, pots, wins, mine, admin, paid, promo: { amount: PROMO_COINS, claimed: promoClaimed } });
+  }
+
+  if (route === "daily" && method === "GET") {
+    const days = await dailyDays(env, me.id);
+    const claimed = days.has(dayET(0));
+    return json({ claimed, base: DAILY_BASE, bonusEvery: DAILY_BONUS_EVERY, bonus: DAILY_BONUS, streak: streakFrom(days, claimed), coins: (await wallet(env, me.id)).coins });
+  }
+
+  if (route === "daily/claim" && method === "POST") {
+    if (!(await take(env, "daily:" + me.id, 60, 10))) return err("Slow down a little.", 429);
+    const days = await dailyDays(env, me.id);
+    const streak = streakFrom(days, false) + 1;
+    const amount = DAILY_BASE + (streak % DAILY_BONUS_EVERY === 0 ? DAILY_BONUS : 0);
+    const now = Date.now();
+    const ins = await env.DB.prepare("insert or ignore into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("daily:" + me.id + ":" + dayET(0), me.id, "daily", amount, 0, "checkin", now).run();
+    if (!ins.meta.changes) return err("You already claimed today's coins. Come back tomorrow for more.");
+    await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(me.id, amount, now).run();
+    return json({ ok: true, amount, streak, bonus: amount - DAILY_BASE, coins: (await wallet(env, me.id)).coins });
+  }
+
+  if (route === "promo/claim" && method === "POST") {
+    if (!(await take(env, "promo:" + me.id, 60, 10))) return err("Slow down a little.", 429);
+    const now = Date.now();
+    const ins = await env.DB.prepare("insert or ignore into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("promo:" + PROMO_ID + ":" + me.id, me.id, "promo", PROMO_COINS, 0, "welcome drop", now).run();
+    if (!ins.meta.changes) return err("You already claimed your welcome drop.");
+    await env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(me.id, PROMO_COINS, now).run();
+    return json({ ok: true, amount: PROMO_COINS, coins: (await wallet(env, me.id)).coins });
+  }
+
+  if (route === "play" && method === "POST") {
+    if (await isUnder18(env, me.id)) return err("Members under 18 can't play coin games.");
+    if (!(await take(env, "play:" + me.id, 60, 120))) return err("Slow down a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const game = String(b.game || ""), G = GAMES[game]; if (!G) return err("Pick a game.");
+    const bet = Math.round(+b.bet || 0);
+    if (!(bet >= GAME_MIN_BET && bet <= GAME_MAX_BET)) return err("Bets are " + GAME_MIN_BET + " to " + GAME_MAX_BET + " coins.");
+    let choice = String(b.choice || "");
+    if (game === "flip" && !["heads", "tails"].includes(choice)) return err("Pick heads or tails.");
+    if (game === "dice" && !["under", "over", "seven"].includes(choice)) return err("Pick under 7, over 7, or exactly 7.");
+    if (game === "triple" && !["heads3", "tails3", "mixed"].includes(choice)) return err("Pick all heads, all tails, or mixed.");
+    const pool = await poolRow(env);
+    const maxNow = Math.min(GAME_MAX_BET, Math.floor(pool / (G.maxMult - 1)));
+    if (bet > maxNow) return err(pool < GAME_MIN_BET ? "The prize pool is empty right now. PvP pots are still open, and every lost bet refills the pool." : "The prize pool (" + pool + " coins) caps this game's bet at " + maxNow + " right now.");
+    const now = Date.now(), id = uuid();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(bet, now, me.id, bet).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    const { pay, detail } = settleGame(game, bet, choice);
+    const fee = Math.floor(bet * GAME_FEE);
+    const tx = (pfx, uid2, kind, coins, cents) => env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind(pfx + id, uid2, kind, coins, cents, game, now);
+    let stmts, note = "";
+    if (pay > bet) {
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update game_pool set coins = coins - ? where id = 1 and coins >= ?").bind(pay - bet, pay - bet),
+        env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pay, now, me.id),
+        tx("gw:", me.id, "game_win", pay, 0)];
+    } else if (pay === bet) {
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(bet, now, me.id),
+        tx("gp:", me.id, "game_push", bet, 0)];
+    } else if (pay > 0) {
+      const fee2 = Math.min(fee, bet - pay);
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pay, now, me.id),
+        tx("gw:", me.id, "game_win", pay, 0),
+        env.DB.prepare("update game_pool set coins = coins + ? where id = 1").bind(bet - pay - fee2)];
+      if (fee2) stmts.push(tx("gf:", OWNER_ID, "game_fee", 0, fee2));
+    } else {
+      stmts = [tx("gb:", me.id, "game_bet", -bet, 0),
+        env.DB.prepare("update game_pool set coins = coins + ? where id = 1").bind(bet - fee)];
+      if (fee) stmts.push(tx("gf:", OWNER_ID, "game_fee", 0, fee));
+    }
+    const res = await env.DB.batch(stmts);
+    let finalPay = pay;
+    if (pay > bet && !res[1].meta.changes) {
+      // two big wins landed at the same moment and the pool can't fund this profit: the round becomes a push, bet back
+      await env.DB.batch([
+        env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(pay - bet, Date.now(), me.id, pay - bet),
+        env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("gx:" + id, me.id, "game_push", bet, 0, game, Date.now()),
+      ]);
+      finalPay = bet; note = "The prize pool just ran low, so this round is a push — your bet is back.";
+    }
+    const w = await wallet(env, me.id);
+    return json({ ok: true, game, bet, pay: finalPay, detail, note, coins: w.coins, pool: await poolRow(env) });
+  }
+
+  if (route === "pot/create" && method === "POST") {
+    if (await isUnder18(env, me.id)) return err("Members under 18 can't play coin games.");
+    if (!(await take(env, "pot:" + me.id, 60, 10))) return err("Slow down a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const bet = Math.round(+b.bet || 0), side = String(b.side || "");
+    if (!(bet >= GAME_MIN_BET && bet <= GAME_MAX_BET)) return err("Bets are " + GAME_MIN_BET + " to " + GAME_MAX_BET + " coins.");
+    if (!["heads", "tails"].includes(side)) return err("Pick heads or tails.");
+    const open = await env.DB.prepare("select count(*) n from game_pots where creator = ? and status = 'open'").bind(me.id).first();
+    if (open && open.n >= 3) return err("You already have 3 open pots. Wait for a player or cancel one.");
+    const now = Date.now(), id = uuid();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(bet, now, me.id, bet).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    await env.DB.batch([
+      env.DB.prepare("insert into game_pots (id, creator, bet, side, status, at) values (?,?,?,?,'open',?)").bind(id, me.id, bet, side, now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pb:" + id, me.id, "pot_bet", -bet, 0, "flip-pvp", now),
+    ]);
+    return json({ ok: true, id });
+  }
+
+  if (route === "pot/join" && method === "POST") {
+    if (await isUnder18(env, me.id)) return err("Members under 18 can't play coin games.");
+    const b = await request.json().catch(() => ({})); const id = String(b.id || "");
+    const pot = await env.DB.prepare("select * from game_pots where id = ? and status = 'open'").bind(id).first();
+    if (!pot) return err("That pot is gone — someone beat you to it.");
+    if (pot.creator === me.id) return err("That's your own pot.");
+    const now = Date.now();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(pot.bet, now, me.id, pot.bet).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    const claim = await env.DB.prepare("update game_pots set status = 'done', joiner = ?, done_at = ? where id = ? and status = 'open'").bind(me.id, now, id).run();
+    if (!claim.meta.changes) { await env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pot.bet, now, me.id).run(); return err("That pot just got taken. Your coins are back."); }
+    const land = rnd(2) ? "tails" : "heads";
+    const creatorWon = land === pot.side, winner = creatorWon ? pot.creator : me.id, loser = creatorWon ? me.id : pot.creator;
+    const potTotal = pot.bet * 2, rake = Math.floor(potTotal * GAME_FEE), prize = potTotal - rake;
+    await env.DB.batch([
+      env.DB.prepare("update game_pots set winner = ? where id = ?").bind(winner, id),
+      env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(prize, now, winner),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pb:" + id + ":j", me.id, "pot_bet", -pot.bet, 0, "flip-pvp", now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pw:" + id, winner, "pot_win", prize, 0, "flip-pvp", now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pf:" + id, OWNER_ID, "game_fee", 0, rake, loser, now),
+    ]);
+    const w = await wallet(env, me.id);
+    return json({ ok: true, land, creatorSide: pot.side, youWon: winner === me.id, prize, coins: w.coins });
+  }
+
+  if (route === "pot/cancel" && method === "POST") {
+    const b = await request.json().catch(() => ({})); const id = String(b.id || "");
+    const pot = await env.DB.prepare("select * from game_pots where id = ? and status = 'open' and creator = ?").bind(id, me.id).first();
+    if (!pot) return err("No open pot of yours with that id.");
+    const now = Date.now();
+    const shut = await env.DB.prepare("update game_pots set status = 'cancelled', done_at = ? where id = ? and status = 'open'").bind(now, id).run();
+    if (!shut.meta.changes) return err("That pot was just taken.");
+    await env.DB.batch([
+      env.DB.prepare("update wallets set coins = coins + ?, updated_at = ? where uid = ?").bind(pot.bet, now, me.id),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("pc:" + id, me.id, "pot_refund", pot.bet, 0, "flip-pvp", now),
+    ]);
+    return json({ ok: true });
+  }
+
+  if (route === "pool/seed" && method === "POST") {
+    const b = await request.json().catch(() => ({})); const amt = Math.round(+b.coins || 0);
+    if (!(amt >= 1 && amt <= 100000)) return err("Pick an amount.");
+    const now = Date.now();
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(amt, now, me.id, amt).run();
+    if (!spent.meta.changes) return err("not_enough_coins", 402);
+    await env.DB.batch([
+      env.DB.prepare("update game_pool set coins = coins + ? where id = 1").bind(amt),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("ps:" + uuid(), me.id, "pool_seed", -amt, 0, "casino", now),
+    ]);
+    return json({ ok: true, pool: await poolRow(env) });
+  }
+
+  if (route === "admin/grant" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({})); const amt = Math.round(+b.coins || 0); const to = String(b.to || me.id);
+    if (!(amt >= 1 && amt <= 1000000)) return err("Pick an amount.");
+    if (!/^[0-9a-f-]{36}$/.test(to)) return err("Bad member id.");
+    const now = Date.now();
+    await env.DB.batch([
+      env.DB.prepare("insert into wallets (uid, coins, updated_at) values (?,?,?) on conflict(uid) do update set coins = coins + excluded.coins, updated_at = excluded.updated_at").bind(to, amt, now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("ag:" + uuid(), to, "grant", amt, 0, "casino", now),
+    ]);
+    return json({ ok: true });
   }
 
   if (route === "checkout" && method === "POST") {
@@ -101,12 +496,69 @@ export async function onRequest({ request, env, params }) {
     return json({ url: s.url });
   }
 
+  /* ---------------- Paid eBooks (Stripe) ---------------- */
+  if (route === "book-checkout" && method === "POST") {
+    if (!paid) return err("The book shop isn't switched on yet.", 501);
+    if (!(await take(env, "bookbuy:" + me.id, 3600, 20))) return err("Too many tries. Wait a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const id = String(b.book || ""), BK = BOOKS[id];
+    if (!BK) return err("That book isn't for sale here yet.");
+    if (admin || (await bookOwned(env, me.id, id))) return json({ owned: true });
+    // resume a checkout opened in the last 30 minutes instead of a second one
+    const pend = await env.DB.prepare("select url from book_checkouts where uid = ? and book = ? and at > ? order by at desc limit 1").bind(me.id, id, Date.now() - 30 * 60 * 1000).first();
+    if (pend && pend.url) return json({ url: pend.url });
+    const origin = new URL(request.url).origin;
+    const s = await stripe(env, "checkout/sessions", {
+      mode: "payment", "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(BK.cents),
+      "line_items[0][price_data][product_data][name]": BK.name + " eBook", "metadata[uid]": me.id, "metadata[kind]": "book", "metadata[book]": id,
+      client_reference_id: me.id, success_url: origin + "/#books", cancel_url: origin + "/#books",
+    });
+    await env.DB.prepare("insert or ignore into book_checkouts (session, uid, book, url, at) values (?,?,?,?,?)").bind(s.id, me.id, id, s.url, Date.now()).run();
+    return json({ url: s.url });
+  }
+
+  /* CJ products sold on the site itself (Stripe Checkout). Customer pays
+   * through Meechie's Stripe (shipping address collected at checkout); on
+   * payment the webhook auto-creates the CJ order and pays it from his CJ
+   * balance, so CJ ships it direct to the buyer. */
+  if (route === "cj-checkout" && method === "POST") {
+    if (!paid) return err("The shop isn't switched on yet.", 501);
+    if (!(await take(env, "cjbuy:" + me.id, 3600, 20))) return err("Too many tries. Wait a little.", 429);
+    const b = await request.json().catch(() => ({}));
+    const id = String(b.product || ""), P = CJ_PRODUCTS[id];
+    if (!P) return err("That product isn't for sale here yet.");
+    if (!P.vid) return err("That product isn't linked to CJ yet.", 501);
+    // Don't take a customer's money until the CJ key is in the vault — otherwise
+    // the paid order could never be placed with CJ. The key goes on the API Keys page.
+    if (!(await getSecret(env, "CJ_API_KEY"))) return err("The shop isn't ready yet.", 501);
+    // resume a checkout opened in the last 30 minutes instead of a second one
+    const pend = await env.DB.prepare("select url from cj_checkouts where uid = ? and product = ? and at > ? order by at desc limit 1").bind(me.id, id, Date.now() - 30 * 60 * 1000).first();
+    if (pend && pend.url) return json({ url: pend.url });
+    const origin = new URL(request.url).origin;
+    const s = await stripe(env, "checkout/sessions", {
+      mode: "payment", "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(P.cents),
+      "line_items[0][price_data][product_data][name]": P.name + " — Meechie's World",
+      "shipping_address_collection[allowed_countries][0]": "US",
+      "metadata[uid]": me.id, "metadata[kind]": "cj", "metadata[product]": id,
+      client_reference_id: me.id, success_url: origin + "/#shop", cancel_url: origin + "/#shop",
+    });
+    await env.DB.prepare("insert or ignore into cj_checkouts (session, uid, product, url, at) values (?,?,?,?,?)").bind(s.id, me.id, id, s.url, Date.now()).run();
+    return json({ url: s.url });
+  }
+
+
+  if (route.startsWith("book/") && method === "GET") {
+    const id = route.slice(5);
+    if (!BOOKS[id]) return err("No such book.", 404);
+    return json({ owned: admin || (await bookOwned(env, me.id, id)) });
+  }
+
   if (route === "gift" && method === "POST") {
     if (!paid) return err("free_mode", 409);
     if (!(await take(env, "gift:" + me.id, 60, 150))) return err("Slow down a little.", 429);
     const b = await request.json().catch(() => ({}));
     const qty = Math.max(1, Math.min(99, Math.round(+b.qty || 1)));
-    const to = String(b.to || ""), kind = String(b.kind || ""), cost = GIFT_COINS[kind] * qty;
+    const to = String(b.to || ""), kind = String(b.kind || ""), cost = (Object.prototype.hasOwnProperty.call(GIFT_COINS, kind) ? GIFT_COINS[kind] : NaN) * qty;
     if (!GIFT_COINS[kind]) return err("Pick a gift.");
     if (!/^[0-9a-f-]{36}$/.test(to) || to === me.id) return err("You can't send a gift to that person.");
     if (!(await env.DB.prepare("select 1 from docs where path = ?").bind("members/" + to).first())) return err("That member doesn't exist.");
@@ -137,13 +589,46 @@ export async function onRequest({ request, env, params }) {
     const w = await wallet(env, me.id), avail = w.earned_cents - w.paid_cents - (await pending(env, me.id));
     if (avail < MIN_CASHOUT_CENTS) return err("You can cash out once you've earned $" + (MIN_CASHOUT_CENTS / 100).toFixed(0) + ".");
     const now = Date.now();
-    await env.DB.prepare("insert into cashouts (uid, cents, method, handle, at) values (?,?,?,?,?)").bind(me.id, avail, methodName, handle, now).run();
+    // one statement re-checks the balance, so two taps at once can't ask for the same money twice
+    const ask = await env.DB.prepare("insert into cashouts (uid, cents, method, handle, at) select ?,?,?,?,? where (select earned_cents - paid_cents from wallets where uid = ?) - (select coalesce(sum(cents),0) from cashouts where uid = ? and status = 'requested') >= ?").bind(me.id, avail, methodName, handle, now, me.id, me.id, avail).run();
+    if (!ask.meta.changes) return err("That cash-out is already on its way.");
     // let Meechie know privately
     await env.DB.batch([
       env.DB.prepare("insert into dms (sender, recipient, body, created_at) values (?,?,?,?)").bind(me.id, OWNER_ID, `💸 Cash-out request: $${(avail / 100).toFixed(2)} by ${methodName} to ${handle}. Pay it, then mark it paid in Coins → Payouts.`, new Date(now).toISOString()),
       change(env, "dms", null, null, me.id, OWNER_ID),
     ]);
     return json({ ok: true, cents: avail });
+  }
+
+  /* ---------------- Meechie's Purse (the coin account IS the purse) ----------------
+   * Owner-only doors onto lib/purse.js: the booth panel reads the whole
+   * purse (balance, the 40% usable share, the append-only log, the
+   * proposal queue), decides proposals, sets the usable percent and
+   * flips the freeze switch. Meechie's own proposal path is the same
+   * lib door his hands call server-side; this HTTP door is the owner's.
+   * NOTHING here executes a payment — approvals are ledger commitments. */
+  if (route === "purse" && method === "GET") {
+    if (!admin) return err("owner_only", 403);
+    return json(await purseView(env));
+  }
+  if (route === "purse/propose" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    const r = await createProposal(env, b, me.id);
+    return r.ok ? json({ ok: true, proposal: r.proposal }) : err(r.error, 422);
+  }
+  if (route === "purse/decide" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    const r = await decideProposal(env, String(b.id || ""), String(b.decision || ""), me.id);
+    return r.ok ? json(r) : err(r.error, r.code === "not_found" ? 404 : 422);
+  }
+  if (route === "purse/config" && method === "POST") {
+    if (!admin) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    if (b.usablePct != null) { const r = await setUsablePct(env, b.usablePct, me.id); if (!r.ok) return err(r.error, 422); }
+    if (b.frozen != null) await setFrozen(env, !!b.frozen, me.id);
+    return json(await purseView(env));
   }
 
   // owner only: everything that's been bought and earned, and payouts to make

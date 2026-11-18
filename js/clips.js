@@ -11,7 +11,7 @@
   const css = document.createElement("style");
   css.textContent = `
 #v-clips .clips-wrap{position:relative;max-width:520px;margin:0 auto}
-#v-clips .clips{height:calc(100dvh - 150px);min-height:420px;overflow-y:auto;scroll-snap-type:y mandatory;border-radius:18px;background:#000;border:1px solid var(--line);scrollbar-width:none;overscroll-behavior:contain}
+#v-clips .clips{height:calc(100dvh - 150px - var(--shell-h,48px));min-height:420px;overflow-y:auto;scroll-snap-type:y mandatory;border-radius:18px;background:#000;border:1px solid var(--line);scrollbar-width:none;overscroll-behavior:contain}
 #v-clips .clips::-webkit-scrollbar{display:none}
 #v-clips .clip{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;display:grid;place-items:center;overflow:hidden;background:#000}
 #v-clips .clip video{width:100%;height:100%;object-fit:cover;background:#000}
@@ -30,8 +30,8 @@
 #v-clips .clip-add input{position:absolute;inset:0;opacity:0;cursor:pointer}
 #v-clips .clip-up{position:absolute;left:12px;right:12px;bottom:66px;background:var(--panel);border:1px solid var(--gold);border-radius:14px;padding:14px;display:grid;gap:10px;z-index:5}
 #v-clips .clip-up input[type=text]{width:100%;background:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:16px system-ui,sans-serif}
-@media (max-width:640px){#v-clips .clips{height:calc(100dvh - 120px);border-radius:0;border:0}}
-body.has-player #v-clips .clips{height:calc(100dvh - 230px - env(safe-area-inset-bottom,0px))}
+@media (max-width:640px){#v-clips .clips{height:calc(100dvh - 120px - var(--shell-h,48px));border-radius:0;border:0}}
+body.has-player #v-clips .clips{height:calc(100dvh - 230px - var(--shell-h,48px) - env(safe-area-inset-bottom,0px))}
 body.has-player #v-clips .rail{bottom:70px}`;
   document.head.appendChild(css);
 
@@ -41,11 +41,12 @@ body.has-player #v-clips .rail{bottom:70px}`;
   const HANDLE = (id) => (typeof handleOf === "function" ? handleOf(id) : "Member");
   const AV = (id) => (typeof avatarOf === "function" ? avatarOf(id) : "");
   function clips() {
-    return P().filter((p) => /^https:\/\//.test(p.video || "")).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    // the old Supabase storage is shut off — its clips are dead for everyone, keep them out entirely
+    return P().filter((p) => /^https:\/\//.test(p.video || "") && !/supabase\.co/.test(p.video)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }
   function render() {
     const list = clips(), uid = ME();
-    if (!list.length) { if (!box.querySelector(".clip-empty")) box.innerHTML = '<div class="clip-empty"><h3>No clips yet</h3><p>Be the first. Tap + to post a video.</p></div>'; els.clear(); return; }
+    if (!list.length) { if (!box.querySelector(".clip-empty")) box.innerHTML = '<div class="clip-empty"><span class="ce-ic" aria-hidden="true">🎬</span><h3>No clips yet</h3><p>Be the first one on the wall. Post a short video and everybody swiping sees it.</p><label class="ce-go" for="clip-file">＋ Post your first clip</label></div>'; els.clear(); return; }
     box.querySelector(".clip-empty")?.remove();
     const keep = new Set(list.map((p) => p.id));
     for (const [id, el] of els) if (!keep.has(id)) { el.remove(); els.delete(id); }
@@ -56,6 +57,7 @@ body.has-player #v-clips .rail{bottom:70px}`;
         el = document.createElement("div"); el.className = "clip"; el.dataset.id = p.id;
         el.innerHTML = `<video playsinline loop preload="none" muted></video><div class="shade"></div><button class="snd" type="button"></button><div class="cap"></div><div class="rail"></div>`;
         el.querySelector("video").dataset.src = p.video;
+        el.querySelector("video").addEventListener("error", () => { el.remove(); els.delete(p.id); if (!els.size) render(); }); // a clip that can't play (dead file, phone codec) takes itself out
         els.set(p.id, el); io && io.observe(el);
       }
       const liked = (p.likes || []).includes(uid);
@@ -81,6 +83,12 @@ body.has-player #v-clips .rail{bottom:70px}`;
     el.querySelector(".snd").textContent = muted ? "🔇 Tap for sound" : "🔊";
     if (!muted) window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })();
     v.play().catch(() => { if (!v.muted) { v.muted = muted = true; el.querySelector(".snd").textContent = "🔇 Tap for sound"; window.MW_videoSound?.end(); v.play().catch(() => {}); } });
+    // a file this browser cannot decode can sit black forever without ever firing
+    // an error (a desktop-converted mp4 with Opus audio does exactly that) — if the
+    // active clip still has no picture after 9s, take it out like a dead one and
+    // roll on to the next clip instead of leaving a black screen up
+    clearTimeout(v._wd);
+    v._wd = setTimeout(() => { if (el.isConnected && v.readyState < 2) { const nx = el.nextElementSibling; el.remove(); els.delete(el.dataset.id); if (nx) activate(nx); else if (!els.size) render(); } }, 9000);
   }
   function setupIO() {
     io = new IntersectionObserver((ents) => ents.forEach((en) => { if (en.isIntersecting && en.intersectionRatio > 0.6 && !view.hidden) activate(en.target); else { const v = en.target.querySelector("video"); if (!v.paused) { v.pause(); if (!v.muted) window.MW_videoSound?.end(); } } }), { root: box, threshold: [0, 0.6, 1] });

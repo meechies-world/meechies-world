@@ -1,0 +1,411 @@
+[
+ {
+  "id": "book",
+  "name": "Meechie's Book",
+  "short": "MW Book",
+  "view": "community",
+  "icon": "users",
+  "tag": "S O C I A L",
+  "pitch": "Just <b>Meechie's Book</b>: the feed, stories, friends and private messages, in its own app.",
+  "feats": [
+   "Post photos, videos and stories",
+   "See what your friends are posting",
+   "Private messages with anyone on Meechie's World",
+   "Gifts and reactions on every post"
+  ],
+  "tabs": [
+   [
+    "community",
+    "home",
+    "Feed"
+   ],
+   [
+    "friends",
+    "users",
+    "Friends"
+   ],
+   [
+    "messages",
+    "chat",
+    "Messages"
+   ],
+   [
+    "clips",
+    "clap",
+    "Clips"
+   ]
+  ],
+  "line": "The feed, stories, friends and messages",
+  "offer": [
+   "community"
+  ]
+ },
+ {
+  "id": "dating",
+  "name": "Meechie's Dating",
+  "short": "MW Dating",
+  "view": "dating",
+  "icon": "heart",
+  "tag": "D A T I N G",
+  "pitch": "Just <b>Dating</b>: your dating profile, swiping, matches and messages, in its own app. 18+ only.",
+  "feats": [
+   "Make a profile with your photos and a video",
+   "Swipe, and when you both like each other it's a match",
+   "Message your matches privately",
+   "Adults 18+ only"
+  ],
+  "tabs": [
+   [
+    "dating",
+    "heart",
+    "Dating"
+   ],
+   [
+    "messages",
+    "chat",
+    "Messages"
+   ],
+   [
+    "friends",
+    "users",
+    "Friends"
+   ]
+  ],
+  "line": "Swipe, match and message (18+)",
+  "offer": [
+   "dating"
+  ]
+ },
+ {
+  "id": "legal",
+  "name": "Meechie's Legal Help",
+  "short": "MW Legal",
+  "view": "legal",
+  "icon": "scale",
+  "tag": "L E G A L   H E L P",
+  "pitch": "Just <b>Legal Help</b>: build your case and let Meechie's AI draft your motion, petition or complaint with real case law.",
+  "feats": [
+   "Draft motions, petitions and complaints",
+   "Find real case law and check every citation",
+   "Save your case file and pick up later",
+   "Legal document preparation, not legal advice"
+  ],
+  "tabs": [
+   [
+    "legal",
+    "scale",
+    "Legal Help"
+   ],
+   [
+    "contact",
+    "phone",
+    "Contact"
+   ]
+  ],
+  "line": "Draft motions with real case law",
+  "offer": [
+   "legal"
+  ]
+ },
+ {
+  "id": "shop",
+  "name": "Meechie's Shop",
+  "short": "MW Shop",
+  "view": "shop",
+  "icon": "bag",
+  "tag": "S H O P",
+  "pitch": "Just the <b>Shop</b>: Meechie's World clothing and merch, gift items to friends, and exclusives.",
+  "feats": [
+   "Shirts, hoodies and the whole collection",
+   "Gift shop items to someone on the site",
+   "Members-only exclusives",
+   "Secure checkout"
+  ],
+  "tabs": [
+   [
+    "shop",
+    "bag",
+    "Shop"
+   ],
+   [
+    "exclusives",
+    "sparkle",
+    "Exclusives"
+   ]
+  ],
+  "line": "Meechie's World clothing and merch",
+  "offer": [
+   "shop"
+  ]
+ },
+ {
+  "id": "live",
+  "name": "Meechie's Live",
+  "short": "MW Live",
+  "view": "live",
+  "icon": "live",
+  "tag": "G O   L I V E",
+  "pitch": "Just <b>Live</b>: go live from your camera, watch, send gifts and battle for 1, 3 or 5 minutes.",
+  "feats": [
+   "Go live from your phone camera",
+   "Watch and chat with other hosts",
+   "Send gifts and battle head to head",
+   "Top gifters and an MVP every battle"
+  ],
+  "tabs": [
+   [
+    "live",
+    "live",
+    "Live"
+   ],
+   [
+    "predict",
+    "crystal",
+    "Predictions"
+   ],
+   [
+    "games",
+    "game",
+    "Games"
+   ]
+  ],
+  "line": "Go live, gift and battle",
+  "offer": [
+   "live"
+  ]
+ },
+ {
+  "id": "studio",
+  "name": "Meechie's Studio",
+  "short": "MW Studio",
+  "view": "studio",
+  "icon": "sliders",
+  "tag": "S T U D I O",
+  "pitch": "Just the <b>Studio</b>: make a beat, record your vocals over it, mix it and post it.",
+  "feats": [
+   "Beat maker with real drum kits",
+   "Record your vocals over the beat",
+   "Mix and post it to the community",
+   "Works on phones and computers"
+  ],
+  "tabs": [
+   [
+    "studio",
+    "sliders",
+    "Studio"
+   ],
+   [
+    "dj",
+    "music",
+    "DJ"
+   ],
+   [
+    "radio",
+    "radio",
+    "Radio"
+   ]
+  ],
+  "line": "Make beats and record vocals",
+  "offer": [
+   "studio"
+  ]
+ },
+ {
+  "id": "tv",
+  "name": "Meechie's TV",
+  "short": "MW TV",
+  "view": "tv",
+  "icon": "tv",
+  "tag": "T V",
+  "pitch": "Just <b>TV</b>: free classic movies, live TV and music videos, in its own app.",
+  "feats": [
+   "Thousands of free classic movies",
+   "Live TV channels",
+   "Music videos and Meechie's World originals",
+   "Free forever, no sign-up"
+  ],
+  "tabs": [
+   [
+    "tv",
+    "tv",
+    "Movies"
+   ],
+   [
+    "livetv",
+    "satellite",
+    "Live TV"
+   ],
+   [
+    "videos",
+    "clap",
+    "Videos"
+   ]
+  ],
+  "line": "Free movies, live TV and music videos",
+  "offer": [
+   "tv",
+   "livetv",
+   "videos"
+  ]
+ },
+ {
+  "id": "games",
+  "name": "Meechie's Games",
+  "short": "MW Games",
+  "view": "games",
+  "icon": "game",
+  "tag": "G A M E S",
+  "pitch": "Just <b>Games</b>: play, call the game in Predictions, and climb the leaderboard.",
+  "feats": [
+   "Games you play right in the app",
+   "Predictions with free points",
+   "Leaderboards",
+   "Daily check-in rewards"
+  ],
+  "tabs": [
+   [
+    "games",
+    "game",
+    "Games"
+   ],
+   [
+    "predict",
+    "crystal",
+    "Predictions"
+   ],
+   [
+    "world",
+    "globe",
+    "3D World"
+   ]
+  ],
+  "line": "Games, predictions and leaderboards",
+  "offer": [
+   "games",
+   "predict"
+  ]
+ },
+ {
+  "id": "jobs",
+  "name": "Meechie's Jobs",
+  "short": "MW Jobs",
+  "view": "jobs",
+  "icon": "case",
+  "tag": "J O B S",
+  "pitch": "Just <b>Jobs</b>: companies post jobs, workers list their skills and get hired.",
+  "feats": [
+   "Find work, or find workers",
+   "List your skills",
+   "Message employers right in the app",
+   "Free ad board for members"
+  ],
+  "tabs": [
+   [
+    "jobs",
+    "case",
+    "Jobs"
+   ],
+   [
+    "ads",
+    "pinned",
+    "Ad Board"
+   ],
+   [
+    "promote",
+    "megaphone",
+    "Promote"
+   ]
+  ],
+  "line": "Find work or find workers",
+  "offer": [
+   "jobs",
+   "ads"
+  ]
+ },
+ {
+  "id": "books",
+  "name": "Meechie's Books",
+  "short": "MW Books",
+  "view": "books",
+  "icon": "book",
+  "tag": "B O O K S",
+  "pitch": "Just <b>Books</b>: read Meechie's World publications and pick up where you left off.",
+  "feats": [
+   "Read the whole book, free for members",
+   "Picks up where you left off",
+   "Works offline once opened"
+  ],
+  "tabs": [
+   [
+    "books",
+    "book",
+    "Books"
+   ]
+  ],
+  "line": "Read Meechie's books",
+  "offer": [
+   "books"
+  ]
+ },
+ {
+  "id": "fans",
+  "name": "Meechie's Fans",
+  "short": "MW Fans",
+  "view": "fans",
+  "icon": "crown",
+  "tag": "F A N S   ·   1 8 +",
+  "pitch": "Just <b>Meechie's Fans</b>: subscribe to verified creators, unlock posts and tip. Adults 18+ only.",
+  "feats": [
+   "Subscribe to your favorite creators",
+   "Unlock exclusive posts",
+   "Creators keep 40% of every sale",
+   "ID-verified adults only"
+  ],
+  "tabs": [
+   [
+    "fans",
+    "crown",
+    "Fans"
+   ],
+   [
+    "messages",
+    "chat",
+    "Messages"
+   ]
+  ],
+  "line": "Verified creators (18+)",
+  "offer": [
+   "fans"
+  ]
+ },
+ {
+  "id": "world",
+  "name": "Meechie's Virtual World",
+  "short": "MW World",
+  "view": "world",
+  "icon": "globe",
+  "tag": "3 D   W O R L D",
+  "pitch": "Just the <b>Virtual World</b>: dress up your character, walk the rooms and talk.",
+  "feats": [
+   "Dress up your character",
+   "Walk the rooms in 3D",
+   "Talk out loud to people in the room"
+  ],
+  "tabs": [
+   [
+    "world",
+    "globe",
+    "World"
+   ],
+   [
+    "chat",
+    "chat",
+    "Walkie"
+   ]
+  ],
+  "line": "Walk the 3D rooms and talk",
+  "offer": [
+   "world"
+  ]
+ }
+]

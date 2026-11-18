@@ -30,7 +30,7 @@
   const css = document.createElement("style");
   css.textContent = `
 #bl-root{display:grid;gap:14px}
-.bl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#1b160d,#0f0d09);position:sticky;top:64px;z-index:5}
+.bl-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#1b160d,#0f0d09);position:sticky;top:calc(64px + var(--shell-h,48px));z-index:5}
 .bl-bar .t{font:800 20px ui-monospace,monospace;color:var(--gold-hi);min-width:84px;text-align:center}
 .bl-btn{border:1px solid var(--line);background:#0c0a07;color:var(--text);border-radius:12px;padding:10px 14px;font:800 14px var(--body);cursor:pointer;min-width:44px}
 .bl-btn.rec{border-color:#e5484d;color:#ff8b8f}.bl-btn.rec.on{background:#e5484d;color:#fff;animation:blp 1s infinite}
@@ -84,6 +84,7 @@
     <span class="t" id="bl-time">0:00.0</span>
     <label>BPM <input type="number" id="bl-bpm" min="40" max="220" value="90"></label>
     <button class="bl-btn" type="button" id="bl-metro" aria-label="Metronome">🥁 Click</button>
+    <label class="bl-inl" title="Hear 4 clicks before recording starts, so you come in on the beat"><input type="checkbox" id="bl-countin" checked> Count-in</label>
     <label>Key <select id="bl-key" aria-label="Song key">${NOTES.map((n, i) => `<option value="${i}">${n}</option>`).join("")}</select></label>
     <label><select id="bl-scale" aria-label="Scale"><option value="chromatic">Any note</option><option value="minor">Minor</option><option value="major">Major</option></select></label>
     <button class="bl-btn" type="button" id="bl-slowed" title="Plugin Pack">🌙 Slowed + Reverb</button>
@@ -310,8 +311,16 @@
     rec = new MediaRecorder(inDest.stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 256000 }); recChunks = [];
     rec.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
     recTrack = t; recBegin = playhead; recording = true;
-    $("#bl-rec").classList.add("on"); $("#bl-st").textContent = "Recording on " + t.name + "... tap ● again to stop.";
-    rec.start(); play(true); draw();
+    $("#bl-rec").classList.add("on");
+    const myRec = rec;
+    const go = () => { if (!recording || rec !== myRec) return; $("#bl-st").textContent = "Recording on " + t.name + "... tap ● again to stop."; try { rec.start(); } catch (_) {} play(true); draw(); };
+    const cin = $("#bl-countin");
+    if (cin && cin.checked) {
+      const c2 = audio(), spb = 60 / bpm; let n = 4;
+      const clickNow = (hi) => { try { const o = c2.createOscillator(), g = c2.createGain(); o.frequency.value = hi ? 1600 : 1000; g.gain.setValueAtTime(0.25, c2.currentTime); g.gain.exponentialRampToValueAtTime(0.001, c2.currentTime + 0.06); o.connect(g).connect(c2.destination); o.start(); o.stop(c2.currentTime + 0.07); } catch (_) {} };
+      $("#bl-st").textContent = "Count-in: 4 — get ready..."; clickNow(true);
+      const iv = setInterval(() => { if (rec !== myRec) { clearInterval(iv); return; } n--; if (n <= 0) { clearInterval(iv); go(); return; } $("#bl-st").textContent = "Count-in: " + n; clickNow(false); }, spb * 1000);
+    } else go();
   }
   async function stopRec() {
     if (!rec) return; const r = rec; rec = null; recording = false; $("#bl-rec").classList.remove("on");

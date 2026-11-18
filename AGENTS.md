@@ -10,6 +10,7 @@ This is the website and app for **Meechie's World Inc** (owner: Daryl "Meechie" 
 - The `docs` table is readable by everyone. **Never put private member data in `members/<uid>`.** Private fields (a private phone, for example) go in auth `user_metadata`. Direct messages go in the `dms` table, which only the sender and recipient can read.
 - `js/outage.js` keeps the site open in guest mode when Supabase is down. Don't remove it.
 - When you change a script, bump its `?v=` number in `index.html` so phones load the new copy.
+- `version.json` "build" and `<meta name="mw-build">` in `index.html` must always be the same number. Change both together or neither (a mismatch made the site reload itself every few seconds, Oct 27 2026).
 
 ## How to make a change
 1. Make a branch, edit, and test on a phone-sized screen (390px wide).
@@ -35,3 +36,4 @@ This is the website and app for **Meechie's World Inc** (owner: Daryl "Meechie" 
 - Welcome videos and choice card (Text/Call Meechie): `js/welcome-show.js`
 - Phone notifications: `js/push.js` and `functions/api/push.js`
 - Bottom tabs on phones: `js/appnav.js`
+- Section apps (one home-screen app per section, `/<id>-app/` + `/apps/`): edit `tools/apps.json`, run `python3 tools/make-apps.py`. App mode lives in the first script in `index.html`; the "get this app" card is `js/app-offer.js`.

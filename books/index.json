@@ -19,8 +19,6 @@
     "pages": 342,
     "free": false,
     "price": "$10",
-    "buy": "https://meechiesworldinc.myshopify.com/cart/67736541167801:1",
-    "url": "https://meechiesworldinc.myshopify.com/products/from-harlem-to-fort-dix-the-rise-the-reign-and-the-reckoning-of-sean-diddy-combs-full-length-ebook",
     "order": 1792100000000
   },
   {
@@ -38,12 +36,72 @@
     "id": "paper-trail-vol1-part-a",
     "title": "Paper Trail: Jeffrey Epstein and the Fight for the Files",
     "author": "Meechie's World Inc",
-    "blurb": "How the most protected man in America left a record he could not erase. Volume One, Part A: Front Matter and Chapters 1–5, from a Brooklyn boyhood to Leslie Wexner's right-hand man (1953–1996).",
+    "blurb": "How the most protected man in America left a record he could not erase. Volume One, Part A: Front Matter and Chapters 1\u20135, from a Brooklyn boyhood to Leslie Wexner's right-hand man (1953\u20131996).",
     "cover": "img/books/paper-trail-cover.jpg",
     "pages": 19,
     "free": true,
     "src": "books/paper-trail-vol1-part-a.json",
     "media": "paper-trail.html",
     "order": 1792032384624
+  },
+  {
+    "id": "tiktok-the-opportunity",
+    "title": "TikTok: The Opportunity \u2014 How Creators Build Audiences, Income, and Businesses",
+    "author": "Meechie\u2019s World Inc",
+    "blurb": "A practical and honest guide to TikTok for people who want to use it to share a skill, grow a brand, sell something, or simply understand why it matters. Where the platform came from, how the recommendation system works, how creators earn, and how to plan, make, and read the numbers on videos. 297 pages.",
+    "cover": "img/books/tiktok-the-opportunity-cover.jpg",
+    "pages": 297,
+    "free": false,
+    "price": "$10",
+    "src": "books/tiktok-the-opportunity.json",
+    "order": 1794793000001
+  },
+  {
+    "id": "meechies-world-story-and-blueprint",
+    "title": "Meechie\u2019s World: The Story and the Blueprint",
+    "author": "Meechie\u2019s World Inc",
+    "blurb": "The story of Meechie\u2019s World Inc from facts the founder has shared, and the business lessons drawn from that work \u2014 radio, TV, books, and business, from Fairchance to the world. 298 pages.",
+    "cover": "img/books/meechies-world-story-and-blueprint-cover.jpg",
+    "pages": 298,
+    "free": false,
+    "price": "$10",
+    "src": "books/meechies-world-story-and-blueprint.json",
+    "order": 1794793000002
+  },
+  {
+    "id": "faith-the-foundation",
+    "title": "Faith: The Foundation \u2014 Aliens, Witches, Uranium, and the Case for One God",
+    "author": "Meechie\u2019s World Inc",
+    "blurb": "An independent book of faith and reflection from the author\u2019s Muslim perspective \u2014 aliens, witches, uranium, and the case for one God, treating people of every faith, and of none, with respect. 297 pages.",
+    "cover": "img/books/faith-the-foundation-cover.jpg",
+    "pages": 297,
+    "free": false,
+    "price": "$10",
+    "src": "books/faith-the-foundation.json",
+    "order": 1794793000003
+  },
+  {
+    "id": "spacex-the-mission",
+    "title": "SpaceX: The Mission \u2014 The People, the Technology, and the Next Frontier",
+    "author": "Meechie\u2019s World Inc",
+    "blurb": "The people, the technology, and the next frontier \u2014 the story of SpaceX, from the early failures to the rockets that land themselves, told from public sources. 298 pages.",
+    "cover": "img/books/spacex-the-mission-cover.jpg",
+    "pages": 298,
+    "free": false,
+    "price": "$10",
+    "src": "books/spacex-the-mission.json",
+    "order": 1794793000004
+  },
+  {
+    "id": "pyramids-of-egypt-luxury-edition",
+    "title": "The Pyramids of Egypt: How They Were Built, What They Were For, and the Myths Around Them \u2014 Complete Luxury Edition",
+    "author": "Meechie\u2019s World Inc",
+    "blurb": "The complete luxury edition \u2014 who really built the pyramids, how the stones were cut, moved and raised, what they were for, and what the latest discoveries show. 248 pages, redesigned, with the myths checked against the evidence.",
+    "cover": "img/books/pyramids-of-egypt-luxury-edition-cover.jpg",
+    "pages": 248,
+    "free": false,
+    "price": "$10",
+    "src": "books/pyramids-of-egypt-luxury-edition.json",
+    "order": 1794793000005
   }
 ]

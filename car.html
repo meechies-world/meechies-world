@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Car Mode — Meechie's World Radio &amp; TV</title>
+<meta name="description" content="Meechie's World in the car: CH 1 live radio, the master screen, a map and one big TUNE IN. Open meechiesworldinc.com/car on any car or phone browser.">
+<link rel="stylesheet" href="css/vendor/leaflet.css?v=1794002932">
+<style>
+  :root{ --gold:#e8b33c; --gold2:#ffcf5e; --ink:#0a0a0a; --panel:#141414; --line:#2c2c2c; --txt:#f5f0e1; --dim:#b9b09a; }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ background:#000; color:var(--txt); font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body{ min-height:100vh; display:flex; flex-direction:column; }
+  header{ display:flex; align-items:center; gap:14px; padding:12px 18px; border-bottom:2px solid var(--gold); background:var(--ink); }
+  header .brand{ font-weight:900; letter-spacing:.06em; font-size:clamp(18px,3.4vw,30px); color:var(--gold2); text-transform:uppercase; }
+  header .sub{ color:var(--dim); font-size:clamp(12px,1.8vw,16px); letter-spacing:.14em; text-transform:uppercase; }
+  .livebadge{ margin-left:auto; display:none; align-items:center; gap:8px; background:#3d0a0a; color:#ff6b6b; border:1px solid #ff5252; border-radius:999px; padding:8px 16px; font-weight:800; letter-spacing:.1em; font-size:clamp(13px,2vw,17px); }
+  .livebadge.on{ display:inline-flex; }
+  .livebadge i{ width:12px; height:12px; border-radius:50%; background:#ff5252; display:inline-block; animation:blink 1.2s infinite; }
+  @keyframes blink{ 50%{ opacity:.25; } }
+  main{ flex:1; display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); gap:14px; padding:14px; }
+  @media (max-width:900px){ main{ grid-template-columns:minmax(0,1fr); } }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; }
+  .card h2{ font-size:clamp(13px,1.7vw,16px); letter-spacing:.16em; text-transform:uppercase; color:var(--gold); padding:12px 16px 0; }
+  .stage{ position:relative; background:#000; aspect-ratio:16/9; }
+  .stage img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .stage .mount{ position:absolute; inset:0; display:none; }
+  .stage .mount.on{ display:block; }
+  .stage .mount iframe{ width:100%; height:100%; border:0; display:block; }
+  .stage .chip{ position:absolute; left:12px; bottom:12px; background:rgba(0,0,0,.78); border:1px solid var(--gold); color:var(--gold2); border-radius:12px; padding:10px 14px; font-size:clamp(13px,1.9vw,17px); font-weight:700; z-index:3; }
+  .tunein{ margin:14px; min-height:96px; border:0; border-radius:16px; background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; font-size:clamp(26px,4.6vw,42px); font-weight:900; letter-spacing:.05em; cursor:pointer; }
+  .tunein.playing{ background:#1d1d1d; color:var(--gold2); border:2px solid var(--gold); }
+  .volrow{ display:flex; align-items:center; gap:14px; padding:0 16px 16px; font-size:clamp(15px,2.2vw,20px); }
+  .volrow input[type=range]{ flex:1; height:44px; accent-color:var(--gold); }
+  .nowbar{ border-top:2px solid var(--gold); background:#0d0d0d; padding:14px 16px 16px; }
+  .nowbar .ch{ color:var(--gold2); font-weight:900; letter-spacing:.08em; font-size:clamp(15px,2.3vw,21px); }
+  .nowbar .title{ font-size:clamp(18px,3vw,28px); font-weight:800; margin-top:6px; line-height:1.2; }
+  .nowbar .meta{ color:var(--dim); margin-top:4px; font-size:clamp(13px,2vw,17px); }
+  .track{ height:12px; background:#262626; border-radius:999px; margin-top:10px; overflow:hidden; }
+  .track i{ display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--gold),var(--gold2)); transition:width 1s linear; }
+  .guide{ list-style:none; padding:10px 16px 16px; display:flex; flex-direction:column; gap:8px; }
+  .guide li{ display:flex; gap:12px; align-items:baseline; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font-size:clamp(14px,2.1vw,19px); }
+  .guide li.now{ border-color:var(--gold); background:#221a08; }
+  .guide .when{ color:var(--gold2); font-weight:800; white-space:nowrap; font-size:.86em; }
+  .guide .nowtag{ margin-left:auto; color:#ff6b6b; font-weight:900; font-size:.8em; letter-spacing:.1em; }
+  .note{ color:var(--dim); font-size:clamp(12px,1.8vw,15px); padding:0 16px 14px; line-height:1.45; }
+  .mapwrap{ flex:1; min-height:300px; background:#0d0d0d; }
+  .mapwrap iframe{ width:100%; height:100%; min-height:300px; border:0; display:block; }
+  .mapwrap #map{ width:100%; height:100%; min-height:300px; display:block; background:#0d0d0d; }
+  .leaflet-container{ font:inherit; }
+  .rr-pinwrap{ background:none; border:none; }
+  .rr-pin{ width:46px; height:46px; border-radius:50%; background:#141414; border:2px solid var(--gold); display:flex; align-items:center; justify-content:center; font-size:24px; box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 2px 10px rgba(0,0,0,.65); }
+  .rr-pin-owner{ border-color:var(--gold2); box-shadow:0 0 0 2px rgba(255,255,255,.92), 0 0 0 5px rgba(255,207,94,.55), 0 2px 10px rgba(0,0,0,.65); }
+  .rr-layers{ display:flex; flex-direction:column; gap:8px; }
+  .rr-layer-btn{ min-height:52px; min-width:136px; padding:8px 14px; border-radius:12px; border:2px solid var(--gold); background:rgba(13,13,13,.88); color:var(--txt); font-size:17px; font-weight:900; cursor:pointer; }
+  .rr-layer-btn.on{ background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; }
+  .rr-nav{ margin-top:8px; }
+  .rr-locate-btn{ min-height:52px; min-width:136px; padding:8px 14px; border-radius:12px; border:2px solid #1c7dff; background:rgba(13,13,13,.88); color:var(--txt); font-size:17px; font-weight:900; cursor:pointer; width:100%; }
+  .rr-locate-btn:active{ background:#1c7dff; color:#fff; }
+  .rr-drive{ display:flex; gap:12px; align-items:stretch; margin:12px 14px 0; }
+  .rr-speedbox{ flex:1; display:flex; align-items:baseline; justify-content:center; gap:8px; background:#0d0d0d; border:1px solid var(--line); border-radius:14px; padding:8px 12px; }
+  .rr-speednum{ font-size:46px; font-weight:900; line-height:1; color:var(--txt); }
+  .rr-speednum.over{ color:#ff5252; }
+  .rr-speedunit{ color:var(--dim); font-weight:800; font-size:15px; }
+  .rr-limitbox{ width:106px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f5f0e1; color:#111; border:3px solid #111; box-shadow:0 0 0 2px #f5f0e1; border-radius:10px; padding:6px 4px; }
+  .rr-limitlab{ font-size:12px; font-weight:900; letter-spacing:.18em; }
+  .rr-limitnum{ font-size:34px; font-weight:900; line-height:1.05; }
+  .rr-limitsrc{ color:var(--dim); font-size:11px; padding:6px 18px 0; line-height:1.35; }
+  .rr-locnote{ color:#ffb3b3; background:#2a0d0d; border:1px solid #ff5252; border-radius:12px; margin:10px 14px 0; padding:10px 12px; font-size:clamp(13px,2vw,16px); line-height:1.4; }
+  .maplinks{ display:flex; gap:10px; flex-wrap:wrap; padding:0 14px; }
+  .maplinks .bigbtn{ flex:1 1 230px; margin:12px 0 4px; }
+  .rr-pin-drop{ border-style:dashed; }
+  .rr-open{ margin:12px 14px 0; min-height:64px; width:calc(100% - 28px); border-radius:14px; border:2px solid var(--gold); background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; font-size:clamp(17px,2.8vw,24px); font-weight:900; letter-spacing:.03em; cursor:pointer; }
+  .rr-count{ color:var(--dim); font-size:clamp(13px,2vw,16px); padding:10px 16px 0; line-height:1.4; }
+  .rr-note{ color:var(--gold2); font-size:clamp(13px,2vw,16px); padding:6px 16px 0; line-height:1.4; }
+  .rr-sheet{ margin:10px 14px 0; border:1px solid var(--gold); border-radius:14px; padding:12px; background:#0d0d0d; }
+  .rr-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  @media (min-width:641px){ .rr-grid{ grid-template-columns:repeat(3,1fr); } }
+  .rr-type{ min-height:64px; border-radius:12px; border:1px solid var(--line); background:#1a1a1a; color:var(--txt); font-size:clamp(16px,2.4vw,20px); font-weight:800; cursor:pointer; padding:6px; }
+  .rr-type:active{ border-color:var(--gold); color:var(--gold2); }
+  .rr-confirm{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; font-size:clamp(15px,2.2vw,19px); font-weight:700; }
+  .rr-drop{ min-height:56px; padding:0 18px; border-radius:12px; border:0; background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#191104; font-weight:900; font-size:17px; cursor:pointer; }
+  .rr-cancel{ min-height:48px; padding:0 14px; border-radius:12px; border:1px solid var(--line); background:#1a1a1a; color:var(--txt); font-weight:700; cursor:pointer; margin-top:10px; }
+  .rr-confirm .rr-cancel{ margin-top:0; }
+  .rr-safe{ color:var(--dim); margin-top:12px; font-size:clamp(12px,1.8vw,15px); line-height:1.4; }
+  .rr-pop-t{ font-weight:900; font-size:17px; margin-bottom:4px; }
+  .rr-pop-m{ color:#555; font-size:13px; margin-bottom:8px; }
+  .rr-pop-btns{ display:flex; gap:8px; flex-wrap:wrap; }
+  .rr-pop-btns button{ min-height:44px; padding:0 12px; border-radius:10px; border:1px solid #999; background:#fff; color:#111; font-weight:800; cursor:pointer; font-size:14px; }
+  .bigbtn{ margin:12px 14px 16px; min-height:72px; border-radius:14px; border:2px solid var(--gold); background:#1d1d1d; color:var(--gold2); font-size:clamp(18px,3vw,26px); font-weight:900; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; }
+  .presets{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; padding:0 14px 14px; }
+  @media (max-width:640px){ .presets{ grid-template-columns:repeat(2,1fr); } }
+  .presets a,.presets button{ min-height:76px; border-radius:14px; border:1px solid var(--line); background:#1a1a1a; color:var(--txt); font-size:clamp(15px,2.4vw,21px); font-weight:800; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; text-align:center; padding:8px; }
+  .presets a:active,.presets button:active{ border-color:var(--gold); color:var(--gold2); }
+  footer{ padding:12px 18px 20px; color:var(--dim); font-size:clamp(12px,1.8vw,15px); display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+  footer a{ color:var(--gold2); font-weight:800; font-size:clamp(15px,2.2vw,19px); }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="brand">Meechie's World</div>
+    <div class="sub">Car Mode</div>
+  </div>
+  <span class="livebadge" id="livebadge"><i></i>LIVE</span>
+</header>
+
+<main>
+  <section class="card" id="radio-card">
+    <div class="stage">
+      <img id="stage-art" src="/img/tv-poster.jpg" srcset="/img/tv-poster-640.webp?v=1793750670 640w, /img/tv-poster-1080.webp?v=1793750670 1080w" sizes="100vw" alt="Meechie's World — station art">
+      <div class="mount" id="mount-A"></div>
+      <div class="mount" id="mount-B"></div>
+      <div class="mount" id="mount-C"></div>
+      <div class="mount" id="mount-D"></div>
+      <div class="chip">Master screen · the full picture lives on MW TV</div>
+    </div>
+    <button class="tunein" id="tunein" type="button">▶ TUNE IN — CH 1 LIVE</button>
+    <div class="volrow"><span aria-hidden="true">🔊</span><input type="range" id="vol" min="0" max="100" value="90" aria-label="Volume"></div>
+    <div class="nowbar" aria-live="polite">
+      <div class="ch">CH 1 · MEECHIE'S WORLD RADIO — LIVE</div>
+      <div class="title" id="np-title">The station is on — tap TUNE IN</div>
+      <div class="meta" id="np-meta">One station, one sound — the same radio every seat hears.</div>
+      <div class="track"><i id="np-bar"></i></div>
+    </div>
+    <nav class="presets" aria-label="Presets">
+      <button type="button" id="pz-radio">🔴 LIVE Radio</button>
+      <a href="/#/mwtv">📺 MW TV</a>
+      <a href="/#/radio">🎤 Request a Song</a>
+      <button type="button" id="pz-map">🗺️ Map</button>
+    </nav>
+  </section>
+
+  <section class="card" id="side">
+    <h2>Program guide — today on CH 1</h2>
+    <ul class="guide" id="guide"></ul>
+    <p class="note">One live station — the sound changes by the hour. The guide shows what is on when (Eastern time); there are no fake extra channels.</p>
+    <h2 id="map-h">Map — road reports</h2>
+    <div class="mapwrap"><div id="map" role="application" aria-label="Map with community road reports"></div></div>
+    <div id="rr-ui"></div>
+    <div class="maplinks">
+      <a class="bigbtn" id="earthlink" href="https://earth.google.com/web/@39.82380,-79.58840,900a,2600d" target="_blank" rel="noopener">🌍 Open in Google Earth</a>
+      <a class="bigbtn" id="kmlink" href="/api/road-reports.kml?dl=1" download="meechies-road-reports.kml">📌 Pins for Earth (.kml)</a>
+    </div>
+    <a class="bigbtn" id="dirs" href="https://www.openstreetmap.org/directions" target="_blank" rel="noopener">🧭 Directions</a>
+    <p class="note">The map shows where you are and hands directions to real navigation. Video in a moving car is the carmaker's call — parked is the viewing case, the radio is the driving case.</p>
+  </section>
+</main>
+
+<footer>
+  <a href="/">Full site →</a>
+  <span>Open this page on any car browser, or on your phone and Bluetooth it to the car. No car account, no password — the car is just a screen and speakers for the station.</span>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  /* ================================================================
+     CAR MODE — the radio, wired the way the live site's radio is.
+     One station state (the radio/dj doc, the same doc the booth and
+     every listener read), one server clock (/api/station "now", the
+     same samples dj.js medians), deck positions by bcastPos math
+     (serverNow - deck.start), crossfade gains by the booth's own
+     xfGain curve, and the station's own players per deck source:
+     library files as plain audio, YouTube / Dailymotion / Vimeo via
+     their embed APIs, SoundCloud via its widget API. The direct
+     stream is used ONLY behind /api/bgsgate, fail-closed exactly
+     like dj.js: it carries the station only while the gate says the
+     feeder is the source — never handed to a driver as the station
+     on doubt, and never while a share holds the master sound. A
+     share holds only while genuinely live (the keeper's rule:
+     fresh proof stamp, not source-gone), and even a genuine share
+     never silences the radio here — it withholds only the feeder
+     stream. Under the decks and the stream sits the playlist
+     clock — the main site's own radio mode (library + epoch,
+     airNow math) — so a dark booth still sounds, exactly like
+     every other seat.
+     Nothing on this page autoplays: TUNE IN is the deliberate act,
+     and this page's own button is the only control of its sound —
+     no scroll, touch or timer may touch the music (Law 22).
+     ================================================================ */
+  var STREAM = "https://eu4.fastcast4u.com/proxy/meechiesworldinc/stream";
+  var DECKS = ["A","B","C","D"];
+  var btn = document.getElementById("tunein"), volEl = document.getElementById("vol");
+  var titleEl = document.getElementById("np-title"), metaEl = document.getElementById("np-meta"),
+      barEl = document.getElementById("np-bar"), badge = document.getElementById("livebadge"),
+      artEl = document.getElementById("stage-art");
+  var masterVol = 0.9, tuned = false, tunedAt = 0;
+  var S = null;               /* radio/dj doc data */
+  var clockOff = 0, clockSamples = [];
+  function serverNow(){ return Date.now() + clockOff; }
+  function fmt(s){ s = Math.max(0, Math.floor(s||0)); var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), r = s%60; return (h ? h+":" : "") + (h ? String(m).padStart(2,"0") : m) + ":" + String(r).padStart(2,"0"); }
+
+  /* ---------- station state ---------- */
+  function pollStation(){
+    var t0 = Date.now();
+    fetch("/api/station?cid=car", { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){
+      if(j && j.now){ var t2 = Date.now(); clockSamples.push(j.now - (t0 + t2) / 2); if(clockSamples.length > 5) clockSamples.shift(); var s = clockSamples.slice().sort(function(a,b){ return a-b; }); clockOff = s[Math.floor(s.length/2)]; }
+    }).catch(function(){});
+    fetch("/api/cf/rest", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ table:"docs", op:"select", filters:[["path","eq","radio/dj"]] }) })
+      .then(function(r){ return r.json(); })
+      .then(function(j){ var d = j && j.data && j.data[0] && j.data[0].data; if(d){ S = d; syncAll(); paintNow(); } })
+      .catch(function(){});
+  }
+  function isLive(){ return !!(S && S.live && serverNow() - (S.updatedAt || 0) < 180000); }
+  /* A share holds this page ONLY while it is genuinely live — the
+     keeper's own rule (station.js, GHOST-SHARE HOLD): the keeper
+     never ends a share, but once the publisher's proof stamp
+     (vstream.at, re-stamped only on a verified capture chain) is
+     15 minutes stale it marks diag "source-gone", and from then on
+     viewers fall back to the station — the mix/poster slate —
+     instead of holding a corpse. The old test here (on + meeting,
+     no freshness) let a share abandoned on 2026-11-01 hold /car
+     silent for 52+ hours: no decks, no stream, no sound on TUNE IN
+     (owner bug, 2026-11-03). Mirror the keeper: source-gone or a
+     stamp older than 15 minutes is NOT a holding share. The share
+     itself is untouched — only the owner ends it; this page merely
+     stops obeying a ghost. */
+  function shareHolds(){ var v = (S && S.vstream) || {}; if(!(v.on && v.meeting)) return false; if(v.diag && v.diag.stage === "source-gone") return false; return serverNow() - (Number(v.at) || 0) <= 900000; }
+  function bcastPos(k){ var s = S && S[k]; if(!s) return 0; if(!s.playing) return s.pos || 0; return Math.max(0, (serverNow() - (s.start || serverNow())) / 1000); }
+  /* Follow position, clamped inside the track: a deck whose stamp
+     ran past its end would otherwise be seeked past the end and sit
+     dead (YouTube fires ENDED and never starts). */
+  function followPos(k){ var w = bcastPos(k); var d = (S && S[k] && +S[k].dur) || 0; if(d > 0 && w > d - 1) w = Math.max(0, d - 1); return w; }
+  function sounding(k){ var s = S && S[k]; if(!s || !s.playing || !s.title) return false; if(s.dur && s.start && serverNow() - s.start > (s.dur + 45) * 1000) return false; return true; }
+  /* the booth's own crossfade curve (dj.js xfGain, smooth default) */
+  function xfGain(xf, side){ var t = side === "A" ? xf : 1 - xf; return Math.cos(Math.min(1, Math.max(0, t)) * Math.PI / 2); }
+  function deckGain(k){ if(!S) return 0; var pair = (k === "A" || k === "B") ? (S.xf == null ? 0.5 : S.xf) : (S.xf2 == null ? 0.5 : S.xf2); var side = (k === "A" || k === "C") ? "A" : "B"; var dv = S[k] && S[k].vol != null ? +S[k].vol : 1; return xfGain(pair, side) * (isFinite(dv) ? dv : 1); }
+  function vparseTok(tok){ tok = String(tok || ""); if(tok.indexOf("dm:") === 0) return { p:"dm", id: tok.slice(3) }; if(tok.indexOf("vm:") === 0) return { p:"vm", id: tok.slice(3) }; return { p:"yt", id: tok }; }
+  function sourceOf(k){ var s = S && S[k]; if(!s) return null;
+    if(s.kind === "sc" || s.scUrl) return s.scUrl ? { kind:"sc", key:"sc:" + s.scUrl, url: s.scUrl } : null;
+    if(s.yt){ var v = vparseTok(s.yt); return { kind: v.p, key: v.p + ":" + v.id, id: v.id }; }
+    if(s.src && /^https?:\/\//.test(s.src)) return { kind:"file", key:"f:" + s.src, url: s.src };
+    if(s.src && s.src.charAt(0) === "/") return { kind:"file", key:"f:" + s.src, url: location.origin + s.src };
+    return null;
+  }
+
+  /* ---------- provider SDKs (loaded lazily, once) ---------- */
+  var sdkP = {};
+  function sdk(name){ if(sdkP[name]) return sdkP[name]; sdkP[name] = new Promise(function(res){
+    var done = false, fin = function(){ if(!done){ done = true; res(); } };
+    try {
+      if(name === "yt"){ if(window.YT && YT.Player) return fin(); var prev = window.onYouTubeIframeAPIReady; window.onYouTubeIframeAPIReady = function(){ try { prev && prev(); } catch(_){} fin(); }; var t = document.createElement("script"); t.src = "https://www.youtube.com/iframe_api"; t.onerror = fin; document.head.appendChild(t); }
+      else if(name === "sc"){ if(window.SC && SC.Widget) return fin(); var t2 = document.createElement("script"); t2.src = "https://w.soundcloud.com/player/api.js"; t2.onload = fin; t2.onerror = fin; document.head.appendChild(t2); }
+      else if(name === "vm"){ if(window.Vimeo && Vimeo.Player) return fin(); var t3 = document.createElement("script"); t3.src = "https://player.vimeo.com/api/player.js"; t3.onload = fin; t3.onerror = fin; document.head.appendChild(t3); }
+      else if(name === "dm"){ if(window.DM && DM.player) return fin(); var t4 = document.createElement("script"); t4.src = "https://api.dmcdn.net/all.js"; t4.onload = fin; t4.onerror = fin; document.head.appendChild(t4); }
+    } catch(_){ fin(); }
+    setTimeout(fin, 7000);
+  }); return sdkP[name]; }
+
+  /* ---------- per-deck players ---------- */
+  var P = {}; /* k -> {kind, key, api, el, ready} */
+  function mount(k){ return document.getElementById("mount-" + k); }
+  function killPlayer(k){ var p = P[k]; if(!p) return; try {
+      if(p.kind === "file"){ p.el.pause(); p.el.removeAttribute("src"); p.el.load(); }
+      else if(p.kind === "yt" && p.api && p.api.destroy) p.api.destroy();
+      else if(p.kind === "sc" && p.api && p.api.pause) p.api.pause();
+      else if(p.kind === "vm" && p.api && p.api.destroy) p.api.destroy();
+      else if(p.kind === "dm" && p.el) p.el.remove();
+    } catch(_){}
+    var m = mount(k); if(m){ m.innerHTML = ""; m.classList.remove("on"); }
+    delete P[k];
+  }
+  function makePlayer(k, src, want){
+    killPlayer(k);
+    var p = { kind: src.kind, key: src.key, ready: false, api: null, el: null };
+    P[k] = p;
+    if(src.kind === "file"){
+      var a = new Audio(); a.preload = "auto"; a.src = src.url; a.playsInline = true; p.el = a; p.ready = true;
+      try { a.currentTime = Math.min(want, (S[k].dur || want + 1)); } catch(_){}
+      return p;
+    }
+    var m = mount(k); if(!m) return p;
+    if(src.kind === "yt"){
+      sdk("yt").then(function(){ if(P[k] !== p || !window.YT || !YT.Player) return;
+        var div = document.createElement("div"); m.appendChild(div);
+        p.api = new YT.Player(div, { videoId: src.id, width: "100%", height: "100%", playerVars: { playsinline: 1, rel: 0, controls: 0 }, events: { onReady: function(){ p.ready = true; try { p.api.seekTo(followPos(k), true); } catch(_){} applyDeck(k); if(tuned) playDeck(k); } } });
+      });
+    } else if(src.kind === "sc"){
+      var ifr = document.createElement("iframe"); ifr.allow = "autoplay"; ifr.src = "https://w.soundcloud.com/player/?url=" + encodeURIComponent(src.url) + "&auto_play=false&visual=true"; m.appendChild(ifr); p.el = ifr;
+      sdk("sc").then(function(){ if(P[k] !== p || !window.SC || !SC.Widget) return; p.api = SC.Widget(ifr); p.api.bind(SC.Widget.Events.READY, function(){ p.ready = true; try { p.api.seekTo(Math.round(followPos(k) * 1000)); } catch(_){} applyDeck(k); if(tuned) playDeck(k); }); });
+    } else if(src.kind === "vm"){
+      var ifr2 = document.createElement("iframe"); ifr2.allow = "autoplay; fullscreen"; ifr2.src = "https://player.vimeo.com/video/" + encodeURIComponent(src.id) + "?autoplay=0&controls=0"; m.appendChild(ifr2); p.el = ifr2;
+      sdk("vm").then(function(){ if(P[k] !== p || !window.Vimeo || !Vimeo.Player) return; p.api = new Vimeo.Player(ifr2); p.api.ready().then(function(){ p.ready = true; try { p.api.setCurrentTime(followPos(k)).catch(function(){}); } catch(_){} applyDeck(k); if(tuned) playDeck(k); }); });
+    } else if(src.kind === "dm"){
+      var holder = document.createElement("div"); m.appendChild(holder);
+      sdk("dm").then(function(){ if(P[k] !== p || !window.DM || !DM.player) return; p.api = DM.player(holder, { video: src.id, width: "100%", height: "100%", params: { autoplay: false, controls: false } }); p.el = holder; p.ready = true; try { if(p.api.seek) p.api.seek(followPos(k)); } catch(_){} applyDeck(k); if(tuned) playDeck(k); });
+    }
+    return p;
+  }
+  function applyDeck(k){ var p = P[k]; if(!p || !p.ready) return; var v = Math.max(0, Math.min(1, deckGain(k) * masterVol)); try {
+      if(p.kind === "file") p.el.volume = v;
+      else if(p.kind === "yt" && p.api.setVolume) p.api.setVolume(Math.round(v * 100));
+      else if(p.kind === "sc" && p.api.setVolume) p.api.setVolume(Math.round(v * 100));
+      else if(p.kind === "vm" && p.api.setVolume) p.api.setVolume(v);
+      else if(p.kind === "dm" && p.api.setVolume) p.api.setVolume(v);
+      var r = S && S[k] && +S[k].rate; if(r && r !== 1){ if(p.kind === "file") p.el.playbackRate = r; else if(p.kind === "yt" && p.api.setPlaybackRate) p.api.setPlaybackRate(r); }
+    } catch(_){}
+  }
+  function playDeck(k){ var p = P[k]; if(!p || !p.ready) return; try {
+      if(p.kind === "file"){ var pr = p.el.play(); if(pr && pr.catch) pr.catch(function(){}); }
+      else if(p.kind === "yt") p.api.playVideo();
+      else if(p.kind === "sc") p.api.play();
+      else if(p.kind === "vm") p.api.play().catch(function(){});
+      else if(p.kind === "dm" && p.api.play) p.api.play();
+    } catch(_){}
+  }
+  function pauseDeck(k){ var p = P[k]; if(!p) return; try {
+      if(p.kind === "file") p.el.pause();
+      else if(p.kind === "yt" && p.api.pauseVideo) p.api.pauseVideo();
+      else if(p.kind === "sc" && p.api.pause) p.api.pause();
+      else if(p.kind === "vm" && p.api.pause) p.api.pause();
+      else if(p.kind === "dm" && p.api.pause) p.api.pause();
+    } catch(_){}
+  }
+  function deckPos(k, cb){ var p = P[k]; if(!p || !p.ready) return cb(-1); try {
+      if(p.kind === "file") return cb(isFinite(p.el.currentTime) ? p.el.currentTime : -1);
+      if(p.kind === "yt") return cb(p.api.getCurrentTime ? p.api.getCurrentTime() : -1);
+      if(p.kind === "vm"){ p.api.getCurrentTime().then(function(t){ cb(t); }).catch(function(){ cb(-1); }); return; }
+      if(p.kind === "sc"){ p.api.getPosition(function(ms){ cb(ms / 1000); }); return; }
+    } catch(_){}
+    cb(-1);
+  }
+  function seekDeck(k, t){ var p = P[k]; if(!p || !p.ready) return; try {
+      if(p.kind === "file") p.el.currentTime = t;
+      else if(p.kind === "yt") p.api.seekTo(t, true);
+      else if(p.kind === "sc") p.api.seekTo(Math.round(t * 1000));
+      else if(p.kind === "vm") p.api.setCurrentTime(t).catch(function(){});
+      else if(p.kind === "dm" && p.api.seek) p.api.seek(t);
+    } catch(_){}
+  }
+
+  /* ---------- gated fallback stream (dj.js's bgsgate rule) ---------- */
+  var streamEl = null, gateLive = null, gateFalseN = 0;
+  function checkGate(){ fetch("/api/bgsgate", { cache:"no-store" }).then(function(r){ return r.json(); }).then(function(j){ var v = j && typeof j.live === "boolean" ? j.live : null; var was = gateLive; gateLive = v; gateFalseN = v === false ? gateFalseN + 1 : 0; if(S && v === true && was !== true) syncAll(); }).catch(function(){ gateLive = null; }); }
+  function streamWanted(anyPlayable){ return tuned && !shareHolds() && !anyPlayable && gateLive === true; }
+  function syncStream(anyPlayable){
+    if(streamWanted(anyPlayable)){ if(!streamEl){ streamEl = new Audio(); streamEl.preload = "none"; } if(!streamEl.src) streamEl.src = STREAM; streamEl.volume = masterVol; var pr = streamEl.play(); if(pr && pr.catch) pr.catch(function(){}); }
+    else if(streamEl && (tuned === false || anyPlayable || shareHolds() || gateFalseN >= 2)){ try { streamEl.pause(); } catch(_){} }
+  }
+
+  /* ---------- the playlist clock (the main site's radio mode) ----------
+     When the booth is dark, the main site's radio IS this clock:
+     app-core's airNow() walks the track library (docs coll "tracks",
+     addedAt order) around the radio/state epoch, each song's slot
+     trimmed by the 4s crossfade. /car reads the same two inputs
+     through the same REST door and runs the same math on the
+     server-synced clock, so the car hears — and names — exactly
+     what every other seat hears. It is the fallback UNDER the
+     decks and the gated stream, never over them: the moment a
+     deck sounds or the gate says the feeder carries the station,
+     the clock yields. (Before this, a dark booth meant /car had
+     no source at all and TUNE IN played nothing.) */
+  var XF = 4, DEFAULT_EPOCH = Date.UTC(2026, 0, 1);
+  var sched = { tracks: [], epoch: DEFAULT_EPOCH };
+  function slotOf(t){ var d = t.duration || 0; return d > XF * 3 ? d - XF : d; }
+  function airNow(){
+    var total = 0, i; for(i = 0; i < sched.tracks.length; i++) total += slotOf(sched.tracks[i]);
+    if(!total) return null;
+    var el = (serverNow() - sched.epoch) / 1000, cyc = Math.floor(el / total);
+    var t = el % total; if(t < 0) t += total;
+    for(i = 0; i < sched.tracks.length; i++){ var d = slotOf(sched.tracks[i]); if(t < d) return { i: i, offset: t, left: d - t, slot: d, cycle: cyc }; t -= d; }
+    return { i: 0, offset: 0, left: slotOf(sched.tracks[0]), slot: slotOf(sched.tracks[0]), cycle: cyc };
+  }
+  function restDocs(body){ return fetch("/api/cf/rest", { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) }).then(function(r){ return r.json(); }); }
+  function pollSchedule(){
+    restDocs({ table:"docs", op:"select", select:"path,data", filters:[["coll","eq","tracks"]], limit:500 }).then(function(j){
+      var rows = (j && j.data) || [];
+      var ts = rows.map(function(r){ var d = (r && r.data) || {}; return { title: d.title || "", artist: d.artist || "", duration: +d.duration || 0, assetId: d.assetId || "", addedAt: +d.addedAt || 0 }; }).filter(function(x){ return x.title; });
+      ts.sort(function(a, b){ return a.addedAt - b.addedAt; });
+      if(ts.length){ sched.tracks = ts; paintNow(); }
+    }).catch(function(){});
+    restDocs({ table:"docs", op:"select", select:"path,data", filters:[["path","eq","radio/state"]] }).then(function(j){
+      var d = j && j.data && j.data[0] && j.data[0].data; if(d && d.epoch) sched.epoch = +d.epoch || DEFAULT_EPOCH;
+    }).catch(function(){});
+  }
+  var schedEl = null, schedKey = null;
+  /* The sound ladder, mirroring a radio-view seat in every state:
+     decks first; then the playlist clock; the gated stream only
+     when no share holds and the gate says the feeder carries the
+     station. A share — genuine or ghost — NEVER silences this
+     page: on the main site a share holds the master SCREEN while
+     the radio seat keeps sounding the station's program (proven
+     by the owner's two-tab test, 2026-11-03: share up, radio
+     TUNE IN played the program). So during a genuine share with
+     the decks parked, the clock is what the radio seat serves,
+     and it plays here too; the share's only powers on this page
+     are withholding the feeder stream (whose content a share
+     makes ambiguous) and carrying its note on the meta line. */
+  function schedWanted(anyPlayable){ return tuned && !anyPlayable && (shareHolds() || gateLive !== true); }
+  function syncSched(anyPlayable){
+    if(!schedWanted(anyPlayable)){ if(schedEl){ try { schedEl.pause(); } catch(_){} } return; }
+    var a = airNow(); if(!a) return;
+    var tr = sched.tracks[a.i]; if(!tr || !tr.assetId) return;
+    if(!schedEl){ schedEl = new Audio(); schedEl.preload = "auto"; schedEl.addEventListener("ended", function(){ schedKey = null; syncAll(); }); }
+    schedEl.volume = masterVol;
+    var key = a.i + "@" + a.cycle;
+    if(schedKey !== key){
+      schedKey = key;
+      schedEl.src = "/m/assets/" + tr.assetId; // the site media route (cf-client getPublicUrl) — "/_blob/" was a dead route: the clock player loaded nothing and every failure was swallowed
+      var off = a.offset;
+      if(schedEl._sk) schedEl.removeEventListener("loadedmetadata", schedEl._sk);
+      schedEl._sk = function(){ try { schedEl.currentTime = off; } catch(_){} };
+      schedEl.addEventListener("loadedmetadata", schedEl._sk);
+      try { schedEl.currentTime = off; } catch(_){}
+    } else if(isFinite(schedEl.currentTime) && Math.abs(schedEl.currentTime - a.offset) > 4){
+      try { schedEl.currentTime = a.offset; } catch(_){}
+    }
+    var pr = schedEl.play(); if(pr && pr.catch) pr.catch(function(){});
+  }
+
+  /* ---------- the radio LIFELINE (static — no backend at all) ----------
+     Malik's law: radio listening must work with NO login and must NOT
+     depend on the backend. When the backend is down, every rung above
+     is dark: the decks need the radio/dj doc, the playlist clock
+     needs the tracks doc and its player rides the /m media relay,
+     the gate needs /api/bgsgate — so TUNE IN flipped to ON AIR over
+     silence and stayed there (guest seat test, 2026-11-04). The
+     lifeline fills the playlist clock's slot from static files only:
+     /lifeline/radio-dayparts.json (Meechie's own catalog in the
+     station's daypart lanes) plus the baked songs at
+     /lifeline/audio/<assetId>.mp3, walked with the exact clock math
+     the main radio's lifeline runs (app-core's llDaypartStart: the
+     lane is chosen by the Eastern wall clock — 21:00–06:00 trap
+     love, 06:00–12:00 weed wake-up, 12:00–21:00 mixed — the epoch
+     is the lane's start, each song's slot trimmed by the 4s
+     crossfade), so the car hears — and names — the same song at the
+     same offset as every other lifeline seat. It engages only while
+     no deck is playable and the backend clock has nothing; the
+     moment a deck sounds or the clock's own tracks land it stands
+     down (the handback), and the healthy-backend ladder above stays
+     exactly as it was. */
+  var llData = null, llTried = false;
+  function llEtParts(ms){ var parts = new Intl.DateTimeFormat("en-US",{ timeZone:"America/New_York", hour12:false, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit" }).formatToParts(new Date(ms)); var p = {}; parts.forEach(function(x){ p[x.type] = +x.value; }); return p; }
+  function llEtOffsetMs(ms){ var p = llEtParts(ms); return Date.UTC(p.year, p.month - 1, p.day, p.hour % 24, p.minute, p.second) - Math.floor(ms / 1000) * 1000; }
+  function llEtWallToMs(y, m, d, h){ var guess = Date.UTC(y, m - 1, d, h, 0, 0); var once = guess - llEtOffsetMs(guess); return guess - llEtOffsetMs(once); }
+  function llDaypartStart(ms){
+    var p = llEtParts(ms), h = p.hour % 24;
+    if(h >= 21) return { name:"traplove", start: llEtWallToMs(p.year, p.month, p.day, 21) };
+    if(h < 6){ var prev = new Date(Date.UTC(p.year, p.month - 1, p.day) - 86400e3); return { name:"traplove", start: llEtWallToMs(prev.getUTCFullYear(), prev.getUTCMonth() + 1, prev.getUTCDate(), 21) }; }
+    if(h < 12) return { name:"weed", start: llEtWallToMs(p.year, p.month, p.day, 6) };
+    return { name:"mixed", start: llEtWallToMs(p.year, p.month, p.day, 12) };
+  }
+  function llNow(){
+    if(!llData) return null;
+    var dp = llDaypartStart(serverNow()), list = llData[dp.name];
+    if(!Array.isArray(list) || !list.length) return null;
+    var total = 0, i; for(i = 0; i < list.length; i++) total += slotOf(list[i]);
+    if(!total) return null;
+    var t = ((serverNow() - dp.start) / 1000) % total; if(t < 0) t += total;
+    for(i = 0; i < list.length; i++){ var d = slotOf(list[i]); if(t < d) return { tr: list[i], offset: t, left: d - t, slot: d, lane: dp.name }; t -= d; }
+    return { tr: list[0], offset: 0, left: slotOf(list[0]), slot: slotOf(list[0]), lane: dp.name };
+  }
+  function llFetch(){
+    if(llTried) return; llTried = true;
+    fetch("/lifeline/radio-dayparts.json", { cache:"no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){ if(j){ llData = j; if(tuned) syncAll(); paintNow(); } }).catch(function(){});
+  }
+  var llEl = null, llKey = null;
+  function ensureLlEl(){ if(!llEl){ llEl = new Audio(); llEl.preload = "auto"; llEl.addEventListener("ended", function(){ llKey = null; syncAll(); }); } return llEl; }
+  /* Same slot, same yield rules as the playlist clock (schedWanted):
+   * no deck playable, and it stands down for the gated feeder stream
+   * exactly when the clock does. Its extra condition is the clock
+   * having nothing — the moment the backend clock's tracks land,
+   * airNow() answers and the lifeline hands the slot back. */
+  function llWanted(anyPlayable){ return tuned && !anyPlayable && !airNow() && (shareHolds() || gateLive !== true); }
+  function syncLifeline(anyPlayable){
+    if(!llWanted(anyPlayable)){ if(llEl){ try { llEl.pause(); } catch(_){} } return; }
+    var a = llNow(); if(!a || !a.tr.assetId) return;
+    var el = ensureLlEl();
+    el.volume = masterVol;
+    var key = a.lane + ":" + a.tr.assetId;
+    if(llKey !== key){
+      llKey = key;
+      el.src = "/lifeline/audio/" + a.tr.assetId + ".mp3";
+      var off = a.offset;
+      if(el._sk) el.removeEventListener("loadedmetadata", el._sk);
+      el._sk = function(){ try { el.currentTime = off; } catch(_){} };
+      el.addEventListener("loadedmetadata", el._sk);
+      try { el.currentTime = off; } catch(_){}
+    } else if(isFinite(el.currentTime) && Math.abs(el.currentTime - a.offset) > 4){
+      try { el.currentTime = a.offset; } catch(_){}
+    }
+    var pr = el.play(); if(pr && pr.catch) pr.catch(function(){});
+  }
+
+  /* ---------- gesture priming + the honest sound guard ----------
+     Why this page claimed ON AIR over silence (ear tests, 2026-11-03:
+     TUNE IN tapped, countdown moving, total silence — twice, on a
+     single clean tab, while the radio seat in the same browser
+     played fine): the playlist clock's player pointed at a dead
+     route ("/_blob/" — see the sched src note above; the real media
+     route is /m/assets/). The load failed, play() rejected, and the
+     rejection was swallowed like every other play() on this page,
+     so the failure was invisible and permanent. The src is fixed;
+     this guard is the second layer, so no future player failure can
+     ever again wear an ON AIR claim:
+     (1) primeAudio() creates the two persistent elements inside the
+     TUNE IN tap and plays them once — strict autoplay policies
+     (iOS Safari, car browsers) only bless elements played from
+     inside a tap, and the poll-driven syncs that later fill these
+     elements inherit the blessing.
+     (2) The guard samples the position of whichever player should
+     be sounding; 5 seconds with zero advancement earns ONE rebuild
+     + replay, and a second silent 5 seconds drops the button back
+     to TUNE IN with a plain note — the next tap then runs syncAll()
+     inside the tap itself, where play() may sound.
+     This page reads no cross-tab lock and never did; the mirror
+     lease on the main site neither appears here nor blocked the
+     radio seat (clean-slate probe, 2026-11-03). Its silence was
+     its own player path failing invisibly. */
+  function primeAudio(){
+    if(!schedEl){ schedEl = new Audio(); schedEl.preload = "auto"; schedEl.addEventListener("ended", function(){ schedKey = null; syncAll(); }); try { var pp = schedEl.play(); if(pp && pp.catch) pp.catch(function(){}); } catch(_){} }
+    if(!streamEl){ streamEl = new Audio(); streamEl.preload = "none"; try { var sp = streamEl.play(); if(sp && sp.catch) sp.catch(function(){}); } catch(_){} }
+    ensureLlEl(); try { var lp = llEl.play(); if(lp && lp.catch) lp.catch(function(){}); } catch(_){}
+  }
+  var guardPrevPos = -1, guardMoveAt = 0, guardStrikes = 0;
+  var guardAsyncPos = {};
+  function guardReset(){ guardPrevPos = -1; guardMoveAt = 0; guardStrikes = 0; guardAsyncPos = {}; }
+  function guardExpected(){
+    if(!tuned) return false;
+    var anyPlayable = false;
+    if(S) DECKS.forEach(function(k){ if(sounding(k) && sourceOf(k)) anyPlayable = true; });
+    return anyPlayable || streamWanted(anyPlayable) || schedWanted(anyPlayable) || llWanted(anyPlayable);
+  }
+  function guardSample(){
+    var pos = -1;
+    DECKS.forEach(function(k){ deckPos(k, function(t){ if(t >= 0) guardAsyncPos[k] = t; }); var ap = guardAsyncPos[k]; if(ap != null && ap > pos) pos = ap; });
+    if(streamEl && isFinite(streamEl.currentTime) && streamEl.currentTime > pos) pos = streamEl.currentTime;
+    if(schedEl && isFinite(schedEl.currentTime) && schedEl.currentTime > pos) pos = schedEl.currentTime;
+    if(llEl && isFinite(llEl.currentTime) && llEl.currentTime > pos) pos = llEl.currentTime;
+    return pos;
+  }
+  function guardRetry(){
+    DECKS.forEach(function(k){ if(P[k] && sounding(k)) killPlayer(k); });
+    if(schedEl){ try { schedEl.pause(); } catch(_){} schedEl = null; schedKey = null; }
+    if(llEl){ try { llEl.pause(); } catch(_){} llEl = null; llKey = null; }
+    if(streamEl){ try { streamEl.pause(); } catch(_){} streamEl = null; }
+    syncAll();
+  }
+  function guardGiveUp(){
+    tuned = false; tunedAt = 0; stopAll();
+    btn.textContent = "\u25b6 TUNE IN \u2014 CH 1 LIVE"; btn.classList.remove("playing");
+    metaEl.textContent = "The sound didn\u2019t start \u2014 tap TUNE IN to try again.";
+    guardReset();
+    try { navigator.mediaSession.playbackState = "paused"; } catch(_){}
+  }
+  setInterval(function(){
+    if(!guardExpected()){
+      /* Nothing is even expected to sound. If the listener has been
+       * tuned in a while with no source at all — every feed dark,
+       * nothing playing — the ON AIR claim is a lie: drop the button
+       * back to TUNE IN honestly instead of wearing it over silence.
+       * (Before the lifeline, this was the ONLY state a dead backend
+       * produced, and the guard never even ran: guardExpected()
+       * demanded the station doc, so /car sat ON AIR silent forever.) */
+      if(tuned && tunedAt && Date.now() - tunedAt > 12000 && !(schedEl && !schedEl.paused) && !(llEl && !llEl.paused) && !(streamEl && !streamEl.paused)) guardGiveUp();
+      else guardReset();
+      return;
+    }
+    var now = Date.now(), pos = guardSample();
+    if(guardMoveAt === 0){ guardMoveAt = now; guardPrevPos = pos; return; }
+    /* Advancement means PLAYBACK: the position crept forward roughly
+       with the clock since the last sample. A jump (a drift-correction
+       reseek, or the guard's own retry landing on the live offset) is
+       not advancement — counting it would let a frozen player pass
+       forever, reseeked 5 seconds at a time by its own retries. */
+    if(guardPrevPos >= 0 && pos > guardPrevPos + 0.3 && pos < guardPrevPos + 4) guardMoveAt = now;
+    guardPrevPos = pos;
+    if(now - guardMoveAt < 5000) return;
+    guardStrikes++; guardMoveAt = now;
+    if(guardStrikes >= 2) guardGiveUp(); else guardRetry();
+  }, 1000);
+
+  /* ---------- the sync cycle ---------- */
+  var domKey = "";
+  function syncAll(){
+    if(!S){ syncStream(false); syncSched(false); syncLifeline(false); return; }
+    var anyPlayable = false, best = null, bestGain = -1;
+    DECKS.forEach(function(k){
+      var on = sounding(k), src = on ? sourceOf(k) : null;
+      if(on && src) anyPlayable = true;
+      if(on && deckGain(k) > bestGain){ bestGain = deckGain(k); best = k; }
+      if(!tuned || !on || !src){ if(P[k] && (!on || !src || P[k].key !== (src && src.key))) killPlayer(k); else if(P[k]) pauseDeck(k); return; }
+      var p = P[k];
+      if(!p || p.key !== src.key) p = makePlayer(k, src, followPos(k));
+      applyDeck(k); playDeck(k);
+      deckPos(k, function(cur){ var want = followPos(k); if(cur >= 0 && Math.abs(cur - want) > 3) seekDeck(k, want); });
+      var m = mount(k); if(m) m.classList.toggle("on", k === best && p.kind !== "file");
+    });
+    /* stage art: the dominant deck's cover when its player is not the picture */
+    var bp = best && P[best];
+    if(best && (!bp || bp.kind === "file" || bp.kind === "sc")){ var cov = S[best].cover; if(cov && artEl.getAttribute("src") !== cov) artEl.src = cov; }
+    if(!best && artEl.getAttribute("src") !== "/img/tv-poster.jpg") artEl.src = "/img/tv-poster.jpg";
+    syncStream(anyPlayable);
+    syncSched(anyPlayable);
+    syncLifeline(anyPlayable);
+    if(tuned && !anyPlayable && !shareHolds() && gateLive !== true) checkGate();
+    var nk = best || ""; if(nk !== domKey){ domKey = nk; mediaMeta(); }
+  }
+  function stopAll(){ DECKS.forEach(function(k){ pauseDeck(k); var m = mount(k); if(m) m.classList.remove("on"); }); if(streamEl){ try { streamEl.pause(); } catch(_){} } if(schedEl){ try { schedEl.pause(); } catch(_){} } if(llEl){ try { llEl.pause(); } catch(_){} } }
+
+  /* ---------- now playing paint ---------- */
+  function paintNow(){
+    if(!S){
+      var la = tuned ? llNow() : null;
+      if(la){ titleEl.textContent = la.tr.title; metaEl.textContent = (la.tr.artist || "Meechie") + " · " + fmt(la.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; }
+      return;
+    }
+    badge.classList.toggle("on", isLive());
+    var on = DECKS.filter(sounding);
+    var best = null, bg = -1; on.forEach(function(k){ if(deckGain(k) > bg){ bg = deckGain(k); best = k; } });
+    if(shareHolds() && !on.length){ var sa = airNow(); if(sa){ var st = sched.tracks[sa.i]; titleEl.textContent = st.title; metaEl.textContent = (st.artist || "Meechie") + " · " + fmt(sa.left) + " left · Live share on the master screen — the share carries its own sound on the main site"; } else { titleEl.textContent = "Live share on the master screen"; metaEl.textContent = "The share carries its own sound on the main site — the decks come back when it ends."; } barEl.style.width = "0%"; return; }
+    if(!on.length){ var sa2 = airNow(); if(tuned && sa2){ var st2 = sched.tracks[sa2.i]; titleEl.textContent = st2.title; metaEl.textContent = (st2.artist || "Meechie") + " · " + fmt(sa2.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; } else if(tuned && llNow()){ var lt2 = llNow(); titleEl.textContent = lt2.tr.title; metaEl.textContent = (lt2.tr.artist || "Meechie") + " · " + fmt(lt2.left) + " left · 🤖 Auto-DJ live · Meechie's World Radio · the same sound on every seat"; } else { titleEl.textContent = isLive() ? "Live — the tables are between songs" : "The station is on — tap TUNE IN"; metaEl.textContent = "One station, one sound — the same radio every seat hears."; } barEl.style.width = "0%"; return; }
+    var d = S[best], g = S.djGuest, fresh = S.boothAt && serverNow() - S.boothAt < 90000;
+    var gOn = !!(g && g.until > serverNow() && fresh);
+    var left = d.dur && d.start ? Math.max(0, Math.round(d.dur - (serverNow() - d.start) / 1000)) : 0;
+    titleEl.textContent = on.length > 1 ? d.title + " × " + S[on.find(function(k){ return k !== best; })].title : d.title;
+    metaEl.textContent = (gOn ? "🎧 " + (g.name || "Guest DJ") + " live" : fresh ? "🎧 Live now" : "🤖 Auto-DJ live") + " · Meechie's World Radio" + (left ? " · " + fmt(left) + " left" : "") + " · the same sound on every seat";
+  }
+  var tickLlKey = "";
+  function tick(){
+    if(!S){
+      if(llEl && !llEl.paused){ var a6 = llNow(); if(a6 && a6.slot > 0) barEl.style.width = Math.min(100, a6.offset / a6.slot * 100) + "%"; var lk6 = a6 ? a6.lane + ":" + a6.tr.assetId : ""; if(lk6 !== tickLlKey){ tickLlKey = lk6; paintNow(); } }
+      return;
+    }
+    var on = DECKS.filter(sounding), best = null, bg = -1; on.forEach(function(k){ if(deckGain(k) > bg){ bg = deckGain(k); best = k; } });
+    if(best){ var d = S[best], el = bcastPos(best); if(d.dur > 0) barEl.style.width = Math.min(100, el / d.dur * 100) + "%"; }
+    else if(schedEl && !schedEl.paused){ var a3 = airNow(); if(a3 && a3.slot > 0) barEl.style.width = Math.min(100, a3.offset / a3.slot * 100) + "%"; }
+    else if(llEl && !llEl.paused){ var a5 = llNow(); if(a5 && a5.slot > 0) barEl.style.width = Math.min(100, a5.offset / a5.slot * 100) + "%"; }
+  }
+  setInterval(tick, 1000);
+
+  /* ---------- media session (car / lock-screen controls) ---------- */
+  function mediaMeta(){ try {
+      if(!("mediaSession" in navigator)) return;
+      var t = "Meechie's World — Live Radio", cov = null;
+      if(S && domKey && S[domKey]){ t = S[domKey].title || t; cov = S[domKey].cover; }
+      navigator.mediaSession.metadata = new MediaMetadata({ title: t, artist: "Meechie's World Radio", album: "Meechie's World Inc", artwork: [{ src: cov || (location.origin + "/img/tv-poster.jpg"), sizes: "512x512" }] });
+    } catch(_){}
+  }
+  try { if("mediaSession" in navigator && navigator.mediaSession.setActionHandler){ navigator.mediaSession.setActionHandler("play", function(){ if(!tuned) toggle(); }); navigator.mediaSession.setActionHandler("pause", function(){ if(tuned) toggle(); }); } } catch(_){}
+
+  /* ---------- the one big button ---------- */
+  function toggle(){
+    if(!tuned){ tuned = true; tunedAt = Date.now(); btn.textContent = "⏸ ON AIR — tap to pause"; btn.classList.add("playing"); gateFalseN = 0; guardReset(); primeAudio(); pollStation(); pollSchedule(); llFetch(); checkGate(); syncAll(); paintNow(); try { navigator.mediaSession.playbackState = "playing"; } catch(_){} }
+    else { tuned = false; tunedAt = 0; stopAll(); guardReset(); btn.textContent = "▶ TUNE IN — CH 1 LIVE"; btn.classList.remove("playing"); try { navigator.mediaSession.playbackState = "paused"; } catch(_){} }
+  }
+  btn.addEventListener("click", toggle);
+  volEl.addEventListener("input", function(){ masterVol = volEl.value / 100; DECKS.forEach(applyDeck); if(streamEl) streamEl.volume = masterVol; if(schedEl) schedEl.volume = masterVol; if(llEl) llEl.volume = masterVol; });
+
+  pollStation(); setInterval(pollStation, 12000);
+  pollSchedule(); setInterval(pollSchedule, 300000);
+  llFetch(); setInterval(function(){ if(!llData){ llTried = false; llFetch(); } }, 30000);
+
+  /* Program guide — Malik's dayparts (Eastern), 2026-11-03 grid */
+  var BLOCKS = [
+    [360, 720, "6 AM–12 PM", "Weed-Smoking Wake-Up"],
+    [720, 1260, "12–9 PM", "Everything Mixed · old school, pop, country, rock & EDM"],
+    [1260, 1800, "9 PM–6 AM", "Trap Love-Making"]
+  ];
+  function etMinutes(){ try { var p = new Intl.DateTimeFormat("en-US",{ timeZone:"America/New_York", hour12:false, hour:"2-digit", minute:"2-digit" }).formatToParts(new Date()); var h=0,m=0; p.forEach(function(x){ if(x.type==="hour") h=+x.value%24; if(x.type==="minute") m=+x.value; }); return h*60+m; } catch(_){ return -1; } }
+  function paintGuide(){
+    var now = etMinutes(), g = document.getElementById("guide"); g.innerHTML = "";
+    BLOCKS.forEach(function(b){
+      var n2 = (now >= 0 && now < 360) ? now + 1440 : now; var isNow = n2 >= b[0] && n2 < b[1];
+      var li = document.createElement("li"); if(isNow) li.className = "now";
+      li.innerHTML = "<span class='when'></span><span class='what'></span>" + (isNow ? "<span class='nowtag'>ON NOW</span>" : "");
+      li.querySelector(".when").textContent = b[2]; li.querySelector(".what").textContent = b[3];
+      g.appendChild(li);
+    });
+  }
+  paintGuide(); setInterval(paintGuide, 60000);
+
+  /* Map: center on the driver when the browser offers a position.
+   * The map itself (Leaflet + the road-reports layer) lives in
+   * js/road-reports.js — this page only hands it the position and
+   * keeps the Directions link pointed from the driver, like before. */
+  function centerMap(){
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function(p){
+      var la = p.coords.latitude.toFixed(4), lo = p.coords.longitude.toFixed(4);
+      if(window.MWRR && MWRR.center) MWRR.center(+la, +lo, p.coords.accuracy, p.coords.speed);
+      document.getElementById("dirs").href = "https://www.openstreetmap.org/directions?from=" + la + "%2C" + lo;
+    }, function(){}, { timeout: 8000 });
+  }
+  document.getElementById("pz-map").addEventListener("click", function(){ document.getElementById("map-h").scrollIntoView({ behavior:"smooth" }); centerMap(); });
+  document.getElementById("pz-radio").addEventListener("click", function(){ document.getElementById("radio-card").scrollIntoView({ behavior:"smooth" }); });
+})();
+</script>
+<script src="js/vendor/leaflet.js?v=1794002932"></script>
+<script src="js/road-reports.js?v=1793745670"></script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MY EMPIRE — Episode 1 · Meechie's World</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0b0a08">
+<style>
+body{margin:0;background:#0b0a08;color:#f3ecdc;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 48px}
+h1{font:800 24px Georgia,serif;color:#f0cf78;margin:0 0 6px}
+.sub{color:#a99f8b;font-size:14px;line-height:1.5;margin:0 0 16px}
+.card{background:#15130f;border:1px solid #3a3223;border-radius:16px;padding:18px;display:grid;gap:14px}
+#gate{font-weight:700;color:#f0cf78}
+video{width:100%;border-radius:10px;background:#000}
+.meta{color:#a99f8b;font-size:14px;line-height:1.55}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>MY EMPIRE — Episode 1</h1>
+<p class="sub">Owner-only preview. This page is not linked anywhere, the episode is not on the channel, and nothing here is the premiere — it airs when you say so.</p>
+<div class="card">
+<div id="gate">Checking your owner sign-in…</div>
+<div id="stage" hidden>
+<video id="player" controls playsinline preload="metadata"></video>
+<video id="warmer" hidden preload="auto" muted></video>
+<div class="meta" id="partline"></div>
+</div>
+</div>
+</div>
+<script src="js/config.js?v=1793793623"></script>
+<script src="js/cf-client.js?v=1793793623"></script>
+<script>
+(function () {
+  var gate = document.getElementById("gate");
+  var stage = document.getElementById("stage");
+  var player = document.getElementById("player");
+  var warmer = document.getElementById("warmer");
+  var partline = document.getElementById("partline");
+
+  /* Owner gate, the house pattern (news-publish.html): the saved
+   * session is refreshed through js/cf-client.js (it renews on
+   * load), then ownership is proven server-side — the admins
+   * check here, and again inside /api/empire before any part is
+   * named. A guest or a non-owner member gets the refusal below
+   * and nothing else: no player is built and no media URL exists
+   * anywhere in this page — the part list arrives only from the
+   * owner-verified door's answer. */
+  function refuse() {
+    gate.innerHTML = "Owner sign-in required — <a href=\"/\" style=\"color:#f0cf78\">open the main site</a>, sign in as Meechie, then come back to this page.";
+    stage.hidden = true;
+  }
+  function readSession() {
+    try { return JSON.parse(localStorage.getItem("mw-cf-session") || "null"); } catch (e) { return null; }
+  }
+  async function checkOwner(tok, uid) {
+    if (!tok || !uid) return false;
+    const r = await fetch("/api/cf/rest", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ table: "admins", op: "select", select: "user_id", filters: [["user_id", "eq", uid]] }) });
+    const j = await r.json().catch(() => null);
+    return !!(j && !j.error && Array.isArray(j.data) && j.data.length > 0);
+  }
+
+  var parts = [], cur = 0;
+  function fmt(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+  function playPart(n) {
+    cur = n;
+    player.src = parts[n];
+    partline.textContent = "Part " + (n + 1) + " of " + parts.length + " — the parts chain on their own; the full episode is 17:23.";
+    var p = player.play(); if (p && p.catch) p.catch(function () {});
+    if (parts[n + 1]) { warmer.src = parts[n + 1]; }
+  }
+  player.addEventListener("ended", function () {
+    if (cur + 1 < parts.length) playPart(cur + 1);
+    else partline.textContent = "End of Episode 1 — that's the whole cut.";
+  });
+
+  (async function boot() {
+    /* Let cf-client's own load-time refresh land first (it
+     * renews a still-good saved session and writes it back). */
+    try { if (window.MW_CF && MW_CF.checked) await MW_CF.checked; } catch (e) {}
+    var ses = readSession();
+    var tok = ses && ses.access_token;
+    var uid = ses && ses.user && ses.user.id;
+    if (!tok) { refuse(); return; }
+    var owner = await checkOwner(tok, uid).catch(function () { return false; });
+    if (!owner) { refuse(); return; }
+    const r = await fetch("/api/empire", { headers: { Authorization: "Bearer " + tok }, cache: "no-store" });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !Array.isArray(j.parts) || !j.parts.length) { refuse(); return; }
+    parts = j.parts;
+    gate.textContent = "Owner verified — MY EMPIRE, Episode 1 (v2). Tap play.";
+    stage.hidden = false;
+    player.src = parts[0];
+    partline.textContent = "Full episode, " + fmt(j.totalDur || 1043) + " — " + parts.length + " parts that chain on their own.";
+    if (parts[1]) warmer.src = parts[1];
+  })().catch(function () { refuse(); });
+})();
+</script>
+</body>
+</html>

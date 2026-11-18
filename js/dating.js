@@ -10,7 +10,7 @@
   const say = (t) => (typeof toast === "function" ? toast(t) : null);
   const ME = () => (typeof me !== "undefined" ? me : null);
   const DB = () => (typeof db !== "undefined" ? db : null);
-  const okUrl = (u) => /^https:\/\/[^\s"'<>()]+$/i.test(u || "");
+  const okUrl = (u) => /^https:\/\/[^\s"'<>()]+$/i.test(u || "") && !/supabase\.co/i.test(u || ""); // old Supabase storage is shut off; its photos/videos are dead
   let likesLoaded = false, profiles = {}, likes = {}, tab = "discover", editing = false, photoIdx = {}, busy = false;
 
   const css = document.createElement("style");
@@ -196,7 +196,7 @@
     const d = await claude.use("db"); if (!d) { render(); return; }
     let dtLoaded = false;
     d.collection("dating").limit(1000).onSnapshot((s) => { const first = !dtLoaded; dtLoaded = true; profiles = {}; s.docs.forEach((x) => { const v = x.data(); if (v && v.age >= 18) profiles[x.id] = v; }); if (!view.hidden && !editing && (first || !root.querySelector("#dt-form"))) render(); }, () => {}); // after the first load, don't wipe a profile someone is filling in
-    d.collection("datelikes").limit(2000).onSnapshot((s) => { const before = likesLoaded ? matches().length : Infinity; likesLoaded = true; likes = {}; s.docs.forEach((x) => { const v = x.data() || {}; likes[x.id] = { liked: (v.liked || []).filter((i) => typeof i === "string"), passed: (v.passed || []).filter((i) => typeof i === "string"), blocked: (v.blocked || []).filter((i) => typeof i === "string") }; }); if (!view.hidden && !editing && tab !== "discover" && !root.querySelector("#dt-form")) render(); if (ME() && matches().length > before && view.hidden) say("💘 You have a new Dating match!"); }, () => {});
+    d.collection("datelikes").limit(1000).onSnapshot((s) => { const before = likesLoaded ? matches().length : Infinity; likesLoaded = true; likes = {}; s.docs.forEach((x) => { const v = x.data() || {}; likes[x.id] = { liked: (v.liked || []).filter((i) => typeof i === "string"), passed: (v.passed || []).filter((i) => typeof i === "string"), blocked: (v.blocked || []).filter((i) => typeof i === "string") }; }); if (!view.hidden && !editing && tab !== "discover" && !root.querySelector("#dt-form")) render(); if (ME() && matches().length > before && view.hidden) say("💘 You have a new Dating match!"); }, () => {});
     new MutationObserver(() => { if (!view.hidden) render(); }).observe(view, { attributes: true, attributeFilter: ["hidden"] });
     setTimeout(render, 1200);
   }

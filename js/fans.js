@@ -4,6 +4,7 @@
   "use strict";
   const view = document.getElementById("v-fans"); if (!view) return;
   const root = view.querySelector("#fans-root");
+  const U = (u) => (/^https:\/\/[^\s"'()<>\\]+$/.test(String(u || "")) ? String(u) : ""); // safe inside CSS url('…')
   const E = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const say = (t) => (typeof toast === "function" ? toast(t) : alert(t));
   const $ = (s, r = root) => r.querySelector(s);
@@ -75,7 +76,7 @@
     body.innerHTML = (feedFor ? `<button class="btn ghost sm" type="button" data-fall>← All creators' posts</button>` : "") + (ps.length ? ps.map(post).join("") : `<div class="fn-card"><h3>No posts yet</h3><p>Approved creators' posts show up here.</p></div>`);
   }
   function post(p) {
-    const av = p.by && p.by.photo ? `style="background-image:url('${E(p.by.photo)}')"` : "";
+    const av = p.by && U(p.by.photo) ? `style="background-image:url('${E(U(p.by.photo))}')"` : "";
     const media = p.locked
       ? `<div class="fn-lock" ${p.preview ? `style="background-image:url('${E(p.preview)}')"` : ""}><div><span style="font-size:34px">🔒</span><b>${p.price_cents ? "Unlock for " + usd(p.price_cents) : "Subscribers only"}</b><span class="fn-note">${p.count} ${p.count === 1 ? "photo/video" : "photos/videos"}</span>
          ${p.price_cents ? `<button class="btn" type="button" data-funlock="${E(p.id)}">Unlock for ${usd(p.price_cents)}</button>` : `<button class="btn" type="button" data-fsub="${E(p.creator)}">Subscribe ${usd(p.by.price_cents)}/month</button>`}</div></div>`
@@ -89,7 +90,7 @@ ${p.caption ? `<p style="margin:0;white-space:pre-wrap">${E(p.caption)}</p>` : "
   async function creators(body) {
     const r = await api("creators"); if (!r.ok) throw new Error(r.j.error || "Couldn't load.");
     const cs = r.j.creators || [];
-    body.innerHTML = cs.length ? `<div class="fn-grid">${cs.map((c) => `<div class="fn-card"><div class="fn-head"><span class="fn-av" ${c.photo ? `style="background-image:url('${E(c.photo)}')"` : ""}></span><div><b style="color:#ffe08a">${E(c.name)}</b><div class="fn-note">${c.posts} posts</div></div></div>${c.bio ? `<p class="fn-note" style="margin:0">${E(c.bio)}</p>` : ""}
+    body.innerHTML = cs.length ? `<div class="fn-grid">${cs.map((c) => `<div class="fn-card"><div class="fn-head"><span class="fn-av" ${U(c.photo) ? `style="background-image:url('${E(U(c.photo))}')"` : ""}></span><div><b style="color:#ffe08a">${E(c.name)}</b><div class="fn-note">${c.posts} posts</div></div></div>${c.bio ? `<p class="fn-note" style="margin:0">${E(c.bio)}</p>` : ""}
 <div class="fn-acts">${c.subscribed ? `<span class="fn-note">✓ Subscribed</span>` : `<button class="btn sm" type="button" data-fsub="${E(c.uid)}">Subscribe ${usd(c.price_cents)}/mo</button>`}<button class="btn ghost sm" type="button" data-fcreator="${E(c.uid)}">See posts</button></div></div>`).join("")}</div>` : `<div class="fn-card"><h3>No creators yet</h3><p>Be the first. Tap "Become a creator".</p></div>`;
   }
 
