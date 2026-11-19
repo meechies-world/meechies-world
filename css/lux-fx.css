@@ -72,3 +72,9 @@ html.lux .gi{width:1.2em;height:1.2em;flex:none;display:inline-block;vertical-al
  #en-mute{padding-top:14px;padding-bottom:14px}
  #en-mute::after,#authbar .btn.sm::after,#announce-x::after,#ai-close::after,#mw-outage button::after,#mn-snd::after,#mn-pop::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:calc(100% + 16px);min-height:44px;transform:translateY(-50%)}
 }
+
+/* ===== VISUAL POLISH — 2026-11-19 (visuals sweep) =====
+   Community feed: lux.css forces the post meta line to nowrap, so on a
+   narrow phone it could run past the card edge. Truncate it with an
+   ellipsis instead (the name line already truncates below 600px). */
+html.lux #v-community .post-head .who small{display:block;overflow:hidden;text-overflow:ellipsis}
