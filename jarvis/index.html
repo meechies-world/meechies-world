@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#04121f">
+<meta name="description" content="Meechie JARVIS — Malik's personal AI on his phone. Talk to Meechie anywhere.">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./img/icon-192.png">
+<link rel="stylesheet" href="./jarvis.css">
+<title>Meechie JARVIS</title>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="mark">M</div>
+    <div>
+      <h1>MEECHIE <span>JARVIS</span></h1>
+      <p>Malik's personal AI · Meechies World Inc</p>
+    </div>
+    <div class="spacer"></div>
+    <span class="pill" id="statusPill"><span class="dot"></span><span id="statusText">Checking hub…</span></span>
+    <button class="icon-btn" id="settingsBtn" title="Settings — hub URL &amp; token" aria-label="Settings">⚙️</button>
+  </header>
+
+  <div id="modeBanner" role="status"></div>
+
+  <section id="stage">
+    <!-- Cartoon Meechie only — never his raw photo as the face. -->
+    <img id="meechieFace" src="./img/meechie-base.png" alt="Meechie, cartoon">
+    <div id="reactorWrap">
+      <!-- Arc reactor = hold-to-talk button (tap also works). -->
+      <button id="reactor" title="Hold to talk to Meechie" aria-label="Hold to talk to Meechie">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="35%" stop-color="#00e5ff"/>
+              <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="100" cy="100" r="96" fill="none" stroke="#00d4ff" stroke-opacity=".35" stroke-width="2"/>
+          <circle class="ring-spin-rev" cx="100" cy="100" r="86" fill="none" stroke="#00d4ff" stroke-opacity=".6" stroke-width="2" stroke-dasharray="10 14"/>
+          <g class="ring-spin">
+            <circle cx="100" cy="100" r="74" fill="none" stroke="#00e5ff" stroke-opacity=".8" stroke-width="3" stroke-dasharray="34 20 6 20"/>
+          </g>
+          <circle cx="100" cy="100" r="62" fill="none" stroke="#00d4ff" stroke-opacity=".4" stroke-width="1.5"/>
+          <g class="core">
+            <circle cx="100" cy="100" r="52" fill="url(#coreGlow)"/>
+            <circle cx="100" cy="100" r="34" fill="#04121f" stroke="#00e5ff" stroke-width="3"/>
+            <circle cx="100" cy="100" r="20" fill="#00e5ff"/>
+            <text x="100" y="109" text-anchor="middle" font-size="24" font-weight="900" fill="#04121f" font-family="Segoe UI, Arial, sans-serif">M</text>
+          </g>
+          <g fill="#00d4ff">
+            <rect x="96" y="6" width="8" height="14" rx="2"/>
+            <rect x="96" y="180" width="8" height="14" rx="2"/>
+            <rect x="6" y="96" width="14" height="8" rx="2"/>
+            <rect x="180" y="96" width="14" height="8" rx="2"/>
+          </g>
+        </svg>
+      </button>
+      <div id="reactorHint">HOLD THE REACTOR TO TALK</div>
+      <div id="voiceLabel">Voice: <b>Meechie's voice</b> (from the hub)</div>
+    </div>
+  </section>
+
+  <div id="chatlog" aria-live="polite"></div>
+
+  <div id="quick" role="group" aria-label="Quick actions">
+    <button class="chip" data-quick="check sales">💰 Check sales</button>
+    <button class="chip" data-quick="check gmail">📧 Check Gmail</button>
+    <button class="chip" data-quick="remind me">⏰ Remind me</button>
+    <button class="chip" data-quick="play radio">📻 Play radio</button>
+    <button class="chip" data-quick="open site">🌐 Open site</button>
+    <button class="chip" data-quick="catalog">🛍️ Products</button>
+  </div>
+
+  <div id="drawer" aria-live="polite"></div>
+
+  <div id="settings" aria-label="Settings">
+    <h2>⚙️ Hub settings</h2>
+    <p>Your JARVIS brain lives on your PC. This phone talks to it through a
+       Cloudflare Tunnel — the PC must be <b>on</b> and the tunnel <b>up</b>,
+       or the app runs in light mode (catalog + local reminders only).</p>
+    <label for="hubUrl">HUB TUNNEL URL</label>
+    <input id="hubUrl" type="url" inputmode="url" placeholder="https://your-tunnel.trycloudflare.com" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <label for="hubToken">HUB TOKEN</label>
+    <input id="hubToken" type="password" placeholder="Paste the token from the PC hub install" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="row">
+      <button id="saveSettingsBtn">Save &amp; test</button>
+      <button class="ghost" id="closeSettingsBtn">Close</button>
+    </div>
+    <div id="settingsStatus"></div>
+    <p class="warn">⚠️ This phone is Malik-only. The token is stored only in
+       this phone's local storage and is sent only to the hub URL above.
+       Never share the token or the tunnel URL — anyone with both can talk
+       to your JARVIS.</p>
+  </div>
+
+  <div id="composer">
+    <button id="micBtn" title="Voice input (Chrome speech recognition)" aria-label="Voice input">🎤</button>
+    <input id="chatInput" type="text" placeholder="Talk to Meechie…" autocomplete="off" enterkeyhint="send">
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <footer>MEECHIE TO THE WORLD · <b>Iron Man blue, Meechie gold</b> · Light mode works offline</footer>
+</div>
+<script src="./jarvis.js"></script>
+</body>
+</html>

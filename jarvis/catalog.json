@@ -1,0 +1,193 @@
+{
+  "_meta": {
+    "note": "Offline / light-mode catalog for the Meechie JARVIS phone PWA. Prices copied EXACTLY from ~/workspace/meechie-ai-vtuber/products.json (2026-11-16 source). Never quote a price that is not in this file. If a product is not listed here, say 'check the exact price on the site' and state NO number.",
+    "source": "meechie-ai-vtuber/products.json",
+    "generated": "2026-11-20",
+    "price_rule": "EXACT single-product price only. No ranges, no 'from $X', no rounding down."
+  },
+  "products": [
+    {
+      "name": "MW Unisex Softstyle T-Shirt",
+      "price": 18.02,
+      "section": "printify"
+    },
+    {
+      "name": "MEECHIES WORLD T SHIRT",
+      "price": 18.02,
+      "section": "printify"
+    },
+    {
+      "name": "Tall Waterproof Soft Shell Jacket",
+      "price": 200.0,
+      "section": "printify"
+    },
+    {
+      "name": "Excursion Parka",
+      "price": 164.62,
+      "section": "printify"
+    },
+    {
+      "name": "Waterproof Insulated Sideline Parka",
+      "price": 200.0,
+      "section": "printify"
+    },
+    {
+      "name": "Magnetic Clear Impact-Resistant Cases",
+      "price": 21.2,
+      "section": "printify"
+    },
+    {
+      "name": "Stainless Steel Travel Mug with Handle, 14oz",
+      "price": 31.42,
+      "section": "printify"
+    },
+    {
+      "name": "ANSI 107 Class 3 Heavy-Duty Fleece Pullover Hoodie",
+      "price": 100.0,
+      "section": "printify"
+    },
+    {
+      "name": "Unisex Heavy Blend Hooded Sweatshirt",
+      "price": 50.0,
+      "section": "printify"
+    },
+    {
+      "name": "Velveteen Plush Blanket, All Sizes (Set A)",
+      "price": 23.64,
+      "section": "printify"
+    },
+    {
+      "name": "Colorful Phone Cases",
+      "price": 7.38,
+      "section": "printify"
+    },
+    {
+      "name": "Semi-Automatic Foldable Umbrella",
+      "price": 40.0,
+      "section": "printify"
+    },
+    {
+      "name": "doty Accent Coffee Mug",
+      "price": 10.67,
+      "section": "doty"
+    },
+    {
+      "name": "doty Plush Blanket",
+      "price": 22.73,
+      "section": "doty"
+    },
+    {
+      "name": "doty Softstyle T-Shirt",
+      "price": 18.02,
+      "section": "doty"
+    },
+    {
+      "name": "doty Hoodie (AOP) — white crown design",
+      "price": 60.2,
+      "section": "doty"
+    },
+    {
+      "name": "doty Hoodie (AOP) — black Caprice design",
+      "price": 62.0,
+      "section": "doty"
+    },
+    {
+      "name": "Shower Curtains",
+      "price": 67.95,
+      "section": "doty"
+    },
+    {
+      "name": "Star hydrocolloid pimple patches (7-color)",
+      "price": 19.99,
+      "section": "cj_cheap_deals"
+    },
+    {
+      "name": "LED strip lights 5m, USB, remote",
+      "price": 19.99,
+      "section": "cj_cheap_deals"
+    },
+    {
+      "name": "Rechargeable hand warmer, digital display",
+      "price": 19.99,
+      "section": "cj_cheap_deals"
+    },
+    {
+      "name": "Mini desktop vacuum cleaner (USB, with brush)",
+      "price": 14.99,
+      "section": "cj_cheap_deals"
+    },
+    {
+      "name": "Magnetic charging cable 2m, 3-in-1 tips",
+      "price": 9.99,
+      "section": "cj_cheap_deals"
+    },
+    {
+      "name": "Rosemary hair oil / scalp serum",
+      "price": 14.99,
+      "section": "cj_cheap_deals"
+    },
+    {
+      "name": "TikTok: The Opportunity — How Creators Build Audiences, Income, and Businesses",
+      "price": 10.0,
+      "section": "books"
+    },
+    {
+      "name": "Meechie's World: The Story and the Blueprint",
+      "price": 10.0,
+      "section": "books"
+    },
+    {
+      "name": "Faith: The Foundation — Aliens, Witches, Uranium, and the Case for One God",
+      "price": 10.0,
+      "section": "books"
+    },
+    {
+      "name": "The Pyramids of Egypt — Complete Luxury Edition",
+      "price": 10.0,
+      "section": "books"
+    },
+    {
+      "name": "The Pyramids of Egypt: How They Were Built, What They Were For, and the Myths Around Them",
+      "price": 0.0,
+      "section": "books"
+    },
+    {
+      "name": "Donald J. Trump: An Investigative Biography",
+      "price": 0.0,
+      "section": "books"
+    }
+  ],
+  "faq": [
+    {
+      "q": "How much is MW Reverse Lookup?",
+      "a": "First lookup $1.99, second lookup $5.00, then $10.00 unlocks unlimited lookups. Never charged for an empty report. Reports stay private to the signed-in account. https://meechiesworldinc.com/lookup-app/"
+    },
+    {
+      "q": "How much are the books?",
+      "a": "Paid books are $10.00 each in the Books section of meechiesworldinc.com. Three books are free: The Pyramids of Egypt (standard), Donald J. Trump: An Investigative Biography, and Paper Trail: Jeffrey Epstein and the Fight for the Files."
+    },
+    {
+      "q": "What is the Doty line?",
+      "a": "Doty's World — Caprice's 12-product line at meechiesworldinc.com/caprice/. In this offline catalog: Accent Coffee Mug $10.67, Plush Blanket $22.73, Softstyle T-Shirt $18.02, Hoodie (AOP) white crown $60.20, Hoodie (AOP) black Caprice $62.00, Shower Curtains $67.95. Full line of 12 on the site."
+    },
+    {
+      "q": "Where do I shop?",
+      "a": "Shop section on meechiesworldinc.com — Printify products, CJ Cheap Deals (Stripe checkout, auto-order), Doty's World, and books."
+    },
+    {
+      "q": "What is Meechie JARVIS?",
+      "a": "Meechie is Malik's JARVIS — his personal AI, loyal, witty, funny, young, hood, like a rapper. Full brain lives on his PC hub; this phone app talks to it when the PC is on. When the hub is offline, this app runs in light mode from this catalog only."
+    },
+    {
+      "q": "Is Meechies World hiring?",
+      "a": "Meechies World is hiring. Roles and how to apply are not set yet — keep an eye on meechiesworldinc.com for details."
+    }
+  ],
+  "links": {
+    "site": "https://meechiesworldinc.com",
+    "shop": "https://meechiesworldinc.com/#v-shop",
+    "lookup": "https://meechiesworldinc.com/lookup-app/",
+    "caprice": "https://meechiesworldinc.com/caprice/",
+    "tiktok_shop": "https://shop.tiktok.com/us/store/meechies-world-inc/7494976370425890255"
+  }
+}

@@ -1,0 +1,255 @@
+/* Meechie JARVIS — phone PWA HUD stylesheet.
+   Iron Man blue hologram tokens, ARCHITECTURE.md §5.
+   bg #020a12–#04121f, primary cyan #00d4ff, glow #00e5ff,
+   accent gold #f5c518 (Meechie brand), text #d7f6ff, muted #6fa8bf,
+   lines rgba(0,212,255,.25). */
+:root {
+  --bg0: #020a12;
+  --bg1: #04121f;
+  --cyan: #00d4ff;
+  --glow: #00e5ff;
+  --gold: #f5c518;
+  --text: #d7f6ff;
+  --muted: #6fa8bf;
+  --line: rgba(0, 212, 255, .25);
+  --line-strong: rgba(0, 212, 255, .55);
+  --panel: rgba(4, 24, 38, .82);
+  --panel-solid: #061826;
+  --danger: #ff5a5a;
+  --ok: #2ee6a8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: radial-gradient(120% 90% at 50% 0%, var(--bg1) 0%, var(--bg0) 70%);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+/* faint hologram grid */
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: .07;
+}
+#app { position: relative; z-index: 1; display: flex; flex-direction: column; min-height: 100dvh; }
+
+header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px 8px;
+}
+header .mark {
+  width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%;
+  border: 2px solid var(--cyan);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 20px; color: var(--gold);
+  box-shadow: 0 0 14px rgba(0, 212, 255, .55), inset 0 0 10px rgba(0, 212, 255, .35);
+  background: radial-gradient(circle, rgba(0,229,255,.25), transparent 70%);
+}
+header h1 { font-size: 19px; letter-spacing: 1.5px; }
+header h1 span { color: var(--cyan); }
+header p { font-size: 11px; color: var(--muted); letter-spacing: .5px; }
+header .spacer { flex: 1; }
+button.icon-btn {
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 10px; font-size: 16px; cursor: pointer;
+}
+button.icon-btn:hover { border-color: var(--line-strong); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; padding: 6px 11px; border-radius: 20px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+  white-space: nowrap;
+}
+.pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.pill.online { color: var(--ok); border-color: rgba(46, 230, 168, .5); }
+.pill.online .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.pill.offline { color: var(--gold); border-color: rgba(245, 197, 24, .5); }
+.pill.offline .dot { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.pill.light { color: var(--gold); border-color: rgba(245, 197, 24, .5); }
+
+#modeBanner {
+  display: none; margin: 0 14px 8px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid rgba(245, 197, 24, .55); background: rgba(245, 197, 24, .08);
+  color: var(--gold); font-size: 13px; line-height: 1.45;
+}
+#modeBanner.show { display: block; }
+#modeBanner b { color: #ffe27a; }
+
+/* Meechie stage + arc reactor */
+#stage {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 4px 14px 6px;
+}
+#meechieFace {
+  width: 118px; height: 118px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--cyan);
+  box-shadow: 0 0 22px rgba(0, 212, 255, .5);
+  background: var(--panel-solid);
+}
+#meechieFace.talking { animation: faceGlow .28s ease-in-out infinite alternate; }
+@keyframes faceGlow {
+  from { box-shadow: 0 0 18px rgba(0,212,255,.45); }
+  to   { box-shadow: 0 0 34px rgba(0,229,255,.9); }
+}
+#reactorWrap { margin-top: -6px; text-align: center; }
+#reactor {
+  width: 132px; height: 132px; cursor: pointer; border: none; background: transparent;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+#reactor svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 0 12px rgba(0,229,255,.65)); }
+#reactor .ring-spin { transform-origin: 100px 100px; animation: spin 14s linear infinite; }
+#reactor .ring-spin-rev { transform-origin: 100px 100px; animation: spinRev 22s linear infinite; }
+#reactor .core { animation: pulse 2.6s ease-in-out infinite; transform-origin: 100px 100px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spinRev { to { transform: rotate(-360deg); } }
+@keyframes pulse {
+  0%, 100% { opacity: .85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.06); }
+}
+#reactor.listening .core { animation-duration: 1s; }
+#reactorHint { font-size: 12px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; }
+#voiceLabel { font-size: 11px; color: var(--muted); margin-top: 4px; }
+#voiceLabel b { color: var(--gold); }
+
+/* Chat */
+#chatlog {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 10px 14px; min-height: 120px;
+}
+.msg {
+  max-width: 88%; padding: 10px 12px; border-radius: 14px;
+  font-size: 15px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;
+}
+.msg.user {
+  align-self: flex-end; background: rgba(0, 212, 255, .16);
+  border: 1px solid var(--line-strong); border-bottom-right-radius: 4px;
+}
+.msg.meechie {
+  align-self: flex-start; background: var(--panel);
+  border: 1px solid var(--line); border-bottom-left-radius: 4px;
+}
+.msg.meechie b { color: var(--gold); }
+.msg.meechie a { color: var(--glow); }
+.msg.sys {
+  align-self: center; background: transparent; border: 1px dashed var(--line);
+  color: var(--muted); font-size: 13px; max-width: 94%; text-align: center;
+}
+.msg .tag {
+  display: block; font-size: 10px; letter-spacing: 1px; color: var(--muted);
+  margin-top: 6px; text-transform: uppercase;
+}
+
+/* Quick actions */
+#quick {
+  display: flex; gap: 8px; overflow-x: auto; padding: 4px 14px 8px;
+  scrollbar-width: none;
+}
+#quick::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto; font-size: 13px; padding: 8px 12px; border-radius: 20px;
+  cursor: pointer; background: var(--panel); border: 1px solid var(--line);
+  color: var(--text); font-family: inherit;
+}
+.chip:hover, .chip:active { border-color: var(--cyan); color: var(--glow); }
+
+/* Composer */
+#composer {
+  display: flex; gap: 8px; padding: 8px 14px 14px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+#chatInput {
+  flex: 1; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: rgba(2, 10, 18, .85); color: var(--text);
+  font-size: 16px; font-family: inherit; outline: none; min-width: 0;
+}
+#chatInput:focus { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan); }
+#composer button {
+  border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--text); font-size: 20px;
+  padding: 0 14px; cursor: pointer; min-height: 48px;
+}
+#sendBtn {
+  background: var(--cyan) !important; color: #02141f !important;
+  border-color: var(--cyan) !important; font-weight: 800; font-size: 15px !important;
+  padding: 0 18px !important;
+}
+#micBtn.listening { background: var(--gold); border-color: var(--gold); color: #1a1200; }
+
+/* Reminders + catalog drawer */
+#drawer {
+  display: none; margin: 0 14px 14px; padding: 12px; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); max-height: 46dvh; overflow-y: auto;
+}
+#drawer.show { display: block; }
+#drawer h2 { font-size: 15px; margin-bottom: 8px; color: var(--glow); }
+#drawer h3 { font-size: 13px; margin: 12px 0 6px; color: var(--gold); }
+#drawer .item {
+  background: rgba(2, 10, 18, .7); border: 1px solid var(--line);
+  border-radius: 10px; padding: 9px 11px; margin-bottom: 7px;
+  font-size: 13.5px; line-height: 1.45;
+}
+#drawer .item b { color: #fff; }
+#drawer .item .price { color: var(--gold); font-weight: 800; }
+#drawer .item .when { color: var(--gold); font-size: 12px; }
+#drawer .item.done { opacity: .55; text-decoration: line-through; }
+#drawer input[type="text"], #drawer input[type="datetime-local"] {
+  width: 100%; padding: 10px; border-radius: 9px; border: 1px solid var(--line);
+  background: rgba(2,10,18,.85); color: var(--text); font-size: 14px;
+  font-family: inherit; margin-bottom: 8px;
+}
+#drawer .row { display: flex; gap: 8px; }
+#drawer .row button, #drawer button.action {
+  background: var(--cyan); color: #02141f; border: none; border-radius: 9px;
+  padding: 10px 14px; font-weight: 800; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+#drawer button.ghost {
+  background: transparent; color: var(--text); border: 1px solid var(--line);
+  border-radius: 9px; padding: 10px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+}
+#drawer .sync-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 8px; }
+
+/* Settings sheet */
+#settings {
+  display: none; margin: 0 14px 14px; padding: 14px; border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line);
+}
+#settings.show { display: block; }
+#settings h2 { font-size: 15px; margin-bottom: 6px; color: var(--glow); }
+#settings p { font-size: 13px; color: var(--muted); line-height: 1.55; margin-bottom: 10px; }
+#settings label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; letter-spacing: .5px; }
+#settings input {
+  width: 100%; padding: 11px; border-radius: 9px; border: 1px solid var(--line);
+  background: rgba(2,10,18,.85); color: var(--text); font-size: 14px; font-family: inherit;
+}
+#settings input:focus { border-color: var(--cyan); outline: none; }
+#settings .row { display: flex; gap: 8px; margin-top: 12px; }
+#settings button {
+  background: var(--cyan); color: #02141f; border: none; border-radius: 9px;
+  padding: 11px 16px; font-weight: 800; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+#settings button.ghost {
+  background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 600;
+}
+#settingsStatus { font-size: 13px; margin-top: 10px; min-height: 18px; }
+#settingsStatus.ok { color: var(--ok); }
+#settingsStatus.err { color: var(--danger); }
+#settings .warn {
+  font-size: 12px; color: var(--gold); line-height: 1.5; margin-top: 10px;
+  border-top: 1px solid var(--line); padding-top: 10px;
+}
+
+footer {
+  text-align: center; font-size: 11px; color: var(--muted);
+  padding: 0 14px calc(10px + env(safe-area-inset-bottom, 0px)); letter-spacing: .5px;
+}
+footer b { color: var(--gold); }
