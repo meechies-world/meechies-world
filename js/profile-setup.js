@@ -165,11 +165,11 @@
       const x = e.target.closest("[data-albx]"); if (x) { const [i, j] = x.dataset.albx.split(":").map(Number); albums[i].photos.splice(j, 1); d._paint(); }
     });
     albBox.addEventListener("change", async (e) => {
-      const i = e.target.dataset.albadd; if (i === undefined) return; const files = [...(e.target.files || [])]; e.target.value = "";
+      const i = e.target.dataset.albadd; if (i === undefined) return; const alb = albums[+i]; if (!alb) return; const files = [...(e.target.files || [])]; e.target.value = "";
       for (const f of files) {
         if (albCount() >= MAXALBPICS) { say("That's the most album photos (" + MAXALBPICS + ")."); break; }
         say("Adding your picture…");
-        try { const url = await readPhoto(f, 1280); if (!/^https:\/\//.test(url)) throw new Error("Upload failed, try again."); albums[+i].photos.push(url); d._paint(); }
+        try { const url = await readPhoto(f, 1280); if (!/^https:\/\//.test(url)) throw new Error("Upload failed, try again."); if (!albums.includes(alb)) break; alb.photos.push(url); d._paint(); }
         catch (err) { say("Couldn't add the picture: " + (err.message || err)); }
       }
     });

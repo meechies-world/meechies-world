@@ -143,12 +143,13 @@ function findProduct(q) {
   }
   return bestScore >= 3 ? best : null;
 }
+const FAQ_STOP = ["much", "what", "where", "meechie", "meechies", "world"];
 function lightAnswer(q) {
   const lq = q.toLowerCase();
   // FAQ first
   if (catalog && catalog.faq) {
     for (const f of catalog.faq) {
-      const keys = f.q.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter((w) => w.length > 3);
+      const keys = f.q.toLowerCase().replace(/[^a-z0-9 ]/g, "").split(/\s+/).filter((w) => w.length > 3 && !FAQ_STOP.includes(w));
       if (keys.length && keys.some((k) => lq.includes(k))) return f.a;
     }
   }
@@ -158,7 +159,7 @@ function lightAnswer(q) {
   }
   // Books
   if (/book/.test(lq)) {
-    const books = (catalog.products || []).filter((p) => p.section === "books");
+    const books = ((catalog && catalog.products) || []).filter((p) => p.section === "books");
     let out = "Your books — paid ones are <b>$10</b> each:\n";
     books.forEach((b) => { out += "• <b>" + esc(b.name) + "</b> — " + (b.price > 0 ? "$10.00" : "FREE") + "\n"; });
     return out;
@@ -262,7 +263,7 @@ function showCatalog() {
   box.dataset.view = "catalog";
   box.classList.add("show");
   const groups = {};
-  (catalog.products || []).forEach((p) => { (groups[p.section] = groups[p.section] || []).push(p); });
+  ((catalog && catalog.products) || []).forEach((p) => { (groups[p.section] = groups[p.section] || []).push(p); });
   const labels = { printify: "Printify", doty: "Doty's World", cj_cheap_deals: "CJ Cheap Deals", books: "Books" };
   let html = "<h2>🛍️ Products (offline list — 30)</h2>";
   html += `<p style="font-size:12px; color:var(--muted); margin-bottom:8px;">Exact prices from the store catalog. Full range (88 items) lives on the hub + site.</p>`;
@@ -314,7 +315,7 @@ async function speakText(text) {
     // Ask the hub for Meechie's real voice first.
     try {
       const res = await hubFetch("/jarvis/speak", { method: "POST", body: JSON.stringify({ text: plain }) });
-      const data = await res.json().catch(() => null);
+      const data = await res.clone().json().catch(() => null);
       if (data && data.audio_b64) {
         setVoiceLabel("Meechie's voice", false);
         await playHubAudio(data.audio_b64, data.audio_mime || "audio/mpeg");

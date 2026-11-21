@@ -33,7 +33,7 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   // Hub calls are live + authenticated + private: never cache, never serve stale.
   if (e.request.method !== "GET") return;
-  if (url.pathname.includes("/jarvis/")) return;
+  if (url.origin !== self.location.origin || !url.pathname.startsWith("/jarvis/")) return;
   e.respondWith(
     caches.match(e.request).then((hit) => {
       const net = fetch(e.request)
