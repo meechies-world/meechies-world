@@ -52,7 +52,10 @@
 (() => {
   "use strict";
   const card = document.getElementById("chan-card");
-  if (!card || window.MW_CHAN) return;
+  // Run once per page. (Not keyed on window.MW_CHAN: js/dj.js sets a
+  // TV-only stub of MW_CHAN at load, which this module is meant to replace.)
+  if (!card || card.dataset.chanInit) return;
+  card.dataset.chanInit = "1";
 
   const $ = (s) => card.querySelector(s);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -573,7 +576,20 @@
   // reconciliation tick can tell "the listener chose the station"
   // apart from the follow machinery re-asserting itself.
   const DOOR_SEL = "#tune-in, #pb-play, #dj-listen, #la-tune, #la-watch, #wb-sound, #tw-watch, #st-watch, [data-bobtn], [data-bubbtn], [data-play]";
-  document.addEventListener("click", (e) => { try { if (e.target && e.target.closest && e.target.closest(DOOR_SEL)) doorAt = Date.now(); } catch (_) {} }, true);
+  document.addEventListener("click", (e) => {
+    try {
+      if (!(e.target && e.target.closest && e.target.closest(DOOR_SEL))) return;
+      doorAt = Date.now();
+      // While a channel holds the duck latch, the station can never read as
+      // sounding, so the tick below would never hand the sound back and the
+      // radio stayed muted after Tune in. The door IS the hand-back: release now.
+      if (_chanClaimed) {
+        _chanClaimed = false;
+        if (window.MW_videoSound) MW_videoSound.end();
+        if (curChan) { stopGenre(); selected = "live"; curChan = null; fightN = 0; paint("You're on the live station — your channel waits here whenever you want it."); }
+      }
+    } catch (_) {}
+  }, true);
   if (toggleBtn) toggleBtn.addEventListener("click", toggleCurrent);
   if (nextBtn) nextBtn.addEventListener("click", nextCurrent);
   if (prevBtn) prevBtn.addEventListener("click", prevCurrent);
