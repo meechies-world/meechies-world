@@ -77,11 +77,11 @@ body.has-player #v-clips .rail{bottom:70px}`;
     if (!v.src) v.src = v.dataset.src;
     // preload the next clip
     const n = el.nextElementSibling?.querySelector("video"); if (n && !n.src) { n.preload = "metadata"; n.src = n.dataset.src; }
-    if (!touched && window.MW_canSound && MW_canSound()) muted = false; // sound on by itself after your first tap on the site
+    /* RADIO WALL 2026-11-22: auto-unmute removed — clips auto-play muted. Sound turns on only when the user taps the sound button (which sets touched + muted=false). Auto sound after any first tap ducked the radio on every scroll. */
     v.muted = muted;
     el.querySelector(".paused-ic")?.remove(); // it plays again, so drop the ▶ left from an earlier tap
     el.querySelector(".snd").textContent = muted ? "🔇 Tap for sound" : "🔊";
-    if (!muted) window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })();
+    if (!muted && window.MW_videoSound) MW_videoSound.start();
     v.play().catch(() => { if (!v.muted) { v.muted = muted = true; el.querySelector(".snd").textContent = "🔇 Tap for sound"; window.MW_videoSound?.end(); v.play().catch(() => {}); } });
     // a file this browser cannot decode can sit black forever without ever firing
     // an error (a desktop-converted mp4 with Opus audio does exactly that) — if the

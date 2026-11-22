@@ -237,7 +237,7 @@
   }
 
   /* ================= live playback ================= */
-  let ctx = null, MX = null, playing = false, timer = 0, raf = 0;
+  let ctx = null, MX = null, playing = false, _bmClaimed = false, timer = 0, raf = 0;
   let curBar = 0, curStep = 0, barStart = 0; // what's being scheduled next, and when that bar starts
   const live = () => {
     if (!ctx) { ctx = new (window.AudioContext || window.webkitAudioContext)(); MX = buildMixer(ctx); }
@@ -246,7 +246,7 @@
   // bars of the current position, for the playhead (scheduling runs a little ahead of what you hear)
   const heard = []; // [{bar, start}] for the bars scheduled so far
   function play() {
-    live(); try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
+    live(); try { if (!_bmClaimed) { _bmClaimed = true; if (window.MW_videoSound) MW_videoSound.start(); } } catch (_) {}/* RADIO WALL 2026-11-22: Beat Maker ducks the radio (latch) instead of pausing it. */
     applyFx(MX); playing = true; curBar = 0; curStep = 0; barStart = ctx.currentTime + 0.08; heard.length = 0; heard.push({ bar: 0, start: barStart });
     const loop = () => {
       if (!playing) return;
@@ -259,7 +259,7 @@
     };
     loop(); tick(); paintTransport();
   }
-  function stop() { playing = false; clearTimeout(timer); cancelAnimationFrame(raf); root.querySelectorAll(".bm-cell.now,.bm-slot.now").forEach((c) => c.classList.remove("now")); paintTransport(); }
+  function stop() { try { if (_bmClaimed) { _bmClaimed = false; if (window.MW_videoSound) MW_videoSound.end(); } } catch (_) {} playing = false; clearTimeout(timer); cancelAnimationFrame(raf); root.querySelectorAll(".bm-cell.now,.bm-slot.now").forEach((c) => c.classList.remove("now")); paintTransport(); }
   let lastShownPat = null;
   function tick() {
     if (!playing) return;

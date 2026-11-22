@@ -84,6 +84,9 @@
 
   /* ---------- viewer ---------- */
   let V = null;
+  let _stClaimed = false;
+  function stClaim() { try { if (_stClaimed) return; _stClaimed = true; if (window.MW_videoSound) MW_videoSound.start(); } catch (_) {} }
+  function stRelease() { try { if (!_stClaimed) return; _stClaimed = false; if (window.MW_videoSound) MW_videoSound.end(); } catch (_) {} }
   function open(gi, si) {
     const gs = groups(); if (!gs[gi]) return;
     close(); V = { gs, gi, si: si || 0, t0: 0, paused: false, pausedAt: 0, dur: PHOTO_MS, timer: null };
@@ -99,17 +102,18 @@
     show();
     V.timer = setInterval(tick, 80);
   }
-  function close() { if (!V) return; clearInterval(V.timer); V.el.remove(); V = null; document.documentElement.style.overflow = ""; paint(); }
+  function close() { if (!V) return; stRelease(); clearInterval(V.timer); V.el.remove(); V = null; document.documentElement.style.overflow = ""; paint(); }
   function cur() { return V && V.gs[V.gi] && V.gs[V.gi].list[V.si]; }
   function show() {
     const g = V.gs[V.gi], s = cur(); if (!s) return close();
+    stRelease(); /* RADIO WALL 2026-11-22: release the previous story video's radio claim before the stage is replaced. */
     const mine = s.authorId === ME();
     V.t0 = Date.now(); V.paused = false; V.dur = PHOTO_MS;
     const stage = V.el.querySelector(".stage");
     if (s.kind === "video") {
       stage.innerHTML = `<video src="${E(safe(s.url))}" playsinline autoplay ${window.MW_canSound && !window.MW_canSound() ? "muted" : ""}></video>`;
       const v = stage.querySelector("video"); v.addEventListener("loadedmetadata", () => { V && (V.dur = Math.min(MAX_VIDEO_MS, (v.duration || 6) * 1000)); });
-      v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+      v.play().then(() => { if (!v.muted) stClaim(); }).catch(() => { v.muted = true; v.play().catch(() => {}); });
     } else if (s.kind === "text") stage.innerHTML = `<div class="text" style="background:${BGS[s.bg] || BGS.gold}">${E(s.text)}</div>`;
     else stage.innerHTML = `<img src="${E(safe(s.url))}" alt="" draggable="false">`;
     const cap = V.el.querySelector(".cap"); cap.hidden = !s.caption; cap.textContent = s.caption || "";

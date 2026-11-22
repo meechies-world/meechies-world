@@ -303,7 +303,7 @@
   /* ---------- watching ---------- */
   async function watch(id) {
     if (watching[id]) return;
-    if (window.MW_videoSound) MW_videoSound.start(); else if (typeof media !== "undefined") { try { media.pause(); } catch (_) {} }
+    if (window.MW_videoSound) MW_videoSound.start();
     const room = await joinRoom(id); const pc = new RTCPeerConnection(ICE);
     const w = watching[id] = { room, pc, stream: null };
     pc.addTransceiver("video", { direction: "recvonly" }); pc.addTransceiver("audio", { direction: "recvonly" });

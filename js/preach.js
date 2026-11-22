@@ -44,7 +44,7 @@
   }
   function play(i) {
     poster(i); const v = vids[i];
-    window.MW_videoSound ? MW_videoSound.start() : (() => { try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {} })(); // the radio steps aside while the song plays
+    if (window.MW_videoSound) MW_videoSound.start(); // the radio steps aside while the song plays
     frame.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(v.id)}?autoplay=1&rel=0&playsinline=1" title="${E(v.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
   }
   async function load() {

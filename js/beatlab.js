@@ -22,7 +22,7 @@
   let keyRoot = 0, keyScale = "chromatic", master = { slowed: false, sped: false };
   const COLORS = ["#d4a843", "#3de0ff", "#ff5c8a", "#7b5cff", "#6fbf8b", "#ff9f43", "#e8e2d5", "#b0263a"];
 
-  let curRate = 1, ctx = null, tracks = [], playing = false, recording = false, startAt = 0, playhead = 0, sources = [], raf = 0, bpm = 90, metro = false, metroNodes = [], nextId = 1;
+  let curRate = 1, ctx = null, tracks = [], playing = false, _blClaimed = false, recording = false, startAt = 0, playhead = 0, sources = [], raf = 0, bpm = 90, metro = false, metroNodes = [], nextId = 1;
   let rec = null, recChunks = [], recStream = null, recTrack = null, recBegin = 0;
   const audio = () => { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); return ctx; };
   const PX = 60; // pixels per second on the timeline
@@ -231,7 +231,7 @@
       sources.push(src);
     });
     if (metro) scheduleMetro(c);
-    try { if (typeof media !== "undefined" && !media.paused) media.pause(); } catch (_) {}
+    try { if (!_blClaimed) { _blClaimed = true; if (window.MW_videoSound) MW_videoSound.start(); } } catch (_) {}/* RADIO WALL 2026-11-22: Beat Lab ducks the radio (latch) instead of pausing it. */
     playing = true; $("#bl-play").textContent = "⏸"; tick();
   }
   function scheduleMetro(c) {
@@ -244,7 +244,7 @@
     }
   }
   function stopSources() { sources.forEach((s) => { try { s.stop(); } catch (_) {} }); sources = []; metroNodes.forEach((o) => { try { o.stop(); } catch (_) {} }); metroNodes = []; }
-  function stop() { if (recording) stopRec(); stopSources(); if (playing && ctx) playhead = Math.max(0, (ctx.currentTime - startAt) * curRate); playing = false; cancelAnimationFrame(raf); $("#bl-play").textContent = "▶"; movePH(); }
+  function stop() { try { if (_blClaimed) { _blClaimed = false; if (window.MW_videoSound) MW_videoSound.end(); } } catch (_) {} if (recording) stopRec(); stopSources(); if (playing && ctx) playhead = Math.max(0, (ctx.currentTime - startAt) * curRate); playing = false; cancelAnimationFrame(raf); $("#bl-play").textContent = "▶"; movePH(); }
   function tick() {
     if (!playing) return; playhead = Math.max(0, (ctx.currentTime - startAt) * curRate); movePH();
     if (recording) { const rc = root.querySelector("#bl-recclip"); if (rc) rc.style.width = Math.max(2, (playhead - recBegin) * PX) + "px"; }

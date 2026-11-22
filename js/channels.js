@@ -253,6 +253,7 @@
   let selected = null;       // channel id the tuner shows as chosen
   let doorAt = 0;            // stamp of the last explicit station-door click
   let fightN = 0;            // consecutive station re-sounds defended against
+    let _chanClaimed = false;   // RADIO WALL: latch claim held while a genre channel owns this tab's sound
   let dryN = 0;              // consecutive dry digs for the current channel
 
   function ytApi() {
@@ -354,16 +355,18 @@
   /* ---------- the station doors (read/listen only — never writes) ---------- */
   function djListening() { try { return !!(window.MW_DJ && typeof MW_DJ.listening === "function" && MW_DJ.listening()); } catch (_) { return false; } }
   function mediaSounding() {
-    try { return typeof media !== "undefined" && !!media && !media.paused && !media.ended; } catch (_) { return false; }
+    try { if (window.MW_videoSound && MW_videoSound.holding && MW_videoSound.holding()) return false; return typeof media !== "undefined" && !!media && !media.paused && !media.ended; } catch (_) { return false; }
   }
   function stationSounding() { return djListening() || mediaSounding(); }
   function silenceStationHere() {
-    // Stop THIS tab's station follow only — the station itself,
-    // and every other listener, are untouched.
+    // RADIO WALL 2026-11-22: duck THIS tab's radio via the latch instead of
+    // pausing #audio. The station itself, and every other listener, are untouched.
+    // The claim is flag-guarded so the fight loop re-asserting it is a no-op.
     try { if (djListening() && window.MW_DJ) MW_DJ.stop(); } catch (_) {}
     try {
-      if (typeof media !== "undefined" && media && !media.paused) {
-        media.pause();
+      if (!_chanClaimed) {
+        _chanClaimed = true;
+        if (window.MW_videoSound) MW_videoSound.start();
         try { if (typeof room !== "undefined" && room) room.presence({ radio: null }); } catch (_) {}
       }
     } catch (_) {}
@@ -371,6 +374,7 @@
     if (ti && !stationSounding()) ti.textContent = "▶ Tune in";
   }
   function startLive() {
+    try { if (_chanClaimed) { _chanClaimed = false; if (window.MW_videoSound) MW_videoSound.end(); } } catch (_) {}
     stopGenre();
     curChan = null; selected = "live"; fightN = 0; dryN = 0;
     try { localStorage.removeItem("mw-chan-last"); } catch (_) {}
