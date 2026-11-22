@@ -262,7 +262,7 @@
     if (nowEl) {
       const tvLive = vsBroadcast() && !(S.vstream || {}).hidden;
       const playing = DECKS.filter((k) => S[k] && S[k].playing && S[k].title).map((k) => S[k].title);
-      const gN = S.djGuest && S.djGuest.until > Date.now() ? gName(S.djGuest) : null;
+      const gN = S.djGuest && S.djGuest.until > (window.MW_serverNow ? MW_serverNow() : Date.now()) ? gName(S.djGuest) : null;
       nowEl.textContent = tvLive && !playing.length && !gN ? "📺 Meechie is live on the master screen — the tables pick back up when the share ends." : live ? (playing.length ? "🎧 Live now: " + playing.join("  ×  ") : gN ? "🎧 " + gN + " is live on the decks." : "🎧 Meechie is live on the decks.") : "The station is on the playlist right now — the booth wakes up the moment Meechie goes live.";
     }
     const sb = document.getElementById("wb-sound");
