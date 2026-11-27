@@ -9,7 +9,7 @@
  * Until STRIPE_SECRET_KEY is set, gifts stay free like before.
  *
  * 1 coin = 1 cent of value. Stripe's card fee comes out of Meechie's 60%. */
-import { json, userFrom, isAdmin, setup, take, change, uuid } from "../../../lib/cf.js";
+import { json, userFrom, isAdmin, setup, take, change, uuid, sha256hex } from "../../../lib/cf.js";
 import { creditPurse, purseView, createProposal, decideProposal, setUsablePct, setFrozen } from "../../../lib/purse.js";
 import { cjCreateOrder, cjPayBalance } from "../../../lib/cj.js";
 import { getSecret } from "../../../lib/secrets.js";
@@ -27,6 +27,23 @@ const BOOKS = {
   "pyramids-of-egypt-luxury-edition": { name: "The Pyramids of Egypt — Complete Luxury Edition", cents: 1000 },
 };
 const bookOwned = async (env, uid, book) => !!(await env.DB.prepare("select 1 from book_orders where uid = ? and book = ?").bind(uid, book).first());
+/* MwTiklivebot sold on the site itself (Stripe Checkout, one-time purchase).
+ * Launch price $19.99 (1999 cents); regular price $25 (2500 cents) when the
+ * launch ends — flip `cents` to 2500 then. FULL unlock $300 (30000 cents):
+ * every advanced capability (browser, hands, brain, soul/heart, emotion AI,
+ * SpaceX, growth, auto-battle, best-of-breed, coding) in one key, minted
+ * with the "F" edition letter (see licenseMintKey below). The buyer is a
+ * site member; the webhook records the order (mwtiklivebot_orders) and
+ * lands the sale in Meechie's purse, then AUTOMATICALLY fulfils it: the
+ * webhook mints a key, REGISTERS it on the license server (a key must be
+ * registered before it can activate — see "ONLINE license server"
+ * below, and ARCHITECTURE.md, step 9), and emails the buyer the key +
+ * the Windows download link. Nobody touches anything. If the email
+ * fails, the key is still on the buyer's success page (the delivery
+ * row), and the order row is the fulfilment list for the owner. */
+const MW_TIKLIVEBOT = { name: "MwTiklivebot", cents: 1999, regularCents: 2500, fullCents: 30000 };
+const mwtiklivebotOwned = async (env, uid) => !!(await env.DB.prepare("select 1 from mwtiklivebot_orders where uid = ?").bind(uid).first());
+const mwtiklivebotOwnedFull = async (env, uid) => !!(await env.DB.prepare("select 1 from mwtiklivebot_orders where uid = ? and edition = 'full'").bind(uid).first());
 /* CJdropshipping products sold on the site itself (Stripe Checkout).
  * Customer pays through Meechie's Stripe; on payment the webhook auto-creates
  * the CJ order (vid = CJ variant id) and pays it from his CJ balance, so CJ
@@ -93,6 +110,44 @@ const SCHEMA = [
   "create index if not exists cj_orders_uid_product on cj_orders (uid, product)",
   "create table if not exists cj_checkouts (session text primary key, uid text not null, product text not null, url text not null, at integer not null)",
   "create index if not exists cj_checkouts_uid_product on cj_checkouts (uid, product, at)",
+  // MwTiklivebot orders: mwtiklivebot_orders is the entitlement record (one
+  // row per completed purchase, idempotent on the Stripe session id);
+  // `edition` is 'launch' (base $19.99/$25) or 'full' ($300 unlock) — the
+  // full checkout blocks a buyer who already owns a full order, and a
+  // base order never blocks buying the FULL upgrade.
+  // mwtiklivebot_checkouts remembers a session just opened so a buyer who
+  // comes back before the webhook lands resumes it instead of opening (and
+  // paying) a second one; its `edition` keeps a base resume from ever
+  // handing back a FULL checkout (or the other way round).
+  "create table if not exists mwtiklivebot_orders (id text primary key, uid text not null, cents integer not null default 0, edition text not null default 'launch', at integer not null)",
+  "create index if not exists mwtiklivebot_orders_uid on mwtiklivebot_orders (uid)",
+  "create table if not exists mwtiklivebot_checkouts (session text primary key, uid text not null, edition text not null default 'launch', url text not null, at integer not null)",
+  "create index if not exists mwtiklivebot_checkouts_uid on mwtiklivebot_checkouts (uid, at)",
+  // MwTiklivebot AUTOMATED fulfilment (2026-11-26): one delivery row
+  // per paid order — the webhook mints + registers the key and emails
+  // it, nobody touches anything. license_key is the RAW key the buyer
+  // was sold, and this table is the ONLY place a raw key is kept, so
+  // the buyer's own success page can show it again if the email is
+  // slow. It is readable only by the owning uid (the signed-in
+  // mwtiklivebot GET route below); no public route ever returns it.
+  // The licenses table (the activation authority) still holds only
+  // the SHA-256 hash — a key there can never be read back out.
+  "create table if not exists mwtiklivebot_deliveries (order_id text primary key, uid text not null, license_key text not null, download_url text, emailed integer not null default 0, email_error text, at integer not null)",
+  "create index if not exists mwtiklivebot_deliveries_uid on mwtiklivebot_deliveries (uid)",
+  // MwTiklivebot ONLINE license activation (2026-11-25): the license
+  // server is the authority — a key only activates if it is REGISTERED
+  // here, and only on up to 2 devices. The raw key is NEVER stored:
+  // key_hash is SHA-256 of the normalized key (the program sends the
+  // raw key once at activation, only the hash afterwards). Devices are
+  // rows in mwtiklivebot_license_devices (fingerprint = SHA-256 of the
+  // buyer's Windows MachineGuid, hashed again on the PC — never the raw
+  // id). license_events is the audit trail (activate / verify / revoke /
+  // register) so Malik can see a key being passed around.
+  "create table if not exists mwtiklivebot_licenses (key_hash text primary key, edition text not null, buyer_email text, order_ref text, status text not null default 'active', created_at integer not null, revoked_at integer)",
+  "create index if not exists mwtiklivebot_licenses_status on mwtiklivebot_licenses (status)",
+  "create table if not exists mwtiklivebot_license_devices (key_hash text not null, fingerprint text not null, name text, first_seen integer not null, last_seen integer not null, primary key (key_hash, fingerprint))",
+  "create table if not exists mwtiklivebot_license_events (id integer primary key autoincrement, key_hash text not null, event text not null, fingerprint text, detail text, at integer not null)",
+  "create index if not exists mwtiklivebot_license_events_key on mwtiklivebot_license_events (key_hash, at)",
 ];
 let ready = null;
 const ensure = (env) => (ready = ready || env.DB.batch(SCHEMA.map((s) => env.DB.prepare(s))).catch((e) => { ready = null; throw e; }));
@@ -213,6 +268,106 @@ export async function onRequest({ request, env, params }) {
   // public: is the coin shop on, what things cost
   if (route === "info") return json({ paid, packs: PACKS, gifts: GIFT_COINS, catalog: GIFTS.map(([k, e, n, c]) => ({ k, e, n, c, fx: c >= 500 })), memberShare: MEMBER_SHARE, minCashout: MIN_CASHOUT_CENTS });
 
+  /* ---------------- MwTiklivebot AUTOMATED fulfilment (2026-11-26) ----
+   * A buyer pays, and nobody touches anything: the webhook mints a
+   * launch key, registers it, and emails it with the Windows download
+   * link. This block sits ABOVE the webhook on purpose — the webhook
+   * runs before the license-server section below, so anything it calls
+   * must already be defined (a `const` used before its line is a
+   * ReferenceError, and the webhook's try/catch would swallow it).
+   * Minting mirrors license.py exactly (Crockford alphabet, edition
+   * letter + 13 random chars, 2-char HMAC-SHA256 checksum under
+   * MWTIKLICENSE_SECRET) — a key minted here checks out under the
+   * licenseChecksumOk below and under Python's checksum_valid. The
+   * letter is "L" for a launch/base order, "R" for regular, "F" for a
+   * $300 FULL order — the program reads the tier off that letter, so
+   * minting the wrong one sells the wrong product. Never
+   * mint with the LEGACY secret: that one only verifies keys minted
+   * before the server existed. If MWTIKLICENSE_SECRET is not set, no
+   * key is minted at all — the order is still recorded, and the next
+   * webhook delivery (after the secret is set) fulfils it.
+   *
+   * Email goes through Resend (free tier: 100/day, 3,000/month):
+   *   RESEND_API_KEY            from resend.com/api-keys
+   * The from address (orders@meechiesworldinc.com) must be a verified
+   * domain in Resend — one-time DNS setup (SPF + DKIM TXT records in
+   * Cloudflare DNS). Replies go to meechiesworldinc@gmail.com.
+   *
+   * Download link: MWTIKLIVEBOT_DOWNLOAD_URL — the Drive share link
+   * for MwTiklivebot-Setup-1.0.0.exe (the ~99 MB installer cannot live
+   * in the repo: Cloudflare Pages caps static files at 25 MB). If it
+   * is not set yet, the email still delivers the key and says the
+   * download link is coming — the sale is never blocked on the link,
+   * but the link MUST be set before launch or buyers pay for a
+   * download they cannot reach. */
+  const LICENSE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+  const licenseMintKey = async (env, edition) => {
+    const secret = env.MWTIKLICENSE_SECRET;
+    if (!secret) return null;
+    const letter = edition === "full" ? "F" : edition === "regular" ? "R" : "L";
+    const rand = new Uint8Array(13);
+    crypto.getRandomValues(rand);
+    const payload14 = letter + [...rand].map((b) => LICENSE_ALPHABET[b % 32]).join("");
+    const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(payload14)));
+    const first = mac[0] >> 3;
+    const second = ((mac[0] & 0x07) << 2) | (mac[1] >> 6);
+    const payload = payload14 + LICENSE_ALPHABET[first] + LICENSE_ALPHABET[second];
+    return "MWTL-" + [payload.slice(0, 4), payload.slice(4, 8), payload.slice(8, 12), payload.slice(12, 16)].join("-");
+  };
+  const escapeHtml = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const sendMwtiklivebotEmail = async (env, to, key, downloadUrl, edition) => {
+    if (!env.RESEND_API_KEY) return { sent: false, error: "no_resend_key" };
+    const isFull = edition === "full";
+    const subject = isFull ? "Your MwTiklivebot FULL license key — you're in" : "Your MwTiklivebot license key — you're in";
+    const intro = isFull ? "You're in — thanks for buying the MwTiklivebot FULL unlock!" : "You're in — thanks for buying MwTiklivebot!";
+    const dlHtml = downloadUrl
+      ? `<p><b>Download MwTiklivebot for Windows:</b><br><a href="${escapeHtml(downloadUrl)}">${escapeHtml(downloadUrl)}</a></p>`
+      : `<p><b>Windows download:</b> the download link is being posted on the <a href="https://meechiesworldinc.com/mwtiklivebot/">MwTiklivebot page</a> — check there in a little while. Your key below already works.</p>`;
+    const dlText = downloadUrl
+      ? `Download MwTiklivebot for Windows:\n${downloadUrl}\n`
+      : `Windows download: the download link is being posted on the MwTiklivebot page (https://meechiesworldinc.com/mwtiklivebot/) — check there in a little while. Your key below already works.\n`;
+    const text = `${intro}\n\nYour license key (works on 2 devices):\n${key}\n\n${dlText}\nHow to start:\n1. Run the installer, then open MwTiklivebot.\n2. In the setup wizard, type your license key when it asks.\n3. Make your character from a picture, link your store, and go LIVE on TikTok.\n\nYour key is also on the MwTiklivebot page while you're signed in, in case this email is slow.\n\n14-day refund, no questions asked — reply to this email.\n— Meechie's World Inc`;
+    const html = `<p>${escapeHtml(intro)}</p><p><b>Your license key (works on 2 devices):</b><br><span style="font-size:20px;letter-spacing:.06em"><b>${escapeHtml(key)}</b></span></p>${dlHtml}<p><b>How to start:</b></p><ol><li>Run the installer, then open MwTiklivebot.</li><li>In the setup wizard, type your license key when it asks.</li><li>Make your character from a picture, link your store, and go LIVE on TikTok.</li></ol><p>Your key is also on the MwTiklivebot page while you're signed in, in case this email is slow.</p><p>14-day refund, no questions asked — reply to this email.<br>— Meechie's World Inc</p>`;
+    try {
+      const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { authorization: "Bearer " + env.RESEND_API_KEY, "content-type": "application/json" }, body: JSON.stringify({ from: "Meechie's World <orders@meechiesworldinc.com>", reply_to: "meechiesworldinc@gmail.com", to: [to], subject, html, text }) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); return { sent: false, error: String((j && j.message) || ("resend_" + r.status)).slice(0, 120) }; }
+      return { sent: true };
+    } catch (e) { return { sent: false, error: String((e && e.message) || e).slice(0, 120) }; }
+  };
+  const fulfilMwtiklivebotOrder = async (env, s, uid, now) => {
+    const orderId = "cs:" + s.id;
+    const done = await env.DB.prepare("select 1 from mwtiklivebot_deliveries where order_id = ?").bind(orderId).first();
+    if (done) return { already: true };
+    if (!env.MWTIKLICENSE_SECRET) return { ok: false, error: "no_license_secret" };
+    // The checkout route stamps the edition on the session: "full" for a
+    // $300 FULL order, anything else (or an older session without it) is
+    // the base launch key. The letter minted and the edition registered
+    // must match what the buyer paid for.
+    const edition = (s.metadata && s.metadata.edition) === "full" ? "full" : "launch";
+    const key = await licenseMintKey(env, edition);
+    if (!key) return { ok: false, error: "mint_failed" };
+    const keyHash = await sha256hex(key);
+    const email = String((s.customer_details && s.customer_details.email) || s.customer_email || "").slice(0, 120);
+    const downloadUrl = String(env.MWTIKLIVEBOT_DOWNLOAD_URL || "");
+    const batchRes = await env.DB.batch([
+      env.DB.prepare("insert or ignore into mwtiklivebot_licenses (key_hash, edition, buyer_email, order_ref, status, created_at, revoked_at) values (?,?,?,?,'active',?,NULL)").bind(keyHash, edition, email, orderId, now),
+      env.DB.prepare("insert into mwtiklivebot_license_events (key_hash, event, fingerprint, detail, at) values (?,?,?,?,?)").bind(keyHash, "register", "", email + " " + orderId, now),
+      env.DB.prepare("insert or ignore into mwtiklivebot_deliveries (order_id, uid, license_key, download_url, emailed, email_error, at) values (?,?,?,?,0,?,?)").bind(orderId, uid, key, downloadUrl, "", now),
+    ]);
+    const claimed = batchRes[2] && batchRes[2].meta && batchRes[2].meta.changes === 1;
+    if (!claimed) return { already: true };
+    let emailed = false, emailError = "";
+    if (email) {
+      const sent = await sendMwtiklivebotEmail(env, email, key, downloadUrl, edition);
+      emailed = sent.sent; emailError = sent.error || "";
+    } else {
+      emailError = "no_buyer_email";
+    }
+    await env.DB.prepare("update mwtiklivebot_deliveries set emailed = ?, email_error = ? where order_id = ?").bind(emailed ? 1 : 0, emailError, orderId).run();
+    return { ok: true, key, emailed, emailError };
+  };
+
   // Stripe → us: a purchase finished
   if (route === "webhook" && method === "POST") {
     const body = await request.text();
@@ -240,6 +395,24 @@ export async function onRequest({ request, env, params }) {
           const now = Date.now();
           const r = await env.DB.prepare("insert or ignore into book_orders (id, uid, book, cents, at) values (?,?,?,?,?)").bind("cs:" + s.id, uid, book, s.amount_total || 0, now).run();
           if (r.meta.changes) await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "book-sale", ref: "cs:" + s.id, data: { uid, book } });
+        }
+      }
+      // a paid MwTiklivebot: record the purchase (idempotent on the session
+      // id) and land the sale in Meechie's purse as a MwTiklivebot sale —
+      // $19.99 base or $300 FULL, whichever the buyer paid — then fulfil
+      // it AUTOMATICALLY (2026-11-26): mint + REGISTER the license key
+      // and email it to the buyer with the Windows download link — nobody
+      // touches anything. fulfilMwtiklivebotOrder is idempotent on the
+      // session id, so a webhook replay never mints a second key, and a
+      // failure inside it never fails the webhook — the order is already
+      // recorded and the key is on the buyer's success page.
+      if (s.metadata && s.metadata.kind === "mwtiklivebot" && s.payment_status === "paid") {
+        if (uid) {
+          const now = Date.now();
+          const edition = (s.metadata && s.metadata.edition) === "full" ? "full" : "launch";
+          const r = await env.DB.prepare("insert or ignore into mwtiklivebot_orders (id, uid, cents, edition, at) values (?,?,?,?,?)").bind("cs:" + s.id, uid, s.amount_total || 0, edition, now).run();
+          if (r.meta.changes) await creditPurse(env, { coins: s.amount_total || 0, cents: s.amount_total || 0, source: "mwtiklivebot-sale", ref: "cs:" + s.id, data: { uid, edition } });
+          try { await fulfilMwtiklivebotOrder(env, s, uid, now); } catch (e) { console.error("mwtiklivebot fulfilment failed for cs:" + s.id, e); }
         }
       }
       // a paid CJ product: auto-create the CJ order and pay it from his CJ
@@ -292,6 +465,198 @@ export async function onRequest({ request, env, params }) {
   // public list of the cheap CJ deals (no sign-in needed to browse)
   if (route === "cj-products" && method === "GET") {
     return json({ products: Object.entries(CJ_PRODUCTS).filter(([, p]) => p.vid).map(([id, p]) => ({ id, name: p.name, cents: p.cents })) });
+  }
+
+  /* ---------------- MwTiklivebot ONLINE license server ----------------
+   * One key = one buyer, up to 2 devices. The SERVER is the authority:
+   * a key only activates if it is REGISTERED in mwtiklivebot_licenses
+   * (web orders register automatically in the webhook — see
+   * fulfilMwtiklivebotOrder below; off-site keys are registered with
+   * register_license.py in the program repo), and a 3rd device is
+   * refused because the server counts, not the buyer's PC. The raw key
+   * is NEVER stored in this table — only its SHA-256 hash. (The one
+   * exception is mwtiklivebot_deliveries, the buyer's own receipt: it
+   * holds the raw key so the signed-in success page can show it again.
+   * Nothing public ever reads that table.) Activate / verify /
+   * deactivate are PUBLIC (the key itself is the credential, and the
+   * buyer may not be signed in to the site on their PC); register /
+   * revoke / status are OWNER-ONLY via the MWTIKLICENSE_ADMIN secret
+   * (Bearer token), never a site sign-in.
+   *
+   * Honest limit: this stops casual sharing and reselling — a key
+   * handed to a friend stops working on the 3rd device, and a revoked
+   * key stops everywhere. It does not stop a determined reverse
+   * engineer who patches the program itself. Nobody sane sells a
+   * program claiming otherwise.
+   *
+   * Secrets (Cloudflare → Pages → meechies-world → Settings →
+   * Variables and secrets):
+   *   MWTIKLICENSE_SECRET        HMAC secret for key checksums (the
+   *                              minter on Malik's PC uses the same
+   *                              value; see license.py)
+   *   MWTIKLICENSE_SECRET_LEGACY keys minted before the server existed
+   *                              still check out under this one (the
+   *                              old value from license.py). Optional
+   *                              once those keys are retired.
+   *   MWTIKLICENSE_ADMIN         owner-only token for register /
+   *                              revoke / status (a long random string;
+   *                              keep it private, same as a password) */
+  // LICENSE_ALPHABET lives above the webhook (the fulfilment helpers
+  // need it first) — it is the same Crockford alphabet license.py uses.
+  const LICENSE_MAX_DEVICES = 2;
+  const licenseNormalize = (raw) => String(raw || "").trim().toUpperCase().replace(/[\s\-]+/g, "-");
+  const licenseChecksumOk = async (key, env) => {
+    const m = /^MWTL-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{4})$/.exec(key);
+    if (!m) return false;
+    const payload = m.slice(1).join("");
+    if (payload[0] !== "L" && payload[0] !== "R" && payload[0] !== "F") return false;
+    const secrets = [env.MWTIKLICENSE_SECRET, env.MWTIKLICENSE_SECRET_LEGACY].filter(Boolean);
+    for (const secret of secrets) {
+      const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+      const mac = new Uint8Array(await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(payload.slice(0, 14))));
+      const first = mac[0] >> 3;
+      const second = ((mac[0] & 0x07) << 2) | (mac[1] >> 6);
+      if (LICENSE_ALPHABET[first] + LICENSE_ALPHABET[second] === payload.slice(14)) return true;
+    }
+    return false;
+  };
+  const licenseAdmin = (request, env) => {
+    const want = env.MWTIKLICENSE_ADMIN;
+    if (!want) return false;
+    const got = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    if (got.length !== want.length) return false;
+    let d = 0;
+    for (let i = 0; i < want.length; i++) d |= got.charCodeAt(i) ^ want.charCodeAt(i);
+    return d === 0;
+  };
+  const licEvent = (env, keyHash, event, fingerprint, detail) =>
+    env.DB.prepare("insert into mwtiklivebot_license_events (key_hash, event, fingerprint, detail, at) values (?,?,?,?,?)").bind(keyHash, event, fingerprint || "", detail || "", Date.now()).run();
+  const licDevices = async (env, keyHash) =>
+    (await env.DB.prepare("select fingerprint, name, first_seen from mwtiklivebot_license_devices where key_hash = ? order by first_seen").bind(keyHash).all()).results || [];
+  const licDeviceList = (devices, thisFp) => devices.map((d) => ({ name: d.name || "a PC", first_seen: d.first_seen, this_device: thisFp ? d.fingerprint === thisFp : false }));
+
+  // activate: first time a buyer types their key on a PC. Needs the raw
+  // key (once) so the server can check its checksum; after this the
+  // program only ever sends the key hash.
+  if (route === "mwtiklivebot-license/activate" && method === "POST") {
+    const b = await request.json().catch(() => ({}));
+    const key = licenseNormalize(b.key);
+    const fp = String(b.fingerprint || "").slice(0, 64);
+    const name = String(b.device_name || "a PC").slice(0, 80);
+    if (!/^MWTL-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)) return json({ ok: false, error: "bad_key", message: "That key doesn't look right — a key looks like MWTL-XXXX-XXXX-XXXX-XXXX." }, 400);
+    if (!fp) return json({ ok: false, error: "bad_device", message: "This PC could not be identified — try again." }, 400);
+    if (!(await take(env, "lic-act:" + fp, 3600, 30))) return err("Too many tries. Wait a little.", 429);
+    if (!(await licenseChecksumOk(key, env))) return json({ ok: false, error: "bad_checksum", message: "Bad checksum — check for a typo (0 vs O, 1 vs I) and retype the key." }, 400);
+    const keyHash = await sha256hex(key);
+    if (!(await take(env, "lic-key:" + keyHash.slice(0, 16), 3600, 60))) return err("Too many tries. Wait a little.", 429);
+    const lic = await env.DB.prepare("select edition, status from mwtiklivebot_licenses where key_hash = ?").bind(keyHash).first();
+    if (!lic) return json({ ok: false, error: "key_not_registered", message: "This key isn't registered yet — it may not have been emailed to you, or it was typed wrong. Check the key, or contact support." }, 400);
+    if (lic.status === "revoked") return json({ ok: false, error: "key_revoked", message: "This key has been revoked — contact support." }, 403);
+    const devices = await licDevices(env, keyHash);
+    const now = Date.now();
+    if (devices.some((d) => d.fingerprint === fp)) {
+      await env.DB.prepare("update mwtiklivebot_license_devices set last_seen = ? where key_hash = ? and fingerprint = ?").bind(now, keyHash, fp).run();
+      return json({ ok: true, edition: lic.edition, devices_used: devices.length, devices: licDeviceList(devices, fp) });
+    }
+    if (devices.length >= LICENSE_MAX_DEVICES) return json({ ok: false, error: "devices_full", message: "This key is already activated on 2 devices — the limit for one purchase. Free a slot: run `python license.py deactivate` on a PC you no longer use, or contact support.", devices_used: devices.length }, 403);
+    await env.DB.batch([
+      env.DB.prepare("insert into mwtiklivebot_license_devices (key_hash, fingerprint, name, first_seen, last_seen) values (?,?,?,?,?)").bind(keyHash, fp, name, now, now),
+      env.DB.prepare("insert into mwtiklivebot_license_events (key_hash, event, fingerprint, detail, at) values (?,?,?,?,?)").bind(keyHash, "activate", fp, name, now),
+    ]);
+    const after = await licDevices(env, keyHash);
+    return json({ ok: true, edition: lic.edition, devices_used: after.length, devices: licDeviceList(after, fp) });
+  }
+
+  // verify: the program re-checks at most once every 7 days (and never
+  // blocks a live show if the server can't be reached — the program
+  // keeps its cached activation). Also flushes any deactivations the
+  // program queued while offline.
+  if (route === "mwtiklivebot-license/verify" && method === "POST") {
+    const b = await request.json().catch(() => ({}));
+    const keyHash = String(b.key_hash || "").slice(0, 64);
+    const fp = String(b.fingerprint || "").slice(0, 64);
+    if (!/^[0-9a-f]{64}$/.test(keyHash) || !fp) return json({ ok: false, error: "bad_request", message: "Missing key or device." }, 400);
+    if (!(await take(env, "lic-ver:" + fp, 3600, 60))) return err("Too many tries. Wait a little.", 429);
+    const lic = await env.DB.prepare("select edition, status from mwtiklivebot_licenses where key_hash = ?").bind(keyHash).first();
+    if (!lic) return json({ ok: false, error: "key_not_registered", message: "This key isn't registered — contact support." }, 400);
+    if (lic.status === "revoked") return json({ ok: false, error: "key_revoked", message: "This key has been revoked — contact support." }, 403);
+    const now = Date.now();
+    const pending = Array.isArray(b.pending_deactivations) ? b.pending_deactivations.map(String).slice(0, 10) : [];
+    for (const gone of pending) {
+      await env.DB.prepare("delete from mwtiklivebot_license_devices where key_hash = ? and fingerprint = ?").bind(keyHash, gone).run();
+      await licEvent(env, keyHash, "deactivate", gone, "synced from PC (was offline)");
+    }
+    const devices = await licDevices(env, keyHash);
+    if (!devices.some((d) => d.fingerprint === fp)) return json({ ok: false, error: "device_not_listed", message: "This PC is not on the activation list for this key — it may have been deactivated. Activate the key again to use this PC." }, 403);
+    await env.DB.prepare("update mwtiklivebot_license_devices set last_seen = ? where key_hash = ? and fingerprint = ?").bind(now, keyHash, fp).run();
+    return json({ ok: true, edition: lic.edition, devices_used: devices.length, devices: licDeviceList(devices, fp) });
+  }
+
+  // deactivate: free this PC's slot (idempotent — saying it twice is fine).
+  if (route === "mwtiklivebot-license/deactivate" && method === "POST") {
+    const b = await request.json().catch(() => ({}));
+    const keyHash = String(b.key_hash || "").slice(0, 64);
+    const fp = String(b.fingerprint || "").slice(0, 64);
+    if (!/^[0-9a-f]{64}$/.test(keyHash) || !fp) return json({ ok: false, error: "bad_request", message: "Missing key or device." }, 400);
+    if (!(await take(env, "lic-deact:" + fp, 3600, 30))) return err("Too many tries. Wait a little.", 429);
+    const gone = await env.DB.prepare("delete from mwtiklivebot_license_devices where key_hash = ? and fingerprint = ?").bind(keyHash, fp).run();
+    if (gone.meta.changes) await licEvent(env, keyHash, "deactivate", fp, "");
+    const devices = await licDevices(env, keyHash);
+    return json({ ok: true, devices_used: devices.length, devices: licDeviceList(devices, fp) });
+  }
+
+  // register: OWNER-ONLY. For keys minted off-site (mint_key.py) — web
+  // orders register themselves in the webhook, so this route is the
+  // manual path. Until a key is registered here, it cannot activate
+  // anywhere (so even a forged key is useless). Idempotent: registering
+  // the same key twice just returns the existing row.
+  if (route === "mwtiklivebot-license/register" && method === "POST") {
+    if (!licenseAdmin(request, env)) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    const key = licenseNormalize(b.key);
+    if (!/^MWTL-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)) return json({ ok: false, error: "bad_key", message: "That key doesn't look right." }, 400);
+    if (!(await licenseChecksumOk(key, env))) return json({ ok: false, error: "bad_checksum", message: "Bad checksum — this key was not minted with the current secret." }, 400);
+    const keyHash = await sha256hex(key);
+    const payload = key.replace(/^MWTL-/, "").replace(/-/g, "");
+    const edition = payload[0] === "L" ? "launch" : payload[0] === "F" ? "full" : "regular";
+    const now = Date.now();
+    const ins = await env.DB.prepare("insert or ignore into mwtiklivebot_licenses (key_hash, edition, buyer_email, order_ref, status, created_at, revoked_at) values (?,?,?,?,'active',?,NULL)").bind(keyHash, edition, String(b.buyer_email || "").slice(0, 120), String(b.order_ref || "").slice(0, 80), now).run();
+    if (ins.meta.changes) await licEvent(env, keyHash, "register", "", String(b.buyer_email || "") + " " + String(b.order_ref || ""));
+    const lic = await env.DB.prepare("select edition, status, buyer_email, order_ref from mwtiklivebot_licenses where key_hash = ?").bind(keyHash).first();
+    return json({ ok: true, existed: !ins.meta.changes, edition: lic.edition, status: lic.status, buyer_email: lic.buyer_email, order_ref: lic.order_ref, key_hash: keyHash.slice(0, 12) + "…" });
+  }
+
+  // revoke / un-revoke: OWNER-ONLY. A revoked key stops everywhere on
+  // the next check (within 7 days at most, immediately on the next
+  // activate/verify). Pass status "revoked" or "active".
+  if (route === "mwtiklivebot-license/revoke" && method === "POST") {
+    if (!licenseAdmin(request, env)) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    const key = licenseNormalize(b.key);
+    const status = String(b.status || "revoked");
+    if (!["revoked", "active"].includes(status)) return json({ ok: false, error: "bad_status", message: "status must be 'revoked' or 'active'." }, 400);
+    if (!/^MWTL-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)) return json({ ok: false, error: "bad_key", message: "That key doesn't look right." }, 400);
+    const keyHash = await sha256hex(key);
+    const now = Date.now();
+    const upd = await env.DB.prepare("update mwtiklivebot_licenses set status = ?, revoked_at = ? where key_hash = ?").bind(status, status === "revoked" ? now : null, keyHash).run();
+    if (!upd.meta.changes) return json({ ok: false, error: "key_not_registered", message: "No such key is registered." }, 404);
+    await licEvent(env, keyHash, status === "revoked" ? "revoke" : "unrevoke", "", String(b.reason || "").slice(0, 120));
+    return json({ ok: true, status });
+  }
+
+  // status: OWNER-ONLY lookup — what is this key, who bought it, which
+  // PCs is it on, what happened to it.
+  if (route === "mwtiklivebot-license/status" && method === "POST") {
+    if (!licenseAdmin(request, env)) return err("owner_only", 403);
+    const b = await request.json().catch(() => ({}));
+    const key = licenseNormalize(b.key);
+    if (!/^MWTL-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(key)) return json({ ok: false, error: "bad_key", message: "That key doesn't look right." }, 400);
+    const keyHash = await sha256hex(key);
+    const lic = await env.DB.prepare("select edition, status, buyer_email, order_ref, created_at, revoked_at from mwtiklivebot_licenses where key_hash = ?").bind(keyHash).first();
+    if (!lic) return json({ ok: false, error: "key_not_registered", message: "No such key is registered." }, 404);
+    const devices = await licDevices(env, keyHash);
+    const events = (await env.DB.prepare("select event, fingerprint, detail, at from mwtiklivebot_license_events where key_hash = ? order by at desc limit 10").bind(keyHash).all()).results || [];
+    return json({ ok: true, edition: lic.edition, status: lic.status, buyer_email: lic.buyer_email, order_ref: lic.order_ref, created_at: lic.created_at, revoked_at: lic.revoked_at, devices: licDeviceList(devices), events });
   }
 
   const me = await userFrom(request, env);
@@ -515,6 +880,66 @@ export async function onRequest({ request, env, params }) {
     });
     await env.DB.prepare("insert or ignore into book_checkouts (session, uid, book, url, at) values (?,?,?,?,?)").bind(s.id, me.id, id, s.url, Date.now()).run();
     return json({ url: s.url });
+  }
+
+  /* ---------------- MwTiklivebot (Stripe, one-time) ---------------- */
+  if (route === "mwtiklivebot-checkout" && method === "POST") {
+    if (!paid) return err("The MwTiklivebot shop isn't switched on yet.", 501);
+    if (!(await take(env, "mwtikbuy:" + me.id, 3600, 20))) return err("Too many tries. Wait a little.", 429);
+    if (admin || (await mwtiklivebotOwned(env, me.id))) return json({ owned: true });
+    // resume a BASE checkout opened in the last 30 minutes instead of a second one
+    const pend = await env.DB.prepare("select url from mwtiklivebot_checkouts where uid = ? and edition = 'launch' and at > ? order by at desc limit 1").bind(me.id, Date.now() - 30 * 60 * 1000).first();
+    if (pend && pend.url) return json({ url: pend.url });
+    const origin = new URL(request.url).origin;
+    const s = await stripe(env, "checkout/sessions", {
+      mode: "payment", "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(MW_TIKLIVEBOT.cents),
+      "line_items[0][price_data][product_data][name]": MW_TIKLIVEBOT.name + " — TikTok LIVE AI co-host", "metadata[uid]": me.id, "metadata[kind]": "mwtiklivebot", "metadata[edition]": "launch",
+      client_reference_id: me.id, success_url: origin + "/mwtiklivebot/?paid=1", cancel_url: origin + "/mwtiklivebot/",
+    });
+    await env.DB.prepare("insert or ignore into mwtiklivebot_checkouts (session, uid, edition, url, at) values (?,?,?,?,?)").bind(s.id, me.id, "launch", s.url, Date.now()).run();
+    return json({ url: s.url });
+  }
+
+  /* ---------------- MwTiklivebot FULL unlock (Stripe, one-time, $300) ----
+   * The same program, every advanced capability switched on: browser,
+   * hands, brain/memory, soul/heart, emotion AI, SpaceX module, growth
+   * autonomy, auto-battle, best-of-breed Tier 1, coding. The buyer gets
+   * an "F" key (MWTL-F…) — the program reads the FULL tier off that
+   * letter. A buyer who already owns the base program can still buy
+   * this (it is the upgrade path); a buyer who already owns FULL gets
+   * {owned:true} instead of a second checkout. The webhook fulfils it
+   * exactly like a base order, with edition "full" on the session. */
+  if (route === "mwtiklivebot-full-checkout" && method === "POST") {
+    if (!paid) return err("The MwTiklivebot shop isn't switched on yet.", 501);
+    if (!(await take(env, "mwtikbuyfull:" + me.id, 3600, 20))) return err("Too many tries. Wait a little.", 429);
+    if (admin || (await mwtiklivebotOwnedFull(env, me.id))) return json({ owned: true });
+    // resume a FULL checkout opened in the last 30 minutes instead of a second one
+    const pend = await env.DB.prepare("select url from mwtiklivebot_checkouts where uid = ? and edition = 'full' and at > ? order by at desc limit 1").bind(me.id, Date.now() - 30 * 60 * 1000).first();
+    if (pend && pend.url) return json({ url: pend.url });
+    const origin = new URL(request.url).origin;
+    const s = await stripe(env, "checkout/sessions", {
+      mode: "payment", "line_items[0][quantity]": "1", "line_items[0][price_data][currency]": "usd", "line_items[0][price_data][unit_amount]": String(MW_TIKLIVEBOT.fullCents),
+      "line_items[0][price_data][product_data][name]": MW_TIKLIVEBOT.name + " — FULL unlock (browser, hands, brain, soul, emotion AI, SpaceX, growth, auto-battle, coding)", "metadata[uid]": me.id, "metadata[kind]": "mwtiklivebot", "metadata[edition]": "full",
+      client_reference_id: me.id, success_url: origin + "/mwtiklivebot/?paid=1", cancel_url: origin + "/mwtiklivebot/",
+    });
+    await env.DB.prepare("insert or ignore into mwtiklivebot_checkouts (session, uid, edition, url, at) values (?,?,?,?,?)").bind(s.id, me.id, "full", s.url, Date.now()).run();
+    return json({ url: s.url });
+  }
+
+  // already own it? (the buy page asks this so a returning buyer sees their
+  // download instead of a second buy button). When the buyer owns it, the
+  // delivery row hands back their license key + download link too — the
+  // success page shows the key even if the email is slow. This route is
+  // behind the sign-in gate and scoped to the buyer's own uid, so a key
+  // is never shown to anyone but its buyer (or the owner). `ownsFull`
+  // tells the page whether the FULL button should read "you own FULL"
+  // or stay open as the $300 upgrade for a base owner.
+  if (route === "mwtiklivebot" && method === "GET") {
+    const ownedNow = admin || (await mwtiklivebotOwned(env, me.id));
+    const ownsFullNow = admin || (await mwtiklivebotOwnedFull(env, me.id));
+    let delivery = null;
+    if (ownedNow) delivery = await env.DB.prepare("select license_key, download_url, emailed, at from mwtiklivebot_deliveries where uid = ? order by at desc limit 1").bind(me.id).first();
+    return json({ owned: ownedNow, ownsFull: ownsFullNow, cents: MW_TIKLIVEBOT.cents, regularCents: MW_TIKLIVEBOT.regularCents, fullCents: MW_TIKLIVEBOT.fullCents, key: delivery ? delivery.license_key : null, downloadUrl: (delivery && delivery.download_url) || env.MWTIKLIVEBOT_DOWNLOAD_URL || "", emailSent: delivery ? !!delivery.emailed : false });
   }
 
   /* CJ products sold on the site itself (Stripe Checkout). Customer pays
