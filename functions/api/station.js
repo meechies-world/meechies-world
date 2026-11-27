@@ -5179,6 +5179,11 @@ async function tvSpotGate(env, nw, now, origin, pool) {
   const cache = { ...((nw && nw.spotProbe) || {}) };
   let cacheChanged = false;
   const urls = ["/media/my-empire-commercial-v2.mp4", "/media/my-empire-shop-station-family.mp4", "/media/my-empire-family-foundation.mp4", "/media/my-empire-12-shirts.mp4", "/media/spot-trump-grillz.mp4", "/media/spot-trump-president.mp4", "/media/spot-bandz.mp4", "/media/doty-hoodie-60-commercial.mp4", "/media/doty-hoodie-62-commercial.mp4", "/media/doty-plush-blanket-commercial.mp4", "/media/doty-longsleeve-commercial.mp4", "/media/doty-softstyle-tee-commercial.mp4", "/media/doty-welcome-commercial.mp4", "/media/cotton-comforter-commercial.mp4", "/media/disrespect-hoodie-commercial.mp4", "/media/mw-softstyle-tee-commercial.mp4", "/media/mw-tshirt-20-commercial.mp4", "/media/mw-brand-promo.mp4"].concat(RADIO_SPOTS.map((sp) => sp.src));
+  // Every gated pool spot's own file joins the probe too (2026-11-27):
+  // the v25 Malik 2032 commercials are in TV_SPOT_GATE_IDS but were not
+  // in the list above, so their verdict never landed and they stayed
+  // held forever — even after their files are uploaded.
+  for (const it of ((pool && pool.items) || [])) { if (it && it.url && TV_SPOT_GATE_IDS.includes(it.id) && !urls.includes(it.url)) urls.push(it.url); }
   // Sponsor media rides the same existence probe: the video file the
   // TV spots are gated on, and the audio cut for the radio lane.
   const spnItems = ((pool && pool.items) || []).filter((x) => x && x.kind === "sponsor");
