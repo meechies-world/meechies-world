@@ -47,7 +47,7 @@ button:disabled{opacity:.45}
 .stage{position:relative;border-radius:16px;overflow:hidden;background:radial-gradient(circle at 50% 30%,#2a2210,#0a0a0a 70%);border:1px solid var(--line);min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:16px}
 .stage .who{position:absolute;top:12px;left:12px;font:700 11px system-ui;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
 .stage .live{position:absolute;top:10px;right:12px;background:var(--red);color:#fff;font:800 11px system-ui;padding:4px 8px;border-radius:6px;display:none}
-.portrait{width:190px;height:190px;object-fit:contain;filter:drop-shadow(0 10px 30px rgba(212,175,55,.25));transition:transform .15s}
+.portrait{width:190px;height:190px;object-fit:contain;border-radius:22px;filter:drop-shadow(0 10px 30px rgba(212,175,55,.25));transition:transform .15s}
 .speaking .portrait{animation:bob .5s ease-in-out infinite alternate}
 @keyframes bob{to{transform:translateY(-6px) scale(1.03)}}
 .bubble{margin-top:12px;max-width:95%;background:#fff8e6;color:#1a1408;border-radius:16px;padding:10px 14px;font-weight:650;font-size:16px;min-height:22px;box-shadow:0 0 0 2px var(--gold)}
@@ -137,13 +137,13 @@ body:not(.adv) .advonly{display:none!important}
  <div class="grid two">
   <div>
    <div class="stage" id="stage">
-     <span class="who" id="stageName">Meech</span>
+     <span class="who" id="stageName">Meechie</span>
      <span class="live" id="stageLive">● LIVE</span>
      <img class="portrait" id="portrait" src="/livebot/icon.svg" alt="">
      <div class="bubble" id="bubble"></div>
    </div>
    <div class="card noov" style="margin-top:14px" id="easyCard">
-    <h2>Go Live in 3 taps</h2>
+    <h2>Go Live in 3 taps <span id="tierTag" style="float:right;font-size:11px;letter-spacing:.1em"></span></h2>
     <div class="step"><i>1</i> Your TikTok name</div>
     <input id="easyUser" placeholder="yourname (no @)" autocomplete="off" autocapitalize="none" spellcheck="false">
     <div class="step"><i>2</i> Pick who talks to your viewers</div>
@@ -324,12 +324,12 @@ const OVERLAY = new URLSearchParams(location.search).has("overlay");
 const DEF_PORTRAIT = "/livebot/icon.svg";
 const DEFAULTS = {
   ttUser:"", eulerKey:"", pin:"", model:"fast", replyWords:35, cooldown:2, maxQueue:6,
-  hostName:"Meechie", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
+  hostName:"", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
   thankGifts:true, thankFollows:true, thankShares:true, likeGoals:true, likeStep:1000,
   quietStarter:true, quietSecs:90, autoCopy:false, ignorePrefix:"!streamer", blocked:"",
   castMode:"single", activeChar:0, adv:false, realVoice:false, brainUrl:"", musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
   cast:[
-    {name:"Meech", gender:"m", persona:"Confident, funny, hype-man energy with a smooth business mind. Talks like a real one from the culture, keeps it classy. Loves hustle, empire-building, books and big dreams. Gasses up the chat and keeps the energy high.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:0.9, cfSpeaker:"orion"},
+    {name:"Meechie", gender:"m", persona:"You are Meechie, Meechie's own AI, the face of Meechie's World Inc. Young Black man with a goatee, braids, glasses and a gold chain. Talk like a real person: fast, energetic, young, hood, rapper energy. Barbershop talk and DJ energy. You know a lot about everything, you crack jokes, you keep it real and keep it moving. Everything is live and off the top, never canned or scripted.", portrait:"/img/meechie-ai.jpg", voiceEngine:"browser", voiceName:"", rate:1.12, pitch:0.95, cfSpeaker:"arcas"},
     {name:"Oracle", gender:"m", persona:"Calm, mysterious all-seeing narrator of Meechie's World. Speaks in short, wise, slightly dramatic lines with a touch of humor. Knows history, pyramids and secret societies.", portrait:"", voiceEngine:"browser", voiceName:"", rate:0.95, pitch:0.7, cfSpeaker:"zeus"},
     {name:"Lady Gold", gender:"f", persona:"Glamorous, sassy and sweet hostess with queen energy. Hypes viewers up, gives playful compliments, loves fashion, hair and nails, and keeps the vibe classy and fun.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.02, pitch:1.1, cfSpeaker:"athena"},
     {name:"Lil Bot", gender:"m", persona:"A goofy, excitable little robot sidekick. Tells quick clean jokes, makes beep-boop sounds in words, is amazed by everything viewers say, and keeps it family friendly.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.15, pitch:1.6, cfSpeaker:"arcas"}
@@ -345,6 +345,7 @@ function loadSettings(){
   }
   S = Object.assign(structuredClone(DEFAULTS), saved);
   if (!Array.isArray(S.cast) || !S.cast.length) S.cast = structuredClone(DEFAULTS.cast);
+  if (S.cast[0] && S.cast[0].name === "Meech" && /hype-man energy/.test(S.cast[0].persona || "")) S.cast[0] = structuredClone(DEFAULTS.cast[0]); // old preset → Meechie AI
 }
 function save(){ if (OVERLAY) return; try { localStorage.setItem("mwbot", JSON.stringify(S)); } catch(e) { toast("Storage full — use a smaller portrait image"); } }
 loadSettings();
@@ -426,7 +427,7 @@ function renderCast(){
 }
 $("btnAddChar").onclick = () => { S.cast.push({name:"New Character", persona:"", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:1, cfSpeaker:"luna"}); save(); renderCast(); };
 const activeChar = () => S.cast[S.activeChar] || S.cast[0];
-function setStage(c, text){ $("stageName").textContent = c.name; $("portrait").src = c.portrait || DEF_PORTRAIT; if (text !== undefined) $("bubble").textContent = text; }
+function setStage(c, text){ if (!isPro() && !OVERLAY) c = S.cast[0]; $("stageName").textContent = c.name; $("portrait").src = c.portrait || DEF_PORTRAIT; if (text !== undefined) $("bubble").textContent = text; }
 
 /* ============ API ============ */
 async function api(path, body, raw){
@@ -455,7 +456,7 @@ async function speak(text, c){
   $("stage").classList.add("speaking");
   Music.duck(true);
   try {
-    const useCF = c.voiceEngine === "cloudflare" || S.realVoice || OVERLAY;
+    const useCF = isPro() && (c.voiceEngine === "cloudflare" || S.realVoice) || OVERLAY;
     if (useCF) {
       try { await speakCF(text, c); return; } catch(e) { if (OVERLAY) throw e; logNote("Cloudflare voice failed ("+e.message+") — using device voice"); }
     }
@@ -546,6 +547,7 @@ function enqueue(ev){
   renderStats(); pump();
 }
 function pickChar(ev){
+  if (!isPro()) return S.cast[0];
   if (ev.kind === "host" || S.castMode === "single" || S.cast.length < 2) return activeChar();
   if (S.castMode === "addressed") {
     const t = (ev.text||"").toLowerCase();
@@ -591,7 +593,7 @@ async function pump(){
     counts.replies++; renderStats();
     recentBot.push(keyOf(text.length > 150 ? text.slice(0,147) : text)); if (recentBot.length > 30) recentBot.shift();
     addFeed(`<span class="k">${esc(c.name)} replies</span><br>${esc(text)}`, "bot", text);
-    if (S.autoCopy) copyText(text);
+    if (S.autoCopy && isPro()) copyText(text);
     setStage(c, text);
     await speak(text, c);
     if (ev.track && S.musicAuto !== false && $("musicAuto").checked) Music.playRequest(ev.track);
@@ -623,7 +625,7 @@ function onComment(user, text){
   const ev = { kind:"comment", user, text, t:Date.now() };
   const m = text.match(/^\s*!(?:play|song|sr|request)\s+(.+)/i);
   if (m) {
-    if (!$("musicAuto").checked) ev.musicNote = "song requests are turned off right now";
+    if (!$("musicAuto").checked || !isPro()) ev.musicNote = "song requests are turned off right now";
     else {
       const tr = Music.match(m[1]);
       if (tr) { ev.track = tr; ev.musicNote = `they requested "${tr.title}", it plays right after your reply`; }
@@ -635,20 +637,20 @@ function onComment(user, text){
 function onGift(user, gift, count){
   counts.gifts += count||1; lastActivity = Date.now(); renderStats();
   addFeed(`<span class="k">gift</span><br><b>${esc(user)}</b> sent ${esc(gift)}${count>1?" x"+count:""} 🎁`);
-  if (S.thankGifts) enqueue({ kind:"gift", user, text: `${count>1?count+"x ":""}${gift}`, t:Date.now() });
+  if (S.thankGifts && isPro()) enqueue({ kind:"gift", user, text: `${count>1?count+"x ":""}${gift}`, t:Date.now() });
 }
 function onSocial(user, type){
   lastActivity = Date.now();
   addFeed(`<span class="k">${type}</span><br><b>${esc(user)}</b> ${type === "follow" ? "followed" : "shared the stream"}`);
-  if (type === "follow" && S.thankFollows) enqueue({ kind:"follow", user, t:Date.now() });
-  if (type === "share" && S.thankShares) enqueue({ kind:"share", user, t:Date.now() });
+  if (type === "follow" && S.thankFollows && isPro()) enqueue({ kind:"follow", user, t:Date.now() });
+  if (type === "share" && S.thankShares && isPro()) enqueue({ kind:"share", user, t:Date.now() });
 }
 const L = { total:0, goal:0 };
 L.goal = S.likeStep;
 function onLikes(total, added){
   if (typeof total === "number" && total >= L.total) L.total = total; else L.total += (added||0);
   if (!L.init) { L.init = true; L.goal = Math.max(S.likeStep, Math.ceil((L.total + 1) / S.likeStep) * S.likeStep); renderStats(); return; }
-  if (S.likeGoals && L.total >= L.goal) {
+  if (S.likeGoals && isPro() && L.total >= L.goal) {
     const hit = L.goal;
     while (L.goal <= L.total) L.goal += S.likeStep;
     addFeed(`<span class="k">like goal</span><br>🎯 ${hit.toLocaleString()} likes reached!`);
@@ -658,7 +660,7 @@ function onLikes(total, added){
 }
 // quiet-chat starter
 setInterval(() => {
-  if (!S.quietStarter || !Live.connected || paused || Q.busy || Q.items.length) return;
+  if (!S.quietStarter || !isPro() || !Live.connected || paused || Q.busy || Q.items.length) return;
   if (Date.now() - lastActivity > (S.quietSecs||90)*1000) { lastActivity = Date.now(); enqueue({ kind:"quiet", user:"", t:Date.now() }); }
 }, 5000);
 
@@ -705,7 +707,7 @@ function goNote(t){ $("goNote").innerHTML = t || ""; }
 async function connectLive(){
   const user = (S.ttUser||"").replace(/^@/,"").trim();
   if (!user) { coach("#easyUser", "Type your TikTok name here first — just the name, no @."); return; }
-  if (!S.eulerKey && !OVERLAY && !(await ensureUnlocked())) return;
+  if (!S.eulerKey && !OVERLAY && !(await ensureReady())) return;
   if (!S.eulerKey) { await checkHealth(); if (!H.live) { goNote("The site's TikTok connection isn't switched on yet."); coach("#btnConnect", "TikTok connections are being switched on — check back soon! Meanwhile, tap ▶ Try it now to hear your character."); return; } }
   Live.want = true; Live.got = false; L.init = false; setStatus();
   const url = S.eulerKey
@@ -767,7 +769,7 @@ function pttStart(){
 }
 function pttStop(){ if (rec && recOn) rec.stop(); }
 const ptt = $("btnPTT");
-ptt.addEventListener("pointerdown", e => { e.preventDefault(); pttStart(); });
+ptt.addEventListener("pointerdown", e => { e.preventDefault(); if (!isPro()) return goPro("Push-to-talk"); pttStart(); });
 ptt.addEventListener("pointerup", pttStop); ptt.addEventListener("pointerleave", pttStop); ptt.addEventListener("pointercancel", pttStop);
 document.addEventListener("keydown", e => {
   if (e.key === "F8") { e.preventDefault(); togglePause(); }
@@ -910,7 +912,7 @@ $("btnHealth").onclick = async () => {
     $("healthTxt").innerHTML = `<span class="ok">Working ✔</span> “${esc(r.text)}”`;
   } catch(e) { $("healthTxt").innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
 };
-$("btnObs").onclick = () => {
+$("btnObs").onclick = () => { if (!proOnly("OBS overlay")) return;
   const cfg = structuredClone(S); cfg.ovTok = tok();
   cfg.cast = cfg.cast.map(c => ({ ...c, portrait: c.portrait && c.portrait.startsWith("data:") ? "" : c.portrait }));
   const link = location.origin + "/livebot/?overlay=1#" + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
@@ -937,7 +939,7 @@ Steps: 1) get a free Euler Stream API key at eulerstream.com; 2) in the app's Se
 
 /* ============ easy mode ============ */
 function setAdv(on){ S.adv = !!on; save(); document.body.classList.toggle("adv", S.adv); $("btnAdv").textContent = S.adv ? "✕ Simple" : "⚙ Advanced"; if (!S.adv) document.querySelector('nav button[data-t="live"]').click(); }
-$("btnAdv").onclick = () => setAdv(!S.adv);
+$("btnAdv").onclick = () => { if (!S.adv && !proOnly("Advanced settings")) return; setAdv(!S.adv); };
 $("btnBrain").onclick = () => showBrain();
 $("easyUser").value = S.ttUser || "";
 $("easyUser").addEventListener("change", () => { S.ttUser = $("easyUser").value.replace(/^@/,"").trim().toLowerCase(); $("easyUser").value = S.ttUser; $("ttUser").value = S.ttUser; save(); });
@@ -945,14 +947,15 @@ $("ttUser").addEventListener("change", () => { $("easyUser").value = S.ttUser; }
 function renderEasyChars(){
   const box = $("easyChars"); box.innerHTML = "";
   S.cast.forEach((c, i) => {
+    const locked = i > 0 && !isPro();
     const d = document.createElement("div"); d.className = "cc" + (i === S.activeChar ? " sel" : "");
-    d.innerHTML = `<img src="${esc(c.portrait||DEF_PORTRAIT)}" alt=""><div>${esc(c.name)}</div>`;
-    d.onclick = () => { unlockAudio(); S.activeChar = i; S.castMode = "single"; $("castMode").value = "single"; save(); renderEasyChars(); renderCast(); setStage(c); speak(`Hey! I'm ${c.name}. Let's go live!`, c); };
+    d.innerHTML = `<img src="${esc(c.portrait||DEF_PORTRAIT)}" alt=""${locked ? ' style="opacity:.45"' : ""}><div>${locked ? "🔒 " : ""}${esc(c.name)}</div>`;
+    d.onclick = () => { if (locked) return goPro(c.name); unlockAudio(); S.activeChar = i; S.castMode = "single"; $("castMode").value = "single"; save(); renderEasyChars(); renderCast(); setStage(c); speak(`Hey! I'm ${c.name}. Let's go live!`, c); };
     box.appendChild(d);
   });
   const all = document.createElement("div"); all.className = "cc" + (S.castMode !== "single" ? " sel" : "");
-  all.innerHTML = `<div style="font-size:30px;line-height:56px">👥</div><div>Whole cast</div>`;
-  all.onclick = () => { S.castMode = "addressed"; $("castMode").value = "addressed"; save(); renderEasyChars(); toast("Whole cast on — viewers can call any character by name"); };
+  all.innerHTML = `<div style="font-size:30px;line-height:56px">👥</div><div>${isPro() ? "" : "🔒 "}Whole cast</div>`;
+  all.onclick = () => { if (!proOnly("The whole cast")) return; S.castMode = "addressed"; $("castMode").value = "addressed"; save(); renderEasyChars(); toast("Whole cast on — viewers can call any character by name"); };
   box.appendChild(all);
 }
 const origRenderCast = renderCast;
@@ -961,12 +964,13 @@ const CHIPS = [
   ["thankGifts","🎁 Thank gifts"],["likeGoals","❤️ Like goals"],["thankFollows","👋 Welcome follows"],
   ["songs","🎵 Song requests"],["quietStarter","💬 Talk when chat's quiet"],["realVoice","🗣 Realistic voice"],["autoCopy","📋 Auto-copy replies"]
 ];
-function renderChips(){
+function renderTier(){ const t = $("tierTag"); if (t) t.innerHTML = isPro() ? '<span style="color:var(--gold2)">👑 PRO</span>' : '<a href="#" id="tierGo" style="color:var(--gold2)">FREE · Go Pro</a>'; const g = $("tierGo"); if (g) g.onclick = (e) => { e.preventDefault(); goPro(); }; }
+function renderChips(){ renderTier();
   const box = $("chips"); box.innerHTML = "";
   for (const [k, label] of CHIPS) {
-    const on = k === "songs" ? $("musicAuto").checked : !!S[k];
-    const b = document.createElement("button"); b.className = "chip" + (on ? " on" : ""); b.textContent = label;
-    b.onclick = () => {
+    const on = isPro() && (k === "songs" ? $("musicAuto").checked : !!S[k]);
+    const b = document.createElement("button"); b.className = "chip" + (on ? " on" : ""); b.textContent = (isPro() ? "" : "🔒 ") + label;
+    b.onclick = () => { if (!proOnly(label.replace(/^\S+\s/, ""))) return;
       if (k === "songs") { $("musicAuto").checked = !$("musicAuto").checked; if ($("musicAuto").checked && !Music.tracks.length) coach("#btnAdv", "Song requests are on! Add your songs: tap ⚙ Advanced → Music → pick your MP3s."); }
       else { S[k] = !S[k]; const el = $(k); if (el) el.checked = S[k]; save(); if (k === "realVoice" && S[k]) toast("Realistic voice uses the free daily AI allowance faster"); }
       renderChips();
@@ -993,12 +997,13 @@ function modal(title, text, goLabel, goFn, altLabel, altFn){
   $("unlock").style.display = "flex";
 }
 $("ulClose").onclick = () => { $("unlock").style.display = "none"; };
+$("ulClose").textContent = "Keep using Free";
 const fmtC = (n) => Number(n||0).toLocaleString();
 async function showUnlock(why){
   hideTip();
   const i = await unlockInfo();
   if (!i.signedIn) {
-    return modal("Sign in to Meechie's World", "MeechieBot runs on your Meechie's World account. Sign in (or join free), then come right back here — I'll remember everything you set up.",
+    return modal("Sign in to Meechie's World", "MeechieBot is <b>free</b> with a Meechie's World account. Sign in (or join free), then come right back here — I'll remember everything you set up.",
       "Sign in / Join free (then come back here)", () => { location.href = "/#community"; }, "Try it first (free)", () => { $("unlock").style.display = "none"; $("btnTry").click(); });
   }
   if (i.owned) { $("unlock").style.display = "none"; return; }
@@ -1016,11 +1021,31 @@ async function buyUnlock(){
   try {
     const r = await fetch("/api/coins/livebot/buy", { method:"POST", headers:{ authorization:"Bearer " + tok() } });
     const j = await r.json().catch(()=>({}));
-    if (j.owned) { Unlock.owned = true; $("unlock").style.display = "none"; toast("Unlocked! 🎉"); if (!Unlock.owner && !S.brainUrl) showBrain(true); else coach("#btnConnect", "You're unlocked for good! Start your TikTok LIVE, then tap GO LIVE."); }
+    if (j.owned) { Unlock.owned = true; $("unlock").style.display = "none"; toast("You're Pro! 👑"); renderEasyChars(); renderChips(); if (!Unlock.owner && !S.brainUrl) showBrain(true); else coach("#chips", "You're Pro for good! 👑 Every feature is unlocked — tap any of these to turn it on."); }
     else if (j.error === "not_enough_coins") showUnlock();
     else toast(j.error || "Couldn't unlock — try again");
   } catch(e) { toast("Network problem — try again"); }
   finally { $("ulGo").disabled = false; }
+}
+const isPro = () => !!(Unlock.owned || Unlock.owner);
+const PRO_LIST = "the whole cast (Oracle, Lady Gold, Lil Bot + your own characters), gift / follow / share thank-yous, like goals, song requests &amp; music, push-to-talk, realistic voice, talk-when-quiet, auto-copy, OBS overlay and all advanced settings";
+async function goPro(what){
+  hideTip();
+  const i = await unlockInfo();
+  if (!i.signedIn) return showUnlock();
+  if (isPro()) return true;
+  const need = Math.max(0, (i.price||2000) - (i.coins||0));
+  modal("Go Pro 👑", `${what ? "<b>" + esc(what) + "</b> is a Pro feature. " : ""}Pro unlocks ${PRO_LIST}.<br><br>One-time: <b>${fmtC(i.price)} coins</b> (about $20). You have <b>${fmtC(i.coins)}</b>.`,
+    need === 0 ? `Go Pro for ${fmtC(i.price)} coins` : "Get coins", need === 0 ? buyUnlock : () => { location.href = "/#coin"; });
+  return false;
+}
+function proOnly(what){ if (isPro()) return true; goPro(what); return false; }
+async function ensureReady(){ // free tier: signed in + own AI brain is enough to go live
+  const i = await unlockInfo();
+  if (!i.signedIn) { showUnlock(); return false; }
+  if (i.error) { toast("Couldn't check your account — try again"); return false; }
+  if (!Unlock.owner && !S.brainUrl) { showBrain(); return false; }
+  return true;
 }
 async function ensureUnlocked(){
   const needBrain = () => { if (Unlock.owner || S.brainUrl) return true; showBrain(); return false; };
@@ -1044,7 +1069,7 @@ function wiz(title, html, buttons, input){
 const closeWiz = () => { $("brainWiz").style.display = "none"; };
 const openNew = (u) => window.open(u, "_blank", "noopener");
 function showBrain(justBought){
-  wiz(justBought ? "Unlocked! One last step" : "Set up your free AI brain",
+  wiz(justBought ? "You're Pro! One last step" : "Set up your free AI brain",
     "MeechieBot's brain runs on <b>your own free Cloudflare account</b>, so it's yours, it's fast, and it costs you nothing. Takes about 2 minutes. Pick one:",
     [["⚡ One-tap setup (needs a free GitHub account)", () => brainOneTap(1), "b"], ["📋 Copy-paste setup (no GitHub)", () => brainCopy(1)], ["I already have my brain link", brainLink], ["Later", closeWiz]]);
 }
@@ -1058,7 +1083,7 @@ function brainOneTap(n){
 async function copyBrainCode(btn){
   try {
     const r = await fetch("/api/livebot/brain-code", { headers: tok() ? { authorization: "Bearer " + tok() } : {} });
-    if (!r.ok) throw new Error(r.status === 402 ? "Unlock first" : "Error " + r.status);
+    if (!r.ok) throw new Error(r.status === 401 ? "Sign in first" : "Error " + r.status);
     await navigator.clipboard.writeText(await r.text());
     btn.textContent = "✓ Copied! Now paste it in Cloudflare"; toast("Brain code copied");
   } catch(e) { toast("Couldn't copy: " + e.message); }
@@ -1128,13 +1153,13 @@ function nextTour(){
 $("tipNext").onclick = () => { unlockAudio(); tourSteps ? nextTour() : hideTip(); };
 $("tipSkip").onclick = () => { tourSteps = null; hideTip(); try { localStorage.setItem("mwbot_tour", "1"); } catch(e){} };
 $("btnHelp").onclick = () => { setAdv(false); startTour(); };
-function firstConnectTip(){ if (localStorage.getItem("mwbot_tip_live")) return; try { localStorage.setItem("mwbot_tip_live","1"); } catch(e){} coach("#stage", "You're connected! 🎉 Keep this screen open and your volume up. Phones pause apps that go to the background."); }
+function firstConnectTip(){ if (localStorage.getItem("mwbot_tip_live")) return; try { localStorage.setItem("mwbot_tip_live","1"); } catch(e){} coach("#stage", "You're connected! 🎉 Keep this screen open and your volume up. Phones pause apps that go to the background." + (isPro() ? "" : " Want gift thank-yous, like goals, the whole cast and music? Tap any 🔒 to go Pro.")); }
 
 /* ============ boot ============ */
 renderMusicSource(); loadVoices(); renderCast(); setAdv(S.adv); renderChips(); setStage(activeChar()); setStatus(); renderStats(); Music.setVol();
 (async () => { const code = new URLSearchParams(location.search).get("code"); if (code) { try { await Spotify.exchange(code); S.musicSource = "spotify"; $("musicSource").value = "spotify"; save(); renderMusicSource(); document.querySelector('nav button[data-t="music"]').click(); } catch(e) { toast("Spotify: " + e.message); } } })();
 if (OVERLAY) { document.body.classList.add("overlay"); setTimeout(connectLive, 800); }
-else { checkHealth(); unlockInfo(); if (!localStorage.getItem("mwbot_tour")) setTimeout(startTour, 700); }
+else { checkHealth(); unlockInfo().then(() => { renderEasyChars(); renderChips(); setStage(activeChar()); }); if (!localStorage.getItem("mwbot_tour")) setTimeout(startTour, 700); }
 </script>
 </body>
 </html>
