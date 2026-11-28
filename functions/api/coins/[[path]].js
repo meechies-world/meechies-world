@@ -672,7 +672,7 @@ export async function onRequest({ request, env, params }) {
   /* ---------------- MeechieBot Studio unlock (coins) ---------------- */
   if (route === "livebot" && method === "GET") {
     const w = await wallet(env, me.id);
-    return json({ owned: admin || (await livebotOwned(env, me.id)), price: LIVEBOT_COINS, coins: w.coins, paid });
+    return json({ owned: admin || (await livebotOwned(env, me.id)), owner: admin, price: LIVEBOT_COINS, coins: w.coins, paid });
   }
   if (route === "livebot/buy" && method === "POST") {
     if (admin || (await livebotOwned(env, me.id))) return json({ ok: true, owned: true, coins: (await wallet(env, me.id)).coins });

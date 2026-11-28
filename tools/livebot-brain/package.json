@@ -1,0 +1,9 @@
+{
+  "name": "meechiebot-brain",
+  "private": true,
+  "type": "module",
+  "description": "MeechieBot AI Brain for MeechieBot Studio (Meechie's World Inc)",
+  "scripts": { "deploy": "wrangler deploy" },
+  "devDependencies": { "wrangler": "^4" },
+  "cloudflare": { "bindings": { "AI": { "description": "Free Workers AI: writes your character's replies and voice." } } }
+}
