@@ -239,7 +239,9 @@ body:not(.adv) .advonly{display:none!important}
    <label>TikTok username to watch (no @)</label><input id="ttUser" placeholder="meechiesworldinc">
    <label>Your own Euler Stream key (optional — leave empty to use the site's connection)</label><input id="eulerKey" type="password" placeholder="leave empty">
    <div class="note">Only needed if the site's connection is busy. It stays on this device.</div>
-   <h2 style="margin-top:18px">AI Brain (Cloudflare)</h2>
+   <h2 style="margin-top:18px">AI Brain (your Cloudflare)</h2>
+   <label>Your AI brain link</label><input id="brainUrl" placeholder="https://meechiebot-brain.yourname.workers.dev">
+   <button class="g" id="btnBrain" style="margin-top:8px">Set up my free AI brain</button>
    <label>Studio PIN (only if you set LIVEBOT_PIN in Cloudflare)</label><input id="pin" type="password">
    <label>Reply brain</label>
    <select id="model"><option value="fast">Fast — lowest free-quota use (recommended)</option><option value="smart">Smart — better answers, uses free quota faster</option></select>
@@ -297,6 +299,12 @@ body:not(.adv) .advonly{display:none!important}
 </main>
 <footer>Meechie's World Inc • MeechieBot Studio</footer>
 <div class="toast" id="toast"></div>
+<div class="modal" id="brainWiz"><div class="mbox">
+  <img src="/livebot/icon.svg" alt="" style="width:56px">
+  <h3 id="bwTitle"></h3><p id="bwText"></p>
+  <input id="bwIn" placeholder="https://meechiebot-brain.yourname.workers.dev" autocapitalize="none" spellcheck="false" style="margin-bottom:12px">
+  <div class="row" id="bwBtns" style="flex-direction:column;gap:8px"></div>
+</div></div>
 <div class="modal" id="unlock"><div class="mbox">
   <img src="/livebot/icon.svg" alt="" style="width:64px">
   <h3 id="ulTitle">Unlock MeechieBot Studio</h3>
@@ -319,7 +327,7 @@ const DEFAULTS = {
   hostName:"Meechie", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
   thankGifts:true, thankFollows:true, thankShares:true, likeGoals:true, likeStep:1000,
   quietStarter:true, quietSecs:90, autoCopy:false, ignorePrefix:"!streamer", blocked:"",
-  castMode:"single", activeChar:0, adv:false, realVoice:false, musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
+  castMode:"single", activeChar:0, adv:false, realVoice:false, brainUrl:"", musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
   cast:[
     {name:"Meech", gender:"m", persona:"Confident, funny, hype-man energy with a smooth business mind. Talks like a real one from the culture, keeps it classy. Loves hustle, empire-building, books and big dreams. Gasses up the chat and keeps the energy high.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:0.9, cfSpeaker:"orion"},
     {name:"Oracle", gender:"m", persona:"Calm, mysterious all-seeing narrator of Meechie's World. Speaks in short, wise, slightly dramatic lines with a touch of humor. Knows history, pyramids and secret societies.", portrait:"", voiceEngine:"browser", voiceName:"", rate:0.95, pitch:0.7, cfSpeaker:"zeus"},
@@ -353,7 +361,7 @@ $("nav").addEventListener("click", e => {
 });
 
 /* ============ bind simple settings fields ============ */
-const FIELDS = ["ttUser","eulerKey","pin","model","replyWords","cooldown","maxQueue","hostName","brand","topic","shop","products","thankGifts","thankFollows","thankShares","likeGoals","likeStep","quietStarter","quietSecs","autoCopy","ignorePrefix","blocked","castMode","musicSource","mVol","spClient","spPlaylist"];
+const FIELDS = ["brainUrl","ttUser","eulerKey","pin","model","replyWords","cooldown","maxQueue","hostName","brand","topic","shop","products","thankGifts","thankFollows","thankShares","likeGoals","likeStep","quietStarter","quietSecs","autoCopy","ignorePrefix","blocked","castMode","musicSource","mVol","spClient","spPlaylist"];
 for (const f of FIELDS) {
   const el = $(f); if (!el) continue;
   if (el.type === "checkbox") el.checked = !!S[f]; else el.value = S[f];
@@ -422,9 +430,12 @@ function setStage(c, text){ $("stageName").textContent = c.name; $("portrait").s
 
 /* ============ API ============ */
 async function api(path, body, raw){
-  const r = await fetch(path, { method:"POST", headers:{"content-type":"application/json","x-studio-pin":S.pin||"", ...(tok() ? {authorization:"Bearer " + tok()} : {})}, body: JSON.stringify(body) });
+  const brain = S.brainUrl && !OVERLAY_OWNER() ? S.brainUrl.replace(/\/+$/, "") : "";
+  const r = brain
+    ? await fetch(brain + path.replace("/api/livebot/", "/api/"), { method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify(body) }).catch(() => { throw new Error("Can't reach your AI brain — check your link in Settings"); })
+    : await fetch(path, { method:"POST", headers:{"content-type":"application/json","x-studio-pin":S.pin||"", ...(tok() ? {authorization:"Bearer " + tok()} : {})}, body: JSON.stringify(body) });
   if (raw && r.ok) return r;
-  if (r.status === 429 && !Unlock.owned) { r.json().catch(()=>{}); showUnlock("trial"); throw new Error("Free tries used up for this hour — unlock to keep going"); }
+  if (r.status === 429 && !brain && !Unlock.owner) { r.json().catch(()=>{}); if (Unlock.owned) showBrain(); else showUnlock("trial"); throw new Error(Unlock.owned ? "Set up your free AI brain to keep going" : "Free tries used up for this hour — unlock to keep going"); }
   const j = await r.json().catch(()=>({error:"Bad response ("+r.status+")"}));
   if (!r.ok) throw new Error(j.error || ("Error "+r.status));
   return j;
@@ -927,6 +938,7 @@ Steps: 1) get a free Euler Stream API key at eulerstream.com; 2) in the app's Se
 /* ============ easy mode ============ */
 function setAdv(on){ S.adv = !!on; save(); document.body.classList.toggle("adv", S.adv); $("btnAdv").textContent = S.adv ? "✕ Simple" : "⚙ Advanced"; if (!S.adv) document.querySelector('nav button[data-t="live"]').click(); }
 $("btnAdv").onclick = () => setAdv(!S.adv);
+$("btnBrain").onclick = () => showBrain();
 $("easyUser").value = S.ttUser || "";
 $("easyUser").addEventListener("change", () => { S.ttUser = $("easyUser").value.replace(/^@/,"").trim().toLowerCase(); $("easyUser").value = S.ttUser; $("ttUser").value = S.ttUser; save(); });
 $("ttUser").addEventListener("change", () => { $("easyUser").value = S.ttUser; });
@@ -967,7 +979,8 @@ $("btnTry").onclick = () => { unlockAudio(); const n = ["Sky","Jay","Mia","Cozy"
 
 /* ============ unlock with coins ============ */
 const tok = () => { if (OVERLAY && S.ovTok) return S.ovTok; try { const s = window.MW && MW.session && MW.session(); return (s && s.access_token) || ""; } catch(e) { return ""; } };
-const Unlock = { owned:false, price:2000, coins:0 };
+const Unlock = { owned:false, owner:false, price:2000, coins:0 };
+const OVERLAY_OWNER = () => false;
 async function unlockInfo(){
   try { if (window.MW && MW.sessionReady) await MW.sessionReady; } catch(e) {}
   if (!tok()) return { signedIn:false };
@@ -1003,18 +1016,80 @@ async function buyUnlock(){
   try {
     const r = await fetch("/api/coins/livebot/buy", { method:"POST", headers:{ authorization:"Bearer " + tok() } });
     const j = await r.json().catch(()=>({}));
-    if (j.owned) { Unlock.owned = true; $("unlock").style.display = "none"; toast("Unlocked! 🎉 Tap GO LIVE"); coach("#btnConnect", "You're unlocked for good! Start your TikTok LIVE, then tap GO LIVE."); }
+    if (j.owned) { Unlock.owned = true; $("unlock").style.display = "none"; toast("Unlocked! 🎉"); if (!Unlock.owner && !S.brainUrl) showBrain(true); else coach("#btnConnect", "You're unlocked for good! Start your TikTok LIVE, then tap GO LIVE."); }
     else if (j.error === "not_enough_coins") showUnlock();
     else toast(j.error || "Couldn't unlock — try again");
   } catch(e) { toast("Network problem — try again"); }
   finally { $("ulGo").disabled = false; }
 }
 async function ensureUnlocked(){
-  if (Unlock.owned) return true;
+  const needBrain = () => { if (Unlock.owner || S.brainUrl) return true; showBrain(); return false; };
+  if (Unlock.owned) return needBrain();
   const i = await unlockInfo();
-  if (i.owned) return true;
+  if (i.owned) return needBrain();
   if (i.error) { toast("Couldn't check your unlock — try again"); return false; }
   showUnlock(); return false;
+}
+
+/* ============ your own free AI brain (buyer's Cloudflare) ============ */
+const DEPLOY_URL = "https://deploy.workers.cloudflare.com/?url=" + encodeURIComponent("https://github.com/meechies-world/meechies-world/tree/main/tools/livebot-brain");
+function wiz(title, html, buttons, input){
+  hideTip();
+  $("bwTitle").textContent = title; $("bwText").innerHTML = html;
+  $("bwIn").style.display = input ? "" : "none"; if (input) { $("bwIn").value = S.brainUrl || ""; setTimeout(() => $("bwIn").focus(), 50); }
+  const box = $("bwBtns"); box.innerHTML = "";
+  for (const [label, fn, cls] of buttons) { const b = document.createElement("button"); b.className = (cls || "g") + " "; b.style.width = "100%"; b.textContent = label; b.onclick = fn; box.appendChild(b); }
+  $("brainWiz").style.display = "flex";
+}
+const closeWiz = () => { $("brainWiz").style.display = "none"; };
+const openNew = (u) => window.open(u, "_blank", "noopener");
+function showBrain(justBought){
+  wiz(justBought ? "Unlocked! One last step" : "Set up your free AI brain",
+    "MeechieBot's brain runs on <b>your own free Cloudflare account</b>, so it's yours, it's fast, and it costs you nothing. Takes about 2 minutes. Pick one:",
+    [["⚡ One-tap setup (needs a free GitHub account)", () => brainOneTap(1), "b"], ["📋 Copy-paste setup (no GitHub)", () => brainCopy(1)], ["I already have my brain link", brainLink], ["Later", closeWiz]]);
+}
+function brainOneTap(n){
+  const steps = {
+    1: ["Step 1 of 2", "Tap <b>Open Cloudflare</b>. Sign up or sign in (free). If it asks, connect GitHub. Then tap <b>Create and deploy</b> and wait for it to finish.", [["Open Cloudflare ↗", () => { openNew(DEPLOY_URL); }, "b"], ["It's done — next", () => brainOneTap(2)], ["Back", showBrain]]],
+    2: ["Step 2 of 2", "On the finished page, copy your link — it ends in <b>.workers.dev</b> (like <i>meechiebot-brain.yourname.workers.dev</i>) — and paste it here.", null]
+  };
+  const [t, h, b] = steps[n]; if (!b) return brainLink(t, h); wiz(t, h, b);
+}
+async function copyBrainCode(btn){
+  try {
+    const r = await fetch("/api/livebot/brain-code", { headers: tok() ? { authorization: "Bearer " + tok() } : {} });
+    if (!r.ok) throw new Error(r.status === 402 ? "Unlock first" : "Error " + r.status);
+    await navigator.clipboard.writeText(await r.text());
+    btn.textContent = "✓ Copied! Now paste it in Cloudflare"; toast("Brain code copied");
+  } catch(e) { toast("Couldn't copy: " + e.message); }
+}
+function brainCopy(n){
+  const S5 = {
+    1: ["Step 1 of 5", "Tap <b>Open Cloudflare</b> and sign up or sign in. It's free.", [["Open Cloudflare ↗", () => openNew("https://dash.cloudflare.com/sign-up"), "b"], ["Next", () => brainCopy(2)], ["Back", showBrain]]],
+    2: ["Step 2 of 5", "In Cloudflare tap <b>Workers &amp; Pages</b> → <b>Create</b> → <b>Start with Hello World</b>. Name it <b>meechiebot-brain</b> and tap <b>Deploy</b>.", [["Next", () => brainCopy(3), "b"], ["Back", () => brainCopy(1)]]],
+    3: ["Step 3 of 5", "Tap <b>Edit code</b>. Select everything in the editor and delete it. Tap the button below, paste into the empty editor, then tap <b>Deploy</b>.", [["📋 Copy my brain code", (e) => copyBrainCode(e.target), "b"], ["Next", () => brainCopy(4)], ["Back", () => brainCopy(2)]]],
+    4: ["Step 4 of 5", "Go back to your Worker → <b>Settings</b> → <b>Bindings</b> → <b>Add</b> → <b>Workers AI</b>. Type the name <b>AI</b> (two capital letters) and save.", [["Next", () => brainCopy(5), "b"], ["Back", () => brainCopy(3)]]],
+    5: ["Step 5 of 5", "Copy your Worker's link — it ends in <b>.workers.dev</b> — and paste it here.", null]
+  };
+  const [t, h, b] = S5[n]; if (!b) return brainLink(t, h); wiz(t, h, b);
+}
+function brainLink(t, h){
+  wiz(typeof t === "string" ? t : "Connect your brain", typeof h === "string" ? h : "Paste your brain link — it ends in <b>.workers.dev</b>.",
+    [["Connect my brain", testBrain, "b"], ["Back", showBrain]], true);
+}
+async function testBrain(){
+  let u = $("bwIn").value.trim(); if (!u) return toast("Paste your link first");
+  if (!/^https?:\/\//.test(u)) u = "https://" + u;
+  u = u.replace(/\/+$/, "").replace(/\/api\/?.*$/, "");
+  $("bwText").innerHTML = "Checking your brain…";
+  try {
+    const h = await (await fetch(u + "/api/health", { cache:"no-store" })).json();
+    if (h.brain !== "meechiebot") throw new Error("That link isn't a MeechieBot brain. Did you paste the code and tap Deploy?");
+    if (!h.ai) { $("bwText").innerHTML = "Almost! Your brain is up but has no AI yet. Do this: Worker → <b>Settings</b> → <b>Bindings</b> → <b>Add</b> → <b>Workers AI</b>, name it <b>AI</b>, save. Then tap Connect again."; return; }
+    S.brainUrl = u; save(); if ($("brainUrl")) $("brainUrl").value = u;
+    closeWiz(); toast("Your AI brain is connected ✔");
+    coach("#btnConnect", "You're all set! Start your TikTok LIVE, then tap GO LIVE.");
+  } catch(e) { $("bwText").innerHTML = `<span class="bad">${esc(e.message && !/fetch|JSON/i.test(e.message) ? e.message : "Couldn't reach that link. Copy the .workers.dev link again and paste it.")}</span>`; }
 }
 
 /* ============ pop-up guide ============ */

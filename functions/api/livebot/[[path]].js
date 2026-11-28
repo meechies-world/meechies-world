@@ -5,6 +5,10 @@
 // for every user through /api/livebot/live, so nobody else needs their own key.
 // Each visitor is capped per hour (D1 usage table) so strangers can't burn the free AI allowance.
 import { take, userFrom, isAdmin } from "../../../lib/cf.js";
+import BRAIN_SRC from "../../../lib/livebot-brain-src.js";
+// Buyers run replies + voice on THEIR OWN free Cloudflare (tools/livebot-brain, owner 2026-11-28:
+// "I want them to create their own cloudflare so they dont use mine"). Only the owner's accounts get
+// the site's AI at full speed; everyone else gets the small free-try cap here.
 // Unlock (owner, 2026-11-28): going LIVE needs the 2,000-coin unlock (functions/api/coins → livebot/buy).
 // "Try it now" test replies stay free for everyone, at a lower hourly cap.
 
@@ -116,18 +120,18 @@ async function handleLive(request, env) {
   return new Response(null, { status: 101, webSocket: client, headers: proto ? { "Sec-WebSocket-Protocol": proto } : {} });
 }
 
-const LIMITS = { reply: 240, speak: 120, live: 30 }; // per unlocked user per hour
-const TRIAL = { reply: 25, speak: 25 };               // per visitor per hour before unlocking
-async function unlocked(request, env) {
-  if (!env.DB) return false;
+const LIMITS = { reply: 240, speak: 120, live: 30, "brain-code": 30 }; // per hour
+const TRIAL = { reply: 15, speak: 15 };               // free tries on the site's AI, per visitor per hour
+async function access(request, env) { // "owner" | "unlocked" | ""
+  if (!env.DB) return "";
   // WebSockets can't send headers, so the app passes its sign-in as the subprotocol "mwt.<token>"
   const proto = (request.headers.get("sec-websocket-protocol") || "").split(",").map((x) => x.trim()).find((x) => x.startsWith("mwt.")) || "";
   const tok = request.headers.get("authorization") || (proto ? "Bearer " + proto.slice(4) : "");
   if (!tok) return false;
   const me = await userFrom(new Request(request.url, { headers: { authorization: tok } }), env).catch(() => null);
-  if (!me) return false;
-  if (await isAdmin(env, me.id).catch(() => false)) return true;
-  return !!(await env.DB.prepare("select 1 from livebot_orders where uid = ?").bind(me.id).first().catch(() => null));
+  if (!me) return "";
+  if (await isAdmin(env, me.id).catch(() => false)) return "owner";
+  return (await env.DB.prepare("select 1 from livebot_orders where uid = ?").bind(me.id).first().catch(() => null)) ? "unlocked" : "";
 }
 
 export async function onRequest({ request, env, params }) {
@@ -138,15 +142,16 @@ export async function onRequest({ request, env, params }) {
   if (env.LIVEBOT_PIN && pin !== env.LIVEBOT_PIN) return json({ error: "Wrong Studio PIN" }, 401);
   if (!env.AI) return json({ error: "Workers AI isn't connected to the site." }, 500);
   if (!LIMITS[what]) return json({ error: "not found" }, 404);
-  if (what !== "live" && request.method !== "POST") return json({ error: "POST only" }, 405);
-  if (false) return json({ error: "not found" }, 404);
-  const paidUser = await unlocked(request, env);
-  if (what === "live" && !paidUser) return json({ error: "locked" }, 402);
+  if (what !== "live" && what !== "brain-code" && request.method !== "POST") return json({ error: "POST only" }, 405);
+  const who = await access(request, env);
+  if ((what === "live" || what === "brain-code") && !who) return json({ error: "locked" }, 402);
+  const paidUser = who === "owner" || what === "live" || what === "brain-code";
   if (env.DB) {
     const ip = request.headers.get("cf-connecting-ip") || "x";
     const ok = await take(env, `livebot:${what}:${paidUser ? "u" : "t"}:${ip}`, 3600, (paidUser ? LIMITS : TRIAL)[what]).catch(() => true);
     if (!ok) return json({ error: "Hourly limit reached — try again soon." }, 429);
   }
   if (what === "live") return handleLive(request, env);
+  if (what === "brain-code") return new Response(BRAIN_SRC, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
   return what === "reply" ? handleReply(request, env) : handleSpeak(request, env);
 }
