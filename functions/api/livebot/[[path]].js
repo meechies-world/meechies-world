@@ -122,7 +122,7 @@ async function handleLive(request, env) {
 
 const LIMITS = { reply: 240, speak: 120, live: 30, "brain-code": 30 }; // per hour
 const TRIAL = { reply: 15, speak: 15 };               // free tries on the site's AI, per visitor per hour
-async function access(request, env) { // "owner" | "unlocked" | ""
+async function access(request, env) { // "owner" | "unlocked" | "free" (signed in) | ""
   if (!env.DB) return "";
   // WebSockets can't send headers, so the app passes its sign-in as the subprotocol "mwt.<token>"
   const proto = (request.headers.get("sec-websocket-protocol") || "").split(",").map((x) => x.trim()).find((x) => x.startsWith("mwt.")) || "";
@@ -131,7 +131,7 @@ async function access(request, env) { // "owner" | "unlocked" | ""
   const me = await userFrom(new Request(request.url, { headers: { authorization: tok } }), env).catch(() => null);
   if (!me) return "";
   if (await isAdmin(env, me.id).catch(() => false)) return "owner";
-  return (await env.DB.prepare("select 1 from livebot_orders where uid = ?").bind(me.id).first().catch(() => null)) ? "unlocked" : "";
+  return (await env.DB.prepare("select 1 from livebot_orders where uid = ?").bind(me.id).first().catch(() => null)) ? "unlocked" : "free";
 }
 
 export async function onRequest({ request, env, params }) {
@@ -144,7 +144,8 @@ export async function onRequest({ request, env, params }) {
   if (!LIMITS[what]) return json({ error: "not found" }, 404);
   if (what !== "live" && what !== "brain-code" && request.method !== "POST") return json({ error: "POST only" }, 405);
   const who = await access(request, env);
-  if ((what === "live" || what === "brain-code") && !who) return json({ error: "locked" }, 402);
+  // Free tier (owner, 2026-11-28): any signed-in member can go live with the basics; Pro (2,000 coins) unlocks the rest in the app.
+  if ((what === "live" || what === "brain-code") && !who) return json({ error: "sign_in" }, 401);
   const paidUser = who === "owner" || what === "live" || what === "brain-code";
   if (env.DB) {
     const ip = request.headers.get("cf-connecting-ip") || "x";
