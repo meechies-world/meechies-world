@@ -47,7 +47,7 @@ button:disabled{opacity:.45}
 .stage{position:relative;border-radius:16px;overflow:hidden;background:radial-gradient(circle at 50% 30%,#2a2210,#0a0a0a 70%);border:1px solid var(--line);min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:16px}
 .stage .who{position:absolute;top:12px;left:12px;font:700 11px system-ui;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
 .stage .live{position:absolute;top:10px;right:12px;background:var(--red);color:#fff;font:800 11px system-ui;padding:4px 8px;border-radius:6px;display:none}
-.portrait{width:190px;height:190px;object-fit:contain;filter:drop-shadow(0 10px 30px rgba(212,175,55,.25));transition:transform .15s}
+.portrait{width:190px;height:190px;object-fit:contain;border-radius:22px;filter:drop-shadow(0 10px 30px rgba(212,175,55,.25));transition:transform .15s}
 .speaking .portrait{animation:bob .5s ease-in-out infinite alternate}
 @keyframes bob{to{transform:translateY(-6px) scale(1.03)}}
 .bubble{margin-top:12px;max-width:95%;background:#fff8e6;color:#1a1408;border-radius:16px;padding:10px 14px;font-weight:650;font-size:16px;min-height:22px;box-shadow:0 0 0 2px var(--gold)}
@@ -137,7 +137,7 @@ body:not(.adv) .advonly{display:none!important}
  <div class="grid two">
   <div>
    <div class="stage" id="stage">
-     <span class="who" id="stageName">Meech</span>
+     <span class="who" id="stageName">Meechie</span>
      <span class="live" id="stageLive">● LIVE</span>
      <img class="portrait" id="portrait" src="/livebot/icon.svg" alt="">
      <div class="bubble" id="bubble"></div>
@@ -316,12 +316,12 @@ const OVERLAY = new URLSearchParams(location.search).has("overlay");
 const DEF_PORTRAIT = "/livebot/icon.svg";
 const DEFAULTS = {
   ttUser:"", eulerKey:"", pin:"", model:"fast", replyWords:35, cooldown:2, maxQueue:6,
-  hostName:"Meechie", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
+  hostName:"", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
   thankGifts:true, thankFollows:true, thankShares:true, likeGoals:true, likeStep:1000,
   quietStarter:true, quietSecs:90, autoCopy:false, ignorePrefix:"!streamer", blocked:"",
   castMode:"single", activeChar:0, adv:false, realVoice:false, musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
   cast:[
-    {name:"Meech", gender:"m", persona:"Confident, funny, hype-man energy with a smooth business mind. Talks like a real one from the culture, keeps it classy. Loves hustle, empire-building, books and big dreams. Gasses up the chat and keeps the energy high.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:0.9, cfSpeaker:"orion"},
+    {name:"Meechie", gender:"m", persona:"You are Meechie, Meechie's own AI, the face of Meechie's World Inc. Young Black man with a goatee, braids, glasses and a gold chain. Talk like a real person: fast, energetic, young, hood, rapper energy. Barbershop talk and DJ energy. You know a lot about everything, you crack jokes, you keep it real and keep it moving. Everything is live and off the top, never canned or scripted.", portrait:"/img/meechie-ai.jpg", voiceEngine:"browser", voiceName:"", rate:1.12, pitch:0.95, cfSpeaker:"arcas"},
     {name:"Oracle", gender:"m", persona:"Calm, mysterious all-seeing narrator of Meechie's World. Speaks in short, wise, slightly dramatic lines with a touch of humor. Knows history, pyramids and secret societies.", portrait:"", voiceEngine:"browser", voiceName:"", rate:0.95, pitch:0.7, cfSpeaker:"zeus"},
     {name:"Lady Gold", gender:"f", persona:"Glamorous, sassy and sweet hostess with queen energy. Hypes viewers up, gives playful compliments, loves fashion, hair and nails, and keeps the vibe classy and fun.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.02, pitch:1.1, cfSpeaker:"athena"},
     {name:"Lil Bot", gender:"m", persona:"A goofy, excitable little robot sidekick. Tells quick clean jokes, makes beep-boop sounds in words, is amazed by everything viewers say, and keeps it family friendly.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.15, pitch:1.6, cfSpeaker:"arcas"}
@@ -337,6 +337,7 @@ function loadSettings(){
   }
   S = Object.assign(structuredClone(DEFAULTS), saved);
   if (!Array.isArray(S.cast) || !S.cast.length) S.cast = structuredClone(DEFAULTS.cast);
+  if (S.cast[0] && S.cast[0].name === "Meech" && /hype-man energy/.test(S.cast[0].persona || "")) S.cast[0] = structuredClone(DEFAULTS.cast[0]); // old preset → Meechie AI
 }
 function save(){ if (OVERLAY) return; try { localStorage.setItem("mwbot", JSON.stringify(S)); } catch(e) { toast("Storage full — use a smaller portrait image"); } }
 loadSettings();
