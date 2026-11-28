@@ -32,6 +32,7 @@ export async function onRequest(ctx) {
     });
   }
   const res = await ctx.next();
+  if (res.status === 101) return res; // live connections (MeechieBot TikTok relay) pass straight through
   const out = new Response(res.body, res);
   const h = out.headers;
   h.set("X-Robots-Tag", "noai, noimageai");

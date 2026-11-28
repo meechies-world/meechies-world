@@ -87,6 +87,31 @@ body.overlay main{padding:0;max-width:none}
 body.overlay .stage{background:transparent;border:0;min-height:100vh}
 body.overlay .portrait{width:min(60vw,420px);height:min(60vw,420px)}
 body.overlay .bubble{font-size:26px}
+body:not(.adv) nav{display:none}
+body:not(.adv) .advonly{display:none!important}
+.hbtn{background:#0d0b08;color:var(--gold2);border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700;margin-left:6px;white-space:nowrap}
+.bigbtn{width:100%;font-size:22px;padding:18px;letter-spacing:.1em;margin-top:6px}
+.bigbtn.wait{background:#2a2416;color:var(--gold2)}.bigbtn.on{background:var(--red);color:#fff}
+.step{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--gold2);margin:14px 0 6px;font-weight:700}
+.step i{font-style:normal;background:var(--gold);color:#0a0a0a;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.chars{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 6px}
+.cc{flex:0 0 88px;text-align:center;border:1px solid var(--line);border-radius:14px;padding:8px 4px;background:#0d0b08;cursor:pointer;font-size:12px}
+.cc img{width:56px;height:56px;object-fit:contain}.cc.sel{box-shadow:0 0 0 2px var(--gold);color:var(--gold2);font-weight:700}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:13px;background:#0d0b08;color:var(--mute);cursor:pointer}
+.chip.on{background:linear-gradient(var(--gold2),var(--gold));color:#0a0a0a;font-weight:700}
+.hl{position:relative;z-index:101!important;box-shadow:0 0 0 4px var(--gold),0 0 0 200vmax rgba(0,0,0,.74)!important;border-radius:12px}
+.tip{position:fixed;left:12px;right:12px;bottom:max(16px,env(safe-area-inset-bottom));z-index:102;background:#fff8e6;color:#1a1408;border-radius:18px;padding:14px 16px;box-shadow:0 0 0 2px var(--gold),0 10px 40px rgba(0,0,0,.6);max-width:560px;margin:0 auto;display:none}
+.tip b.t{display:block;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#9c7a1c;margin-bottom:4px}
+.tip p{margin:0 0 10px;font-size:16px;font-weight:600;line-height:1.35}
+.tip .row button{flex:0 0 auto}
+.tip.top{bottom:auto;top:max(16px,env(safe-area-inset-top))}
+.modal{position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;padding:18px}
+.mbox{background:linear-gradient(180deg,#221b0e,#100c06);border:1px solid var(--gold);border-radius:20px;padding:20px;max-width:420px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.mbox h3{margin:8px 0 6px;font:700 20px Georgia,serif;color:var(--gold2)}.mbox p{color:var(--text);font-size:15px;margin:0 0 14px;line-height:1.45}
+@media(max-width:520px){.brand h1{font-size:14px}.brand small{display:none}.brand img{width:32px;height:32px}.pill{padding:4px 8px;font-size:11px}.hbtn{padding:4px 8px;margin-left:4px}}
+@media(max-width:520px){.stage{min-height:230px}.portrait{width:140px;height:140px}}
+.grid>*{min-width:0}.brand{min-width:0}.brand>div{min-width:0}html,body{overflow-x:hidden}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--gold);color:#0a0a0a;padding:10px 16px;border-radius:12px;font-weight:700;z-index:99;display:none;max-width:90%}
 </style>
 </head>
@@ -95,7 +120,7 @@ body.overlay .bubble{font-size:26px}
   <div class="brand">
     <img src="/livebot/icon.svg" alt="">
     <div><h1>MEECHIEBOT STUDIO</h1><small>Meechie's World Inc • Conscientia</small></div>
-    <span id="statusPill" class="pill">Offline</span>
+    <span id="statusPill" class="pill">Offline</span><button class="hbtn" id="btnHelp" aria-label="Show me how">?</button><button class="hbtn" id="btnAdv">⚙ Advanced</button>
   </div>
   <nav id="nav">
     <button data-t="live" class="act">Live</button>
@@ -117,12 +142,17 @@ body.overlay .bubble{font-size:26px}
      <img class="portrait" id="portrait" src="/livebot/icon.svg" alt="">
      <div class="bubble" id="bubble"></div>
    </div>
-   <div class="card noov" style="margin-top:14px">
-    <h2>Go Live</h2>
-    <div class="row">
-      <button class="b" id="btnConnect">Connect LIVE</button>
-      <button class="g" id="btnPause">Pause (F8)</button>
-    </div>
+   <div class="card noov" style="margin-top:14px" id="easyCard">
+    <h2>Go Live in 3 taps</h2>
+    <div class="step"><i>1</i> Your TikTok name</div>
+    <input id="easyUser" placeholder="yourname (no @)" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <div class="step"><i>2</i> Pick who talks to your viewers</div>
+    <div class="chars" id="easyChars"></div>
+    <div class="step"><i>3</i> Start your TikTok LIVE, then tap</div>
+    <button class="b bigbtn" id="btnConnect">GO LIVE</button>
+    <div class="note" id="goNote"></div>
+    <div class="chips" id="chips"></div>
+    <div class="row" style="margin-top:12px"><button class="g" id="btnPause">Pause (F8)</button><button class="g" id="btnSkip">Skip reply</button></div>
     <div class="stats">
       <div class="stat"><b id="stComments">0</b><span>comments</span></div>
       <div class="stat"><b id="stReplies">0</b><span>replies</span></div>
@@ -131,25 +161,19 @@ body.overlay .bubble{font-size:26px}
     </div>
     <label>Like goal — <span id="likeGoalTxt">0 / 1,000</span></label>
     <div class="bar"><i id="likeBar"></i></div>
-    <h3>Talk to your character (push-to-talk)</h3>
-    <button class="g ptt" id="btnPTT">Hold to talk</button>
-    <div class="note">Or hold <kbd>Space</kbd> on a computer. Your voice goes to the active character.</div>
-    <h3>Type as host or test a comment</h3>
-    <div class="row">
-      <input id="testUser" placeholder="Viewer name" value="Sky" style="flex:.6">
-      <input id="testText" placeholder="Type a comment…">
+    <button class="g ptt" id="btnPTT" style="margin-top:14px">🎙 Hold to talk to your character</button>
+    <div class="advonly">
+     <h3>Type as host or test a comment</h3>
+     <div class="row"><input id="testUser" placeholder="Viewer name" value="Sky" style="flex:.6"><input id="testText" placeholder="Type a comment…"></div>
+     <div class="row" style="margin-top:8px"><button class="g" id="btnTest">Send as viewer</button><button class="g" id="btnHostSay">Send as host</button></div>
     </div>
-    <div class="row" style="margin-top:8px">
-      <button class="g" id="btnTest">Send as viewer</button>
-      <button class="g" id="btnHostSay">Send as host</button>
-    </div>
+    <button class="g" id="btnTry" style="margin-top:10px;width:100%">▶ Try it now (pretend comment)</button>
    </div>
   </div>
   <div class="card noov">
    <h2>Live Feed</h2>
    <div class="feed" id="feed"><div class="note">Comments, gifts, follows, shares and your bot's replies show here. Tap <b>Copy</b> on a reply to paste it into your TikTok comments.</div></div>
-   <div class="row" style="margin-top:10px">
-     <button class="g" id="btnSkip">Skip current</button>
+   <div class="row advonly" style="margin-top:10px">
      <button class="g" id="btnClearQ">Clear queue</button>
    </div>
    <div class="note">Queue: <span id="qLen">0</span> waiting</div>
@@ -213,8 +237,8 @@ body.overlay .bubble{font-size:26px}
   <div class="card">
    <h2>TikTok LIVE Connection</h2>
    <label>TikTok username to watch (no @)</label><input id="ttUser" placeholder="meechiesworldinc">
-   <label>Euler Stream API key (free Community plan)</label><input id="eulerKey" type="password" placeholder="from eulerstream.com">
-   <div class="note">Your key stays on this device. Don't share your OBS link — it contains it.</div>
+   <label>Your own Euler Stream key (optional — leave empty to use the site's connection)</label><input id="eulerKey" type="password" placeholder="leave empty">
+   <div class="note">Only needed if the site's connection is busy. It stays on this device.</div>
    <h2 style="margin-top:18px">AI Brain (Cloudflare)</h2>
    <label>Studio PIN (only if you set LIVEBOT_PIN in Cloudflare)</label><input id="pin" type="password">
    <label>Reply brain</label>
@@ -273,7 +297,17 @@ body.overlay .bubble{font-size:26px}
 </main>
 <footer>Meechie's World Inc • MeechieBot Studio</footer>
 <div class="toast" id="toast"></div>
+<div class="modal" id="unlock"><div class="mbox">
+  <img src="/livebot/icon.svg" alt="" style="width:64px">
+  <h3 id="ulTitle">Unlock MeechieBot Studio</h3>
+  <p id="ulText"></p>
+  <div class="row" style="flex-direction:column;gap:8px"><button class="b bigbtn" id="ulGo"></button><button class="g" id="ulAlt" style="width:100%"></button><button class="g" id="ulClose" style="width:100%">Not now</button></div>
+</div></div>
+<div class="tip" id="tip"><b class="t" id="tipStep"></b><p id="tipText"></p><div class="row"><button class="b" id="tipNext">Next</button><button class="g" id="tipSkip">Skip</button></div></div>
 
+<script src="/js/config.js?v=1795867107"></script>
+<script src="/js/cf-client.js?v=1795867107"></script>
+<script src="/js/platform.js?v=1795867107"></script>
 <script>
 "use strict";
 /* ============ storage & settings ============ */
@@ -285,10 +319,12 @@ const DEFAULTS = {
   hostName:"Meechie", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
   thankGifts:true, thankFollows:true, thankShares:true, likeGoals:true, likeStep:1000,
   quietStarter:true, quietSecs:90, autoCopy:false, ignorePrefix:"!streamer", blocked:"",
-  castMode:"single", activeChar:0, musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
+  castMode:"single", activeChar:0, adv:false, realVoice:false, musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
   cast:[
-    {name:"Meech", persona:"Confident, funny, hype-man energy with a smooth business mind. Talks like a real one from the culture, keeps it classy. Loves hustle, empire-building, books and big dreams. Gasses up the chat and keeps the energy high.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:0.9, cfSpeaker:"orion"},
-    {name:"Oracle", persona:"Calm, mysterious all-seeing narrator of Meechie's World. Speaks in short, wise, slightly dramatic lines with a touch of humor. Knows history, pyramids and secret societies.", portrait:"", voiceEngine:"browser", voiceName:"", rate:0.95, pitch:0.7, cfSpeaker:"zeus"}
+    {name:"Meech", gender:"m", persona:"Confident, funny, hype-man energy with a smooth business mind. Talks like a real one from the culture, keeps it classy. Loves hustle, empire-building, books and big dreams. Gasses up the chat and keeps the energy high.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:0.9, cfSpeaker:"orion"},
+    {name:"Oracle", gender:"m", persona:"Calm, mysterious all-seeing narrator of Meechie's World. Speaks in short, wise, slightly dramatic lines with a touch of humor. Knows history, pyramids and secret societies.", portrait:"", voiceEngine:"browser", voiceName:"", rate:0.95, pitch:0.7, cfSpeaker:"zeus"},
+    {name:"Lady Gold", gender:"f", persona:"Glamorous, sassy and sweet hostess with queen energy. Hypes viewers up, gives playful compliments, loves fashion, hair and nails, and keeps the vibe classy and fun.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.02, pitch:1.1, cfSpeaker:"athena"},
+    {name:"Lil Bot", gender:"m", persona:"A goofy, excitable little robot sidekick. Tells quick clean jokes, makes beep-boop sounds in words, is amazed by everything viewers say, and keeps it family friendly.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.15, pitch:1.6, cfSpeaker:"arcas"}
   ]
 };
 let S;
@@ -386,8 +422,9 @@ function setStage(c, text){ $("stageName").textContent = c.name; $("portrait").s
 
 /* ============ API ============ */
 async function api(path, body, raw){
-  const r = await fetch(path, { method:"POST", headers:{"content-type":"application/json","x-studio-pin":S.pin||""}, body: JSON.stringify(body) });
+  const r = await fetch(path, { method:"POST", headers:{"content-type":"application/json","x-studio-pin":S.pin||"", ...(tok() ? {authorization:"Bearer " + tok()} : {})}, body: JSON.stringify(body) });
   if (raw && r.ok) return r;
+  if (r.status === 429 && !Unlock.owned) { r.json().catch(()=>{}); showUnlock("trial"); throw new Error("Free tries used up for this hour — unlock to keep going"); }
   const j = await r.json().catch(()=>({error:"Bad response ("+r.status+")"}));
   if (!r.ok) throw new Error(j.error || ("Error "+r.status));
   return j;
@@ -407,7 +444,7 @@ async function speak(text, c){
   $("stage").classList.add("speaking");
   Music.duck(true);
   try {
-    const useCF = c.voiceEngine === "cloudflare" || (OVERLAY);
+    const useCF = c.voiceEngine === "cloudflare" || S.realVoice || OVERLAY;
     if (useCF) {
       try { await speakCF(text, c); return; } catch(e) { if (OVERLAY) throw e; logNote("Cloudflare voice failed ("+e.message+") — using device voice"); }
     }
@@ -427,11 +464,18 @@ async function speakCF(text, c){
   });
   URL.revokeObjectURL(url);
 }
+const FEM = /female|zira|samantha|victoria|karen|moira|tessa|susan|aria|jenny|libby|sonia|natasha|fiona|serena|allison|ava|joanna|salli|kimberly|google us english$/i;
+const MALE = /\bmale|david|mark|daniel|alex\b|fred|guy|ryan|george|james|aaron|arthur|matthew|joey|justin|tom\b|google uk english male/i;
+function autoVoice(c){
+  const en = voices.filter(v => /^en/i.test(v.lang)); if (!en.length) return null;
+  const want = c.gender === "f" ? FEM : MALE, avoid = c.gender === "f" ? MALE : FEM;
+  return en.find(v => want.test(v.name) && !avoid.test(v.name) && /en-US/i.test(v.lang)) || en.find(v => want.test(v.name) && !avoid.test(v.name)) || en.find(v => /en-US/i.test(v.lang)) || en[0];
+}
 function speakBrowser(text, c){
   return new Promise((res) => {
     if (!window.speechSynthesis) return res();
     const u = new SpeechSynthesisUtterance(text);
-    const v = voices.find(v => v.name === c.voiceName); if (v) u.voice = v;
+    const v = voices.find(v => v.name === c.voiceName) || autoVoice(c); if (v) u.voice = v;
     u.rate = c.rate || 1; u.pitch = c.pitch || 1;
     let done = false; const fin = () => { if (!done) { done = true; clearInterval(keep); res(); } };
     u.onend = fin; u.onerror = fin;
@@ -501,7 +545,7 @@ function pickChar(ev){
 }
 function buildMessage(ev){
   switch (ev.kind) {
-    case "comment": return `Viewer "${ev.user}" comments: ${ev.text}` + (ev.musicNote ? ` (${ev.musicNote})` : "");
+    case "comment": { const n = regulars.get(ev.user)||1; return `Viewer "${ev.user}" comments: ${ev.text}` + (n === 1 ? " (their first comment this stream)" : n >= 5 ? ` (a regular: ${n} comments this stream)` : "") + (ev.musicNote ? ` (${ev.musicNote})` : ""); }
     case "gift": return `Viewer "${ev.user}" just sent a gift: ${ev.text}. Thank them by name with big energy.`;
     case "follow": return `Viewer "${ev.user}" just followed the stream. Welcome them warmly by name.`;
     case "share": return `Viewer "${ev.user}" just shared the stream. Thank them by name.`;
@@ -534,6 +578,7 @@ async function pump(){
     convo.push({role:"user", content: message}, {role:"assistant", content: text});
     while (convo.length > 10) convo.shift();
     counts.replies++; renderStats();
+    recentBot.push(keyOf(text.length > 150 ? text.slice(0,147) : text)); if (recentBot.length > 30) recentBot.shift();
     addFeed(`<span class="k">${esc(c.name)} replies</span><br>${esc(text)}`, "bot", text);
     if (S.autoCopy) copyText(text);
     setStage(c, text);
@@ -554,7 +599,13 @@ function isBlocked(text){
   if (S.ignorePrefix && t.trim().startsWith(S.ignorePrefix.toLowerCase())) return true;
   return (S.blocked||"").split(",").map(w=>w.trim().toLowerCase()).filter(Boolean).some(w => t.includes(w));
 }
+const regulars = new Map();
+const recentBot = [];
+const keyOf = (t) => norm(t).slice(0, 40);
+function isEcho(text){ const k = keyOf(text); return k.length >= 12 && recentBot.some(r => r.startsWith(k) || k.startsWith(r)); }
 function onComment(user, text){
+  if (isEcho(text)) { addFeed(`<span class="k">your copied reply</span><br>${esc(text)}`, "dim"); return; }
+  regulars.set(user, (regulars.get(user)||0) + 1);
   counts.comments++; lastActivity = Date.now(); renderStats();
   if (isBlocked(text)) { addFeed(`<span class="k">filtered</span><br><b>${esc(user)}</b> ${esc(text)}`, "dim"); return; }
   addFeed(`<span class="k">comment</span><br><b>${esc(user)}</b> ${esc(text)}`);
@@ -585,6 +636,7 @@ const L = { total:0, goal:0 };
 L.goal = S.likeStep;
 function onLikes(total, added){
   if (typeof total === "number" && total >= L.total) L.total = total; else L.total += (added||0);
+  if (!L.init) { L.init = true; L.goal = Math.max(S.likeStep, Math.ceil((L.total + 1) / S.likeStep) * S.likeStep); renderStats(); return; }
   if (S.likeGoals && L.total >= L.goal) {
     const hit = L.goal;
     while (L.goal <= L.total) L.goal += S.likeStep;
@@ -630,33 +682,50 @@ function handleEuler(m){
 function setStatus(){
   const p = $("statusPill");
   p.className = "pill" + (paused ? " paused" : Live.connected ? " on" : "");
-  p.textContent = paused ? "Paused" : Live.connected ? "Forwarding ON" : (Live.want ? "Connecting…" : "Offline");
-  $("btnConnect").textContent = Live.want ? "Disconnect" : "Connect LIVE";
+  p.textContent = paused ? "Paused" : Live.connected ? "● LIVE" : (Live.want ? "Waiting…" : "Offline");
+  const gb = $("btnConnect"); gb.textContent = Live.connected ? "STOP" : Live.want ? "WAITING FOR YOUR LIVE… (tap to cancel)" : "GO LIVE";
+  gb.className = "b bigbtn" + (Live.connected ? " on" : Live.want ? " wait" : "");
   $("stageLive").style.display = Live.connected ? "block" : "none";
   $("btnPause").textContent = paused ? "Resume (F8)" : "Pause (F8)";
 }
-function connectLive(){
-  if (!S.ttUser || !S.eulerKey) { toast("Add your TikTok username and Euler key in Settings"); return; }
-  Live.want = true; setStatus();
-  const url = `wss://ws.eulerstream.com?uniqueId=${encodeURIComponent(S.ttUser.replace(/^@/,""))}&apiKey=${encodeURIComponent(S.eulerKey)}`;
+let H = { live:false, ai:false, locked:false };
+async function checkHealth(){ try { H = await (await fetch("/api/livebot/health", {cache:"no-store"})).json(); } catch(e) {} return H; }
+function goNote(t){ $("goNote").innerHTML = t || ""; }
+async function connectLive(){
+  const user = (S.ttUser||"").replace(/^@/,"").trim();
+  if (!user) { coach("#easyUser", "Type your TikTok name here first — just the name, no @."); return; }
+  if (!S.eulerKey && !OVERLAY && !(await ensureUnlocked())) return;
+  if (!S.eulerKey) { await checkHealth(); if (!H.live) { goNote("The site's TikTok connection isn't switched on yet."); coach("#btnConnect", "TikTok connections are being switched on — check back soon! Meanwhile, tap ▶ Try it now to hear your character."); return; } }
+  Live.want = true; Live.got = false; L.init = false; setStatus();
+  const url = S.eulerKey
+    ? `wss://ws.eulerstream.com?uniqueId=${encodeURIComponent(user)}&apiKey=${encodeURIComponent(S.eulerKey)}`
+    : `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/livebot/live?u=${encodeURIComponent(user)}${S.pin ? "&pin=" + encodeURIComponent(S.pin) : ""}`;
   let ws;
-  try { ws = new WebSocket(url); } catch(e) { logNote("Connection error: "+e.message); return; }
+  try { ws = S.eulerKey || !tok() ? new WebSocket(url) : new WebSocket(url, ["mwt." + tok()]); } catch(e) { goNote("Connection error: " + esc(e.message)); return; }
   Live.ws = ws;
-  ws.onopen = () => { Live.connected = true; Live.retries = 0; lastActivity = Date.now(); setStatus(); keepAwake(); };
+  ws.onopen = () => { keepAwake(); };
   ws.onmessage = (e) => {
     let data; try { data = JSON.parse(e.data); } catch(_) { return; }
+    if (!Live.got) { Live.got = true; Live.connected = true; Live.retries = 0; lastActivity = Date.now(); setStatus(); goNote(""); firstConnectTip(); }
     const list = Array.isArray(data) ? data : (data.messages || [data]);
     for (const m of list) try { handleEuler(m); } catch(err) { console.warn(err); }
   };
   ws.onclose = (e) => {
-    Live.connected = false; setStatus();
+    const was = Live.connected; Live.connected = false; setStatus();
     if (!Live.want) return;
-    if (e.code === 1000 || e.code === 4404 || /offline|not live|ended/i.test(e.reason||"")) { logNote(`Stream closed: ${e.reason || "the LIVE ended or isn't live yet"}`); Live.want = false; setStatus(); return; }
-    if (Live.retries++ < 6) { logNote(`Connection dropped (${e.code}${e.reason?": "+e.reason:""}). Reconnecting…`); setTimeout(() => Live.want && connectLive(), 3000 * Live.retries); }
-    else { logNote("Couldn't stay connected. Check you're LIVE and your Euler key."); Live.want = false; setStatus(); }
+    if (!Live.got) { // not live yet (or the name is wrong): wait and try again by itself
+      Live.waits = (Live.waits||0) + 1;
+      goNote(`⏳ Waiting for <b>@${esc(user)}</b> to go LIVE… I'll connect by myself.${Live.waits >= 3 ? " Double-check the name is right." : ""}`);
+      if (Live.waits === 1) coach("#btnConnect", `Open TikTok and start your LIVE as @${user}. Leave this screen open — I'll connect automatically as soon as you're live.`);
+      setStatus(); Live.timer = setTimeout(() => Live.want && connectLive(), 15000); return;
+    }
+    Live.retries = (Live.retries||0) + 1;
+    if (was) logNote(`Connection dropped${e.reason ? " (" + e.reason + ")" : ""}. Reconnecting…`);
+    Live.timer = setTimeout(() => Live.want && connectLive(), Math.min(30000, 2000 * Live.retries));
   };
+  ws.onerror = () => {};
 }
-function disconnectLive(){ Live.want = false; try { Live.ws && Live.ws.close(); } catch(e){} Live.connected = false; setStatus(); }
+function disconnectLive(){ clearTimeout(Live.timer); Live.waits = 0; goNote(""); Live.want = false; try { Live.ws && Live.ws.close(); } catch(e){} Live.connected = false; setStatus(); }
 $("btnConnect").onclick = () => { unlockAudio(); Live.want ? disconnectLive() : connectLive(); };
 function togglePause(){ paused = !paused; if (paused) { Q.items = Q.items.filter(x => x.kind === "host"); } setStatus(); renderStats(); toast(paused ? "Forwarding paused" : "Forwarding resumed"); }
 $("btnPause").onclick = togglePause;
@@ -831,7 +900,7 @@ $("btnHealth").onclick = async () => {
   } catch(e) { $("healthTxt").innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
 };
 $("btnObs").onclick = () => {
-  const cfg = structuredClone(S);
+  const cfg = structuredClone(S); cfg.ovTok = tok();
   cfg.cast = cfg.cast.map(c => ({ ...c, portrait: c.portrait && c.portrait.startsWith("data:") ? "" : c.portrait }));
   const link = location.origin + "/livebot/?overlay=1#" + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
   navigator.clipboard.writeText(link).then(() => toast("OBS link copied — keep it private"), () => prompt("Copy this OBS link:", link));
@@ -855,10 +924,142 @@ $("btnAiPrompt").onclick = () => navigator.clipboard.writeText(
 Steps: 1) get a free Euler Stream API key at eulerstream.com; 2) in the app's Settings enter my TikTok username and that key, then press Test connection; 3) set up my characters in the Cast tab (portrait, voice, personality); 4) go LIVE on TikTok and press Connect LIVE; 5) optional: OBS Browser Source using the OBS overlay link; 6) optional: Spotify (needs Premium and a Spotify developer app whose Redirect URI is https://meechiesworldinc.com/livebot/). I handle all sign-ins and permissions myself.`
 ).then(() => toast("Setup prompt copied"), () => toast("Couldn't copy"));
 
+/* ============ easy mode ============ */
+function setAdv(on){ S.adv = !!on; save(); document.body.classList.toggle("adv", S.adv); $("btnAdv").textContent = S.adv ? "✕ Simple" : "⚙ Advanced"; if (!S.adv) document.querySelector('nav button[data-t="live"]').click(); }
+$("btnAdv").onclick = () => setAdv(!S.adv);
+$("easyUser").value = S.ttUser || "";
+$("easyUser").addEventListener("change", () => { S.ttUser = $("easyUser").value.replace(/^@/,"").trim().toLowerCase(); $("easyUser").value = S.ttUser; $("ttUser").value = S.ttUser; save(); });
+$("ttUser").addEventListener("change", () => { $("easyUser").value = S.ttUser; });
+function renderEasyChars(){
+  const box = $("easyChars"); box.innerHTML = "";
+  S.cast.forEach((c, i) => {
+    const d = document.createElement("div"); d.className = "cc" + (i === S.activeChar ? " sel" : "");
+    d.innerHTML = `<img src="${esc(c.portrait||DEF_PORTRAIT)}" alt=""><div>${esc(c.name)}</div>`;
+    d.onclick = () => { unlockAudio(); S.activeChar = i; S.castMode = "single"; $("castMode").value = "single"; save(); renderEasyChars(); renderCast(); setStage(c); speak(`Hey! I'm ${c.name}. Let's go live!`, c); };
+    box.appendChild(d);
+  });
+  const all = document.createElement("div"); all.className = "cc" + (S.castMode !== "single" ? " sel" : "");
+  all.innerHTML = `<div style="font-size:30px;line-height:56px">👥</div><div>Whole cast</div>`;
+  all.onclick = () => { S.castMode = "addressed"; $("castMode").value = "addressed"; save(); renderEasyChars(); toast("Whole cast on — viewers can call any character by name"); };
+  box.appendChild(all);
+}
+const origRenderCast = renderCast;
+renderCast = function(){ origRenderCast(); if ($("easyChars")) renderEasyChars(); };
+const CHIPS = [
+  ["thankGifts","🎁 Thank gifts"],["likeGoals","❤️ Like goals"],["thankFollows","👋 Welcome follows"],
+  ["songs","🎵 Song requests"],["quietStarter","💬 Talk when chat's quiet"],["realVoice","🗣 Realistic voice"],["autoCopy","📋 Auto-copy replies"]
+];
+function renderChips(){
+  const box = $("chips"); box.innerHTML = "";
+  for (const [k, label] of CHIPS) {
+    const on = k === "songs" ? $("musicAuto").checked : !!S[k];
+    const b = document.createElement("button"); b.className = "chip" + (on ? " on" : ""); b.textContent = label;
+    b.onclick = () => {
+      if (k === "songs") { $("musicAuto").checked = !$("musicAuto").checked; if ($("musicAuto").checked && !Music.tracks.length) coach("#btnAdv", "Song requests are on! Add your songs: tap ⚙ Advanced → Music → pick your MP3s."); }
+      else { S[k] = !S[k]; const el = $(k); if (el) el.checked = S[k]; save(); if (k === "realVoice" && S[k]) toast("Realistic voice uses the free daily AI allowance faster"); }
+      renderChips();
+    };
+    box.appendChild(b);
+  }
+}
+$("musicAuto").addEventListener("change", renderChips);
+$("btnTry").onclick = () => { unlockAudio(); const n = ["Sky","Jay","Mia","Cozy","Dre"][Math.floor(Math.random()*5)]; const t = ["First time seeing a bot host!","Where y'all from? I'm in Atlanta","What's good everybody 👋","Can you give me a shout out?","Tell me a joke"][Math.floor(Math.random()*5)]; onComment(n, t); };
+
+/* ============ unlock with coins ============ */
+const tok = () => { if (OVERLAY && S.ovTok) return S.ovTok; try { const s = window.MW && MW.session && MW.session(); return (s && s.access_token) || ""; } catch(e) { return ""; } };
+const Unlock = { owned:false, price:2000, coins:0 };
+async function unlockInfo(){
+  try { if (window.MW && MW.sessionReady) await MW.sessionReady; } catch(e) {}
+  if (!tok()) return { signedIn:false };
+  try { const r = await fetch("/api/coins/livebot", { headers:{ authorization:"Bearer " + tok() }, cache:"no-store" }); const j = await r.json(); if (r.ok) Object.assign(Unlock, j); return { signedIn: r.status !== 401, ...j }; } catch(e) { return { signedIn:true, error:true }; }
+}
+function modal(title, text, goLabel, goFn, altLabel, altFn){
+  $("ulTitle").textContent = title; $("ulText").innerHTML = text;
+  $("ulGo").textContent = goLabel; $("ulGo").onclick = goFn;
+  $("ulAlt").style.display = altLabel ? "" : "none"; $("ulAlt").textContent = altLabel || ""; $("ulAlt").onclick = altFn;
+  $("unlock").style.display = "flex";
+}
+$("ulClose").onclick = () => { $("unlock").style.display = "none"; };
+const fmtC = (n) => Number(n||0).toLocaleString();
+async function showUnlock(why){
+  hideTip();
+  const i = await unlockInfo();
+  if (!i.signedIn) {
+    return modal("Sign in to Meechie's World", "MeechieBot runs on your Meechie's World account. Sign in (or join free), then come right back here — I'll remember everything you set up.",
+      "Sign in / Join free (then come back here)", () => { location.href = "/#community"; }, "Try it first (free)", () => { $("unlock").style.display = "none"; $("btnTry").click(); });
+  }
+  if (i.owned) { $("unlock").style.display = "none"; return; }
+  const need = Math.max(0, (i.price||2000) - (i.coins||0));
+  const lead = why === "trial" ? "You've used this hour's free tries. " : "";
+  if (need === 0) {
+    return modal("Unlock MeechieBot Studio", `${lead}One-time unlock: <b>${fmtC(i.price)} coins</b> (about $20). You have <b>${fmtC(i.coins)}</b> coins. Yours forever — go live as much as you want.`,
+      `Unlock for ${fmtC(i.price)} coins`, buyUnlock);
+  }
+  modal("Unlock MeechieBot Studio", `${lead}One-time unlock: <b>${fmtC(i.price)} coins</b> (about $20). You have <b>${fmtC(i.coins)}</b> — you need <b>${fmtC(need)}</b> more.<br><br>Tap <b>Get coins</b>, buy a coin pack, then come back here and tap GO LIVE again.`,
+    "Get coins", () => { location.href = "/#coin"; }, "Try it first (free)", () => { $("unlock").style.display = "none"; $("btnTry").click(); });
+}
+async function buyUnlock(){
+  $("ulGo").disabled = true; $("ulGo").textContent = "Unlocking…";
+  try {
+    const r = await fetch("/api/coins/livebot/buy", { method:"POST", headers:{ authorization:"Bearer " + tok() } });
+    const j = await r.json().catch(()=>({}));
+    if (j.owned) { Unlock.owned = true; $("unlock").style.display = "none"; toast("Unlocked! 🎉 Tap GO LIVE"); coach("#btnConnect", "You're unlocked for good! Start your TikTok LIVE, then tap GO LIVE."); }
+    else if (j.error === "not_enough_coins") showUnlock();
+    else toast(j.error || "Couldn't unlock — try again");
+  } catch(e) { toast("Network problem — try again"); }
+  finally { $("ulGo").disabled = false; }
+}
+async function ensureUnlocked(){
+  if (Unlock.owned) return true;
+  const i = await unlockInfo();
+  if (i.owned) return true;
+  if (i.error) { toast("Couldn't check your unlock — try again"); return false; }
+  showUnlock(); return false;
+}
+
+/* ============ pop-up guide ============ */
+let tourSteps = null, tourIdx = 0, hlEl = null;
+function clearHL(){ if (hlEl) hlEl.classList.remove("hl"); hlEl = null; }
+function showTip(sel, text, label, last){
+  clearHL();
+  const el = sel && document.querySelector(sel);
+  if (el && el.offsetParent !== null) { hlEl = el; el.classList.add("hl"); el.scrollIntoView({behavior:"smooth", block:"center"}); }
+  const tip = $("tip");
+  $("tipStep").textContent = label || "Tip"; $("tipText").textContent = text;
+  $("tipNext").textContent = last ? "Got it" : "Next";
+  $("tipSkip").style.display = tourSteps && !last ? "" : "none";
+  tip.classList.toggle("top", !!el && el.getBoundingClientRect().top > innerHeight * 0.55);
+  tip.style.display = "block";
+}
+function hideTip(){ $("tip").style.display = "none"; clearHL(); }
+function coach(sel, text){ if (OVERLAY) return; tourSteps = null; showTip(sel, text, "Do this", true); }
+function startTour(){
+  tourSteps = [
+    ["#easyUser","Type your TikTok name here. Just the name, no @."],
+    ["#easyChars","Tap a character. This is who talks to your viewers. Tap one to hear their voice."],
+    ["#btnTry","Tap here anytime to hear how your character answers a comment."],
+    ["#btnConnect","When you're ready: open TikTok and start your LIVE, then come back and tap GO LIVE. Not live yet? No problem, I'll wait and connect by myself."],
+    ["#chips","Turn features on or off with one tap. Gold means on."],
+    ["#feed","Comments and replies show up here. Tap Copy for chat to paste a reply into your TikTok comments."],
+    ["#btnAdv","Want more? Advanced has your full cast, music, OBS and every setting."]
+  ];
+  tourIdx = 0; nextTour();
+}
+function nextTour(){
+  if (!tourSteps || tourIdx >= tourSteps.length) { tourSteps = null; hideTip(); try { localStorage.setItem("mwbot_tour", "1"); } catch(e){} return; }
+  const [sel, text] = tourSteps[tourIdx]; tourIdx++;
+  showTip(sel, text, `Step ${tourIdx} of ${tourSteps.length}`, tourIdx === tourSteps.length);
+}
+$("tipNext").onclick = () => { unlockAudio(); tourSteps ? nextTour() : hideTip(); };
+$("tipSkip").onclick = () => { tourSteps = null; hideTip(); try { localStorage.setItem("mwbot_tour", "1"); } catch(e){} };
+$("btnHelp").onclick = () => { setAdv(false); startTour(); };
+function firstConnectTip(){ if (localStorage.getItem("mwbot_tip_live")) return; try { localStorage.setItem("mwbot_tip_live","1"); } catch(e){} coach("#stage", "You're connected! 🎉 Keep this screen open and your volume up. Phones pause apps that go to the background."); }
+
 /* ============ boot ============ */
-renderMusicSource(); loadVoices(); renderCast(); setStage(activeChar()); setStatus(); renderStats(); Music.setVol();
+renderMusicSource(); loadVoices(); renderCast(); setAdv(S.adv); renderChips(); setStage(activeChar()); setStatus(); renderStats(); Music.setVol();
 (async () => { const code = new URLSearchParams(location.search).get("code"); if (code) { try { await Spotify.exchange(code); S.musicSource = "spotify"; $("musicSource").value = "spotify"; save(); renderMusicSource(); document.querySelector('nav button[data-t="music"]').click(); } catch(e) { toast("Spotify: " + e.message); } } })();
 if (OVERLAY) { document.body.classList.add("overlay"); setTimeout(connectLive, 800); }
+else { checkHealth(); unlockInfo(); if (!localStorage.getItem("mwbot_tour")) setTimeout(startTour, 700); }
 </script>
 </body>
 </html>
