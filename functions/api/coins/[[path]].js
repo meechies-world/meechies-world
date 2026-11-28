@@ -42,6 +42,11 @@ const bookOwned = async (env, uid, book) => !!(await env.DB.prepare("select 1 fr
  * fails, the key is still on the buyer's success page (the delivery
  * row), and the order row is the fulfilment list for the owner. */
 const MW_TIKLIVEBOT = { name: "MwTiklivebot", cents: 1999, regularCents: 2500, fullCents: 30000 };
+/* MeechieBot Studio (/livebot/) unlock, paid with coins (owner, 2026-11-28: "$20 using the coin system").
+ * 2,000 coins one-time (1 coin = 1 cent). The whole price is the owner's (no member share). The owner's
+ * own accounts always count as unlocked. livebot_orders is the entitlement the /api/livebot relay checks. */
+const LIVEBOT_COINS = 2000;
+const livebotOwned = async (env, uid) => !!(await env.DB.prepare("select 1 from livebot_orders where uid = ?").bind(uid).first());
 const mwtiklivebotOwned = async (env, uid) => !!(await env.DB.prepare("select 1 from mwtiklivebot_orders where uid = ?").bind(uid).first());
 const mwtiklivebotOwnedFull = async (env, uid) => !!(await env.DB.prepare("select 1 from mwtiklivebot_orders where uid = ? and edition = 'full'").bind(uid).first());
 /* CJdropshipping products sold on the site itself (Stripe Checkout).
@@ -119,6 +124,7 @@ const SCHEMA = [
   // comes back before the webhook lands resumes it instead of opening (and
   // paying) a second one; its `edition` keeps a base resume from ever
   // handing back a FULL checkout (or the other way round).
+  "create table if not exists livebot_orders (uid text primary key, coins integer not null, at integer not null)",
   "create table if not exists mwtiklivebot_orders (id text primary key, uid text not null, cents integer not null default 0, edition text not null default 'launch', at integer not null)",
   "create index if not exists mwtiklivebot_orders_uid on mwtiklivebot_orders (uid)",
   "create table if not exists mwtiklivebot_checkouts (session text primary key, uid text not null, edition text not null default 'launch', url text not null, at integer not null)",
@@ -662,6 +668,30 @@ export async function onRequest({ request, env, params }) {
   const me = await userFrom(request, env);
   if (!me) return err("Sign in first.", 401);
   const admin = await isAdmin(env, me.id);
+
+  /* ---------------- MeechieBot Studio unlock (coins) ---------------- */
+  if (route === "livebot" && method === "GET") {
+    const w = await wallet(env, me.id);
+    return json({ owned: admin || (await livebotOwned(env, me.id)), price: LIVEBOT_COINS, coins: w.coins, paid });
+  }
+  if (route === "livebot/buy" && method === "POST") {
+    if (admin || (await livebotOwned(env, me.id))) return json({ ok: true, owned: true, coins: (await wallet(env, me.id)).coins });
+    if (!(await take(env, "livebot-buy:" + me.id, 60, 10))) return err("Slow down a little.", 429);
+    const now = Date.now();
+    // claim the order row first so two taps can never charge twice, then take the coins in one statement
+    const claim = await env.DB.prepare("insert or ignore into livebot_orders (uid, coins, at) values (?,?,?)").bind(me.id, LIVEBOT_COINS, now).run();
+    if (!claim.meta.changes) return json({ ok: true, owned: true, coins: (await wallet(env, me.id)).coins });
+    const spent = await env.DB.prepare("update wallets set coins = coins - ?, updated_at = ? where uid = ? and coins >= ?").bind(LIVEBOT_COINS, now, me.id, LIVEBOT_COINS).run();
+    if (!spent.meta.changes) {
+      await env.DB.prepare("delete from livebot_orders where uid = ?").bind(me.id).run();
+      return json({ error: "not_enough_coins", price: LIVEBOT_COINS, coins: (await wallet(env, me.id)).coins }, 402);
+    }
+    await env.DB.batch([
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("lb:" + me.id, me.id, "livebot_unlock", -LIVEBOT_COINS, 0, "MeechieBot Studio", now),
+      env.DB.prepare("insert into coin_tx (id, uid, kind, coins, cents, other, at) values (?,?,?,?,?,?,?)").bind("lbo:" + me.id, OWNER_ID, "livebot_sale", 0, LIVEBOT_COINS, me.id, now),
+    ]);
+    return json({ ok: true, owned: true, coins: (await wallet(env, me.id)).coins });
+  }
 
   if (route === "me" && method === "GET") {
     const w = await wallet(env, me.id), p = await pending(env, me.id);
