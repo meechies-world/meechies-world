@@ -112,6 +112,10 @@ body:not(.adv) .advonly{display:none!important}
 @media(max-width:520px){.brand h1{font-size:14px}.brand small{display:none}.brand img{width:32px;height:32px}.pill{padding:4px 8px;font-size:11px}.hbtn{padding:4px 8px;margin-left:4px}}
 @media(max-width:520px){.stage{min-height:230px}.portrait{width:140px;height:140px}}
 .grid>*{min-width:0}.brand{min-width:0}.brand>div{min-width:0}html,body{overflow-x:hidden}
+.avatar{width:230px;height:276px;filter:drop-shadow(0 10px 28px rgba(212,175,55,.22))}.avatar svg{width:100%;height:100%;display:block}
+.stagebtns{position:absolute;top:40px;right:10px;display:flex;flex-direction:column;gap:6px;z-index:2}.stagebtns .hbtn{margin:0}
+body.overlay .avatar{width:min(70vw,460px);height:min(84vw,552px)}
+@media(max-width:520px){.avatar{width:180px;height:216px}}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--gold);color:#0a0a0a;padding:10px 16px;border-radius:12px;font-weight:700;z-index:99;display:none;max-width:90%}
 </style>
 </head>
@@ -139,6 +143,8 @@ body:not(.adv) .advonly{display:none!important}
    <div class="stage" id="stage">
      <span class="who" id="stageName">Meechie</span>
      <span class="live" id="stageLive">● LIVE</span>
+     <div class="stagebtns noov"><button class="hbtn" id="btnStyle">🎨 Cartoon</button><button class="hbtn" id="btnFit">👕 Outfit</button></div>
+     <div class="avatar" id="avatar" style="display:none"></div>
      <img class="portrait" id="portrait" src="/livebot/icon.svg" alt="">
      <div class="bubble" id="bubble"></div>
    </div>
@@ -305,6 +311,13 @@ body:not(.adv) .advonly{display:none!important}
   <input id="bwIn" placeholder="https://meechiebot-brain.yourname.workers.dev" autocapitalize="none" spellcheck="false" style="margin-bottom:12px">
   <div class="row" id="bwBtns" style="flex-direction:column;gap:8px"></div>
 </div></div>
+<div class="modal" id="fitModal"><div class="mbox">
+  <h3>👕 Meechie's outfit</h3><p style="font-size:13px;color:var(--mute)">Same face, same voice. Only the fit changes. You can also just say it: "Meechie, put on a red suit."</p>
+  <div class="row"><div><label>Top</label><select id="fTop"><option value="tee">T-shirt</option><option value="hoodie">Hoodie</option><option value="jacket">Jacket</option><option value="suit">Suit</option></select></div><div><label>Color</label><select id="fColor"></select></div></div>
+  <div class="row"><div><label>Jacket color</label><select id="fJacket"></select></div><div><label>Hat</label><select id="fHat"><option value="none">No hat</option><option value="cap">Cap</option><option value="beanie">Beanie</option><option value="fedora">Fedora</option></select></div></div>
+  <div class="row"><div><label>Hat color</label><select id="fHatColor"></select></div><div><label>&nbsp;</label><label class="chk" style="margin:0"><input type="checkbox" id="viewerFits"> Viewers can type !fit</label></div></div>
+  <div class="row" style="flex-direction:column;gap:8px;margin-top:12px"><button class="b" id="fSave" style="width:100%">Put it on</button><button class="g" id="fReset" style="width:100%">Back to default</button><button class="g" id="fClose" style="width:100%">Close</button></div>
+</div></div>
 <div class="modal" id="unlock"><div class="mbox">
   <img src="/livebot/icon.svg" alt="" style="width:64px">
   <h3 id="ulTitle">Unlock MeechieBot Studio</h3>
@@ -313,6 +326,7 @@ body:not(.adv) .advonly{display:none!important}
 </div></div>
 <div class="tip" id="tip"><b class="t" id="tipStep"></b><p id="tipText"></p><div class="row"><button class="b" id="tipNext">Next</button><button class="g" id="tipSkip">Skip</button></div></div>
 
+<script src="/livebot/avatar.js?v=1"></script>
 <script src="/js/config.js?v=1795867107"></script>
 <script src="/js/cf-client.js?v=1795867107"></script>
 <script src="/js/platform.js?v=1795867107"></script>
@@ -327,9 +341,9 @@ const DEFAULTS = {
   hostName:"", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
   thankGifts:true, thankFollows:true, thankShares:true, likeGoals:true, likeStep:1000,
   quietStarter:true, quietSecs:90, autoCopy:false, ignorePrefix:"!streamer", blocked:"",
-  castMode:"single", activeChar:0, adv:false, realVoice:false, brainUrl:"", musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
+  castMode:"single", activeChar:0, adv:false, realVoice:false, brainUrl:"", style:"cartoon", outfit:null, viewerFits:false, musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
   cast:[
-    {name:"Meechie", gender:"m", persona:"You are Meechie, Meechie's own AI, the face of Meechie's World Inc. Young Black man with a goatee, braids, glasses and a gold chain. Talk like a real person: fast, energetic, young, hood, rapper energy. Barbershop talk and DJ energy. You know a lot about everything, you crack jokes, you keep it real and keep it moving. Everything is live and off the top, never canned or scripted.", portrait:"/img/meechie-ai.jpg", voiceEngine:"browser", voiceName:"", rate:1.12, pitch:0.95, cfSpeaker:"arcas"},
+    {name:"Meechie", gender:"m", avatar:"meechie", persona:"You are Meechie, Meechie's own AI and the face of Meechie's World Inc: a young Black man with a goatee, plain braids, glasses and a gold chain. Talk like a real person: fast, energetic, young, hood, rapper energy. Barbershop talk and DJ energy. You know everything, you look things up, you crack jokes, you keep it real and keep it moving. Nothing canned, nothing pre-written: everything live and off the top. Your outfit can change when people ask, but your face, voice and personality never do.", portrait:"/img/meechie-ai.jpg", voiceEngine:"browser", voiceName:"", rate:1.12, pitch:0.95, cfSpeaker:"arcas"},
     {name:"Oracle", gender:"m", persona:"Calm, mysterious all-seeing narrator of Meechie's World. Speaks in short, wise, slightly dramatic lines with a touch of humor. Knows history, pyramids and secret societies.", portrait:"", voiceEngine:"browser", voiceName:"", rate:0.95, pitch:0.7, cfSpeaker:"zeus"},
     {name:"Lady Gold", gender:"f", persona:"Glamorous, sassy and sweet hostess with queen energy. Hypes viewers up, gives playful compliments, loves fashion, hair and nails, and keeps the vibe classy and fun.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.02, pitch:1.1, cfSpeaker:"athena"},
     {name:"Lil Bot", gender:"m", persona:"A goofy, excitable little robot sidekick. Tells quick clean jokes, makes beep-boop sounds in words, is amazed by everything viewers say, and keeps it family friendly.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1.15, pitch:1.6, cfSpeaker:"arcas"}
@@ -346,6 +360,7 @@ function loadSettings(){
   S = Object.assign(structuredClone(DEFAULTS), saved);
   if (!Array.isArray(S.cast) || !S.cast.length) S.cast = structuredClone(DEFAULTS.cast);
   if (S.cast[0] && S.cast[0].name === "Meech" && /hype-man energy/.test(S.cast[0].persona || "")) S.cast[0] = structuredClone(DEFAULTS.cast[0]); // old preset → Meechie AI
+  S.cast.forEach(c => { if (c && c.name === "Meechie" && /meechie-ai/.test(c.portrait || "") && !c.avatar) c.avatar = "meechie"; });
 }
 function save(){ if (OVERLAY) return; try { localStorage.setItem("mwbot", JSON.stringify(S)); } catch(e) { toast("Storage full — use a smaller portrait image"); } }
 loadSettings();
@@ -427,7 +442,12 @@ function renderCast(){
 }
 $("btnAddChar").onclick = () => { S.cast.push({name:"New Character", persona:"", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:1, cfSpeaker:"luna"}); save(); renderCast(); };
 const activeChar = () => S.cast[S.activeChar] || S.cast[0];
-function setStage(c, text){ if (!isPro() && !OVERLAY) c = S.cast[0]; $("stageName").textContent = c.name; $("portrait").src = c.portrait || DEF_PORTRAIT; if (text !== undefined) $("bubble").textContent = text; }
+function setStage(c, text){ if (!isPro() && !OVERLAY) c = S.cast[0]; $("stageName").textContent = c.name; $("portrait").src = c.portrait || DEF_PORTRAIT; if (text !== undefined) $("bubble").textContent = text;
+  const cartoon = c.avatar === "meechie" && S.style !== "real" && window.MeechieAvatar;
+  $("avatar").style.display = cartoon ? "" : "none"; $("portrait").style.display = cartoon ? "none" : "";
+  window.MB_PHOTO = c.avatar === "meechie" && !cartoon ? $("portrait") : null;
+  const sb = document.querySelector(".stagebtns"); if (sb) sb.style.display = c.avatar === "meechie" ? "" : "none";
+  if ($("btnStyle")) $("btnStyle").textContent = S.style === "real" ? "📷 Real" : "🎨 Cartoon"; }
 
 /* ============ API ============ */
 async function api(path, body, raw){
@@ -443,9 +463,10 @@ async function api(path, body, raw){
 }
 
 /* ============ voice ============ */
-let audioUnlocked = false;
+let audioUnlocked = false, AC = null;
 function unlockAudio(){
   if (audioUnlocked) return; audioUnlocked = true;
+  try { AC = new (window.AudioContext || window.webkitAudioContext)(); AC.resume && AC.resume(); } catch(e) { AC = null; }
   try { const a = new Audio(); a.muted = true; a.play().catch(()=>{}); } catch(e){}
   try { if (window.speechSynthesis) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch(e){}
 }
@@ -455,6 +476,7 @@ async function speak(text, c){
   if (!text) return;
   $("stage").classList.add("speaking");
   Music.duck(true);
+  if (window.MeechieAvatar) { MeechieAvatar.feel(text); MeechieAvatar.talk(true); }
   try {
     const useCF = isPro() && (c.voiceEngine === "cloudflare" || S.realVoice) || OVERLAY;
     if (useCF) {
@@ -462,7 +484,7 @@ async function speak(text, c){
     }
     await speakBrowser(text, c);
   } catch(e) { logNote("Voice error: "+e.message); }
-  finally { $("stage").classList.remove("speaking"); Music.duck(false); }
+  finally { $("stage").classList.remove("speaking"); Music.duck(false); if (window.MeechieAvatar) MeechieAvatar.talk(false); }
 }
 async function speakCF(text, c){
   const r = await api("/api/livebot/speak", { text, speaker: c.cfSpeaker || "orion" }, true);
@@ -470,6 +492,7 @@ async function speakCF(text, c){
   const url = URL.createObjectURL(blob);
   await new Promise((res, rej) => {
     const a = new Audio(url); currentAudio = a;
+    try { if (AC && AC.state === "running" && window.MeechieAvatar) { const src = AC.createMediaElementSource(a), an = AC.createAnalyser(); an.fftSize = 512; src.connect(an); an.connect(AC.destination); MeechieAvatar.useAnalyser(an); } } catch(e) {}
     a.onended = res; a.onerror = () => rej(new Error("audio play error"));
     a.play().catch(rej);
     setTimeout(res, 60000);
@@ -490,7 +513,7 @@ function speakBrowser(text, c){
     const v = voices.find(v => v.name === c.voiceName) || autoVoice(c); if (v) u.voice = v;
     u.rate = c.rate || 1; u.pitch = c.pitch || 1;
     let done = false; const fin = () => { if (!done) { done = true; clearInterval(keep); res(); } };
-    u.onend = fin; u.onerror = fin;
+    u.onend = fin; u.onerror = fin; u.onboundary = () => { if (window.MeechieAvatar) MeechieAvatar.pulse(); };
     speechSynthesis.cancel(); speechSynthesis.speak(u);
     // Chrome bug: long utterances stop after ~15s unless nudged
     const keep = setInterval(() => { if (!speechSynthesis.speaking) return fin(); speechSynthesis.pause(); speechSynthesis.resume(); }, 10000);
@@ -578,7 +601,15 @@ async function pump(){
     if (wait > 0) await new Promise(r => setTimeout(r, wait));
     const c = pickChar(ev);
     setStage(c);
-    const message = buildMessage(ev);
+    let extra = "";
+    // outfit changes: the host any time, viewers with "!fit ..." when allowed (Pro)
+    const fitAsk = (ev.kind === "host" || (ev.kind === "comment" && /^\s*!fit\b/i.test(ev.text || "") && S.viewerFits)) && c.avatar === "meechie" && window.MeechieAvatar && MeechieAvatar.parseOutfit(ev.text);
+    if (fitAsk) {
+      if (!isPro()) { if (ev.kind === "host") goPro("Outfit changes"); }
+      else { S.outfit = MeechieAvatar.setOutfit(fitAsk); save(); extra += ` (You just changed your outfit to: ${MeechieAvatar.describe()}. React to the new fit in one quick line.)`; }
+    }
+    if (ev.kind === "comment" || ev.kind === "host") { const facts = await lookup(ev.text); if (facts) extra += ` (Facts you just looked up on Wikipedia, use them if helpful: ${facts})`; }
+    const message = buildMessage(ev) + extra;
     const body = {
       message, model: S.model, replyWords: S.replyWords, history: convo,
       character: { name: c.name, persona: c.persona }, cast: S.cast.map(x => x.name),
@@ -605,6 +636,22 @@ async function pump(){
 }
 $("btnSkip").onclick = () => { Q.skip = true; stopSpeaking(); };
 $("btnClearQ").onclick = () => { Q.items = []; renderStats(); toast("Queue cleared"); };
+
+/* ============ look things up (free Wikipedia summaries) ============ */
+async function lookup(text){
+  const t = String(text || "");
+  const m = t.match(/\b(?:who|what)\s*(?:is|was|are|were|'s)\s+(?:a |an |the )?([^?.!,]{2,60})/i) || t.match(/\blook\s*up\s+([^?.!,]{2,60})/i) || t.match(/\btell me about\s+([^?.!,]{2,60})/i);
+  if (!m) return "";
+  const q = m[1].trim().replace(/\s+(right now|today|bro|fam|meechie)$/i, "");
+  if (/^(you|u|your|this|that|it|up|good|going on|meechie|oracle|lady gold|lil bot)\b/i.test(q)) return "";
+  try {
+    const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 2500);
+    const r = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(q.replace(/\s+/g, "_")) + "?redirect=true", { signal: ctl.signal });
+    clearTimeout(tm); if (!r.ok) return "";
+    const j = await r.json();
+    return j.type === "standard" && j.extract ? j.extract.slice(0, 450) : "";
+  } catch(e) { return ""; }
+}
 
 /* ============ incoming events ============ */
 function isBlocked(text){
@@ -1154,6 +1201,20 @@ $("tipNext").onclick = () => { unlockAudio(); tourSteps ? nextTour() : hideTip()
 $("tipSkip").onclick = () => { tourSteps = null; hideTip(); try { localStorage.setItem("mwbot_tour", "1"); } catch(e){} };
 $("btnHelp").onclick = () => { setAdv(false); startTour(); };
 function firstConnectTip(){ if (localStorage.getItem("mwbot_tip_live")) return; try { localStorage.setItem("mwbot_tip_live","1"); } catch(e){} coach("#stage", "You're connected! 🎉 Keep this screen open and your volume up. Phones pause apps that go to the background." + (isPro() ? "" : " Want gift thank-yous, like goals, the whole cast and music? Tap any 🔒 to go Pro.")); }
+
+/* ============ Meechie character: style + outfit ============ */
+if (window.MeechieAvatar) MeechieAvatar.mount($("avatar"), S.outfit);
+$("btnStyle").onclick = () => { S.style = S.style === "real" ? "cartoon" : "real"; save(); setStage(activeChar()); toast(S.style === "real" ? "Real-person look" : "Cartoon look"); };
+function fillSel(id, val){ const el = $(id); el.innerHTML = MeechieAvatar.COLORS.map(k => `<option ${k === val ? "selected" : ""}>${k}</option>`).join(""); }
+$("btnFit").onclick = () => {
+  if (!proOnly("Outfit changes")) return;
+  const o = MeechieAvatar.getOutfit();
+  $("fTop").value = o.top; fillSel("fColor", o.color); fillSel("fJacket", o.jacketColor); $("fHat").value = o.hat; fillSel("fHatColor", o.hatColor); $("viewerFits").checked = !!S.viewerFits;
+  $("fitModal").style.display = "flex";
+};
+$("fSave").onclick = () => { S.outfit = MeechieAvatar.setOutfit({ top:$("fTop").value, color:$("fColor").value, jacketColor:$("fJacket").value, hat:$("fHat").value, hatColor:$("fHatColor").value }); S.viewerFits = $("viewerFits").checked; save(); $("fitModal").style.display = "none"; if (S.style === "real") { S.style = "cartoon"; setStage(activeChar()); } toast("Fit changed 🔥"); };
+$("fReset").onclick = () => { S.outfit = MeechieAvatar.reset(); save(); $("fitModal").style.display = "none"; };
+$("fClose").onclick = () => { $("fitModal").style.display = "none"; };
 
 /* ============ boot ============ */
 renderMusicSource(); loadVoices(); renderCast(); setAdv(S.adv); renderChips(); setStage(activeChar()); setStatus(); renderStats(); Music.setVol();
