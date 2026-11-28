@@ -1,0 +1,18 @@
+{
+ "name": "MeechieBot Studio",
+ "short_name": "MeechieBot",
+ "description": "Meechie's World Inc \u2014 AI talking co-host for TikTok LIVE",
+ "start_url": "/livebot/",
+ "scope": "/livebot/",
+ "display": "standalone",
+ "background_color": "#0a0a0a",
+ "theme_color": "#0a0a0a",
+ "icons": [
+  {
+   "src": "/livebot/icon.svg",
+   "sizes": "any",
+   "type": "image/svg+xml",
+   "purpose": "any maskable"
+  }
+ ]
+}

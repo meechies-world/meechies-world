@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<link rel="manifest" href="/livebot/manifest.webmanifest">
+<link rel="icon" href="/livebot/icon.svg">
+<link rel="apple-touch-icon" href="/livebot/icon.svg">
+<title>MeechieBot Studio — Meechie's World Inc</title>
+<meta name="robots" content="noindex">
+<style>
+:root{--ink:#0a0a0a;--panel:#14110c;--panel2:#1b1710;--line:rgba(212,175,55,.28);--gold:#D4AF37;--gold2:#F5D77A;--gold3:#9c7a1c;--text:#f3ecd9;--mute:#a89f8a;--red:#e5484d;--green:#3fb950}
+*{box-sizing:border-box}html,body{margin:0;background:var(--ink);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding-bottom:env(safe-area-inset-bottom)}
+a{color:var(--gold2)}
+header{position:sticky;top:0;z-index:20;background:#0a0a0a;border-bottom:1px solid var(--line);padding:10px 14px calc(8px) 14px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{width:40px;height:40px}
+.brand h1{margin:0;font:800 17px/1.1 Georgia,"Times New Roman",serif;letter-spacing:.06em;color:var(--gold2)}
+.brand small{display:block;font:600 10px/1.3 system-ui;letter-spacing:.22em;color:var(--mute);text-transform:uppercase}
+.pill{margin-left:auto;font-size:12px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);color:var(--mute);white-space:nowrap}
+.pill.on{color:#0a0a0a;background:var(--green);border-color:var(--green)}
+.pill.paused{color:#0a0a0a;background:var(--gold);border-color:var(--gold)}
+nav{display:flex;gap:4px;margin-top:10px;overflow-x:auto}
+nav button{flex:1;min-width:max-content;background:none;border:1px solid transparent;color:var(--mute);padding:8px 10px;border-radius:10px;font-weight:600;font-size:13px}
+nav button.act{color:var(--ink);background:linear-gradient(var(--gold2),var(--gold));}
+main{max-width:980px;margin:0 auto;padding:14px}
+section.tab{display:none}section.tab.act{display:block}
+.grid{display:grid;gap:14px}
+@media(min-width:860px){.grid.two{grid-template-columns:1.05fr 1fr}}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:16px;padding:14px}
+.card h2{margin:0 0 10px;font:700 13px/1 system-ui;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.card h3{margin:14px 0 6px;font-size:14px;color:var(--gold2)}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;background:#0d0b08;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit}
+textarea{min-height:80px;resize:vertical}
+input[type=checkbox]{width:auto;accent-color:var(--gold)}
+input[type=range]{accent-color:var(--gold);padding:0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--text);margin:8px 0}
+button.b{background:linear-gradient(var(--gold2),var(--gold));color:#0a0a0a;border:0;border-radius:12px;padding:11px 14px;font-weight:800;font-size:14px;cursor:pointer}
+button.g{background:#0d0b08;color:var(--gold2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:700;font-size:14px;cursor:pointer}
+button.r{background:var(--red);color:#fff;border:0;border-radius:12px;padding:11px 14px;font-weight:800}
+button:disabled{opacity:.45}
+.stage{position:relative;border-radius:16px;overflow:hidden;background:radial-gradient(circle at 50% 30%,#2a2210,#0a0a0a 70%);border:1px solid var(--line);min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:16px}
+.stage .who{position:absolute;top:12px;left:12px;font:700 11px system-ui;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+.stage .live{position:absolute;top:10px;right:12px;background:var(--red);color:#fff;font:800 11px system-ui;padding:4px 8px;border-radius:6px;display:none}
+.portrait{width:190px;height:190px;object-fit:contain;filter:drop-shadow(0 10px 30px rgba(212,175,55,.25));transition:transform .15s}
+.speaking .portrait{animation:bob .5s ease-in-out infinite alternate}
+@keyframes bob{to{transform:translateY(-6px) scale(1.03)}}
+.bubble{margin-top:12px;max-width:95%;background:#fff8e6;color:#1a1408;border-radius:16px;padding:10px 14px;font-weight:650;font-size:16px;min-height:22px;box-shadow:0 0 0 2px var(--gold)}
+.bubble:empty{display:none}
+.feed{max-height:430px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.ev{padding:8px 10px;border-radius:10px;background:#0d0b08;border:1px solid #2a2416;font-size:14px}
+.ev b{color:var(--gold2)}.ev .k{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.12em}
+.ev.bot{border-color:var(--gold3);background:#1d170b}
+.ev.dim{opacity:.45}
+.ev .acts{margin-top:6px;display:flex;gap:6px}
+.ev .acts button{font-size:12px;padding:5px 9px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.stat{background:#0d0b08;border:1px solid var(--line);border-radius:12px;padding:8px;text-align:center}
+.stat b{display:block;font-size:18px;color:var(--gold2)}.stat span{font-size:11px;color:var(--mute)}
+.bar{height:10px;border-radius:9px;background:#2a2416;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold3),var(--gold2));width:0%}
+.castlist{display:flex;flex-direction:column;gap:10px}
+.char{border:1px solid var(--line);border-radius:14px;padding:12px;background:#0d0b08}
+.char.active{box-shadow:0 0 0 2px var(--gold)}
+.char .top{display:flex;gap:10px;align-items:center}
+.char img{width:56px;height:56px;object-fit:contain;border-radius:12px;background:#1b1710}
+.tracks{max-height:300px;overflow:auto;margin-top:8px}
+.tr{display:flex;gap:8px;align-items:center;padding:7px 8px;border-bottom:1px solid #241f14;font-size:14px}
+.tr.now{color:var(--gold2);font-weight:700}
+.tr button{flex:0 0 auto;padding:4px 9px;font-size:12px}
+.note{font-size:12px;color:var(--mute);margin-top:8px}
+.ok{color:var(--green)}.bad{color:var(--red)}
+.steps li{margin:8px 0}
+.steps li.done{color:var(--green)}
+kbd{background:#2a2416;border-radius:5px;padding:1px 6px;font-size:12px}
+.ptt{width:100%;padding:16px;font-size:16px;user-select:none;-webkit-user-select:none;touch-action:none}
+.ptt.rec{background:var(--red);color:#fff}
+footer{text-align:center;color:var(--mute);font-size:11px;letter-spacing:.2em;padding:20px 0 30px;text-transform:uppercase}
+/* overlay mode for OBS */
+body.overlay{background:transparent}
+body.overlay header,body.overlay nav,body.overlay footer,body.overlay .noov{display:none!important}
+body.overlay main{padding:0;max-width:none}
+body.overlay .stage{background:transparent;border:0;min-height:100vh}
+body.overlay .portrait{width:min(60vw,420px);height:min(60vw,420px)}
+body.overlay .bubble{font-size:26px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--gold);color:#0a0a0a;padding:10px 16px;border-radius:12px;font-weight:700;z-index:99;display:none;max-width:90%}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="/livebot/icon.svg" alt="">
+    <div><h1>MEECHIEBOT STUDIO</h1><small>Meechie's World Inc • Conscientia</small></div>
+    <span id="statusPill" class="pill">Offline</span>
+  </div>
+  <nav id="nav">
+    <button data-t="live" class="act">Live</button>
+    <button data-t="cast">Cast</button>
+    <button data-t="music">Music</button>
+    <button data-t="settings">Settings</button>
+    <button data-t="setup">Setup</button>
+  </nav>
+</header>
+
+<main>
+<!-- LIVE -->
+<section class="tab act" id="t-live">
+ <div class="grid two">
+  <div>
+   <div class="stage" id="stage">
+     <span class="who" id="stageName">Meech</span>
+     <span class="live" id="stageLive">● LIVE</span>
+     <img class="portrait" id="portrait" src="/livebot/icon.svg" alt="">
+     <div class="bubble" id="bubble"></div>
+   </div>
+   <div class="card noov" style="margin-top:14px">
+    <h2>Go Live</h2>
+    <div class="row">
+      <button class="b" id="btnConnect">Connect LIVE</button>
+      <button class="g" id="btnPause">Pause (F8)</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="stComments">0</b><span>comments</span></div>
+      <div class="stat"><b id="stReplies">0</b><span>replies</span></div>
+      <div class="stat"><b id="stGifts">0</b><span>gifts</span></div>
+      <div class="stat"><b id="stLikes">0</b><span>likes</span></div>
+    </div>
+    <label>Like goal — <span id="likeGoalTxt">0 / 1,000</span></label>
+    <div class="bar"><i id="likeBar"></i></div>
+    <h3>Talk to your character (push-to-talk)</h3>
+    <button class="g ptt" id="btnPTT">Hold to talk</button>
+    <div class="note">Or hold <kbd>Space</kbd> on a computer. Your voice goes to the active character.</div>
+    <h3>Type as host or test a comment</h3>
+    <div class="row">
+      <input id="testUser" placeholder="Viewer name" value="Sky" style="flex:.6">
+      <input id="testText" placeholder="Type a comment…">
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="g" id="btnTest">Send as viewer</button>
+      <button class="g" id="btnHostSay">Send as host</button>
+    </div>
+   </div>
+  </div>
+  <div class="card noov">
+   <h2>Live Feed</h2>
+   <div class="feed" id="feed"><div class="note">Comments, gifts, follows, shares and your bot's replies show here. Tap <b>Copy</b> on a reply to paste it into your TikTok comments.</div></div>
+   <div class="row" style="margin-top:10px">
+     <button class="g" id="btnSkip">Skip current</button>
+     <button class="g" id="btnClearQ">Clear queue</button>
+   </div>
+   <div class="note">Queue: <span id="qLen">0</span> waiting</div>
+  </div>
+ </div>
+</section>
+
+<!-- CAST -->
+<section class="tab" id="t-cast">
+ <div class="card">
+  <h2>Your Cast</h2>
+  <div class="note">Make one host character, or a whole cast. Each one gets its own personality, portrait (GIF or still image) and voice.</div>
+  <label>Show format</label>
+  <select id="castMode">
+    <option value="single">Bot-led — active character answers everything</option>
+    <option value="addressed">Cast — whoever is named in a comment answers</option>
+    <option value="rotate">Cast — characters take turns</option>
+  </select>
+  <div class="castlist" id="castList" style="margin-top:12px"></div>
+  <button class="g" id="btnAddChar" style="margin-top:12px;width:100%">+ Add character</button>
+ </div>
+</section>
+
+<!-- MUSIC -->
+<section class="tab" id="t-music">
+ <div class="grid two">
+  <div class="card">
+   <h2>Your Bot Plays DJ</h2>
+   <label class="chk"><input type="checkbox" id="musicAuto"> Automatic song requests (starts OFF every launch)</label>
+   <div class="note">Viewers type <b>!play song name</b> or <b>!song artist</b>. Only songs in YOUR closed playlist can play. Unknown or unclear requests change nothing. The character replies first, then the track plays.</div>
+   <label>Music source</label>
+   <select id="musicSource"><option value="local">My MP3 playlist (free, no account)</option><option value="spotify">Spotify playlist (Premium needed)</option></select>
+   <div class="row" style="margin-top:12px">
+     <button class="g" id="mPrev">⏮</button><button class="b" id="mPlay">Play</button><button class="g" id="mPause">Pause</button><button class="g" id="mStop">Stop</button><button class="g" id="mNext">Next ⏭</button>
+   </div>
+   <div class="note">Manual Play, Pause, Stop and Next cancel any pending request.</div>
+   <label>Music volume</label><input type="range" id="mVol" min="0" max="100" value="60">
+   <div class="note" id="nowPlaying">Nothing playing.</div>
+  </div>
+  <div class="card">
+   <div id="localBox">
+    <h2>Offline MP3 Playlist</h2>
+    <input type="file" id="mFiles" accept="audio/*" multiple>
+    <div class="note">Pick music files from your phone or PC. Only use music you have permission to broadcast.</div>
+   </div>
+   <div id="spotBox" style="display:none">
+    <h2>Spotify</h2>
+    <label>Spotify Client ID</label><input id="spClient" placeholder="from developer.spotify.com">
+    <label>Playlist link</label><input id="spPlaylist" placeholder="https://open.spotify.com/playlist/…">
+    <div class="row" style="margin-top:8px"><button class="g" id="spLogin">Connect Spotify</button><button class="g" id="spLoad">Load playlist</button></div>
+    <div class="note" id="spStatus">Not connected. Keep the Spotify app open and playing on a device.</div>
+   </div>
+   <div class="tracks" id="trackList"></div>
+  </div>
+ </div>
+</section>
+
+<!-- SETTINGS -->
+<section class="tab" id="t-settings">
+ <div class="grid two">
+  <div class="card">
+   <h2>TikTok LIVE Connection</h2>
+   <label>TikTok username to watch (no @)</label><input id="ttUser" placeholder="meechiesworldinc">
+   <label>Euler Stream API key (free Community plan)</label><input id="eulerKey" type="password" placeholder="from eulerstream.com">
+   <div class="note">Your key stays on this device. Don't share your OBS link — it contains it.</div>
+   <h2 style="margin-top:18px">AI Brain (Cloudflare)</h2>
+   <label>Studio PIN (only if you set LIVEBOT_PIN in Cloudflare)</label><input id="pin" type="password">
+   <label>Reply brain</label>
+   <select id="model"><option value="fast">Fast — lowest free-quota use (recommended)</option><option value="smart">Smart — better answers, uses free quota faster</option></select>
+   <label>Max reply length (words)</label><input id="replyWords" type="number" min="10" max="90" value="35">
+   <label>Cooldown between replies (seconds)</label><input id="cooldown" type="number" min="0" max="60" value="2">
+   <label>Max comments waiting in line</label><input id="maxQueue" type="number" min="1" max="30" value="6">
+   <button class="g" id="btnHealth" style="margin-top:10px">Test connection</button> <span id="healthTxt" class="note"></span>
+  </div>
+  <div class="card">
+   <h2>Show &amp; Business</h2>
+   <label>Host name (you)</label><input id="hostName" placeholder="Meechie">
+   <label>Brand</label><input id="brand" placeholder="Meechie's World Inc">
+   <label>Today's topic (optional)</label><input id="topic">
+   <label>Shop link</label><input id="shop" placeholder="your Shopify store link">
+   <label>Products the bot can mention</label><textarea id="products" placeholder="Books, merch, services…"></textarea>
+   <h2 style="margin-top:18px">Reactions</h2>
+   <label class="chk"><input type="checkbox" id="thankGifts" checked> Thank gifts by name</label>
+   <label class="chk"><input type="checkbox" id="thankFollows" checked> Welcome new followers</label>
+   <label class="chk"><input type="checkbox" id="thankShares" checked> Thank shares</label>
+   <label class="chk"><input type="checkbox" id="likeGoals" checked> Like goals (bot asks chat to tap the screen &amp; celebrates goals)</label>
+   <label>Like goal step</label><input id="likeStep" type="number" min="100" step="100" value="1000">
+   <label class="chk"><input type="checkbox" id="quietStarter" checked> Conversation starter when chat is quiet</label>
+   <label>Quiet after (seconds)</label><input id="quietSecs" type="number" min="20" value="90">
+   <label class="chk"><input type="checkbox" id="autoCopy"> Auto-copy each reply (paste straight into comments)</label>
+   <label>Ignore comments starting with</label><input id="ignorePrefix" value="!streamer">
+   <label>Blocked words (comma separated)</label><input id="blocked">
+   <h2 style="margin-top:18px">OBS</h2>
+   <button class="g" id="btnObs">Copy OBS overlay link</button>
+   <div class="note">Add it in OBS as a Browser Source (1080×1920 for vertical). Run the bot in OBS <b>or</b> in this Studio, not both, or it answers twice. The overlay uses the Cloudflare voice so OBS can capture it.</div>
+  </div>
+ </div>
+</section>
+
+<!-- SETUP -->
+<section class="tab" id="t-setup">
+ <div class="card">
+  <h2>Setup Companion</h2>
+  <ol class="steps" id="steps">
+   <li id="s1">App is live on meechiesworldinc.com ✓</li>
+   <li id="s2">AI binding connected — <a href="#" id="chk2">check</a></li>
+   <li id="s3">TikTok username + Euler key saved (Settings)</li>
+   <li id="s4">At least one character in your Cast</li>
+   <li id="s5">Voice test — <a href="#" id="chk5">play test line</a></li>
+   <li id="s6">Go LIVE on TikTok, then press <b>Connect LIVE</b></li>
+  </ol>
+  <h3>Stuck? Ask your AI assistant</h3>
+  <div class="note">Copy this prompt and paste it into Claude (or any assistant). It walks you through setup one step at a time. You still handle sign-ins, permissions and pressing Go Live.</div>
+  <button class="b" id="btnAiPrompt" style="margin-top:8px">Copy AI setup prompt</button>
+  <h3>Install on your phone</h3>
+  <div class="note">Android Chrome: menu ⋮ → <b>Add to Home screen</b>. iPhone Safari: Share → <b>Add to Home Screen</b>. Keep the app open while live — phones pause web apps in the background.</div>
+  <h3>Backup</h3>
+  <div class="row"><button class="g" id="btnExport">Export settings</button><button class="g" id="btnImport">Import settings</button></div>
+ </div>
+</section>
+</main>
+<footer>Meechie's World Inc • MeechieBot Studio</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============ storage & settings ============ */
+const $ = (id) => document.getElementById(id);
+const OVERLAY = new URLSearchParams(location.search).has("overlay");
+const DEF_PORTRAIT = "/livebot/icon.svg";
+const DEFAULTS = {
+  ttUser:"", eulerKey:"", pin:"", model:"fast", replyWords:35, cooldown:2, maxQueue:6,
+  hostName:"Meechie", brand:"Meechie's World Inc", topic:"", shop:"", products:"",
+  thankGifts:true, thankFollows:true, thankShares:true, likeGoals:true, likeStep:1000,
+  quietStarter:true, quietSecs:90, autoCopy:false, ignorePrefix:"!streamer", blocked:"",
+  castMode:"single", activeChar:0, musicSource:"local", mVol:60, spClient:"", spPlaylist:"",
+  cast:[
+    {name:"Meech", persona:"Confident, funny, hype-man energy with a smooth business mind. Talks like a real one from the culture, keeps it classy. Loves hustle, empire-building, books and big dreams. Gasses up the chat and keeps the energy high.", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:0.9, cfSpeaker:"orion"},
+    {name:"Oracle", persona:"Calm, mysterious all-seeing narrator of Meechie's World. Speaks in short, wise, slightly dramatic lines with a touch of humor. Knows history, pyramids and secret societies.", portrait:"", voiceEngine:"browser", voiceName:"", rate:0.95, pitch:0.7, cfSpeaker:"zeus"}
+  ]
+};
+let S;
+function loadSettings(){
+  let saved = {};
+  if (OVERLAY && location.hash.length > 1) {
+    try { saved = JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(1))))); } catch(e) {}
+  } else {
+    try { saved = JSON.parse(localStorage.getItem("mwbot") || "{}"); } catch(e) {}
+  }
+  S = Object.assign(structuredClone(DEFAULTS), saved);
+  if (!Array.isArray(S.cast) || !S.cast.length) S.cast = structuredClone(DEFAULTS.cast);
+}
+function save(){ if (OVERLAY) return; try { localStorage.setItem("mwbot", JSON.stringify(S)); } catch(e) { toast("Storage full — use a smaller portrait image"); } }
+loadSettings();
+
+function toast(t, ms=2200){ const el=$("toast"); el.textContent=t; el.style.display="block"; clearTimeout(toast._t); toast._t=setTimeout(()=>el.style.display="none", ms); }
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ============ tabs ============ */
+$("nav").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("act", x===b));
+  document.querySelectorAll("section.tab").forEach(s => s.classList.toggle("act", s.id === "t-"+b.dataset.t));
+  if (b.dataset.t === "setup") refreshSteps();
+});
+
+/* ============ bind simple settings fields ============ */
+const FIELDS = ["ttUser","eulerKey","pin","model","replyWords","cooldown","maxQueue","hostName","brand","topic","shop","products","thankGifts","thankFollows","thankShares","likeGoals","likeStep","quietStarter","quietSecs","autoCopy","ignorePrefix","blocked","castMode","musicSource","mVol","spClient","spPlaylist"];
+for (const f of FIELDS) {
+  const el = $(f); if (!el) continue;
+  if (el.type === "checkbox") el.checked = !!S[f]; else el.value = S[f];
+  el.addEventListener("change", () => {
+    S[f] = el.type === "checkbox" ? el.checked : (el.type === "number" || el.type === "range") ? Number(el.value) : el.value.trim();
+    save();
+    if (f === "castMode") renderCast();
+    if (f === "musicSource") renderMusicSource();
+    if (f === "mVol") Music.setVol();
+    if (f === "likeStep") { L.goal = Math.ceil((L.total+1)/S.likeStep)*S.likeStep; renderStats(); }
+  });
+}
+
+/* ============ cast ============ */
+let voices = [];
+function loadVoices(){ voices = (window.speechSynthesis && speechSynthesis.getVoices()) || []; renderCast(); }
+if (window.speechSynthesis) { speechSynthesis.onvoiceschanged = loadVoices; }
+const CF_SPEAKERS = "orion,zeus,apollo,arcas,atlas,draco,hermes,hyperion,janus,jupiter,mars,neptune,odysseus,orpheus,pluto,saturn,luna,asteria,athena,aurora,callista,cora,delia,electra,harmonia,helena,hera,iris,juno,minerva,ophelia,pandora,phoebe,thalia,theia,vesta,amalthea,andromeda,aries,cordelia".split(",");
+
+function renderCast(){
+  const box = $("castList"); if (!box) return;
+  box.innerHTML = "";
+  S.cast.forEach((c, i) => {
+    const d = document.createElement("div");
+    d.className = "char" + (i === S.activeChar ? " active" : "");
+    const vOpts = ['<option value="">Default voice</option>'].concat(voices.filter(v=>/^en/i.test(v.lang)||voices.length<15).map(v => `<option ${v.name===c.voiceName?"selected":""}>${esc(v.name)}</option>`)).join("");
+    d.innerHTML = `
+      <div class="top"><img src="${esc(c.portrait||DEF_PORTRAIT)}" alt=""><div style="flex:1"><input data-k="name" value="${esc(c.name)}" placeholder="Character name"></div></div>
+      <label>Personality &amp; style</label><textarea data-k="persona">${esc(c.persona)}</textarea>
+      <label>Portrait (GIF or still image)</label><input type="file" accept="image/*" data-k="portraitFile">
+      <label>…or image link</label><input data-k="portrait" value="${c.portrait && !c.portrait.startsWith("data:") ? esc(c.portrait) : ""}" placeholder="https://…gif">
+      <label>Voice engine</label>
+      <select data-k="voiceEngine"><option value="browser" ${c.voiceEngine==="browser"?"selected":""}>Free device voice (unlimited)</option><option value="cloudflare" ${c.voiceEngine==="cloudflare"?"selected":""}>Cloudflare realistic voice (uses free daily quota)</option></select>
+      <div ${c.voiceEngine==="cloudflare"?'style="display:none"':""}>
+        <label>Device voice</label><select data-k="voiceName">${vOpts}</select>
+        <div class="row"><div><label>Speed</label><input type="range" min="0.6" max="1.6" step="0.05" data-k="rate" value="${c.rate}"></div><div><label>Pitch</label><input type="range" min="0.3" max="1.8" step="0.05" data-k="pitch" value="${c.pitch}"></div></div>
+      </div>
+      <div ${c.voiceEngine!=="cloudflare"?'style="display:none"':""}><label>Cloudflare voice</label><select data-k="cfSpeaker">${CF_SPEAKERS.map(s=>`<option ${s===c.cfSpeaker?"selected":""}>${s}</option>`).join("")}</select></div>
+      <div class="row" style="margin-top:10px">
+        <button class="b" data-a="active">${i===S.activeChar?"★ Active host":"Make active"}</button>
+        <button class="g" data-a="test">Test voice</button>
+        ${S.cast.length>1?'<button class="g" data-a="del">Delete</button>':""}
+      </div>`;
+    d.addEventListener("change", async (e) => {
+      const k = e.target.dataset.k; if (!k) return;
+      if (k === "portraitFile") {
+        const f = e.target.files[0]; if (!f) return;
+        if (f.size > 1.5e6) { toast("Image too big — keep it under 1.5 MB"); return; }
+        c.portrait = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
+      } else if (k === "rate" || k === "pitch") c[k] = Number(e.target.value);
+      else c[k] = e.target.value;
+      save(); renderCast(); setStage(activeChar());
+    });
+    d.addEventListener("click", (e) => {
+      const a = e.target.dataset.a; if (!a) return;
+      if (a === "active") { S.activeChar = i; save(); renderCast(); setStage(c); }
+      if (a === "test") { unlockAudio(); speak(`Hey, I'm ${c.name}. Welcome to ${S.brand || "the stream"}!`, c); }
+      if (a === "del") { S.cast.splice(i,1); S.activeChar = 0; save(); renderCast(); setStage(activeChar()); }
+    });
+    box.appendChild(d);
+  });
+}
+$("btnAddChar").onclick = () => { S.cast.push({name:"New Character", persona:"", portrait:"", voiceEngine:"browser", voiceName:"", rate:1, pitch:1, cfSpeaker:"luna"}); save(); renderCast(); };
+const activeChar = () => S.cast[S.activeChar] || S.cast[0];
+function setStage(c, text){ $("stageName").textContent = c.name; $("portrait").src = c.portrait || DEF_PORTRAIT; if (text !== undefined) $("bubble").textContent = text; }
+
+/* ============ API ============ */
+async function api(path, body, raw){
+  const r = await fetch(path, { method:"POST", headers:{"content-type":"application/json","x-studio-pin":S.pin||""}, body: JSON.stringify(body) });
+  if (raw && r.ok) return r;
+  const j = await r.json().catch(()=>({error:"Bad response ("+r.status+")"}));
+  if (!r.ok) throw new Error(j.error || ("Error "+r.status));
+  return j;
+}
+
+/* ============ voice ============ */
+let audioUnlocked = false;
+function unlockAudio(){
+  if (audioUnlocked) return; audioUnlocked = true;
+  try { const a = new Audio(); a.muted = true; a.play().catch(()=>{}); } catch(e){}
+  try { if (window.speechSynthesis) { const u = new SpeechSynthesisUtterance(" "); u.volume = 0; speechSynthesis.speak(u); } } catch(e){}
+}
+let currentAudio = null;
+function stopSpeaking(){ try{ speechSynthesis.cancel(); }catch(e){} if (currentAudio){ currentAudio.pause(); currentAudio = null; } }
+async function speak(text, c){
+  if (!text) return;
+  $("stage").classList.add("speaking");
+  Music.duck(true);
+  try {
+    const useCF = c.voiceEngine === "cloudflare" || (OVERLAY);
+    if (useCF) {
+      try { await speakCF(text, c); return; } catch(e) { if (OVERLAY) throw e; logNote("Cloudflare voice failed ("+e.message+") — using device voice"); }
+    }
+    await speakBrowser(text, c);
+  } catch(e) { logNote("Voice error: "+e.message); }
+  finally { $("stage").classList.remove("speaking"); Music.duck(false); }
+}
+async function speakCF(text, c){
+  const r = await api("/api/livebot/speak", { text, speaker: c.cfSpeaker || "orion" }, true);
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  await new Promise((res, rej) => {
+    const a = new Audio(url); currentAudio = a;
+    a.onended = res; a.onerror = () => rej(new Error("audio play error"));
+    a.play().catch(rej);
+    setTimeout(res, 60000);
+  });
+  URL.revokeObjectURL(url);
+}
+function speakBrowser(text, c){
+  return new Promise((res) => {
+    if (!window.speechSynthesis) return res();
+    const u = new SpeechSynthesisUtterance(text);
+    const v = voices.find(v => v.name === c.voiceName); if (v) u.voice = v;
+    u.rate = c.rate || 1; u.pitch = c.pitch || 1;
+    let done = false; const fin = () => { if (!done) { done = true; clearInterval(keep); res(); } };
+    u.onend = fin; u.onerror = fin;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+    // Chrome bug: long utterances stop after ~15s unless nudged
+    const keep = setInterval(() => { if (!speechSynthesis.speaking) return fin(); speechSynthesis.pause(); speechSynthesis.resume(); }, 10000);
+    setTimeout(fin, Math.max(8000, text.length * 120));
+  });
+}
+
+/* ============ feed ============ */
+const counts = { comments:0, replies:0, gifts:0 };
+function addFeed(html, cls, replyText){
+  const feed = $("feed");
+  if (feed.firstElementChild && feed.firstElementChild.classList.contains("note")) feed.innerHTML = "";
+  const d = document.createElement("div"); d.className = "ev " + (cls||""); d.innerHTML = html;
+  if (replyText) {
+    const acts = document.createElement("div"); acts.className = "acts";
+    const cp = document.createElement("button"); cp.className = "g"; cp.textContent = "Copy for chat";
+    cp.onclick = () => copyText(replyText);
+    acts.appendChild(cp); d.appendChild(acts);
+  }
+  feed.prepend(d);
+  while (feed.children.length > 120) feed.lastChild.remove();
+  return d;
+}
+function logNote(t){ addFeed(`<span class="k">system</span><br>${esc(t)}`, "dim"); }
+async function copyText(t){
+  const s = t.length > 150 ? t.slice(0,147)+"…" : t; // TikTok LIVE comment limit
+  try { await navigator.clipboard.writeText(s); toast("Copied — paste it in your TikTok comments"); }
+  catch(e) { prompt("Copy this:", s); }
+}
+function renderStats(){
+  $("stComments").textContent = counts.comments; $("stReplies").textContent = counts.replies; $("stGifts").textContent = counts.gifts;
+  $("stLikes").textContent = L.total.toLocaleString();
+  const prev = L.goal - S.likeStep;
+  $("likeBar").style.width = Math.min(100, Math.max(0, (L.total - prev) / S.likeStep * 100)) + "%";
+  $("likeGoalTxt").textContent = `${L.total.toLocaleString()} / ${L.goal.toLocaleString()}`;
+  $("qLen").textContent = Q.items.length;
+}
+
+/* ============ queue & brain ============ */
+const PRI = { host:0, likegoal:1, gift:1, follow:2, share:2, comment:3, quiet:4 };
+const Q = { items:[], busy:false, skip:false, lastReplyAt:0 };
+let paused = false, rotateIdx = 0, lastActivity = Date.now();
+const convo = [];
+
+function enqueue(ev){
+  if (ev.kind !== "host" && paused) { addFeed(`<span class="k">${ev.kind} (paused)</span><br><b>${esc(ev.user)}</b> ${esc(ev.text||"")}`, "dim"); return; }
+  if (ev.kind !== "host") {
+    const max = Math.max(1, S.maxQueue|0);
+    const viewerItems = Q.items.filter(x => x.kind === "comment");
+    if (ev.kind === "comment" && viewerItems.length >= max) { Q.items.splice(Q.items.indexOf(viewerItems[0]), 1); }
+  }
+  Q.items.push(ev);
+  Q.items.sort((a,b) => (PRI[a.kind]??5) - (PRI[b.kind]??5) || a.t - b.t);
+  renderStats(); pump();
+}
+function pickChar(ev){
+  if (ev.kind === "host" || S.castMode === "single" || S.cast.length < 2) return activeChar();
+  if (S.castMode === "addressed") {
+    const t = (ev.text||"").toLowerCase();
+    const hit = S.cast.find(c => c.name && t.includes(c.name.toLowerCase()));
+    return hit || activeChar();
+  }
+  rotateIdx = (rotateIdx + 1) % S.cast.length; return S.cast[rotateIdx];
+}
+function buildMessage(ev){
+  switch (ev.kind) {
+    case "comment": return `Viewer "${ev.user}" comments: ${ev.text}` + (ev.musicNote ? ` (${ev.musicNote})` : "");
+    case "gift": return `Viewer "${ev.user}" just sent a gift: ${ev.text}. Thank them by name with big energy.`;
+    case "follow": return `Viewer "${ev.user}" just followed the stream. Welcome them warmly by name.`;
+    case "share": return `Viewer "${ev.user}" just shared the stream. Thank them by name.`;
+    case "likegoal": return `The live just hit ${ev.text} likes! Celebrate it and hype chat to keep tapping the screen to reach the next goal of ${ev.next} likes.`;
+    case "quiet": return `Chat has been quiet for a bit. Start a fun conversation: ask viewers an engaging question${S.topic ? " about "+S.topic : ""}, and remind them to tap the screen and follow.`;
+    case "host": return `The host ${S.hostName || ""} says to you directly: ${ev.text}`;
+    default: return ev.text || "";
+  }
+}
+async function pump(){
+  if (Q.busy) return;
+  const ev = Q.items.shift(); renderStats();
+  if (!ev) return;
+  Q.busy = true; Q.skip = false;
+  try {
+    const wait = (S.cooldown||0)*1000 - (Date.now() - Q.lastReplyAt);
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    const c = pickChar(ev);
+    setStage(c);
+    const message = buildMessage(ev);
+    const body = {
+      message, model: S.model, replyWords: S.replyWords, history: convo,
+      character: { name: c.name, persona: c.persona }, cast: S.cast.map(x => x.name),
+      show: { hostName: S.hostName, brand: S.brand, topic: S.topic, shop: S.shop, products: S.products }
+    };
+    let text;
+    try { text = (await api("/api/livebot/reply", body)).text; }
+    catch(e) { logNote("AI: " + e.message); return; }
+    if (!text || Q.skip) return;
+    convo.push({role:"user", content: message}, {role:"assistant", content: text});
+    while (convo.length > 10) convo.shift();
+    counts.replies++; renderStats();
+    addFeed(`<span class="k">${esc(c.name)} replies</span><br>${esc(text)}`, "bot", text);
+    if (S.autoCopy) copyText(text);
+    setStage(c, text);
+    await speak(text, c);
+    if (ev.track && S.musicAuto !== false && $("musicAuto").checked) Music.playRequest(ev.track);
+  } finally {
+    Q.lastReplyAt = Date.now(); Q.busy = false;
+    setTimeout(() => { if (!Q.busy && !Q.items.length) $("bubble").textContent = ""; }, 6000);
+    pump();
+  }
+}
+$("btnSkip").onclick = () => { Q.skip = true; stopSpeaking(); };
+$("btnClearQ").onclick = () => { Q.items = []; renderStats(); toast("Queue cleared"); };
+
+/* ============ incoming events ============ */
+function isBlocked(text){
+  const t = (text||"").toLowerCase();
+  if (S.ignorePrefix && t.trim().startsWith(S.ignorePrefix.toLowerCase())) return true;
+  return (S.blocked||"").split(",").map(w=>w.trim().toLowerCase()).filter(Boolean).some(w => t.includes(w));
+}
+function onComment(user, text){
+  counts.comments++; lastActivity = Date.now(); renderStats();
+  if (isBlocked(text)) { addFeed(`<span class="k">filtered</span><br><b>${esc(user)}</b> ${esc(text)}`, "dim"); return; }
+  addFeed(`<span class="k">comment</span><br><b>${esc(user)}</b> ${esc(text)}`);
+  const ev = { kind:"comment", user, text, t:Date.now() };
+  const m = text.match(/^\s*!(?:play|song|sr|request)\s+(.+)/i);
+  if (m) {
+    if (!$("musicAuto").checked) ev.musicNote = "song requests are turned off right now";
+    else {
+      const tr = Music.match(m[1]);
+      if (tr) { ev.track = tr; ev.musicNote = `they requested "${tr.title}", it plays right after your reply`; }
+      else ev.musicNote = `they requested "${m[1]}" but it's not in the playlist, playback stays the same`;
+    }
+  }
+  enqueue(ev);
+}
+function onGift(user, gift, count){
+  counts.gifts += count||1; lastActivity = Date.now(); renderStats();
+  addFeed(`<span class="k">gift</span><br><b>${esc(user)}</b> sent ${esc(gift)}${count>1?" x"+count:""} 🎁`);
+  if (S.thankGifts) enqueue({ kind:"gift", user, text: `${count>1?count+"x ":""}${gift}`, t:Date.now() });
+}
+function onSocial(user, type){
+  lastActivity = Date.now();
+  addFeed(`<span class="k">${type}</span><br><b>${esc(user)}</b> ${type === "follow" ? "followed" : "shared the stream"}`);
+  if (type === "follow" && S.thankFollows) enqueue({ kind:"follow", user, t:Date.now() });
+  if (type === "share" && S.thankShares) enqueue({ kind:"share", user, t:Date.now() });
+}
+const L = { total:0, goal:0 };
+L.goal = S.likeStep;
+function onLikes(total, added){
+  if (typeof total === "number" && total >= L.total) L.total = total; else L.total += (added||0);
+  if (S.likeGoals && L.total >= L.goal) {
+    const hit = L.goal;
+    while (L.goal <= L.total) L.goal += S.likeStep;
+    addFeed(`<span class="k">like goal</span><br>🎯 ${hit.toLocaleString()} likes reached!`);
+    enqueue({ kind:"likegoal", user:"chat", text: hit.toLocaleString(), next: L.goal.toLocaleString(), t:Date.now() });
+  }
+  renderStats();
+}
+// quiet-chat starter
+setInterval(() => {
+  if (!S.quietStarter || !Live.connected || paused || Q.busy || Q.items.length) return;
+  if (Date.now() - lastActivity > (S.quietSecs||90)*1000) { lastActivity = Date.now(); enqueue({ kind:"quiet", user:"", t:Date.now() }); }
+}, 5000);
+
+/* ============ TikTok LIVE via Euler Stream ============ */
+const Live = { ws:null, connected:false, want:false, retries:0, seen:new Set() };
+function pick(o, paths){ for (const p of paths) { let v = o; for (const k of p.split(".")) { v = v == null ? undefined : v[k]; } if (v !== undefined && v !== null && v !== "") return v; } }
+function userName(d){ return pick(d, ["user.nickname","user.uniqueId","user.displayId","userInfo.nickname","userInfo.uniqueId","nickname","uniqueId","common.user.nickname"]) || "someone"; }
+function handleEuler(m){
+  const type = String(m.type || m.method || m.event || m.name || "");
+  const d = m.data || m.payload || m;
+  const id = pick(d, ["common.msgId","msgId","id"]);
+  if (id) { if (Live.seen.has(id)) return; Live.seen.add(id); if (Live.seen.size > 3000) Live.seen = new Set([...Live.seen].slice(-1500)); }
+  if (/roominfo/i.test(type)) { logNote("Connected to the LIVE room ✔"); return; }
+  if (/chat|comment/i.test(type)) { const text = pick(d, ["comment","content","text"]); if (text) onComment(userName(d), String(text)); return; }
+  if (/gift/i.test(type) && !/broadcast/i.test(type)) {
+    const giftType = pick(d, ["giftDetails.giftType","gift.type","giftType"]);
+    const repeatEnd = pick(d, ["repeatEnd","repeat_end"]);
+    if (giftType === 1 && (repeatEnd === false || repeatEnd === 0)) return; // streak still going — wait for the end
+    const name = pick(d, ["giftDetails.giftName","gift.name","giftName","extendedGiftInfo.name"]) || "a gift";
+    const count = Number(pick(d, ["repeatCount","repeat_count","comboCount"])) || 1;
+    onGift(userName(d), String(name), count); return;
+  }
+  if (/like/i.test(type)) { onLikes(Number(pick(d, ["totalLikeCount","total","totalLikes"])), Number(pick(d, ["likeCount","count"])) || 0); return; }
+  if (/social|follow|share/i.test(type)) {
+    const t = String(pick(d, ["displayType","common.displayText.key","label","action"]) || type).toLowerCase();
+    const act = Number(pick(d, ["action"]));
+    if (t.includes("follow") || act === 1) onSocial(userName(d), "follow");
+    else if (t.includes("share") || act === 3) onSocial(userName(d), "share");
+    return;
+  }
+}
+function setStatus(){
+  const p = $("statusPill");
+  p.className = "pill" + (paused ? " paused" : Live.connected ? " on" : "");
+  p.textContent = paused ? "Paused" : Live.connected ? "Forwarding ON" : (Live.want ? "Connecting…" : "Offline");
+  $("btnConnect").textContent = Live.want ? "Disconnect" : "Connect LIVE";
+  $("stageLive").style.display = Live.connected ? "block" : "none";
+  $("btnPause").textContent = paused ? "Resume (F8)" : "Pause (F8)";
+}
+function connectLive(){
+  if (!S.ttUser || !S.eulerKey) { toast("Add your TikTok username and Euler key in Settings"); return; }
+  Live.want = true; setStatus();
+  const url = `wss://ws.eulerstream.com?uniqueId=${encodeURIComponent(S.ttUser.replace(/^@/,""))}&apiKey=${encodeURIComponent(S.eulerKey)}`;
+  let ws;
+  try { ws = new WebSocket(url); } catch(e) { logNote("Connection error: "+e.message); return; }
+  Live.ws = ws;
+  ws.onopen = () => { Live.connected = true; Live.retries = 0; lastActivity = Date.now(); setStatus(); keepAwake(); };
+  ws.onmessage = (e) => {
+    let data; try { data = JSON.parse(e.data); } catch(_) { return; }
+    const list = Array.isArray(data) ? data : (data.messages || [data]);
+    for (const m of list) try { handleEuler(m); } catch(err) { console.warn(err); }
+  };
+  ws.onclose = (e) => {
+    Live.connected = false; setStatus();
+    if (!Live.want) return;
+    if (e.code === 1000 || e.code === 4404 || /offline|not live|ended/i.test(e.reason||"")) { logNote(`Stream closed: ${e.reason || "the LIVE ended or isn't live yet"}`); Live.want = false; setStatus(); return; }
+    if (Live.retries++ < 6) { logNote(`Connection dropped (${e.code}${e.reason?": "+e.reason:""}). Reconnecting…`); setTimeout(() => Live.want && connectLive(), 3000 * Live.retries); }
+    else { logNote("Couldn't stay connected. Check you're LIVE and your Euler key."); Live.want = false; setStatus(); }
+  };
+}
+function disconnectLive(){ Live.want = false; try { Live.ws && Live.ws.close(); } catch(e){} Live.connected = false; setStatus(); }
+$("btnConnect").onclick = () => { unlockAudio(); Live.want ? disconnectLive() : connectLive(); };
+function togglePause(){ paused = !paused; if (paused) { Q.items = Q.items.filter(x => x.kind === "host"); } setStatus(); renderStats(); toast(paused ? "Forwarding paused" : "Forwarding resumed"); }
+$("btnPause").onclick = togglePause;
+
+let wakeLock = null;
+async function keepAwake(){ try { if ("wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch(e){} }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && Live.connected) keepAwake(); });
+
+/* ============ test / host input ============ */
+$("btnTest").onclick = () => { unlockAudio(); const t = $("testText").value.trim(); if (!t) return; onComment($("testUser").value.trim() || "Viewer", t); $("testText").value = ""; };
+$("btnHostSay").onclick = () => { unlockAudio(); const t = $("testText").value.trim(); if (!t) return; addFeed(`<span class="k">host</span><br><b>${esc(S.hostName||"Host")}</b> ${esc(t)}`); enqueue({kind:"host", user:S.hostName, text:t, t:Date.now()}); $("testText").value = ""; };
+$("testText").addEventListener("keydown", e => { if (e.key === "Enter") $("btnTest").click(); });
+
+/* ============ push-to-talk ============ */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recText = "", recOn = false;
+function pttStart(){
+  if (!SR) { toast("Voice typing isn't supported in this browser — use Chrome or Safari"); return; }
+  if (recOn) return; unlockAudio(); stopSpeaking();
+  rec = new SR(); rec.lang = "en-US"; rec.interimResults = true; rec.continuous = true; recText = "";
+  rec.onresult = (e) => { recText = Array.from(e.results).map(r => r[0].transcript).join(" "); $("btnPTT").textContent = "🎙 " + recText.slice(-60); };
+  rec.onerror = (e) => { if (e.error !== "aborted" && e.error !== "no-speech") toast("Mic: " + e.error); };
+  rec.onend = () => {
+    recOn = false; $("btnPTT").classList.remove("rec"); $("btnPTT").textContent = "Hold to talk";
+    const t = recText.trim(); if (t) { addFeed(`<span class="k">host (voice)</span><br><b>${esc(S.hostName||"Host")}</b> ${esc(t)}`); enqueue({kind:"host", user:S.hostName, text:t, t:Date.now()}); }
+  };
+  rec.start(); recOn = true; $("btnPTT").classList.add("rec"); $("btnPTT").textContent = "🎙 Listening… release to send";
+}
+function pttStop(){ if (rec && recOn) rec.stop(); }
+const ptt = $("btnPTT");
+ptt.addEventListener("pointerdown", e => { e.preventDefault(); pttStart(); });
+ptt.addEventListener("pointerup", pttStop); ptt.addEventListener("pointerleave", pttStop); ptt.addEventListener("pointercancel", pttStop);
+document.addEventListener("keydown", e => {
+  if (e.key === "F8") { e.preventDefault(); togglePause(); }
+  if (e.code === "Space" && !e.repeat && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); pttStart(); }
+});
+document.addEventListener("keyup", e => { if (e.code === "Space" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) pttStop(); });
+
+/* ============ music ============ */
+const norm = (s) => String(s||"").toLowerCase().normalize("NFKD").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+const Music = {
+  tracks:[], idx:-1, audio:new Audio(), ducked:false, pending:null,
+  setVol(){ this.audio.volume = (S.mVol/100) * (this.ducked ? 0.25 : 1); },
+  duck(on){ this.ducked = on; this.setVol(); },
+  match(q){
+    const nq = norm(q); if (!nq) return null;
+    const words = nq.split(" ").filter(w => w.length > 1);
+    let best = null, bestScore = 0;
+    for (const t of this.tracks) {
+      const hay = norm(t.title + " " + (t.artist||""));
+      if (hay === nq || hay.includes(nq)) return t;
+      const score = words.filter(w => hay.includes(w)).length / words.length;
+      if (score > bestScore) { bestScore = score; best = t; }
+    }
+    return bestScore >= 0.6 ? best : null; // ambiguous → no change
+  },
+  async playIndex(i){
+    if (!this.tracks.length) return toast("Add songs in the Music tab first");
+    this.idx = (i + this.tracks.length) % this.tracks.length;
+    const t = this.tracks[this.idx];
+    if (S.musicSource === "spotify") { await Spotify.play(t.uri); }
+    else { this.audio.src = t.url; this.setVol(); this.audio.play().catch(e => toast("Tap Play once to allow audio")); }
+    $("nowPlaying").textContent = "Now playing: " + t.title + (t.artist ? " — " + t.artist : "");
+    renderTracks();
+  },
+  playRequest(t){ const i = this.tracks.indexOf(t); if (i >= 0) { this.playIndex(i); logNote(`▶ Playing request: ${t.title}`); } },
+  async pause(){ if (S.musicSource === "spotify") await Spotify.cmd("pause"); else this.audio.pause(); },
+  async stop(){ if (S.musicSource === "spotify") await Spotify.cmd("pause"); else { this.audio.pause(); this.audio.currentTime = 0; } $("nowPlaying").textContent = "Stopped."; },
+  cancelPending(){ Q.items.forEach(x => { delete x.track; }); }
+};
+Music.audio.addEventListener("ended", () => Music.playIndex(Music.idx + 1));
+$("mPlay").onclick = () => { unlockAudio(); Music.cancelPending(); if (S.musicSource==="local" && Music.audio.src && Music.audio.paused && Music.idx>=0) Music.audio.play(); else if (S.musicSource==="spotify" && Music.idx>=0) Spotify.cmd("play"); else Music.playIndex(Math.max(0, Music.idx)); };
+$("mPause").onclick = () => { Music.cancelPending(); Music.pause(); };
+$("mStop").onclick = () => { Music.cancelPending(); Music.stop(); };
+$("mNext").onclick = () => { Music.cancelPending(); Music.playIndex(Music.idx + 1); };
+$("mPrev").onclick = () => { Music.cancelPending(); Music.playIndex(Music.idx - 1); };
+$("musicAuto").checked = false; // requests start off every launch
+$("mFiles").onchange = (e) => {
+  for (const f of e.target.files) {
+    const base = f.name.replace(/\.[^.]+$/, "");
+    const parts = base.split(/\s+-\s+/);
+    Music.tracks.push({ title: parts.length > 1 ? parts.slice(1).join(" - ") : base, artist: parts.length > 1 ? parts[0] : "", url: URL.createObjectURL(f) });
+  }
+  renderTracks(); toast(`${Music.tracks.length} songs loaded`);
+};
+function renderTracks(){
+  const box = $("trackList"); box.innerHTML = "";
+  Music.tracks.forEach((t, i) => {
+    const d = document.createElement("div"); d.className = "tr" + (i === Music.idx ? " now" : "");
+    d.innerHTML = `<span style="flex:1">${esc(t.title)}${t.artist ? " <span class='note'>— "+esc(t.artist)+"</span>" : ""}</span>`;
+    const b = document.createElement("button"); b.className = "g"; b.textContent = "▶"; b.onclick = () => { unlockAudio(); Music.cancelPending(); Music.playIndex(i); };
+    d.appendChild(b); box.appendChild(d);
+  });
+  if (!Music.tracks.length) box.innerHTML = '<div class="note">No songs loaded yet.</div>';
+}
+function renderMusicSource(){
+  const sp = S.musicSource === "spotify";
+  $("localBox").style.display = sp ? "none" : ""; $("spotBox").style.display = sp ? "" : "none";
+  Music.audio.pause(); Music.tracks = []; Music.idx = -1; renderTracks();
+  if (sp && Spotify.token()) Spotify.load();
+}
+
+/* ============ Spotify (PKCE, no server secret) ============ */
+const Spotify = {
+  redirect: location.origin + "/livebot/",
+  token(){ const t = JSON.parse(localStorage.getItem("mwbot_sp") || "null"); return t; },
+  async login(){
+    if (!S.spClient) return toast("Paste your Spotify Client ID first");
+    const v = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(48)))).replace(/[^a-zA-Z0-9]/g,"").slice(0,64);
+    const dig = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v));
+    const ch = btoa(String.fromCharCode(...new Uint8Array(dig))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+    localStorage.setItem("mwbot_spv", v);
+    const q = new URLSearchParams({ response_type:"code", client_id:S.spClient, redirect_uri:this.redirect, code_challenge_method:"S256", code_challenge:ch,
+      scope:"user-modify-playback-state user-read-playback-state playlist-read-private playlist-read-collaborative" });
+    location.href = "https://accounts.spotify.com/authorize?" + q;
+  },
+  async exchange(code){
+    const body = new URLSearchParams({ grant_type:"authorization_code", code, redirect_uri:this.redirect, client_id:S.spClient, code_verifier: localStorage.getItem("mwbot_spv")||"" });
+    const r = await fetch("https://accounts.spotify.com/api/token", { method:"POST", headers:{"content-type":"application/x-www-form-urlencoded"}, body });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error_description || j.error);
+    this.store(j); history.replaceState(null, "", "/livebot/"); toast("Spotify connected");
+  },
+  store(j){ const old = this.token() || {}; localStorage.setItem("mwbot_sp", JSON.stringify({ access:j.access_token, refresh:j.refresh_token || old.refresh, exp: Date.now() + (j.expires_in-60)*1000 })); },
+  async access(){
+    let t = this.token(); if (!t) throw new Error("Connect Spotify first");
+    if (Date.now() > t.exp) {
+      const r = await fetch("https://accounts.spotify.com/api/token", { method:"POST", headers:{"content-type":"application/x-www-form-urlencoded"}, body: new URLSearchParams({ grant_type:"refresh_token", refresh_token:t.refresh, client_id:S.spClient }) });
+      const j = await r.json(); if (!r.ok) { localStorage.removeItem("mwbot_sp"); throw new Error("Spotify login expired — reconnect"); }
+      this.store(j); t = this.token();
+    }
+    return t.access;
+  },
+  async req(path, opt={}){
+    const r = await fetch("https://api.spotify.com/v1" + path, { ...opt, headers:{ Authorization:"Bearer " + await this.access(), "content-type":"application/json" } });
+    if (r.status === 204) return {};
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error((j.error && j.error.message) || ("Spotify error " + r.status));
+    return j;
+  },
+  async load(){
+    try {
+      const m = (S.spPlaylist||"").match(/playlist[/:]([A-Za-z0-9]+)/); if (!m) return toast("Paste a Spotify playlist link");
+      Music.tracks = []; let next = null, first = true;
+      for (const ep of ["items","tracks"]) {
+        try {
+          next = `/playlists/${m[1]}/${ep}?limit=100`; first = true;
+          while (next) {
+            const j = await this.req(next.replace("https://api.spotify.com/v1",""));
+            for (const it of j.items || []) { const tr = it.track || it.item; if (tr && tr.uri && !tr.is_local) Music.tracks.push({ title: tr.name, artist: (tr.artists||[]).map(a=>a.name).join(", "), uri: tr.uri }); }
+            next = j.next; first = false;
+          }
+          break;
+        } catch(e) { if (!first || ep === "tracks") throw e; }
+      }
+      $("spStatus").innerHTML = `<span class="ok">Loaded ${Music.tracks.length} songs.</span> Keep Spotify open on a device.`; renderTracks();
+    } catch(e) { $("spStatus").innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+  },
+  async play(uri){ try { await this.req("/me/player/play", { method:"PUT", body: JSON.stringify({ uris:[uri] }) }); } catch(e) { toast(e.message.includes("device") ? "Open Spotify and start playing on a device first" : e.message); } },
+  async cmd(c){ try { await this.req("/me/player/" + c, { method:"PUT" }); } catch(e) { toast(e.message); } }
+};
+$("spLogin").onclick = () => Spotify.login();
+$("spLoad").onclick = () => Spotify.load();
+
+/* ============ settings tools ============ */
+$("btnHealth").onclick = async () => {
+  $("healthTxt").textContent = "Testing…";
+  try {
+    const h = await (await fetch("/api/livebot/health")).json();
+    if (!h.ai) throw new Error("AI binding missing");
+    const r = await api("/api/livebot/reply", { message:"Say a one-line hello to the chat.", character:{name:activeChar().name, persona:activeChar().persona}, show:{brand:S.brand}, replyWords:15, model:S.model });
+    $("healthTxt").innerHTML = `<span class="ok">Working ✔</span> “${esc(r.text)}”`;
+  } catch(e) { $("healthTxt").innerHTML = `<span class="bad">${esc(e.message)}</span>`; }
+};
+$("btnObs").onclick = () => {
+  const cfg = structuredClone(S);
+  cfg.cast = cfg.cast.map(c => ({ ...c, portrait: c.portrait && c.portrait.startsWith("data:") ? "" : c.portrait }));
+  const link = location.origin + "/livebot/?overlay=1#" + btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+  navigator.clipboard.writeText(link).then(() => toast("OBS link copied — keep it private"), () => prompt("Copy this OBS link:", link));
+  if (S.cast.some(c => c.portrait && c.portrait.startsWith("data:"))) setTimeout(() => toast("Tip: uploaded portraits don't fit in a link — use an image link for OBS", 4000), 2300);
+};
+$("btnExport").onclick = () => { const b = new Blob([JSON.stringify(S, null, 1)], {type:"application/json"}); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "meechiebot-settings.json"; a.click(); };
+$("btnImport").onclick = () => { const i = document.createElement("input"); i.type = "file"; i.accept = ".json"; i.onchange = async () => { try { S = Object.assign(structuredClone(DEFAULTS), JSON.parse(await i.files[0].text())); save(); location.reload(); } catch(e) { toast("That file didn't work"); } }; i.click(); };
+
+/* ============ setup companion ============ */
+async function refreshSteps(){
+  const mark = (id, ok) => $(id).classList.toggle("done", !!ok);
+  mark("s1", true);
+  mark("s3", S.ttUser && S.eulerKey);
+  mark("s4", S.cast.length > 0);
+  try { const h = await (await fetch("/api/livebot/health")).json(); mark("s2", h.ai); } catch(e) {}
+}
+$("chk2").onclick = (e) => { e.preventDefault(); $("btnHealth").click(); document.querySelector('nav button[data-t="settings"]').click(); };
+$("chk5").onclick = (e) => { e.preventDefault(); unlockAudio(); speak("Mic check. If you can hear me, we're ready to go live!", activeChar()).then(() => $("s5").classList.add("done")); };
+$("btnAiPrompt").onclick = () => navigator.clipboard.writeText(
+`I'm setting up MeechieBot Studio, my TikTok LIVE AI co-host at meechiesworldinc.com/livebot/. Guide me one step at a time, wait for me to say "done", and keep steps short because I'm on my phone.
+Steps: 1) get a free Euler Stream API key at eulerstream.com; 2) in the app's Settings enter my TikTok username and that key, then press Test connection; 3) set up my characters in the Cast tab (portrait, voice, personality); 4) go LIVE on TikTok and press Connect LIVE; 5) optional: OBS Browser Source using the OBS overlay link; 6) optional: Spotify (needs Premium and a Spotify developer app whose Redirect URI is https://meechiesworldinc.com/livebot/). I handle all sign-ins and permissions myself.`
+).then(() => toast("Setup prompt copied"), () => toast("Couldn't copy"));
+
+/* ============ boot ============ */
+renderMusicSource(); loadVoices(); renderCast(); setStage(activeChar()); setStatus(); renderStats(); Music.setVol();
+(async () => { const code = new URLSearchParams(location.search).get("code"); if (code) { try { await Spotify.exchange(code); S.musicSource = "spotify"; $("musicSource").value = "spotify"; save(); renderMusicSource(); document.querySelector('nav button[data-t="music"]').click(); } catch(e) { toast("Spotify: " + e.message); } } })();
+if (OVERLAY) { document.body.classList.add("overlay"); setTimeout(connectLive, 800); }
+</script>
+</body>
+</html>
